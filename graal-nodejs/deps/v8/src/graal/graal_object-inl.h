@@ -79,4 +79,17 @@ inline void GraalObject::Recycle() {
     }    
 }
 
+inline v8::Local<v8::Value> GraalObject::HandleCallResult(jobject java_object) {
+    GraalIsolate* graal_isolate = Isolate();
+    if (java_object == NULL) {
+        graal_isolate->HandleEmptyCallResult();
+        return v8::Local<v8::Value>();
+    } else {
+        graal_isolate->ResetSharedBuffer();
+        int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
+        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
+        return reinterpret_cast<v8::Value*> (graal_value);
+    }
+}
+
 #endif /* GRAAL_OBJECT_INL_H_ */

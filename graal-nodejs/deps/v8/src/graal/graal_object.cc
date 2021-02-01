@@ -94,27 +94,12 @@ v8::Local<v8::Value> GraalObject::Get(v8::Local<v8::Value> key) {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_get, Object, GetJavaObject(), java_key);
-    if (java_object == NULL) {
-        graal_isolate->HandleEmptyCallResult();
-        return v8::Local<v8::Value>();
-    } else {
-        graal_isolate->ResetSharedBuffer();
-        int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
-        return reinterpret_cast<v8::Value*> (graal_value);
-    }
+    return HandleCallResult(java_object);
 }
 
 v8::Local<v8::Value> GraalObject::Get(uint32_t index) {
     JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_index, Object, GetJavaObject(), (jint) index);
-    if (java_object == NULL) {
-        return v8::Local<v8::Value>();
-    } else {
-        Isolate()->ResetSharedBuffer();
-        int32_t value_t = Isolate()->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object, value_t, true);
-        return reinterpret_cast<v8::Value*> (graal_value);
-    }
+    return HandleCallResult(java_object);
 }
 
 v8::Local<v8::Value> GraalObject::GetRealNamedProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key) {
@@ -204,34 +189,22 @@ int GraalObject::InternalFieldCount() {
 }
 
 void GraalObject::SetInternalField(int index, v8::Local<v8::Value> value) {
-    Set(Isolate()->InternalFieldKey(index), value);
+    jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_internal_field, GetJavaObject(), (jint) index, java_value);
 }
 
 v8::Local<v8::Value> GraalObject::SlowGetInternalField(int index) {
-    return Get(Isolate()->InternalFieldKey(index));
+    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_slow_get_internal_field, Object, GetJavaObject(), (jint) index);
+    return HandleCallResult(java_object);
 }
 
 void GraalObject::SetAlignedPointerInInternalField(int index, void* value) {
-    if (index == 0) {
-        JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_aligned_pointer_in_internal_field, GetJavaObject(), value);
-    } else {
-        v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (Isolate());
-        v8::Local<v8::External> external = GraalExternal::New(isolate, value);
-        SetInternalField(index, external);
-    }
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_aligned_pointer_in_internal_field, GetJavaObject(), (jint) index, value);
 }
 
 void* GraalObject::SlowGetAlignedPointerFromInternalField(int index) {
-    if (index == 0) {
-        JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, Long, GetJavaObject());
-        return (void *) result;
-    }
-    v8::Local<v8::Value> value = SlowGetInternalField(index);
-    if (value->IsExternal()) {
-        return value.As<v8::External>()->Value();
-    } else {
-        return nullptr;
-    }
+    JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, Long, GetJavaObject(), (jint) index);
+    return (void *) result;
 }
 
 v8::Local<v8::Object> GraalObject::Clone() {

@@ -194,7 +194,6 @@ enum GraalAccessMethod {
     exception_create_message,
     isolate_throw_exception,
     isolate_run_microtasks,
-    isolate_create_internal_field_key,
     isolate_internal_error_check,
     isolate_throw_stack_overflow_error,
     isolate_get_heap_statistics,
@@ -296,6 +295,8 @@ enum GraalAccessMethod {
     object_internal_field_count,
     object_slow_get_aligned_pointer_from_internal_field,
     object_set_aligned_pointer_in_internal_field,
+    object_slow_get_internal_field,
+    object_set_internal_field,
     json_parse,
     json_stringify,
     symbol_new,
@@ -394,7 +395,6 @@ public:
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
-    v8::Local<v8::Value> InternalFieldKey(int index);
     void Dispose();
     void Dispose(bool exit, int status);
     inline double ReadDoubleFromSharedBuffer();
@@ -691,7 +691,6 @@ private:
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
-    std::vector<v8::Value*> internal_field_keys;
     std::vector<std::tuple<GCCallbackType, void*, void*>> prolog_callbacks;
     std::vector<std::tuple<GCCallbackType, void*, void*>> epilog_callbacks;
     std::vector<std::pair<v8::MicrotaskCallback, void*>> microtasks;

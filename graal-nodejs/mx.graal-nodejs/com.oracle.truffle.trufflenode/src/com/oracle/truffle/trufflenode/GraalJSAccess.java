@@ -98,6 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -129,6 +130,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -245,7 +247,8 @@ public final class GraalJSAccess {
     private static final HiddenKey PRIVATE_VALUES_KEY = new HiddenKey("PrivateValues");
     private static final HiddenKey FUNCTION_TEMPLATE_DATA_KEY = new HiddenKey("FunctionTemplateData");
     private static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
-    private static final HiddenKey INTERNAL_FIELD_ZERO_KEY = new HiddenKey("InternalField0");
+    private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
+    private static final HiddenKey[] INTERNAL_FIELD_KEYS_ARRAY = createInternalFieldKeysArray(10);
 
     private static final Symbol RESOLVER_RESOLVE = Symbol.create("Resolve");
     private static final Symbol RESOLVER_REJECT = Symbol.create("Reject");
@@ -804,19 +807,20 @@ public final class GraalJSAccess {
         } else {
             value = JSObject.get(truffleObject, JSRuntime.toPropertyKey(key));
         }
+        return processReturnValue(value);
+    }
+
+    public Object objectGetIndex(Object object, int index) {
+        Object value = JSObject.get((DynamicObject) object, index);
+        return processReturnValue(value);
+    }
+
+    private Object processReturnValue(Object value) {
         Object flatten = valueFlatten(value);
         resetSharedBuffer();
         asBaseBuffer(sharedBuffer).position(4);
         sharedBuffer.putInt(0, valueType(flatten, true));
         return flatten;
-    }
-
-    public Object objectGetIndex(Object object, int index) {
-        Object value = valueFlatten(JSObject.get((DynamicObject) object, index));
-        resetSharedBuffer();
-        asBaseBuffer(sharedBuffer).position(4);
-        sharedBuffer.putInt(0, valueType(value, true));
-        return value;
     }
 
     public Object objectGetOwnPropertyDescriptor(Object object, Object key) {
@@ -1426,11 +1430,7 @@ public final class GraalJSAccess {
 
     public Object functionCall(Object function, Object receiver, Object[] arguments) {
         Object value = JSRuntime.call(function, receiver, arguments);
-        Object flatten = valueFlatten(value);
-        resetSharedBuffer();
-        asBaseBuffer(sharedBuffer).position(4);
-        sharedBuffer.putInt(0, valueType(flatten, true));
-        return flatten;
+        return processReturnValue(value);
     }
 
     public Object functionCall0(Object function, Object receiver) {
@@ -2673,8 +2673,26 @@ public final class GraalJSAccess {
         }
     }
 
-    public Object isolateCreateInternalFieldKey(int index) {
-        return (index == 0) ? INTERNAL_FIELD_ZERO_KEY : new HiddenKey("InternalField" + index);
+    private static Object getInternalFieldKey(int index) {
+        if (index < INTERNAL_FIELD_KEYS_ARRAY.length) {
+            return INTERNAL_FIELD_KEYS_ARRAY[index];
+        } else {
+            return INTERNAL_FIELD_KEYS_MAP.computeIfAbsent(index, GraalJSAccess::createInternalFieldKey);
+        }
+    }
+
+    private static HiddenKey createInternalFieldKey(int index) {
+        return new HiddenKey("InternalField" + index);
+    }
+
+    private static HiddenKey[] createInternalFieldKeysArray(int nPreallocatedKeys) {
+        HiddenKey[] keyArray = new HiddenKey[nPreallocatedKeys];
+        for (int i = 0; i < keyArray.length; i++) {
+            HiddenKey key = createInternalFieldKey(i);
+            keyArray[i] = key;
+            INTERNAL_FIELD_KEYS_MAP.put(0, key);
+        }
+        return keyArray;
     }
 
     public int objectInternalFieldCount(Object target) {
@@ -2692,13 +2710,33 @@ public final class GraalJSAccess {
         }
     }
 
-    public long objectSlowGetAlignedPointerFromInternalField(Object target) {
-        Object pointer = JSObjectUtil.getHiddenProperty((DynamicObject) target, INTERNAL_FIELD_ZERO_KEY);
-        return (pointer == null) ? 0 : ((Number) pointer).longValue();
+    public long objectSlowGetAlignedPointerFromInternalField(Object target, int index) {
+        Object key = getInternalFieldKey(index);
+        return getAlignedPointerFromInternalField((DynamicObject) target, key);
     }
 
-    public void objectSetAlignedPointerInInternalField(Object target, long value) {
-        JSObjectUtil.putHiddenProperty((DynamicObject) target, INTERNAL_FIELD_ZERO_KEY, value);
+    private static long getAlignedPointerFromInternalField(DynamicObject target, Object key) {
+        try {
+            return DynamicObjectLibrary.getUncached().getLongOrDefault(target, key, 0L);
+        } catch (UnexpectedResultException e) {
+            return 0L;
+        }
+    }
+
+    public void objectSetAlignedPointerInInternalField(Object target, int index, long value) {
+        Object key = getInternalFieldKey(index);
+        DynamicObjectLibrary.getUncached().putLong((DynamicObject) target, key, value);
+    }
+
+    public void objectSetInternalField(Object object, int index, Object value) {
+        Object key = getInternalFieldKey(index);
+        JSObjectUtil.putHiddenProperty((DynamicObject) object, key, value);
+    }
+
+    public Object objectSlowGetInternalField(Object object, int index) {
+        Object key = getInternalFieldKey(index);
+        Object value = JSObjectUtil.getHiddenProperty((DynamicObject) object, key);
+        return processReturnValue(value);
     }
 
     public Object objectPreviewEntries(Object object) {
