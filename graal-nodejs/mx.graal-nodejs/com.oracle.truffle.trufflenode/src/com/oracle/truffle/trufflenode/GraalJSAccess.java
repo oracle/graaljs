@@ -739,7 +739,6 @@ public final class GraalJSAccess {
 
     public boolean objectForceSet(Object object, Object key, Object value, int attributes) {
         Object propertyKey = JSRuntime.toPropertyKey(key);
-        JSObject.delete((DynamicObject) object, propertyKey);
         PropertyDescriptor descriptor = propertyDescriptor(attributes, value);
         return JSObject.defineOwnProperty((DynamicObject) object, propertyKey, descriptor);
     }
