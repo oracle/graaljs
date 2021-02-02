@@ -98,6 +98,17 @@ Running in a Native Image means that the JavaScript engine, including all its de
 This mode, however, will only give GraalVM access to Java classes known at the time of image creation.
 Most significantly, this means that the JavaScript-to-Java interoperability features are not available in this mode, as they would require dynamic class loading and execution of arbitrary Java code at runtime.
 
+### Can npm packages be installed globally?
+Node packages can be installed globally using `npm` and the `-g` option, both with the original Node.js implementation and GraalVM.
+
+While the original Node.js implementation has one main folder (`NODE/bin`) to put binaries and globally installed packages and their commandline tools, GraalVM has several: the main `GRAALVM/bin` folder, and separate folders for each language, e.g. `GRAALVM/jre/languages/js/bin`.
+When installing npm packages globally in GraalVM, links to the executables e.g. for command line interface tools are put to the JavaScript-specific folder.
+In order for globally installed packages to function properly, you might need to add `GRAALVM/jre/languages/js/bin` to your `$PATH`.
+
+Another option is to specify the global installation folder of `npm` by setting the `$PREFIX` environment variable, or by specifying the `--prefix` option when running `npm install`.
+
+For more details, see [Installing `npm` Packages Globally](NodeJS.md#installing-npm-packages-globally).
+
 ## Errors
 
 ### TypeError: Access to host class com.myexample.MyClass is not allowed or does not exist
@@ -221,5 +232,4 @@ HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
   //warning: too permissive for use in production
   .allowAccess(Function.class.getMethod("apply", Object.class))
   .build();
-
 ```

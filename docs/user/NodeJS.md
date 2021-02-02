@@ -35,9 +35,12 @@ As the `npm` command of GraalVM is largely compatible with NPM, packages will be
 ### Installing `npm` Packages Globally
 
 Node packages can be installed globally using `npm` and the `-g` option.
-By default, `npm` installs global packages in the path where the `node` executable is installed.
-In GraalVM, this means that global packages will create files in the GraalVM folder.
-To avoid writing to the GraalVM folder, the default global installation folder of `npm` can be modified by setting the `$PREFIX` environment variable, or by specifying the `--prefix` option when running `npm install`.
+By default, `npm` installs global packages (links to their executables) in the path where the `node` executable is installed, typically `NODE/bin`.
+In GraalVM, while there is a `node` executable in `GRAALVM/bin`, this is just a link to the actual executable in the `GRAALVM/jre/languages/js/bin` folder.
+That folder is where global packages are installed.
+You might want to add that directory to your `$PATH` if you regularly use globally installed packages, especially their command line interfaces.
+
+Another option is to specify the global installation folder of `npm` by setting the `$PREFIX` environment variable, or by specifying the `--prefix` option when running `npm install`.
 For example, the following command will install global packages in the `/foo/bar` folder:
 ```shell
 $GRAALVM_HOME/bin/npm install --prefix /foo/bar -g <package>
