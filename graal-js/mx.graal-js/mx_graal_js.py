@@ -76,7 +76,7 @@ def _graal_js_gate_runner(args, tasks):
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
         'latestversion': ['gate', 'minesversion=2022'],
-        'instrument': ['gate', 'instrument']
+        'instrument': ['gate', 'instrument', 'timeoutoverall=1800']
     }
 
     gateTestCommands = {
