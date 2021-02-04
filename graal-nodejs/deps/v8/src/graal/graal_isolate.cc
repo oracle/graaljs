@@ -1046,12 +1046,16 @@ void GraalIsolate::Dispose(bool exit, int status) {
     env->functions->CallVoidMethod(env, access_, method_id, exit, status);
 
     // Release global references
+    env->DeleteGlobalRef(object_class_);
+    env->DeleteGlobalRef(access_class_);
     env->DeleteGlobalRef(access_);
     env->DeleteGlobalRef(boolean_true_);
     env->DeleteGlobalRef(boolean_false_);
     env->DeleteGlobalRef(int32_placeholder_);
     env->DeleteGlobalRef(uint32_placeholder_);
     env->DeleteGlobalRef(double_placeholder_);
+    object_class_ = nullptr;
+    access_class_ = nullptr;
     access_ = nullptr;
     boolean_true_ = nullptr;
     boolean_false_ = nullptr;
@@ -1072,6 +1076,11 @@ void GraalIsolate::Dispose(bool exit, int status) {
 #else
     CloseHandle(lock_);
 #endif
+
+    // GraalIsolate is allocated using malloc and placement new,
+    // see Isolate::Allocate() and Isolate::Initialize()
+    this->~GraalIsolate();
+    free(this);
 }
 
 jobject GraalIsolate::JNIGetObjectFieldOrCall(jobject java_object, GraalAccessField graal_field_id, GraalAccessMethod graal_method_id) {
