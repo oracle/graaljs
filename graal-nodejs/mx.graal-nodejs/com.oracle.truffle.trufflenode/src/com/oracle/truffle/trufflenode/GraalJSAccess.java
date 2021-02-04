@@ -119,10 +119,12 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -2677,7 +2679,20 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            agent.processAllPromises(true);
+            try {
+                agent.processAllPromises(true);
+            } catch (AbstractTruffleException atex) {
+                InteropLibrary interop = InteropLibrary.getUncached(atex);
+                if (interop.isException(atex)) {
+                    ExceptionType type = interop.getExceptionType(atex);
+                    if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
+                        throw atex;
+                    }
+                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
+                } else {
+                    throw atex;
+                }
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);
