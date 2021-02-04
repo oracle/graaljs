@@ -1161,7 +1161,7 @@ public final class GraalJSAccess {
             // Callable Proxy: get the creation context from the target function.
             return objectCreationContext(JSProxy.getTarget(object));
         }
-        throw new IllegalArgumentException("Cannot get creation context for this object");
+        return mainJSRealm;
     }
 
     public void objectSetIntegrityLevel(Object object, boolean freeze) {
