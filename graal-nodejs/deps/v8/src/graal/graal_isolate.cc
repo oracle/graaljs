@@ -502,7 +502,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         if (!RegisterCallbacks(env, callback_class)) {
             exit(1);
         }
-        uv_key_create(&current_isolate_key);
+        InitThreadLocals();
     } else {
         if (jvm->GetEnv(reinterpret_cast<void**> (&env), JNI_VERSION_1_8) == JNI_EDETACHED) {
             jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
