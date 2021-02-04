@@ -927,7 +927,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
 
     sending_message_ = false;
     abort_on_uncaught_exception_callback_ = nullptr;
-    array_buffer_allocator_ = params.array_buffer_allocator;
+    array_buffer_allocator_ = params.array_buffer_allocator_shared;
     try_catch_count_ = 0;
     stack_check_enabled_ = false;
     error_to_ignore_ = nullptr;
@@ -1439,7 +1439,7 @@ void GraalIsolate::EnqueueMicrotask(v8::Local<v8::Function> microtask) {
 }
 
 v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
-    return array_buffer_allocator_;
+    return array_buffer_allocator_.get();
 }
 
 void GraalIsolate::SchedulePauseOnNextStatement() {

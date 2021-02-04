@@ -678,7 +678,7 @@ private:
     v8::MessageCallback message_listener_;
     bool sending_message_;
     v8::Isolate::AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
-    v8::ArrayBuffer::Allocator* array_buffer_allocator_;
+    std::shared_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;
