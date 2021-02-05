@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,7 +216,7 @@ namespace v8 {
             exit(1);
         }
         graal_isolate->FindDynamicObjectFields(java_context);
-        GraalContext* ctx = new GraalContext(graal_isolate, java_context);
+        GraalContext* ctx = GraalContext::Allocate(graal_isolate, java_context);
         return reinterpret_cast<Context*> (ctx);
     }
 
@@ -257,7 +257,7 @@ namespace v8 {
     jobject java_context = isolate->CurrentJavaContext(); \
     jobject java_message = graal_message->GetJavaObject(); \
     JNI_CALL(jobject, java_error, isolate, GraalAccessMethod::error_type, Object, java_context, java_message); \
-    GraalObject* graal_object = new GraalObject(isolate, java_error); \
+    GraalObject* graal_object = GraalObject::Allocate(isolate, java_error); \
     return reinterpret_cast<Value*> (graal_object);
 
     Local<Value> Exception::Error(Local<String> message) {
@@ -820,7 +820,7 @@ namespace v8 {
         jchar* str = new jchar[length];
         env->GetStringRegion(java_left, 0, left_length, str);
         env->GetStringRegion(java_right, 0, right_length, str + left_length);
-        GraalString* graal_concat = new GraalString(graal_isolate, env->NewString(str, length));
+        GraalString* graal_concat = GraalString::Allocate(graal_isolate, env->NewString(str, length));
         delete[] str;
         return reinterpret_cast<String*> (graal_concat);
     }
@@ -997,7 +997,7 @@ namespace v8 {
         jobject java_array_buffer = graal_array_buffer->GetJavaObject(); \
         GraalIsolate* graal_isolate = graal_array_buffer->Isolate(); \
         JNI_CALL(jobject, java_array_buffer_view, graal_isolate, GraalAccessMethod::graal_access_method, Object, java_array_buffer, (jint) byte_offset, (jint) length); \
-        return reinterpret_cast<view_class*> (new GraalArrayBufferView(graal_isolate, java_array_buffer_view, GraalArrayBufferView::view_type)); \
+        return reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, GraalArrayBufferView::view_type)); \
     }
 
     ArrayBufferViewNew(Uint8Array, kUint8Array, uint8_array_new)
@@ -1606,7 +1606,7 @@ namespace v8 {
         if (HasCaught()) {
             GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
             jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
-            GraalMessage* graal_message = new GraalMessage(graal_isolate, java_exception);
+            GraalMessage* graal_message = GraalMessage::Allocate(graal_isolate, java_exception);
             return reinterpret_cast<v8::Message*> (graal_message);
         } else {
             return Local<v8::Message>();
@@ -1869,7 +1869,7 @@ namespace v8 {
         jobject exception_object = graal_exception->GetJavaObject();
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
         JNI_CALL(jobject, java_exception, graal_isolate, GraalAccessMethod::exception_create_message, Object, exception_object);
-        return reinterpret_cast<v8::Message*> (new GraalMessage(graal_isolate, java_exception));
+        return reinterpret_cast<v8::Message*> (GraalMessage::Allocate(graal_isolate, java_exception));
     }
 
     Maybe<bool> Object::Has(Local<Context> context, Local<Value> key) {
@@ -2024,7 +2024,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         jboolean java_value = value;
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::boolean_object_new, Object, java_context, java_value);
-        GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
         return reinterpret_cast<BooleanObject*> (graal_object);
     }
 
@@ -2042,7 +2042,7 @@ namespace v8 {
         GraalString* graal_value = reinterpret_cast<GraalString*> (*value);
         jobject java_value = graal_value->GetJavaObject();
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::string_object_new, Object, java_context, java_value);
-        GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
         return reinterpret_cast<StringObject*> (graal_object);
     }
 
@@ -2051,7 +2051,7 @@ namespace v8 {
         GraalIsolate* graal_isolate = graal_object->Isolate();
         jobject java_object = graal_object->GetJavaObject();
         JNI_CALL(jobject, value, graal_isolate, GraalAccessMethod::string_object_value_of, Object, java_object);
-        GraalString* graal_string = new GraalString(graal_isolate, (jstring) value);
+        GraalString* graal_string = GraalString::Allocate(graal_isolate, (jstring) value);
         return reinterpret_cast<v8::String*> (graal_string);
     }
 
@@ -2060,7 +2060,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         jdouble java_value = value;
         JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::number_object_new, Object, java_context, java_value);
-        GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+        GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
         return reinterpret_cast<NumberObject*> (graal_object);
     }
 
@@ -2129,7 +2129,7 @@ namespace v8 {
         if (java_result == nullptr) {
             return Local<String>();
         } else {
-            GraalString* graal_string = new GraalString(graal_isolate, (jstring) java_result);
+            GraalString* graal_string = GraalString::Allocate(graal_isolate, (jstring) java_result);
             return Local<String>(reinterpret_cast<String*> (graal_string));
         }
     }
@@ -3003,7 +3003,7 @@ namespace v8 {
         jobject java_context = graal_isolate->CurrentJavaContext();
         JNI_CALL(jobject, java_array_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_new, Object, java_context, java_byte_buffer, (jlong) data, externalized);
         graal_isolate->GetJNIEnv()->DeleteLocalRef(java_byte_buffer);
-        return reinterpret_cast<v8::SharedArrayBuffer*> (new GraalObject(graal_isolate, java_array_buffer));
+        return reinterpret_cast<v8::SharedArrayBuffer*> (GraalObject::Allocate(graal_isolate, java_array_buffer));
     }
 
     double Platform::SystemClockTimeMillis() {
@@ -3083,12 +3083,12 @@ namespace v8 {
 
         if (script_or_module_out != nullptr) {
             jobject java_script = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 1);
-            GraalScriptOrModule* graal_script = new GraalScriptOrModule(graal_isolate, java_script);
+            GraalScriptOrModule* graal_script = GraalScriptOrModule::Allocate(graal_isolate, java_script);
             *script_or_module_out = reinterpret_cast<ScriptOrModule*>(graal_script);
         }
 
         jobject java_function = graal_isolate->GetJNIEnv()->GetObjectArrayElement((jobjectArray) java_array, 0);
-        GraalFunction* graal_function = new GraalFunction(graal_isolate, java_function);
+        GraalFunction* graal_function = GraalFunction::Allocate(graal_isolate, java_function);
         Local<Function> v8_function = reinterpret_cast<Function*> (graal_function);
         return v8_function;
     }

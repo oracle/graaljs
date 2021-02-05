@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,12 +48,16 @@ class GraalIsolate;
 
 class GraalArray : public GraalObject {
 public:
-    inline GraalArray(GraalIsolate* isolate, jobject java_array);
+    inline static GraalArray* Allocate(GraalIsolate* isolate, jobject java_array);
+    inline static GraalArray* Allocate(GraalIsolate* isolate, jobject java_array, void* placement);
+    inline void ReInitialize(jobject java_array);
     bool IsArray() const;
     static v8::Local<v8::Array> New(v8::Isolate* isolate, int length);
     static v8::Local<v8::Array> New(v8::Isolate* isolate, v8::Local<v8::Value>* elements, size_t length);
     uint32_t Length() const;
 protected:
+    inline void Recycle() override;
+    inline GraalArray(GraalIsolate* isolate, jobject java_array);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

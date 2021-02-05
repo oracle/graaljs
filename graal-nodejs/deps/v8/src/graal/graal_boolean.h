@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,9 @@ class GraalIsolate;
 
 class GraalBoolean : public GraalPrimitive {
 public:
-    inline GraalBoolean(GraalIsolate* isolate, bool value);
-    inline GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value);
+    inline static GraalBoolean* Allocate(GraalIsolate* isolate, bool value);
+    inline static GraalBoolean* Allocate(GraalIsolate* isolate, bool value, jobject java_value);
+    inline static GraalBoolean* Allocate(GraalIsolate* isolate, bool value, jobject java_value, void* placement);
     bool IsBoolean() const;
     bool IsTrue() const;
     bool IsFalse() const;
@@ -57,6 +58,8 @@ public:
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
+    inline GraalBoolean(GraalIsolate* isolate, bool value);
+    inline GraalBoolean(GraalIsolate* isolate, bool value, jobject java_value);
     bool value_;
 };
 

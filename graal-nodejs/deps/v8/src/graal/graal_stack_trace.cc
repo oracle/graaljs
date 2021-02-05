@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ int GraalStackTrace::GetFrameCount() const {
 
 v8::Local<v8::StackFrame> GraalStackTrace::GetFrame(uint32_t index) const {
     jobject java_frame = Isolate()->GetJNIEnv()->GetObjectArrayElement((jobjectArray) GetJavaObject(), index);
-    GraalStackFrame* graal_frame = new GraalStackFrame(Isolate(), java_frame);
+    GraalStackFrame* graal_frame = GraalStackFrame::Allocate(Isolate(), java_frame);
     return reinterpret_cast<v8::StackFrame*> (graal_frame);
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,13 +61,13 @@ int GraalStackFrame::GetColumn() const {
 
 v8::Local<v8::String> GraalStackFrame::GetScriptName() const {
     JNI_CALL(jobject, script_name, Isolate(), GraalAccessMethod::stack_frame_get_script_name, Object, GetJavaObject());
-    GraalString* graal_script_name = new GraalString(Isolate(), (jstring) script_name);
+    GraalString* graal_script_name = GraalString::Allocate(Isolate(), (jstring) script_name);
     return reinterpret_cast<v8::String*> (graal_script_name);
 }
 
 v8::Local<v8::String> GraalStackFrame::GetFunctionName() const {
     JNI_CALL(jobject, function_name, Isolate(), GraalAccessMethod::stack_frame_get_function_name, Object, GetJavaObject());
-    GraalString* graal_function_name = new GraalString(Isolate(), (jstring) function_name);
+    GraalString* graal_function_name = GraalString::Allocate(Isolate(), (jstring) function_name);
     return reinterpret_cast<v8::String*> (graal_function_name);
 }
 

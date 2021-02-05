@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_object-inl.h"
 
 inline GraalPromise::GraalPromise(GraalIsolate* isolate, jobject java_promise) : GraalObject(isolate, java_promise) {
+}
+
+inline GraalPromise* GraalPromise::Allocate(GraalIsolate* isolate, jobject java_promise) {
+    return new GraalPromise(isolate, java_promise);
+}
+
+inline GraalPromise* GraalPromise::Allocate(GraalIsolate* isolate, jobject java_promise, void* placement) {
+    return new(placement) GraalPromise(isolate, java_promise);
 }
 
 #endif /* GRAAL_PROMISE_INL_H_ */

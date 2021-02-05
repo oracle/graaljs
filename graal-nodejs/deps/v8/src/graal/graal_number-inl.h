@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,36 @@
 #include "graal_primitive-inl.h"
 
 inline GraalNumber::GraalNumber(GraalIsolate* isolate, double value, jobject java_number) : GraalPrimitive(isolate, java_number), value_(value) {
+}
+
+inline GraalNumber* GraalNumber::Allocate(GraalIsolate* isolate, double value, jobject java_number) {
+    GraalObjectPool<GraalNumber>* pool = isolate->GetGraalNumberPool();
+    if (pool->IsEmpty()) {
+        return new GraalNumber(isolate, value, java_number);
+    } else {
+        GraalNumber* a_number = pool->Pop();
+        a_number->ReInitialize(java_number, value);
+        return a_number;
+    }
+}
+
+inline GraalNumber* GraalNumber::Allocate(GraalIsolate* isolate, double value, jobject java_number, void* placement) {
+    return new (placement) GraalNumber(isolate, value, java_number);
+}
+
+inline void GraalNumber::ReInitialize(jobject java_object, double value) {
+    GraalHandleContent::ReInitialize(java_object);
+    value_ = value;
+}
+
+inline void GraalNumber::Recycle() {
+    GraalObjectPool<GraalNumber>* pool = Isolate()->GetGraalNumberPool();
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }    
 }
 
 #endif /* GRAAL_NUMBER_INL_H_ */

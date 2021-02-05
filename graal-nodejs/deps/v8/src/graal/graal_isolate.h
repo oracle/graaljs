@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,9 +78,15 @@
 
 #define EXCEPTION_CHECK(jni_env, T) if (jni_env->ExceptionCheck()) return v8::Local<T>();
 
+class GraalArray;
 class GraalBoolean;
+class GraalContext;
+class GraalExternal;
+class GraalFunction;
 class GraalNumber;
+class GraalObject;
 class GraalPrimitive;
+class GraalString;
 class GraalValue;
 
 enum GraalAccessMethod {
@@ -361,6 +367,25 @@ enum class GraalAccessField {
     count // Should be the last item of GraalAccessField
 };
 
+template <class T, size_t kCapacity = 1024> class GraalObjectPool {
+public:
+    inline bool IsEmpty() {
+        return size_ == 0;
+    }
+    inline bool IsFull() {
+        return size_ == kCapacity;
+    }    
+    inline T* Pop() {
+        return pool_[--size_];
+    }
+    inline void Push(T* array_object) {
+        pool_[size_++] = array_object;
+    }        
+private:
+    T* pool_[kCapacity];
+    int size_ = 0;
+};
+
 class GraalIsolate {
 public:
     GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params);
@@ -606,6 +631,34 @@ public:
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();
 
+    inline GraalObjectPool<GraalObject>* GetGraalObjectPool() {
+        return object_pool_;
+    }
+
+    inline GraalObjectPool<GraalString>* GetGraalStringPool() {
+        return string_pool_;
+    }
+
+    inline GraalObjectPool<GraalContext>* GetGraalContextPool() {
+        return context_pool_;
+    }
+
+    inline GraalObjectPool<GraalFunction>* GetGraalFunctionPool() {
+        return function_pool_;
+    }
+
+    inline GraalObjectPool<GraalArray>* GetGraalArrayPool() {
+        return array_pool_;
+    }
+
+    inline GraalObjectPool<GraalNumber>* GetGraalNumberPool() {
+        return number_pool_;
+    }
+
+    inline GraalObjectPool<GraalExternal>* GetGraalExternalPool() {
+        return external_pool_;
+    }
+
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
         int old_argc = GraalIsolate::argc;
@@ -726,6 +779,14 @@ private:
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+
+    GraalObjectPool<GraalObject>* object_pool_;
+    GraalObjectPool<GraalString>* string_pool_;
+    GraalObjectPool<GraalContext>* context_pool_;
+    GraalObjectPool<GraalFunction>* function_pool_;
+    GraalObjectPool<GraalArray>* array_pool_;
+    GraalObjectPool<GraalNumber>* number_pool_;
+    GraalObjectPool<GraalExternal>* external_pool_;
 };
 
 // This is a poor-man's check that attempts to avoid stack-overflow

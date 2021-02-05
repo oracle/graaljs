@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ v8::Local<v8::ArrayBuffer> GraalArrayBufferView::Buffer() {
     } else {
         java_array_buffer = Isolate()->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_view_buffer, GraalAccessMethod::array_buffer_view_buffer);
     }
-    GraalArrayBuffer* graal_array_buffer = new GraalArrayBuffer(Isolate(), java_array_buffer);
+    GraalArrayBuffer* graal_array_buffer = GraalArrayBuffer::Allocate(Isolate(), java_array_buffer);
     return reinterpret_cast<v8::ArrayBuffer*> (graal_array_buffer);
 }
 

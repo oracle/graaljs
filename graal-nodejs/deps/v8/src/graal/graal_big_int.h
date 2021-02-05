@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,8 @@
 
 class GraalBigInt : public GraalPrimitive {
 public:
-    inline GraalBigInt(GraalIsolate* isolate, jobject java_big_int);
+    inline static GraalBigInt* Allocate(GraalIsolate* isolate, jobject java_big_int);
+    inline static GraalBigInt* Allocate(GraalIsolate* isolate, jobject java_big_int, void* placement);
     static v8::Local<v8::BigInt> New(v8::Isolate* isolate, int64_t value);
     static v8::Local<v8::BigInt> NewFromUnsigned(v8::Isolate* isolate, uint64_t value);
     static v8::MaybeLocal<v8::BigInt> NewFromWords(v8::Local<v8::Context> context, int sign_bit, int word_count, const uint64_t* words);
@@ -56,6 +57,7 @@ public:
     int WordCount() const;
     void ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) const;
 protected:
+    inline GraalBigInt(GraalIsolate* isolate, jobject java_big_int);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_primitive-inl.h"
 
 inline GraalBigInt::GraalBigInt(GraalIsolate* isolate, jobject java_big_int) : GraalPrimitive(isolate, java_big_int) {
+}
+
+inline GraalBigInt* GraalBigInt::Allocate(GraalIsolate* isolate, jobject java_big_int) {
+    return new GraalBigInt(isolate, java_big_int);
+}
+
+inline GraalBigInt* GraalBigInt::Allocate(GraalIsolate* isolate, jobject java_big_int, void* placement) {
+    return new(placement) GraalBigInt(isolate, java_big_int);
 }
 
 #endif /* GRAAL_BIG_INT_INL_H_ */

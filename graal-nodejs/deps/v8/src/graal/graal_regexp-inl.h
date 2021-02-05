@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_object-inl.h"
 
 inline GraalRegExp::GraalRegExp(GraalIsolate* isolate, jobject java_regexp) : GraalObject(isolate, java_regexp) {
+}
+
+inline GraalRegExp* GraalRegExp::Allocate(GraalIsolate* isolate, jobject java_regexp) {
+    return new GraalRegExp(isolate, java_regexp);    
+}
+
+inline GraalRegExp* GraalRegExp::Allocate(GraalIsolate* isolate, jobject java_regexp, void* plcaement) {
+    return new(plcaement) GraalRegExp(isolate, java_regexp);    
 }
 
 #endif /* GRAAL_REGEXP_INL_H_ */

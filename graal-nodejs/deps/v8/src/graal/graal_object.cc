@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@
 #include "graal_string-inl.h"
 
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {
-    return new GraalObject(Isolate(), java_object_copy);
+    return GraalObject::Allocate(Isolate(), java_object_copy);
 }
 
 bool GraalObject::IsObject() const {
@@ -65,7 +65,7 @@ v8::Local<v8::Object> GraalObject::New(v8::Isolate* isolate) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::object_new, Object, java_context);
-    GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+    GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
     return reinterpret_cast<v8::Object*> (graal_object);
 }
 
@@ -255,13 +255,13 @@ bool GraalObject::SetPrototype(v8::Local<v8::Value> prototype) {
 
 v8::Local<v8::String> GraalObject::GetConstructorName() {
     JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::object_get_constructor_name, Object, GetJavaObject());
-    GraalString* graal_name = new GraalString(Isolate(), (jstring) java_name);
+    GraalString* graal_name = GraalString::Allocate(Isolate(), (jstring) java_name);
     return reinterpret_cast<v8::String*> (graal_name);
 }
 
 v8::Local<v8::Array> GraalObject::GetOwnPropertyNames() {
     JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_own_property_names, Object, GetJavaObject());
-    GraalArray* graal_names = new GraalArray(Isolate(), java_names);
+    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
     return reinterpret_cast<v8::Array*> (graal_names);
 }
 
@@ -276,14 +276,14 @@ v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> c
     jboolean keepNumbers = key_conversion == v8::KeyConversionMode::kKeepNumbers;
     JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_property_names, Object, GetJavaObject(),
             ownOnly, enumerableOnly, configurableOnly, writableOnly, skipIndices, skipSymbols, skipStrings, keepNumbers);
-    GraalArray* graal_names = new GraalArray(Isolate(), java_names);
+    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
     v8::Local<v8::Array> v8_names = reinterpret_cast<v8::Array*> (graal_names);
     return v8_names;
 }
 
 v8::Local<v8::Context> GraalObject::CreationContext() {
     JNI_CALL(jobject, java_context, Isolate(), GraalAccessMethod::object_creation_context, Object, GetJavaObject());
-    GraalContext* graal_context = new GraalContext(Isolate(), java_context);
+    GraalContext* graal_context = GraalContext::Allocate(Isolate(), java_context);
     return reinterpret_cast<v8::Context*> (graal_context);
 }
 

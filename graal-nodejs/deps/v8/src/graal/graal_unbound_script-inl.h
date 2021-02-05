@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,10 @@
 #include "graal_string-inl.h"
 
 inline GraalUnboundScript::GraalUnboundScript(GraalIsolate* isolate, jobject java_script) : GraalHandleContent(isolate, java_script) {
+}
+
+inline GraalUnboundScript* GraalUnboundScript::Allocate(GraalIsolate* isolate, jobject java_script) {
+    return new GraalUnboundScript(isolate, java_script);
 }
 
 #endif /* GRAAL_UNBOUND_SCRIPT_INL_H_ */
