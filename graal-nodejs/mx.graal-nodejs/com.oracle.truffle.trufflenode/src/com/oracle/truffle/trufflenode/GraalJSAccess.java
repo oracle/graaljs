@@ -210,6 +210,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -3234,16 +3235,22 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
-            return Undefined.instance;
-        }
-        jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
 
-        Throwable evaluationError = moduleRecord.getEvaluationError();
-        if (evaluationError == null) {
+        if (!moduleRecord.isEvaluated()) {
+            jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        }
+
+        if (!moduleRecord.isTopLevelAsync()) {
+            Throwable evaluationError = moduleRecord.getEvaluationError();
+            if (evaluationError != null) {
+                throw JSRuntime.rethrow(evaluationError);
+            }
+        }
+        PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
+        if (promiseCapability == null) {
             return moduleRecord.getExecutionResult();
         } else {
-            throw JSRuntime.rethrow(evaluationError);
+            return promiseCapability.getPromise();
         }
     }
 
