@@ -308,6 +308,8 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             join('internal', 'readline', 'utils.js'),            # yield
             join('internal', 'streams', 'buffer_list.js'),       # yield
             join('internal', 'streams', 'from.js'),              # await
+            join('internal', 'streams', 'pipeline.js'),          # await
+            join('internal', 'streams', 'readable.js'),          # await
             join('internal', 'vm', 'module.js'),                 # await
         ]
 
