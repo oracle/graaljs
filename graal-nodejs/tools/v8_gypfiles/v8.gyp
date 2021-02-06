@@ -490,7 +490,9 @@
           ]
         }],
       ],
-      'sources': [],
+      'sources': [
+        '<(V8_ROOT)/src/init/setup-isolate-deserialize.cc',
+      ],
       'xcode_settings': {
         # V8 7.4 over macOS10.11 compatibility
         # Refs: https://github.com/nodejs/node/pull/26685

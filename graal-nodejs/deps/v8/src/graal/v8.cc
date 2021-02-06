@@ -3404,3 +3404,7 @@ namespace v8 {
     void Set::CheckCast(v8::Value* that) {}
 
 }
+
+void V8_Fatal(const char* format, ...) {
+    TRACE
+}
