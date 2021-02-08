@@ -2700,8 +2700,6 @@ public final class GraalJSAccess {
         Object ret = JSObjectUtil.getHiddenProperty(target, INTERNAL_FIELD_COUNT_KEY);
         if (ret instanceof Integer) {
             return (int) ret;
-        } else if (ret instanceof Double) {
-            return ((Double) ret).intValue();
         } else {
             return 0;
         }
