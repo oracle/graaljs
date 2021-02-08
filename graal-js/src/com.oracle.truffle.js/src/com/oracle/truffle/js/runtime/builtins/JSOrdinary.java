@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,9 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 
+/**
+ * @see JSOrdinaryObject
+ */
 public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     public static final String TYPE_NAME = "object";
@@ -66,6 +69,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     public static final CompilableBiFunction<JSContext, DynamicObject, Shape> SHAPE_SUPPLIER = (ctx, proto) -> JSObjectUtil.getProtoChildShape(proto, INSTANCE, ctx);
 
     public static final JSOrdinary BARE_INSTANCE = new JSOrdinary();
+    public static final JSOrdinary INTERNAL_FIELD_INSTANCE = new JSOrdinary();
 
     private JSOrdinary() {
     }
@@ -102,6 +106,16 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         return context.trackAllocation(JSOrdinaryObject.create(context.getEmptyShapeNullPrototype()));
     }
 
+    @TruffleBoundary
+    public static DynamicObject createWithPrototype(DynamicObject prototype, JSContext context, JSOrdinary instanceLayout) {
+        assert JSObjectUtil.isValidPrototype(prototype);
+        if (prototype == Null.instance) {
+            return context.trackAllocation(JSOrdinaryObject.create(context.makeEmptyShapeWithNullPrototype(instanceLayout)));
+        } else {
+            return context.trackAllocation(JSOrdinaryObject.create(JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context)));
+        }
+    }
+
     public static DynamicObject createInitWithInstancePrototype(DynamicObject prototype, JSContext context) {
         assert JSObjectUtil.isValidPrototype(prototype);
         Shape shape = context.getEmptyShapePrototypeInObject();
@@ -122,7 +136,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     }
 
     public static DynamicObject create(JSContext context, Shape shape) {
-        assert JSShape.getJSClass(shape) == JSOrdinary.INSTANCE;
+        assert JSShape.getJSClass(shape) instanceof JSOrdinary;
         return context.trackAllocation(JSOrdinaryObject.create(shape));
     }
 

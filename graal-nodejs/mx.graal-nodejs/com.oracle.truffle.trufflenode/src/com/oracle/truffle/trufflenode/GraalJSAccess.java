@@ -209,6 +209,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -246,7 +247,7 @@ public final class GraalJSAccess {
 
     private static final HiddenKey PRIVATE_VALUES_KEY = new HiddenKey("PrivateValues");
     private static final HiddenKey FUNCTION_TEMPLATE_DATA_KEY = new HiddenKey("FunctionTemplateData");
-    private static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
+    public static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
     private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
     private static final HiddenKey[] INTERNAL_FIELD_KEYS_ARRAY = createInternalFieldKeysArray(10);
 
@@ -1627,12 +1628,13 @@ public final class GraalJSAccess {
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
+        JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
         JSFunctionData functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
         CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
         CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
-        CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false));
-        CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true));
+        CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false, instanceLayout));
+        CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true, instanceLayout));
         functionData.setCallTarget(callTarget);
         functionData.setConstructTarget(constructTarget);
         functionData.setConstructNewTarget(constructNewTarget);
@@ -1682,7 +1684,7 @@ public final class GraalJSAccess {
             } else {
                 DynamicObject function = (DynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
                 DynamicObject prototype = (DynamicObject) JSObject.get(function, JSObject.PROTOTYPE);
-                instance = JSOrdinary.createWithPrototype(prototype, jsContext);
+                instance = JSOrdinary.createWithPrototype(prototype, jsContext, template.getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE);
                 JSObjectUtil.putHiddenProperty(instance, FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
             }
         } else {
@@ -1809,6 +1811,9 @@ public final class GraalJSAccess {
                     JSObjectUtil.putDataProperty(context, obj, name, processedValue, attributes);
                 }
             }
+        }
+        if (targetObject instanceof JSOrdinaryObject.InternalFieldLayout) {
+            ((JSOrdinaryObject.InternalFieldLayout) targetObject).setInternalFieldCount(template.getInternalFieldCount());
         }
     }
 
@@ -2689,6 +2694,9 @@ public final class GraalJSAccess {
     }
 
     public static int internalFieldCount(DynamicObject target) {
+        if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
+            return ((JSOrdinaryObject.InternalFieldLayout) target).getInternalFieldCount();
+        }
         Object ret = JSObjectUtil.getHiddenProperty(target, INTERNAL_FIELD_COUNT_KEY);
         if (ret instanceof Integer) {
             return (int) ret;
@@ -2700,8 +2708,12 @@ public final class GraalJSAccess {
     }
 
     public long objectSlowGetAlignedPointerFromInternalField(Object target, int index) {
-        Object key = getInternalFieldKey(index);
-        return getAlignedPointerFromInternalField((DynamicObject) target, key);
+        if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
+            return ((JSOrdinaryObject.InternalFieldLayout) target).getInternalField(index);
+        } else {
+            Object key = getInternalFieldKey(index);
+            return getAlignedPointerFromInternalField((DynamicObject) target, key);
+        }
     }
 
     private static long getAlignedPointerFromInternalField(DynamicObject target, Object key) {
@@ -2713,8 +2725,12 @@ public final class GraalJSAccess {
     }
 
     public void objectSetAlignedPointerInInternalField(Object target, int index, long value) {
-        Object key = getInternalFieldKey(index);
-        DynamicObjectLibrary.getUncached().putLong((DynamicObject) target, key, value);
+        if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
+            ((JSOrdinaryObject.InternalFieldLayout) target).setInternalField(index, value);
+        } else {
+            Object key = getInternalFieldKey(index);
+            DynamicObjectLibrary.getUncached().putLong((DynamicObject) target, key, value);
+        }
     }
 
     public void objectSetInternalField(Object object, int index, Object value) {

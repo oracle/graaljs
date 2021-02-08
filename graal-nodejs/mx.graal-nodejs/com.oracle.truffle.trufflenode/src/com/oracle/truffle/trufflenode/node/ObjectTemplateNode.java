@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -153,6 +154,9 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         @Override
         public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
             setNode.setValue(receiver, value);
+            if (setNode.getKey() == GraalJSAccess.INTERNAL_FIELD_COUNT_KEY && receiver instanceof JSOrdinaryObject.InternalFieldLayout) {
+                ((JSOrdinaryObject.InternalFieldLayout) receiver).setInternalFieldCount((int) value);
+            }
         }
 
         @Override
