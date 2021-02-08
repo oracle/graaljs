@@ -153,9 +153,10 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
 
         @Override
         public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
-            setNode.setValue(receiver, value);
             if (setNode.getKey() == GraalJSAccess.INTERNAL_FIELD_COUNT_KEY && receiver instanceof JSOrdinaryObject.InternalFieldLayout) {
                 ((JSOrdinaryObject.InternalFieldLayout) receiver).setInternalFieldCount((int) value);
+            } else {
+                setNode.setValue(receiver, value);
             }
         }
 
