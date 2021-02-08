@@ -2736,6 +2736,13 @@ public final class GraalJSAccess {
     public Object objectSlowGetInternalField(Object object, int index) {
         Object key = getInternalFieldKey(index);
         Object value = JSObjectUtil.getHiddenProperty((DynamicObject) object, key);
+        if (value == null) {
+            if (JSPromise.isJSPromise(object)) {
+                value = 0;
+            } else {
+                value = Undefined.instance;
+            }
+        }
         return processReturnValue(value);
     }
 
