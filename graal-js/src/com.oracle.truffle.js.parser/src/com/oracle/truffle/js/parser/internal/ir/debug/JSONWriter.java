@@ -880,6 +880,10 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                     operator = "...";
                     prefix = true;
                     break;
+                case YIELD_STAR:
+                    operator = "yield*";
+                    prefix = true;
+                    break;
                 default:
                     prefix = true;
                     operator = tokenType.getName();
