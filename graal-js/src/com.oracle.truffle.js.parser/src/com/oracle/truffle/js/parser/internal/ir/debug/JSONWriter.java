@@ -738,7 +738,15 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
 
     @Override
     public boolean enterRuntimeNode(final RuntimeNode runtimeNode) {
-        assert false : "should not reach here: RuntimeNode";
+        enterDefault(runtimeNode);
+
+        property("request", runtimeNode.getRequest().name());
+        comma();
+
+        array("args", runtimeNode.getArgs());
+
+        leave();
+
         return false;
     }
 
