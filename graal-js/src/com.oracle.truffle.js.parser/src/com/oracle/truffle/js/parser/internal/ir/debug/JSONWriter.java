@@ -874,6 +874,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                     operator = "--";
                     prefix = true;
                     break;
+                case SPREAD_ARGUMENT:
                 case SPREAD_ARRAY:
                 case SPREAD_OBJECT:
                     operator = "...";
