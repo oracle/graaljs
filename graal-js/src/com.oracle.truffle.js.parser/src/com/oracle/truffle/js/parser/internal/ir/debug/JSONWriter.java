@@ -653,9 +653,10 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     @Override
     public boolean enterPropertyNode(final PropertyNode propertyNode) {
         final Node key = propertyNode.getKey();
+        final Node getter = propertyNode.getGetter();
+        final Node setter = propertyNode.getSetter();
 
-        final Node value = propertyNode.getValue();
-        if (value != null) {
+        if (getter == null && setter == null) {
             objectStart();
             location(propertyNode);
 
@@ -663,16 +664,18 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             key.accept(this);
             comma();
 
-            property("value");
-            value.accept(this);
-            comma();
+            final Node value = propertyNode.getValue();
+            if (value != null) {
+                property("value");
+                value.accept(this);
+                comma();
+            }
 
             property("kind", "init");
 
             objectEnd();
         } else {
             // getter
-            final Node getter = propertyNode.getGetter();
             if (getter != null) {
                 objectStart();
                 location(propertyNode);
@@ -691,7 +694,6 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             }
 
             // setter
-            final Node setter = propertyNode.getSetter();
             if (setter != null) {
                 if (getter != null) {
                     comma();
@@ -870,6 +872,11 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                     break;
                 case DECPREFIX:
                     operator = "--";
+                    prefix = true;
+                    break;
+                case SPREAD_ARRAY:
+                case SPREAD_OBJECT:
+                    operator = "...";
                     prefix = true;
                     break;
                 default:
