@@ -498,6 +498,7 @@ namespace v8 {
         heap_statistics->used_heap_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->heap_size_limit_ = 0;
         heap_statistics->does_zap_garbage_ = false;
+        heap_statistics->external_memory_ = 4096; // dummy value
     }
 
     Isolate* Isolate::New(Isolate::CreateParams const& params) {
