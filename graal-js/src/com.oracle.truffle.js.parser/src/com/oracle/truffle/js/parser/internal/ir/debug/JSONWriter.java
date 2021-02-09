@@ -591,6 +591,8 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                 regexBuf.append('/');
                 regexBuf.append(regex.getOptions());
                 buf.append(quote(regexBuf.toString()));
+            } else if (value != null && value.equals(Double.POSITIVE_INFINITY)) {
+                buf.append("\"Infinity\"");
             } else {
                 final String str = literalNode.getString();
                 // encode every String literal with prefix '$' so that script
