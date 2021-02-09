@@ -263,9 +263,12 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("CatchClause");
         comma();
 
-        property("param");
-        catchNode.getException().accept(this);
-        comma();
+        Expression catchParameter = catchNode.getException();
+        if (catchParameter != null) {
+            property("param");
+            catchParameter.accept(this);
+            comma();
+        }
 
         final Node guard = catchNode.getExceptionCondition();
         if (guard != null) {
