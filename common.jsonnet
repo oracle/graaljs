@@ -26,6 +26,7 @@ local common_json = (import "common.json");
   dailyBench:  {targets+: ['bench', 'daily']},
   weeklyBench: {targets+: ['bench', 'weekly']},
   manualBench: {targets+: ['bench']},
+  daily:       {targets+: ['daily']},
   weekly:      {targets+: ['weekly']},
 
   local python3 = {
