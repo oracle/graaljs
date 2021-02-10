@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.Arrays;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -120,7 +118,10 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
         @DynamicField Object o2;
 
         private static final long[] EMPTY_LONG_ARRAY = new long[0];
-        private long[] internalFields = EMPTY_LONG_ARRAY;
+        private static final Object[] EMPTY_OBJECT_ARRAY = new Object[0];
+
+        private long[] internalPointerFields = EMPTY_LONG_ARRAY;
+        private Object[] internalObjectFields = EMPTY_OBJECT_ARRAY;
 
         protected InternalFieldLayout(Shape shape) {
             super(shape);
@@ -131,21 +132,36 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
             return new InternalFieldLayout(shape);
         }
 
-        public long getInternalField(int index) {
-            return internalFields[index];
+        public long getInternalFieldPointer(int index) {
+            return internalPointerFields[index];
         }
 
-        public void setInternalField(int index, long internalField) {
-            this.internalFields[index] = internalField;
+        public void setInternalFieldPointer(int index, long value) {
+            this.internalPointerFields[index] = value;
+        }
+
+        public Object getInternalFieldObject(int index) {
+            if (index >= internalObjectFields.length) {
+                return null;
+            }
+            return internalObjectFields[index];
+        }
+
+        public void setInternalFieldObject(int index, Object value) {
+            if (internalObjectFields.length == 0) {
+                internalObjectFields = new Object[getInternalFieldCount()];
+            }
+            this.internalObjectFields[index] = value;
         }
 
         public int getInternalFieldCount() {
-            return internalFields.length;
+            return internalPointerFields.length;
         }
 
         public void setInternalFieldCount(int internalFieldCount) {
             assert getInternalFieldCount() == 0;
-            internalFields = Arrays.copyOf(internalFields, internalFieldCount);
+            internalPointerFields = new long[internalFieldCount];
+            // Object[] is initialized lazily.
         }
     }
 }

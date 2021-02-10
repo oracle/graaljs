@@ -2710,7 +2710,7 @@ public final class GraalJSAccess {
 
     public long objectSlowGetAlignedPointerFromInternalField(Object target, int index) {
         if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
-            return ((JSOrdinaryObject.InternalFieldLayout) target).getInternalField(index);
+            return ((JSOrdinaryObject.InternalFieldLayout) target).getInternalFieldPointer(index);
         } else {
             Object key = getInternalFieldKey(index);
             return getAlignedPointerFromInternalField((DynamicObject) target, key);
@@ -2727,7 +2727,7 @@ public final class GraalJSAccess {
 
     public void objectSetAlignedPointerInInternalField(Object target, int index, long value) {
         if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
-            ((JSOrdinaryObject.InternalFieldLayout) target).setInternalField(index, value);
+            ((JSOrdinaryObject.InternalFieldLayout) target).setInternalFieldPointer(index, value);
         } else {
             Object key = getInternalFieldKey(index);
             DynamicObjectLibrary.getUncached().putLong((DynamicObject) target, key, value);
@@ -2735,13 +2735,22 @@ public final class GraalJSAccess {
     }
 
     public void objectSetInternalField(Object object, int index, Object value) {
-        Object key = getInternalFieldKey(index);
-        JSObjectUtil.putHiddenProperty((DynamicObject) object, key, value);
+        if (object instanceof JSOrdinaryObject.InternalFieldLayout) {
+            ((JSOrdinaryObject.InternalFieldLayout) object).setInternalFieldObject(index, value);
+        } else {
+            Object key = getInternalFieldKey(index);
+            JSObjectUtil.putHiddenProperty((DynamicObject) object, key, value);
+        }
     }
 
     public Object objectSlowGetInternalField(Object object, int index) {
-        Object key = getInternalFieldKey(index);
-        Object value = JSObjectUtil.getHiddenProperty((DynamicObject) object, key);
+        Object value;
+        if (object instanceof JSOrdinaryObject.InternalFieldLayout) {
+            value = ((JSOrdinaryObject.InternalFieldLayout) object).getInternalFieldObject(index);
+        } else {
+            Object key = getInternalFieldKey(index);
+            value = JSObjectUtil.getHiddenProperty((DynamicObject) object, key);
+        }
         if (value == null) {
             if (JSPromise.isJSPromise(object)) {
                 value = 0;
