@@ -13,9 +13,9 @@ local common_json = (import "common.json");
     },
   },
 
-  jdk15: {
+  jdk16: {
     downloads+: {
-      JAVA_HOME: common_json.jdks["oraclejdk15"],
+      JAVA_HOME: common_json.jdks["oraclejdk16"],
     },
   },
 
@@ -92,7 +92,7 @@ local common_json = (import "common.json");
     capabilities: ['windows', 'amd64'],
   },
 
-  windows_jdk15: self.windows + common_json.devkits["windows-jdk15"] + {
+  windows_jdk16: self.windows + common_json.devkits["windows-jdk16"] + {
     setup+: [
       ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2019'],
