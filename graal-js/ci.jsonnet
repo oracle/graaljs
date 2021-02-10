@@ -73,7 +73,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'tck'}}                + {name: 'js-gate-tck-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk8-linux-amd64'},
-    graalJs + common.jdk16 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk16-linux-amd64'},
+    graalJs + common.jdk16 + common.daily  + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-daily-native-image-smoke-test-jdk16-linux-amd64'},
 
     // jdk 8 - coverage
     graalJs + common.jdk8  + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
