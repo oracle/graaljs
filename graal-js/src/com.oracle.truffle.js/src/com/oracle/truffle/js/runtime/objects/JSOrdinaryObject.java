@@ -144,6 +144,7 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
         }
 
         public void setInternalFieldCount(int internalFieldCount) {
+            assert getInternalFieldCount() == 0;
             internalFields = Arrays.copyOf(internalFields, internalFieldCount);
         }
     }

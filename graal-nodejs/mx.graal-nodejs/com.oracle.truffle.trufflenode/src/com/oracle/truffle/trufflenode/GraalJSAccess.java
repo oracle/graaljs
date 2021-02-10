@@ -1812,8 +1812,12 @@ public final class GraalJSAccess {
                 }
             }
         }
-        if (targetObject instanceof JSOrdinaryObject.InternalFieldLayout) {
-            ((JSOrdinaryObject.InternalFieldLayout) targetObject).setInternalFieldCount(template.getInternalFieldCount());
+        if (template.getInternalFieldCount() > 0) {
+            if (targetObject instanceof JSOrdinaryObject.InternalFieldLayout) {
+                ((JSOrdinaryObject.InternalFieldLayout) targetObject).setInternalFieldCount(template.getInternalFieldCount());
+            } else {
+                JSObjectUtil.putHiddenProperty(obj, INTERNAL_FIELD_COUNT_KEY, template.getInternalFieldCount());
+            }
         }
     }
 
@@ -1842,7 +1846,6 @@ public final class GraalJSAccess {
     public void objectTemplateSetInternalFieldCount(Object templateObj, int count) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
         template.setInternalFieldCount(count);
-        template.addValue(new Value(INTERNAL_FIELD_COUNT_KEY, count, JSAttributes.NOT_ENUMERABLE));
     }
 
     public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] exts, Object hostDefinedOptions) {
