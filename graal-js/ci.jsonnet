@@ -92,8 +92,8 @@ local common = import '../common.jsonnet';
     // jdk 11 - windows
     graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
 
-    // jdk 15 - linux
-    graalJs + common.jdk16 + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk16-linux-amd64'},
+    // jdk 16 - linux
+    graalJs + common.jdk16 + common.daily  + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-daily-default-jdk16-linux-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk8  + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk8-linux-amd64'},
