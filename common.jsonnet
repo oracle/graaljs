@@ -68,10 +68,6 @@ local common_json = (import "common.json");
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  sparc: common + {
-    capabilities: ['solaris', 'sparcv9'],
-  },
-
   linux_aarch64: common + {
     capabilities+: ['linux', 'aarch64'],
     packages+: {
