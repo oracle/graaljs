@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
+import com.oracle.js.parser.ir.ClassNode;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
 import com.oracle.js.parser.ir.EmptyNode;
@@ -188,7 +189,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type(name);
         comma();
 
-        property("operator", binaryNode.tokenType().getName());
+        property("operator", binaryNode.tokenType().getNameOrType());
         comma();
 
         property("left");
@@ -263,9 +264,12 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         type("CatchClause");
         comma();
 
-        property("param");
-        catchNode.getException().accept(this);
-        comma();
+        Expression catchParameter = catchNode.getException();
+        if (catchParameter != null) {
+            property("param");
+            catchParameter.accept(this);
+            comma();
+        }
 
         final Node guard = catchNode.getExceptionCondition();
         if (guard != null) {
@@ -462,6 +466,39 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
         return leave();
     }
 
+    @Override
+    public boolean enterClassNode(ClassNode classNode) {
+        enterDefault(classNode);
+        type("Class");
+        comma();
+
+        property("id");
+        if (classNode.isAnonymous()) {
+            nullValue();
+        } else {
+            classNode.getIdent().accept(this);
+        }
+        comma();
+
+        Expression classHeritage = classNode.getClassHeritage();
+        if (classHeritage != null) {
+            property("classHeritage");
+            classHeritage.accept(this);
+            comma();
+        }
+
+        PropertyNode constructor = classNode.getConstructor();
+        if (constructor != null) {
+            property("constructor");
+            constructor.getValue().accept(this);
+            comma();
+        }
+
+        array("classElements", classNode.getClassElements());
+
+        return leave();
+    }
+
     private boolean emitProgram(final FunctionNode functionNode) {
         enterDefault(functionNode);
         type("Program");
@@ -588,6 +625,8 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                 regexBuf.append('/');
                 regexBuf.append(regex.getOptions());
                 buf.append(quote(regexBuf.toString()));
+            } else if (value != null && value.equals(Double.POSITIVE_INFINITY)) {
+                buf.append("\"Infinity\"");
             } else {
                 final String str = literalNode.getString();
                 // encode every String literal with prefix '$' so that script
@@ -614,9 +653,10 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     @Override
     public boolean enterPropertyNode(final PropertyNode propertyNode) {
         final Node key = propertyNode.getKey();
+        final Node getter = propertyNode.getGetter();
+        final Node setter = propertyNode.getSetter();
 
-        final Node value = propertyNode.getValue();
-        if (value != null) {
+        if (getter == null && setter == null) {
             objectStart();
             location(propertyNode);
 
@@ -624,16 +664,18 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             key.accept(this);
             comma();
 
-            property("value");
-            value.accept(this);
-            comma();
+            final Node value = propertyNode.getValue();
+            if (value != null) {
+                property("value");
+                value.accept(this);
+                comma();
+            }
 
             property("kind", "init");
 
             objectEnd();
         } else {
             // getter
-            final Node getter = propertyNode.getGetter();
             if (getter != null) {
                 objectStart();
                 location(propertyNode);
@@ -652,7 +694,6 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
             }
 
             // setter
-            final Node setter = propertyNode.getSetter();
             if (setter != null) {
                 if (getter != null) {
                     comma();
@@ -697,7 +738,15 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
 
     @Override
     public boolean enterRuntimeNode(final RuntimeNode runtimeNode) {
-        assert false : "should not reach here: RuntimeNode";
+        enterDefault(runtimeNode);
+
+        property("request", runtimeNode.getRequest().name());
+        comma();
+
+        array("args", runtimeNode.getArgs());
+
+        leave();
+
         return false;
     }
 
@@ -831,6 +880,16 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                     break;
                 case DECPREFIX:
                     operator = "--";
+                    prefix = true;
+                    break;
+                case SPREAD_ARGUMENT:
+                case SPREAD_ARRAY:
+                case SPREAD_OBJECT:
+                    operator = "...";
+                    prefix = true;
+                    break;
+                case YIELD_STAR:
+                    operator = "yield*";
                     prefix = true;
                     break;
                 default:
