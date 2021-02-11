@@ -13,9 +13,9 @@ local common_json = (import "common.json");
     },
   },
 
-  jdk15: {
+  jdk16: {
     downloads+: {
-      JAVA_HOME: common_json.jdks["oraclejdk15"],
+      JAVA_HOME: common_json.jdks["oraclejdk16"],
     },
   },
 
@@ -26,6 +26,7 @@ local common_json = (import "common.json");
   dailyBench:  {targets+: ['bench', 'daily']},
   weeklyBench: {targets+: ['bench', 'weekly']},
   manualBench: {targets+: ['bench']},
+  daily:       {targets+: ['daily']},
   weekly:      {targets+: ['weekly']},
 
   local python3 = {
@@ -68,10 +69,6 @@ local common_json = (import "common.json");
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  sparc: common + {
-    capabilities: ['solaris', 'sparcv9'],
-  },
-
   linux_aarch64: common + {
     capabilities+: ['linux', 'aarch64'],
     packages+: {
@@ -92,7 +89,7 @@ local common_json = (import "common.json");
     capabilities: ['windows', 'amd64'],
   },
 
-  windows_jdk15: self.windows + common_json.devkits["windows-jdk15"] + {
+  windows_jdk16: self.windows + common_json.devkits["windows-jdk16"] + {
     setup+: [
       ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2019'],
