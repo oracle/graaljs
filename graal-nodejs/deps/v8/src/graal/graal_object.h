@@ -92,6 +92,7 @@ public:
     v8::Maybe<bool> SetIntegrityLevel(v8::Local<v8::Context> context, v8::IntegrityLevel level);
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+    inline v8::Local<v8::Value> HandleCallResult(jobject java_object);
     inline void Recycle() override;
     inline GraalObject(GraalIsolate* isolate, jobject java_object);    
 private:

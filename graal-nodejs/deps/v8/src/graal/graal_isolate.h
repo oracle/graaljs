@@ -194,8 +194,6 @@ enum GraalAccessMethod {
     exception_create_message,
     isolate_throw_exception,
     isolate_run_microtasks,
-    isolate_create_internal_field_count_key,
-    isolate_create_internal_field_key,
     isolate_internal_error_check,
     isolate_throw_stack_overflow_error,
     isolate_get_heap_statistics,
@@ -223,6 +221,7 @@ enum GraalAccessMethod {
     object_template_set_accessor,
     object_template_set_handler,
     object_template_set_call_as_function_handler,
+    object_template_set_internal_field_count,
     function_new_instance,
     function_set_name,
     function_get_name,
@@ -296,6 +295,8 @@ enum GraalAccessMethod {
     object_internal_field_count,
     object_slow_get_aligned_pointer_from_internal_field,
     object_set_aligned_pointer_in_internal_field,
+    object_slow_get_internal_field,
+    object_set_internal_field,
     json_parse,
     json_stringify,
     symbol_new,
@@ -394,7 +395,6 @@ public:
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
-    v8::Local<v8::Value> InternalFieldKey(int index);
     void Dispose();
     void Dispose(bool exit, int status);
     inline double ReadDoubleFromSharedBuffer();
@@ -583,10 +583,6 @@ public:
         return (try_catch_count_ != 0);
     }
 
-    inline v8::Local<v8::Value> InternalFieldCountKey() {
-        return internal_field_count_key_;
-    }
-
     inline void ResetSharedBuffer() {
         shared_buffer_pos_ = 0;
     }
@@ -695,7 +691,6 @@ private:
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
-    std::vector<v8::Value*> internal_field_keys;
     std::vector<std::tuple<GCCallbackType, void*, void*>> prolog_callbacks;
     std::vector<std::tuple<GCCallbackType, void*, void*>> epilog_callbacks;
     std::vector<std::pair<v8::MicrotaskCallback, void*>> microtasks;
@@ -711,7 +706,6 @@ private:
     jobject int32_placeholder_;
     jobject uint32_placeholder_;
     jobject double_placeholder_;
-    v8::Value* internal_field_count_key_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
     jfieldID cleanerField_;

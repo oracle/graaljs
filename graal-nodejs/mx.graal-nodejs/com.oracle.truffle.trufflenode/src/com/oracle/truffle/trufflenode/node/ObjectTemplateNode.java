@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -60,6 +61,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -137,6 +140,10 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
             }
         }
 
+        if (template.getInternalFieldCount() > 0) {
+            members.add(new SetInternalFieldCountNode(template.getInternalFieldCount()));
+        }
+
         return new ObjectTemplateNode(members.toArray(ObjectLiteralNode.ObjectLiteralMemberNode.EMPTY), context);
     }
 
@@ -158,6 +165,34 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new InternalFieldNode(isStatic, attributes, (HiddenKey) setNode.getKey(), value, setNode.getContext());
+        }
+    }
+
+    private static final class SetInternalFieldCountNode extends ObjectLiteralNode.ObjectLiteralMemberNode {
+        private final int value;
+        @Child PropertySetNode setNode;
+
+        private SetInternalFieldCountNode(int value) {
+            super(false, JSAttributes.NOT_ENUMERABLE);
+            this.value = value;
+        }
+
+        @Override
+        public void executeVoid(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
+            if (receiver instanceof JSOrdinaryObject.InternalFieldLayout) {
+                ((JSOrdinaryObject.InternalFieldLayout) receiver).setInternalFieldCount(value);
+            } else {
+                if (setNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    setNode = insert(PropertySetNode.createSetHidden(GraalJSAccess.INTERNAL_FIELD_COUNT_KEY, context));
+                }
+                setNode.setValueInt(receiver, value);
+            }
+        }
+
+        @Override
+        protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new SetInternalFieldCountNode(value);
         }
     }
 }

@@ -372,8 +372,19 @@ namespace v8 {
         TRACE
     }
 
-    HeapStatistics::HeapStatistics() {
-        TRACE
+    HeapStatistics::HeapStatistics() :
+        total_heap_size_(0),
+        total_heap_size_executable_(0),
+        total_physical_size_(0),
+        total_available_size_(0),
+        used_heap_size_(0),
+        heap_size_limit_(0),
+        malloced_memory_(0),
+        external_memory_(0),
+        peak_malloced_memory_(0),
+        does_zap_garbage_(false),
+        number_of_native_contexts_(0),
+        number_of_detached_contexts_(0) {
     }
 
     Local<Integer> Integer::NewFromUnsigned(Isolate* isolate, uint32_t value) {
@@ -487,6 +498,7 @@ namespace v8 {
         heap_statistics->used_heap_size_ = graal_isolate->ReadInt64FromSharedBuffer();
         heap_statistics->heap_size_limit_ = 0;
         heap_statistics->does_zap_garbage_ = false;
+        heap_statistics->external_memory_ = 4096; // dummy value
     }
 
     Isolate* Isolate::New(Isolate::CreateParams const& params) {

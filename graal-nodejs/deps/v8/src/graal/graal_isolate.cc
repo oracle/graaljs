@@ -709,8 +709,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::exception_create_message, "exceptionCreateMessage", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_throw_exception, "isolateThrowException", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_run_microtasks, "isolateRunMicrotasks", "()V")
-    ACCESS_METHOD(GraalAccessMethod::isolate_create_internal_field_count_key, "isolateCreateInternalFieldCountKey", "()Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::isolate_create_internal_field_key, "isolateCreateInternalFieldKey", "(I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::isolate_internal_error_check, "isolateInternalErrorCheck", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_throw_stack_overflow_error, "isolateThrowStackOverflowError", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_get_heap_statistics, "isolateGetHeapStatistics", "()V")
@@ -738,6 +736,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJJJLjava/lang/Object;ZZ)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_call_as_function_handler, "objectTemplateSetCallAsFunctionHandler", "(Ljava/lang/Object;IJLjava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::object_template_set_internal_field_count, "objectTemplateSetInternalFieldCount", "(Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::function_new_instance, "functionNewInstance", "(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::function_set_name, "functionSetName", "(Ljava/lang/Object;Ljava/lang/String;)V")
     ACCESS_METHOD(GraalAccessMethod::function_get_name, "functionGetName", "(Ljava/lang/Object;)Ljava/lang/String;")
@@ -809,8 +808,10 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::string_object_value_of, "stringObjectValueOf", "(Ljava/lang/Object;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::number_object_new, "numberObjectNew", "(Ljava/lang/Object;D)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_internal_field_count, "objectInternalFieldCount", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, "objectSlowGetAlignedPointerFromInternalField", "(Ljava/lang/Object;)J")
-    ACCESS_METHOD(GraalAccessMethod::object_set_aligned_pointer_in_internal_field, "objectSetAlignedPointerInInternalField", "(Ljava/lang/Object;J)V")
+    ACCESS_METHOD(GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, "objectSlowGetAlignedPointerFromInternalField", "(Ljava/lang/Object;I)J")
+    ACCESS_METHOD(GraalAccessMethod::object_set_aligned_pointer_in_internal_field, "objectSetAlignedPointerInInternalField", "(Ljava/lang/Object;IJ)V")
+    ACCESS_METHOD(GraalAccessMethod::object_slow_get_internal_field, "objectSlowGetInternalField", "(Ljava/lang/Object;I)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::object_set_internal_field, "objectSetInternalField", "(Ljava/lang/Object;ILjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::json_parse, "jsonParse", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::json_stringify, "jsonStringify", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/String;)Ljava/lang/String;")
     ACCESS_METHOD(GraalAccessMethod::symbol_new, "symbolNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -929,12 +930,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     double_placeholder_ = double_placeholder_global->GetJavaObject();
     slot[root_offset + v8::internal::Internals::kDoubleReturnValuePlaceholderIndex] = double_placeholder_global;
 
-    // InternalFieldCountKey
-    JNI_CALL(jobject, internal_field_count_key, this, GraalAccessMethod::isolate_create_internal_field_count_key, Object);
-    if (internal_field_count_key == NULL) EXIT_WITH_MESSAGE(env, "GraalJSAccess.isolateCreateInternalFieldCountKey() failed!\n")
-    GraalValue* internal_field_count_key_local = GraalObject::Allocate(this, internal_field_count_key);
-    internal_field_count_key_ = reinterpret_cast<v8::Value*> (internal_field_count_key_local->Copy(true));
-
     sending_message_ = false;
     abort_on_uncaught_exception_callback_ = nullptr;
     array_buffer_allocator_ = params.array_buffer_allocator;
@@ -1029,19 +1024,6 @@ bool GraalIsolate::AbortOnUncaughtExceptionCallbackValue() {
 }
 
 bool GraalIsolate::abort_on_uncaught_exception_ = false;
-
-v8::Local<v8::Value> GraalIsolate::InternalFieldKey(int index) {
-    if (index >= (int) internal_field_keys.size()) {
-        internal_field_keys.resize(index + 1);
-    }
-    if (internal_field_keys[index] == nullptr) {
-        JNI_CALL(jobject, key, this, GraalAccessMethod::isolate_create_internal_field_key, Object, (jint) index);
-        GraalValue* key_local = GraalObject::Allocate(this, key);
-        v8::Value* key_global = reinterpret_cast<v8::Value*> (key_local->Copy(true));
-        internal_field_keys[index] = key_global;
-    }
-    return internal_field_keys[index];
-}
 
 void GraalIsolate::Dispose() {
     Dispose(main_, 0);

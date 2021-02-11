@@ -174,14 +174,7 @@ v8::Local<v8::Value> GraalFunction::Call(v8::Local<v8::Value> recv, int argc, v8
             jobjectArray arguments = CreateJavaObjectArray(argc, argv);
             java_object = Call(java_receiver, arguments);
     }
-    if (java_object == NULL) {
-        return v8::Local<v8::Value>();
-    } else {
-        Isolate()->ResetSharedBuffer();
-        int32_t value_t = Isolate()->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object, value_t, true);
-        return reinterpret_cast<v8::Object*> (graal_value);
-    }
+    return HandleCallResult(java_object);
 }
 
 jobject GraalFunction::Call(jobject recv, int argc, jobject argv[]) {
@@ -194,19 +187,12 @@ jobject GraalFunction::Call(jobject recv, int argc, jobject argv[]) {
     return Call(recv, array);
 }
 
-jobject GraalFunction::CallResult(jobject java_object) {
-    if (java_object == NULL) {
-        Isolate()->HandleEmptyCallResult();
-    }
-    return java_object;
-}
-
 jobject GraalFunction::Call0(jobject recv) {
     GraalIsolate* graal_isolate = Isolate();
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call0, Object, GetJavaObject(), recv);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call1(jobject recv, jobject arg0) {
@@ -214,7 +200,7 @@ jobject GraalFunction::Call1(jobject recv, jobject arg0) {
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call1, Object, GetJavaObject(), recv, arg0);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call2(jobject recv, jobject arg0, jobject arg1) {
@@ -222,7 +208,7 @@ jobject GraalFunction::Call2(jobject recv, jobject arg0, jobject arg1) {
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call2, Object, GetJavaObject(), recv, arg0, arg1);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call3(jobject recv, jobject arg0, jobject arg1, jobject arg2) {
@@ -230,16 +216,15 @@ jobject GraalFunction::Call3(jobject recv, jobject arg0, jobject arg1, jobject a
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call3, Object, GetJavaObject(), recv, arg0, arg1, arg2);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
-
 
 jobject GraalFunction::Call4(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3) {
     GraalIsolate* graal_isolate = Isolate();
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call4, Object, GetJavaObject(), recv, arg0, arg1, arg2, arg3);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call5(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4) {
@@ -247,7 +232,7 @@ jobject GraalFunction::Call5(jobject recv, jobject arg0, jobject arg1, jobject a
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call5, Object, GetJavaObject(), recv, arg0, arg1, arg2, arg3, arg4);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call6(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5) {
@@ -255,7 +240,7 @@ jobject GraalFunction::Call6(jobject recv, jobject arg0, jobject arg1, jobject a
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call6, Object, GetJavaObject(), recv, arg0, arg1, arg2, arg3, arg4, arg5);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call7(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5, jobject arg6) {
@@ -263,7 +248,7 @@ jobject GraalFunction::Call7(jobject recv, jobject arg0, jobject arg1, jobject a
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call7, Object, GetJavaObject(), recv, arg0, arg1, arg2, arg3, arg4, arg5, arg6);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call8(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5, jobject arg6, jobject arg7) {
@@ -271,7 +256,7 @@ jobject GraalFunction::Call8(jobject recv, jobject arg0, jobject arg1, jobject a
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call8, Object, GetJavaObject(), recv, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call9(jobject recv, jobject arg0, jobject arg1, jobject arg2, jobject arg3, jobject arg4, jobject arg5, jobject arg6, jobject arg7, jobject arg8) {
@@ -279,7 +264,7 @@ jobject GraalFunction::Call9(jobject recv, jobject arg0, jobject arg1, jobject a
     graal_isolate->calls_on_stack_++;
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::function_call9, Object, GetJavaObject(), recv, arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
     graal_isolate->calls_on_stack_--;
-    return CallResult(java_object);
+    return java_object;
 }
 
 jobject GraalFunction::Call(jobject recv, jobjectArray arguments) {
@@ -289,7 +274,7 @@ jobject GraalFunction::Call(jobject recv, jobjectArray arguments) {
     graal_isolate->calls_on_stack_--;
     JNIEnv* env = graal_isolate->GetJNIEnv();
     env->DeleteLocalRef(arguments);
-    return CallResult(java_object);
+    return java_object;
 }
 
 v8::ScriptOrigin GraalFunction::GetScriptOrigin() const {
