@@ -1743,7 +1743,7 @@ def configure_intl(o):
   #   shlib_suffix = 'so.%s'
   if flavor == 'win':
     icu_config['variables']['icu_asm_ext'] = 'obj'
-    icu_config['variables']['icu_asm_opts'] = [ '-o ' ]
+    icu_config['variables']['icu_asm_opts'] = [ '-o' ]
   elif with_intl == 'small-icu' or options.cross_compiling:
     icu_config['variables']['icu_asm_ext'] = 'c'
     icu_config['variables']['icu_asm_opts'] = []
