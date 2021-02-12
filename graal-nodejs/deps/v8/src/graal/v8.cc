@@ -3372,6 +3372,24 @@ namespace v8 {
     }
 #endif
 
+    bool EmbedderHeapTracer::IsRootForNonTracingGC(const v8::TracedReference<v8::Value>& handle) {
+        TRACE
+        return true;
+    }
+
+    bool EmbedderHeapTracer::IsRootForNonTracingGC(const v8::TracedGlobal<v8::Value>& handle) {
+        TRACE
+        return true;
+    }
+
+    void EmbedderHeapTracer::ResetHandleInNonTracingGC(const v8::TracedReference<v8::Value>& handle) {
+        TRACE
+    }
+
+    CpuProfilingOptions::CpuProfilingOptions(CpuProfilingMode mode, unsigned max_samples, int sampling_interval_us, MaybeLocal<Context> filter_context) {
+        TRACE
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
