@@ -2,7 +2,6 @@ package com.oracle.truffle.js.test.decorators;
 
 import org.junit.Test;
 
-//TODO: find way to test propertydescriptor
 public class ToClassDescriptorTest extends DecoratorTest{
     @Test
     public void testKindDifferentFromClass() {

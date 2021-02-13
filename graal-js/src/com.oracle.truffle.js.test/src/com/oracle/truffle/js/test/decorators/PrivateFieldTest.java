@@ -37,4 +37,46 @@ public class PrivateFieldTest extends DecoratorTest{
                 "c.test = 'test';";
         testError(source, "Field #message is not writable.");
     }
+
+    @Test
+    public void writeReadonlyMethod() {
+        String source = "" +
+                "function readonly(d) {" +
+                "d.writeable = false;" +
+                "return d;" +
+                "}" +
+                "class C {" +
+                "@readonly" +
+                "#message() {" +
+                "" +
+                "};" +
+                "set test(value) {" +
+                "   this.#message = function() { console.log(value); };" +
+                "}" +
+                "}" +
+                "let c = new C();" +
+                "c.test = 'test';";
+        testError(source, "Method #message is not writable.");
+    }
+
+    @Test
+    public void writeReadonlyAccessor() {
+        String source = "" +
+                "function readonly(d) {" +
+                "d.writeable = false;" +
+                "return d;" +
+                "}" +
+                "class C {" +
+                "@readonly " +
+                "get #message() {" +
+                "return 0;" +
+                "};" +
+                "set test(value) {" +
+                "   this.#message = value;" +
+                "}" +
+                "}" +
+                "let c = new C();" +
+                "c.test = 'test';";
+        testError(source, "Accessor #message has no setter.");
+    }
 }

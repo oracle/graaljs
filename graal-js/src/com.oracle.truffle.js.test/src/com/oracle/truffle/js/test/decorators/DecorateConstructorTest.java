@@ -14,6 +14,6 @@ public class DecorateConstructorTest extends DecoratorTest{
                 ",'key':" + KEY +
                 ",'placement':" + STATIC +
                 "}];");
-        testError(source, "Duplicate definition of class element key.");
+        testError(source, "Duplicate key key.");
     }
 }

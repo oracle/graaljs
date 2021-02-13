@@ -38,9 +38,9 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
         return new ToElementDescriptorsNode(context);
     }
 
-    public boolean toElementDescriptors(Object elementObjects, ClassElementList elements){
+    public void toElementDescriptors(Object elementObjects, ClassElementList elements){
         if(elementObjects == Undefined.instance) {
-            return false;
+            return;
         }
         IteratorRecord iterator = getIteratorNode.execute(elementObjects);
         Object next;
@@ -48,11 +48,9 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
             Object elementObject = JSRuntime.toObject(context, next);
             if (JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS) != Undefined.instance) {
                 throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.", this);
-                //TODO: test
             }
             elements.enqueue(ElementDescriptorUtil.toElementDescriptor(elementObject, this), false, this);
         }
-        return true;
     }
 
 

@@ -115,23 +115,20 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
             if(!key.getDescriptor().getWritable()) {
                 errorBranch.enter();
                 throw Errors.createTypeError(String.format("Field %s is not writable.", key.getName()), this);
-                //TODO: test
             }
             return doField(target, key.getHiddenKey(), value, access, errorBranch);
         } else if (key.isMethod()) {
             if(!key.getDescriptor().getWritable()) {
                 errorBranch.enter();
                 throw Errors.createTypeError(String.format("Method %s is not writable.",key.getName()), this);
-                //TODO: test
             }
             access.put(target, key.getHiddenKey(), value);
             return value;
         } else {
             assert key.isAccessor();
-            if(!key.getDescriptor().hasSet()) {
+            if(!key.getDescriptor().hasSet() || key.getDescriptor().getSet() == Undefined.instance) {
                 errorBranch.enter();
-                throw Errors.createTypeError(String.format("Accessor %s has not setter.",key.getName()), this);
-                //TODO: test
+                throw Errors.createTypeError(String.format("Accessor %s has no setter.",key.getName()), this);
             }
             return callNode.executeCall(JSArguments.createOneArg(target, key.getDescriptor().getSet(), value));
         }

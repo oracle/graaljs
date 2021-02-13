@@ -104,7 +104,6 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 Object newConstructor = hookCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, element.getReplace(), constructor));
                 if(!JSRuntime.isConstructor(newConstructor)) {
                     throw Errors.createTypeErrorHookReplaceValue(this);
-                    //TODO: test
                 }
                 constructor = (DynamicObject) newConstructor;
             } else {
@@ -113,7 +112,6 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getFinish()));
                 if(res != Undefined.instance) {
                     throw Errors.createTypeErrorHookReturnValue("Finish",this);
-                    //TODO: test
                 }
             }
         }

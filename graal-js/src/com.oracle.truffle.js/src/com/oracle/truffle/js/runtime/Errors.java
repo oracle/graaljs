@@ -827,7 +827,7 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorPropertyDescriptor(String name, String restriction, Node originatingNode) {
-        return createTypeError(String.format("Property %s of property descriptor %s", name, restriction), originatingNode);
+        return createTypeError(String.format("Property %s of property descriptor %s.", name, restriction), originatingNode);
     }
 
     @TruffleBoundary

@@ -42,22 +42,8 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
             }
             ElementDescriptorUtil.checkClassDescriptor(result,this);
             Object elementsObject = JSOrdinaryObject.get((DynamicObject) result, ELEMENTS);
-            if (toElementDescriptorsNode.toElementDescriptors(elementsObject,elements)) {
-                HashMap<Object, ElementDescriptor> elementsMap = new HashMap<>();
-                for(int i = 0; i < elements.size(); i++) {
-                    ElementDescriptor a = elements.dequeue();
-                    if(!elementsMap.containsKey(a.getKey())) {
-                        elementsMap.put(a.getKey(), a);
-                    } else {
-                        ElementDescriptor b = elementsMap.get(a.getKey());
-                        if(!a.isHook() && !b.isHook() && a.getPlacement() == b.getPlacement()) {
-                            throw Errors.createTypeError(String.format("Duplicate definition of class element %s.", a.getKey()), this);
-                            //TODO: test
-                        }
-                    }
-                    elements.enqueue(a);
-                }
-            }
+            toElementDescriptorsNode.toElementDescriptors(elementsObject,elements);
+            //duplicates are checked in ClassElementList.
         }
     }
 }

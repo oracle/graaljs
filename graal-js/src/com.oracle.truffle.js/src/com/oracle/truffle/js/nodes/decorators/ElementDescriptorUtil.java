@@ -78,13 +78,11 @@ public class ElementDescriptorUtil {
         DynamicObject elementObject = (DynamicObject) e;
         int kind = JSKind.fromString(JSRuntime.toString(JSOrdinaryObject.get(elementObject, KIND)));
         if(!JSKind.isHook(kind) && !JSKind.isMethod(kind) && !JSKind.isAccessor(kind) && !JSKind.isField(kind)) {
-            throw Errors.createTypeErrorElementDescriptorProperty("kind","'hook', 'method', 'accessor' or 'field'", originatingNode);
-            //TODO: test
+            throw Errors.createTypeErrorElementDescriptorProperty("kind","must be one of 'hook', 'method', 'accessor' or 'field'", originatingNode);
         }
         Object key = JSOrdinaryObject.get(elementObject, KEY);
         if(JSKind.isHook(kind) && key != Undefined.instance) {
             throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "must not have property key",originatingNode);
-            //TODO: test
         }
         boolean hasPrivateKey = key instanceof PrivateName;
         if(!hasPrivateKey) {
@@ -93,103 +91,90 @@ public class ElementDescriptorUtil {
 
         int placement = JSPlacement.fromString(JSRuntime.toString(JSOrdinaryObject.get(elementObject, PLACEMENT)));
         if(!JSPlacement.isStatic(placement) && !JSPlacement.isPrototype(placement) && !JSPlacement.isOwn(placement)) {
-            throw Errors.createTypeErrorElementDescriptorProperty("placement", "'static', 'prototype' or 'own'", originatingNode);
-            //TODO: test
+            throw Errors.createTypeErrorElementDescriptorProperty("placement", "must be one of 'static', 'prototype' or 'own'", originatingNode);
         }
         PropertyDescriptor descriptor = toDecoratorPropertyDescriptor(elementObject, kind, originatingNode);
         if(hasPrivateKey) {
             if(descriptor.hasEnumerable() && descriptor.getEnumerable()) {
                 throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not be enumerable", originatingNode);
-                //TODO: test
             }
             if(descriptor.hasConfigurable() && descriptor.getConfigurable()) {
                 throw Errors.createTypeErrorElementDescriptorRestriction("private key" , "must not be configurable", originatingNode);
-                //TODO: test
             }
             if(JSPlacement.isPrototype(placement)) {
                 throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not have placement 'prototype'", originatingNode);
-                //TODO: test
             }
         }
         if((JSKind.isAccessor(kind) || JSKind.isHook(kind)) && descriptor.isDataDescriptor()) {
             throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'accessor' or 'hook'", "must not be a data descriptor", originatingNode);
-            //TODO: test
         }
         if((JSKind.isField(kind) || JSKind.isMethod(kind) || JSKind.isHook(kind)) && descriptor.isAccessorDescriptor()) {
-            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field', 'method' or 'hook'", "must not be an accessor descriptor.", originatingNode);
-            //TODO: test
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field', 'method' or 'hook'", "must not be an accessor descriptor", originatingNode);
         }
         if(JSKind.isField(kind) && descriptor.hasValue()) {
             throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'field'","must not have a value property", originatingNode);
-            //TODO: test
         }
         Object initialize = JSOrdinaryObject.get(elementObject, INITIALIZE);
         if(initialize != Undefined.instance) {
             if(!JSRuntime.isCallable(initialize)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("initialize","other then undefined","must be callable", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("initialize","other than undefined","must be callable", originatingNode);
             }
             if(!JSKind.isField(kind)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("initialize", "other than undefined", "requires element descriptor kind 'field'.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("initialize", "other than undefined", "requires element descriptor kind 'field'", originatingNode);
             }
         }
         Object start = JSOrdinaryObject.get(elementObject, START);
         if(start != Undefined.instance) {
             if(!JSRuntime.isCallable(start)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("start","other then undefined","must be callable", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("start","other than undefined","must be callable", originatingNode);
             }
             if(!JSKind.isHook(kind)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("start", "other than undefined", "requires element descriptor kind 'hook'.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("start", "other than undefined", "requires element descriptor kind 'hook'", originatingNode);
             }
         }
         Object replace = JSOrdinaryObject.get(elementObject, REPLACE);
         if(replace != Undefined.instance) {
             if(!JSRuntime.isCallable(replace)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("replace","other then undefined","must be callable", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("replace","other than undefined","must be callable", originatingNode);
             }
             if(!JSKind.isHook(kind)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("replace", "other than undefined", "requires element descriptor kind 'hook'.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("replace", "other than undefined", "requires element descriptor kind 'hook'", originatingNode);
             }
         }
         Object finish = JSOrdinaryObject.get(elementObject, FINISH);
         if(finish != Undefined.instance) {
             if(!JSRuntime.isCallable(finish)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("finish","other then undefined","must be callable", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("finish","other than undefined","must be callable", originatingNode);
+
             }
             if(!JSKind.isHook(kind)) {
-                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("finish", "other than undefined", "requires element descriptor kind 'hook'.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorElementDescriptorPropertyRestriction("finish", "other than undefined", "requires element descriptor kind 'hook'", originatingNode);
+
             }
         }
 
         if(JSKind.isHook(kind)) {
             if(start == Undefined.instance && replace == Undefined.instance && finish == Undefined.instance) {
                 throw Errors.createTypeErrorElementDescriptorProperty("kind 'hook'","must have at least one of start, replace or finish", originatingNode);
-                //TODO: test
+
             }
             if(replace != Undefined.instance && finish != Undefined.instance) {
                 throw Errors.createTypeError("Properties replace and finish cannot both be present on element descriptor.", originatingNode);
-                //TODO: test
+
             }
             if(JSPlacement.isOwn(placement) && (replace != Undefined.instance || finish != Undefined.instance)) {
                 throw Errors.createTypeErrorElementDescriptorProperty("kind 'hook' and placement 'own'", "must not have properties replace and finish", originatingNode);
-                //TODO: test
+
             }
             if(JSPlacement.isPrototype(placement) && replace != Undefined.instance) {
                 throw Errors.createTypeErrorElementDescriptorProperty("kind 'hook' and placement 'prototype'", "must not have property replace", originatingNode);
-                //TODO: test
+
             }
         }
         Object elements = JSOrdinaryObject.get(elementObject, ELEMENTS);
         if(elements != Undefined.instance) {
             throw Errors.createTypeError("Element descriptor must not have property elements.");
-            //TODO: test
+
         }
         // isPrivate is false, since all checks are already performed before the call.
         if(JSKind.isMethod(kind)) {
@@ -219,8 +204,7 @@ public class ElementDescriptorUtil {
         if(JSOrdinaryObject.hasProperty(obj, VALUE)) {
             Object value = JSOrdinaryObject.get(obj, VALUE);
             if(!JSRuntime.isCallable(value)) {
-                throw Errors.createTypeErrorPropertyDescriptor("method", "must be callable.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorPropertyDescriptor("method", "must be callable", originatingNode);
             }
             desc.setValue(value);
         }
@@ -230,22 +214,19 @@ public class ElementDescriptorUtil {
         if(JSOrdinaryObject.hasProperty(obj, GET)) {
             Object getter = JSOrdinaryObject.get(obj, GET);
             if(!JSRuntime.isCallable(getter) && getter != Undefined.instance) {
-                throw Errors.createTypeErrorPropertyDescriptor("get", "must be callable.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorPropertyDescriptor("get", "must be callable", originatingNode);
             }
             desc.setGet((DynamicObject) getter);
         }
         if(JSOrdinaryObject.hasProperty(obj, SET)) {
             Object setter = JSOrdinaryObject.get(obj, SET);
             if(!JSRuntime.isCallable(setter) && setter != Undefined.instance) {
-                throw Errors.createTypeErrorPropertyDescriptor("set", "must be callable.", originatingNode);
-                //TODO: test
+                throw Errors.createTypeErrorPropertyDescriptor("set", "must be callable", originatingNode);
             }
             desc.setSet((DynamicObject) setter);
         }
         if(desc.isDataDescriptor() && desc.isAccessorDescriptor()) {
             throw Errors.createTypeError("Property descriptor can not be both accessor and data descriptor.", originatingNode);
-            //TODO: test
         }
         completePropertyDescriptor(desc, kind);
         return desc;
@@ -296,48 +277,40 @@ public class ElementDescriptorUtil {
         int kind = JSKind.fromString(JSRuntime.toString(JSOrdinaryObject.get(obj,KIND)));
         if(!JSKind.isClass(kind)) {
             throw Errors.createTypeError("Class descriptor must have kind 'class'.", originatingNode);
-            //TODO: test
         }
         Object key = JSOrdinaryObject.get(obj, KEY);
         if(key != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(KEY, originatingNode);
-            //TODO: test
         }
         Object placement = JSOrdinaryObject.get(obj, PLACEMENT);
         if(placement != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(PLACEMENT, originatingNode);
-            //TODO: test
         }
         PropertyDescriptor descriptor = JSRuntime.toPropertyDescriptor(obj);
-        if(descriptor.hasConfigurable() || descriptor.hasGet() || descriptor.hasSet() || descriptor.hasValue() ||descriptor.hasWritable() ||descriptor.hasEnumerable())
+        if(descriptor.hasConfigurable() || descriptor.hasGet() || descriptor.hasSet() || descriptor.hasValue() || descriptor.hasWritable() || descriptor.hasEnumerable())
         {
+            //Can not be tested
             throw Errors.createTypeError("Property descriptor of class descriptor must either be empty or undefined.", originatingNode);
-            //TODO: test
         }
         Object initialize = JSOrdinaryObject.get(obj, INITIALIZE);
         if(initialize != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(INITIALIZE, originatingNode);
-            //TODO: test
         }
         Object start = JSOrdinaryObject.get(obj, START);
         if(start != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(START, originatingNode);
-            //TODO: test
         }
         Object extras = JSOrdinaryObject.get(obj, EXTRAS);
         if(extras != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(EXTRAS, originatingNode);
-            //TODO: test
         }
         Object finish = JSOrdinaryObject.get(obj, FINISH);
         if(finish != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(FINISH, originatingNode);
-            //TODO: test
         }
         Object replace = JSOrdinaryObject.get(obj, REPLACE);
         if(replace != Undefined.instance) {
             throw Errors.createTypeErrorClassDescriptor(REPLACE, originatingNode);
-            //TODO: test
         }
     }
 }

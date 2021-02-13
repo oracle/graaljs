@@ -127,7 +127,6 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
             if(!key.getDescriptor().hasGet()) {
                 errorBranch.enter();
                 throw Errors.createTypeError(String.format("Accessor %s has no getter.", key.getName()), this);
-                //TODO: test
             }
             return callNode.executeCall(JSArguments.createZeroArg(target, key.getDescriptor().getGet()));
         }
