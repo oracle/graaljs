@@ -92,7 +92,7 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             ElementDescriptor element = startHooks.dequeue();
             DynamicObject receiver = element.isStatic() ? constructor : proto;
             Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getStart()));
-            if(res == Undefined.instance) {
+            if(res != Undefined.instance) {
                 throw Errors.createTypeErrorHookReturnValue("Start",this);
             }
         }

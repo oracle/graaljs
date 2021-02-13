@@ -1908,10 +1908,12 @@ public class Parser extends AbstractParser {
         if (!hasComputedKey) {
             final String name = ((PropertyKey) propertyName).getPropertyName();
             if (!generator && nameTokenType == GET && type != LPAREN) {
+                isPrivate = type == PRIVATE_IDENT;
                 PropertyFunction methodDefinition = propertyGetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, methodDefinition.functionNode, null, decorators, isPrivate, isStatic, methodDefinition.computed);
             } else if (!generator && nameTokenType == SET && type != LPAREN) {
+                isPrivate = type == PRIVATE_IDENT;
                 PropertyFunction methodDefinition = propertySetterFunction(startToken, methodLine, yield, await, true);
                 verifyAllowedMethodName(methodDefinition.key, isStatic, methodDefinition.computed, generator, true, async);
                 return ClassElement.createAccessor(startToken, finish, methodDefinition.key, null, methodDefinition.functionNode, decorators, isPrivate, isStatic, methodDefinition.computed);
