@@ -26,10 +26,6 @@ public class AddElementPlacementTest extends DecoratorTest{
                 "'key':'key2'," +
                 "'placement':'static'," +
                 "}];");
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            Value v = context.eval(JavaScriptLanguage.ID, source);
-        } catch (Exception ex) {
-            Assert.fail("should not have thrown: " + ex.getMessage());
-        }
+        testSuccess(source);
     }
 }

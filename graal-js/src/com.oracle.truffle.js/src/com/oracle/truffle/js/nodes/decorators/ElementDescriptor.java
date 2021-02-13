@@ -95,12 +95,12 @@ public class ElementDescriptor {
     }
 
     public static ElementDescriptor createHook(int placement, Object start, Object replace, Object finish, Node originatingNode) {
-        if(start == null && replace == null && finish == null) {
-            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "must define at least one of start, replace or finish", originatingNode);
+        if(start == Undefined.instance && replace == Undefined.instance && finish == Undefined.instance) {
+            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "must have at least one of start, replace or finish", originatingNode);
             //TODO: test
         }
-        if(replace != null && finish != null) {
-            throw Errors.createTypeErrorElementDescriptorPropertyDescriptor("kind 'hook'", "can either define replace or finish, not both", originatingNode);
+        if(replace != Undefined.instance && finish != Undefined.instance) {
+            throw Errors.createTypeError("Properties replace and finish cannot both be present on element descriptor.", originatingNode);
             //TODO: test
         }
         ElementDescriptor elem = new ElementDescriptor();

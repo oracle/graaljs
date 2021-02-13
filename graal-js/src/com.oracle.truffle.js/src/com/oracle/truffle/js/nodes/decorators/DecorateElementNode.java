@@ -33,8 +33,8 @@ public class DecorateElementNode extends JavaScriptBaseNode {
     public void decorateElement(ElementDescriptor element, ClassElementList elements) {
         for(Object decorator: element.getDecorators()) {
             if (element.isHook()) {
+                //Can not test
                 throw Errors.createTypeErrorElementDescriptorProperty("kind", "must not have value 'hook'.", this);
-                //TODO: test
             }
             Object elementObject = ElementDescriptorUtil.fromElementDescriptor(element, context);
             Object decoratedObject = decoratorCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, decorator, elementObject));

@@ -51,14 +51,12 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
                             assert element.getDescriptor().getConfigurable() && other.getDescriptor().getConfigurable();
                             if(element.hasDecorators() || other.hasDecorators()) {
                                 throw Errors.createTypeErrorMethodDecorators(this);
-                                //TODO: test
                             }
                             other.setDescriptor(element.getDescriptor());
                         } else {
                             if(element.hasDecorators()) {
                                 if(other.hasDecorators()) {
                                     throw Errors.createTypeErrorAccessorDecorators(this);
-                                    //TODO: test
                                 }
                                 other.setDecorators(element.getDecorators());
                             }

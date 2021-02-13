@@ -352,9 +352,8 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         void execute(Object target, ElementDescriptor desc) {
             assert desc.hasStart();
             Object res = callNode.executeCall(JSArguments.createZeroArg(target, desc.getStart()));
-            if(res != Undefined.instance) {
+            if(res == Undefined.instance) {
                 throw Errors.createTypeErrorHookReturnValue("Start",this);
-                //TODO: test
             }
         }
     }

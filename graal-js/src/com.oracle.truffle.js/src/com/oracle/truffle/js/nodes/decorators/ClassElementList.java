@@ -40,7 +40,6 @@ public class ClassElementList {
                 int placement = placementMap.get(e.getKey());
                 if(e.getPlacement() == placement && !isSilent) {
                     throw Errors.createTypeError(String.format("Duplicate key %s.", e.getKey()), originatingNode);
-                    //TODO: test
                 }
             } else {
                 placementMap.put(e.getKey(), e.getPlacement());

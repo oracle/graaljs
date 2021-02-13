@@ -55,7 +55,6 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             if((element.isMethod() || element.isAccessor()) && element.hasKey() && element.hasPrivateKey()) {
                 setInstanceBrand = true;
             }
-            //If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
             if(element.isStatic() || element.isPrototype()) {
                 if ((element.isMethod() || element.isAccessor()) && !element.hasPrivateKey()) {
                     DynamicObject receiver = element.isStatic() ? constructor : proto;
@@ -77,8 +76,9 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 elements.enqueue(element);
             }
         }
+
         if(setStaticBrand) {
-            //TODO: Perform PrivateBrandAdd
+            //If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
             privateBrandAddNode.setValue(constructor, constructor);
         }
         if(setInstanceBrand) {
@@ -92,9 +92,8 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
             ElementDescriptor element = startHooks.dequeue();
             DynamicObject receiver = element.isStatic() ? constructor : proto;
             Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getStart()));
-            if(res != Undefined.instance) {
+            if(res == Undefined.instance) {
                 throw Errors.createTypeErrorHookReturnValue("Start",this);
-                //TODO: test
             }
         }
         while(otherHooks.size() > 0) {

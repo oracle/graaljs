@@ -33,11 +33,20 @@ public class DecoratorTest extends JSTest {
             context.eval(JavaScriptLanguage.ID, sourceCode);
             Assert.fail("should have thrown");
         } catch (Exception ex) {
+            System.out.println(ex.getMessage());
             Assert.assertTrue(ex.getMessage().contains(expectedMsg));
         }
     }
 
-    protected static String createDecorator(StringBuilder builder,String kind, String key, String placement, String value, String writable, String get, String set, String body) {
+    protected static void testSuccess(String sourceCode) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
+            context.eval(JavaScriptLanguage.ID, sourceCode);
+        } catch (Exception ex) {
+            Assert.fail("should not have thrown: " + ex.getMessage());
+        }
+    }
+
+    protected static void createDecorator(StringBuilder builder,String kind, String key, String placement, String value, String writable, String get, String set, String body) {
         builder.append("function decorator(a) {");
         builder.append("d = {};");
         if (kind != null) {
@@ -65,7 +74,6 @@ public class DecoratorTest extends JSTest {
             builder.append(body);
         }
         builder.append("return d;}");
-        return builder.toString();
     }
 
     protected static String createElementDecoratorWithPropertyDescriptor(String kind, String key, String placement, String value, String writable, String get, String set, String body) {
