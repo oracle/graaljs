@@ -1,6 +1,7 @@
 package com.oracle.truffle.js.test.decorators;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -28,7 +29,7 @@ public class DecoratorTest extends JSTest {
     protected static final String EMPTY_SETTER = "(v) => {}";
 
     protected static void testError(String sourceCode, String expectedMsg) {
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
             context.eval(JavaScriptLanguage.ID, sourceCode);
             Assert.fail("should have thrown");
         } catch (Exception ex) {

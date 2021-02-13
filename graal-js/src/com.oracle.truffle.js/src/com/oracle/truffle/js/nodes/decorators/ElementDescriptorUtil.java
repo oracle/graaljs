@@ -96,7 +96,7 @@ public class ElementDescriptorUtil {
             throw Errors.createTypeErrorElementDescriptorProperty("placement", "'static', 'prototype' or 'own'", originatingNode);
             //TODO: test
         }
-        PropertyDescriptor descriptor = toDecoratorPropertyDescriptor(elementObject, originatingNode);
+        PropertyDescriptor descriptor = toDecoratorPropertyDescriptor(elementObject, kind, originatingNode);
         if(hasPrivateKey) {
             if(descriptor.hasEnumerable() && descriptor.getEnumerable()) {
                 throw Errors.createTypeErrorElementDescriptorRestriction("private key", "must not be enumerable", originatingNode);
@@ -207,7 +207,7 @@ public class ElementDescriptorUtil {
         throw Errors.shouldNotReachHere();
     }
 
-    public static PropertyDescriptor toDecoratorPropertyDescriptor(Object elementObject, Node originatingNode){
+    public static PropertyDescriptor toDecoratorPropertyDescriptor(Object elementObject, int kind, Node originatingNode){
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
         DynamicObject obj = (DynamicObject) elementObject;
         if(JSOrdinaryObject.hasProperty(obj, ENUMERABLE)) {
@@ -247,7 +247,35 @@ public class ElementDescriptorUtil {
             throw Errors.createTypeError("Property descriptor can not be both accessor and data descriptor.", originatingNode);
             //TODO: test
         }
+        completePropertyDescriptor(desc, kind);
         return desc;
+    }
+
+    private static void completePropertyDescriptor(PropertyDescriptor desc, int kind) {
+        if(JSKind.isField(kind) || JSKind.isMethod(kind)) {
+            if(!desc.hasWritable()) {
+                desc.setWritable(false);
+            }
+        }
+        if(JSKind.isMethod(kind)) {
+            if(!desc.hasValue()) {
+                desc.setValue(Undefined.instance);
+            }
+        }
+        if(JSKind.isAccessor(kind)){
+            if(!desc.hasGet()) {
+                desc.setGet(Undefined.instance);
+            }
+            if(!desc.hasSet()) {
+                desc.setSet(Undefined.instance);
+            }
+        }
+        if(!desc.hasEnumerable()) {
+            desc.setEnumerable(false);
+        }
+        if(!desc.hasConfigurable()) {
+            desc.setConfigurable(false);
+        }
     }
 
     public static Object fromClassDescriptor(ClassElementList elements, JSContext context) {

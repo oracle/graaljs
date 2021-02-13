@@ -39,7 +39,7 @@ public class ClassElementList {
             if(placementMap.containsKey(e.getKey())) {
                 int placement = placementMap.get(e.getKey());
                 if(e.getPlacement() == placement && !isSilent) {
-                    throw Errors.createTypeError(String.format("Duplicate key %s", e.getKey()), originatingNode);
+                    throw Errors.createTypeError(String.format("Duplicate key %s.", e.getKey()), originatingNode);
                     //TODO: test
                 }
             } else {
@@ -66,9 +66,7 @@ public class ClassElementList {
             ownHookStartCount--;
         }
         //RemoveElementPlacement
-        if(placementMap.containsKey(e.getKey())) {
-            placementMap.remove(e.getKey());
-        }
+        placementMap.remove(e.getKey());
         return e;
     }
 
@@ -84,9 +82,9 @@ public class ClassElementList {
 
     public int getOwnHookStartCount() { return ownHookStartCount; }
 
-    public int size() { return elements.size(); };
+    public int size() { return elements.size(); }
 
     public ElementDescriptor[] toArray() {
-        return elements.toArray(new ElementDescriptor[elements.size()]);
+        return elements.toArray(new ElementDescriptor[0]);
     }
 }

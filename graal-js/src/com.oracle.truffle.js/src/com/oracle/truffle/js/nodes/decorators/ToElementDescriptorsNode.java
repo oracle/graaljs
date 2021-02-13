@@ -46,7 +46,7 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
         Object next;
         while ((next = getNext(iterator)) != null) {
             Object elementObject = JSRuntime.toObject(context, next);
-            if (JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS) == Undefined.instance) {
+            if (JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS) != Undefined.instance) {
                 throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.", this);
                 //TODO: test
             }
