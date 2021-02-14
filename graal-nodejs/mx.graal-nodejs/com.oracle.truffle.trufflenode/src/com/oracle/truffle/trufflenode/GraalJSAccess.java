@@ -2539,12 +2539,14 @@ public final class GraalJSAccess {
     }
 
     private boolean createChildContext;
+    private Set<JSRealm> childContextSet = Collections.newSetFromMap(new WeakHashMap<JSRealm, Boolean>());
 
     public Object contextNew(Object templateObj) {
         JSRealm realm;
         JSContext context;
         if (createChildContext) {
             realm = mainJSRealm.createChildRealm();
+            childContextSet.add(realm);
             context = realm.getContext();
             assert realm.getAgent() == agent;
         } else {
@@ -2984,6 +2986,37 @@ public final class GraalJSAccess {
         Breakpoint breakpoint = Breakpoint.newBuilder((URI) null).oneShot().build();
         Debugger debugger = lookupInstrument("debugger", Debugger.class);
         debugger.install(breakpoint);
+    }
+
+    public void isolateMeasureMemory(Object resolver, boolean detailed) {
+        Runtime runtime = Runtime.getRuntime();
+        double total = runtime.totalMemory();
+        double used = total - runtime.freeMemory();
+
+        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+        JSObject.set(result, "total", createMemoryInfoObject(used, total));
+
+        if (detailed) {
+            JSObject.set(result, "current", createMemoryInfoObject(used, total));
+
+            int contexts = childContextSet.size();
+            Object[] array = new Object[contexts];
+            for (int i = 0; i < contexts; i++) {
+                array[i] = createMemoryInfoObject(0, total);
+            }
+
+            JSObject.set(result, "other", JSArray.createConstantObjectArray(mainJSContext, array));
+        }
+
+        promiseResolverResolve(resolver, result);
+    }
+
+    private Object createMemoryInfoObject(double used, double total) {
+        Object range = JSArray.createConstantDoubleArray(mainJSContext, new double[]{used, total});
+        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+        JSObject.set(result, "jsMemoryEstimate", used);
+        JSObject.set(result, "jsMemoryRange", range);
+        return result;
     }
 
     public Object correctReturnValue(Object value) {

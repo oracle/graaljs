@@ -101,6 +101,7 @@
       { "name": "isolateGetIntPlaceholder" },
       { "name": "isolateGetSafeIntPlaceholder" },
       { "name": "isolateInternalErrorCheck" },
+      { "name": "isolateMeasureMemory" },
       { "name": "isolatePerformGC" },
       { "name": "isolateRunMicrotasks" },
       { "name": "isolateSchedulePauseOnNextStatement" },

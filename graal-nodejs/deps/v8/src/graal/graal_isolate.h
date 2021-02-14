@@ -211,6 +211,7 @@ enum GraalAccessMethod {
     isolate_exit,
     isolate_enqueue_microtask,
     isolate_schedule_pause_on_next_statement,
+    isolate_measure_memory,
     template_set,
     template_set_accessor_property,
     object_template_new,

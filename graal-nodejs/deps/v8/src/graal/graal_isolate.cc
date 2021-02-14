@@ -721,6 +721,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_schedule_pause_on_next_statement, "isolateSchedulePauseOnNextStatement", "()V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")

@@ -3344,16 +3344,38 @@ namespace v8 {
         TRACE
     }
 
+    class DefaultMeasureMemoryDelegate : public MeasureMemoryDelegate {
+    public:
+        DefaultMeasureMemoryDelegate(Local<Promise::Resolver> promise_resolver, MeasureMemoryMode mode) : promise_resolver_(promise_resolver), mode_(mode) {
+        }
+
+        virtual bool ShouldMeasure(Local<Context> context) {
+            return true;
+        }
+
+        virtual void MeasurementComplete(const std::vector<std::pair<Local<Context>, size_t>>& context_sizes_in_bytes, size_t unattributed_size_in_bytes) {
+            TRACE
+        }
+
+    private:
+        Local<Promise::Resolver> promise_resolver_;
+        MeasureMemoryMode mode_;
+        friend Isolate;
+    };
+
     bool Isolate::MeasureMemory(std::unique_ptr<MeasureMemoryDelegate> delegate, MeasureMemoryExecution execution) {
-        TRACE
+        DefaultMeasureMemoryDelegate* d = reinterpret_cast<DefaultMeasureMemoryDelegate*> (delegate.get());
+        GraalHandleContent* graal_resolver = reinterpret_cast<GraalHandleContent*> (*(d->promise_resolver_));
+        jobject java_resolver = graal_resolver->GetJavaObject();
+        jboolean detailed = (d->mode_ == MeasureMemoryMode::kDetailed);
+        JNI_CALL_VOID(this, GraalAccessMethod::isolate_measure_memory, java_resolver, detailed);
         return false;
     }
 
     std::unique_ptr<MeasureMemoryDelegate> MeasureMemoryDelegate::Default(
             Isolate* isolate, Local<Context> context,
             Local<Promise::Resolver> promise_resolver, MeasureMemoryMode mode) {
-        TRACE
-        return nullptr;
+        return std::unique_ptr<MeasureMemoryDelegate> (new DefaultMeasureMemoryDelegate(promise_resolver, mode));
     }
 
     void Isolate::SetAtomicsWaitCallback(AtomicsWaitCallback callback, void* data) {
