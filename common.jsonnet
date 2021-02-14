@@ -91,7 +91,7 @@ local common_json = (import "common.json");
 
   windows_jdk16: self.windows + common_json.devkits["windows-jdk16"] + {
     setup+: [
-      ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
+      ['set-export', 'DEVKIT_ROOT', '$VS2019_16_7_2_1_1_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
