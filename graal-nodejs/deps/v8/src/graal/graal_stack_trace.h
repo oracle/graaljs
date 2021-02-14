@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,12 @@
 
 class GraalStackTrace : public GraalHandleContent {
 public:
-    inline GraalStackTrace(GraalIsolate* isolate, jobject stack_trace);
+    inline static GraalStackTrace* Allocate(GraalIsolate* isolate, jobject stack_trace);
     int GetFrameCount() const;
     v8::Local<v8::StackFrame> GetFrame(uint32_t index) const;
     static v8::Local<v8::StackTrace> CurrentStackTrace(v8::Isolate* isolate, int frame_limit, v8::StackTrace::StackTraceOptions options);
 protected:
+    inline GraalStackTrace(GraalIsolate* isolate, jobject stack_trace);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

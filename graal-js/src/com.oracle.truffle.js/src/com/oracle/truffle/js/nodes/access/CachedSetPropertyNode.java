@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.FrequencyBasedPropertySetNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -126,13 +127,18 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     void doGeneric(DynamicObject target, Object key, Object value, Object receiver,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile highFrequency,
+                    @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey) {
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
             long index = (long) arrayIndex;
             doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
+            if (highFrequency.profile(hotKey.executeFastSet(target, arrayIndex, value, receiver))) {
+                return;
+            }
             if (setOwn) {
                 createDataPropertyOrThrow(target, arrayIndex, value);
             } else {

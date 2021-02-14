@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ v8::Local<v8::Script> GraalUnboundScript::BindToCurrentContext() {
         Isolate()->GetJNIEnv()->ExceptionDescribe();
         abort();
     } else {
-        GraalScript* graal_script = new GraalScript(Isolate(), java_bound);
+        GraalScript* graal_script = GraalScript::Allocate(Isolate(), java_bound);
         return reinterpret_cast<v8::Script*> (graal_script);
     }
 }
@@ -91,6 +91,6 @@ int GraalUnboundScript::GetId() {
 v8::Local<v8::String> GraalUnboundScript::GetContent() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_content, graal_isolate, GraalAccessMethod::unbound_script_get_content, Object, GetJavaObject());
-    GraalString* graal_content = new GraalString(graal_isolate, (jstring) java_content);
+    GraalString* graal_content = GraalString::Allocate(graal_isolate, (jstring) java_content);
     return reinterpret_cast<v8::String*> (graal_content);
 }

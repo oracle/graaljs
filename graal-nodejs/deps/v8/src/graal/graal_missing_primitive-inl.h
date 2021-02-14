@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_primitive-inl.h"
 
 inline GraalMissingPrimitive::GraalMissingPrimitive(GraalIsolate* isolate, jobject java_object, bool undefined) : GraalPrimitive(isolate, java_object), undefined_(undefined) {
+}
+
+inline GraalMissingPrimitive* GraalMissingPrimitive::Allocate(GraalIsolate* isolate, jobject java_object, bool undefined) {
+    return new GraalMissingPrimitive(isolate, java_object, undefined);
+}
+
+inline GraalMissingPrimitive* GraalMissingPrimitive::Allocate(GraalIsolate* isolate, jobject java_object, bool undefined, void* placement) {
+    return new(placement) GraalMissingPrimitive(isolate, java_object, undefined);
 }
 
 #endif /* GRAAL_MISSING_PRIMITIVE_INL_H_ */

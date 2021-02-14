@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,8 @@ class GraalIsolate;
 
 class GraalArrayBuffer : public GraalObject {
 public:
-    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
+    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer);
+    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, void* placement);
     size_t ByteLength() const;
     bool IsArrayBuffer() const;
     bool IsExternal() const;
@@ -58,7 +59,11 @@ public:
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
 protected:
+    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+    inline void Recycle() override {
+        delete this;
+    }
 };
 
 #endif /* GRAAL_ARRAY_BUFFER_H_ */

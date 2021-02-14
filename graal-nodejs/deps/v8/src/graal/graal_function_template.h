@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@
 
 class GraalFunctionTemplate : public GraalTemplate {
 public:
-    inline GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id);
     static v8::Local<v8::FunctionTemplate> New(
             v8::Isolate* isolate, v8::FunctionCallback callback,
             v8::Local<v8::Value> data,
@@ -62,6 +61,7 @@ public:
     void SetCallHandler(v8::FunctionCallback callback, v8::Local<v8::Value> data);
     void Inherit(v8::Local<v8::FunctionTemplate> parent);
 protected:
+    inline GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
     int id_;

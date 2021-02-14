@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,10 @@
 #include "graal_handle_content-inl.h"
 
 inline GraalPrimitiveArray::GraalPrimitiveArray(GraalIsolate* isolate, jobject java_object) : GraalHandleContent(isolate, java_object) {
+}
+
+inline GraalPrimitiveArray* GraalPrimitiveArray::Allocate(GraalIsolate* isolate, jobject java_object) {
+    return new GraalPrimitiveArray(isolate, java_object);
 }
 
 #endif /* GRAAL_PRIMITIVE_ARRAY_INL_H_ */

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,49 @@
 #include "graal_value-inl.h"
 
 inline GraalObject::GraalObject(GraalIsolate* isolate, jobject java_object) : GraalValue(isolate, java_object), internal_field_count_cache_(-1) {
+}
+
+inline GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object) {
+    GraalObjectPool<GraalObject>* pool = isolate->GetGraalObjectPool();
+    if (pool->IsEmpty()) {
+        return new GraalObject(isolate, java_object);
+    } else {
+        GraalObject* the_object = pool->Pop();
+        the_object->ReInitialize(java_object);
+        return the_object;
+    }
+}
+
+inline GraalObject* GraalObject::Allocate(GraalIsolate* isolate, jobject java_object, void* placement) {
+    return new (placement) GraalObject(isolate, java_object);
+}
+
+inline void GraalObject::ReInitialize(jobject java_object) {
+    internal_field_count_cache_ = -1;    
+    GraalHandleContent::ReInitialize(java_object);
+}
+
+inline void GraalObject::Recycle() {
+    GraalObjectPool<GraalObject>* pool = Isolate()->GetGraalObjectPool();
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }    
+}
+
+inline v8::Local<v8::Value> GraalObject::HandleCallResult(jobject java_object) {
+    GraalIsolate* graal_isolate = Isolate();
+    if (java_object == NULL) {
+        graal_isolate->HandleEmptyCallResult();
+        return v8::Local<v8::Value>();
+    } else {
+        graal_isolate->ResetSharedBuffer();
+        int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
+        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
+        return reinterpret_cast<v8::Value*> (graal_value);
+    }
 }
 
 #endif /* GRAAL_OBJECT_INL_H_ */

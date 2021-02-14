@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,15 @@
 
 class GraalSymbol : public GraalName {
 public:
-    inline GraalSymbol(GraalIsolate* isolate, jobject java_symbol);
+    inline static GraalSymbol* Allocate(GraalIsolate* isolate, jobject java_symbol);
+    inline static GraalSymbol* Allocate(GraalIsolate* isolate, jobject java_symbol, void* placement);
     static v8::Local<v8::Symbol> New(v8::Isolate* isolate, v8::Local<v8::String> name);
     static v8::Local<v8::Symbol> GetIterator(v8::Isolate* isolate);
     v8::Local<v8::Value> Name() const;
     bool IsSymbol() const override;
     bool IsName() const override;
 protected:
+    inline GraalSymbol(GraalIsolate* isolate, jobject java_symbol);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

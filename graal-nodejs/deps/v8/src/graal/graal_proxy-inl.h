@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_object-inl.h"
 
 inline GraalProxy::GraalProxy(GraalIsolate* isolate, jobject java_proxy) : GraalObject(isolate, java_proxy) {
+}
+
+inline GraalProxy* GraalProxy::Allocate(GraalIsolate* isolate, jobject java_proxy) {
+    return new GraalProxy(isolate, java_proxy);
+}
+
+inline GraalProxy* GraalProxy::Allocate(GraalIsolate* isolate, jobject java_proxy, void* placement) {
+    return new(placement) GraalProxy(isolate, java_proxy);
 }
 
 #endif /* GRAAL_PROXY_INL_H_ */

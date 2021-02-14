@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,13 @@ ref_count(0) {
     }
 #endif
     isolate->HandleScopeReference(this);
+}
+
+inline void GraalHandleContent::ReInitialize(jobject java_object) {
+    java_object_ = java_object;
+    ref_type_ = 0;
+    ref_count = 0;
+    isolate_->HandleScopeReference(this);
 }
 
 #endif /* GRAAL_HANDLE_CONTENT_INL_H_ */

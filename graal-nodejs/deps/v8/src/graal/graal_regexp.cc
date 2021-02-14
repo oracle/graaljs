@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ v8::Local<v8::String> GraalRegExp::GetSource() const {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_regexp = GetJavaObject();
     JNI_CALL(jobject, java_source, graal_isolate, GraalAccessMethod::regexp_get_source, Object, java_regexp);
-    GraalString* graal_source = new GraalString(graal_isolate, (jstring) java_source);
+    GraalString* graal_source = GraalString::Allocate(graal_isolate, (jstring) java_source);
     return reinterpret_cast<v8::String*> (graal_source);
 }
 

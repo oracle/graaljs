@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,5 +48,35 @@
 
 inline GraalArray::GraalArray(GraalIsolate* isolate, jobject java_array) : GraalObject(isolate, java_array) {
 }
+
+inline GraalArray* GraalArray::Allocate(GraalIsolate* isolate, jobject java_array) {
+    GraalObjectPool<GraalArray>* pool = isolate->GetGraalArrayPool();
+    if (pool->IsEmpty()) {
+        return new GraalArray(isolate, java_array);
+    } else {
+        GraalArray* an_array = pool->Pop();
+        an_array->ReInitialize(java_array);
+        return an_array;
+    }
+}
+
+inline GraalArray* GraalArray::Allocate(GraalIsolate* isolate, jobject java_array, void* placement) {
+    return new (placement) GraalArray(isolate, java_array);
+}
+
+inline void GraalArray::ReInitialize(jobject java_object) {
+    GraalObject::ReInitialize(java_object);
+}
+
+inline void GraalArray::Recycle() {
+    GraalObjectPool<GraalArray>* pool = Isolate()->GetGraalArrayPool();
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }
+}
+
 
 #endif /* GRAAL_ARRAY_INL_H_ */

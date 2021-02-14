@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,5 +48,35 @@
 
 inline GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {
 }
+
+inline GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_object) {
+    GraalObjectPool<GraalString>* pool = isolate->GetGraalStringPool();
+    if (pool->IsEmpty()) {
+        return new GraalString(isolate, java_object);
+    } else {
+        GraalString* a_string = pool->Pop();
+        a_string->ReInitialize(java_object);
+        return a_string;
+    }
+}
+
+GraalString* GraalString::Allocate(GraalIsolate* isolate, jstring java_object, void* placement) {
+    return new (placement) GraalString(isolate, java_object);
+}
+
+inline void GraalString::ReInitialize(jobject java_object) {
+    GraalHandleContent::ReInitialize(java_object);
+}
+
+inline void GraalString::Recycle() {
+    GraalObjectPool<GraalString>* pool = Isolate()->GetGraalStringPool();    
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }
+}
+
 
 #endif /* GRAAL_STRING_INL_H_ */

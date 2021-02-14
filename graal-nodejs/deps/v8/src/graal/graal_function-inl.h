@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,5 +48,35 @@
 
 inline GraalFunction::GraalFunction(GraalIsolate* isolate, jobject java_function) : GraalObject(isolate, java_function) {
 }
+
+inline GraalFunction* GraalFunction::Allocate(GraalIsolate* isolate, jobject java_function) {
+    GraalObjectPool<GraalFunction>* pool = isolate->GetGraalFunctionPool();
+    if (pool->IsEmpty()) {
+        return new GraalFunction(isolate, java_function);
+    } else {
+        GraalFunction* a_function = pool->Pop();
+        a_function->ReInitialize(java_function);
+        return a_function;
+    }
+}
+
+inline GraalFunction* GraalFunction::Allocate(GraalIsolate* isolate, jobject java_function, void* placement) {
+    return new (placement) GraalFunction(isolate, java_function);
+}
+
+inline void GraalFunction::ReInitialize(jobject java_function) {
+    GraalObject::ReInitialize(java_function);
+}
+
+inline void GraalFunction::Recycle() {
+    GraalObjectPool<GraalFunction>* pool = Isolate()->GetGraalFunctionPool();
+    if (!pool->IsFull()) {
+        DeleteJavaRef();
+        pool->Push(this);
+    } else {
+        delete this;
+    }
+}
+
 
 #endif /* GRAAL_FUNCTION_INL_H_ */

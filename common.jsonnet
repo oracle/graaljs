@@ -13,9 +13,9 @@ local common_json = (import "common.json");
     },
   },
 
-  jdk15: {
+  jdk16: {
     downloads+: {
-      JAVA_HOME: common_json.jdks["oraclejdk15"],
+      JAVA_HOME: common_json.jdks["oraclejdk16"],
     },
   },
 
@@ -26,6 +26,7 @@ local common_json = (import "common.json");
   dailyBench:  {targets+: ['bench', 'daily']},
   weeklyBench: {targets+: ['bench', 'weekly']},
   manualBench: {targets+: ['bench']},
+  daily:       {targets+: ['daily']},
   weekly:      {targets+: ['weekly']},
 
   local python3 = {
@@ -68,10 +69,6 @@ local common_json = (import "common.json");
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  sparc: common + {
-    capabilities: ['solaris', 'sparcv9'],
-  },
-
   linux_aarch64: common + {
     capabilities+: ['linux', 'aarch64'],
     packages+: {
@@ -92,31 +89,25 @@ local common_json = (import "common.json");
     capabilities: ['windows', 'amd64'],
   },
 
-  windows_vs2019: self.windows + {
-    packages+: {
-      'devkit:VS2019-16.5.3+1': '==0',
-    },
+  windows_jdk16: self.windows + common_json.devkits["windows-jdk16"] + {
     setup+: [
       ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
 
-  windows_vs2017: self.windows + {
-    packages+: {
-      'devkit:VS2017-15.5.5+1': '==0',
-    },
+ windows_jdk11: self.windows + common_json.devkits["windows-jdk11"] + {
     setup+: [
-      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_5_5_1_0_ROOT'],
+      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_9_24_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },
 
-  # Note: VS2017 is only used for Node.js
-  windows_vs2010: self.windows_vs2017 + {
-    packages+: {
-      msvc : '==10.0',
-    },
+  windows_jdk8: self.windows + common_json.devkits["windows-oraclejdk8"] + {
+    setup+: [
+      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_9_16_1_0_ROOT'],
+      ['set-export', 'DEVKIT_VERSION', '2017'],
+    ],
   },
 
   local gateCmd = ['mx', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'],

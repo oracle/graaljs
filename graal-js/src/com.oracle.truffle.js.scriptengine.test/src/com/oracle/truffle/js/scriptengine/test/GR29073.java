@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,23 +38,30 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+package com.oracle.truffle.js.scriptengine.test;
 
-#ifndef GRAAL_DATE_INL_H_
-#define GRAAL_DATE_INL_H_
+import static org.junit.Assert.assertNull;
 
-#include "graal_date.h"
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 
-#include "graal_object-inl.h"
+import org.junit.Test;
 
-inline GraalDate::GraalDate(GraalIsolate* isolate, double time, jobject java_date) : GraalObject(isolate, java_date), time_(time) {
+public class GR29073 {
+
+    @Test
+    public void test() throws ScriptException {
+        ScriptEngineManager manager = new ScriptEngineManager();
+        ScriptEngine engine = manager.getEngineByName(TestEngine.TESTED_ENGINE_NAME);
+        Object array = engine.eval("[]");
+        ArrayLike arrayLike = ((Invocable) engine).getInterface(array, ArrayLike.class);
+        assertNull(arrayLike);
+    }
+
+    public interface ArrayLike {
+        int length();
+    }
+
 }
-
-inline GraalDate* GraalDate::Allocate(GraalIsolate* isolate, double time, jobject java_date) {
-    return new GraalDate(isolate, time, java_date);
-}
-
-inline GraalDate* GraalDate::Allocate(GraalIsolate* isolate, double time, jobject java_date, void* placement) {
-    return new(placement) GraalDate(isolate, time, java_date);
-}
-
-#endif /* GRAAL_DATE_INL_H_ */

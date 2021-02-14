@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@
 #include "graal_external-inl.h"
 
 GraalHandleContent* GraalExternal::CopyImpl(jobject java_object_copy) {
-    return new GraalExternal(Isolate(), value_, java_object_copy);
+    return GraalExternal::Allocate(Isolate(), value_, java_object_copy);
 }
 
 bool GraalExternal::IsExternal() const {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@
 #include "graal_string-inl.h"
 
 GraalHandleContent* GraalObject::CopyImpl(jobject java_object_copy) {
-    return new GraalObject(Isolate(), java_object_copy);
+    return GraalObject::Allocate(Isolate(), java_object_copy);
 }
 
 bool GraalObject::IsObject() const {
@@ -65,7 +65,7 @@ v8::Local<v8::Object> GraalObject::New(v8::Isolate* isolate) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::object_new, Object, java_context);
-    GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+    GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
     return reinterpret_cast<v8::Object*> (graal_object);
 }
 
@@ -94,27 +94,12 @@ v8::Local<v8::Value> GraalObject::Get(v8::Local<v8::Value> key) {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_key = reinterpret_cast<GraalValue*> (*key)->GetJavaObject();
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_get, Object, GetJavaObject(), java_key);
-    if (java_object == NULL) {
-        graal_isolate->HandleEmptyCallResult();
-        return v8::Local<v8::Value>();
-    } else {
-        graal_isolate->ResetSharedBuffer();
-        int32_t value_t = graal_isolate->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object, value_t, true);
-        return reinterpret_cast<v8::Value*> (graal_value);
-    }
+    return HandleCallResult(java_object);
 }
 
 v8::Local<v8::Value> GraalObject::Get(uint32_t index) {
     JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_index, Object, GetJavaObject(), (jint) index);
-    if (java_object == NULL) {
-        return v8::Local<v8::Value>();
-    } else {
-        Isolate()->ResetSharedBuffer();
-        int32_t value_t = Isolate()->ReadInt32FromSharedBuffer();
-        GraalValue* graal_value = GraalValue::FromJavaObject(Isolate(), java_object, value_t, true);
-        return reinterpret_cast<v8::Value*> (graal_value);
-    }
+    return HandleCallResult(java_object);
 }
 
 v8::Local<v8::Value> GraalObject::GetRealNamedProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key) {
@@ -204,34 +189,22 @@ int GraalObject::InternalFieldCount() {
 }
 
 void GraalObject::SetInternalField(int index, v8::Local<v8::Value> value) {
-    Set(Isolate()->InternalFieldKey(index), value);
+    jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_internal_field, GetJavaObject(), (jint) index, java_value);
 }
 
 v8::Local<v8::Value> GraalObject::SlowGetInternalField(int index) {
-    return Get(Isolate()->InternalFieldKey(index));
+    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_slow_get_internal_field, Object, GetJavaObject(), (jint) index);
+    return HandleCallResult(java_object);
 }
 
 void GraalObject::SetAlignedPointerInInternalField(int index, void* value) {
-    if (index == 0) {
-        JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_aligned_pointer_in_internal_field, GetJavaObject(), value);
-    } else {
-        v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (Isolate());
-        v8::Local<v8::External> external = GraalExternal::New(isolate, value);
-        SetInternalField(index, external);
-    }
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_aligned_pointer_in_internal_field, GetJavaObject(), (jint) index, value);
 }
 
 void* GraalObject::SlowGetAlignedPointerFromInternalField(int index) {
-    if (index == 0) {
-        JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, Long, GetJavaObject());
-        return (void *) result;
-    }
-    v8::Local<v8::Value> value = SlowGetInternalField(index);
-    if (value->IsExternal()) {
-        return value.As<v8::External>()->Value();
-    } else {
-        return nullptr;
-    }
+    JNI_CALL(jlong, result, Isolate(), GraalAccessMethod::object_slow_get_aligned_pointer_from_internal_field, Long, GetJavaObject(), (jint) index);
+    return (void *) result;
 }
 
 v8::Local<v8::Object> GraalObject::Clone() {
@@ -255,13 +228,13 @@ bool GraalObject::SetPrototype(v8::Local<v8::Value> prototype) {
 
 v8::Local<v8::String> GraalObject::GetConstructorName() {
     JNI_CALL(jobject, java_name, Isolate(), GraalAccessMethod::object_get_constructor_name, Object, GetJavaObject());
-    GraalString* graal_name = new GraalString(Isolate(), (jstring) java_name);
+    GraalString* graal_name = GraalString::Allocate(Isolate(), (jstring) java_name);
     return reinterpret_cast<v8::String*> (graal_name);
 }
 
 v8::Local<v8::Array> GraalObject::GetOwnPropertyNames() {
     JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_own_property_names, Object, GetJavaObject());
-    GraalArray* graal_names = new GraalArray(Isolate(), java_names);
+    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
     return reinterpret_cast<v8::Array*> (graal_names);
 }
 
@@ -276,14 +249,14 @@ v8::MaybeLocal<v8::Array> GraalObject::GetPropertyNames(v8::Local<v8::Context> c
     jboolean keepNumbers = key_conversion == v8::KeyConversionMode::kKeepNumbers;
     JNI_CALL(jobject, java_names, Isolate(), GraalAccessMethod::object_get_property_names, Object, GetJavaObject(),
             ownOnly, enumerableOnly, configurableOnly, writableOnly, skipIndices, skipSymbols, skipStrings, keepNumbers);
-    GraalArray* graal_names = new GraalArray(Isolate(), java_names);
+    GraalArray* graal_names = GraalArray::Allocate(Isolate(), java_names);
     v8::Local<v8::Array> v8_names = reinterpret_cast<v8::Array*> (graal_names);
     return v8_names;
 }
 
 v8::Local<v8::Context> GraalObject::CreationContext() {
     JNI_CALL(jobject, java_context, Isolate(), GraalAccessMethod::object_creation_context, Object, GetJavaObject());
-    GraalContext* graal_context = new GraalContext(Isolate(), java_context);
+    GraalContext* graal_context = GraalContext::Allocate(Isolate(), java_context);
     return reinterpret_cast<v8::Context*> (graal_context);
 }
 

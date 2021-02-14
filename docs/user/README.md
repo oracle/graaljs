@@ -12,6 +12,8 @@ GraalVM can run plain JavaScript code:
 js [options] [filename...] -- [args]
 ```
 
+For information about the compatibility of GraalVM JavaScript with existing standards and engines, see [JavaScriptCompatibility](JavaScriptCompatibility.md).
+
 ## Running Node.js
 GraalVM is adapted to run unmodified Node.js applications. Applications can
 import npm modules, including native ones.
@@ -49,6 +51,8 @@ setTimeout(function() { console.log("DONE!"); process.exit(); }, 2000);
 node app.js
 ```
 For more information about running Node.js, continue to [Node.js Runtime](NodeJS.md).
+Node.js functionality is available when an application is started from the `node` binary launcher.
+Certain limits apply when launching a Node.js application or accessing npm modules from a Java context, see [Node.js vs. Java Script Context](NodeJSVSJavaScriptContext.md).
 
 ## Interoperability
 
@@ -71,7 +75,7 @@ Type ".help" for more information.
 ```
 
 For more information about interoperability with other programming
-languages, see [Polyglot Programming](https://www.graalvm.org/docs/reference-manual/polyglot-programming/).
+languages, see [Polyglot Programming](https://www.graalvm.org/docs/reference-manual/polyglot-programming/) for a general description.
 
 ## Interoperability with Java
 
@@ -131,3 +135,25 @@ done
 By setting the classpath, you instruct `node` to start a JVM properly. Both Node.js and JVM then run in the same process and the interoperability works using the same `Value` classes as above.
 
 Learn more about language interoperability in the [Java Interoperability](JavaInteroperability.md) guide.
+
+## Further documentation
+
+For additional information, refer to those documentation pages on specific topics around GraalVM JavaScript:
+
+* [Frequently Asked Questions](FAQ.md)
+
+Using GraalVM JavaScript:
+* [JavaScript Compatibility](JavaScriptCompatibility.md)
+* [Options and Flags to the Engine](Options.md)
+* [Multithreading Support](Multithreading.md)
+* [Java Interoperability](JavaInteroperability.md)
+* [Execute GraalVM JavaScript on a Stock JDK](RunOnJDK.md)
+
+Legacy environments:
+* [Migration Guide from Nashorn](NashornMigrationGuide.md)
+* [Migration Guide from Rhino](RhinoMigrationGuide.md)
+* [Work with a javax.script.ScriptEngine](ScriptEngine.md)
+
+Node.js support:
+* [Node.js Support](NodeJS.md)
+* [Differences between node's native launcher and a Java Context](NodeJSVSJavaScriptContext.md)

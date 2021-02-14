@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,14 @@
 #include "graal_object-inl.h"
 
 inline GraalSet::GraalSet(GraalIsolate* isolate, jobject java_set) : GraalObject(isolate, java_set) {
+}
+
+inline GraalSet* GraalSet::Allocate(GraalIsolate* isolate, jobject java_set) {
+    return new GraalSet(isolate, java_set);
+}
+
+inline GraalSet* GraalSet::Allocate(GraalIsolate* isolate, jobject java_set, void* placement) {
+    return new(placement) GraalSet(isolate, java_set);
 }
 
 #endif /* GRAAL_SET_INL_H_ */
