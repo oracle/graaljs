@@ -539,28 +539,15 @@ public abstract class ScriptArray {
 
     public abstract ScriptArray preventExtensions();
 
-    @SuppressWarnings("static-method")
-    public final boolean isStatelessType() {
-        return true;
-    }
-
     public final boolean isInstance(ScriptArray other) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (isStatelessType()) {
-            return this == other;
-        } else {
-            return this.getClass().isInstance(other);
-        }
+        return this == other;
     }
 
     public final ScriptArray cast(ScriptArray other) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (isStatelessType()) {
-            assert this == other;
-            return this;
-        } else {
-            return this.getClass().cast(other);
-        }
+        assert this == other;
+        return this;
     }
 
     public interface ProfileHolder {
