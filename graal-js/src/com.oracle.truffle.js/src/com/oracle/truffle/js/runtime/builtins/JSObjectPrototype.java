@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -73,11 +72,7 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     public static boolean isJSObjectPrototype(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSObjectPrototype((DynamicObject) obj);
-    }
-
-    public static boolean isJSObjectPrototype(DynamicObject obj) {
-        return isInstance(obj, INSTANCE);
+        return obj instanceof Instance;
     }
 
     @Override
