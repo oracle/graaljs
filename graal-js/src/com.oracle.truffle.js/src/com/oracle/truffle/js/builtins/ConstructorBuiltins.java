@@ -993,10 +993,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
         @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
+        @Child private TRegexUtil.InteropIsNullNode interopIsCompiledRegexNullNode;
         private final BranchProfile regexpObject = BranchProfile.create();
         private final BranchProfile regexpMatcherObject = BranchProfile.create();
         private final BranchProfile regexpNonObject = BranchProfile.create();
         private final BranchProfile regexpObjectNewFlagsBranch = BranchProfile.create();
+        private final BranchProfile regexpNotSupported = BranchProfile.create();
         private final ConditionProfile callIsRegExpProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile constructorEquivalentProfile = ConditionProfile.createBinaryProfile();
 
@@ -1057,6 +1059,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
+            if (getInteropIsCompiledRegexNullNode().execute(compiledRegex)) {
+                regexpNotSupported.enter();
+                throw Errors.createSyntaxError("regular expression not supported");
+            }
             DynamicObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
             if (getContext().getContextOptions().isTestV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
@@ -1080,6 +1086,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 interopReadPatternNode = insert(TRegexUtil.InteropReadStringMemberNode.create());
             }
             return interopReadPatternNode;
+        }
+
+        private TRegexUtil.InteropIsNullNode getInteropIsCompiledRegexNullNode() {
+            if (interopIsCompiledRegexNullNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopIsCompiledRegexNullNode = insert(TRegexUtil.InteropIsNullNode.create());
+            }
+            return interopIsCompiledRegexNullNode;
         }
 
         private CompileRegexNode getCompileRegexNode() {
