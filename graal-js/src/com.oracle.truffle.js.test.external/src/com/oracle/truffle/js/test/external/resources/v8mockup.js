@@ -972,3 +972,61 @@ function v8ReferenceEqual(a, b) {
 
 function v8CollectTypeProfile() {
 }
+
+function v8CompileBaseline() {
+}
+
+function v8IsDictPropertyConstTrackingEnabled() {
+	return v8IgnoreResult;
+}
+
+function v8HasOwnConstDataProperty() {
+	return v8IgnoreResult;
+}
+
+function v8RegexpIsUnmodified() {
+	return v8IgnoreResult;
+}
+
+function v8PromiseSpeciesProtector() {
+	return v8IgnoreResult;
+}
+
+function v8RegExpSpeciesProtector() {
+	return v8IgnoreResult;
+}
+
+function v8TypedArraySpeciesProtector() {
+	return v8IgnoreResult;
+}
+
+function v8ArrayIteratorProtector() {
+	return v8IgnoreResult;
+}
+
+function v8ToString(a) {
+    return TestV8.toStringConv(a);
+}
+
+function v8ScheduleGCInStackCheck(){
+}
+
+function v8DynamicCheckMapsEnabled() {
+	return v8IgnoreResult;
+}
+
+function v8TierupFunctionOnNextCall() {
+}
+
+function v8IsTopTierTurboprop() {
+}
+
+function v8WasmTierUp() {
+}
+
+function v8WasmTierDown() {
+}
+
+function v8RegexpTypeTag() {
+	return v8IgnoreResult;
+}
