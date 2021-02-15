@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,23 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.util.Iterator;
-
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltinsFactory.EnumerateNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -95,12 +97,12 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         return null;
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class EnumerateNextNode extends JSBuiltinNode {
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
         @Child private ImportValueNode importValueNode;
         private final BranchProfile errorBranch;
-        private final ValueProfile iteratorProfile;
 
         public EnumerateNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -108,23 +110,31 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
             this.importValueNode = ImportValueNode.create();
             this.errorBranch = BranchProfile.create();
-            this.iteratorProfile = ValueProfile.createClassProfile();
         }
 
         @Specialization
-        public DynamicObject execute(VirtualFrame frame, Object target) {
-            Object iteratorValue = getIteratorNode.getValue(target);
-            if (iteratorValue == Undefined.instance) {
+        public DynamicObject execute(VirtualFrame frame, Object target,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            Object iterator = getIteratorNode.getValue(target);
+            if (iterator == Undefined.instance) {
                 errorBranch.enter();
                 throw Errors.createTypeError("Enumerate iterator required");
             }
-            Iterator<?> iterator = (Iterator<?>) iteratorProfile.profile(iteratorValue);
-            if (Boundaries.iteratorHasNext(iterator)) {
-                Object nextValue = Boundaries.iteratorNext(iterator);
-                Object importedValue = importValueNode.executeWithTarget(nextValue);
-                return createIterResultObjectNode.execute(frame, importedValue, false);
+            try {
+                if (interop.hasIteratorNextElement(iterator)) {
+                    try {
+                        Object nextValue = interop.getIteratorNextElement(iterator);
+                        Object importedValue = importValueNode.executeWithTarget(nextValue);
+                        return createIterResultObjectNode.execute(frame, importedValue, false);
+                    } catch (StopIterationException e) {
+                        // fall through
+                    }
+                }
+                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+            } catch (UnsupportedMessageException e) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorInteropException(iterator, e, "next", null);
             }
-            return createIterResultObjectNode.execute(frame, Undefined.instance, true);
         }
 
     }

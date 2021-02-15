@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.interop;
+package com.oracle.truffle.js.runtime.interop;
 
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public abstract class JSInteropCallNode extends JavaScriptBaseNode {
-    protected JSInteropCallNode() {
+@ExportLibrary(InteropLibrary.class)
+public final class EmptyIterator implements TruffleObject {
+    private static final EmptyIterator INSTANCE = new EmptyIterator();
+
+    private EmptyIterator() {
     }
 
-    protected static Object[] prepare(Object[] arguments, ImportValueNode importValueNode) {
-        for (int i = 0; i < arguments.length; i++) {
-            arguments[i] = importValueNode.executeWithTarget(arguments[i]);
-        }
-        return arguments;
+    public static Object create() {
+        return INSTANCE;
     }
 
-    protected static JSFunctionCallNode getUncachedCall() {
-        return null;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isIterator() {
+        return true;
     }
 
-    protected static PropertyGetNode getUncachedProperty() {
-        return null;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasIteratorNextElement() {
+        return false;
     }
 
-    protected static Object getProperty(JSObject receiver, PropertyGetNode propertyGetNode, Object key, Object defaultValue) {
-        assert JSRuntime.isPropertyKey(key);
-        Object method;
-        if (propertyGetNode == null) {
-            method = JSObject.getOrDefault(receiver, key, receiver, defaultValue);
-        } else {
-            assert JSRuntime.propertyKeyEquals(propertyGetNode.getKey(), key);
-            method = propertyGetNode.getValueOrDefault(receiver, defaultValue);
-        }
-        return method;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object getIteratorNextElement() throws StopIterationException {
+        throw StopIterationException.create();
     }
 }

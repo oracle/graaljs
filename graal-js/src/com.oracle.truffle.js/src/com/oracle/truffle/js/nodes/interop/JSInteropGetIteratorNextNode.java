@@ -44,63 +44,76 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-@ImportStatic({JSConfig.class, Symbol.class})
+@ImportStatic({JSConfig.class, JSRuntime.class})
 @GenerateUncached
-public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
-    JSInteropGetIteratorNode() {
+public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
+    JSInteropGetIteratorNextNode() {
     }
 
-    public static JSInteropGetIteratorNode create() {
-        return JSInteropGetIteratorNodeGen.create();
+    public static JSInteropGetIteratorNextNode create() {
+        return JSInteropGetIteratorNextNodeGen.create();
     }
 
-    public final boolean hasIterator(JSObject receiver, JavaScriptLanguage language) {
+    public final boolean isIterator(JSObject receiver, JavaScriptLanguage language) {
         try {
             return (boolean) execute(receiver, language, true);
-        } catch (UnsupportedMessageException e) {
+        } catch (UnsupportedMessageException | StopIterationException e) {
             throw Errors.shouldNotReachHere(e);
         }
     }
 
-    public final Object getIterator(JSObject receiver, JavaScriptLanguage language) throws UnsupportedMessageException {
+    public final Object getIteratorNextElement(JSObject receiver, JavaScriptLanguage language) throws UnsupportedMessageException, StopIterationException {
         return execute(receiver, language, false);
     }
 
-    protected abstract Object execute(JSObject receiver, JavaScriptLanguage language, boolean hasIteratorMethod) throws UnsupportedMessageException;
+    protected abstract Object execute(JSObject receiver, JavaScriptLanguage language, boolean isIterator) throws UnsupportedMessageException, StopIterationException;
 
     @Specialization
-    Object doDefault(JSObject receiver, @SuppressWarnings("unused") JavaScriptLanguage language, boolean hasIteratorMethod,
-                    @Cached(value = "create(SYMBOL_ITERATOR, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode iteratorPropertyGetNode,
+    Object doDefault(JSObject receiver, @SuppressWarnings("unused") JavaScriptLanguage language, boolean isIterator,
+                    @Cached(value = "create(NEXT, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode nextPropertyGetNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException {
-        Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
-        boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
-        if (hasIteratorMethod) {
-            return hasIterator;
+                    @Cached(value = "create(DONE, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode donePropertyGetNode,
+                    @Cached(value = "create(VALUE, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode valuePropertyGetNode,
+                    @Cached JSToBooleanNode toBooleanNode,
+                    @Cached ExportValueNode exportValueNode,
+                    @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException, StopIterationException {
+        Object method = getProperty(receiver, nextPropertyGetNode, JSRuntime.NEXT, null);
+        boolean hasNext = method != null && isCallableNode.executeBoolean(method);
+        if (isIterator) {
+            return hasNext;
         }
-        if (hasIterator) {
-            Object iterator = callNode.executeCall(JSArguments.createZeroArg(receiver, method));
-            if (interop.isIterator(iterator)) {
-                return iterator;
+        if (hasNext) {
+            Object iterResult = callNode.executeCall(JSArguments.createZeroArg(receiver, method));
+            if (iterResult instanceof JSObject) {
+                JSObject iterResultObject = (JSObject) iterResult;
+                Object doneValue = getProperty(iterResultObject, donePropertyGetNode, JSRuntime.DONE, Boolean.FALSE);
+                boolean done = toBooleanNode.executeBoolean(doneValue);
+                if (done) {
+                    throw StopIterationException.create();
+                } else {
+                    Object value = getProperty(iterResultObject, valuePropertyGetNode, JSRuntime.VALUE, Undefined.instance);
+                    return exportValueNode.execute(value);
+                }
             }
         }
         exceptionBranch.enter();
         throw UnsupportedMessageException.create();
     }
+
 }
