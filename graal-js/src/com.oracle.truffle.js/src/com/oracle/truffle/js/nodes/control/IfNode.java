@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBlockTag;
@@ -257,8 +257,8 @@ public final class IfNode extends StatementNode implements ResumableNode {
         lock.lock();
         JavaScriptNode cond = condition;
         try {
-            if (!(cond instanceof JSToBooleanNode)) {
-                condition = cond = insert(JSToBooleanNode.create(cond));
+            if (!(cond instanceof JSToBooleanUnaryNode)) {
+                condition = cond = insert(JSToBooleanUnaryNode.create(cond));
             }
         } finally {
             lock.unlock();
