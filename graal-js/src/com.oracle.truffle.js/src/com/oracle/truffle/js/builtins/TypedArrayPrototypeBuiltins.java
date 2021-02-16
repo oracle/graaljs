@@ -472,20 +472,20 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray) {
                 intToIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    int value = ((TypedArray.TypedIntArray<Object>) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedIntArray<Object>) targetType).setIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
+                    int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedIntArray) targetType).setIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if (sourceType instanceof TypedArray.TypedFloatArray && targetType instanceof TypedArray.TypedFloatArray) {
                 floatToFloatBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    double value = ((TypedArray.TypedFloatArray<Object>) sourceType).getDoubleImpl(sourceBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedFloatArray<Object>) targetType).setDoubleImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
+                    double value = ((TypedArray.TypedFloatArray) sourceType).getDoubleImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedFloatArray) targetType).setDoubleImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if (sourceType instanceof TypedArray.TypedBigIntArray && targetType instanceof TypedArray.TypedBigIntArray) {
                 bigIntToBigIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    BigInt value = ((TypedArray.TypedBigIntArray<Object>) sourceType).getBigIntImpl(sourceBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedBigIntArray<Object>) targetType).setBigIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
+                    BigInt value = ((TypedArray.TypedBigIntArray) sourceType).getBigIntImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedBigIntArray) targetType).setBigIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);

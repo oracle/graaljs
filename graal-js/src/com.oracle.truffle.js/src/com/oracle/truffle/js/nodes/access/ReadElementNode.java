@@ -1171,7 +1171,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index);
             } else {
@@ -1183,7 +1183,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index);
             } else {
@@ -1195,7 +1195,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index);
             } else {
@@ -1214,7 +1214,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index);
                 if (isSignedProfile.profile(intValue >= 0)) {
@@ -1231,7 +1231,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index);
                 if (isSignedProfile.profile(intValue >= 0)) {
@@ -1248,7 +1248,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index) & 0xffff_ffffL;
             } else {
@@ -1266,7 +1266,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
+            TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index);
             } else {
@@ -1278,7 +1278,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
+            TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index);
             } else {
@@ -1296,7 +1296,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) cast(array);
+            TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
                 return typedArray.getBigInt(target, (int) index);
             } else {

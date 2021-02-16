@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@ public final class SharedMemorySync {
     public static int doVolatileGet(DynamicObject target, int intArrayOffset) {
         Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
+        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
         return typedArray.getInt(target, intArrayOffset);
     }
 
@@ -77,14 +77,14 @@ public final class SharedMemorySync {
     public static BigInt doVolatileGetBigInt(DynamicObject target, int intArrayOffset) {
         Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
+        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
         return typedArray.getBigInt(target, intArrayOffset);
     }
 
     @TruffleBoundary
     public static void doVolatilePut(DynamicObject target, int index, int value) {
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
+        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
         typedArray.setInt(target, index, value);
         Fences.releaseFence();
     }
@@ -92,7 +92,7 @@ public final class SharedMemorySync {
     @TruffleBoundary
     public static void doVolatilePutBigInt(DynamicObject target, int index, BigInt value) {
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
+        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
         typedArray.setBigInt(target, index, value);
         Fences.releaseFence();
     }
