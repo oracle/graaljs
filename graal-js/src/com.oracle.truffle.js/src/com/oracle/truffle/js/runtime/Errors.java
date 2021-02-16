@@ -762,7 +762,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createErrorFromException(Exception e) {
+    public static JSException createErrorFromException(Throwable e) {
         return JSException.create(JSErrorType.Error, e.getMessage(), e, null);
     }
 
