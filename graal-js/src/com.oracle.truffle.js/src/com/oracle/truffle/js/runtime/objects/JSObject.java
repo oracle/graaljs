@@ -54,7 +54,6 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -70,7 +69,6 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.nodes.interop.JSInteropGetIteratorNextNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropGetIteratorNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
 import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
@@ -280,38 +278,6 @@ public abstract class JSObject extends JSDynamicObject {
         language.interopBoundaryEnter(realm);
         try {
             return getIteratorNode.getIterator(this, language);
-        } finally {
-            language.interopBoundaryExit(realm);
-        }
-    }
-
-    @ExportMessage
-    public boolean isIterator(
-                    @CachedLanguage JavaScriptLanguage language,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) {
-        return iteratorNextNode.isIterator(this, language);
-    }
-
-    @ExportMessage
-    public boolean hasIteratorNextElement(
-                    @CachedLanguage JavaScriptLanguage language,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws UnsupportedMessageException {
-        if (iteratorNextNode.isIterator(this, language)) {
-            // Pretend there's always a next element and rely on StopIterationException instead.
-            return true;
-        } else {
-            throw UnsupportedMessageException.create();
-        }
-    }
-
-    @ExportMessage
-    public Object getIteratorNextElement(
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws UnsupportedMessageException, StopIterationException {
-        language.interopBoundaryEnter(realm);
-        try {
-            return iteratorNextNode.getIteratorNextElement(this, language);
         } finally {
             language.interopBoundaryExit(realm);
         }

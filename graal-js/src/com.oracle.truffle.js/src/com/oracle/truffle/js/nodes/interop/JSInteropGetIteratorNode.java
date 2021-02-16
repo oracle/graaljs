@@ -44,9 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -55,10 +53,13 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.interop.JSIteratorWrapper;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
-@ImportStatic({JSConfig.class, Symbol.class})
+@ImportStatic({JSConfig.class, JSRuntime.class, Symbol.class})
 @GenerateUncached
 public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
     JSInteropGetIteratorNode() {
@@ -87,7 +88,7 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     @Cached(value = "create(SYMBOL_ITERATOR, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode iteratorPropertyGetNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                    @Cached(value = "create(NEXT, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode nextPropertyGetNode,
                     @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException {
         Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
         boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
@@ -96,8 +97,12 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
         }
         if (hasIterator) {
             Object iterator = callNode.executeCall(JSArguments.createZeroArg(receiver, method));
-            if (interop.isIterator(iterator)) {
-                return iterator;
+            if (iterator instanceof JSObject) {
+                JSObject jsIterator = (JSObject) iterator;
+                Object nextMethod = getProperty(jsIterator, nextPropertyGetNode, JSRuntime.NEXT, null);
+                if (nextMethod != null && isCallableNode.executeBoolean(nextMethod)) {
+                    return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
+                }
             }
         }
         exceptionBranch.enter();
