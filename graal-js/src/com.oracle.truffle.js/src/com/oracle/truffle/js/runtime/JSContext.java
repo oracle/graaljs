@@ -374,6 +374,7 @@ public class JSContext {
     private final JSObjectFactory arrayBufferFactory;
     private final JSObjectFactory directArrayBufferFactory;
     private final JSObjectFactory sharedArrayBufferFactory;
+    private final JSObjectFactory interopArrayBufferFactory;
     private final JSObjectFactory finalizationRegistryFactory;
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] typedArrayFactories;
 
@@ -515,6 +516,7 @@ public class JSContext {
         this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
         this.directArrayBufferFactory = builder.create(JSArrayBuffer.DIRECT_INSTANCE);
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
+        this.interopArrayBufferFactory = builder.create(JSArrayBuffer.INTEROP_INSTANCE);
         this.finalizationRegistryFactory = builder.create(JSFinalizationRegistry.INSTANCE);
         this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
         for (TypedArrayFactory factory : TypedArray.factories(this)) {
@@ -866,6 +868,10 @@ public class JSContext {
     public final JSObjectFactory getSharedArrayBufferFactory() {
         assert isOptionSharedArrayBuffer();
         return sharedArrayBufferFactory;
+    }
+
+    public JSObjectFactory getInteropArrayBufferFactory() {
+        return interopArrayBufferFactory;
     }
 
     public final JSObjectFactory getNonStrictArgumentsFactory() {

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.Objects;
@@ -54,6 +53,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -173,7 +173,6 @@ import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.GraalJSException;
@@ -203,13 +202,13 @@ import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -1821,6 +1820,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ConstructArrayBufferNode extends ConstructWithNewTargetNode {
         private final ConditionProfile badLengthCondition = ConditionProfile.createBinaryProfile();
         private final boolean useShared;
@@ -1838,9 +1838,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return getContext().getRealm().getEnv().isHostObject(buffer);
         }
 
-        @Specialization(guards = {"!isByteBuffer(length)", "!isHostByteBuffer(length)"})
+        @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected DynamicObject constructFromLength(DynamicObject newTarget, Object length,
-                        @Cached("create()") JSToIndexNode toIndexNode) {
+                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
 
             DynamicObject prototype = null;
@@ -1869,22 +1870,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return arrayBuffer;
         }
 
-        @Specialization(guards = "isHostByteBuffer(buffer)")
-        protected DynamicObject constructFromHostByteBuffer(DynamicObject newTarget, Object buffer,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") ConditionProfile isDirect) {
-            Object maybeBuffer = getContext().getRealm().getEnv().asHostObject(buffer);
-            if (maybeBuffer instanceof ByteBuffer) {
-                ByteBuffer byteBuffer = (ByteBuffer) maybeBuffer;
-                if (isDirect.profile(byteBuffer.isDirect())) {
-                    return swapPrototype(JSArrayBuffer.createDirectArrayBuffer(getContext(), byteBuffer), newTarget);
-                } else {
-                    return swapPrototype(JSArrayBuffer.createArrayBuffer(getContext(), Boundaries.byteBufferArray(byteBuffer)), newTarget);
-                }
-            } else {
-                errorBranch.enter();
-                throw Errors.createTypeError("Unsupported input data type");
-            }
+        @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
+        protected DynamicObject constructFromInteropBuffer(DynamicObject newTarget, Object buffer,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
+            return swapPrototype(JSArrayBuffer.createInteropArrayBuffer(getContext(), buffer), newTarget);
         }
 
         @Override

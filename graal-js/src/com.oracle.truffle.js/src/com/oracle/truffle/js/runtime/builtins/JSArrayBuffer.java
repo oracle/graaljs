@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -75,6 +76,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
     public static final JSArrayBuffer HEAP_INSTANCE = new JSArrayBuffer();
     public static final JSArrayBuffer DIRECT_INSTANCE = new JSArrayBuffer();
+    public static final JSArrayBuffer INTEROP_INSTANCE = new JSArrayBuffer();
 
     private JSArrayBuffer() {
     }
@@ -111,6 +113,21 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         DynamicObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
         factory.initProto(obj, realm);
         assert isJSDirectArrayBuffer(obj);
+        return context.trackAllocation(obj);
+    }
+
+    public static Object getInteropBuffer(Object thisObj) {
+        assert isJSInteropArrayBuffer(thisObj);
+        return JSArrayBufferObject.getInteropBuffer(thisObj);
+    }
+
+    public static DynamicObject createInteropArrayBuffer(JSContext context, Object buffer) {
+        assert InteropLibrary.getUncached().hasBufferElements(buffer);
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getInteropArrayBufferFactory();
+        DynamicObject obj = JSArrayBufferObject.createInteropArrayBuffer(factory.getShape(realm), buffer);
+        factory.initProto(obj, realm);
+        assert isJSInteropArrayBuffer(obj);
         return context.trackAllocation(obj);
     }
 
@@ -160,6 +177,8 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
                             return handleDetachedBuffer();
                         }
                         return getDirectByteLength(buffer);
+                    } else if (isJSInteropArrayBuffer(buffer)) {
+                        return ((JSArrayBufferObject) buffer).getByteLength();
                     }
                 }
                 errorBranch.enter();
@@ -178,13 +197,13 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        if (this == HEAP_INSTANCE) {
-            Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, HEAP_INSTANCE, context);
-            return initialShape;
+        if (this == INTEROP_INSTANCE) {
+            return JSObjectUtil.getProtoChildShape(prototype, INTEROP_INSTANCE, context);
+        } else if (this == HEAP_INSTANCE) {
+            return JSObjectUtil.getProtoChildShape(prototype, HEAP_INSTANCE, context);
         } else {
             assert this == DIRECT_INSTANCE;
-            Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, DIRECT_INSTANCE, context);
-            return initialShape;
+            return JSObjectUtil.getProtoChildShape(prototype, DIRECT_INSTANCE, context);
         }
     }
 
@@ -210,6 +229,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return (obj instanceof JSArrayBufferObject.Direct);
     }
 
+    public static boolean isJSInteropArrayBuffer(Object obj) {
+        return (obj instanceof JSArrayBufferObject.Interop);
+    }
+
     public static boolean isJSDirectOrSharedArrayBuffer(Object obj) {
         return isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
     }
@@ -225,9 +248,11 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         assert isJSAbstractBuffer(arrayBuffer);
         if (isJSHeapArrayBuffer(arrayBuffer)) {
             return getByteArray(arrayBuffer) == null;
-        } else {
-            assert isJSDirectOrSharedArrayBuffer(arrayBuffer);
+        } else if (isJSDirectOrSharedArrayBuffer(arrayBuffer)) {
             return getDirectByteBuffer(arrayBuffer) == null;
+        } else {
+            assert isJSInteropArrayBuffer(arrayBuffer);
+            return false;
         }
     }
 

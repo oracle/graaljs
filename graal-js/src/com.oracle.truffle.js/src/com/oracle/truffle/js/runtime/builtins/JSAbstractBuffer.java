@@ -64,6 +64,6 @@ public abstract class JSAbstractBuffer extends JSNonProxy {
     }
 
     public static boolean isJSAbstractBuffer(Object obj) {
-        return JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
+        return obj instanceof JSArrayBufferObject;
     }
 }

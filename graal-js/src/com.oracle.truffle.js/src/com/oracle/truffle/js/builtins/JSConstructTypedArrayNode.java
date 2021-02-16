@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,11 @@ import java.util.NoSuchElementException;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -186,24 +188,24 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected DynamicObject doArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
+                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, false, lengthIsUndefined);
     }
 
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected DynamicObject doDirectArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
+                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
-        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, lengthIsUndefined);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, false, lengthIsUndefined);
     }
 
-    private DynamicObject doArrayBufferImpl(DynamicObject arrayBuffer, Object byteOffset0, Object length0, DynamicObject newTarget, int bufferByteLength, boolean direct,
-                    ConditionProfile lengthIsUndefinedProfile) {
+    private DynamicObject doArrayBufferImpl(DynamicObject arrayBuffer, Object byteOffset0, Object length0, DynamicObject newTarget, int bufferByteLength,
+                    boolean direct, boolean isInteropBuffer, ConditionProfile lengthIsUndefinedProfile) {
         final int elementSize = factory.getBytesPerElement();
 
         final long byteOffset = toIndex(byteOffset0);
@@ -228,7 +230,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         rangeCheck(byteOffset + byteLength <= bufferByteLength, "length exceeds buffer bounds");
 
         assert byteOffset <= Integer.MAX_VALUE && length <= Integer.MAX_VALUE;
-        TypedArray typedArray = factory.createArrayType(direct, byteOffset != 0);
+        TypedArray typedArray = factory.createArrayType(direct, byteOffset != 0, isInteropBuffer);
         return createTypedArray(arrayBuffer, typedArray, (int) byteOffset, (int) length, newTarget);
     }
 
@@ -242,8 +244,25 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
     protected DynamicObject doSharedArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached("createBinaryProfile()") ConditionProfile lengthCondition) {
-        return doDirectArrayBuffer(newTarget, arrayBuffer, byteOffset0, length0, lengthCondition);
+                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined) {
+        return doDirectArrayBuffer(newTarget, arrayBuffer, byteOffset0, length0, lengthIsUndefined);
+    }
+
+    /**
+     * TypedArray(ArrayBuffer buffer, optional unsigned long byteOffset, optional unsigned long
+     * length).
+     *
+     * Create a new TypedArray object using the passed InteropArrayBuffer for its storage. As with
+     * standard ArrayBuffer, optional parameters (byteOffset and length) can be used to limit the
+     * section of the buffer referenced.
+     */
+    @Specialization(guards = {"!isUndefined(newTarget)", "isJSInteropArrayBuffer(arrayBuffer)"})
+    protected DynamicObject doInteropArrayBuffer(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset0, Object length0,
+                    @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        Object buffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
+        int arrayBufferLength = getBufferSizeSafe(buffer, interop);
+        return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, true, lengthIsUndefined);
     }
 
     /**
@@ -378,23 +397,50 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     @Specialization(guards = {"!isUndefined(newTarget)", "isForeignObject(object)"}, limit = "InteropLibraryLimit")
-    protected DynamicObject doForeignObject(DynamicObject newTarget, Object object, @SuppressWarnings("unused") Object byteOffset0, @SuppressWarnings("unused") Object length0,
+    protected DynamicObject doForeignObject(DynamicObject newTarget, Object object, Object byteOffset0, Object length0,
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("createWriteOwn()") WriteElementNode writeOwnNode,
-                    @Cached ImportValueNode importValue) {
+                    @Cached ImportValueNode importValue,
+                    @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
+        if (interop.hasBufferElements(object)) {
+            DynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), object);
+            int bufferByteLength = getBufferSizeSafe(object, interop);
+            return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, bufferByteLength, false, true, lengthIsUndefined);
+        }
+
         long length;
-        if (interop.hasArrayElements(object)) {
+        boolean fromArray = interop.hasArrayElements(object);
+        if (fromArray) {
             length = toIndex(JSInteropUtil.getArraySize(object, interop, this));
+        } else if (interop.fitsInInt(object)) {
+            try {
+                length = toIndex(interop.asInt(object));
+            } catch (UnsupportedMessageException e) {
+                length = 0;
+            }
         } else {
             length = 0;
         }
+
         DynamicObject obj = createTypedArrayWithLength(length, newTarget);
-        assert length <= Integer.MAX_VALUE;
-        for (int k = 0; k < length; k++) {
-            Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue, this);
-            writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
+        if (fromArray) {
+            assert length <= Integer.MAX_VALUE;
+            for (int k = 0; k < length; k++) {
+                Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue, this);
+                writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
+            }
         }
         return obj;
+    }
+
+    private int getBufferSizeSafe(Object object, InteropLibrary interop) {
+        try {
+            long bufferByteLength = interop.getBufferSize(object);
+            checkLengthLimit(bufferByteLength, factory.getBytesPerElement());
+            return (int) bufferByteLength;
+        } catch (UnsupportedMessageException e) {
+            return 0;
+        }
     }
 
     GetMethodNode createGetIteratorMethod() {

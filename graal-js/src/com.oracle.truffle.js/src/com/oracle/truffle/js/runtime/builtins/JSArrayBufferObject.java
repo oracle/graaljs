@@ -100,6 +100,11 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         return DirectByteBufferHelper.cast(((DirectBase) thisObj).getByteBuffer());
     }
 
+    public static Object getInteropBuffer(Object thisObj) {
+        assert JSArrayBuffer.isJSInteropArrayBuffer(thisObj);
+        return ((Interop) thisObj).getInteropBuffer();
+    }
+
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
         return ((Shared) thisObj).getWaiterList();
     }
@@ -358,6 +363,42 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
     }
 
+    /**
+     * ArrayBuffer backed by Interop Buffer.
+     */
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "interopBuffer")
+    public static final class Interop extends JSArrayBufferObject {
+        final Object interopBuffer;
+
+        protected Interop(Shape shape, Object interopBuffer) {
+            super(shape);
+            this.interopBuffer = interopBuffer;
+        }
+
+        @Override
+        public int getByteLength() {
+            try {
+                return Math.toIntExact(InteropLibrary.getUncached(interopBuffer).getBufferSize(interopBuffer));
+            } catch (UnsupportedMessageException | ArithmeticException e) {
+                return 0;
+            }
+        }
+
+        public Object getInteropBuffer() {
+            return interopBuffer;
+        }
+
+        @Override
+        public boolean isDetached() {
+            return false;
+        }
+
+        @Override
+        public void detachArrayBuffer() {
+            throw Errors.unsupported("Foreign ArrayBuffer cannot be detached");
+        }
+    }
+
     public static DynamicObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
         return new Heap(shape, byteArray);
     }
@@ -368,5 +409,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
     public static DynamicObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
         return new Shared(shape, byteBuffer, waiterList);
+    }
+
+    public static DynamicObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
+        return new Interop(shape, interopBuffer);
     }
 }
