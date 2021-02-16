@@ -77,7 +77,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
     public abstract boolean isDetached();
 
-    public static byte[] getByteArray(DynamicObject thisObj) {
+    public static byte[] getByteArray(Object thisObj) {
         assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
         return ((Heap) thisObj).getByteArray();
     }
@@ -95,7 +95,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         ((DirectBase) thisObj).setByteBuffer(buffer);
     }
 
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
+    public static ByteBuffer getDirectByteBuffer(Object thisObj) {
         assert JSArrayBuffer.isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
         return DirectByteBufferHelper.cast(((DirectBase) thisObj).getByteBuffer());
     }

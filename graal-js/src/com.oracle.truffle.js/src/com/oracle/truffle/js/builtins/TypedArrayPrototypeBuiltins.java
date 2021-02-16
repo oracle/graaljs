@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -455,8 +455,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @SuppressWarnings("unchecked")
         private void copyTypedArrayElementsDistinctBuffers(DynamicObject targetBuffer, DynamicObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
                         int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex) {
-            Object targetBackingBuffer = isDirectProf.profile(targetType.isDirect()) ? JSArrayBuffer.getDirectByteBuffer(targetBuffer) : JSArrayBuffer.getByteArray(targetBuffer);
-            Object sourceBackingBuffer = isDirectProf.profile(sourceType.isDirect()) ? JSArrayBuffer.getDirectByteBuffer(sourceBuffer) : JSArrayBuffer.getByteArray(sourceBuffer);
             int targetElementSize = targetType.bytesPerElement();
             int sourceElementSize = sourceType.bytesPerElement();
             int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
@@ -464,27 +462,30 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 // same element type => bulk copy
                 int sourceByteLength = sourceLength * sourceElementSize;
                 if (isDirectProf.profile(targetType.isDirect())) {
-                    Boundaries.byteBufferPutSlice((ByteBuffer) targetBackingBuffer, targetByteIndex, (ByteBuffer) sourceBackingBuffer, sourceByteIndex, sourceByteIndex + sourceByteLength);
+                    Boundaries.byteBufferPutSlice(
+                                    JSArrayBuffer.getDirectByteBuffer(targetBuffer), targetByteIndex,
+                                    JSArrayBuffer.getDirectByteBuffer(sourceBuffer), sourceByteIndex,
+                                    sourceByteIndex + sourceByteLength);
                 } else {
-                    System.arraycopy(sourceBackingBuffer, sourceByteIndex, targetBackingBuffer, targetByteIndex, sourceByteLength);
+                    System.arraycopy(JSArrayBuffer.getByteArray(sourceBuffer), sourceByteIndex, JSArrayBuffer.getByteArray(targetBuffer), targetByteIndex, sourceByteLength);
                 }
             } else if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray) {
                 intToIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    int value = ((TypedArray.TypedIntArray<Object>) sourceType).getIntImpl(sourceBackingBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedIntArray<Object>) targetType).setIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                    int value = ((TypedArray.TypedIntArray<Object>) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedIntArray<Object>) targetType).setIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if (sourceType instanceof TypedArray.TypedFloatArray && targetType instanceof TypedArray.TypedFloatArray) {
                 floatToFloatBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    double value = ((TypedArray.TypedFloatArray<Object>) sourceType).getDoubleImpl(sourceBackingBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedFloatArray<Object>) targetType).setDoubleImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                    double value = ((TypedArray.TypedFloatArray<Object>) sourceType).getDoubleImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedFloatArray<Object>) targetType).setDoubleImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if (sourceType instanceof TypedArray.TypedBigIntArray && targetType instanceof TypedArray.TypedBigIntArray) {
                 bigIntToBigIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    BigInt value = ((TypedArray.TypedBigIntArray<Object>) sourceType).getBigIntImpl(sourceBackingBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedBigIntArray<Object>) targetType).setBigIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                    BigInt value = ((TypedArray.TypedBigIntArray<Object>) sourceType).getBigIntImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedBigIntArray<Object>) targetType).setBigIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
