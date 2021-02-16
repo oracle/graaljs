@@ -65,7 +65,6 @@ import java.util.regex.Pattern;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.junit.Assert;
 import org.junit.internal.TextListener;
 import org.junit.runner.Description;
 import org.junit.runner.JUnitCore;
@@ -226,9 +225,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
             engineContext.leave();
             String mimeType = testCase.sourceName.endsWith(MODULE_SUFFIX) ? MODULE_MIME_TYPE : APPLICATION_MIME_TYPE;
             Source source = Source.newBuilder(ID, testCase.sourceFile.toFile()).name(testCase.sourceName).content(sourceLines).mimeType(mimeType).build();
-            Value result = engineContext.eval(source);
-
-            Assert.assertTrue(result.asBoolean());
+            engineContext.eval(source);
         } catch (Throwable ex) {
             notifier.fireTestFailure(new Failure(testCase.testName, ex));
         } finally {

@@ -4,6 +4,8 @@
 
 > Stability: 1 - Experimental
 
+<!-- source_link=lib/wasi.js -->
+
 The WASI API provides an implementation of the [WebAssembly System Interface][]
 specification. WASI gives sandboxed WebAssembly applications access to the
 underlying operating system via a collection of POSIX-like functions.
@@ -124,6 +126,23 @@ Attempt to begin execution of `instance` as a WASI command by invoking its
 
 If `start()` is called more than once, an exception is thrown.
 
+### `wasi.initialize(instance)`
+<!-- YAML
+added:
+ - v12.19.0
+-->
+
+* `instance` {WebAssembly.Instance}
+
+Attempt to initialize `instance` as a WASI reactor by invoking its
+`_initialize()` export, if it is present. If `instance` contains a `_start()`
+export, then an exception is thrown.
+
+`initialize()` requires that `instance` exports a [`WebAssembly.Memory`][] named
+`memory`. If `instance` does not have a `memory` export an exception is thrown.
+
+If `initialize()` is called more than once, an exception is thrown.
+
 ### `wasi.wasiImport`
 <!-- YAML
 added: v12.16.0
@@ -135,6 +154,6 @@ added: v12.16.0
 should be passed as the `wasi_snapshot_preview1` import during the instantiation
 of a [`WebAssembly.Instance`][].
 
+[WebAssembly System Interface]: https://wasi.dev/
 [`WebAssembly.Instance`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Instance
 [`WebAssembly.Memory`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Memory
-[WebAssembly System Interface]: https://wasi.dev/

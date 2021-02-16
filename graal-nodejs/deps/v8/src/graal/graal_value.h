@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@
 
 class GraalValue : public GraalData {
 public:
-    GraalValue(GraalIsolate* isolate, jobject java_object);
+    inline GraalValue(GraalIsolate* isolate, jobject java_object);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, bool create_new_local_ref);
     static GraalValue* FromJavaObject(GraalIsolate* isolate, jobject java_object, int type, bool use_shared_buffer);

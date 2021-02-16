@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/tls.js -->
+
 The `tls` module provides an implementation of the Transport Layer Security
 (TLS) and Secure Socket Layer (SSL) protocols that is built on top of OpenSSL.
 The module can be accessed using:
@@ -83,8 +85,8 @@ all sessions). Methods implementing this technique are called "ephemeral".
 Currently two methods are commonly used to achieve perfect forward secrecy (note
 the character "E" appended to the traditional abbreviations):
 
-* [DHE][]: An ephemeral version of the Diffie Hellman key-agreement protocol.
-* [ECDHE][]: An ephemeral version of the Elliptic Curve Diffie Hellman
+* [DHE][]: An ephemeral version of the Diffie-Hellman key-agreement protocol.
+* [ECDHE][]: An ephemeral version of the Elliptic Curve Diffie-Hellman
   key-agreement protocol.
 
 Ephemeral methods may have some performance drawbacks, because key generation
@@ -368,6 +370,51 @@ The first 3 are enabled by default. The last 2 `CCM`-based suites are supported
 by TLSv1.3 because they may be more performant on constrained systems, but they
 are not enabled by default since they offer less security.
 
+## Class: `tls.CryptoStream`
+<!-- YAML
+added: v0.3.4
+deprecated: v0.11.3
+-->
+
+> Stability: 0 - Deprecated: Use [`tls.TLSSocket`][] instead.
+
+The `tls.CryptoStream` class represents a stream of encrypted data. This class
+is deprecated and should no longer be used.
+
+### `cryptoStream.bytesWritten`
+<!-- YAML
+added: v0.3.4
+deprecated: v0.11.3
+-->
+
+The `cryptoStream.bytesWritten` property returns the total number of bytes
+written to the underlying socket *including* the bytes required for the
+implementation of the TLS protocol.
+
+## Class: `tls.SecurePair`
+<!-- YAML
+added: v0.3.2
+deprecated: v0.11.3
+-->
+
+> Stability: 0 - Deprecated: Use [`tls.TLSSocket`][] instead.
+
+Returned by [`tls.createSecurePair()`][].
+
+### Event: `'secure'`
+<!-- YAML
+added: v0.3.2
+deprecated: v0.11.3
+-->
+
+The `'secure'` event is emitted by the `SecurePair` object once a secure
+connection has been established.
+
+As with checking for the server
+[`'secureConnection'`](#tls_event_secureconnection)
+event, `pair.cleartext.authorized` should be inspected to confirm whether the
+certificate used is properly authorized.
+
 ## Class: `tls.Server`
 <!-- YAML
 added: v0.3.2
@@ -376,6 +423,20 @@ added: v0.3.2
 * Extends: {net.Server}
 
 Accepts encrypted connections using TLS or SSL.
+
+### Event: `'connection'`
+<!-- YAML
+added: v0.3.2
+-->
+
+* `socket` {stream.Duplex}
+
+This event is emitted when a new TCP stream is established, before the TLS
+handshake begins. `socket` is typically an object of type [`net.Socket`][].
+Usually users will not want to access this event.
+
+This event can also be explicitly emitted by users to inject connections
+into the TLS server. In that case, any [`Duplex`][] stream can be passed.
 
 ### Event: `'keylog'`
 <!-- YAML
@@ -408,6 +469,10 @@ server.on('keylog', (line, tlsSocket) => {
 ### Event: `'newSession'`
 <!-- YAML
 added: v0.9.2
+changes:
+  - version: v0.11.12
+    pr-url: https://github.com/nodejs/node-v0.x-archive/pull/7118
+    description: The `callback` argument is now supported.
 -->
 
 The `'newSession'` event is emitted upon creation of a new TLS session. This may
@@ -1006,7 +1071,8 @@ For EC keys, the following properties may be defined:
 
 Example certificate:
 
-```text
+<!-- eslint-skip -->
+```js
 { subject:
    { OU: [ 'Domain Control Validated', 'PositiveSSL Wildcard' ],
      CN: '*.nodejs.org' },
@@ -1551,7 +1617,7 @@ changes:
     client certificate.
   * `crl` {string|string[]|Buffer|Buffer[]} PEM formatted CRLs (Certificate
     Revocation Lists).
-  * `dhparam` {string|Buffer} Diffie Hellman parameters, required for
+  * `dhparam` {string|Buffer} Diffie-Hellman parameters, required for
     [perfect forward secrecy][]. Use `openssl dhparam` to create the parameters.
     The key length must be greater than or equal to 1024 bits or else an error
     will be thrown. Although 1024 bits is permissible, use 2048 bits or larger
@@ -1619,6 +1685,11 @@ changes:
     **Default:** none, see `minVersion`.
   * `sessionIdContext` {string} Opaque identifier used by servers to ensure
     session state is not shared between applications. Unused by clients.
+  * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudo-random
+    data. See [Session Resumption][] for more information.
+  * `sessionTimeout` {number} The number of seconds after which a TLS session
+    created by the server will no longer be resumable. See
+    [Session Resumption][] for more information. **Default:** `300`.
 
 [`tls.createServer()`][] sets the default value of the `honorCipherOrder` option
 to `true`, other APIs that create secure contexts leave it unset.
@@ -1631,11 +1702,74 @@ The `tls.createSecureContext()` method creates a `SecureContext` object. It is
 usable as an argument to several `tls` APIs, such as [`tls.createServer()`][]
 and [`server.addContext()`][], but has no public methods.
 
-A key is *required* for ciphers that make use of certificates. Either `key` or
+A key is *required* for ciphers that use certificates. Either `key` or
 `pfx` can be used to provide it.
 
 If the `ca` option is not given, then Node.js will default to using
 [Mozilla's publicly trusted list of CAs][].
+
+## `tls.createSecurePair([context][, isServer][, requestCert][, rejectUnauthorized][, options])`
+<!-- YAML
+added: v0.3.2
+deprecated: v0.11.3
+changes:
+  - version: v5.0.0
+    pr-url: https://github.com/nodejs/node/pull/2564
+    description: ALPN options are supported now.
+-->
+
+> Stability: 0 - Deprecated: Use [`tls.TLSSocket`][] instead.
+
+* `context` {Object} A secure context object as returned by
+  `tls.createSecureContext()`
+* `isServer` {boolean} `true` to specify that this TLS connection should be
+  opened as a server.
+* `requestCert` {boolean} `true` to specify whether a server should request a
+  certificate from a connecting client. Only applies when `isServer` is `true`.
+* `rejectUnauthorized` {boolean} If not `false` a server automatically reject
+  clients with invalid certificates. Only applies when `isServer` is `true`.
+* `options`
+  * `enableTrace`: See [`tls.createServer()`][]
+  * `secureContext`: A TLS context object from [`tls.createSecureContext()`][]
+  * `isServer`: If `true` the TLS socket will be instantiated in server-mode.
+    **Default:** `false`.
+  * `server` {net.Server} A [`net.Server`][] instance
+  * `requestCert`: See [`tls.createServer()`][]
+  * `rejectUnauthorized`: See [`tls.createServer()`][]
+  * `ALPNProtocols`: See [`tls.createServer()`][]
+  * `SNICallback`: See [`tls.createServer()`][]
+  * `session` {Buffer} A `Buffer` instance containing a TLS session.
+  * `requestOCSP` {boolean} If `true`, specifies that the OCSP status request
+    extension will be added to the client hello and an `'OCSPResponse'` event
+    will be emitted on the socket before establishing a secure communication.
+
+Creates a new secure pair object with two streams, one of which reads and writes
+the encrypted data and the other of which reads and writes the cleartext data.
+Generally, the encrypted stream is piped to/from an incoming encrypted data
+stream and the cleartext one is used as a replacement for the initial encrypted
+stream.
+
+`tls.createSecurePair()` returns a `tls.SecurePair` object with `cleartext` and
+`encrypted` stream properties.
+
+Using `cleartext` has the same API as [`tls.TLSSocket`][].
+
+The `tls.createSecurePair()` method is now deprecated in favor of
+`tls.TLSSocket()`. For example, the code:
+
+```js
+pair = tls.createSecurePair(/* ... */);
+pair.encrypted.pipe(socket);
+socket.pipe(pair.encrypted);
+```
+
+can be replaced by:
+
+```js
+secureSocket = tls.TLSSocket(socket, options);
+```
+
+where `secureSocket` has the same API as `pair.cleartext`.
 
 ## `tls.createServer([options][, secureConnectionListener])`
 <!-- YAML
@@ -1685,12 +1819,15 @@ changes:
   * `sessionTimeout` {number} The number of seconds after which a TLS session
     created by the server will no longer be resumable. See
     [Session Resumption][] for more information. **Default:** `300`.
-  * `SNICallback(servername, cb)` {Function} A function that will be called if
-    the client supports SNI TLS extension. Two arguments will be passed when
-    called: `servername` and `cb`. `SNICallback` should invoke `cb(null, ctx)`,
-    where `ctx` is a `SecureContext` instance. (`tls.createSecureContext(...)`
-    can be used to get a proper `SecureContext`.) If `SNICallback` wasn't
-    provided the default callback with high-level API will be used (see below).
+  * `SNICallback(servername, callback)` {Function} A function that will be
+    called if the client supports SNI TLS extension. Two arguments will be
+    passed when called: `servername` and `callback`. `callback` is an
+    error-first callback that takes two optional arguments: `error` and `ctx`.
+    `ctx`, if provided, is a `SecureContext` instance.
+    [`tls.createSecureContext()`][] can be used to get a proper `SecureContext`.
+    If `callback` is called with a falsy `ctx` argument, the default secure
+    context of the server will be used. If `SNICallback` wasn't provided the
+    default callback with high-level API will be used (see below).
   * `ticketKeys`: {Buffer} 48-bytes of cryptographically strong pseudo-random
     data. See [Session Resumption][] for more information.
   * `pskCallback` {Function}
@@ -1830,116 +1967,6 @@ added: v11.4.0
   `'TLSv1.3'`. If multiple of the options are provided, the lowest minimum is
   used.
 
-## Deprecated APIs
-
-### Class: `CryptoStream`
-<!-- YAML
-added: v0.3.4
-deprecated: v0.11.3
--->
-
-> Stability: 0 - Deprecated: Use [`tls.TLSSocket`][] instead.
-
-The `tls.CryptoStream` class represents a stream of encrypted data. This class
-is deprecated and should no longer be used.
-
-#### `cryptoStream.bytesWritten`
-<!-- YAML
-added: v0.3.4
-deprecated: v0.11.3
--->
-
-The `cryptoStream.bytesWritten` property returns the total number of bytes
-written to the underlying socket *including* the bytes required for the
-implementation of the TLS protocol.
-
-### Class: `SecurePair`
-<!-- YAML
-added: v0.3.2
-deprecated: v0.11.3
--->
-
-> Stability: 0 - Deprecated: Use [`tls.TLSSocket`][] instead.
-
-Returned by [`tls.createSecurePair()`][].
-
-#### Event: `'secure'`
-<!-- YAML
-added: v0.3.2
-deprecated: v0.11.3
--->
-
-The `'secure'` event is emitted by the `SecurePair` object once a secure
-connection has been established.
-
-As with checking for the server
-[`'secureConnection'`](#tls_event_secureconnection)
-event, `pair.cleartext.authorized` should be inspected to confirm whether the
-certificate used is properly authorized.
-
-### `tls.createSecurePair([context][, isServer][, requestCert][, rejectUnauthorized][, options])`
-<!-- YAML
-added: v0.3.2
-deprecated: v0.11.3
-changes:
-  - version: v5.0.0
-    pr-url: https://github.com/nodejs/node/pull/2564
-    description: ALPN options are supported now.
--->
-
-> Stability: 0 - Deprecated: Use [`tls.TLSSocket`][] instead.
-
-* `context` {Object} A secure context object as returned by
-  `tls.createSecureContext()`
-* `isServer` {boolean} `true` to specify that this TLS connection should be
-  opened as a server.
-* `requestCert` {boolean} `true` to specify whether a server should request a
-  certificate from a connecting client. Only applies when `isServer` is `true`.
-* `rejectUnauthorized` {boolean} If not `false` a server automatically reject
-  clients with invalid certificates. Only applies when `isServer` is `true`.
-* `options`
-  * `enableTrace`: See [`tls.createServer()`][]
-  * `secureContext`: A TLS context object from [`tls.createSecureContext()`][]
-  * `isServer`: If `true` the TLS socket will be instantiated in server-mode.
-    **Default:** `false`.
-  * `server` {net.Server} A [`net.Server`][] instance
-  * `requestCert`: See [`tls.createServer()`][]
-  * `rejectUnauthorized`: See [`tls.createServer()`][]
-  * `ALPNProtocols`: See [`tls.createServer()`][]
-  * `SNICallback`: See [`tls.createServer()`][]
-  * `session` {Buffer} A `Buffer` instance containing a TLS session.
-  * `requestOCSP` {boolean} If `true`, specifies that the OCSP status request
-    extension will be added to the client hello and an `'OCSPResponse'` event
-    will be emitted on the socket before establishing a secure communication.
-
-Creates a new secure pair object with two streams, one of which reads and writes
-the encrypted data and the other of which reads and writes the cleartext data.
-Generally, the encrypted stream is piped to/from an incoming encrypted data
-stream and the cleartext one is used as a replacement for the initial encrypted
-stream.
-
-`tls.createSecurePair()` returns a `tls.SecurePair` object with `cleartext` and
-`encrypted` stream properties.
-
-Using `cleartext` has the same API as [`tls.TLSSocket`][].
-
-The `tls.createSecurePair()` method is now deprecated in favor of
-`tls.TLSSocket()`. For example, the code:
-
-```js
-pair = tls.createSecurePair(/* ... */);
-pair.encrypted.pipe(socket);
-socket.pipe(pair.encrypted);
-```
-
-can be replaced by:
-
-```js
-secureSocket = tls.TLSSocket(socket, options);
-```
-
-where `secureSocket` has the same API as `pair.cleartext`.
-
 [`'newSession'`]: #tls_event_newsession
 [`'resumeSession'`]: #tls_event_resumesession
 [`'secureConnect'`]: #tls_event_secureconnect
@@ -1950,6 +1977,7 @@ where `secureSocket` has the same API as `pair.cleartext`.
 [`SSL_export_keying_material`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_export_keying_material.html
 [`SSL_get_version`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
 [`crypto.getCurves()`]: crypto.html#crypto_crypto_getcurves
+[`Duplex`]: stream.html#stream_class_stream_duplex
 [`net.createServer()`]: net.html#net_net_createserver_options_connectionlistener
 [`net.Server.address()`]: net.html#net_server_address
 [`net.Server`]: net.html#net_class_net_server

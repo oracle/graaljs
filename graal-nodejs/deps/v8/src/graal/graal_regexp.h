@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,13 +46,18 @@
 
 class GraalRegExp : public GraalObject {
 public:
-    GraalRegExp(GraalIsolate* isolate, jobject java_regexp);
+    inline static GraalRegExp* Allocate(GraalIsolate* isolate, jobject java_regexp);
+    inline static GraalRegExp* Allocate(GraalIsolate* isolate, jobject java_regexp, void* placement);
     bool IsRegExp() const;
     v8::Local<v8::String> GetSource() const;
     v8::RegExp::Flags GetFlags() const;
     static v8::Local<v8::RegExp> New(v8::Local<v8::Context> context, v8::Local<v8::String> pattern, v8::RegExp::Flags flags);
 protected:
+    inline GraalRegExp(GraalIsolate* isolate, jobject java_regexp);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+    inline void Recycle() override {
+        delete this;
+    }
 };
 
 #endif /* GRAAL_REGEXP_H_ */

@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -118,7 +119,7 @@ public class ThrowNode extends StatementNode {
         InteropLibrary interop = interopNode;
         if (interop == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(3));
+            interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         if (interop.isException(exceptionObject)) {
             try {

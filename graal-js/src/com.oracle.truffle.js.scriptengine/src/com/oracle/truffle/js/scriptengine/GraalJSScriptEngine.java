@@ -93,6 +93,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static final String JS_PRINT_OPTION = "js.print";
     private static final String JS_GLOBAL_ARGUMENTS_OPTION = "js.global-arguments";
     private static final String NASHORN_COMPATIBILITY_MODE_SYSTEM_PROPERTY = "polyglot.js.nashorn-compat";
+    private static final String INSECURE_SCRIPTENGINE_ACCESS_SYSTEM_PROPERTY = "graaljs.insecure-scriptengine-access";
     static final String MAGIC_OPTION_PREFIX = "polyglot.js.";
 
     private static final HostAccess NASHORN_HOST_ACCESS = createNashornHostAccess();
@@ -100,12 +101,11 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static HostAccess createNashornHostAccess() {
         HostAccess.Builder b = HostAccess.newBuilder(HostAccess.ALL);
         // Last resort conversions similar to those in NashornBottomLinker.
-        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull() && v.isHostObject(), Value::toString, TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull() && !v.isHostObject(), Value::toString, TargetMappingPrecedence.LOWEST);
-        b.targetTypeMapping(Number.class, Integer.class, n -> true, n -> n.intValue(), TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Number.class, Double.class, n -> true, n -> n.doubleValue(), TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOW);
-        b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOW);
+        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull(), Value::toString, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Integer.class, n -> true, n -> n.intValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Double.class, n -> true, n -> n.doubleValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(String.class, Boolean.class, n -> true, n -> !n.isEmpty(), TargetMappingPrecedence.LOWEST);
         return b.build();
     }
@@ -277,6 +277,8 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
             contextConfigToUse.option(JS_GLOBAL_ARGUMENTS_OPTION, "true");
             if (NASHORN_COMPATIBILITY_MODE) {
                 updateForNashornCompatibilityMode(contextConfigToUse);
+            } else if (Boolean.getBoolean(INSECURE_SCRIPTENGINE_ACCESS_SYSTEM_PROPERTY)) {
+                updateForScriptEngineAccessibility(contextConfigToUse);
             }
         }
         this.factory = (factory == null) ? new GraalJSEngineFactory(engineToUse) : factory;
@@ -287,6 +289,10 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static void updateForNashornCompatibilityMode(Context.Builder builder) {
         builder.allowAllAccess(true);
         builder.allowHostAccess(NASHORN_HOST_ACCESS);
+    }
+
+    private static void updateForScriptEngineAccessibility(Context.Builder builder) {
+        builder.allowHostAccess(HostAccess.ALL);
     }
 
     static Context createDefaultContext(Context.Builder builder) {

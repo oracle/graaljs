@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,7 @@
 #include "graal_string.h"
 #include "graal_symbol.h"
 
-GraalSymbol::GraalSymbol(GraalIsolate* isolate, jobject java_symbol) : GraalName(isolate, java_symbol) {
-}
+#include "graal_symbol-inl.h"
 
 GraalHandleContent* GraalSymbol::CopyImpl(jobject java_object_copy) {
     return new GraalSymbol(Isolate(), java_object_copy);

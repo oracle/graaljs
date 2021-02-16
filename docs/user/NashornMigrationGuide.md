@@ -42,6 +42,7 @@ import org.graalvm.polyglot.Context;
 try (Context context = Context.newBuilder().allowExperimentalOptions(true).option("js.nashorn-compat", "true").build()) {
     context.eval("js", "print(__LINE__)");
 }
+```
 
 3&#46; by using a system property when starting a Java application (remember to enable `allowExperimentalOptions` on the `Context.Builder` in your application as well):
 ```shell

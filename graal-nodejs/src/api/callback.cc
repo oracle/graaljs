@@ -160,12 +160,16 @@ MaybeLocal<Value> InternalMakeCallback(Environment* env,
 
   Local<Function> hook_cb = env->async_hooks_callback_trampoline();
   int flags = InternalCallbackScope::kNoFlags;
-  int hook_count = 0;
+  bool use_async_hooks_trampoline = false;
+  AsyncHooks* async_hooks = env->async_hooks();
   if (!hook_cb.IsEmpty()) {
+    // Use the callback trampoline if there are any before or after hooks, or
+    // we can expect some kind of usage of async_hooks.executionAsyncResource().
     flags = InternalCallbackScope::kSkipAsyncHooks;
-    AsyncHooks* async_hooks = env->async_hooks();
-    hook_count = async_hooks->fields()[AsyncHooks::kBefore] +
-                 async_hooks->fields()[AsyncHooks::kAfter];
+    use_async_hooks_trampoline =
+        async_hooks->fields()[AsyncHooks::kBefore] +
+        async_hooks->fields()[AsyncHooks::kAfter] +
+        async_hooks->fields()[AsyncHooks::kUsesExecutionAsyncResource] > 0;
   }
 
   InternalCallbackScope scope(env, resource, asyncContext, flags);
@@ -175,12 +179,13 @@ MaybeLocal<Value> InternalMakeCallback(Environment* env,
 
   MaybeLocal<Value> ret;
 
-  if (hook_count != 0) {
-    MaybeStackBuffer<Local<Value>, 16> args(2 + argc);
+  if (use_async_hooks_trampoline) {
+    MaybeStackBuffer<Local<Value>, 16> args(3 + argc);
     args[0] = v8::Number::New(env->isolate(), asyncContext.async_id);
-    args[1] = callback;
+    args[1] = resource;
+    args[2] = callback;
     for (int i = 0; i < argc; i++) {
-      args[i + 2] = argv[i];
+      args[i + 3] = argv[i];
     }
     ret = hook_cb->Call(env->context(), recv, args.length(), &args[0]);
   } else {
@@ -220,10 +225,19 @@ MaybeLocal<Value> MakeCallback(Isolate* isolate,
                                int argc,
                                Local<Value> argv[],
                                async_context asyncContext) {
-  Local<Value> callback_v =
-      recv->Get(isolate->GetCurrentContext(), symbol).ToLocalChecked();
-  if (callback_v.IsEmpty()) return Local<Value>();
-  if (!callback_v->IsFunction()) return Local<Value>();
+  // Check can_call_into_js() first because calling Get() might do so.
+  Environment* env = Environment::GetCurrent(recv->CreationContext());
+  CHECK_NOT_NULL(env);
+  if (!env->can_call_into_js()) return Local<Value>();
+
+  Local<Value> callback_v;
+  if (!recv->Get(isolate->GetCurrentContext(), symbol).ToLocal(&callback_v))
+    return Local<Value>();
+  if (!callback_v->IsFunction()) {
+    // This used to return an empty value, but Undefined() makes more sense
+    // since no exception is pending here.
+    return Undefined(isolate);
+  }
   Local<Function> callback = callback_v.As<Function>();
   return MakeCallback(isolate, recv, callback, argc, argv, asyncContext);
 }

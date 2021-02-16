@@ -13,7 +13,6 @@ using v8::Isolate;
 using v8::Object;
 using v8::Platform;
 using v8::Task;
-using node::tracing::TracingController;
 
 namespace {
 
@@ -320,14 +319,23 @@ void PerIsolatePlatformData::DecreaseHandleCount() {
 }
 
 NodePlatform::NodePlatform(int thread_pool_size,
-                           TracingController* tracing_controller) {
-  if (tracing_controller) {
+                           v8::TracingController* tracing_controller) {
+  if (tracing_controller != nullptr) {
     tracing_controller_ = tracing_controller;
   } else {
-    tracing_controller_ = new TracingController();
+    tracing_controller_ = new v8::TracingController();
   }
+  // TODO(addaleax): It's a bit icky that we use global state here, but we can't
+  // really do anything about it unless V8 starts exposing a way to access the
+  // current v8::Platform instance.
+  SetTracingController(tracing_controller_);
+  DCHECK_EQ(GetTracingController(), tracing_controller_);
   worker_thread_task_runner_ =
       std::make_shared<WorkerThreadsTaskRunner>(thread_pool_size);
+}
+
+NodePlatform::~NodePlatform() {
+  Shutdown();
 }
 
 void NodePlatform::RegisterIsolate(Isolate* isolate, uv_loop_t* loop) {
@@ -359,6 +367,8 @@ void NodePlatform::AddIsolateFinishedCallback(Isolate* isolate,
 }
 
 void NodePlatform::Shutdown() {
+  if (has_shut_down_) return;
+  has_shut_down_ = true;
   worker_thread_task_runner_->Shutdown();
 
   {
@@ -402,6 +412,7 @@ void PerIsolatePlatformData::RunForegroundTask(uv_timer_t* handle) {
 
 void NodePlatform::DrainTasks(Isolate* isolate) {
   std::shared_ptr<PerIsolatePlatformData> per_isolate = ForIsolate(isolate);
+  if (!per_isolate) return;
 
   do {
     // Worker tasks aren't associated with an Isolate.
@@ -468,7 +479,9 @@ NodePlatform::ForIsolate(Isolate* isolate) {
 }
 
 bool NodePlatform::FlushForegroundTasks(Isolate* isolate) {
-  return ForIsolate(isolate)->FlushForegroundTasksInternal();
+  std::shared_ptr<PerIsolatePlatformData> per_isolate = ForIsolate(isolate);
+  if (!per_isolate) return false;
+  return per_isolate->FlushForegroundTasksInternal();
 }
 
 bool NodePlatform::IdleTasksEnabled(Isolate* isolate) { return false; }
@@ -487,7 +500,7 @@ double NodePlatform::CurrentClockTimeMillis() {
   return SystemClockTimeMillis();
 }
 
-TracingController* NodePlatform::GetTracingController() {
+v8::TracingController* NodePlatform::GetTracingController() {
   CHECK_NOT_NULL(tracing_controller_);
   return tracing_controller_;
 }

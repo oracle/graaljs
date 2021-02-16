@@ -16,5 +16,3 @@ assertTrue(Polyglot.isInstantiable(javaObjectClass));
 // It throws for non-callable arguments (but instantiable
 // foreign objects should be callable).
 Function.prototype.toString.call(javaObjectClass);
-
-true;

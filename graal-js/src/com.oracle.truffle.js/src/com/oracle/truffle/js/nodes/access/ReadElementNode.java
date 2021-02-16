@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
-import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JSTypesGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -143,7 +142,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        if (materializedTags.contains(ReadElementTag.class) && !alreadyMaterialized()) {
+        if (materializedTags.contains(ReadElementTag.class) && materializationNeeded()) {
             JavaScriptNode clonedTarget = targetNode == null || targetNode.hasSourceSection() ? targetNode : JSTaggedExecutionNode.createForInput(targetNode, this, materializedTags);
             JavaScriptNode clonedIndex = indexNode == null || indexNode.hasSourceSection() ? indexNode : JSTaggedExecutionNode.createForInput(indexNode, this, materializedTags);
             if (clonedTarget == targetNode && clonedIndex == indexNode) {
@@ -162,8 +161,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         return this;
     }
 
-    private boolean alreadyMaterialized() {
-        return JSNodeUtil.isTaggedNode(targetNode) || JSNodeUtil.isTaggedNode(indexNode);
+    private boolean materializationNeeded() {
+        // Materialization is needed when source sections are missing.
+        return (targetNode != null && !targetNode.hasSourceSection()) || (indexNode != null && !indexNode.hasSourceSection());
     }
 
     @Override
@@ -745,7 +745,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         private Object getProperty(DynamicObject targetObject, Object objIndex, Object receiver, Object defaultValue) {
-            return JSObject.getOrDefault(targetObject, objIndex, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(targetObject, objIndex, receiver, defaultValue, jsclassProfile, this);
         }
 
         private JSObjectReadElementNonArrayTypeCacheNode getNonArrayNode() {
@@ -882,7 +882,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         protected Object readOutOfBounds(DynamicObject target, long index, Object receiver, Object defaultValue, JSContext context) {
             if (needGetProperty.profile(needsSlowGet(target, context))) {
-                return JSObject.getOrDefault(target, index, receiver, defaultValue, outOfBoundsClassProfile);
+                return JSObject.getOrDefault(target, index, receiver, defaultValue, outOfBoundsClassProfile, this);
             } else {
                 return defaultValue;
             }
@@ -909,7 +909,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
-            return JSObject.getOrDefault(target, index, receiver, defaultValue, classProfile);
+            return JSObject.getOrDefault(target, index, receiver, defaultValue, classProfile, this);
         }
     }
 
@@ -980,8 +980,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (materializeResultNode == null || lazyRegexResultNode == null || lazyRegexResultOriginalInputNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 materializeResultNode = insert(TRegexUtil.TRegexMaterializeResultNode.create());
-                lazyRegexResultNode = insert(DynamicObjectLibrary.getFactory().createDispatched(5));
-                lazyRegexResultOriginalInputNode = insert(DynamicObjectLibrary.getFactory().createDispatched(5));
+                lazyRegexResultNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+                lazyRegexResultOriginalInputNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
             }
             return materializeResultNode;
         }
@@ -1345,7 +1345,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(JSRuntime.charAt(charSequence, intIndex));
                 }
             }
-            return JSObject.getOrDefault(JSString.create(root.context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSString.create(root.context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1354,7 +1354,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (stringIndexInBounds.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 return String.valueOf(JSRuntime.charAt(charSequence, index));
             } else {
-                return JSObject.getOrDefault(JSString.create(root.context, charSequence), index, receiver, defaultValue, jsclassProfile);
+                return JSObject.getOrDefault(JSString.create(root.context, charSequence), index, receiver, defaultValue, jsclassProfile, root);
             }
         }
 
@@ -1385,7 +1385,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return String.valueOf(str.charAt(intIndex));
                 }
             }
-            return JSObject.getOrDefault(JSString.create(root.context, str), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSString.create(root.context, str), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1394,7 +1394,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             if (stringIndexInBounds.profile(index >= 0 && index < str.length())) {
                 return String.valueOf(str.charAt(index));
             } else {
-                return JSObject.getOrDefault(JSString.create(root.context, str), index, receiver, defaultValue, jsclassProfile);
+                return JSObject.getOrDefault(JSString.create(root.context, str), index, receiver, defaultValue, jsclassProfile, root);
             }
         }
 
@@ -1415,13 +1415,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             Number charSequence = (Number) target;
-            return JSObject.getOrDefault(JSNumber.create(root.context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSNumber.create(root.context, charSequence), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
             Number charSequence = (Number) target;
-            return JSObject.getOrDefault(JSNumber.create(root.context, charSequence), index, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSNumber.create(root.context, charSequence), index, receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1438,13 +1438,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             Boolean bool = (Boolean) target;
-            return JSObject.getOrDefault(JSBoolean.create(root.context, bool), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBoolean.create(root.context, bool), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
             Boolean bool = (Boolean) target;
-            return JSObject.getOrDefault(JSBoolean.create(root.context, bool), index, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBoolean.create(root.context, bool), index, receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1462,13 +1462,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             Symbol symbol = (Symbol) target;
-            return JSObject.getOrDefault(JSSymbol.create(root.context, symbol), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSSymbol.create(root.context, symbol), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
             Symbol symbol = (Symbol) target;
-            return JSObject.getOrDefault(JSSymbol.create(root.context, symbol), index, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSSymbol.create(root.context, symbol), index, receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1486,13 +1486,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
             BigInt bigInt = (BigInt) target;
-            return JSObject.getOrDefault(JSBigInt.create(root.context, bigInt), toPropertyKey(index), receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBigInt.create(root.context, bigInt), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
             BigInt bigInt = (BigInt) target;
-            return JSObject.getOrDefault(JSBigInt.create(root.context, bigInt), index, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(JSBigInt.create(root.context, bigInt), index, receiver, defaultValue, jsclassProfile, root);
         }
 
         @Override
@@ -1521,8 +1521,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.targetClass = targetClass;
             this.exportKeyNode = ExportValueNode.create();
             this.importValueNode = ImportValueNode.create();
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
-            this.keyInterop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.toStringNode = JSToStringNode.create();
         }
 
@@ -1603,7 +1603,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
             if (getterInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
+                getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
                 return null;

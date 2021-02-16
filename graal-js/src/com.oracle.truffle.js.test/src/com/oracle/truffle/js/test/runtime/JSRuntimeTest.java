@@ -66,26 +66,36 @@ import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
+import com.oracle.truffle.js.runtime.builtins.JSBigIntObject;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
+import com.oracle.truffle.js.runtime.builtins.JSBooleanObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSStringObject;
+import com.oracle.truffle.js.runtime.builtins.JSSymbolObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.polyglot.ForeignBoxedObject;
+import com.oracle.truffle.js.test.polyglot.ForeignDynamicObject;
+import com.oracle.truffle.js.test.polyglot.ForeignNull;
 import com.oracle.truffle.js.test.polyglot.ForeignTestMap;
 
 public class JSRuntimeTest extends JSTest {
@@ -469,10 +479,29 @@ public class JSRuntimeTest extends JSTest {
     public void testToObject() {
         JSContext ctx = testHelper.getJSContext();
 
-        // toObjectFromPrimitive(Object)
-        assertTrue(JSRuntime.toObject(ctx, true) != null);
-        assertTrue(JSRuntime.toObject(ctx, "String") != null);
-        assertTrue(JSRuntime.toObject(ctx, (float) 3.14) != null);
+        assertThrowsTypeError(() -> JSRuntime.toObject(ctx, Null.instance));
+        assertThrowsTypeError(() -> JSRuntime.toObject(ctx, Undefined.instance));
+
+        assertTrue(JSRuntime.toObject(ctx, true) instanceof JSBooleanObject);
+        assertTrue(JSRuntime.toObject(ctx, "String") instanceof JSStringObject);
+        assertTrue(JSRuntime.toObject(ctx, Math.PI) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ctx, Symbol.create("sym")) instanceof JSSymbolObject);
+        assertTrue(JSRuntime.toObject(ctx, BigInt.valueOf(1)) instanceof JSBigIntObject);
+
+        Object object = JSOrdinary.create(ctx);
+        assertSame(object, JSRuntime.toObject(ctx, object));
+
+        object = new ForeignDynamicObject();
+        assertSame(object, JSRuntime.toObject(ctx, object));
+
+        assertThrowsTypeError(() -> JSRuntime.toObject(ctx, new ForeignNull()));
+
+        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew(false)) instanceof JSBooleanObject);
+        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew(42)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew((byte) 42)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew(Math.E)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew((float) Math.E)) instanceof JSNumberObject);
+        assertTrue(JSRuntime.toObject(ctx, ForeignBoxedObject.createNew("abc")) instanceof JSStringObject);
     }
 
     @Test
@@ -533,4 +562,39 @@ public class JSRuntimeTest extends JSTest {
         assertTrue(exportedLazyString instanceof String);
         assertEquals(createLazyString().toString(), exportedLazyString);
     }
+
+    private static void assertThrowsTypeError(Runnable runnable) {
+        try {
+            runnable.run();
+            fail("TypeError expected");
+        } catch (JSException ex) {
+            assertSame(JSErrorType.TypeError, ex.getErrorType());
+        }
+    }
+
+    @Test
+    public void testRequireObjectCoercible() {
+        JSContext context = testHelper.getJSContext();
+
+        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(Null.instance, context));
+        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(Undefined.instance, context));
+
+        JSRuntime.requireObjectCoercible(true, context);
+        JSRuntime.requireObjectCoercible(42, context);
+        JSRuntime.requireObjectCoercible(Math.PI, context);
+        JSRuntime.requireObjectCoercible(SafeInteger.valueOf(9876543210L), context);
+        JSRuntime.requireObjectCoercible("foo", context);
+        JSRuntime.requireObjectCoercible(JSLazyString.create("long left part", "long right part"), context);
+        JSRuntime.requireObjectCoercible(Symbol.create("private"), context);
+        JSRuntime.requireObjectCoercible(BigInt.valueOf(0), context);
+        JSRuntime.requireObjectCoercible(JSOrdinary.create(context), context);
+
+        assertThrowsTypeError(() -> JSRuntime.requireObjectCoercible(new ForeignNull(), context));
+
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(43), context);
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(Math.E), context);
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew(false), context);
+        JSRuntime.requireObjectCoercible(ForeignBoxedObject.createNew("bar"), context);
+    }
+
 }

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.test.instrumentation;
 
 import org.junit.Test;
 
-import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.FunctionCallTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
@@ -128,25 +127,25 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
     @Test
     public void incLocal() {
         evalAllTags("function foo(a) { var x = a++; return x; }; foo(42);");
-        assertAllLocalOperationsPost("+", 43, 42);
+        assertAllLocalOperationsPost("++", 43, 42);
     }
 
     @Test
     public void decLocal() {
         evalAllTags("function foo(a) { var x = a--; return x; }; foo(42);");
-        assertAllLocalOperationsPost("-", 41, 42);
+        assertAllLocalOperationsPost("--", 41, 42);
     }
 
     @Test
     public void incLocalPre() {
         evalAllTags("function foo(a) { var x = ++a; return x; }; foo(42);");
-        assertAllLocalOperationsPost("+", 43, 43);
+        assertAllLocalOperationsPost("++", 43, 43);
     }
 
     @Test
     public void decLocalPre() {
         evalAllTags("function foo(a) { var x = --a; return x; }; foo(42);");
-        assertAllLocalOperationsPost("-", 41, 41);
+        assertAllLocalOperationsPost("--", 41, 41);
     }
 
     private void assertAllLocalOperationsPost(String operator, int valueSet, int exprReturns) {
@@ -179,14 +178,12 @@ public class IncDecOperationTest extends FineGrainedAccessTest {
                 enter(WriteVariableTag.class, (e4, p4) -> {
                     assertAttribute(e4, NAME, "a");
                     // De-sugared to a = a + 1;
-                    enter(BinaryOperationTag.class, (e5, p5) -> {
+                    enter(UnaryOperationTag.class, (e5, p5) -> {
                         assertAttribute(e5, OPERATOR, operator);
                         enter(ReadVariableTag.class, (e6, p6) -> {
                             assertAttribute(e6, NAME, "a");
                         }).exit(assertReturnValue(42));
                         p5.input(42);
-                        enter(LiteralTag.class).exit(assertReturnValue(1));
-                        p5.input(1);
                     }).exit();
                     // Write to 'a' sets new value
                     p4.input(valueSet);

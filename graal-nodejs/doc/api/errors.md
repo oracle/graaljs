@@ -224,7 +224,7 @@ above `constructorOpt`, including `constructorOpt`, will be omitted from the
 generated stack trace.
 
 The `constructorOpt` argument is useful for hiding implementation
-details of error generation from an end user. For instance:
+details of error generation from the user. For instance:
 
 ```js
 function MyError() {
@@ -391,8 +391,7 @@ doesNotExist;
 ```
 
 Unless an application is dynamically generating and running code,
-`ReferenceError` instances should always be considered a bug in the code
-or its dependencies.
+`ReferenceError` instances indicate a bug in the code or its dependencies.
 
 ## Class: `SyntaxError`
 
@@ -561,8 +560,7 @@ program. For a comprehensive list, see the [`errno`(3) man page][].
 * Extends {errors.Error}
 
 Indicates that a provided argument is not an allowable type. For example,
-passing a function to a parameter which expects a string would be considered
-a `TypeError`.
+passing a function to a parameter which expects a string would be a `TypeError`.
 
 ```js
 require('url').parse(() => { });
@@ -1359,13 +1357,13 @@ An invalid or unknown file encoding was passed.
 <a id="ERR_INVALID_PACKAGE_CONFIG"></a>
 ### `ERR_INVALID_PACKAGE_CONFIG`
 
-An invalid `package.json` file was found which failed parsing.
+An invalid [`package.json`][] file was found which failed parsing.
 
 <a id="ERR_INVALID_PACKAGE_TARGET"></a>
 ### `ERR_INVALID_PACKAGE_TARGET`
 
-The `package.json` [exports][] field contains an invalid target mapping value
-for the attempted module resolution.
+The `package.json` [`"exports"`][] field contains an invalid target mapping
+value for the attempted module resolution.
 
 <a id="ERR_INVALID_PERFORMANCE_MARK"></a>
 ### `ERR_INVALID_PERFORMANCE_MARK`
@@ -1541,6 +1539,17 @@ behavior. See the documentation for [policy][] manifests for more information.
 An attempt was made to allocate memory (usually in the C++ layer) but it
 failed.
 
+<a id="ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE"></a>
+### `ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE`
+<!-- YAML
+added: v12.19.0
+-->
+
+A message posted to a [`MessagePort`][] could not be deserialized in the target
+[vm][] `Context`. Not all Node.js objects can be successfully instantiated in
+any context at this time, and attempting to transfer them using `postMessage()`
+can fail on the receiving side in that case.
+
 <a id="ERR_METHOD_NOT_IMPLEMENTED"></a>
 ### `ERR_METHOD_NOT_IMPLEMENTED`
 
@@ -1572,8 +1581,9 @@ is thrown if a required option is missing.
 <a id="ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST"></a>
 ### `ERR_MISSING_MESSAGE_PORT_IN_TRANSFER_LIST`
 
-A `MessagePort` was found in the object passed to a `postMessage()` call,
-but not provided in the `transferList` for that call.
+An object that needs to be explicitly listed in the `transferList` argument
+was found in the object passed to a `postMessage()` call, but not provided in
+the `transferList` for that call. Usually, this is a `MessagePort`.
 
 <a id="ERR_MISSING_PASSPHRASE"></a>
 ### `ERR_MISSING_PASSPHRASE`
@@ -1673,10 +1683,16 @@ A non-context-aware native addon was loaded in a process that disallows them.
 
 A given value is out of the accepted range.
 
+<a id="ERR_PACKAGE_IMPORT_NOT_DEFINED"></a>
+### `ERR_PACKAGE_IMPORT_NOT_DEFINED`
+
+The `package.json` [`"imports"`][] field does not define the given internal
+package specifier mapping.
+
 <a id="ERR_PACKAGE_PATH_NOT_EXPORTED"></a>
 ### `ERR_PACKAGE_PATH_NOT_EXPORTED`
 
-The `package.json` [exports][] field does not export the requested subpath.
+The `package.json` [`"exports"`][] field does not export the requested subpath.
 Because exports are encapsulated, private internal modules that are not exported
 cannot be imported through the package resolution, unless using an absolute URL.
 
@@ -1698,8 +1714,8 @@ An attempt was made to `require()` an [ES Module][].
 <a id="ERR_SCRIPT_EXECUTION_INTERRUPTED"></a>
 ### `ERR_SCRIPT_EXECUTION_INTERRUPTED`
 
-Script execution was interrupted by `SIGINT` (For example, when Ctrl+C was
-pressed).
+Script execution was interrupted by `SIGINT` (For example,
+<kbd>Ctrl</kbd>+<kbd>C</kbd> was pressed.)
 
 <a id="ERR_SCRIPT_EXECUTION_TIMEOUT"></a>
 ### `ERR_SCRIPT_EXECUTION_TIMEOUT`
@@ -1931,7 +1947,7 @@ An attempt was made to issue Server Name Indication from a TLS server-side
 socket, which is only valid from a client.
 
 <a id="ERR_TLS_PSK_SET_IDENTIY_HINT_FAILED"></a>
-### ERR_TLS_PSK_SET_IDENTIY_HINT_FAILED
+### `ERR_TLS_PSK_SET_IDENTIY_HINT_FAILED`
 
 Failed to set PSK identity hint. Hint may be too long.
 
@@ -1971,6 +1987,12 @@ A `Transform` stream finished with data still in the write buffer.
 ### `ERR_TTY_INIT_FAILED`
 
 The initialization of a TTY failed due to a system error.
+
+<a id="ERR_UNAVAILABLE_DURING_EXIT"></a>
+### `ERR_UNAVAILABLE_DURING_EXIT`
+
+Function was called within a [`process.on('exit')`][] handler that shouldn't be
+called within [`process.on('exit')`][] handler.
 
 <a id="ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET"></a>
 ### `ERR_UNCAUGHT_EXCEPTION_CAPTURE_ALREADY_SET`
@@ -2033,9 +2055,9 @@ signal (such as [`subprocess.kill()`][]).
 <a id="ERR_UNSUPPORTED_DIR_IMPORT"></a>
 ### `ERR_UNSUPPORTED_DIR_IMPORT`
 
-`import` a directory URL is unsupported. Instead, you can
+`import` a directory URL is unsupported. Instead,
 [self-reference a package using its name][] and [define a custom subpath][] in
-the `"exports"` field of the `package.json` file.
+the [`"exports"`][] field of the [`package.json`][] file.
 
 <!-- eslint-skip -->
 ```js
@@ -2048,11 +2070,6 @@ import 'package-name'; // supported
 ### `ERR_UNSUPPORTED_ESM_URL_SCHEME`
 
 `import` with URL schemes other than `file` and `data` is unsupported.
-
-<a id="ERR_V8BREAKITERATOR"></a>
-### `ERR_V8BREAKITERATOR`
-
-The V8 `BreakIterator` API was used but the full ICU data set is not installed.
 
 <a id="ERR_VALID_PERFORMANCE_ENTRY_TYPE"></a>
 ### `ERR_VALID_PERFORMANCE_ENTRY_TYPE`
@@ -2178,6 +2195,17 @@ Too much HTTP header data was received. In order to protect against malicious or
 malconfigured clients, if more than 8KB of HTTP header data is received then
 HTTP parsing will abort without a request or response object being created, and
 an `Error` with this code will be emitted.
+
+<a id="HPE_UNEXPECTED_CONTENT_LENGTH"></a>
+### `HPE_UNEXPECTED_CONTENT_LENGTH`
+
+Server is sending both a `Content-Length` header and `Transfer-Encoding: chunked`.
+
+`Transfer-Encoding: chunked` allows the server to maintain an HTTP persistent
+connection for dynamically generated content.
+In this case, the `Content-Length` HTTP header cannot be used.
+
+Use `Content-Length` or `Transfer-Encoding: chunked`.
 
 <a id="MODULE_NOT_FOUND"></a>
 ### `MODULE_NOT_FOUND`
@@ -2410,6 +2438,11 @@ An attempt was made to launch a Node.js process with an unknown `stdout` or
 `stderr` file type. This error is usually an indication of a bug within Node.js
 itself, although it is possible for user code to trigger it.
 
+<a id="ERR_V8BREAKITERATOR"></a>
+### `ERR_V8BREAKITERATOR`
+
+The V8 `BreakIterator` API was used but the full ICU data set is not installed.
+
 <a id="ERR_VALUE_OUT_OF_RANGE"></a>
 ### `ERR_VALUE_OUT_OF_RANGE`
 <!-- YAML
@@ -2434,94 +2467,13 @@ removed: v10.0.0
 Used when an attempt is made to use a `zlib` object after it has already been
 closed.
 
-### Other error codes
-
-These errors have never been released, but had been present on master between
-releases.
-
-<a id="ERR_ENTRY_TYPE_MISMATCH"></a>
-#### `ERR_ENTRY_TYPE_MISMATCH`
-
-> Stability: 1 - Experimental
-
-The `--entry-type=commonjs` flag was used to attempt to execute an `.mjs` file
-or a `.js` file where the nearest parent `package.json` contains
-`"type": "module"`; or
-the `--entry-type=module` flag was used to attempt to execute a `.cjs` file or
-a `.js` file where the nearest parent `package.json` either lacks a `"type"`
-field or contains `"type": "commonjs"`.
-
-<a id="ERR_FS_WATCHER_ALREADY_STARTED"></a>
-#### `ERR_FS_WATCHER_ALREADY_STARTED`
-
-An attempt was made to start a watcher returned by `fs.watch()` that has
-already been started.
-
-<a id="ERR_FS_WATCHER_NOT_STARTED"></a>
-#### `ERR_FS_WATCHER_NOT_STARTED`
-
-An attempt was made to initiate operations on a watcher returned by
-`fs.watch()` that has not yet been started.
-
-<a id="ERR_HTTP2_ALREADY_SHUTDOWN"></a>
-#### `ERR_HTTP2_ALREADY_SHUTDOWN`
-
-Occurs with multiple attempts to shutdown an HTTP/2 session.
-
-<a id="ERR_HTTP2_ERROR"></a>
-#### `ERR_HTTP2_ERROR`
-
-A non-specific HTTP/2 error has occurred.
-
-<a id="ERR_INVALID_REPL_HISTORY"></a>
-#### `ERR_INVALID_REPL_HISTORY`
-
-Used in the `repl` in case the old history file is used and an error occurred
-while trying to read and parse it.
-
-<a id="ERR_INVALID_REPL_TYPE"></a>
-#### `ERR_INVALID_REPL_TYPE`
-
-> Stability: 1 - Experimental
-
-The `--entry-type=...` flag is not compatible with the Node.js REPL.
-
-<a id="ERR_MISSING_DYNAMIC_INSTANTIATE_HOOK"></a>
-#### `ERR_MISSING_DYNAMIC_INSTANTIATE_HOOK`
-
-Used when an [ES Module][] loader hook specifies `format: 'dynamic'` but does
-not provide a `dynamicInstantiate` hook.
-
-<a id="ERR_STREAM_HAS_STRINGDECODER"></a>
-#### `ERR_STREAM_HAS_STRINGDECODER`
-
-Used to prevent an abort if a string decoder was set on the Socket.
-
-```js
-const Socket = require('net').Socket;
-const instance = new Socket();
-
-instance.setEncoding('utf8');
-```
-
-<a id="ERR_STRING_TOO_LARGE"></a>
-#### `ERR_STRING_TOO_LARGE`
-
-An attempt has been made to create a string larger than the maximum allowed
-size.
-
-<a id="ERR_TTY_WRITABLE_NOT_READABLE"></a>
-#### `ERR_TTY_WRITABLE_NOT_READABLE`
-
-This `Error` is thrown when a read is attempted on a TTY `WriteStream`,
-such as `process.stdout.on('data')`.
-
 [`'uncaughtException'`]: process.html#process_event_uncaughtexception
 [`--disable-proto=throw`]: cli.html#cli_disable_proto_mode
 [`--force-fips`]: cli.html#cli_force_fips
 [`Class: assert.AssertionError`]: assert.html#assert_class_assert_assertionerror
 [`ERR_INVALID_ARG_TYPE`]: #ERR_INVALID_ARG_TYPE
 [`EventEmitter`]: events.html#events_class_eventemitter
+[`MessagePort`]: worker_threads.html#worker_threads_class_messageport
 [`Object.getPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getPrototypeOf
 [`Object.setPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/setPrototypeOf
 [`REPL`]: repl.html
@@ -2536,7 +2488,7 @@ such as `process.stdout.on('data')`.
 [`dgram.createSocket()`]: dgram.html#dgram_dgram_createsocket_options_callback
 [`dgram.disconnect()`]: dgram.html#dgram_socket_disconnect
 [`dgram.remoteAddress()`]: dgram.html#dgram_socket_remoteaddress
-[`errno`(3) man page]: http://man7.org/linux/man-pages/man3/errno.3.html
+[`errno`(3) man page]: https://man7.org/linux/man-pages/man3/errno.3.html
 [`fs.Dir`]: fs.html#fs_class_fs_dir
 [`fs.readFileSync`]: fs.html#fs_fs_readfilesync_path_options
 [`fs.readdir`]: fs.html#fs_fs_readdir_path_options_callback
@@ -2548,10 +2500,11 @@ such as `process.stdout.on('data')`.
 [`hash.update()`]: crypto.html#crypto_hash_update_data_inputencoding
 [`http`]: http.html
 [`https`]: https.html
-[`libuv Error handling`]: http://docs.libuv.org/en/v1.x/errors.html
+[`libuv Error handling`]: https://docs.libuv.org/en/v1.x/errors.html
 [`net`]: net.html
-[`new URL(input)`]: url.html#url_constructor_new_url_input_base
-[`new URLSearchParams(iterable)`]: url.html#url_constructor_new_urlsearchparams_iterable
+[`new URL(input)`]: url.html#url_new_url_input_base
+[`new URLSearchParams(iterable)`]: url.html#url_new_urlsearchparams_iterable
+[`process.on('exit')`]: process.html#Event:-`'exit'`
 [`process.send()`]: process.html#process_process_send_message_sendhandle_options_callback
 [`process.setUncaughtExceptionCaptureCallback()`]: process.html#process_process_setuncaughtexceptioncapturecallback_fn
 [`readable._read()`]: stream.html#stream_readable_read_size_1
@@ -2576,13 +2529,15 @@ such as `process.stdout.on('data')`.
 [crypto digest algorithm]: crypto.html#crypto_crypto_gethashes
 [domains]: domain.html
 [event emitter-based]: events.html#events_class_eventemitter
-[exports]: esm.html#esm_package_entry_points
+[`package.json`]: packages.html#packages_node_js_package_json_field_definitions
+[`"exports"`]: packages.html#packages_exports
 [file descriptors]: https://en.wikipedia.org/wiki/File_descriptor
 [policy]: policy.html
 [stream-based]: stream.html
-[syscall]: http://man7.org/linux/man-pages/man2/syscalls.2.html
+[syscall]: https://man7.org/linux/man-pages/man2/syscalls.2.html
 [Subresource Integrity specification]: https://www.w3.org/TR/SRI/#the-integrity-attribute
 [try-catch]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/try...catch
 [vm]: vm.html
-[self-reference a package using its name]: esm.html#esm_self_referencing_a_package_using_its_name
-[define a custom subpath]: esm.html#esm_subpath_exports
+[self-reference a package using its name]: packages.html#packages_self_referencing_a_package_using_its_name
+[define a custom subpath]: packages.html#packages_subpath_exports
+[`"imports"`]: packages.html#packages_imports

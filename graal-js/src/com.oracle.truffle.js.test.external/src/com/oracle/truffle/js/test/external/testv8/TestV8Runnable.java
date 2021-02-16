@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,15 +76,11 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
+    private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
 
-    private static final String[] ES2021_FLAGS = new String[]{
-                    "--harmony-logical-assignment",
-                    "--harmony-promise-any",
+    private static final String[] ES2022_FLAGS = new String[]{
                     "--harmony-regexp-match-indices",
-                    "--harmony-string-replaceall",
-                    "--harmony-top-level-await",
-                    "--harmony-weak-refs",
-                    "--harmony-weak-refs-with-cleanup-some"
+                    "--harmony-top-level-await"
     };
 
     private static final String FLAGS_PREFIX = "// Flags: ";
@@ -113,6 +109,9 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(HARMONY_SHAREDARRAYBUFFER)) {
             extraOptions.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
         }
+        if (suite.getConfig().isPolyglot()) {
+            extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
+        }
 
         suite.logVerbose("Starting: " + getName());
 
@@ -124,14 +123,14 @@ public class TestV8Runnable extends TestRunnable {
         int minESVersion = suite.getConfig().getMinESVersion();
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            boolean needsES2021 = false;
-            for (String es2021Flag : ES2021_FLAGS) {
-                if (flags.contains(es2021Flag)) {
-                    needsES2021 = true;
+            boolean needsES2022 = false;
+            for (String es2022Flag : ES2022_FLAGS) {
+                if (flags.contains(es2022Flag)) {
+                    needsES2022 = true;
                     break;
                 }
             }
-            ecmaVersion = TestFile.EcmaVersion.forVersions(needsES2021 ? JSConfig.ECMAScript2021 : minESVersion);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(needsES2022 ? JSConfig.ECMAScript2022 : minESVersion);
         } else {
             ecmaVersion = ecmaVersion.filterByMinVersion(minESVersion);
         }

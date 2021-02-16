@@ -11,6 +11,7 @@
     'node_use_bundled_v8%': 'true',
     'node_shared%': 'false',
     'force_dynamic_crt%': 0,
+    'ossfuzz' : 'false',
     'node_module_version%': '',
     'node_shared_brotli%': 'false',
     'node_shared_zlib%': 'false',
@@ -96,6 +97,7 @@
       'lib/zlib.js',
       'lib/internal/assert.js',
       'lib/internal/assert/assertion_error.js',
+      'lib/internal/assert/calltracker.js',
       'lib/internal/async_hooks.js',
       'lib/internal/buffer.js',
       'lib/internal/cli_table.js',
@@ -127,7 +129,7 @@
       'lib/internal/dtrace.js',
       'lib/internal/encoding.js',
       'lib/internal/errors.js',
-      'lib/internal/error-serdes.js',
+      'lib/internal/error_serdes.js',
       'lib/internal/fixed_queue.js',
       'lib/internal/freelist.js',
       'lib/internal/freeze_intrinsics.js',
@@ -218,6 +220,7 @@
       'lib/internal/vm/module.js',
       'lib/internal/worker.js',
       'lib/internal/worker/io.js',
+      'lib/internal/worker/js_transferable.js',
       'lib/internal/watchdog.js',
       'lib/internal/streams/lazy_transform.js',
       'lib/internal/streams/async_iterator.js',
@@ -250,6 +253,8 @@
       'deps/acorn-plugins/acorn-private-class-elements/index.js',
       'deps/acorn-plugins/acorn-private-methods/index.js',
       'deps/acorn-plugins/acorn-static-class-features/index.js',
+      'deps/cjs-module-lexer/lexer.js',
+      'deps/cjs-module-lexer/dist/lexer.js',
     ],
     'node_mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)node_mksnapshot<(EXECUTABLE_SUFFIX)',
     'mkcodecache_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)mkcodecache<(EXECUTABLE_SUFFIX)',
@@ -568,6 +573,7 @@
         'src/js_native_api_v8_internals.h',
         'src/js_stream.cc',
         'src/json_utils.cc',
+        'src/js_udp_wrap.cc',
         'src/module_wrap.cc',
         'src/node.cc',
         'src/node_api.cc',
@@ -1121,6 +1127,81 @@
         } ],
       ]
     }, # specialize_node_d
+    { # fuzz_url
+      'target_name': 'fuzz_url',
+      'type': 'executable',
+      'dependencies': [
+        '<(node_lib_target_name)',
+      ],
+      'includes': [
+        'node.gypi'
+      ],
+      'include_dirs': [
+        'src',
+      ],
+      'defines': [
+        'NODE_ARCH="<(target_arch)"',
+        'NODE_PLATFORM="<(OS)"',
+        'NODE_WANT_INTERNALS=1',
+      ],
+      'sources': [
+        'src/node_snapshot_stub.cc',
+        'src/node_code_cache_stub.cc',
+        'test/fuzzers/fuzz_url.cc',
+      ],
+      'conditions': [
+        ['OS=="linux"', {
+          'ldflags': [ '-fsanitize=fuzzer' ]
+        }],
+        # Ensure that ossfuzz flag has been set and that we are on Linux
+        [ 'OS!="linux" or ossfuzz!="true"', {
+          'type': 'none',
+        }],
+      ],
+    }, # fuzz_url
+    { # fuzz_env
+      'target_name': 'fuzz_env',
+      'type': 'executable',
+      'dependencies': [
+        '<(node_lib_target_name)',
+        'deps/histogram/histogram.gyp:histogram',
+        'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'node_dtrace_header',
+        'node_dtrace_ustack',
+        'node_dtrace_provider',
+      ],
+      'includes': [
+        'node.gypi'
+      ],
+      'include_dirs': [
+        'src',
+        'tools/msvs/genfiles',
+        'deps/v8/include',
+        'deps/cares/include',
+        'deps/uv/include',
+        'deps/uvwasi/include',
+        'test/cctest',
+      ],
+      'defines': [
+        'NODE_ARCH="<(target_arch)"',
+        'NODE_PLATFORM="<(OS)"',
+        'NODE_WANT_INTERNALS=1',
+      ],
+      'sources': [
+        'src/node_snapshot_stub.cc',
+        'src/node_code_cache_stub.cc',
+        'test/fuzzers/fuzz_env.cc',
+      ],
+      'conditions': [
+        ['OS=="linux"', {
+          'ldflags': [ '-fsanitize=fuzzer' ]
+        }],
+        # Ensure that ossfuzz flag has been set and that we are on Linux
+        [ 'OS!="linux" or ossfuzz!="true"', {
+          'type': 'none',
+        }],
+      ],
+    }, # fuzz_env
     {
       'target_name': 'cctest',
       'type': 'executable',
@@ -1216,6 +1297,62 @@
         }],
       ],
     }, # cctest
+
+    {
+      'target_name': 'embedtest',
+      'type': 'executable',
+
+      'dependencies': [
+        '<(node_lib_target_name)',
+        'deps/histogram/histogram.gyp:histogram',
+        'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'node_dtrace_header',
+        'node_dtrace_ustack',
+        'node_dtrace_provider',
+      ],
+
+      'includes': [
+        'node.gypi'
+      ],
+
+      'include_dirs': [
+        'src',
+        'tools/msvs/genfiles',
+        'deps/v8/include',
+        'deps/cares/include',
+        'deps/uv/include',
+        'deps/uvwasi/include',
+        'test/embedding',
+      ],
+
+      'sources': [
+        'src/node_snapshot_stub.cc',
+        'src/node_code_cache_stub.cc',
+        'test/embedding/embedtest.cc',
+      ],
+
+      'conditions': [
+        ['OS=="solaris"', {
+          'ldflags': [ '-I<(SHARED_INTERMEDIATE_DIR)' ]
+        }],
+        # Skip cctest while building shared lib node for Windows
+        [ 'OS=="win" and node_shared=="true"', {
+          'type': 'none',
+        }],
+        [ 'node_shared=="true"', {
+          'xcode_settings': {
+            'OTHER_LDFLAGS': [ '-Wl,-rpath,@loader_path', ],
+          },
+        }],
+        ['OS=="win"', {
+          'libraries': [
+            'Dbghelp.lib',
+            'winmm.lib',
+            'Ws2_32.lib',
+          ],
+        }],
+      ],
+    }, # embedtest
 
     # TODO(joyeecheung): do not depend on node_lib,
     # instead create a smaller static library node_lib_base that does

@@ -23,8 +23,8 @@
 #define SRC_NODE_VERSION_H_
 
 #define NODE_MAJOR_VERSION 12
-#define NODE_MINOR_VERSION 18
-#define NODE_PATCH_VERSION 4
+#define NODE_MINOR_VERSION 20
+#define NODE_PATCH_VERSION 1
 
 #define NODE_VERSION_IS_LTS 1
 #define NODE_VERSION_LTS_CODENAME "Erbium"
@@ -93,6 +93,6 @@
 
 // The NAPI_VERSION provided by this version of the runtime. This is the version
 // which the Node binary being built supports.
-#define NAPI_VERSION  6
+#define NAPI_VERSION  7
 
 #endif  // SRC_NODE_VERSION_H_

@@ -122,10 +122,6 @@
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
-    "filePath" : "basic/javasigcall.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/JDK-8006857.js",
     "status" : "SKIP",
     "comment" : "multi-threaded test"

@@ -12,7 +12,7 @@ This document describes how to run GraalVM JavaScript on stock Java VMs, and sho
 GraalVM JavaScript is open source and regularly pushed to Maven Central Repository by the community.
 You can find it as package [org.graalvm.js](https://mvnrepository.com/artifact/org.graalvm.js/js).
 
-There is an exemple Maven project for GraalVM JavaScript on JDK11 (or later) using the GraalVM compiler at [graal-js-jdk11-maven-demo](https://github.com/graalvm/graal-js-jdk11-maven-demo).
+There is an example Maven project for GraalVM JavaScript on JDK11 (or later) using the GraalVM compiler at [graal-js-jdk11-maven-demo](https://github.com/graalvm/graal-js-jdk11-maven-demo).
 The example contains a Maven project for a JavaScript benchmark (a prime number generator).
 It allows a user to compare the performance of GraalVM JavaScript running with or without the GraalVM compiler as the optimizing compiler.
 Running with the GraalVM compiler will siginificantly improve the execution performance of any relatively large JavaScript codebase.
@@ -21,16 +21,21 @@ In essence, the example POM file activates JVMCI to install additional JIT compi
 
 ### GraalVM JavaScript without Maven - JAR Files from GraalVM
 To work without Maven, the JAR files from a GraalVM release can be used as well.
-GraalVM is available as [Enterprise](https://www.oracle.com/downloads/graalvm-downloads.html) and [Community](https://github.com/oracle/graal/releases) Editions. Both editions' files can be used.
+GraalVM is available as [Enterprise](https://www.oracle.com/downloads/graalvm-downloads.html) and [Community](https://github.com/oracle/graal/releases) Editions.
+Both editions' files can be used.
 
 The relevant files are:
 * _$GRAALVM/jre/languages/js/graaljs.jar_ - core component of GraalVM JavaScript (always required)
-* _$GRAALVM/jre/tools/regex/tregex.jar_ - GraalVM's regular expression engine (always required)
+* _$GRAALVM/jre/languages/js/icu4j.jar_ - ICU4J component for internationalization (always required)
+* _$GRAALVM/jre/languages/regex/tregex.jar_ - GraalVM's regular expression engine (always required)
 * _$GRAALVM/jre/lib/boot/graal-sdk.jar_ - GraalVM's SDK to implement languages (always required)
 * _$GRAALVM/jre/lib/truffle/truffle-api.jar_ - GraalVM's Language API, to implement language interpreters (always required)
 * _$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar_ - GraalVM JavaScript's command line interpreter (optional)
 * _$GRAALVM/jre/lib/graalvm/launcher-common.jar_ - common launcher code shared by all languages (required by _graaljs-launcher.jar_)
 * _$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar_ - GraalVM JavaScript's ScriptEngine/JSR 223 support (optional)
+
+The files are displayed here are for a JDK8 build.
+In a JDK11+ build, the *.jar files are located in different directories.
 
 ## GraalVM JavaScript on JDK 8
 
@@ -41,7 +46,8 @@ See the JDK 11 example below for how to improve on this.
 *On Linux*
 ```shell
 GRAALVM=/path/to/GraalVM
-/path/to/jdk8/bin/java -cp $GRAALVM/jre/lib/graalvm/launcher-common.jar:$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar:$GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/tools/regex/tregex.jar com.oracle.truffle.js.shell.JSLauncher
+JDK8=/path/to/jdk8
+$JDK8/bin/java -cp $GRAALVM/jre/lib/graalvm/launcher-common.jar:$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar:$GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/languages/regex/tregex.jar:$GRAALVM/jre/languages/js/icu4j.jar com.oracle.truffle.js.shell.JSLauncher
 ```
 
 *On MacOS* - identical to the Linux command except for the path to GraalVM you need to add `Contents/Home`:
@@ -52,7 +58,7 @@ GRAALVM=/path/to/graalvm/Contents/Home
 *On Windows* - GraalVM JavaScript offers preliminary support for Windows:
 ```shell
 set GRAALVM=c:\path\to\graalvm
-%GRAALVM%\bin\java -cp %GRAALVM%\jre\lib\graalvm\launcher-common.jar;%GRAALVM%\jre\lib\graalvm\graaljs-launcher.jar;%GRAALVM%\jre\languages\js\graaljs.jar;%GRAALVM%\jre\lib\truffle\truffle-api.jar;%GRAALVM%\jre\lib\boot\graal-sdk.jar;%GRAALVM%\jre\lib\boot\graaljs-scriptengine.jar;%GRAALVM%\jre\tools\regex\tregex.jar com.oracle.truffle.js.shell.JSLauncher
+%GRAALVM%\bin\java -cp %GRAALVM%\jre\lib\graalvm\launcher-common.jar;%GRAALVM%\jre\lib\graalvm\graaljs-launcher.jar;%GRAALVM%\jre\languages\js\graaljs.jar;%GRAALVM%\jre\lib\truffle\truffle-api.jar;%GRAALVM%\jre\lib\boot\graal-sdk.jar;%GRAALVM%\jre\lib\boot\graaljs-scriptengine.jar;%GRAALVM%\jre\languages\regex\tregex.jar;%GRAALVM%\jre\languages\js\icu4j.jar com.oracle.truffle.js.shell.JSLauncher
 ```
 
 To start a Java application instead and launch GraalVM JavaScript via GraalVM SDK's `Context` (encouraged) or a `ScriptEngine` (supported, but discouraged), _launcher-common.jar_ and  _graaljs-launcher.jar_ can be omitted (see example below).
@@ -81,19 +87,20 @@ Assuming this code is called from `MyJavaApp.java` and is properly compiled to a
 
 ```shell
 GRAALVM=/path/to/GraalVM
-/path/to/jdk8/bin/java -cp $GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/tools/regex/tregex.jar:. MyJavaApp
+JDK8=/path/to/jdk8
+$JDK8/bin/java -cp $GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/languages/regex/tregex.jar:$GRAALVM/jre/languages/js/icu4j.jar:. MyJavaApp
 ```
 
-## GraalVM JavaScript on JDK 11
-The Maven example given above is the preferred way to start on JDK 11.
-Working without Maven, you have to provide the JAR files manually to the `java` command.
+## GraalVM JavaScript on JDK 11+
+The Maven example given above is the preferred way to start on JDK 11 (or newer).
+Working without Maven, you can provide the JAR files manually to the `java` command.
 Using `--upgrade-module-path` executes GraalVM JavaScript with the GraalVM compiler, guaranteeing the best performance.
-For that, the [GraalVM compiler](https://github.com/oracle/graal/tree/master/compiler) built with JDK 11 is required.
+The GraalVM JAR files can be downloaded from [org.graalvm at Maven](https://mvnrepository.com/artifact/org.graalvm), and the ICU4J library from [org.ibm.icu at Maven](https://mvnrepository.com/artifact/com.ibm.icu/icu4j).
 
 ```shell
-GRAALVM=/path/to/GraalVM
-GRAAL_JDK11=/path/to/Graal
-/path/to/jdk-11/bin/java -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -XX:+UseJVMCICompiler --module-path=$GRAAL_JDK11/graal/sdk/mxbuild/modules/org.graalvm.graal_sdk.jar:$GRAAL_JDK11/graal/truffle/mxbuild/modules/com.oracle.truffle.truffle_api.jar --upgrade-module-path=$GRAAL_HOME/graal/compiler/mxbuild/modules/jdk.internal.vm.compiler.jar:$GRAAL_HOME/graal/compiler/mxbuild/modules/jdk.internal.vm.compiler.management.jar -cp $GRAALVM/jre/lib/graalvm/launcher-common.jar:$GRAALVM/jre/lib/graalvm/graaljs-launcher.jar:$GRAALVM/jre/languages/js/graaljs.jar:$GRAALVM/jre/lib/truffle/truffle-api.jar:$GRAALVM/jre/lib/boot/graal-sdk.jar:$GRAALVM/jre/lib/boot/graaljs-scriptengine.jar:$GRAALVM/jre/tools/regex/tregex.jar com.oracle.truffle.js.shell.JSLauncher
+JARS=/path/to/JARs
+JDK=/path/to/JDK
+$JDK/bin/java -XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI -XX:+UseJVMCICompiler --module-path=$JARS/graal-sdk-21.0.0.jar:$JARS/truffle-api-21.0.0.jar --upgrade-module-path=$JARS/compiler-21.0.0.jar:$JARS/compiler-management-21.0.0.jar -cp $JARS/launcher-common-21.0.0.jar:$JARS/js-launcher-21.0.0.jar:$JARS/js-21.0.0.jar:$JARS/truffle-api-21.0.0.jar:$JARS/graal-sdk-21.0.0.jar:$JARS/js-scriptengine-21.0.0.jar:$JARS/regex-21.0.0.jar:$JARS/icu4j-67.1.jar com.oracle.truffle.js.shell.JSLauncher
 ```
 
 ### Inspecting the Setup - Is the GraalVM Compiler Used as a JIT Compiler?

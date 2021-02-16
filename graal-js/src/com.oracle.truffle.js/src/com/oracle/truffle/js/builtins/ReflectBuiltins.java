@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -81,6 +82,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -272,6 +274,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ReflectDeletePropertyNode extends ReflectOperation {
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
@@ -287,7 +290,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSObject.delete(target, key, false, classProfile);
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected boolean doForeignObject(Object target, Object propertyKey,
                         @CachedLibrary("target") InteropLibrary interop) {
             Object key = toPropertyKeyNode.execute(propertyKey);
@@ -316,6 +319,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ReflectGetNode extends ReflectOperation {
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
@@ -329,10 +333,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached("create()") JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
-            return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key));
+            return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey, @SuppressWarnings("unused") Object[] optionalArgs,
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached ImportValueNode importValue) {
@@ -382,6 +386,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ReflectHasNode extends ReflectOperation {
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
@@ -397,7 +402,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSObject.hasProperty(target, key, jsclassProfile);
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey,
                         @CachedLibrary("target") InteropLibrary interop) {
             Object key = toPropertyKeyNode.execute(propertyKey);
@@ -433,6 +438,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ReflectOwnKeysNode extends ReflectOperation {
 
         public ReflectOwnKeysNode(JSContext context, JSBuiltin builtin) {
@@ -447,7 +453,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSArray.createLazyArray(getContext(), list, listSize.execute(list));
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target,
                         @CachedLibrary("target") InteropLibrary interop) {
             if (interop.hasMembers(target)) {
@@ -481,6 +487,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     public abstract static class ReflectSetNode extends ReflectOperation {
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
@@ -494,10 +501,10 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
-            return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile);
+            return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile, this);
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "3")
+        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey, Object value, @SuppressWarnings("unused") Object[] optionalArgs,
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached ExportValueNode exportValue) {

@@ -22,6 +22,7 @@
 'use strict';
 
 const {
+  ArrayBuffer,
   Error,
   MathMax,
   NumberIsFinite,
@@ -33,6 +34,7 @@ const {
   ObjectKeys,
   ObjectSetPrototypeOf,
   Symbol,
+  Uint32Array,
 } = primordials;
 
 const {
@@ -122,6 +124,11 @@ function zlibBufferOnData(chunk) {
   else
     this.buffers.push(chunk);
   this.nread += chunk.length;
+  if (this.nread > this._maxOutputLength) {
+    this.close();
+    this.removeAllListeners('end');
+    this.cb(new ERR_BUFFER_TOO_LARGE(this._maxOutputLength));
+  }
 }
 
 function zlibBufferOnError(err) {
@@ -131,19 +138,14 @@ function zlibBufferOnError(err) {
 
 function zlibBufferOnEnd() {
   let buf;
-  let err;
-  if (this.nread >= kMaxLength) {
-    err = new ERR_BUFFER_TOO_LARGE();
-  } else if (this.nread === 0) {
+  if (this.nread === 0) {
     buf = Buffer.alloc(0);
   } else {
     const bufs = this.buffers;
     buf = (bufs.length === 1 ? bufs[0] : Buffer.concat(bufs, this.nread));
   }
   this.close();
-  if (err)
-    this.cb(err);
-  else if (this._info)
+  if (this._info)
     this.cb(null, { buffer: buf, engine: this });
   else
     this.cb(null, buf);
@@ -230,6 +232,7 @@ const checkRangesOrGetDefault = hideStackFrames(
 // The base class for all Zlib-style streams.
 function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   let chunkSize = Z_DEFAULT_CHUNK;
+  let maxOutputLength = kMaxLength;
   // The ZlibBase class is not exported to user land, the mode should only be
   // passed in by us.
   assert(typeof mode === 'number');
@@ -251,6 +254,10 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
     finishFlush = checkRangesOrGetDefault(
       opts.finishFlush, 'options.finishFlush',
       Z_NO_FLUSH, Z_BLOCK, finishFlush);
+
+    maxOutputLength = checkRangesOrGetDefault(
+      opts.maxOutputLength, 'options.maxOutputLength',
+      1, kMaxLength, kMaxLength);
 
     if (opts.encoding || opts.objectMode || opts.writableObjectMode) {
       opts = { ...opts };
@@ -276,6 +283,7 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   this._defaultFullFlushFlag = fullFlush;
   this.once('end', _close.bind(null, this));
   this._info = opts && opts.info;
+  this._maxOutputLength = maxOutputLength;
 }
 ObjectSetPrototypeOf(ZlibBase.prototype, Transform.prototype);
 ObjectSetPrototypeOf(ZlibBase, Transform);
@@ -349,17 +357,15 @@ const kFlushBuffers = [];
 }
 
 ZlibBase.prototype.flush = function(kind, callback) {
-  const ws = this._writableState;
-
   if (typeof kind === 'function' || (kind === undefined && !callback)) {
     callback = kind;
     kind = this._defaultFullFlushFlag;
   }
 
-  if (ws.ended) {
+  if (this.writableFinished) {
     if (callback)
       process.nextTick(callback);
-  } else if (ws.ending) {
+  } else if (this.writableEnded) {
     if (callback)
       this.once('end', callback);
   } else {
@@ -386,8 +392,7 @@ ZlibBase.prototype._transform = function(chunk, encoding, cb) {
   }
 
   // For the last chunk, also apply `_finishFlushFlag`.
-  const ws = this._writableState;
-  if ((ws.ending || ws.ended) && ws.length === chunk.byteLength) {
+  if (this.writableEnded && this.writableLength === chunk.byteLength) {
     flushFlag = maxFlush(flushFlag, this._finishFlushFlag);
   }
   processChunk(this, chunk, flushFlag, cb);
@@ -448,6 +453,12 @@ function processChunkSync(self, chunk, flushFlag) {
       else
         buffers.push(out);
       nread += out.byteLength;
+
+      if (nread > self._maxOutputLength) {
+        _close(self);
+        throw new ERR_BUFFER_TOO_LARGE(self._maxOutputLength);
+      }
+
     } else {
       assert(have === 0, 'have should not go down');
     }
@@ -473,10 +484,6 @@ function processChunkSync(self, chunk, flushFlag) {
 
   self.bytesWritten = inputRead;
   _close(self);
-
-  if (nread >= kMaxLength) {
-    throw new ERR_BUFFER_TOO_LARGE();
-  }
 
   if (nread === 0)
     return Buffer.alloc(0);
@@ -652,18 +659,13 @@ function Zlib(opts, mode) {
   // to come up with a good solution that doesn't break our internal API,
   // and with it all supported npm versions at the time of writing.
   this._writeState = new Uint32Array(2);
-  if (!handle.init(windowBits,
-                   level,
-                   memLevel,
-                   strategy,
-                   this._writeState,
-                   processCallback,
-                   dictionary)) {
-    // TODO(addaleax): Sometimes we generate better error codes in C++ land,
-    // e.g. ERR_BROTLI_PARAM_SET_FAILED -- it's hard to access them with
-    // the current bindings setup, though.
-    throw new ERR_ZLIB_INITIALIZATION_FAILED();
-  }
+  handle.init(windowBits,
+              level,
+              memLevel,
+              strategy,
+              this._writeState,
+              processCallback,
+              dictionary);
 
   ZlibBase.call(this, opts, mode, handle, zlibDefaultOpts);
 
@@ -809,6 +811,9 @@ function Brotli(opts, mode) {
     new binding.BrotliDecoder(mode) : new binding.BrotliEncoder(mode);
 
   this._writeState = new Uint32Array(2);
+  // TODO(addaleax): Sometimes we generate better error codes in C++ land,
+  // e.g. ERR_BROTLI_PARAM_SET_FAILED -- it's hard to access them with
+  // the current bindings setup, though.
   if (!handle.init(brotliInitParamsArray,
                    this._writeState,
                    processCallback)) {

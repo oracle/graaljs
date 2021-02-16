@@ -5,6 +5,7 @@ const {
   Float32Array,
   MathFloor,
   Number,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -27,6 +28,10 @@ const {
   ucs2Write,
   utf8Write
 } = internalBinding('buffer');
+const {
+  untransferable_object_private_symbol,
+  setHiddenValue,
+} = internalBinding('util');
 
 // Temporary buffers to convert numbers.
 const float32Array = new Float32Array(1);
@@ -947,10 +952,14 @@ class FastBuffer extends Uint8Array {}
 function addBufferPrototypeMethods(proto) {
   proto.readBigUInt64LE = readBigUInt64LE,
   proto.readBigUInt64BE = readBigUInt64BE,
+  proto.readBigUint64LE = readBigUInt64LE,
+  proto.readBigUint64BE = readBigUInt64BE,
   proto.readBigInt64LE = readBigInt64LE,
   proto.readBigInt64BE = readBigInt64BE,
   proto.writeBigUInt64LE = writeBigUInt64LE,
   proto.writeBigUInt64BE = writeBigUInt64BE,
+  proto.writeBigUint64LE = writeBigUInt64LE,
+  proto.writeBigUint64BE = writeBigUInt64BE,
   proto.writeBigInt64LE = writeBigInt64LE,
   proto.writeBigInt64BE = writeBigInt64BE,
 
@@ -961,6 +970,13 @@ function addBufferPrototypeMethods(proto) {
   proto.readUIntBE = readUIntBE;
   proto.readUInt32BE = readUInt32BE;
   proto.readUInt16BE = readUInt16BE;
+  proto.readUintLE = readUIntLE;
+  proto.readUint32LE = readUInt32LE;
+  proto.readUint16LE = readUInt16LE;
+  proto.readUint8 = readUInt8;
+  proto.readUintBE = readUIntBE;
+  proto.readUint32BE = readUInt32BE;
+  proto.readUint16BE = readUInt16BE;
   proto.readIntLE = readIntLE;
   proto.readInt32LE = readInt32LE;
   proto.readInt16LE = readInt16LE;
@@ -976,6 +992,13 @@ function addBufferPrototypeMethods(proto) {
   proto.writeUIntBE = writeUIntBE;
   proto.writeUInt32BE = writeUInt32BE;
   proto.writeUInt16BE = writeUInt16BE;
+  proto.writeUintLE = writeUIntLE;
+  proto.writeUint32LE = writeUInt32LE;
+  proto.writeUint16LE = writeUInt16LE;
+  proto.writeUint8 = writeUInt8;
+  proto.writeUintBE = writeUIntBE;
+  proto.writeUint32BE = writeUInt32BE;
+  proto.writeUint16BE = writeUInt16BE;
   proto.writeIntLE = writeIntLE;
   proto.writeInt32LE = writeInt32LE;
   proto.writeInt16LE = writeInt16LE;
@@ -1007,7 +1030,16 @@ function addBufferPrototypeMethods(proto) {
   proto.utf8Write = utf8Write;
 }
 
+// This would better be placed in internal/worker/io.js, but that doesn't work
+// because Buffer needs this and that would introduce a cyclic dependency.
+function markAsUntransferable(obj) {
+  if ((typeof obj !== 'object' && typeof obj !== 'function') || obj === null)
+    return;  // This object is a primitive and therefore already untransferable.
+  setHiddenValue(obj, untransferable_object_private_symbol, true);
+}
+
 module.exports = {
   FastBuffer,
-  addBufferPrototypeMethods
+  addBufferPrototypeMethods,
+  markAsUntransferable,
 };

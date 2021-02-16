@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 
+import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Engine;
 
 public final class GraalJSEngineFactory implements ScriptEngineFactory {
@@ -61,6 +62,11 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     private static final String LANGUAGE = "ECMAScript";
     private static final String LANGUAGE_VERSION = "ECMAScript 262 Edition 11";
 
+    private static final String[] NAMES = {"js", "JS", "JavaScript", "javascript", "ECMAScript", "ecmascript",
+                    "Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot"};
+    private static final String[] MIME_TYPES = {"application/javascript", "application/ecmascript", "text/javascript", "text/ecmascript"};
+    private static final String[] EXTENSIONS = {"js", "mjs"};
+
     private static final String NASHORN_ENGINE_NAME = "Oracle Nashorn";
     private static final List<String> names;
     private static final List<String> mimeTypes;
@@ -69,22 +75,32 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     public static final boolean RegisterAsNashornScriptEngineFactory = Boolean.getBoolean("graaljs.RegisterGraalJSAsNashorn");
 
     static {
-        List<String> nameList = new ArrayList<>(Arrays.asList("Graal.js", "graal.js", "Graal-js", "graal-js", "Graal.JS", "Graal-JS", "GraalJS", "GraalJSPolyglot", "js", "JS", "JavaScript",
-                        "javascript", "ECMAScript", "ecmascript"));
-        List<String> mimeTypeList = new ArrayList<>(Arrays.asList("application/javascript", "application/ecmascript", "text/javascript", "text/ecmascript"));
-        List<String> extensionList = new ArrayList<>(Arrays.asList("js", "mjs"));
+        List<String> nameList = Arrays.asList(NAMES);
+        List<String> mimeTypeList = Arrays.asList(MIME_TYPES);
+        List<String> extensionList = Arrays.asList(EXTENSIONS);
+
+        // Needed on Java 8 only: ensure Graal.js is consistently picked as the js engine.
+        // Skipped if the class is initialized at run time in a native image since likely,
+        // the image was not built with a reflection config that would allow patching.
         boolean java8 = System.getProperty("java.specification.version").compareTo("1.9") < 0;
-        if (java8) {
+        if (java8 && !ImageInfo.inImageRuntimeCode()) {
             ScriptEngineFactory nashornFactory = getNashornEngineFactory();
             if (nashornFactory != null) {
                 if (RegisterAsNashornScriptEngineFactory) {
+                    nameList = new ArrayList<>(nameList);
+                    nameList.removeAll(nashornFactory.getNames());
                     nameList.addAll(nashornFactory.getNames());
+                    mimeTypeList = new ArrayList<>(mimeTypeList);
+                    mimeTypeList.removeAll(nashornFactory.getMimeTypes());
                     mimeTypeList.addAll(nashornFactory.getMimeTypes());
+                    extensionList = new ArrayList<>(extensionList);
+                    extensionList.removeAll(nashornFactory.getExtensions());
                     extensionList.addAll(nashornFactory.getExtensions());
                 }
                 clearEngineFactory(nashornFactory);
             }
         }
+
         names = Collections.unmodifiableList(nameList);
         mimeTypes = Collections.unmodifiableList(mimeTypeList);
         extensions = Collections.unmodifiableList(extensionList);

@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/child_process.js -->
+
 The `child_process` module provides the ability to spawn child processes in
 a manner that is similar, but not identical, to popen(3). This capability
 is primarily provided by the [`child_process.spawn()`][] function:
@@ -192,9 +194,9 @@ metacharacters may be used to trigger arbitrary command execution.**
 If a `callback` function is provided, it is called with the arguments
 `(error, stdout, stderr)`. On success, `error` will be `null`. On error,
 `error` will be an instance of [`Error`][]. The `error.code` property will be
-the exit code of the child process while `error.signal` will be set to the
-signal that terminated the process. Any exit code other than `0` is considered
-to be an error.
+the exit code of the process. By convention, any exit code other than `0`
+indicates an error. `error.signal` will be the signal that terminated the
+process.
 
 The `stdout` and `stderr` arguments passed to the callback will contain the
 stdout and stderr output of the child process. By default, Node.js will decode
@@ -1354,14 +1356,12 @@ process.on('message', (m, socket) => {
 });
 ```
 
-Once a socket has been passed to a child, the parent is no longer capable of
-tracking when the socket is destroyed. To indicate this, the `.connections`
-property becomes `null`. It is recommended not to use `.maxConnections` when
-this occurs.
+Do not use `.maxConnections` on a socket that has been passed to a subprocess.
+The parent cannot track when the socket is destroyed.
 
-It is also recommended that any `'message'` handlers in the child process
-verify that `socket` exists, as the connection may have been closed during the
-time it takes to send the connection to the child.
+Any `'message'` handlers in the subprocess should verify that `socket` exists,
+as the connection may have been closed during the time it takes to send the
+connection to the child.
 
 ### `subprocess.signalCode`
 

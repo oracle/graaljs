@@ -52,6 +52,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -854,4 +855,40 @@ public final class Errors {
     public static JSException createTypeErrorClassDescriptor(String name, Node originatingNode) {
         return createTypeError(String.format("Class descriptor must not have property %s.", name), originatingNode);
     }
+
+    @TruffleBoundary
+    public static JSException createTypeError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.RangeError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createCompileError(String message, Node originatingNode) {
+        return JSException.create(JSErrorType.CompileError, message, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createCompileError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.CompileError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createLinkError(String message) {
+        return JSException.create(JSErrorType.LinkError, message);
+    }
+
+    @TruffleBoundary
+    public static JSException createLinkError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.LinkError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRuntimeError(Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.RuntimeError, cause.getMessage(), cause, originatingNode);
+    }
+
 }

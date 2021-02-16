@@ -3,7 +3,7 @@ suite = {
 
   "name" : "graal-js",
 
-  "version" : "21.0.0",
+  "version" : "21.1.0",
   "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "0e9e7e3cfd6405dedc798c90b8ce12b041cf8c94",
+           "version" : "697d65472594961452e9b8bd3da9e8e3b82d3a08",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -70,8 +70,8 @@ suite = {
     },
 
     "TEST262" : {
-      "sha1" : "551f5233714aea646d97cfc97c1f4cc7f34bd683",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-538fcd88.tar.bz2"],
+      "sha1" : "a4d799e4324963f70c5f2201c1bdd2ae577ec476",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-950d0975.tar.bz2"],
     },
 
     "TESTNASHORN" : {
@@ -196,6 +196,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
@@ -373,6 +374,7 @@ suite = {
         "JACKSON_DATABIND",
         "NASHORN_INTERNAL_TESTS",
       ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
       "javaCompliance" : "8+",
       "workingSets" : "Truffle,JavaScript,Test",

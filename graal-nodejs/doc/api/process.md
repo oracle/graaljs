@@ -3,6 +3,8 @@
 <!-- introduced_in=v0.10.0 -->
 <!-- type=global -->
 
+<!-- source_link=lib/process.js -->
+
 The `process` object is a `global` that provides information about, and control
 over, the current Node.js process. As a global, it is always available to
 Node.js applications without using `require()`. It can also be explicitly
@@ -502,11 +504,12 @@ process.on('SIGTERM', handle);
   installed its default behavior will be removed.
 * `'SIGTERM'` is not supported on Windows, it can be listened on.
 * `'SIGINT'` from the terminal is supported on all platforms, and can usually be
-  generated with `<Ctrl>+C` (though this may be configurable). It is not
-  generated when [terminal raw mode][] is enabled and `<Ctrl>+C` is used.
-* `'SIGBREAK'` is delivered on Windows when `<Ctrl>+<Break>` is pressed, on
-  non-Windows platforms it can be listened on, but there is no way to send or
-  generate it.
+  generated with <kbd>Ctrl</kbd>+<kbd>C</kbd> (though this may be configurable).
+  It is not generated when [terminal raw mode][] is enabled and
+  <kbd>Ctrl</kbd>+<kbd>C</kbd> is used.
+* `'SIGBREAK'` is delivered on Windows when <kbd>Ctrl</kbd>+<kbd>Break</kbd> is
+  pressed. On non-Windows platforms, it can be listened on, but there is no way
+  to send or generate it.
 * `'SIGWINCH'` is delivered when the console has been resized. On Windows, this
   will only happen on write to the console when the cursor is being moved, or
   when a readable tty is used in raw mode.
@@ -1149,7 +1152,7 @@ added: v0.1.100
 * {string}
 
 The `process.execPath` property returns the absolute pathname of the executable
-that started the Node.js process.
+that started the Node.js process. Symbolic links, if any, are resolved.
 
 <!-- eslint-disable semi -->
 ```js
@@ -1419,7 +1422,7 @@ Use care when dropping privileges:
 
 ```js
 console.log(process.getgroups());         // [ 0 ]
-process.initgroups('bnoordhuis', 1000);   // switch user
+process.initgroups('nodeuser', 1000);     // switch user
 console.log(process.getgroups());         // [ 27, 30, 46, 1000, 0 ]
 process.setgid(1000);                     // drop root gid
 console.log(process.getgroups());         // [ 27, 30, 46, 1000 ]
@@ -1696,7 +1699,8 @@ added:
 
 * {integer}
 
-The `process.ppid` property returns the PID of the current parent process.
+The `process.ppid` property returns the PID of the parent of the
+current process.
 
 ```js
 console.log(`The parent process is pid ${process.ppid}`);
@@ -1733,19 +1737,22 @@ tarball.
   builds of Node.js and will be missing on all other platforms._
 * `lts` {string} a string label identifying the [LTS][] label for this release.
   This property only exists for LTS releases and is `undefined` for all other
-  release types, including _Current_ releases. Currently the valid values are:
-  * `'Argon'` for the 4.x LTS line beginning with 4.2.0.
-  * `'Boron'` for the 6.x LTS line beginning with 6.9.0.
-  * `'Carbon'` for the 8.x LTS line beginning with 8.9.1.
+  release types, including _Current_ releases.
+  Valid values include the LTS Release Codenames (including those
+  that are no longer supported). A non-exhaustive example of
+  these codenames includes:
+  * `'Dubnium'` for the 10.x LTS line beginning with 10.13.0.
+  * `'Erbium'` for the 12.x LTS line beginning with 12.13.0.
+  For other LTS Release Codenames, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/master/doc/changelogs/CHANGELOG_ARCHIVE.md)
 
 <!-- eslint-skip -->
 ```js
 {
   name: 'node',
-  lts: 'Argon',
-  sourceUrl: 'https://nodejs.org/download/release/v4.4.5/node-v4.4.5.tar.gz',
-  headersUrl: 'https://nodejs.org/download/release/v4.4.5/node-v4.4.5-headers.tar.gz',
-  libUrl: 'https://nodejs.org/download/release/v4.4.5/win-x64/node.lib'
+  lts: 'Erbium',
+  sourceUrl: 'https://nodejs.org/download/release/v12.18.1/node-v12.18.1.tar.gz',
+  headersUrl: 'https://nodejs.org/download/release/v12.18.1/node-v12.18.1-headers.tar.gz',
+  libUrl: 'https://nodejs.org/download/release/v12.18.1/win-x64/node.lib'
 }
 ```
 
@@ -1759,7 +1766,7 @@ added: v11.8.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * {Object}
@@ -1789,7 +1796,7 @@ added: v11.12.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * {string}
@@ -1808,7 +1815,7 @@ added: v11.12.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * {string}
@@ -1827,7 +1834,7 @@ added: v11.8.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * `err` {Error} A custom error used for reporting the JavaScript stack.
@@ -1870,7 +1877,7 @@ added: v11.12.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * {boolean}
@@ -1888,7 +1895,7 @@ added: v11.12.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * {boolean}
@@ -1905,7 +1912,7 @@ added: v11.12.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * {string}
@@ -1923,7 +1930,7 @@ added: v11.8.0
 changes:
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32242
-    description: This API is no longer considered experimental.
+    description: This API is no longer experimental.
 -->
 
 * `filename` {string} Name of the file where the report is written. This
@@ -2224,21 +2231,7 @@ The `process.stdin` property returns a stream connected to
 stream) unless fd `0` refers to a file, in which case it is
 a [Readable][] stream.
 
-```js
-process.stdin.setEncoding('utf8');
-
-process.stdin.on('readable', () => {
-  let chunk;
-  // Use a loop to make sure we read all available data.
-  while ((chunk = process.stdin.read()) !== null) {
-    process.stdout.write(`data: ${chunk}`);
-  }
-});
-
-process.stdin.on('end', () => {
-  process.stdout.write('end');
-});
-```
+For details of how to read from `stdin` see [`readable.read()`][].
 
 As a [Duplex][] stream, `process.stdin` can also be used in "old" mode that
 is compatible with scripts written for Node.js prior to v0.10.
@@ -2296,7 +2289,7 @@ important ways:
    * Pipes (and sockets): *synchronous* on Windows, *asynchronous* on POSIX
 
 These behaviors are partly for historical reasons, as changing them would
-create backwards incompatibility, but they are also expected by some users.
+create backward incompatibility, but they are also expected by some users.
 
 Synchronous writes avoid problems such as output written with `console.log()` or
 `console.error()` being unexpectedly interleaved, or not written at all if
@@ -2380,6 +2373,10 @@ allowed for longer process title strings by also overwriting the `environ`
 memory but that was potentially insecure and confusing in some (rather obscure)
 cases.
 
+Assigning a value to `process.title` might not result in an accurate label
+within process manager applications such as macOS Activity Monitor or Windows
+Services Manager.
+
 ## `process.traceDeprecation`
 <!-- YAML
 added: v0.8.0
@@ -2393,17 +2390,35 @@ documentation for the [`'warning'` event][process_warning] and the
 [`emitWarning()` method][process_emit_warning] for more information about this
 flag's behavior.
 
-## `process.umask([mask])`
+## `process.umask()`
+<!-- YAML
+added: v0.1.19
+changes:
+  - version:
+    - v12.19.0
+    - v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/32499
+    description: Calling `process.umask()` with no arguments is deprecated.
+
+-->
+
+> Stability: 0 - Deprecated. Calling `process.umask()` with no argument causes
+> the process-wide umask to be written twice. This introduces a race condition
+> between threads, and is a potential security vulnerability. There is no safe,
+> cross-platform alternative API.
+
+`process.umask()` returns the Node.js process's file mode creation mask. Child
+processes inherit the mask from the parent process.
+
+## `process.umask(mask)`
 <!-- YAML
 added: v0.1.19
 -->
 
 * `mask` {string|integer}
 
-The `process.umask()` method sets or returns the Node.js process's file mode
-creation mask. Child processes inherit the mask from the parent process. Invoked
-without an argument, the current mask is returned, otherwise the umask is set to
-the argument value and the previous mask is returned.
+`process.umask(mask)` sets the Node.js process's file mode creation mask. Child
+processes inherit the mask from the parent process. Returns the previous mask.
 
 ```js
 const newmask = 0o022;
@@ -2413,8 +2428,7 @@ console.log(
 );
 ```
 
-[`Worker`][] threads are able to read the umask, however attempting to set the
-umask will result in a thrown exception.
+In [`Worker`][] threads, `process.umask(mask)` will throw an exception.
 
 ## `process.uptime()`
 <!-- YAML
@@ -2436,11 +2450,15 @@ added: v0.1.3
 
 * {string}
 
-The `process.version` property returns the Node.js version string.
+The `process.version` property contains the Node.js version string.
 
 ```js
 console.log(`Version: ${process.version}`);
+// Version: v14.8.0
 ```
+
+To get the version string without the prepended _v_, use
+`process.versions.node`.
 
 ## `process.versions`
 <!-- YAML
@@ -2575,6 +2593,7 @@ cases:
 [Event Loop]: https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#process-nexttick
 [LTS]: https://github.com/nodejs/Release
 [Readable]: stream.html#stream_readable_streams
+[`readable.read()`]: stream.html#stream_readable_read_size
 [Signal Events]: #process_signal_events
 [Stream compatibility]: stream.html#stream_compatibility_with_older_node_js_versions
 [TTY]: tty.html#tty_tty
@@ -2586,6 +2605,6 @@ cases:
 [process_warning]: #process_event_warning
 [report documentation]: report.html
 [terminal raw mode]: tty.html#tty_readstream_setrawmode_mode
-[uv_rusage_t]: http://docs.libuv.org/en/v1.x/misc.html#c.uv_rusage_t
+[uv_rusage_t]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_rusage_t
 [wikipedia_minor_fault]: https://en.wikipedia.org/wiki/Page_fault#Minor
 [wikipedia_major_fault]: https://en.wikipedia.org/wiki/Page_fault#Major

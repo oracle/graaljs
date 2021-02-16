@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,7 @@
 #include "graal_date.h"
 #include "graal_isolate.h"
 
-GraalDate::GraalDate(GraalIsolate* isolate, double time, jobject java_date) : GraalObject(isolate, java_date), time_(time) {
-}
+#include "graal_date-inl.h"
 
 GraalHandleContent* GraalDate::CopyImpl(jobject java_object_copy) {
     return new GraalDate(Isolate(), time_, java_object_copy);

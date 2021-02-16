@@ -103,6 +103,8 @@ const {
 const async_id_symbol = Symbol('asyncId');
 const trigger_async_id_symbol = Symbol('triggerId');
 
+const kHasPrimitive = Symbol('kHasPrimitive');
+
 const {
   ERR_INVALID_CALLBACK,
   ERR_OUT_OF_RANGE
@@ -113,7 +115,9 @@ const L = require('internal/linkedlist');
 const PriorityQueue = require('internal/priority_queue');
 
 const { inspect } = require('internal/util/inspect');
-const debug = require('internal/util/debuglog').debuglog('timer');
+let debug = require('internal/util/debuglog').debuglog('timer', (fn) => {
+  debug = fn;
+});
 
 // *Must* match Environment::ImmediateInfo::Fields in src/env.h.
 const kCount = 0;
@@ -182,6 +186,7 @@ function Timeout(callback, after, args, isRepeat, isRefed) {
   if (isRefed)
     incRefCount();
   this[kRefed] = isRefed;
+  this[kHasPrimitive] = false;
 
   initAsyncResource(this, 'Timeout');
 }
@@ -595,6 +600,7 @@ module.exports = {
   trigger_async_id_symbol,
   Timeout,
   kRefed,
+  kHasPrimitive,
   initAsyncResource,
   setUnrefTimeout,
   getTimerDuration,

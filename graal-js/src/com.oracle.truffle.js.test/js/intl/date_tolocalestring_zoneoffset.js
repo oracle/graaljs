@@ -12,5 +12,3 @@
  */
 
 load('./date_tolocalestring.js');
-
-true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.parser;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
-import static com.oracle.truffle.js.runtime.JSConfig.ECMAScript2021;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
@@ -65,10 +64,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -83,7 +78,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
@@ -283,7 +277,7 @@ public final class GraalJSEvaluator implements JSParser {
                 JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
                 moduleInstantiation(realm, moduleRecord);
                 Object promise = moduleEvaluation(realm, moduleRecord);
-                if (context.getEcmaScriptVersion() >= ECMAScript2021 && JSPromise.isJSPromise(promise)) {
+                if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
                     DynamicObject onRejected = createTopLevelAwaitReject(context);
                     DynamicObject onAccepted = createTopLevelAwaitResolve(context);
                     performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
@@ -597,9 +591,8 @@ public final class GraalJSEvaluator implements JSParser {
     public Object moduleEvaluation(JSRealm realm, JSModuleRecord moduleRecord) {
         // Evaluate ( ) Concrete Method
         JSModuleRecord module = moduleRecord;
-        int ecmaScriptVersion = realm.getContext().getEcmaScriptVersion();
         Deque<JSModuleRecord> stack = new ArrayDeque<>(4);
-        if (ecmaScriptVersion >= ECMAScript2021) {
+        if (realm.getContext().isOptionTopLevelAwait()) {
             assert module.getStatus() == Status.Linked || module.getStatus() == Status.Evaluated;
             if (module.getStatus() == Status.Evaluated) {
                 module = getAsyncCycleRoot(module);
@@ -901,34 +894,9 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @Override
-    public JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict) {
-        Environment env = assembleDebugEnvironment(context, lexicalContextFrame);
+    public JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict, Node locationNode) {
+        Environment env = new DebugEnvironment(null, NodeFactory.getInstance(context), context, locationNode, lexicalContextFrame);
         return parseInlineScript(context, source, env, isStrict);
-    }
-
-    private static Environment assembleDebugEnvironment(JSContext context, MaterializedFrame lexicalContextFrame) {
-        Environment env = null;
-        ArrayList<FrameDescriptor> frameDescriptors = new ArrayList<>();
-        Frame frame = lexicalContextFrame;
-        while (frame != null && frame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-            assert isJSArgumentsArray(frame.getArguments());
-            FrameSlot parentSlot;
-            while ((parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) != null) {
-                frameDescriptors.add(frame.getFrameDescriptor());
-                frame = (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
-            }
-            frameDescriptors.add(frame.getFrameDescriptor());
-            frame = JSArguments.getEnclosingFrame(frame.getArguments());
-        }
-
-        for (int i = frameDescriptors.size() - 1; i >= 0; i--) {
-            env = new DebugEnvironment(env, NodeFactory.getInstance(context), context, frameDescriptors.get(i));
-        }
-        return env;
-    }
-
-    private static boolean isJSArgumentsArray(Object[] arguments) {
-        return arguments != null && arguments.length >= JSArguments.RUNTIME_ARGUMENT_COUNT && JSFunction.isJSFunction(JSArguments.getFunctionObject(arguments));
     }
 
     @Override

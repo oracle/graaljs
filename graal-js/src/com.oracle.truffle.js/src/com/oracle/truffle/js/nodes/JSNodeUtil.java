@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,8 +50,8 @@ import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.SlowPathException;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
+import com.oracle.truffle.js.nodes.access.VarWrapperNode;
 import com.oracle.truffle.js.nodes.control.GeneratorWrapperNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
@@ -141,7 +141,7 @@ public final class JSNodeUtil {
      */
     public static boolean isWrapperNode(JavaScriptNode node) {
         return (node instanceof WrapperNode ||
-                        node instanceof GlobalScopeVarWrapperNode ||
+                        node instanceof VarWrapperNode ||
                         node instanceof JSInputGeneratingNodeWrapper ||
                         node instanceof JSTaggedExecutionNode ||
                         node instanceof JSTargetableWrapperNode);
@@ -160,14 +160,22 @@ public final class JSNodeUtil {
             WrapperNode wrapper = (WrapperNode) node;
             // JavaScriptNode wrappers have a JavaScriptNode as delegate
             unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
-        } else if (node instanceof GlobalScopeVarWrapperNode) {
-            unwrapped = ((GlobalScopeVarWrapperNode) node).getDelegateNode();
-        } else if (node instanceof JSInputGeneratingNodeWrapper) {
-            unwrapped = ((JSInputGeneratingNodeWrapper) node).getDelegateNode();
-        } else if (node instanceof JSTaggedExecutionNode) {
-            unwrapped = ((JSTaggedExecutionNode) node).getDelegateNode();
-        } else if (node instanceof JSTargetableWrapperNode) {
-            unwrapped = ((JSTargetableWrapperNode) node).getDelegate();
+        }
+        if (unwrapped instanceof JSInputGeneratingNodeWrapper) {
+            unwrapped = ((JSInputGeneratingNodeWrapper) unwrapped).getDelegateNode();
+        }
+        if (unwrapped instanceof JSTaggedExecutionNode) {
+            unwrapped = ((JSTaggedExecutionNode) unwrapped).getDelegateNode();
+        }
+        if (unwrapped instanceof VarWrapperNode) {
+            unwrapped = ((VarWrapperNode) unwrapped).getDelegateNode();
+        }
+        if (unwrapped instanceof JSTargetableWrapperNode) {
+            unwrapped = ((JSTargetableWrapperNode) unwrapped).getDelegate();
+        }
+        if (unwrapped instanceof WrapperNode) {
+            WrapperNode wrapper = (WrapperNode) unwrapped;
+            unwrapped = (JavaScriptNode) wrapper.getDelegateNode();
         }
         assert !isWrapperNode(unwrapped);
         return unwrapped;

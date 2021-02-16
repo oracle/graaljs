@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,6 +154,7 @@ public abstract class JSAgent implements EcmaAgent {
     @TruffleBoundary
     public final void processAllPromises(boolean processWeakRefs) {
         try {
+            interopBoundaryEnter();
             while (!promiseJobsQueue.isEmpty()) {
                 DynamicObject nextJob = promiseJobsQueue.pollLast();
                 if (JSFunction.isJSFunction(nextJob)) {
@@ -167,6 +168,7 @@ public abstract class JSAgent implements EcmaAgent {
                 }
             }
         } finally {
+            interopBoundaryExit();
             // Ensure that there are no leftovers when the processing
             // is terminated by an exception (like ExitException).
             promiseJobsQueue.clear();

@@ -19,7 +19,7 @@ local common = import '../common.jsonnet';
   },
 
   local nativeImageSmokeTest = {
-    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js', '--extra-image-builder-argument=H:+TruffleCheckBlackListedMethods'],
+    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js', '--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods', '--extra-image-builder-argument=-H:+ReportExceptionStackTraces'],
     run+: [
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../../js-benchmarks'],
       baseNativeImageCmd + ['build'],
@@ -43,6 +43,14 @@ local common = import '../common.jsonnet';
     timelimit: '10:00',
   },
 
+  local webassemblyTest = {
+    run+: [
+      ['mx', '--dynamicimports', '/wasm', 'build'],
+      ['mx', '--dynamicimports', '/wasm', 'testv8', 'polyglot'],
+    ],
+    timelimit: '30:00',
+  },
+
   local interopJmhBenchmarks = common.buildCompiler + {
     run+: [
         ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '-Dpolyglot.engine.TraceCompilation=true'],
@@ -61,18 +69,17 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'shareengine'}}        + {name: 'js-gate-shareengine-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'latestversion'}}      + {name: 'js-gate-latestversion-jdk8-linux-amd64'},
+    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'instrument'}}         + {name: 'js-gate-instrument-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'tck'}}                + {name: 'js-gate-tck-jdk8-linux-amd64'},
+    graalJs + common.jdk8  + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk8-linux-amd64'},
-    graalJs + common.jdk15 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk15-linux-amd64'},
+    graalJs + common.jdk16 + common.daily  + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-daily-native-image-smoke-test-jdk16-linux-amd64'},
 
     // jdk 8 - coverage
     graalJs + common.jdk8  + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
 
     // jdk 8 - windows
-    graalJs + common.jdk8  + common.gate   + common.windows_vs2010 + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk8-windows-amd64'},
-
-    // jdk 8 - sparc
-    graalJs + common.jdk8  + common.gate   + common.sparc          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk8-solaris-sparcv9'},
+    graalJs + common.jdk8  + common.gate   + common.windows_jdk8   + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk8-windows-amd64'},
 
     // jdk 11 - linux
     graalJs + common.jdk11 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk11-linux-amd64'},
@@ -83,10 +90,10 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk11 + common.gate   + common.linux_aarch64  + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk11-linux-aarch64'},
 
     // jdk 11 - windows
-    graalJs + common.jdk11 + common.gate   + common.windows_vs2017 + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
+    graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
 
-    // jdk 15 - linux
-    graalJs + common.jdk15 + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk15-linux-amd64'},
+    // jdk 16 - linux
+    graalJs + common.jdk16 + common.daily  + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-daily-default-jdk16-linux-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk8  + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk8-linux-amd64'},

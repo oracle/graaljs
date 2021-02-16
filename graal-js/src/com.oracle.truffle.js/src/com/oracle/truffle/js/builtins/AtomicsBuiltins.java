@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.function.BinaryOperator;
-import java.util.function.IntBinaryOperator;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -662,13 +660,13 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
      */
     public abstract static class AtomicsComputeNode extends AtomicsOperationNode {
 
-        private final IntBinaryOperator intOperator;
-        private final BinaryOperator<BigInt> bigIntOperator;
+        private final AtomicIntBinaryOperator intOperator;
+        private final AtomicBinaryOperator<BigInt> bigIntOperator;
 
         @Child private JSToBigIntNode toBigIntNode;
         @Child private JSToIntegerAsLongNode toIntNode;
 
-        public AtomicsComputeNode(JSContext context, JSBuiltin builtin, IntBinaryOperator intOperator, BinaryOperator<BigInt> bigIntOperator) {
+        public AtomicsComputeNode(JSContext context, JSBuiltin builtin, AtomicIntBinaryOperator intOperator, AtomicBinaryOperator<BigInt> bigIntOperator) {
             super(context, builtin);
             this.intOperator = intOperator;
             this.bigIntOperator = bigIntOperator;
@@ -937,5 +935,15 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             }
             return false;
         }
+    }
+
+    @FunctionalInterface
+    public interface AtomicIntBinaryOperator {
+        int applyAsInt(int left, int right);
+    }
+
+    @FunctionalInterface
+    public interface AtomicBinaryOperator<T> {
+        T apply(T t, T u);
     }
 }

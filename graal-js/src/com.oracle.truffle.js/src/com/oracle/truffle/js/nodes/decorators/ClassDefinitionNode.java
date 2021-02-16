@@ -300,8 +300,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             memberNode.executeVoid(frame, homeObject, context);
             if (memberNode.isField()) {
-                Object key = memberNode.executeKey(frame);
-                Object value = memberNode.executeValue(frame, homeObject);
+                Object key = memberNode.evaluateKey(frame);
+                Object value = memberNode.evaluateValue(frame, homeObject);
                 Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
                 if (memberNode.isStatic() && staticFields != null) {
                     staticFields[staticFieldIndex++] = field;

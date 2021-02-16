@@ -576,4 +576,51 @@ public class CallAccessTest extends FineGrainedAccessTest {
         }).exit();
     }
 
+    @Test
+    public void github367Private() {
+        evalWithTags("class C { #x = function() {}; m() { this.#x(42); } }; new C().m()", new Class[]{ObjectAllocationTag.class, FunctionCallTag.class});
+
+        enter(FunctionCallTag.class, (e, mCall) -> {
+            enter(ObjectAllocationTag.class, (n, newClassCall) -> {
+                newClassCall.input(assertJSFunctionInputWithName("C"));
+            }).exit(assertJSObjectReturn);
+            mCall.input(assertJSObjectInput);
+            mCall.input(assertJSFunctionInputWithName("m"));
+            enter(FunctionCallTag.class, (e2, fieldCall) -> {
+                fieldCall.input(assertJSObjectInput);
+                fieldCall.input(assertJSFunctionInputWithName("#x"));
+                fieldCall.input(42);
+            }).exit();
+        }).exit();
+    }
+
+    @Test
+    public void github367OptionalCall() {
+        evalWithTags("var f = function() { return 42; }; f?.();", new Class[]{FunctionCallTag.class});
+
+        enter(FunctionCallTag.class, (e, fCall) -> {
+            fCall.input(assertGlobalObjectInput);
+            fCall.input(assertJSFunctionInputWithName("f"));
+        }).exit(assertReturnValue(42));
+    }
+
+    @Test
+    public void github367OptionalProperty() {
+        evalWithTags("o = {}; o.f = function foo() { return 42; }; (o?.f)();", new Class[]{FunctionCallTag.class});
+
+        enter(FunctionCallTag.class, (e, fCall) -> {
+            fCall.input(assertJSObjectInput);
+            fCall.input(assertJSFunctionInputWithName("foo"));
+        }).exit(assertReturnValue(42));
+    }
+
+    @Test
+    public void github367OptionalElement() {
+        evalWithTags("o = {}; o.f = function foo() { return 42; }; (o?.['f'])();", new Class[]{FunctionCallTag.class});
+
+        enter(FunctionCallTag.class, (e, fCall) -> {
+            fCall.input(assertJSObjectInput);
+            fCall.input(assertJSFunctionInputWithName("foo"));
+        }).exit(assertReturnValue(42));
+    }
 }

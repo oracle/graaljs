@@ -61,16 +61,16 @@ import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 @NodeInfo(shortName = "==")
-@ImportStatic({JSRuntime.class, JSInteropUtil.class})
+@ImportStatic({JSRuntime.class, JSInteropUtil.class, JSConfig.class})
 public abstract class JSEqualNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
-    protected static final int INTEROP_LIMIT = 5;
 
     protected JSEqualNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -201,19 +201,19 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = {"isNullOrUndefined(a)"})
     protected static boolean doLeftNullOrUndefined(@SuppressWarnings("unused") Object a, Object b,
-                    @Shared("bInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary bInterop) {
+                    @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop) {
         return isNullish(b, bInterop);
     }
 
     @Specialization(guards = {"isNullOrUndefined(b)"})
     protected static boolean doRightNullOrUndefined(Object a, @SuppressWarnings("unused") Object b,
-                    @Shared("aInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary aInterop) {
+                    @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop) {
         return isNullish(a, aInterop);
     }
 
     @Specialization(guards = {"isObject(a)", "!isObject(b)"})
     protected boolean doJSObject(DynamicObject a, Object b,
-                    @Shared("bInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary bInterop,
+                    @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(b, bInterop)) {
@@ -224,7 +224,7 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = {"!isObject(a)", "isObject(b)"})
     protected boolean doJSObject(Object a, DynamicObject b,
-                    @Shared("aInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary aInterop,
+                    @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(a, aInterop)) {
@@ -281,8 +281,8 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = "isForeignObject(a) || isForeignObject(b)")
     protected boolean doForeign(Object a, Object b,
-                    @Shared("aInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary aInterop,
-                    @Shared("bInterop") @CachedLibrary(limit = "INTEROP_LIMIT") InteropLibrary bInterop,
+                    @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
+                    @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
         assert (a != null) && (b != null);
         final Object defaultValue = null;

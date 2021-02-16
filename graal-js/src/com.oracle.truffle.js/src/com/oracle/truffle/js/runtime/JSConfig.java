@@ -74,12 +74,14 @@ public final class JSConfig {
     public static final int ECMAScript2021 = 12;
     public static final int ECMAScript2022 = 13;
     public static final int ECMAScriptNumberYearDelta = 2009; // ES6==ES2015
-    public static final int CurrentECMAScriptVersion = ECMAScript2020;
+    public static final int CurrentECMAScriptVersion = ECMAScript2021;
     public static final int MaxECMAScriptVersion = JSConfig.ECMAScript2022;
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = true;
 
     // Inline Cache options
+    /** Default cache limit for dispatched InteropLibrary. */
+    public static final int InteropLibraryLimit = 5;
     public static final int PropertyCacheLimit = 5;
     public static final int FunctionCacheLimit = 4;
     public static final boolean AssertFinalPropertySpecialization = false;

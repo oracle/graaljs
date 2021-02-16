@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -295,7 +295,7 @@ public final class JSContextOptions {
                             }
                             String[] options = value.split(",");
                             for (String s : options) {
-                                String[] builtin = s.split(":");
+                                String[] builtin = s.split(":", 2);
                                 if (builtin.length != 2) {
                                     throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
                                 }
@@ -481,6 +481,22 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> FUNCTION_CACHE_LIMIT = new OptionKey<>(JSConfig.FunctionCacheLimit);
     @CompilationFinal private int functionCacheLimit;
 
+    public static final String TOP_LEVEL_AWAIT_NAME = JS_OPTION_PREFIX + "top-level-await";
+    @Option(name = TOP_LEVEL_AWAIT_NAME, category = OptionCategory.EXPERT, help = "Enable top-level-await.")
+    // defaulting to ecmascript-version>=2022
+    protected static final OptionKey<Boolean> TOP_LEVEL_AWAIT = new OptionKey<>(false);
+    @CompilationFinal private boolean topLevelAwait;
+
+    public static final String USE_UTC_FOR_LEGACY_DATES_NAME = JS_OPTION_PREFIX + "use-utc-for-legacy-dates";
+    @Option(name = USE_UTC_FOR_LEGACY_DATES_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, help = "Determines what time zone (UTC or local time zone) should be used when UTC offset is absent in a parsed date.") //
+    public static final OptionKey<Boolean> USE_UTC_FOR_LEGACY_DATES = new OptionKey<>(true);
+    @CompilationFinal private boolean useUTCForLegacyDates;
+
+    public static final String WEBASSEMBLY_NAME = JS_OPTION_PREFIX + "webassembly";
+    @Option(name = WEBASSEMBLY_NAME, category = OptionCategory.EXPERT, help = "Enable WebAssembly JavaScript API.") //
+    public static final OptionKey<Boolean> WEBASSEMBLY = new OptionKey<>(false);
+    @CompilationFinal private boolean webAssembly;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -515,7 +531,7 @@ public final class JSContextOptions {
             regexpStaticResultCyclicAssumption.invalidate(msg);
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
         });
-        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2021;
+        this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
             arraySortInheritedCyclicAssumption.invalidate(msg);
             arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
@@ -564,6 +580,9 @@ public final class JSContextOptions {
         this.maxApplyArgumentLength = readIntegerOption(MAX_APPLY_ARGUMENT_LENGTH);
         this.maxPrototypeChainLength = readIntegerOption(MAX_PROTOTYPE_CHAIN_LENGTH);
         this.asyncStackTraces = readBooleanOption(ASYNC_STACK_TRACES);
+        this.topLevelAwait = TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? readBooleanOption(TOP_LEVEL_AWAIT) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.useUTCForLegacyDates = USE_UTC_FOR_LEGACY_DATES.hasBeenSet(optionValues) ? readBooleanOption(USE_UTC_FOR_LEGACY_DATES) : !v8CompatibilityMode;
+        this.webAssembly = readBooleanOption(WEBASSEMBLY);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -712,6 +731,10 @@ public final class JSContextOptions {
 
     public boolean isAwaitOptimization() {
         return awaitOptimization;
+    }
+
+    public boolean isTopLevelAwait() {
+        return topLevelAwait;
     }
 
     public boolean isDisableEval() {
@@ -914,6 +937,14 @@ public final class JSContextOptions {
         return asyncStackTraces;
     }
 
+    public boolean shouldUseUTCForLegacyDates() {
+        return useUTCForLegacyDates;
+    }
+
+    public boolean isWebAssembly() {
+        return webAssembly;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -961,6 +992,9 @@ public final class JSContextOptions {
         hash = 53 * hash + this.maxPrototypeChainLength;
         hash = 53 * hash + this.propertyCacheLimit;
         hash = 53 * hash + this.functionCacheLimit;
+        hash = 53 * hash + (this.topLevelAwait ? 1 : 0);
+        hash = 53 * hash + (this.useUTCForLegacyDates ? 1 : 0);
+        hash = 53 * hash + (this.webAssembly ? 1 : 0);
         return hash;
     }
 
@@ -1103,6 +1137,15 @@ public final class JSContextOptions {
             return false;
         }
         if (this.functionCacheLimit != other.functionCacheLimit) {
+            return false;
+        }
+        if (this.topLevelAwait != other.topLevelAwait) {
+            return false;
+        }
+        if (this.useUTCForLegacyDates != other.useUTCForLegacyDates) {
+            return false;
+        }
+        if (this.webAssembly != other.webAssembly) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

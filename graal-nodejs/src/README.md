@@ -89,7 +89,7 @@ In most native Node.js objects, the first internal field is used to store a
 pointer to a [`BaseObject`][] subclass, which then contains all relevant
 information associated with the JavaScript object.
 
-The most typical way of working internal fields are:
+Typical ways of working with internal fields are:
 
 * `obj->InternalFieldCount()` to look up the number of internal fields for an
   object (`0` for regular JavaScript objects).
@@ -241,7 +241,7 @@ Node.js, and a sufficiently committed person could restructure Node.js to
 provide built-in modules inside of `vm.Context`s.
 
 Often, the `Context` is passed around for [exception handling][].
-Typical ways of accessing the current `Environment` in the Node.js code are:
+Typical ways of accessing the current `Context` in the Node.js code are:
 
 * Given an [`Isolate`][], using `isolate->GetCurrentContext()`.
 * Given an [`Environment`][], using `env->context()` to get the `Environment`’s
@@ -881,6 +881,10 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 }
 ```
 
+[C++ coding style]: ../doc/guides/cpp-style-guide.md
+[Callback scopes]: #callback-scopes
+[JavaScript value handles]: #js-handles
+[N-API]: https://nodejs.org/api/n-api.html
 [`BaseObject`]: #baseobject
 [`Context`]: #context
 [`Environment`]: #environment
@@ -903,10 +907,6 @@ static void GetUserInfo(const FunctionCallbackInfo<Value>& args) {
 [`v8.h` in Node.js master]: https://github.com/nodejs/node/blob/master/deps/v8/include/v8.h
 [`v8.h` in V8 master]: https://github.com/v8/v8/blob/master/include/v8.h
 [`vm` module]: https://nodejs.org/api/vm.html
-[C++ coding style]: ../doc/guides/cpp-style-guide.md
-[Callback scopes]: #callback-scopes
-[JavaScript value handles]: #js-handles
-[N-API]: https://nodejs.org/api/n-api.html
 [binding function]: #binding-functions
 [cleanup hooks]: #cleanup-hooks
 [event loop]: #event-loop

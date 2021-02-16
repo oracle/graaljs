@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@ typedef _jobject *jobject;
 
 class V8_EXPORT GraalHandleContent {
 public:
-    GraalHandleContent(GraalIsolate* isolate, jobject java_object);
+    inline GraalHandleContent(GraalIsolate* isolate, jobject java_object);
     virtual ~GraalHandleContent();
     GraalHandleContent* Copy(bool global);
     void MakeWeak();
@@ -76,6 +76,7 @@ public:
     static bool SameData(GraalHandleContent* this_content, GraalHandleContent* that_content);
     virtual bool IsString() const;
     jobject ToNewLocalJavaObject();
+    void DeleteJavaRef();
 
     inline void ReferenceAdded() {
         ref_count++;
@@ -93,7 +94,7 @@ public:
         }
 #endif
         if (--ref_count == 0) {
-            delete this;
+            Recycle();
         }
     }
 
@@ -112,8 +113,12 @@ public:
     inline bool IsEmpty() const {
         return IsWeak() ? IsWeakCollected() : false;
     }
+
 protected:
     virtual GraalHandleContent* CopyImpl(jobject java_object_copy) = 0;
+    virtual void Recycle();
+    inline void ReInitialize(jobject java_object);
+
 private:
     GraalIsolate* isolate_;
     jobject java_object_;

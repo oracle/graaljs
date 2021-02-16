@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,13 @@
 package com.oracle.truffle.js.test.instrumentation;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.polyglot.Source;
-import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,10 +55,13 @@ import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ExecutionEventListener;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.control.ForNode;
@@ -270,7 +273,8 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         listener.checkEnteredNodes(propertyNodeList2);
         listener.checkExitedNodes(propertyNodeList2);
 
-        assertTrue(JSNodeUtil.isTaggedNode(propertyNodeList.get(0).getTarget()));
+        PropertyNode propertyNode = propertyNodeList.get(0);
+        assertTrue(isInputGeneratingNode(propertyNode.getTarget()));
     }
 
     private void testNoDoubleMaterializationPropertyNodeCheck(List<PropertyNode> propertyNodeList) {
@@ -284,10 +288,74 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
         }).input().exit();
         // a.x;
         enter(JSTags.ReadPropertyTag.class, (e) -> {
-            Assert.assertTrue(e.instrumentedNode instanceof PropertyNode);
+            assertTrue(e.instrumentedNode instanceof PropertyNode);
             propertyNodeList.add((PropertyNode) e.instrumentedNode);
             enter(JSTags.ReadPropertyTag.class).input().exit();
         }).input().exit();
+    }
+
+    @Test
+    public void testNoDoubleMaterializationPropertyCallNode() {
+        Source source = evalAllTags("var a = {x:()=>42}; a.x();");
+
+        List<PropertyNode> propertyNodeList = new ArrayList<>();
+        testNoDoubleMaterializationPropertyCallNodeCheck(propertyNodeList);
+        assertFalse(propertyNodeList.isEmpty());
+
+        InstrumentedNodesExecutionEventListener listener = new InstrumentedNodesExecutionEventListener(PropertyNode.class);
+        instrumenter.attachExecutionEventListener(SourceSectionFilter.ANY, listener);
+
+        evalWithCurrentBinding(source);
+
+        List<PropertyNode> propertyNodeList2 = new ArrayList<>();
+        testNoDoubleMaterializationPropertyCallNodeCheck(propertyNodeList2);
+        assertFalse(propertyNodeList2.isEmpty());
+
+        listener.checkEnteredNodes(propertyNodeList);
+        listener.checkExitedNodes(propertyNodeList);
+        listener.checkEnteredNodes(propertyNodeList2);
+        listener.checkExitedNodes(propertyNodeList2);
+
+        PropertyNode propertyNode = propertyNodeList.get(0);
+        assertNotSame(PropertyNode.class, propertyNode.getClass());
+        assertTrue(isInputGeneratingNode(propertyNode.getTarget()));
+    }
+
+    private void testNoDoubleMaterializationPropertyCallNodeCheck(List<PropertyNode> propertyNodeList) {
+        // var a = {x:42}
+        enter(JSTags.WritePropertyTag.class, (e, write) -> {
+            write.input();
+            // object literal
+            enter(JSTags.LiteralTag.class, (e2) -> {
+                assertAttribute(e2, LITERAL_TYPE, JSTags.LiteralTag.Type.ObjectLiteral.name());
+                // function literal
+                enter(JSTags.LiteralTag.class, (e3) -> assertAttribute(e3, LITERAL_TYPE, JSTags.LiteralTag.Type.FunctionLiteral.name())).exit();
+            }).input().exit();
+        }).input().exit();
+        // a.x();
+        enter(JSTags.FunctionCallTag.class, (e, call) -> {
+            enter(JSTags.ReadPropertyTag.class, (e2) -> {
+                assertTrue(String.valueOf(e2.instrumentedNode), e2.instrumentedNode instanceof GlobalPropertyNode);
+            }).input().exit();
+            call.input();
+            enter(JSTags.ReadPropertyTag.class, (e2) -> {
+                assertTrue(String.valueOf(e2.instrumentedNode), e2.instrumentedNode instanceof PropertyNode);
+                propertyNodeList.add((PropertyNode) e2.instrumentedNode);
+            }).input().exit();
+            call.input();
+
+            // return 42;
+            enter(JSTags.ControlFlowBranchTag.class, (e2, ret) -> {
+                assertAttribute(e2, TYPE, JSTags.ControlFlowBranchTag.Type.Return.name());
+                enter(JSTags.LiteralTag.class, (e3) -> assertAttribute(e3, LITERAL_TYPE, JSTags.LiteralTag.Type.NumericLiteral.name())).exit();
+                ret.input();
+            }).exit();
+        }).exit();
+    }
+
+    private static boolean isInputGeneratingNode(JavaScriptNode node) {
+        JavaScriptNode unwrappedNode = JSNodeUtil.getWrappedNode(node);
+        return unwrappedNode.isInstrumentable() && (unwrappedNode.hasTag(JSTags.InputNodeTag.class) || unwrappedNode.hasTag(StandardTags.ExpressionTag.class));
     }
 
     @Test

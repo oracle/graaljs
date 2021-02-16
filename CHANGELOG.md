@@ -3,7 +3,16 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.1.0
+* Prototype of WebAssembly JavaScript Interface implemented. It is available behind the `--js.webassembly` flag.
+
 ## Version 21.0.0
+* ECMAScript 2021 mode/features enabled by default.
+* Updated Node.js to version 12.20.1.
+* Adopted new interop exception handling and made JS exceptions extend `AbstractTruffleException`.
+* Implemented interop identity messages.
+* Expose `Graal.versionECMAScript` instead of `Graal.versionJS`.
+* Implemented the [relative indexing method](https://tc39.es/proposal-relative-indexing-method/) proposal. It is available in ECMAScript 2022 mode (`--js.ecmascript-version=2022`).
 
 ## Version 20.3.0
 * Updated Node.js to version 12.18.4.

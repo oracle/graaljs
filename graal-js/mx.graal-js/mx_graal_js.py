@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -75,7 +75,8 @@ def _graal_js_gate_runner(args, tasks):
         'cloneuninitialized': ['-Dpolyglot.js.test-clone-uninitialized=true', 'gate'],
         'lazytranslation': ['-Dpolyglot.js.lazy-translation=true', 'gate'],
         'shareengine': ['gate', 'shareengine'],
-        'latestesversion': ['gate', 'minesversion=2021'],
+        'latestversion': ['gate', 'minesversion=2022'],
+        'instrument': ['gate', 'instrument', 'timeoutoverall=1800']
     }
 
     gateTestCommands = {
@@ -87,7 +88,7 @@ def _graal_js_gate_runner(args, tasks):
     for testCommandName in gateTestCommands:
         for testConfigName in gateTestConfigs:
             # TestNashorn is not sensitive to ES version
-            if testCommandName == 'TestNashorn' and testConfigName == 'latestesversion':
+            if testCommandName == 'TestNashorn' and testConfigName == 'latestversion':
                 continue
             testName = '%s-%s' % (testCommandName, testConfigName)
             with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
@@ -167,7 +168,8 @@ def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
 
 def graaljs_cmd_line(args, append_default_args=True):
     default_cp = mx.classpath(['GRAALJS_LAUNCHER', 'GRAALJS']
-            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:TRUFFLE_WARMUP_ESTIMATOR'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT', 'tools:TRUFFLE_WARMUP_ESTIMATOR'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+            + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     return _js_cmd_line(args, main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[default_cp], append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
@@ -202,7 +204,9 @@ def _run_test_suite(location, library_names, custom_args, default_vm_args, max_h
     _fetch_test_suite(location, library_names)
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
-    _cp = mx.classpath(['TRUFFLE_JS_TESTS'] + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else []))
+    _cp = mx.classpath(['TRUFFLE_JS_TESTS']
+        + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+        + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     _vm_args = ['-ea', '-esa', '-cp', _cp] + default_vm_args + _vm_args
     return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=get_jdk())
 

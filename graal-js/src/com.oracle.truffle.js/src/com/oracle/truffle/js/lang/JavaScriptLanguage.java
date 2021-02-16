@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -241,9 +241,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         final Source source = request.getSource();
         final MaterializedFrame requestFrame = request.getFrame();
         final JSContext context = getJSContext();
-        final boolean strict = isStrictLocation(request.getLocation());
+        final Node locationNode = request.getLocation();
+        final boolean strict = isStrictLocation(locationNode);
         final ExecutableNode executableNode = new ExecutableNode(this) {
-            @Child private JavaScriptNode expression = insert(parseInlineScript(context, source, requestFrame, strict));
+            @Child private JavaScriptNode expression = insert(parseInlineScript(context, source, requestFrame, strict, locationNode));
             @Child private ExportValueNode exportValueNode = ExportValueNode.create();
 
             @Override
@@ -284,11 +285,11 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     }
 
     @TruffleBoundary
-    protected static JavaScriptNode parseInlineScript(JSContext context, Source code, MaterializedFrame lexicalContextFrame, boolean strict) {
+    protected static JavaScriptNode parseInlineScript(JSContext context, Source code, MaterializedFrame lexicalContextFrame, boolean strict, Node locationNode) {
         boolean profileTime = context.getContextOptions().isProfileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
-            return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict);
+            return context.getEvaluator().parseInlineScript(context, code, lexicalContextFrame, strict, locationNode);
         } finally {
             if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
@@ -368,6 +369,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
                     JSContextOptions.PERFORMANCE,
                     JSContextOptions.CLASS_FIELDS,
                     JSContextOptions.REGEXP_STATIC_RESULT,
+                    JSContextOptions.TIME_ZONE,
     };
 
     /**

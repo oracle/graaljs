@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,13 @@
 
 #include "graal_isolate.h"
 #include "graal_string.h"
-#include <string.h>
 #include <limits.h>
+#include <string.h>
 
-GraalString::GraalString(GraalIsolate* isolate, jstring java_string) : GraalName(isolate, java_string) {
-}
+#include "graal_string-inl.h"
 
 GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
-    return new GraalString(Isolate(), (jstring) java_object_copy);
+    return GraalString::Allocate(Isolate(), (jstring) java_object_copy);
 }
 
 v8::Local<v8::String> GraalString::NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length) {
@@ -261,7 +260,7 @@ v8::Local<v8::String> GraalString::NewFromUtf8(v8::Isolate* isolate, char const*
 v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, const char* data) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jstring java_string = graal_isolate->GetJNIEnv()->NewStringUTF(data);
-    GraalString* graal_string = new GraalString(graal_isolate, java_string);
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 
@@ -277,7 +276,7 @@ v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const ui
     }
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jstring java_string = graal_isolate->GetJNIEnv()->NewString(data, length);
-    GraalString* graal_string = new GraalString(graal_isolate, java_string);
+    GraalString* graal_string = GraalString::Allocate(graal_isolate, java_string);
     return reinterpret_cast<v8::String*> (graal_string);
 }
 

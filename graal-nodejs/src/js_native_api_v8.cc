@@ -10,6 +10,9 @@
 #define CHECK_MAYBE_NOTHING(env, maybe, status) \
   RETURN_STATUS_IF_FALSE((env), !((maybe).IsNothing()), (status))
 
+#define CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, maybe, status) \
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE((env), !((maybe).IsNothing()), (status))
+
 #define CHECK_TO_NUMBER(env, context, result, src) \
   CHECK_TO_TYPE((env), Number, (context), (result), (src), napi_number_expected)
 
@@ -267,13 +270,7 @@ class RefBase : protected Finalizer, RefTracker {
  protected:
   inline void Finalize(bool is_env_teardown = false) override {
     if (_finalize_callback != nullptr) {
-      v8::HandleScope handle_scope(_env->isolate);
-      _env->CallIntoModule([&](napi_env env) {
-        _finalize_callback(
-            env,
-            _finalize_data,
-            _finalize_hint);
-      });
+      _env->CallFinalizer(_finalize_callback, _finalize_data, _finalize_hint);
     }
 
     // this is safe because if a request to delete the reference
@@ -1395,6 +1392,42 @@ napi_status napi_define_properties(napi_env env,
   return GET_RETURN_STATUS(env);
 }
 
+napi_status napi_object_freeze(napi_env env,
+                               napi_value object) {
+  NAPI_PREAMBLE(env);
+
+  v8::Local<v8::Context> context = env->context();
+  v8::Local<v8::Object> obj;
+
+  CHECK_TO_OBJECT(env, context, obj, object);
+
+  v8::Maybe<bool> set_frozen =
+    obj->SetIntegrityLevel(context, v8::IntegrityLevel::kFrozen);
+
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(env,
+    set_frozen.FromMaybe(false), napi_generic_failure);
+
+  return GET_RETURN_STATUS(env);
+}
+
+napi_status napi_object_seal(napi_env env,
+                             napi_value object) {
+  NAPI_PREAMBLE(env);
+
+  v8::Local<v8::Context> context = env->context();
+  v8::Local<v8::Object> obj;
+
+  CHECK_TO_OBJECT(env, context, obj, object);
+
+  v8::Maybe<bool> set_sealed =
+    obj->SetIntegrityLevel(context, v8::IntegrityLevel::kSealed);
+
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(env,
+    set_sealed.FromMaybe(false), napi_generic_failure);
+
+  return GET_RETURN_STATUS(env);
+}
+
 napi_status napi_is_array(napi_env env, napi_value value, bool* result) {
   CHECK_ENV(env);
   CHECK_ARG(env, value);
@@ -1640,13 +1673,10 @@ napi_status napi_create_bigint_words(napi_env env,
   v8::MaybeLocal<v8::BigInt> b = v8::BigInt::NewFromWords(
       context, sign_bit, word_count, words);
 
-  if (try_catch.HasCaught()) {
-    return napi_set_last_error(env, napi_pending_exception);
-  } else {
-    CHECK_MAYBE_EMPTY(env, b, napi_generic_failure);
-    *result = v8impl::JsValueFromV8LocalValue(b.ToLocalChecked());
-    return napi_clear_last_error(env);
-  }
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, b, napi_generic_failure);
+
+  *result = v8impl::JsValueFromV8LocalValue(b.ToLocalChecked());
+  return GET_RETURN_STATUS(env);
 }
 
 napi_status napi_get_boolean(napi_env env, bool value, napi_value* result) {
@@ -2393,6 +2423,72 @@ napi_status napi_create_external(napi_env env,
   *result = v8impl::JsValueFromV8LocalValue(external_value);
 
   return napi_clear_last_error(env);
+}
+
+NAPI_EXTERN napi_status napi_type_tag_object(napi_env env,
+                                             napi_value object,
+                                             const napi_type_tag* type_tag) {
+  NAPI_PREAMBLE(env);
+  v8::Local<v8::Context> context = env->context();
+  v8::Local<v8::Object> obj;
+  CHECK_TO_OBJECT_WITH_PREAMBLE(env, context, obj, object);
+  CHECK_ARG_WITH_PREAMBLE(env, type_tag);
+
+  auto key = NAPI_PRIVATE_KEY(context, type_tag);
+  auto maybe_has = obj->HasPrivate(context, key);
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, maybe_has, napi_generic_failure);
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(env,
+                                       !maybe_has.FromJust(),
+                                       napi_invalid_arg);
+
+  auto tag = v8::BigInt::NewFromWords(context,
+                                   0,
+                                   2,
+                                   reinterpret_cast<const uint64_t*>(type_tag));
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, tag, napi_generic_failure);
+
+  auto maybe_set = obj->SetPrivate(context, key, tag.ToLocalChecked());
+  CHECK_MAYBE_NOTHING_WITH_PREAMBLE(env, maybe_set, napi_generic_failure);
+  RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(env,
+                                       maybe_set.FromJust(),
+                                       napi_generic_failure);
+
+  return GET_RETURN_STATUS(env);
+}
+
+NAPI_EXTERN napi_status
+napi_check_object_type_tag(napi_env env,
+                           napi_value object,
+                           const napi_type_tag* type_tag,
+                           bool* result) {
+  NAPI_PREAMBLE(env);
+  v8::Local<v8::Context> context = env->context();
+  v8::Local<v8::Object> obj;
+  CHECK_TO_OBJECT_WITH_PREAMBLE(env, context, obj, object);
+  CHECK_ARG_WITH_PREAMBLE(env, type_tag);
+  CHECK_ARG_WITH_PREAMBLE(env, result);
+
+  auto maybe_value = obj->GetPrivate(context,
+                                     NAPI_PRIVATE_KEY(context, type_tag));
+  CHECK_MAYBE_EMPTY_WITH_PREAMBLE(env, maybe_value, napi_generic_failure);
+  v8::Local<v8::Value> val = maybe_value.ToLocalChecked();
+
+  // We consider the type check to have failed unless we reach the line below
+  // where we set whether the type check succeeded or not based on the
+  // comparison of the two type tags.
+  *result = false;
+  if (val->IsBigInt()) {
+    int sign;
+    int size = 2;
+    napi_type_tag tag;
+    val.As<v8::BigInt>()->ToWordsArray(&sign,
+                                       &size,
+                                       reinterpret_cast<uint64_t*>(&tag));
+    if (size == 2 && sign == 0)
+      *result = (tag.lower == type_tag->lower && tag.upper == type_tag->upper);
+  }
+
+  return GET_RETURN_STATUS(env);
 }
 
 napi_status napi_get_value_external(napi_env env,

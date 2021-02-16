@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,8 @@
 
 class GraalContext : public GraalHandleContent {
 public:
-    GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
+    inline static GraalContext* Allocate(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
+    inline void ReInitialize(jobject java_context, void* cached_context_embedder_data);
     v8::Local<v8::Object> Global();
     void SetAlignedPointerInEmbedderData(int index, void* value);
     void* SlowGetAlignedPointerFromEmbedderData(int index);
@@ -73,7 +74,8 @@ public:
     }
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
-
+    inline void Recycle() override;
+    inline GraalContext(GraalIsolate* isolate, jobject java_context, void* cached_context_embedder_data = nullptr);
 private:
     void* cached_context_embedder_data_;
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,6 +166,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.DURATION,
                         TypeDescriptor.TIME_ZONE,
                         TypeDescriptor.META_OBJECT,
+                        TypeDescriptor.ITERATOR,
+                        TypeDescriptor.ITERABLE,
                         noType);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
@@ -575,7 +577,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
                     if (snippetRun.getException() != null) {
                         final Value arg = snippetRun.getParameters().get(0);
-                        if (!arg.hasMembers()) {
+                        if (arg.isNull() || !arg.hasMembers()) {
                             return;
                         }
                     }
@@ -603,7 +605,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() == null) {
                         TypeDescriptor numericTypes = TypeDescriptor.union(TypeDescriptor.NUMBER, TypeDescriptor.BOOLEAN, TypeDescriptor.NULL);
                         for (Value actualParameter : snippetRun.getParameters()) {
-                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter));
+                            allNumeric &= numericTypes.isAssignable(TypeDescriptor.forValue(actualParameter)) || actualParameter.isInstant();
                         }
                         if (allNumeric) {
                             TypeDescriptor resultType = TypeDescriptor.forValue(snippetRun.getResult());

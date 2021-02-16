@@ -22,7 +22,6 @@
 'use strict';
 
 const {
-  Array,
   Boolean,
   Error,
   MathMin,
@@ -322,7 +321,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     }
   } else {
     const len = handler.length;
-    const listeners = arrayClone(handler, len);
+    const listeners = arrayClone(handler);
     for (let i = 0; i < len; ++i) {
       const result = ReflectApply(listeners[i], this, args);
 
@@ -449,8 +448,6 @@ EventEmitter.prototype.prependOnceListener =
 // Emits a 'removeListener' event if and only if the listener was removed.
 EventEmitter.prototype.removeListener =
     function removeListener(type, listener) {
-      let originalListener;
-
       checkListener(listener);
 
       const events = this._events;
@@ -474,7 +471,6 @@ EventEmitter.prototype.removeListener =
 
         for (let i = list.length - 1; i >= 0; i--) {
           if (list[i] === listener || list[i].listener === listener) {
-            originalListener = list[i].listener;
             position = i;
             break;
           }
@@ -495,7 +491,7 @@ EventEmitter.prototype.removeListener =
           events[type] = list[0];
 
         if (events.removeListener !== undefined)
-          this.emit('removeListener', type, originalListener || listener);
+          this.emit('removeListener', type, listener);
       }
 
       return this;
@@ -563,7 +559,7 @@ function _listeners(target, type, unwrap) {
     return unwrap ? [evlistener.listener || evlistener] : [evlistener];
 
   return unwrap ?
-    unwrapListeners(evlistener) : arrayClone(evlistener, evlistener.length);
+    unwrapListeners(evlistener) : arrayClone(evlistener);
 }
 
 EventEmitter.prototype.listeners = function listeners(type) {
@@ -602,24 +598,35 @@ EventEmitter.prototype.eventNames = function eventNames() {
   return this._eventsCount > 0 ? ReflectOwnKeys(this._events) : [];
 };
 
-function arrayClone(arr, n) {
-  const copy = new Array(n);
-  for (let i = 0; i < n; ++i)
-    copy[i] = arr[i];
-  return copy;
+function arrayClone(arr) {
+  // At least since V8 8.3, this implementation is faster than the previous
+  // which always used a simple for-loop
+  switch (arr.length) {
+    case 2: return [arr[0], arr[1]];
+    case 3: return [arr[0], arr[1], arr[2]];
+    case 4: return [arr[0], arr[1], arr[2], arr[3]];
+    case 5: return [arr[0], arr[1], arr[2], arr[3], arr[4]];
+    case 6: return [arr[0], arr[1], arr[2], arr[3], arr[4], arr[5]];
+  }
+  return arr.slice();
 }
 
 function unwrapListeners(arr) {
-  const ret = new Array(arr.length);
+  const ret = arrayClone(arr);
   for (let i = 0; i < ret.length; ++i) {
-    ret[i] = arr[i].listener || arr[i];
+    const orig = ret[i].listener;
+    if (typeof orig === 'function')
+      ret[i] = orig;
   }
   return ret;
 }
 
 function once(emitter, name) {
   return new Promise((resolve, reject) => {
-    if (typeof emitter.addEventListener === 'function') {
+    if (
+      typeof emitter.addEventListener === 'function' &&
+      typeof emitter.on !== 'function'
+    ) {
       // EventTarget does not have `error` event semantics like Node
       // EventEmitters, we do not listen to `error` events here.
       emitter.addEventListener(

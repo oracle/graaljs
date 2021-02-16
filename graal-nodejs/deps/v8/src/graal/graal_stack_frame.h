@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,13 +47,14 @@
 
 class GraalStackFrame : public GraalHandleContent {
 public:
-    GraalStackFrame(GraalIsolate* isolate, jobject stack_frame);
+    inline static GraalStackFrame* Allocate(GraalIsolate* isolate, jobject stack_frame);
     int GetLineNumber() const;
     int GetColumn() const;
     v8::Local<v8::String> GetScriptName() const;
     v8::Local<v8::String> GetFunctionName() const;
     bool IsEval() const;
 protected:
+    inline GraalStackFrame(GraalIsolate* isolate, jobject stack_frame);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

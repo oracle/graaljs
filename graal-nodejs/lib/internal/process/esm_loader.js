@@ -3,8 +3,10 @@
 const {
   ERR_VM_DYNAMIC_IMPORT_CALLBACK_MISSING,
 } = require('internal/errors').codes;
-const assert = require('internal/assert');
 const { Loader } = require('internal/modules/esm/loader');
+const {
+  hasUncaughtExceptionCaptureCallback,
+} = require('internal/process/execution');
 const { pathToFileURL } = require('internal/url');
 const {
   getModuleFromWrap,
@@ -23,13 +25,6 @@ exports.initializeImportMetaObject = function(wrap, meta) {
 };
 
 exports.importModuleDynamicallyCallback = async function(wrap, specifier) {
-  assert(calledInitialize === true || !userLoader);
-  if (!calledInitialize) {
-    process.emitWarning(
-      'The ESM module loader is experimental.',
-      'ExperimentalWarning', undefined);
-    calledInitialize = true;
-  }
   const { callbackMap } = internalBinding('module_wrap');
   if (callbackMap.has(wrap)) {
     const { importModuleDynamically } = callbackMap.get(wrap);
@@ -44,14 +39,7 @@ exports.importModuleDynamicallyCallback = async function(wrap, specifier) {
 let ESMLoader = new Loader();
 exports.ESMLoader = ESMLoader;
 
-let calledInitialize = false;
-exports.initializeLoader = initializeLoader;
 async function initializeLoader() {
-  assert(calledInitialize === false);
-  process.emitWarning(
-    'The ESM module loader is experimental.',
-    'ExperimentalWarning', undefined);
-  calledInitialize = true;
   if (!userLoader)
     return;
   let cwd;
@@ -73,3 +61,19 @@ async function initializeLoader() {
     return exports.ESMLoader = ESMLoader;
   })();
 }
+
+exports.loadESM = async function loadESM(callback) {
+  try {
+    await initializeLoader();
+    await callback(ESMLoader);
+  } catch (err) {
+    if (hasUncaughtExceptionCaptureCallback()) {
+      process._fatalException(err);
+      return;
+    }
+    internalBinding('errors').triggerUncaughtException(
+      err,
+      true /* fromPromise */
+    );
+  }
+};

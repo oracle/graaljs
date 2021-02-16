@@ -15,12 +15,14 @@ if /i "%1"=="/?" goto help
 
 cd %~dp0
 
+set JS_SUITES=default
+set NATIVE_SUITES=addons js-native-api node-api
 @rem CI_* variables should be kept synchronized with the ones in Makefile
-set CI_NATIVE_SUITES=addons js-native-api node-api
-set CI_JS_SUITES=default
+set "CI_NATIVE_SUITES=%NATIVE_SUITES% benchmark"
+set "CI_JS_SUITES=%JS_SUITES%"
 set CI_DOC=doctool
 @rem Same as the test-ci target in Makefile
-set "common_test_suites=%CI_JS_SUITES% %CI_NATIVE_SUITES% %CI_DOC%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
+set "common_test_suites=%JS_SUITES% %NATIVE_SUITES%&set build_addons=1&set build_js_native_api_tests=1&set build_node_api_tests=1"
 
 @rem Process arguments.
 set config=Release
@@ -119,8 +121,6 @@ if /i "%1"=="test-v8-all"       set test_v8=1&set test_v8_intl=1&set test_v8_ben
 if /i "%1"=="lint-cpp"      set lint_cpp=1&goto arg-ok
 if /i "%1"=="lint-js"       set lint_js=1&goto arg-ok
 if /i "%1"=="jslint"        set lint_js=1&echo Please use lint-js instead of jslint&goto arg-ok
-if /i "%1"=="lint-js-ci"    set lint_js_ci=1&goto arg-ok
-if /i "%1"=="jslint-ci"     set lint_js_ci=1&echo Please use lint-js-ci instead of jslint-ci&goto arg-ok
 if /i "%1"=="lint-md"       set lint_md=1&goto arg-ok
 if /i "%1"=="lint-md-build" set lint_md_build=1&goto arg-ok
 if /i "%1"=="lint"          set lint_cpp=1&set lint_js=1&set lint_md=1&goto arg-ok
@@ -666,16 +666,10 @@ goto lint-js
 goto lint-js
 
 :lint-js
-if defined lint_js_ci goto lint-js-ci
 if not defined lint_js goto lint-md-build
 if not exist tools\node_modules\eslint goto no-lint
 echo running lint-js
 %node_exe% tools\node_modules\eslint\bin\eslint.js --cache --report-unused-disable-directives --rule "linebreak-style: 0" --ext=.js,.mjs,.md .eslintrc.js benchmark doc lib test tools
-goto lint-md-build
-
-:lint-js-ci
-echo running lint-js-ci
-%node_exe% tools\lint-js.js -J -f tap -o test-eslint.tap benchmark doc lib test tools
 goto lint-md-build
 
 :no-lint
@@ -712,7 +706,7 @@ set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017/vs2019] [download-all] [lint/lint-ci/lint-js/lint-js-ci/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017/vs2019] [download-all] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,8 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -1484,7 +1486,16 @@ public final class JSRuntime {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSDynamicObject.isJSDynamicObject(value))) {
             return (DynamicObject) value;
         }
-        return toObjectFromPrimitive(ctx, value, true);
+        Object unboxedValue = value;
+        if (isForeignObject(value)) {
+            InteropLibrary interop = InteropLibrary.getUncached(value);
+            assert !interop.isNull(value);
+            unboxedValue = JSInteropUtil.toPrimitiveOrDefault(value, null, interop, null);
+            if (unboxedValue == null) {
+                return (TruffleObject) value; // not a boxed primitive value
+            }
+        }
+        return toObjectFromPrimitive(ctx, unboxedValue, true);
     }
 
     @TruffleBoundary
@@ -1681,7 +1692,7 @@ public final class JSRuntime {
      * Implementation of the abstract operation RequireObjectCoercible.
      */
     public static <T> T requireObjectCoercible(T argument, JSContext context) {
-        if (argument == Undefined.instance || argument == Null.instance) {
+        if (argument == Undefined.instance || argument == Null.instance || (isForeignObject(argument) && InteropLibrary.getUncached(argument).isNull(argument))) {
             throw Errors.createTypeErrorNotObjectCoercible(argument, null, context);
         }
         return argument;
@@ -2464,6 +2475,8 @@ public final class JSRuntime {
     public static Object toPropertyKey(Object arg) {
         if (arg instanceof String) {
             return arg;
+        } else if (arg instanceof Symbol) {
+            return arg;
         }
         Object key = toPrimitive(arg);
         if (key instanceof Symbol) {
@@ -2486,6 +2499,22 @@ public final class JSRuntime {
             return JSInteropUtil.call(fnObj, arguments);
         } else {
             throw Errors.createTypeErrorNotAFunction(fnObj);
+        }
+    }
+
+    public static Object call(Object fnObj, Object holder, Object[] arguments, Node encapsulatingNode) {
+        EncapsulatingNodeReference encapsulating = null;
+        Node prev = null;
+        if (encapsulatingNode != null) {
+            encapsulating = EncapsulatingNodeReference.getCurrent();
+            prev = encapsulating.set(encapsulatingNode);
+        }
+        try {
+            return call(fnObj, holder, arguments);
+        } finally {
+            if (encapsulatingNode != null) {
+                encapsulating.set(prev);
+            }
         }
     }
 

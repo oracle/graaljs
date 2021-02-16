@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,7 +159,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return shape.getLayout().getType().isInstance(thisObj) && shape.check((DynamicObject) thisObj);
+            return shape.getLayoutClass().isInstance(thisObj) && shape.check((DynamicObject) thisObj);
         }
 
         public int getDepth() {
@@ -245,7 +245,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return getShape().getLayout().getType().cast(thisObj);
+            return getShape().getLayoutClass().cast(thisObj);
         }
 
         @Override
@@ -1197,11 +1197,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
             if (JSConfig.MergeShapes && cachedCount > 0) {
                 // check if we're creating unnecessary polymorphism due to compatible types
-                synchronized (store.getShape().getMutex()) {
-                    if (tryMergeShapes(cacheShape, currentHead)) {
-                        DynamicObjectLibrary.getUncached().updateShape(store);
-                        return retryCache();
-                    }
+                if (tryMergeShapes(cacheShape, currentHead)) {
+                    DynamicObjectLibrary.getUncached().updateShape(store);
+                    return retryCache();
                 }
             }
 

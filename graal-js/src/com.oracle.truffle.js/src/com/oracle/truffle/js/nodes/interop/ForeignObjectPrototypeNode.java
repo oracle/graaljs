@@ -41,22 +41,25 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 /**
  * Node that returns a suitable prototype for a foreign object.
  */
+@ImportStatic({JSConfig.class})
 public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
 
     public abstract DynamicObject executeDynamicObject(Object truffleObject);
 
-    @Specialization(limit = "3")
+    @Specialization(limit = "InteropLibraryLimit")
     public DynamicObject doTruffleObject(Object truffleObject,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
                     @CachedLibrary("truffleObject") InteropLibrary interop) {

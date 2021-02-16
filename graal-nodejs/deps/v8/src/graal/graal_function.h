@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,9 @@ typedef _jobjectArray *jobjectArray;
 
 class GraalFunction : public GraalObject {
 public:
-    GraalFunction(GraalIsolate* isolate, jobject java_function);
+    inline static GraalFunction* Allocate(GraalIsolate* isolate, jobject java_function);
+    inline static GraalFunction* Allocate(GraalIsolate* isolate, jobject java_function, void* placement);
+    inline void ReInitialize(jobject java_context);
     bool IsFunction() const;
     v8::Local<v8::Object> NewInstance(int argc, v8::Local<v8::Value> argv[]) const;
     void SetName(v8::Local<v8::String> name);
@@ -60,6 +62,8 @@ public:
     int GetScriptLineNumber() const;
     int GetScriptColumnNumber() const;
 protected:
+    inline void Recycle() override;
+    inline GraalFunction(GraalIsolate* isolate, jobject java_function);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 private:
     jobject Call(jobject recv, jobjectArray arguments);

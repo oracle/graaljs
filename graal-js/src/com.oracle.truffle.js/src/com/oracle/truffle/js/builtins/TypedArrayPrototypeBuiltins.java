@@ -61,6 +61,7 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstru
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.CreateArrayIteratorNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperationWithToInt;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayCopyWithinNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayEveryNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayFillNodeGen;
@@ -95,6 +96,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -145,8 +147,11 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         values(0),
         entries(0),
 
-        // ES7
-        includes(1);
+        // ES2016
+        includes(1),
+
+        // ES2022
+        at(1);
 
         private final int length;
 
@@ -162,7 +167,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Override
         public int getECMAScriptVersion() {
             if (this == includes) {
-                return 7;
+                return JSConfig.ECMAScript2016;
+            } else if (this == at) {
+                return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -221,6 +228,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             case includes:
                 return JSArrayIncludesNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case at:
+                return JSArrayAtNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }

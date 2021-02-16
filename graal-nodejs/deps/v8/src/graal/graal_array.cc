@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,10 @@
 #include "graal_array.h"
 #include "graal_isolate.h"
 
-GraalArray::GraalArray(GraalIsolate* isolate, jobject java_array) : GraalObject(isolate, java_array) {
-}
+#include "graal_array-inl.h"
 
 GraalHandleContent* GraalArray::CopyImpl(jobject java_object_copy) {
-    return new GraalArray(Isolate(), java_object_copy);
+    return GraalArray::Allocate(Isolate(), java_object_copy);
 }
 
 bool GraalArray::IsArray() const {
@@ -57,7 +56,23 @@ v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, int length) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_object, isolate, GraalAccessMethod::array_new, Object, java_context, length);
-    GraalArray* graal_array = new GraalArray(graal_isolate, java_object);
+    GraalArray* graal_array = GraalArray::Allocate(graal_isolate, java_object);
+    return reinterpret_cast<v8::Array*> (graal_array);
+}
+
+v8::Local<v8::Array> GraalArray::New(v8::Isolate* isolate, v8::Local<v8::Value>* elements, size_t length) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    jobjectArray java_elements = env->NewObjectArray(length, graal_isolate->GetObjectClass(), NULL);
+    for (int i = 0; i < length; i++) {
+        GraalValue* graal_element = reinterpret_cast<GraalValue*> (*elements[i]);
+        jobject java_element = graal_element->GetJavaObject();
+        env->SetObjectArrayElement(java_elements, i, java_element);
+    }
+    jobject java_context = graal_isolate->CurrentJavaContext();
+    JNI_CALL(jobject, java_array, isolate, GraalAccessMethod::array_new_from_elements, Object, java_context, java_elements);
+    env->DeleteLocalRef(java_elements);
+    GraalArray* graal_array = GraalArray::Allocate(graal_isolate, java_array);
     return reinterpret_cast<v8::Array*> (graal_array);
 }
 

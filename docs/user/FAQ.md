@@ -5,7 +5,8 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalVM compatible with the JavaScript language?
-GraalVM is compatible with the ECMAScript 2020 specification. The compatibility of GraalVM's JavaScript runtime is verified by external sources, like the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
+GraalVM is compatible with the ECMAScript 2020 specification and is further developed alongside the 2021 draft specification.
+The compatibility of GraalVM's JavaScript runtime is verified by external sources, like the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalVM JavaScript is tested against a set of test engines, like the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalVM's own unit tests.
 
@@ -96,6 +97,17 @@ This mode gives the JavaScript engine full access to Java at runtime, but also r
 Running in a Native Image means that the JavaScript engine, including all its dependencies from, e.g., the JDK, is pre-compiled into a native binary. This will tremendously speed up the startup of any JavaScript application, as GraalVM can immediately start to compile JavaScript code, without itself requiring to be compiled first.
 This mode, however, will only give GraalVM access to Java classes known at the time of image creation.
 Most significantly, this means that the JavaScript-to-Java interoperability features are not available in this mode, as they would require dynamic class loading and execution of arbitrary Java code at runtime.
+
+### Can npm packages be installed globally?
+Node packages can be installed globally using `npm` and the `-g` option, both with the original Node.js implementation and GraalVM.
+
+While the original Node.js implementation has one main folder (`NODE/bin`) to put binaries and globally installed packages and their commandline tools, GraalVM has several: the main `GRAALVM/bin` folder, and separate folders for each language, e.g. `GRAALVM/jre/languages/js/bin`.
+When installing npm packages globally in GraalVM, links to the executables e.g. for command line interface tools are put to the JavaScript-specific folder.
+In order for globally installed packages to function properly, you might need to add `GRAALVM/jre/languages/js/bin` to your `$PATH`.
+
+Another option is to specify the global installation folder of `npm` by setting the `$PREFIX` environment variable, or by specifying the `--prefix` option when running `npm install`.
+
+For more details, see [Installing `npm` Packages Globally](NodeJS.md#installing-npm-packages-globally).
 
 ## Errors
 
@@ -220,5 +232,4 @@ HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
   //warning: too permissive for use in production
   .allowAccess(Function.class.getMethod("apply", Object.class))
   .build();
-
 ```

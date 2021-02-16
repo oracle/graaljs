@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/util.js -->
+
 The `util` module supports the needs of Node.js internal APIs. Many of the
 utilities are useful for application and module developers as well. To access
 it:
@@ -68,13 +70,15 @@ callbackFunction((err, ret) => {
 });
 ```
 
-## `util.debuglog(section)`
+## `util.debuglog(section[, callback])`
 <!-- YAML
 added: v0.11.3
 -->
 
 * `section` {string} A string identifying the portion of the application for
   which the `debuglog` function is being created.
+* `callback` {Function} A callback invoked the first time the logging function
+is called with a function argument that is a more optimized logging function.
 * Returns: {Function} The logging function
 
 The `util.debuglog()` method is used to create a function that conditionally
@@ -118,6 +122,19 @@ FOO-BAR 3257: hi there, it's foo-bar [2333]
 
 Multiple comma-separated `section` names may be specified in the `NODE_DEBUG`
 environment variable: `NODE_DEBUG=fs,net,tls`.
+
+The optional `callback` argument can be used to replace the logging function
+with a different function that doesn't have any initialization or
+unnecessary wrapping.
+
+```js
+const util = require('util');
+let debuglog = util.debuglog('internals', (debug) => {
+  // Replace with a logging function that optimizes out
+  // testing if the section is enabled
+  debuglog = debug;
+});
+```
 
 ## `util.deprecate(fn, msg[, code])`
 <!-- YAML
@@ -397,6 +414,13 @@ stream.write('With ES6');
 <!-- YAML
 added: v0.3.0
 changes:
+  - version:
+    - v14.6.0
+    - v12.19.0
+    pr-url: https://github.com/nodejs/node/pull/33690
+    description: If `object` is from a different `vm.Context` now, a custom
+                 inspection function on it will not receive context-specific
+                 arguments anymore.
   - version: v12.17.0
     pr-url: https://github.com/nodejs/node/pull/32392
     description: The `maxStringLength` option is supported now.
@@ -2382,7 +2406,7 @@ util.log('Timestamped message.');
 [`Array.isArray()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/isArray
 [`ArrayBuffer.isView()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer/isView
 [`ArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/ArrayBuffer
-[`Buffer.isBuffer()`]: buffer.html#buffer_class_method_buffer_isbuffer_obj
+[`Buffer.isBuffer()`]: buffer.html#buffer_static_method_buffer_isbuffer_obj
 [`DataView`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/DataView
 [`Date`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date
 [`Error`]: errors.html#errors_class_error

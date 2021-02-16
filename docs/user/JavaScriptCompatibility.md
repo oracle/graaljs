@@ -11,7 +11,8 @@ This document explains the public API it presents for user applications written 
 
 GraalVM JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
 It is fully compatible with the [ECMAScript 2020 specification](http://www.ecma-international.org/ecma-262/11.0/index.html) (sometimes referred to as "version 11" or "ES11").
-Starting with GraalVM 20.1.0, ECMAScript 2020 features are enabled by default.
+Starting with GraalVM 21.0.0, all available features of the [ECMAScript 2021 draft specification](https://tc39.es/ecma262/) are enabled by default.
+New features are frequently added to GraalVM when they are confirmed to be part of ECMAScript 2021, see the [CHANGELOG.md](../../CHANGELOG.md) for details.
 Older versions starting from ECMAScript 5 can be enabled with a config flag (by number: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2019`).
 In a production setup you might consider specifying a fixed ECMAScript version to be used, as future versions of GraalVM JavaScript will use newer versions of the specification once available.
 
@@ -34,10 +35,10 @@ If you run in the JVM mode (the `--jvm` flag is used), you do not need to specif
 
 Once you activate the Internationalization API, you can use the following built-ins:
 
-- Intl.NumberFormat
-- Intl.DateTimeFormat
-- Intl.Collator
-- Intl.PluralRules
+- `Intl.NumberFormat`
+- `Intl.DateTimeFormat`
+- `Intl.Collator`
+- `Intl.PluralRules`
 
 The functionality of a few other built-ins is then also updated according to the specification linked above.
 
@@ -58,6 +59,7 @@ Note that the behavior of such methods might not strictly match the semantics of
 ### Language Features
 
 #### Conditional Catch Clauses
+
 GraalVM JavaScript supports conditional catch clauses if the `js.syntax-extensions` option is enabled:
 
 ```js

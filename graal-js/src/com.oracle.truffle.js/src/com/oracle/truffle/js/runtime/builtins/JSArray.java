@@ -219,6 +219,9 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     private static List<String> unscopableNameList(JSContext context) {
         List<String> names = new ArrayList<>();
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2022) {
+            names.add("at");
+        }
         names.add("copyWithin");
         names.add(JSArray.ENTRIES);
         names.add("fill");

@@ -190,7 +190,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 JSRuntime.createDataPropertyOrThrow(obj, Boundaries.stringValueOf(pos), value);
                 pos++;
             }
-            JSObject.set(obj, JSAbstractArray.LENGTH, len, true);
+            JSObject.set(obj, JSAbstractArray.LENGTH, len, true, this);
             return obj;
         }
     }

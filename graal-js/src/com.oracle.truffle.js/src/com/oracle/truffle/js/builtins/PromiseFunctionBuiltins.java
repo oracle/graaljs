@@ -42,8 +42,8 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
@@ -143,7 +143,7 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private JSFunctionCallNode callRejectNode;
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
-        private final ValueProfile typeProfile = ValueProfile.createClassProfile();
+        @Child private InteropLibrary exceptions;
 
         protected PromiseCombinatorNode(JSContext context, JSBuiltin builtin, PerformPromiseCombinatorNode performPromiseOp) {
             super(context, builtin);
@@ -211,11 +211,12 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private boolean shouldCatch(Throwable exception) {
-            if (getErrorObjectNode == null) {
+            if (getErrorObjectNode == null || exceptions == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+                exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
-            return TryCatchNode.shouldCatch(exception, typeProfile);
+            return TryCatchNode.shouldCatch(exception, exceptions);
         }
 
         @SuppressWarnings("unused")

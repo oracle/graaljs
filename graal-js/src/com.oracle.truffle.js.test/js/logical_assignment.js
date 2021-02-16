@@ -43,5 +43,3 @@ Object.defineProperty(this, "prop1", { get: return1, set: thrower });
 assertSame(0, prop0 &&= 42);
 assertSame(1, prop1 ||= 42);
 assertSame(1, prop1 ??= 42);
-
-true;

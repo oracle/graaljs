@@ -163,6 +163,8 @@ module.exports = {
             return node.type === "VariableDeclarator" &&
                 node.id.type === "Identifier" &&
                 node.init.type === "MemberExpression" &&
+                !node.init.computed &&
+                node.init.property.type === "Identifier" &&
                 node.id.name === node.init.property.name;
         }
 
@@ -177,6 +179,11 @@ module.exports = {
         function fixIntoObjectDestructuring(fixer, node) {
             const rightNode = node.init;
             const sourceCode = context.getSourceCode();
+
+            // Don't fix if that would remove any comments. Only comments inside `rightNode.object` can be preserved.
+            if (sourceCode.getCommentsInside(node).length > sourceCode.getCommentsInside(rightNode.object).length) {
+                return null;
+            }
 
             return fixer.replaceText(
                 node,

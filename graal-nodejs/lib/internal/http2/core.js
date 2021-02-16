@@ -15,6 +15,8 @@ const {
   ReflectGetPrototypeOf,
   Set,
   Symbol,
+  Uint32Array,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -152,7 +154,9 @@ const { UV_EOF } = internalBinding('uv');
 
 const { StreamPipe } = internalBinding('stream_pipe');
 const { _connectionListener: httpConnectionListener } = http;
-const debug = require('internal/util/debuglog').debuglog('http2');
+let debug = require('internal/util/debuglog').debuglog('http2', (fn) => {
+  debug = fn;
+});
 const { getOptionValue } = require('internal/options');
 
 // TODO(addaleax): See if this can be made more efficient by figuring out
@@ -499,7 +503,10 @@ function onStreamClose(code) {
   if (!stream || stream.destroyed)
     return false;
 
-  debugStreamObj(stream, 'closed with code %d', code);
+  debugStreamObj(
+    stream, 'closed with code %d, closed %s, readable %s',
+    code, stream.closed, stream.readable
+  );
 
   if (!stream.closed)
     closeStream(stream, code, kNoRstStream);
@@ -508,7 +515,7 @@ function onStreamClose(code) {
   // Defer destroy we actually emit end.
   if (!stream.readable || code !== NGHTTP2_NO_ERROR) {
     // If errored or ended, we can destroy immediately.
-    stream[kMaybeDestroy](code);
+    stream.destroy();
   } else {
     // Wait for end to destroy.
     stream.on('end', stream[kMaybeDestroy]);
@@ -925,6 +932,9 @@ const validateSettings = hideStackFrames((settings) => {
   assertWithinRange('maxHeaderListSize',
                     settings.maxHeaderListSize,
                     0, kMaxInt);
+  assertWithinRange('maxHeaderSize',
+                    settings.maxHeaderSize,
+                    0, kMaxInt);
   if (settings.enablePush !== undefined &&
       typeof settings.enablePush !== 'boolean') {
     throw new ERR_HTTP2_INVALID_SETTING_VALUE('enablePush',
@@ -1016,20 +1026,76 @@ function emitClose(self, error) {
   self.emit('close');
 }
 
-function finishSessionDestroy(session, error) {
+function cleanupSession(session) {
   const socket = session[kSocket];
-  if (!socket.destroyed)
-    socket.destroy(error);
-
+  const handle = session[kHandle];
   session[kProxySocket] = undefined;
   session[kSocket] = undefined;
   session[kHandle] = undefined;
   session[kNativeFields] = new Uint8Array(kSessionUint8FieldCount);
-  socket[kSession] = undefined;
-  socket[kServer] = undefined;
+  if (handle)
+    handle.ondone = null;
+  if (socket) {
+    socket[kSession] = undefined;
+    socket[kServer] = undefined;
+  }
+}
 
-  // Finally, emit the close and error events (if necessary) on next tick.
-  process.nextTick(emitClose, session, error);
+function finishSessionClose(session, error) {
+  debugSessionObj(session, 'finishSessionClose');
+
+  const socket = session[kSocket];
+  cleanupSession(session);
+
+  if (socket && !socket.destroyed) {
+    // Always wait for writable side to finish.
+    socket.end((err) => {
+      debugSessionObj(session, 'finishSessionClose socket end', err);
+      // Due to the way the underlying stream is handled in Http2Session we
+      // won't get graceful Readable end from the other side even if it was sent
+      // as the stream is already considered closed and will neither be read
+      // from nor keep the event loop alive.
+      // Therefore destroy the socket immediately.
+      // Fixing this would require some heavy juggling of ReadStart/ReadStop
+      // mostly on Windows as on Unix it will be fine with just ReadStart
+      // after this 'ondone' callback.
+      socket.destroy(error);
+      emitClose(session, error);
+    });
+  } else {
+    process.nextTick(emitClose, session, error);
+  }
+}
+
+function closeSession(session, code, error) {
+  debugSessionObj(session, 'start closing/destroying');
+
+  const state = session[kState];
+  state.flags |= SESSION_FLAGS_DESTROYED;
+  state.destroyCode = code;
+
+  // Clear timeout and remove timeout listeners.
+  session.setTimeout(0);
+  session.removeAllListeners('timeout');
+
+  // Destroy any pending and open streams
+  if (state.pendingStreams.size > 0 || state.streams.size > 0) {
+    const cancel = new ERR_HTTP2_STREAM_CANCEL(error);
+    state.pendingStreams.forEach((stream) => stream.destroy(cancel));
+    state.streams.forEach((stream) => stream.destroy(error));
+  }
+
+  // Disassociate from the socket and server.
+  const socket = session[kSocket];
+  const handle = session[kHandle];
+
+  // Destroy the handle if it exists at this point.
+  if (handle !== undefined) {
+    handle.ondone = finishSessionClose.bind(null, session, error);
+    handle.destroy(code, socket.destroyed);
+  } else {
+    finishSessionClose(session, error);
+  }
 }
 
 // Upon creation, the Http2Session takes ownership of the socket. The session
@@ -1094,6 +1160,7 @@ class Http2Session extends EventEmitter {
       streams: new Map(),
       pendingStreams: new Set(),
       pendingAck: 0,
+      shutdownWritableCalled: false,
       writeQueueSize: 0,
       originSet: undefined
     };
@@ -1356,6 +1423,7 @@ class Http2Session extends EventEmitter {
   destroy(error = NGHTTP2_NO_ERROR, code) {
     if (this.destroyed)
       return;
+
     debugSessionObj(this, 'destroying');
 
     if (typeof error === 'number') {
@@ -1367,34 +1435,7 @@ class Http2Session extends EventEmitter {
     if (code === undefined && error != null)
       code = NGHTTP2_INTERNAL_ERROR;
 
-    const state = this[kState];
-    state.flags |= SESSION_FLAGS_DESTROYED;
-    state.destroyCode = code;
-
-    // Clear timeout and remove timeout listeners
-    this.setTimeout(0);
-    this.removeAllListeners('timeout');
-
-    // Destroy any pending and open streams
-    const cancel = new ERR_HTTP2_STREAM_CANCEL(error);
-    state.pendingStreams.forEach((stream) => stream.destroy(cancel));
-    state.streams.forEach((stream) => stream.destroy(error));
-
-    // Disassociate from the socket and server
-    const socket = this[kSocket];
-    const handle = this[kHandle];
-
-    // Destroy the handle if it exists at this point
-    if (handle !== undefined)
-      handle.destroy(code, socket.destroyed);
-
-    // If the socket is alive, use setImmediate to destroy the session on the
-    // next iteration of the event loop in order to give data time to transmit.
-    // Otherwise, destroy immediately.
-    if (!socket.destroyed)
-      setImmediate(finishSessionDestroy, this, error);
-    else
-      finishSessionDestroy(this, error);
+    closeSession(this, code, error);
   }
 
   // Closing the session will:
@@ -1686,6 +1727,26 @@ function afterShutdown(status) {
     stream[kMaybeDestroy]();
 }
 
+function shutdownWritable(callback) {
+  const handle = this[kHandle];
+  if (!handle) return callback();
+  const state = this[kState];
+  if (state.shutdownWritableCalled) {
+    // Backport v12.x: Session required for debugging stream object
+    // debugStreamObj(this, 'shutdownWritable() already called');
+    return callback();
+  }
+  state.shutdownWritableCalled = true;
+
+  const req = new ShutdownWrap();
+  req.oncomplete = afterShutdown;
+  req.callback = callback;
+  req.handle = handle;
+  const err = handle.shutdown(req);
+  if (err === 1)  // synchronous finish
+    return afterShutdown.call(req, 0);
+}
+
 function finishSendTrailers(stream, headersList) {
   // The stream might be destroyed and in that case
   // there is nothing to do.
@@ -1945,10 +2006,50 @@ class Http2Stream extends Duplex {
 
     let req;
 
+    let waitingForWriteCallback = true;
+    let waitingForEndCheck = true;
+    let writeCallbackErr;
+    let endCheckCallbackErr;
+    const done = () => {
+      if (waitingForEndCheck || waitingForWriteCallback) return;
+      const err = writeCallbackErr || endCheckCallbackErr;
+      // writeGeneric does not destroy on error and
+      // we cannot enable autoDestroy,
+      // so make sure to destroy on error.
+      if (err) {
+        this.destroy(err);
+      }
+      cb(err);
+    };
+    const writeCallback = (err) => {
+      waitingForWriteCallback = false;
+      writeCallbackErr = err;
+      done();
+    };
+    const endCheckCallback = (err) => {
+      waitingForEndCheck = false;
+      endCheckCallbackErr = err;
+      done();
+    };
+    // Shutdown write stream right after last chunk is sent
+    // so final DATA frame can include END_STREAM flag
+    process.nextTick(() => {
+      if (writeCallbackErr ||
+        !this._writableState.ending ||
+        // Backport v12.x: _writableState.buffered does not exist
+        // this._writableState.buffered.length ||
+        this._writableState.bufferedRequest ||
+        (this[kState].flags & STREAM_FLAGS_HAS_TRAILERS))
+        return endCheckCallback();
+      // Backport v12.x: Session required for debugging stream object
+      // debugStreamObj(this, 'shutting down writable on last write');
+      shutdownWritable.call(this, endCheckCallback);
+    });
+
     if (writev)
-      req = writevGeneric(this, data, cb);
+      req = writevGeneric(this, data, writeCallback);
     else
-      req = writeGeneric(this, data, encoding, cb);
+      req = writeGeneric(this, data, encoding, writeCallback);
 
     trackWriteState(this, req.bytes);
   }
@@ -1962,21 +2063,13 @@ class Http2Stream extends Duplex {
   }
 
   _final(cb) {
-    const handle = this[kHandle];
     if (this.pending) {
       this.once('ready', () => this._final(cb));
-    } else if (handle !== undefined) {
-      debugStreamObj(this, '_final shutting down');
-      const req = new ShutdownWrap();
-      req.oncomplete = afterShutdown;
-      req.callback = cb;
-      req.handle = handle;
-      const err = handle.shutdown(req);
-      if (err === 1)  // synchronous finish
-        return afterShutdown.call(req, 0);
-    } else {
-      cb();
+      return;
     }
+    // Backport v12.x: Session required for debugging stream object
+    // debugStreamObj(this, 'shutting down writable on _final');
+    shutdownWritable.call(this, cb);
   }
 
   _read(nread) {
@@ -2081,11 +2174,20 @@ class Http2Stream extends Duplex {
     debugStream(this[kID] || 'pending', session[kType], 'destroying stream');
 
     const state = this[kState];
-    const sessionCode = session[kState].goawayCode ||
-                        session[kState].destroyCode;
-    const code = err != null ?
-      sessionCode || NGHTTP2_INTERNAL_ERROR :
-      state.rstCode || sessionCode;
+    const sessionState = session[kState];
+    const sessionCode = sessionState.goawayCode || sessionState.destroyCode;
+
+    // If a stream has already closed successfully, there is no error
+    // to report from this stream, even if the session has errored.
+    // This can happen if the stream was already in process of destroying
+    // after a successful close, but the session had a error between
+    // this stream's close and destroy operations.
+    // Previously, this always overrode a successful close operation code
+    // NGHTTP2_NO_ERROR (0) with sessionCode because the use of the || operator.
+    const code = (err != null ?
+      (sessionCode || NGHTTP2_INTERNAL_ERROR) :
+      (this.closed ? this.rstCode : sessionCode)
+    );
     const hasHandle = handle !== undefined;
 
     if (!this.closed)
@@ -2094,13 +2196,13 @@ class Http2Stream extends Duplex {
 
     if (hasHandle) {
       handle.destroy();
-      session[kState].streams.delete(id);
+      sessionState.streams.delete(id);
     } else {
-      session[kState].pendingStreams.delete(this);
+      sessionState.pendingStreams.delete(this);
     }
 
     // Adjust the write queue size for accounting
-    session[kState].writeQueueSize -= state.writeQueueSize;
+    sessionState.writeQueueSize -= state.writeQueueSize;
     state.writeQueueSize = 0;
 
     // RST code 8 not emitted as an error as its used by clients to signify
@@ -2180,7 +2282,7 @@ function callStreamClose(stream) {
   stream.close();
 }
 
-function processHeaders(oldHeaders) {
+function processHeaders(oldHeaders, options) {
   assertIsObject(oldHeaders, 'headers');
   const headers = ObjectCreate(null);
 
@@ -2196,7 +2298,13 @@ function processHeaders(oldHeaders) {
   const statusCode =
     headers[HTTP2_HEADER_STATUS] =
       headers[HTTP2_HEADER_STATUS] | 0 || HTTP_STATUS_OK;
-  headers[HTTP2_HEADER_DATE] = utcDate();
+
+  if (options.sendDate == null || options.sendDate) {
+    if (headers[HTTP2_HEADER_DATE] === null ||
+        headers[HTTP2_HEADER_DATE] === undefined) {
+      headers[HTTP2_HEADER_DATE] = utcDate();
+    }
+  }
 
   // This is intentionally stricter than the HTTP/1 implementation, which
   // allows values between 100 and 999 (inclusive) in order to allow for
@@ -2522,7 +2630,7 @@ class ServerHttp2Stream extends Http2Stream {
       state.flags |= STREAM_FLAGS_HAS_TRAILERS;
     }
 
-    headers = processHeaders(headers);
+    headers = processHeaders(headers, options);
     const headersList = mapToHeaders(headers, assertValidPseudoHeaderResponse);
     this[kSentHeaders] = headers;
 
@@ -2588,7 +2696,7 @@ class ServerHttp2Stream extends Http2Stream {
     this[kUpdateTimer]();
     this.ownsFd = false;
 
-    headers = processHeaders(headers);
+    headers = processHeaders(headers, options);
     const statusCode = headers[HTTP2_HEADER_STATUS] |= 0;
     // Payload/DATA frames are not permitted in these cases
     if (statusCode === HTTP_STATUS_NO_CONTENT ||
@@ -2649,7 +2757,7 @@ class ServerHttp2Stream extends Http2Stream {
     this[kUpdateTimer]();
     this.ownsFd = true;
 
-    headers = processHeaders(headers);
+    headers = processHeaders(headers, options);
     const statusCode = headers[HTTP2_HEADER_STATUS] |= 0;
     // Payload/DATA frames are not permitted in these cases
     if (statusCode === HTTP_STATUS_NO_CONTENT ||
@@ -3085,7 +3193,7 @@ function getUnpackedSettings(buf, options = {}) {
         settings.maxFrameSize = value;
         break;
       case NGHTTP2_SETTINGS_MAX_HEADER_LIST_SIZE:
-        settings.maxHeaderListSize = value;
+        settings.maxHeaderListSize = settings.maxHeaderSize = value;
         break;
       case NGHTTP2_SETTINGS_ENABLE_CONNECT_PROTOCOL:
         settings.enableConnectProtocol = value !== 0;

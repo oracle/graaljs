@@ -28,6 +28,7 @@ const {
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
+  MathFloor,
   Symbol,
 } = primordials;
 
@@ -60,6 +61,7 @@ const {
   hideStackFrames
 } = require('internal/errors');
 const { validateString } = require('internal/validators');
+const { isUint8Array } = require('internal/util/types');
 
 const HIGH_WATER_MARK = getDefaultHighWaterMark();
 const { CRLF, debug } = common;
@@ -96,6 +98,7 @@ function OutgoingMessage() {
   this._last = false;
   this.chunkedEncoding = false;
   this.shouldKeepAlive = true;
+  this._defaultKeepAlive = true;
   this.useChunkedEncodingByDefault = true;
   this.sendDate = false;
   this._removedConnection = false;
@@ -115,6 +118,8 @@ function OutgoingMessage() {
   this.connection = null;
   this._header = null;
   this[kOutHeaders] = null;
+
+  this._keepAliveTimeout = 0;
 
   this._onPendingData = noopPendingOutput;
 }
@@ -401,6 +406,10 @@ function _storeHeader(firstLine, headers) {
         (state.contLen || this.useChunkedEncodingByDefault || this.agent);
     if (shouldSendKeepAlive) {
       header += 'Connection: keep-alive\r\n';
+      if (this._keepAliveTimeout && this._defaultKeepAlive) {
+        const timeoutSeconds = MathFloor(this._keepAliveTimeout / 1000);
+        header += `Keep-Alive: timeout=${timeoutSeconds}\r\n`;
+      }
     } else {
       this._last = true;
       header += 'Connection: close\r\n';
@@ -493,6 +502,9 @@ function matchHeader(self, state, field, value) {
     case 'expect':
     case 'trailer':
       state[field] = true;
+      break;
+    case 'keep-alive':
+      self._defaultKeepAlive = false;
       break;
   }
 }
@@ -649,9 +661,9 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
     return true;
   }
 
-  if (!fromEnd && typeof chunk !== 'string' && !(chunk instanceof Buffer)) {
+  if (!fromEnd && typeof chunk !== 'string' && !isUint8Array(chunk)) {
     throw new ERR_INVALID_ARG_TYPE('first argument',
-                                   ['string', 'Buffer'], chunk);
+                                   ['string', 'Buffer', 'Uint8Array'], chunk);
   }
 
   if (!fromEnd && msg.connection && !msg.connection.writableCorked) {
@@ -742,7 +754,8 @@ OutgoingMessage.prototype.end = function end(chunk, encoding, callback) {
 
   if (chunk) {
     if (typeof chunk !== 'string' && !(chunk instanceof Buffer)) {
-      throw new ERR_INVALID_ARG_TYPE('chunk', ['string', 'Buffer'], chunk);
+      throw new ERR_INVALID_ARG_TYPE(
+        'chunk', ['string', 'Buffer', 'Uint8Array'], chunk);
     }
     if (!this._header) {
       if (typeof chunk === 'string')

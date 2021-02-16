@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,13 @@
 #define GRAAL_STRING_H_
 
 #include "graal_name.h"
-#include "include/v8.h"
+#include "graal_isolate.h"
 
 class GraalString : public GraalName {
 public:
-    GraalString(GraalIsolate* isolate, jstring java_string);
+    inline static GraalString* Allocate(GraalIsolate* isolate, jstring java_string);
+    inline static GraalString* Allocate(GraalIsolate* isolate, jstring java_string, void* placement);
+    inline void ReInitialize(jobject java_object);
     static v8::Local<v8::String> NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length);
     static v8::Local<v8::String> NewFromUtf8(v8::Isolate* isolate, char const* str, v8::String::NewStringType type, int length);
     static v8::Local<v8::String> NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::String::NewStringType type, int length);
@@ -73,6 +75,8 @@ public:
         return (c & 0xC0) == 0x80;
     }
 protected:
+    inline void Recycle() override;
+    inline GraalString(GraalIsolate* isolate, jstring java_string);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
 };
 

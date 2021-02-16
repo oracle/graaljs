@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,9 @@
 #include "graal_unbound_script.h"
 #include "graal_value.h"
 
+#include "graal_script-inl.h"
+#include "graal_unbound_script-inl.h"
+
 v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8::ScriptOrigin* origin) {
     v8::Local<v8::String> file_name = origin == nullptr ? v8::Local<v8::String>() : origin->ResourceName().As<v8::String>();
     v8::Local<v8::PrimitiveArray> options = origin == nullptr ? v8::Local<v8::PrimitiveArray>() : origin->HostDefinedOptions();
@@ -59,16 +62,13 @@ v8::Local<v8::Script> GraalScript::Compile(v8::Local<v8::String> source_code, v8
     if (java_script == NULL) {
         return v8::Local<v8::Script>();
     } else {
-        GraalScript* graal_script = new GraalScript(graal_isolate, java_script);
+        GraalScript* graal_script = GraalScript::Allocate(graal_isolate, java_script);
         return reinterpret_cast<v8::Script*> (graal_script);
     }
 }
 
-GraalScript::GraalScript(GraalIsolate* isolate, jobject java_script) : GraalHandleContent(isolate, java_script) {
-}
-
 GraalHandleContent* GraalScript::CopyImpl(jobject java_object_copy) {
-    return new GraalScript(Isolate(), java_object_copy);
+    return GraalScript::Allocate(Isolate(), java_object_copy);
 }
 
 v8::Local<v8::Value> GraalScript::Run() {
@@ -79,6 +79,6 @@ v8::Local<v8::Value> GraalScript::Run() {
 
 v8::Local<v8::UnboundScript> GraalScript::GetUnboundScript() {
     JNI_CALL(jobject, java_unbound, Isolate(), GraalAccessMethod::script_get_unbound_script, Object, GetJavaObject());
-    GraalUnboundScript* graal_unbound = new GraalUnboundScript(Isolate(), java_unbound);
+    GraalUnboundScript* graal_unbound = GraalUnboundScript::Allocate(Isolate(), java_unbound);
     return reinterpret_cast<v8::UnboundScript*> (graal_unbound);
 }

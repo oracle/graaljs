@@ -34,8 +34,9 @@ const {
 
 const EventEmitter = require('events');
 const stream = require('stream');
-const { inspect } = require('internal/util/inspect');
-const debug = require('internal/util/debuglog').debuglog('net');
+let debug = require('internal/util/debuglog').debuglog('net', (fn) => {
+  debug = fn;
+});
 const { deprecate } = require('internal/util');
 const {
   isIP,
@@ -552,7 +553,7 @@ ObjectDefineProperty(Socket.prototype, 'readyState', {
 ObjectDefineProperty(Socket.prototype, 'bufferSize', {
   get: function() {
     if (this._handle) {
-      return this[kLastWriteQueueSize] + this.writableLength;
+      return this.writableLength;
     }
   }
 });
@@ -807,19 +808,18 @@ protoGetter('_bytesDispatched', function _bytesDispatched() {
 
 protoGetter('bytesWritten', function bytesWritten() {
   let bytes = this._bytesDispatched;
-  const state = this._writableState;
   const data = this._pendingData;
   const encoding = this._pendingEncoding;
+  const writableBuffer = this.writableBuffer;
 
-  if (!state)
+  if (!writableBuffer)
     return undefined;
 
-  this.writableBuffer.forEach(function(el) {
-    if (el.chunk instanceof Buffer)
-      bytes += el.chunk.length;
-    else
-      bytes += Buffer.byteLength(el.chunk, el.encoding);
-  });
+  for (const el of writableBuffer) {
+    bytes += el.chunk instanceof Buffer ?
+      el.chunk.length :
+      Buffer.byteLength(el.chunk, el.encoding);
+  }
 
   if (ArrayIsArray(data)) {
     // Was a writev, iterate over chunks to get total length
@@ -1052,6 +1052,9 @@ function lookupAndConnect(self, options) {
         // net.createConnection() creates a net.Socket object and immediately
         // calls net.Socket.connect() on it (that's us). There are no event
         // listeners registered yet so defer the error event to the next tick.
+        process.nextTick(connectErrorNT, self, err);
+      } else if (!isIP(ip)) {
+        err = new ERR_INVALID_IP_ADDRESS(ip);
         process.nextTick(connectErrorNT, self, err);
       } else if (addressType !== 4 && addressType !== 6) {
         err = new ERR_INVALID_ADDRESS_FAMILY(addressType,
@@ -1485,7 +1488,7 @@ Server.prototype.listen = function(...args) {
                                     'must have the property "port" or "path"');
   }
 
-  throw new ERR_INVALID_OPT_VALUE('options', inspect(options));
+  throw new ERR_INVALID_OPT_VALUE('options', options);
 };
 
 function lookupAndListen(self, port, address, backlog, exclusive, flags) {

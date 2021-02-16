@@ -22,6 +22,7 @@
 'use strict';
 
 const {
+  NumberIsNaN,
   ObjectKeys,
   ObjectSetPrototypeOf,
   ObjectValues,
@@ -30,9 +31,20 @@ const {
 
 const net = require('net');
 const EventEmitter = require('events');
-const debug = require('internal/util/debuglog').debuglog('http');
+let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
+  debug = fn;
+});
 const { async_id_symbol } = require('internal/async_hooks').symbols;
+const {
+  codes: {
+    ERR_OUT_OF_RANGE,
+    ERR_INVALID_OPT_VALUE,
+  },
+} = require('internal/errors');
+const { validateNumber } = require('internal/validators');
+
 const kOnKeylog = Symbol('onkeylog');
+const kRequestOptions = Symbol('requestOptions');
 // New Agent code.
 
 // The largest departure from the previous implementation is that
@@ -79,6 +91,23 @@ function Agent(options) {
   this.keepAlive = this.options.keepAlive || false;
   this.maxSockets = this.options.maxSockets || Agent.defaultMaxSockets;
   this.maxFreeSockets = this.options.maxFreeSockets || 256;
+  this.maxTotalSockets = this.options.maxTotalSockets;
+  this.totalSocketCount = 0;
+
+  if (this.maxTotalSockets !== undefined) {
+    validateNumber(this.maxTotalSockets, 'maxTotalSockets');
+    if (this.maxTotalSockets <= 0 || NumberIsNaN(this.maxTotalSockets))
+      throw new ERR_OUT_OF_RANGE('maxTotalSockets', '> 0',
+                                 this.maxTotalSockets);
+  } else {
+    this.maxTotalSockets = Infinity;
+  }
+
+  this.scheduling = this.options.scheduling || 'fifo';
+
+  if (this.scheduling !== 'fifo' && this.scheduling !== 'lifo') {
+    throw new ERR_INVALID_OPT_VALUE('scheduling', this.scheduling);
+  }
 
   this.on('free', (socket, options) => {
     const name = this.getName(options);
@@ -111,7 +140,9 @@ function Agent(options) {
         if (this.sockets[name])
           count += this.sockets[name].length;
 
-        if (count > this.maxSockets || freeLen >= this.maxFreeSockets) {
+        if (this.totalSocketCount > this.maxTotalSockets ||
+            count > this.maxSockets ||
+            freeLen >= this.maxFreeSockets) {
           socket.destroy();
         } else if (this.keepSocketAlive(socket)) {
           freeSockets = freeSockets || [];
@@ -214,7 +245,9 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
     while (freeSockets.length && freeSockets[0].destroyed) {
       freeSockets.shift();
     }
-    socket = freeSockets.shift();
+    socket = this.scheduling === 'fifo' ?
+      freeSockets.shift() :
+      freeSockets.pop();
     if (!freeSockets.length)
       delete this.freeSockets[name];
   }
@@ -234,7 +267,9 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
     this.reuseSocket(socket, req);
     setRequestSocket(this, req, socket);
     this.sockets[name].push(socket);
-  } else if (sockLen < this.maxSockets) {
+    this.totalSocketCount++;
+  } else if (sockLen < this.maxSockets &&
+             this.totalSocketCount < this.maxTotalSockets) {
     debug('call onSocket', sockLen, freeLen);
     // If we are under maxSockets create a new one.
     this.createSocket(req, options, handleSocketCreation(this, req, true));
@@ -244,6 +279,10 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
     if (!this.requests[name]) {
       this.requests[name] = [];
     }
+
+    // Used to create sockets for pending requests from different origin
+    req[kRequestOptions] = options;
+
     this.requests[name].push(req);
   }
 };
@@ -273,7 +312,8 @@ Agent.prototype.createSocket = function createSocket(req, options, cb) {
       this.sockets[name] = [];
     }
     this.sockets[name].push(s);
-    debug('sockets', name, this.sockets[name].length);
+    this.totalSocketCount++;
+    debug('sockets', name, this.sockets[name].length, this.totalSocketCount);
     installListeners(this, s, options);
     cb(null, s);
   };
@@ -374,17 +414,38 @@ Agent.prototype.removeSocket = function removeSocket(s, options) {
         // Don't leak
         if (sockets[name].length === 0)
           delete sockets[name];
+        this.totalSocketCount--;
       }
     }
   }
 
+  let req;
   if (this.requests[name] && this.requests[name].length) {
     debug('removeSocket, have a request, make a socket');
-    const req = this.requests[name][0];
+    req = this.requests[name][0];
+  } else {
+    // TODO(rickyes): this logic will not be FIFO across origins.
+    // There might be older requests in a different origin, but
+    // if the origin which releases the socket has pending requests
+    // that will be prioritized.
+    for (const prop in this.requests) {
+      // Check whether this specific origin is already at maxSockets
+      if (this.sockets[prop] && this.sockets[prop].length) break;
+      debug('removeSocket, have a request with different origin,' +
+        ' make a socket');
+      req = this.requests[prop][0];
+      options = req[kRequestOptions];
+      break;
+    }
+  }
+
+  if (req && options) {
+    req[kRequestOptions] = undefined;
     // If we have pending requests and a socket gets closed make a new one
     const socketCreationHandler = handleSocketCreation(this, req, false);
     this.createSocket(req, options, socketCreationHandler);
   }
+
 };
 
 Agent.prototype.keepSocketAlive = function keepSocketAlive(socket) {

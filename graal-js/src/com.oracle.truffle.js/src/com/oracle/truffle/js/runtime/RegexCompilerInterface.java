@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleException;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.source.Source;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -53,19 +55,21 @@ public final class RegexCompilerInterface {
     private RegexCompilerInterface() {
     }
 
-    public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.CompileRegexNode compileRegexNode) {
+    public static Object compile(String pattern, String flags, JSContext context) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
         validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
         try {
-            return compileRegexNode.execute(context.getRegexEngine(), pattern, flags);
-        } catch (RuntimeException e) {
-            CompilerDirectives.transferToInterpreter();
-            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
-                throw Errors.createSyntaxError(e.getMessage());
-            }
-            throw e;
+            return context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
+        } catch (AbstractTruffleException e) {
+            throw rethrowAsSyntaxError(e);
         }
+    }
+
+    @TruffleBoundary
+    private static Source createRegexSource(String pattern, String flags, String options) {
+        String regexStr = options + '/' + pattern + '/' + flags;
+        return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").internal(true).build();
     }
 
     @TruffleBoundary
@@ -74,12 +78,9 @@ public final class RegexCompilerInterface {
             validateFlags(flags, ecmaScriptVersion, true);
         }
         try {
-            TRegexUtil.ValidateRegexNode.getUncached().execute(context.getRegexEngine(), pattern, flags);
-        } catch (RuntimeException e) {
-            if (e instanceof TruffleException && ((TruffleException) e).isSyntaxError()) {
-                throw Errors.createSyntaxError(e.getMessage());
-            }
-            throw e;
+            context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
+        } catch (AbstractTruffleException e) {
+            throw rethrowAsSyntaxError(e);
         }
     }
 
@@ -151,5 +152,19 @@ public final class RegexCompilerInterface {
     @TruffleBoundary
     private static RuntimeException throwFlagError(String msg) {
         throw Errors.createSyntaxError(msg);
+    }
+
+    @TruffleBoundary
+    private static AbstractTruffleException rethrowAsSyntaxError(AbstractTruffleException e) {
+        ExceptionType exceptionType;
+        try {
+            exceptionType = InteropLibrary.getUncached().getExceptionType(e);
+        } catch (UnsupportedMessageException ume) {
+            throw Errors.shouldNotReachHere();
+        }
+        if (exceptionType == ExceptionType.PARSE_ERROR) {
+            throw Errors.createSyntaxError(e.getMessage());
+        }
+        throw e;
     }
 }

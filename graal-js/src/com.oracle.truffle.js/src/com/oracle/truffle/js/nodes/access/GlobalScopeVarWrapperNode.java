@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -53,7 +54,7 @@ import com.oracle.truffle.js.runtime.Errors;
  * Wrapper around a global property access that handles potential lexical declarations shadowing
  * global properties.
  */
-public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements ReadNode, WriteNode {
+public final class GlobalScopeVarWrapperNode extends VarWrapperNode implements ReadNode, WriteNode {
 
     private final String varName;
     @Child private JavaScriptNode dynamicScopeNode;
@@ -69,12 +70,9 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
         this.scopeHasBinding = GlobalScopeLookupNode.create(varName, isWrite());
     }
 
+    @Override
     public JavaScriptNode getDelegateNode() {
         return defaultDelegate;
-    }
-
-    public String getPropertyName() {
-        return varName;
     }
 
     @Override
@@ -96,7 +94,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
         Object dynamicScope = dynamicScopeNode.execute(frame);
         if (scopeHasBinding.execute(dynamicScope)) {
             if (isWrite()) {
-                Object value = ((WriteNode) defaultDelegate).getRhs().execute(frame);
+                Object value = getRhs().execute(frame);
                 ((WritePropertyNode) scopeAccessNode).executeWithValue(dynamicScope, value);
                 return value;
             } else {
@@ -114,7 +112,7 @@ public final class GlobalScopeVarWrapperNode extends JavaScriptNode implements R
 
     @Override
     public JavaScriptNode getRhs() {
-        return ((WriteNode) defaultDelegate).getRhs();
+        return ((WriteNode) JSNodeUtil.getWrappedNode(defaultDelegate)).getRhs();
     }
 
     @Override

@@ -37,7 +37,9 @@ const kAfterAsyncWrite = Symbol('kAfterAsyncWrite');
 const kHandle = Symbol('kHandle');
 const kSession = Symbol('kSession');
 
-const debug = require('internal/util/debuglog').debuglog('stream');
+let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
+  debug = fn;
+});
 const kBuffer = Symbol('kBuffer');
 const kBufferGen = Symbol('kBufferGen');
 const kBufferCb = Symbol('kBufferCb');
@@ -202,7 +204,10 @@ function onStreamRead(arrayBuffer) {
   }
 
   if (nread !== UV_EOF) {
-    return stream.destroy(errnoException(nread, 'read'));
+    // CallJSOnreadMethod expects the return value to be a buffer.
+    // Ref: https://github.com/nodejs/node/pull/34375
+    stream.destroy(errnoException(nread, 'read'));
+    return;
   }
 
   // Defer this until we actually emit end
@@ -219,8 +224,12 @@ function onStreamRead(arrayBuffer) {
     // test-https-truncate test.
     if (handle.readStop) {
       const err = handle.readStop();
-      if (err)
-        return stream.destroy(errnoException(err, 'read'));
+      if (err) {
+        // CallJSOnreadMethod expects the return value to be a buffer.
+        // Ref: https://github.com/nodejs/node/pull/34375
+        stream.destroy(errnoException(err, 'read'));
+        return;
+      }
     }
 
     // Push a null to signal the end of data.

@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.java;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -91,12 +92,12 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, Object name) {
-        return getOwnHelper(thisObj, thisObj, name) != null;
+        return getOwnHelper(thisObj, thisObj, name, null) != null;
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
         if (name instanceof String) {
             Object[] packages = getPackages(store);
             JSRealm realm = JSObject.getJSContext(store).getRealm();

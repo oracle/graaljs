@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,9 +78,15 @@
 
 #define EXCEPTION_CHECK(jni_env, T) if (jni_env->ExceptionCheck()) return v8::Local<T>();
 
+class GraalArray;
 class GraalBoolean;
+class GraalContext;
+class GraalExternal;
+class GraalFunction;
 class GraalNumber;
+class GraalObject;
 class GraalPrimitive;
+class GraalString;
 class GraalValue;
 
 enum GraalAccessMethod {
@@ -151,6 +157,7 @@ enum GraalAccessMethod {
     object_preview_entries,
     object_set_integrity_level,
     array_new,
+    array_new_from_elements,
     array_length,
     array_buffer_new,
     array_buffer_new_buffer,
@@ -187,8 +194,6 @@ enum GraalAccessMethod {
     exception_create_message,
     isolate_throw_exception,
     isolate_run_microtasks,
-    isolate_create_internal_field_count_key,
-    isolate_create_internal_field_key,
     isolate_internal_error_check,
     isolate_throw_stack_overflow_error,
     isolate_get_heap_statistics,
@@ -216,6 +221,7 @@ enum GraalAccessMethod {
     object_template_set_accessor,
     object_template_set_handler,
     object_template_set_call_as_function_handler,
+    object_template_set_internal_field_count,
     function_new_instance,
     function_set_name,
     function_get_name,
@@ -289,6 +295,8 @@ enum GraalAccessMethod {
     object_internal_field_count,
     object_slow_get_aligned_pointer_from_internal_field,
     object_set_aligned_pointer_in_internal_field,
+    object_slow_get_internal_field,
+    object_set_internal_field,
     json_parse,
     json_stringify,
     symbol_new,
@@ -360,6 +368,25 @@ enum class GraalAccessField {
     count // Should be the last item of GraalAccessField
 };
 
+template <class T, size_t kCapacity = 1024> class GraalObjectPool {
+public:
+    inline bool IsEmpty() {
+        return size_ == 0;
+    }
+    inline bool IsFull() {
+        return size_ == kCapacity;
+    }    
+    inline T* Pop() {
+        return pool_[--size_];
+    }
+    inline void Push(T* array_object) {
+        pool_[size_++] = array_object;
+    }        
+private:
+    T* pool_[kCapacity];
+    int size_ = 0;
+};
+
 class GraalIsolate {
 public:
     GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params);
@@ -368,15 +395,14 @@ public:
     void NotifyMessageListener(v8::Local<v8::Message> message, v8::Local<v8::Value> error, jthrowable java_error);
     void SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback);
     bool AbortOnUncaughtExceptionCallbackValue();
-    v8::Local<v8::Value> InternalFieldKey(int index);
     void Dispose();
     void Dispose(bool exit, int status);
-    double ReadDoubleFromSharedBuffer();
-    int32_t ReadInt32FromSharedBuffer();
-    int64_t ReadInt64FromSharedBuffer();
-    void WriteInt32ToSharedBuffer(int32_t number);
-    void WriteInt64ToSharedBuffer(int64_t number);
-    void WriteDoubleToSharedBuffer(double number);
+    inline double ReadDoubleFromSharedBuffer();
+    inline int32_t ReadInt32FromSharedBuffer();
+    inline int64_t ReadInt64FromSharedBuffer();
+    inline void WriteInt32ToSharedBuffer(int32_t number);
+    inline void WriteInt64ToSharedBuffer(int64_t number);
+    inline void WriteDoubleToSharedBuffer(double number);
     void InternalErrorCheck();
     static v8::Isolate* New(v8::Isolate::CreateParams const& params, v8::Isolate* placement = nullptr);
     void SetPromiseHook(v8::PromiseHook promise_hook);
@@ -557,10 +583,6 @@ public:
         return (try_catch_count_ != 0);
     }
 
-    inline v8::Local<v8::Value> InternalFieldCountKey() {
-        return internal_field_count_key_;
-    }
-
     inline void ResetSharedBuffer() {
         shared_buffer_pos_ = 0;
     }
@@ -569,7 +591,9 @@ public:
         return stack_check_enabled_;
     }
 
-    bool StackOverflowCheck(intptr_t stack_top);
+    V8_INLINE bool StackOverflowCheck(intptr_t stack_top);
+
+    void ThrowStackOverflowError();
 
     void FindDynamicObjectFields(jobject context);
 
@@ -602,6 +626,34 @@ public:
     void Externalize(jobject java_buffer);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();
+
+    inline GraalObjectPool<GraalObject>* GetGraalObjectPool() {
+        return object_pool_;
+    }
+
+    inline GraalObjectPool<GraalString>* GetGraalStringPool() {
+        return string_pool_;
+    }
+
+    inline GraalObjectPool<GraalContext>* GetGraalContextPool() {
+        return context_pool_;
+    }
+
+    inline GraalObjectPool<GraalFunction>* GetGraalFunctionPool() {
+        return function_pool_;
+    }
+
+    inline GraalObjectPool<GraalArray>* GetGraalArrayPool() {
+        return array_pool_;
+    }
+
+    inline GraalObjectPool<GraalNumber>* GetGraalNumberPool() {
+        return number_pool_;
+    }
+
+    inline GraalObjectPool<GraalExternal>* GetGraalExternalPool() {
+        return external_pool_;
+    }
 
     static void SetFlags(int argc, char** argv) {
         char** old_argv = GraalIsolate::argv;
@@ -639,7 +691,6 @@ private:
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
-    std::vector<v8::Value*> internal_field_keys;
     std::vector<std::tuple<GCCallbackType, void*, void*>> prolog_callbacks;
     std::vector<std::tuple<GCCallbackType, void*, void*>> epilog_callbacks;
     std::vector<std::pair<v8::MicrotaskCallback, void*>> microtasks;
@@ -655,7 +706,6 @@ private:
     jobject int32_placeholder_;
     jobject uint32_placeholder_;
     jobject double_placeholder_;
-    v8::Value* internal_field_count_key_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
     jfieldID cleanerField_;
@@ -723,7 +773,67 @@ private:
     v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+
+    GraalObjectPool<GraalObject>* object_pool_;
+    GraalObjectPool<GraalString>* string_pool_;
+    GraalObjectPool<GraalContext>* context_pool_;
+    GraalObjectPool<GraalFunction>* function_pool_;
+    GraalObjectPool<GraalArray>* array_pool_;
+    GraalObjectPool<GraalNumber>* number_pool_;
+    GraalObjectPool<GraalExternal>* external_pool_;
 };
+
+// This is a poor-man's check that attempts to avoid stack-overflow
+// during invocation of an average native JavaScript function.
+// It's main purpose is to avoid stack-overflow during JNI calls
+// back to Graal.js engine, it does not handle possible large stack
+// demands of the user-implemented parts of the native function.
+// It is an experimental feature with a very naive implementation.
+// It should be replaced by more sophisticated techniques if it
+// turns out to be useful.
+bool GraalIsolate::StackOverflowCheck(intptr_t stack_top) {
+    if (labs(stack_top - stack_bottom_) > stack_size_limit_) {
+        ThrowStackOverflowError();
+        return true;
+    }
+    return false;
+}
+
+double GraalIsolate::ReadDoubleFromSharedBuffer() {
+    double* result = (double*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(double);
+    return *result;
+}
+
+int32_t GraalIsolate::ReadInt32FromSharedBuffer() {
+    int32_t* result = (int32_t*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(int32_t);
+    return *result;
+}
+
+int64_t GraalIsolate::ReadInt64FromSharedBuffer() {
+    int64_t* result = (int64_t*)((char*)shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof(int64_t);
+    return *result;
+}
+
+void GraalIsolate::WriteInt32ToSharedBuffer(int32_t number) {
+    int32_t* result = (int32_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (int32_t);
+    *result = number;
+}
+
+void GraalIsolate::WriteInt64ToSharedBuffer(int64_t number) {
+    int64_t* result = (int64_t*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (int64_t);
+    *result = number;
+}
+
+void GraalIsolate::WriteDoubleToSharedBuffer(double number) {
+    double* result = (double*) ((char*) shared_buffer_ + shared_buffer_pos_);
+    shared_buffer_pos_ += sizeof (double);
+    *result = number;
+}
 
 #endif /* GRAAL_ISOLATE_H_ */
 

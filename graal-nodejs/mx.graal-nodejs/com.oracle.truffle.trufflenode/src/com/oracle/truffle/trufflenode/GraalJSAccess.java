@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,6 +98,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -113,7 +114,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleException;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -130,6 +130,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -208,6 +209,7 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -245,8 +247,9 @@ public final class GraalJSAccess {
 
     private static final HiddenKey PRIVATE_VALUES_KEY = new HiddenKey("PrivateValues");
     private static final HiddenKey FUNCTION_TEMPLATE_DATA_KEY = new HiddenKey("FunctionTemplateData");
-    private static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
-    private static final HiddenKey INTERNAL_FIELD_ZERO_KEY = new HiddenKey("InternalField0");
+    public static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
+    private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
+    private static final HiddenKey[] INTERNAL_FIELD_KEYS_ARRAY = createInternalFieldKeysArray(10);
 
     private static final Symbol RESOLVER_RESOLVE = Symbol.create("Resolve");
     private static final Symbol RESOLVER_REJECT = Symbol.create("Reject");
@@ -721,12 +724,9 @@ public final class GraalJSAccess {
     }
 
     public boolean objectSet(Object object, Object key, Object value) {
-        DynamicObject dynamicObject = (DynamicObject) object;
-        if (key instanceof HiddenKey) {
-            JSObjectUtil.putHiddenProperty(dynamicObject, key, value);
-        } else {
-            JSObject.set(dynamicObject, JSRuntime.toPropertyKey(key), value);
-        }
+        assert !(key instanceof HiddenKey);
+        Object propertyKey = JSRuntime.toPropertyKey(key);
+        JSObject.set((DynamicObject) object, propertyKey, value);
         return true;
     }
 
@@ -737,7 +737,6 @@ public final class GraalJSAccess {
 
     public boolean objectForceSet(Object object, Object key, Object value, int attributes) {
         Object propertyKey = JSRuntime.toPropertyKey(key);
-        JSObject.delete((DynamicObject) object, propertyKey);
         PropertyDescriptor descriptor = propertyDescriptor(attributes, value);
         return JSObject.defineOwnProperty((DynamicObject) object, propertyKey, descriptor);
     }
@@ -784,40 +783,34 @@ public final class GraalJSAccess {
     }
 
     public Object objectGet(Object object, Object key) {
-        TruffleObject truffleObject;
-        if (object instanceof TruffleObject) {
-            truffleObject = (TruffleObject) object;
-        } else {
-            truffleObject = JSRuntime.toObject(mainJSContext, object);
-        }
+        assert !(key instanceof HiddenKey);
+        Object propertyKey = JSRuntime.toPropertyKey(key);
         Object value;
-        if (key instanceof HiddenKey) {
-            Object hiddenValue = JSObjectUtil.getHiddenProperty((DynamicObject) truffleObject, key);
-            if (hiddenValue == null) {
-                if (JSPromise.isJSPromise(object)) {
-                    value = 0;
-                } else {
-                    value = Undefined.instance;
-                }
-            } else {
-                value = hiddenValue;
-            }
+        if (object instanceof JSDynamicObject) {
+            value = JSObject.get((JSDynamicObject) object, propertyKey);
         } else {
-            value = JSObject.get(truffleObject, JSRuntime.toPropertyKey(key));
+            TruffleObject truffleObject;
+            if (object instanceof TruffleObject) {
+                truffleObject = (TruffleObject) object;
+            } else {
+                truffleObject = JSRuntime.toObject(mainJSContext, object);
+            }
+            value = JSObject.get(truffleObject, propertyKey);
         }
+        return processReturnValue(value);
+    }
+
+    public Object objectGetIndex(Object object, int index) {
+        Object value = JSObject.get((DynamicObject) object, index);
+        return processReturnValue(value);
+    }
+
+    private Object processReturnValue(Object value) {
         Object flatten = valueFlatten(value);
         resetSharedBuffer();
         asBaseBuffer(sharedBuffer).position(4);
         sharedBuffer.putInt(0, valueType(flatten, true));
         return flatten;
-    }
-
-    public Object objectGetIndex(Object object, int index) {
-        Object value = valueFlatten(JSObject.get((DynamicObject) object, index));
-        resetSharedBuffer();
-        asBaseBuffer(sharedBuffer).position(4);
-        sharedBuffer.putInt(0, valueType(value, true));
-        return value;
     }
 
     public Object objectGetOwnPropertyDescriptor(Object object, Object key) {
@@ -933,11 +926,22 @@ public final class GraalJSAccess {
 
     public String objectGetConstructorName(Object object) {
         String name = "Object";
-        if (object instanceof DynamicObject) {
+        if (JSDynamicObject.isJSDynamicObject(object)) {
             DynamicObject dynamicObject = (DynamicObject) object;
             Object constructor = JSObject.get(dynamicObject, JSObject.CONSTRUCTOR);
             if (JSFunction.isJSFunction(constructor)) {
                 name = JSFunction.getName((DynamicObject) constructor);
+            }
+        } else {
+            InteropLibrary interop = InteropLibrary.getUncached(object);
+            if (interop.hasMetaObject(object)) {
+                try {
+                    Object metaObject = interop.getMetaObject(object);
+                    Object interopName = InteropLibrary.getUncached(metaObject).getMetaSimpleName(metaObject);
+                    name = InteropLibrary.getUncached(interopName).asString(interopName);
+                } catch (UnsupportedMessageException ex) {
+                    throw Errors.shouldNotReachHere(ex);
+                }
             }
         }
         return name;
@@ -1160,6 +1164,10 @@ public final class GraalJSAccess {
 
     public Object arrayNew(Object context, int length) {
         return JSArray.createConstantEmptyArray(((JSRealm) context).getContext(), length);
+    }
+
+    public Object arrayNewFromElements(Object context, Object[] elements) {
+        return JSArray.createConstantObjectArray(((JSRealm) context).getContext(), elements);
     }
 
     public long arrayLength(Object object) {
@@ -1412,11 +1420,7 @@ public final class GraalJSAccess {
 
     public Object functionCall(Object function, Object receiver, Object[] arguments) {
         Object value = JSRuntime.call(function, receiver, arguments);
-        Object flatten = valueFlatten(value);
-        resetSharedBuffer();
-        asBaseBuffer(sharedBuffer).position(4);
-        sharedBuffer.putInt(0, valueType(flatten, true));
-        return flatten;
+        return processReturnValue(value);
     }
 
     public Object functionCall0(Object function, Object receiver) {
@@ -1559,8 +1563,8 @@ public final class GraalJSAccess {
         templateSet(templateObj, name, new Pair<>(getter, setter), attributes);
     }
 
-    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, int length, boolean isConstructor) {
-        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor);
+    public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
+        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor, singleFunctionTemplate);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
         return template;
     }
@@ -1598,14 +1602,14 @@ public final class GraalJSAccess {
         JSContext jsContext = jsRealm.getContext();
         FunctionTemplate template = (FunctionTemplate) templateObj;
 
-        if (template.getFunctionObject() == null) { // PENDING should be per context
+        if (template.getFunctionObject(jsRealm) == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             DynamicObject obj = functionTemplateCreateCallback(jsContext, jsRealm, template);
             objectTemplateInstantiate(jsRealm, template.getFunctionObjectTemplate(), obj);
 
             ObjectTemplate prototypeTemplate = template.getPrototypeTemplate();
             if (prototypeTemplate != null) {
-                DynamicObject proto = JSOrdinary.create(jsContext);
+                DynamicObject proto = JSOrdinary.create(jsContext, jsRealm);
                 objectTemplateInstantiate(jsRealm, prototypeTemplate, proto);
                 JSObjectUtil.putConstructorProperty(jsContext, proto, obj);
                 JSObject.set(obj, JSObject.PROTOTYPE, proto);
@@ -1619,22 +1623,23 @@ public final class GraalJSAccess {
             }
         }
 
-        return template.getFunctionObject();
+        return template.getFunctionObject(jsRealm);
     }
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
+        JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
         JSFunctionData functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
         CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
         CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
-        CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false));
-        CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true));
+        CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false, instanceLayout));
+        CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true, instanceLayout));
         functionData.setCallTarget(callTarget);
         functionData.setConstructTarget(constructTarget);
         functionData.setConstructNewTarget(constructNewTarget);
         DynamicObject functionObject = JSFunction.create(realm, functionData);
-        template.setFunctionObject(functionObject);
+        template.setFunctionObject(realm, functionObject);
 
         // Additional data are held weakly from C => we have to ensure that
         // they are not GCed before the corresponding function is GCed
@@ -1643,19 +1648,20 @@ public final class GraalJSAccess {
         return functionObject;
     }
 
-    public boolean functionTemplateHasInstance(Object templateObj, Object instance) {
-        FunctionTemplate functionTemplate = (FunctionTemplate) templateObj;
-        DynamicObject functionObject = functionTemplate.getFunctionObject();
-        if (functionObject == null) {
-            return false;
-        }
+    public boolean functionTemplateHasInstance(Object functionTemplate, Object instance) {
         if (instance instanceof DynamicObject) {
             Object constructor = JSObjectUtil.getHiddenProperty((DynamicObject) instance, FunctionTemplate.CONSTRUCTOR);
-            if (constructor == null) {
+            if (!(constructor instanceof FunctionTemplate)) {
                 return false; // not created from FunctionTemplate
             }
-            DynamicObject templatePrototype = (DynamicObject) JSObject.get(functionObject, JSObject.PROTOTYPE);
-            return JSRuntime.isPrototypeOf((DynamicObject) instance, templatePrototype);
+            FunctionTemplate instanceTemplate = (FunctionTemplate) constructor;
+            while (instanceTemplate != null) {
+                if (instanceTemplate == functionTemplate) {
+                    return true;
+                } else {
+                    instanceTemplate = instanceTemplate.getParent();
+                }
+            }
         }
         return false;
     }
@@ -1678,7 +1684,7 @@ public final class GraalJSAccess {
             } else {
                 DynamicObject function = (DynamicObject) functionTemplateGetFunction(realm, parentFunctionTemplate);
                 DynamicObject prototype = (DynamicObject) JSObject.get(function, JSObject.PROTOTYPE);
-                instance = JSOrdinary.createWithPrototype(prototype, jsContext);
+                instance = JSOrdinary.createWithPrototype(prototype, jsContext, template.getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE);
                 JSObjectUtil.putHiddenProperty(instance, FunctionTemplate.CONSTRUCTOR, parentFunctionTemplate);
             }
         } else {
@@ -1806,6 +1812,13 @@ public final class GraalJSAccess {
                 }
             }
         }
+        if (template.getInternalFieldCount() > 0) {
+            if (targetObject instanceof JSOrdinaryObject.InternalFieldLayout) {
+                ((JSOrdinaryObject.InternalFieldLayout) targetObject).setInternalFieldCount(template.getInternalFieldCount());
+            } else {
+                JSObjectUtil.putHiddenProperty(obj, INTERNAL_FIELD_COUNT_KEY, template.getInternalFieldCount());
+            }
+        }
     }
 
     public void objectTemplateSetAccessor(Object templateObj, Object name, long getterPtr, long setterPtr, Object data, Object signature, int attributes) {
@@ -1826,8 +1839,13 @@ public final class GraalJSAccess {
 
     public void objectTemplateSetCallAsFunctionHandler(Object templateObj, int id, long functionPointer, Object additionalData) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, 0, true);
+        FunctionTemplate functionHandler = (FunctionTemplate) functionTemplateNew(id, functionPointer, additionalData, null, 0, true, false);
         template.setFunctionHandler(functionHandler);
+    }
+
+    public void objectTemplateSetInternalFieldCount(Object templateObj, int count) {
+        ObjectTemplate template = (ObjectTemplate) templateObj;
+        template.setInternalFieldCount(count);
     }
 
     public Object scriptCompilerCompileFunctionInContext(Object context, String sourceName, String body, Object[] arguments, Object[] exts, Object hostDefinedOptions) {
@@ -2220,8 +2238,9 @@ public final class GraalJSAccess {
         return exceptionObject;
     }
 
+    @SuppressWarnings("deprecation")
     public boolean tryCatchHasTerminated(Object exception) {
-        return (exception instanceof GraalJSKillException) || (exception instanceof TruffleException && ((TruffleException) exception).isCancelled());
+        return (exception instanceof GraalJSKillException) || (exception instanceof com.oracle.truffle.api.TruffleException && ((com.oracle.truffle.api.TruffleException) exception).isCancelled());
     }
 
     private static GraalJSException.JSStackTraceElement messageGraalJSExceptionStackFrame(Object exception) {
@@ -2517,7 +2536,8 @@ public final class GraalJSAccess {
             context.setEmbedderData(new ContextData(context));
             createChildContext = true;
         }
-        realm.setEmbedderData(new RealmData());
+        RealmData realmData = new RealmData();
+        realm.setEmbedderData(realmData);
         DynamicObject global = realm.getGlobalObject();
         // Node.js does not have global arguments property
         JSObject.delete(global, JSRealm.ARGUMENTS_NAME);
@@ -2535,6 +2555,7 @@ public final class GraalJSAccess {
                 JSObject.setPrototype(global, prototype);
             }
         }
+        realmData.setSecurityToken(global);
         return realm;
     }
 
@@ -2649,12 +2670,26 @@ public final class GraalJSAccess {
         }
     }
 
-    public Object isolateCreateInternalFieldCountKey() {
-        return INTERNAL_FIELD_COUNT_KEY;
+    private static Object getInternalFieldKey(int index) {
+        if (index < INTERNAL_FIELD_KEYS_ARRAY.length) {
+            return INTERNAL_FIELD_KEYS_ARRAY[index];
+        } else {
+            return INTERNAL_FIELD_KEYS_MAP.computeIfAbsent(index, GraalJSAccess::createInternalFieldKey);
+        }
     }
 
-    public Object isolateCreateInternalFieldKey(int index) {
-        return (index == 0) ? INTERNAL_FIELD_ZERO_KEY : new HiddenKey("InternalField" + index);
+    private static HiddenKey createInternalFieldKey(int index) {
+        return new HiddenKey("InternalField" + index);
+    }
+
+    private static HiddenKey[] createInternalFieldKeysArray(int nPreallocatedKeys) {
+        HiddenKey[] keyArray = new HiddenKey[nPreallocatedKeys];
+        for (int i = 0; i < keyArray.length; i++) {
+            HiddenKey key = createInternalFieldKey(i);
+            keyArray[i] = key;
+            INTERNAL_FIELD_KEYS_MAP.put(0, key);
+        }
+        return keyArray;
     }
 
     public int objectInternalFieldCount(Object target) {
@@ -2662,23 +2697,68 @@ public final class GraalJSAccess {
     }
 
     public static int internalFieldCount(DynamicObject target) {
+        if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
+            return ((JSOrdinaryObject.InternalFieldLayout) target).getInternalFieldCount();
+        }
         Object ret = JSObjectUtil.getHiddenProperty(target, INTERNAL_FIELD_COUNT_KEY);
         if (ret instanceof Integer) {
             return (int) ret;
-        } else if (ret instanceof Double) {
-            return ((Double) ret).intValue();
         } else {
             return 0;
         }
     }
 
-    public long objectSlowGetAlignedPointerFromInternalField(Object target) {
-        Object pointer = JSObjectUtil.getHiddenProperty((DynamicObject) target, INTERNAL_FIELD_ZERO_KEY);
-        return (pointer == null) ? 0 : ((Number) pointer).longValue();
+    public long objectSlowGetAlignedPointerFromInternalField(Object target, int index) {
+        if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
+            return ((JSOrdinaryObject.InternalFieldLayout) target).getInternalFieldPointer(index);
+        } else {
+            Object key = getInternalFieldKey(index);
+            return getAlignedPointerFromInternalField((DynamicObject) target, key);
+        }
     }
 
-    public void objectSetAlignedPointerInInternalField(Object target, long value) {
-        JSObjectUtil.putHiddenProperty((DynamicObject) target, INTERNAL_FIELD_ZERO_KEY, value);
+    private static long getAlignedPointerFromInternalField(DynamicObject target, Object key) {
+        try {
+            return DynamicObjectLibrary.getUncached().getLongOrDefault(target, key, 0L);
+        } catch (UnexpectedResultException e) {
+            return 0L;
+        }
+    }
+
+    public void objectSetAlignedPointerInInternalField(Object target, int index, long value) {
+        if (target instanceof JSOrdinaryObject.InternalFieldLayout) {
+            ((JSOrdinaryObject.InternalFieldLayout) target).setInternalFieldPointer(index, value);
+        } else {
+            Object key = getInternalFieldKey(index);
+            DynamicObjectLibrary.getUncached().putLong((DynamicObject) target, key, value);
+        }
+    }
+
+    public void objectSetInternalField(Object object, int index, Object value) {
+        if (object instanceof JSOrdinaryObject.InternalFieldLayout) {
+            ((JSOrdinaryObject.InternalFieldLayout) object).setInternalFieldObject(index, value);
+        } else {
+            Object key = getInternalFieldKey(index);
+            JSObjectUtil.putHiddenProperty((DynamicObject) object, key, value);
+        }
+    }
+
+    public Object objectSlowGetInternalField(Object object, int index) {
+        Object value;
+        if (object instanceof JSOrdinaryObject.InternalFieldLayout) {
+            value = ((JSOrdinaryObject.InternalFieldLayout) object).getInternalFieldObject(index);
+        } else {
+            Object key = getInternalFieldKey(index);
+            value = JSObjectUtil.getHiddenProperty((DynamicObject) object, key);
+        }
+        if (value == null) {
+            if (JSPromise.isJSPromise(object)) {
+                value = 0;
+            } else {
+                value = Undefined.instance;
+            }
+        }
+        return processReturnValue(value);
     }
 
     public Object objectPreviewEntries(Object object) {
@@ -2720,8 +2800,9 @@ public final class GraalJSAccess {
         return null;
     }
 
+    @SuppressWarnings("deprecation")
     public void isolateInternalErrorCheck(Object exception) {
-        boolean internalError = !(exception instanceof TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
+        boolean internalError = !(exception instanceof com.oracle.truffle.api.TruffleException) && !(exception instanceof StackOverflowError) && !(exception instanceof OutOfMemoryError) &&
                         !(exception instanceof ControlFlowException) && !(exception instanceof GraalJSKillException);
         if (internalError) {
             ((Throwable) exception).printStackTrace();
@@ -2770,12 +2851,12 @@ public final class GraalJSAccess {
         debugger.startSession(new SuspendedCallback() {
             @Override
             public void onSuspend(SuspendedEvent se) {
+                se.getSession().close();
                 synchronized (GraalJSAccess.this) {
                     if (!terminateExecution) {
                         return; // termination has been cancelled
                     }
                 }
-                se.getSession().close();
                 throw new GraalJSKillException();
             }
         }).suspendNextExecution();
@@ -3011,7 +3092,7 @@ public final class GraalJSAccess {
     }
 
     public static Object regexpCreate(JSContext context, String pattern, int v8Flags) {
-        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context, TRegexUtil.CompileRegexNode.getUncached());
+        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
         return JSRegExp.create(context, compiledRegexp);
     }
 
@@ -3186,7 +3267,14 @@ public final class GraalJSAccess {
         if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
             return Undefined.instance;
         }
-        return jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+
+        Throwable evaluationError = moduleRecord.getEvaluationError();
+        if (evaluationError == null) {
+            return moduleRecord.getExecutionResult();
+        } else {
+            throw JSRuntime.rethrow(evaluationError);
+        }
     }
 
     public int moduleGetStatus(Object module) {
@@ -3213,8 +3301,11 @@ public final class GraalJSAccess {
 
     public Object moduleGetException(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        TruffleException evaluationError = (TruffleException) record.getEvaluationError();
-        return evaluationError.getExceptionObject();
+        Throwable evaluationError = record.getEvaluationError();
+        if (evaluationError instanceof GraalJSException) {
+            return ((GraalJSException) evaluationError).getErrorObjectEager(record.getContext());
+        }
+        return evaluationError;
     }
 
     public int moduleGetRequestsLength(Object module) {
@@ -3435,7 +3526,7 @@ public final class GraalJSAccess {
         BigInteger result = BigInteger.ZERO;
         for (int wordIdx = 0; wordIdx < count; wordIdx++) {
             long word = sharedBuffer.getLong();
-            for (int bit = 0; bit < 63; bit++) {
+            for (int bit = 0; bit < 64; bit++) {
                 if ((word & (1L << bit)) != 0) {
                     result = result.setBit(bit + 64 * wordIdx);
                 }

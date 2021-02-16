@@ -54,8 +54,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.RegexEngine;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.CompileRegexNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsMemberReadableNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsNullNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadBooleanMemberNodeGen;
@@ -64,7 +62,6 @@ import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadMemberNod
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadStringMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeExecMethodNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeGetGroupBoundariesMethodNodeGen;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.ValidateRegexNodeGen;
 
 public final class TRegexUtil {
 
@@ -75,14 +72,6 @@ public final class TRegexUtil {
     public static final class Props {
         private Props() {
             // should not be constructed
-        }
-
-        public static final class RegexEngine {
-            private RegexEngine() {
-                // should not be constructed
-            }
-
-            public static final String VALIDATE = "validate";
         }
 
         public static final class CompiledRegex {
@@ -176,8 +165,7 @@ public final class TRegexUtil {
             try {
                 return objs.readMember(obj, key);
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -200,8 +188,7 @@ public final class TRegexUtil {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -224,8 +211,7 @@ public final class TRegexUtil {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -248,8 +234,7 @@ public final class TRegexUtil {
             try {
                 return coerceNode.execute(objs.readMember(obj, key));
             } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -277,8 +262,7 @@ public final class TRegexUtil {
             try {
                 return objs.asBoolean(obj);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -298,8 +282,7 @@ public final class TRegexUtil {
             try {
                 return objs.asInt(obj);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -319,8 +302,7 @@ public final class TRegexUtil {
             try {
                 return objs.asString(obj);
             } catch (UnsupportedMessageException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
     }
@@ -337,8 +319,7 @@ public final class TRegexUtil {
             try {
                 return objs.invokeMember(compiledRegex, CompiledRegex.EXEC, input, fromIndex);
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -363,8 +344,7 @@ public final class TRegexUtil {
             try {
                 return toIntNode.execute(objs.invokeMember(regexResult, method, groupNumber));
             } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
         }
 
@@ -374,57 +354,6 @@ public final class TRegexUtil {
 
         public static InvokeGetGroupBoundariesMethodNode getUncached() {
             return InvokeGetGroupBoundariesMethodNodeGen.getUncached();
-        }
-    }
-
-    @GenerateUncached
-    public abstract static class CompileRegexNode extends Node {
-
-        public abstract Object execute(Object regexCompiler, String pattern, String flags);
-
-        @Specialization(guards = "objs.isExecutable(regexCompiler)", limit = "3")
-        static Object exec(Object regexCompiler, String pattern, String flags,
-                        @CachedLibrary("regexCompiler") InteropLibrary objs) {
-            try {
-                return objs.execute(regexCompiler, pattern, flags);
-            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
-            }
-        }
-
-        public static CompileRegexNode create() {
-            return CompileRegexNodeGen.create();
-        }
-
-        public static CompileRegexNode getUncached() {
-            return CompileRegexNodeGen.getUncached();
-        }
-    }
-
-    @ImportStatic(RegexEngine.class)
-    @GenerateUncached
-    public abstract static class ValidateRegexNode extends Node {
-
-        public abstract Object execute(Object regexEngine, String pattern, String flags);
-
-        @Specialization(guards = "objs.isMemberInvocable(regexEngine, VALIDATE)", limit = "3")
-        static Object exec(Object regexEngine, String pattern, String flags,
-                        @CachedLibrary("regexEngine") InteropLibrary objs) {
-            try {
-                return objs.invokeMember(regexEngine, RegexEngine.VALIDATE, pattern, flags);
-            } catch (UnsupportedMessageException | UnsupportedTypeException | ArityException | UnknownIdentifierException e) {
-                CompilerDirectives.transferToInterpreter();
-                throw new RuntimeException(e);
-            }
-        }
-
-        public static ValidateRegexNode create() {
-            return ValidateRegexNodeGen.create();
-        }
-
-        public static ValidateRegexNode getUncached() {
-            return ValidateRegexNodeGen.getUncached();
         }
     }
 

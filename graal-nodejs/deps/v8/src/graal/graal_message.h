@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@
 
 class GraalMessage : public GraalHandleContent {
 public:
-    GraalMessage(GraalIsolate* isolate, jobject exception);
+    inline static GraalMessage* Allocate(GraalIsolate* isolate, jobject exception);
     v8::Local<v8::StackTrace> GetStackTrace() const;
     v8::Local<v8::Value> GetScriptResourceName() const;
     v8::Local<v8::String> GetSourceLine() const;
@@ -56,6 +56,7 @@ public:
     v8::Maybe<int> GetLineNumber() const;
     v8::Local<v8::String> Get() const;
 protected:
+    inline GraalMessage(GraalIsolate* isolate, jobject exception);
     GraalHandleContent* CopyImpl(jobject java_object_copy);
 };
 

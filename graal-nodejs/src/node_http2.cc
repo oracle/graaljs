@@ -693,6 +693,13 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
 
   flags_ |= SESSION_STATE_CLOSED;
 
+  // If we are writing we will get to make the callback in OnStreamAfterWrite.
+  if ((flags_ & SESSION_STATE_WRITE_IN_PROGRESS) == 0) {
+    Debug(this, "make done session callback");
+    HandleScope scope(env()->isolate());
+    MakeCallback(env()->ondone_string(), 0, nullptr);
+  }
+
   // If there are outstanding pings, those will need to be canceled, do
   // so on the next iteration of the event loop to avoid calling out into
   // javascript since this may be called during garbage collection.
@@ -804,7 +811,7 @@ ssize_t Http2Session::OnCallbackPadding(size_t frameLen,
 // quite expensive. This is a potential performance optimization target later.
 ssize_t Http2Session::ConsumeHTTP2Data() {
   CHECK_NOT_NULL(stream_buf_.base);
-  CHECK_LT(stream_buf_offset_, stream_buf_.len);
+  CHECK_LE(stream_buf_offset_, stream_buf_.len);
   size_t read_len = stream_buf_.len - stream_buf_offset_;
 
   // multiple side effects.
@@ -825,11 +832,11 @@ ssize_t Http2Session::ConsumeHTTP2Data() {
     CHECK_GT(ret, 0);
     CHECK_LE(static_cast<size_t>(ret), read_len);
 
-    if (static_cast<size_t>(ret) < read_len) {
-      // Mark the remainder of the data as available for later consumption.
-      stream_buf_offset_ += ret;
-      return ret;
-    }
+    // Mark the remainder of the data as available for later consumption.
+    // Even if all bytes were received, a paused stream may delay the
+    // nghttp2_on_frame_recv_callback which may have an END_STREAM flag.
+    stream_buf_offset_ += ret;
+    return ret;
   }
 
   // We are done processing the current input chunk.
@@ -1167,6 +1174,7 @@ int Http2Session::OnDataChunkReceived(nghttp2_session* handle,
   if (session->flags_ & SESSION_STATE_WRITE_IN_PROGRESS) {
     CHECK_NE(session->flags_ & SESSION_STATE_READING_STOPPED, 0);
     session->flags_ |= SESSION_STATE_NGHTTP2_RECV_PAUSED;
+    Debug(session, "receive paused");
     return NGHTTP2_ERR_PAUSE;
   }
 
@@ -1530,6 +1538,12 @@ void Http2Session::OnStreamAfterWrite(WriteWrap* w, int status) {
     stream_->ReadStart();
   }
 
+  if ((flags_ & SESSION_STATE_CLOSED) != 0) {
+    HandleScope scope(env()->isolate());
+    MakeCallback(env()->ondone_string(), 0, nullptr);
+    return;
+  }
+
   // If there is more incoming data queued up, consume it.
   if (stream_buf_offset_ > 0) {
     ConsumeHTTP2Data();
@@ -1589,7 +1603,7 @@ void Http2Session::ClearOutgoing(int status) {
 
   flags_ &= ~SESSION_STATE_SENDING;
 
-  if (outgoing_buffers_.size() > 0) {
+  if (!outgoing_buffers_.empty()) {
     outgoing_storage_.clear();
     outgoing_length_ = 0;
 
@@ -1608,7 +1622,7 @@ void Http2Session::ClearOutgoing(int status) {
 
   // Now that we've finished sending queued data, if there are any pending
   // RstStreams we should try sending again and then flush them one by one.
-  if (pending_rst_streams_.size() > 0) {
+  if (!pending_rst_streams_.empty()) {
     std::vector<int32_t> current_pending_rst_streams;
     pending_rst_streams_.swap(current_pending_rst_streams);
 
@@ -1667,8 +1681,8 @@ uint8_t Http2Session::SendPendingData() {
   ssize_t src_length;
   const uint8_t* src;
 
-  CHECK_EQ(outgoing_buffers_.size(), 0);
-  CHECK_EQ(outgoing_storage_.size(), 0);
+  CHECK(outgoing_buffers_.empty());
+  CHECK(outgoing_storage_.empty());
 
   // Part One: Gather data from nghttp2
 
@@ -1814,7 +1828,7 @@ void Http2Session::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
   Context::Scope context_scope(env()->context());
   Http2Scope h2scope(this);
   CHECK_NOT_NULL(stream_);
-  Debug(this, "receiving %d bytes", nread);
+  Debug(this, "receiving %d bytes, offset %d", nread, stream_buf_offset_);
   AllocatedBuffer buf(env(), buf_);
 
   // Only pass data on if nread > 0
@@ -1830,7 +1844,6 @@ void Http2Session::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
   if (LIKELY(stream_buf_offset_ == 0)) {
     // Shrink to the actual amount of used data.
     buf.Resize(nread);
-    IncrementCurrentSessionMemory(nread);
   } else {
     // This is a very unlikely case, and should only happen if the ReadStart()
     // call in OnStreamAfterWrite() immediately provides data. If that does
@@ -1841,16 +1854,17 @@ void Http2Session::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
     memcpy(new_buf.data(), stream_buf_.base + stream_buf_offset_, pending_len);
     memcpy(new_buf.data() + pending_len, buf.data(), nread);
 
-    // The data in stream_buf_ is already accounted for, add nread received
-    // bytes to session memory but remove the already processed
-    // stream_buf_offset_ bytes.
-    IncrementCurrentSessionMemory(nread - stream_buf_offset_);
-
     buf = std::move(new_buf);
     nread = buf.size();
     stream_buf_offset_ = 0;
     stream_buf_ab_.Reset();
+
+    // We have now fully processed the stream_buf_ input chunk (by moving the
+    // remaining part into buf, which will be accounted for below).
+    DecrementCurrentSessionMemory(stream_buf_.len);
   }
+
+  IncrementCurrentSessionMemory(nread);
 
   // Remember the current buffer, so that OnDataChunkReceived knows the
   // offset of a DATA frame's data into the socket read buffer.
@@ -2354,7 +2368,7 @@ ssize_t Http2Stream::Provider::Stream::OnRead(nghttp2_session* handle,
     return NGHTTP2_ERR_DEFERRED;
   }
 
-  if (stream->queue_.empty() && !stream->IsWritable()) {
+  if (stream->available_outbound_length_ == 0 && !stream->IsWritable()) {
     Debug(session, "no more data for stream %d", id);
     *flags |= NGHTTP2_DATA_FLAG_EOF;
     if (stream->HasTrailers()) {

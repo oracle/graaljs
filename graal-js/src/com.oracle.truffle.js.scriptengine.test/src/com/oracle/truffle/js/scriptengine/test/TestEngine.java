@@ -265,9 +265,9 @@ public class TestEngine {
         try {
             TestUtil.getEngineNashornCompat(manager).eval("new java.util.ArrayList().iterator().next()");
             fail("ScriptException/NoSuchElementException expected");
-        } catch (ScriptException ex) {
+        } catch (Exception ex) {
             boolean foundNoSuchElementException = false;
-            Throwable cause = ex.getCause();
+            Throwable cause = ex;
             while (cause != null) {
                 if (cause instanceof NoSuchElementException) {
                     foundNoSuchElementException = true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,16 +115,15 @@ import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.DeclareEvalVariableNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalNode;
 import com.oracle.truffle.js.nodes.access.GlobalPropertyNode;
-import com.oracle.truffle.js.nodes.access.GlobalScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.access.VarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
 import com.oracle.truffle.js.nodes.access.WritePropertyNode;
@@ -228,8 +227,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignSourceSection(resultNode, parseNode);
         }
         assert resultNode.getSourceSection() != null;
-        if (resultNode instanceof GlobalScopeVarWrapperNode) {
-            tagStatement(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+        if (resultNode instanceof VarWrapperNode) {
+            tagStatement(((VarWrapperNode) resultNode).getDelegateNode(), parseNode);
         } else {
             resultNode.addStatementTag();
         }
@@ -241,8 +240,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignSourceSection(resultNode, parseNode);
         }
         assert resultNode.getSourceSection() != null;
-        if (resultNode instanceof GlobalScopeVarWrapperNode) {
-            tagExpression(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+        if (resultNode instanceof VarWrapperNode) {
+            tagExpression(((VarWrapperNode) resultNode).getDelegateNode(), parseNode);
         } else {
             resultNode.addExpressionTag();
         }
@@ -259,8 +258,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             assignSourceSection(resultNode, parseNode);
         }
         assert resultNode.getSourceSection() != null;
-        if (resultNode instanceof GlobalScopeVarWrapperNode) {
-            tagBody(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+        if (resultNode instanceof VarWrapperNode) {
+            tagBody(((VarWrapperNode) resultNode).getDelegateNode(), parseNode);
         } else {
             resultNode.addRootBodyTag();
         }
@@ -660,7 +659,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
-        LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+        JavaScriptNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
         return factory.createGeneratorWrapper((JavaScriptNode) resumableNode, readState, writeState);
     }
@@ -668,7 +667,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode toGeneratorBlockNode(AbstractBlockNode blockNode, BitSet suspendableIndices) {
         String identifier = ":generatorstate:" + environment.getFunctionFrameDescriptor().getSize();
         environment.getFunctionFrameDescriptor().addFrameSlot(identifier);
-        LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+        JavaScriptNode readState = factory.createLazyReadFrameSlot(identifier);
         WriteNode writeState = factory.createLazyWriteFrameSlot(identifier, null);
 
         JavaScriptNode[] statements = blockNode.getStatements();
@@ -737,7 +736,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (child instanceof JavaScriptNode) {
             JavaScriptNode jschild = (JavaScriptNode) child;
             String identifier = ":generatorexpr:" + environment.getFunctionFrameDescriptor().getSize();
-            LazyReadFrameSlotNode readState = factory.createLazyReadFrameSlot(identifier);
+            JavaScriptNode readState = factory.createLazyReadFrameSlot(identifier);
             if (jschild.hasTag(StandardTags.ExpressionTag.class) ||
                             (jschild instanceof GeneratorWrapperNode && ((GeneratorWrapperNode) jschild).getResumableNode().hasTag(StandardTags.ExpressionTag.class))) {
                 tagHiddenExpression(readState);
@@ -869,8 +868,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private static JavaScriptNode tagHiddenExpression(JavaScriptNode node) {
         node.setSourceSection(unavailableInternalSection);
-        if (node instanceof GlobalScopeVarWrapperNode) {
-            tagHiddenExpression(((GlobalScopeVarWrapperNode) node).getDelegateNode());
+        if (node instanceof VarWrapperNode) {
+            tagHiddenExpression(((VarWrapperNode) node).getDelegateNode());
         } else {
             node.addExpressionTag();
         }
@@ -3395,8 +3394,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode ensureHasSourceSection(JavaScriptNode resultNode, com.oracle.js.parser.ir.Node parseNode) {
         if (!resultNode.hasSourceSection()) {
             assignSourceSection(resultNode, parseNode);
-            if (resultNode instanceof GlobalScopeVarWrapperNode) {
-                ensureHasSourceSection(((GlobalScopeVarWrapperNode) resultNode).getDelegateNode(), parseNode);
+            if (resultNode instanceof VarWrapperNode) {
+                ensureHasSourceSection(((VarWrapperNode) resultNode).getDelegateNode(), parseNode);
             }
         }
         return resultNode;

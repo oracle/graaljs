@@ -56,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
+    public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
     public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
 
     public static ScopeFrameNode createCurrent() {

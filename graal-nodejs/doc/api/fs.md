@@ -6,8 +6,10 @@
 
 <!--name=fs-->
 
-The `fs` module provides an API for interacting with the file system in a
-manner closely modeled around standard POSIX functions.
+<!-- source_link=lib/fs.js -->
+
+The `fs` module enables interacting with the file system in a
+way modeled on standard POSIX functions.
 
 To use this module:
 
@@ -15,24 +17,14 @@ To use this module:
 const fs = require('fs');
 ```
 
-All file system operations have synchronous and asynchronous forms.
+All file system operations have synchronous, callback, and promise-based
+forms.
 
-The asynchronous form always takes a completion callback as its last argument.
-The arguments passed to the completion callback depend on the method, but the
-first argument is always reserved for an exception. If the operation was
-completed successfully, then the first argument will be `null` or `undefined`.
+## Synchronous example
 
-```js
-const fs = require('fs');
-
-fs.unlink('/tmp/hello', (err) => {
-  if (err) throw err;
-  console.log('successfully deleted /tmp/hello');
-});
-```
-
-Exceptions that occur using synchronous operations are thrown immediately and
-may be handled using `try…catch`, or may be allowed to bubble up.
+The synchronous form blocks the Node.js event loop and further JavaScript
+execution until the operation is complete. Exceptions are thrown immediately
+and can be handled using `try…catch`, or can be allowed to bubble up.
 
 ```js
 const fs = require('fs');
@@ -45,9 +37,47 @@ try {
 }
 ```
 
-There is no guaranteed ordering when using asynchronous methods. So the
-following is prone to error because the `fs.stat()` operation may complete
-before the `fs.rename()` operation:
+## Callback example
+
+The callback form takes a completion callback function as its last
+argument and invokes the operation asynchronously. The arguments passed to
+the completion callback depend on the method, but the first argument is always
+reserved for an exception. If the operation is completed successfully, then
+the first argument is `null` or `undefined`.
+
+```js
+const fs = require('fs');
+
+fs.unlink('/tmp/hello', (err) => {
+  if (err) throw err;
+  console.log('successfully deleted /tmp/hello');
+});
+```
+
+## Promise example
+
+Promise-based operations return a `Promise` that is resolved when the
+asynchronous operation is complete.
+
+```js
+const fs = require('fs').promises;
+
+(async function(path) {
+  try {
+    await fs.unlink(path);
+    console.log(`successfully deleted ${path}`);
+  } catch (error) {
+    console.error('there was an error:', error.message);
+  }
+})('/tmp/hello');
+```
+
+## Ordering of callback and promise-based operations
+
+There is no guaranteed ordering when using either the callback or
+promise-based methods. For example, the following is prone to error
+because the `fs.stat()` operation might complete before the `fs.rename()`
+operation:
 
 ```js
 fs.rename('/tmp/hello', '/tmp/world', (err) => {
@@ -73,31 +103,20 @@ fs.rename('/tmp/hello', '/tmp/world', (err) => {
 });
 ```
 
-In busy processes, use the asynchronous versions of these calls. The synchronous
-versions will block the entire process until they complete, halting all
-connections.
+Or, use the promise-based API:
 
-While it is not recommended, most fs functions allow the callback argument to
-be omitted, in which case a default callback is used that rethrows errors. To
-get a trace to the original call site, set the `NODE_DEBUG` environment
-variable:
+```js
+const fs = require('fs').promises;
 
-Omitting the callback function on asynchronous fs functions is deprecated and
-may result in an error being thrown in the future.
-
-```console
-$ cat script.js
-function bad() {
-  require('fs').readFile('/');
-}
-bad();
-
-$ env NODE_DEBUG=fs node script.js
-fs.js:88
-        throw backtrace;
-        ^
-Error: EISDIR: illegal operation on a directory, read
-    <stack trace.>
+(async function(from, to) {
+  try {
+    await fs.rename(from, to);
+    const stats = await fs.stat(to);
+    console.log(`stats: ${JSON.stringify(stats)}`);
+  } catch (error) {
+    console.error('there was an error:', error.message);
+  }
+})('/tmp/hello', '/tmp/world');
 ```
 
 ## File paths
@@ -107,7 +126,7 @@ a string, a [`Buffer`][], or a [`URL`][] object using the `file:` protocol.
 
 String form paths are interpreted as UTF-8 character sequences identifying
 the absolute or relative filename. Relative paths will be resolved relative
-to the current working directory as specified by `process.cwd()`.
+to the current working directory as determined by calling `process.cwd()`.
 
 Example using an absolute path on POSIX:
 
@@ -579,6 +598,72 @@ added: v0.5.8
 Stop watching for changes on the given `fs.FSWatcher`. Once stopped, the
 `fs.FSWatcher` object is no longer usable.
 
+### `watcher.ref()`
+<!-- YAML
+added: v12.20.0
+-->
+
+* Returns: {fs.FSWatcher}
+
+When called, requests that the Node.js event loop *not* exit so long as the
+`FSWatcher` is active. Calling `watcher.ref()` multiple times will have
+no effect.
+
+By default, all `FSWatcher` objects are "ref'ed", making it normally
+unnecessary to call `watcher.ref()` unless `watcher.unref()` had been
+called previously.
+
+### `watcher.unref()`
+<!-- YAML
+added: v12.20.0
+-->
+
+* Returns: {fs.FSWatcher}
+
+When called, the active `FSWatcher` object will not require the Node.js
+event loop to remain active. If there is no other activity keeping the
+event loop running, the process may exit before the `FSWatcher` object's
+callback is invoked. Calling `watcher.unref()` multiple times will have
+no effect.
+
+## Class: `fs.StatWatcher`
+<!-- YAML
+added: v12.20.0
+-->
+
+* Extends {EventEmitter}
+
+A successful call to `fs.watchFile()` method will return a new `fs.StatWatcher`
+object.
+
+### `watcher.ref()`
+<!-- YAML
+added: v12.20.0
+-->
+
+* Returns: {fs.StatWatcher}
+
+When called, requests that the Node.js event loop *not* exit so long as the
+`StatWatcher` is active. Calling `watcher.ref()` multiple times will have
+no effect.
+
+By default, all `StatWatcher` objects are "ref'ed", making it normally
+unnecessary to call `watcher.ref()` unless `watcher.unref()` had been
+called previously.
+
+### `watcher.unref()`
+<!-- YAML
+added: v12.20.0
+-->
+
+* Returns: {fs.StatWatcher}
+
+When called, the active `StatWatcher` object will not require the Node.js
+event loop to remain active. If there is no other activity keeping the
+event loop running, the process may exit before the `StatWatcher` object's
+callback is invoked. Calling `watcher.unref()` multiple times will have
+no effect.
+
 ## Class: `fs.ReadStream`
 <!-- YAML
 added: v0.1.93
@@ -586,8 +671,8 @@ added: v0.1.93
 
 * Extends: {stream.Readable}
 
-A successful call to `fs.createReadStream()` will return a new `fs.ReadStream`
-object.
+Instances of `fs.ReadStream` are created and returned using the
+[`fs.createReadStream()`][] function.
 
 ### Event: `'close'`
 <!-- YAML
@@ -818,7 +903,7 @@ The numeric group identifier of the group that owns the file (POSIX).
 
 * {number|bigint}
 
-A numeric device identifier if the file is considered "special".
+A numeric device identifier if the file represents a device.
 
 ### `stats.size`
 
@@ -1009,6 +1094,9 @@ added: v0.1.93
 
 * Extends {stream.Writable}
 
+Instances of `fs.WriteStream` are created and returned using the
+[`fs.createWriteStream()`][] function.
+
 ### Event: `'close'`
 <!-- YAML
 added: v0.1.93
@@ -1125,8 +1213,8 @@ fs.access(file, fs.constants.F_OK | fs.constants.W_OK, (err) => {
 });
 ```
 
-Using `fs.access()` to check for the accessibility of a file before calling
-`fs.open()`, `fs.readFile()` or `fs.writeFile()` is not recommended. Doing
+Do not use `fs.access()` to check for the accessibility of a file before calling
+`fs.open()`, `fs.readFile()` or `fs.writeFile()`. Doing
 so introduces a race condition, since other processes may change the file's
 state between the two calls. Instead, user code should open/read/write the
 file directly and handle the error raised if the file is not accessible.
@@ -1560,6 +1648,11 @@ operations. The specific constants currently defined are described in
 ## `fs.copyFile(src, dest[, flags], callback)`
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/27044
+    description: Changed 'flags' argument to 'mode' and imposed
+                 stricter type validation.
 -->
 
 * `src` {string|Buffer|URL} source filename to copy
@@ -1610,6 +1703,11 @@ fs.copyFile('source.txt', 'destination.txt', COPYFILE_EXCL, callback);
 ## `fs.copyFileSync(src, dest[, flags])`
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/27044
+    description: Changed 'flags' argument to 'mode' and imposed
+                 stricter type validation.
 -->
 
 * `src` {string|Buffer|URL} source filename to copy
@@ -2310,6 +2408,8 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/7897
     description: The `callback` parameter is no longer optional. Not passing
                  it will emit a deprecation warning with id DEP0013.
+  - version: v0.4.7
+    description: Documentation-only deprecation.
 -->
 
 * `path` {string|Buffer|URL}
@@ -2327,6 +2427,8 @@ changes:
   - version: v10.6.0
     pr-url: https://github.com/nodejs/node/pull/21498
     description: This API is no longer deprecated.
+  - version: v0.4.7
+    description: Documentation-only deprecation.
 -->
 
 * `path` {string|Buffer|URL}
@@ -2334,6 +2436,38 @@ changes:
 * `gid` {integer}
 
 Synchronous lchown(2). Returns `undefined`.
+
+## `fs.lutimes(path, atime, mtime, callback)`
+<!-- YAML
+added: v12.19.0
+-->
+
+* `path` {string|Buffer|URL}
+* `atime` {number|string|Date}
+* `mtime` {number|string|Date}
+* `callback` {Function}
+  * `err` {Error}
+
+Changes the access and modification times of a file in the same way as
+[`fs.utimes()`][], with the difference that if the path refers to a symbolic
+link, then the link is not dereferenced: instead, the timestamps of the
+symbolic link itself are changed.
+
+No arguments other than a possible exception are given to the completion
+callback.
+
+## `fs.lutimesSync(path, atime, mtime)`
+<!-- YAML
+added: v12.19.0
+-->
+
+* `path` {string|Buffer|URL}
+* `atime` {number|string|Date}
+* `mtime` {number|string|Date}
+
+Change the file system timestamps of the symbolic link referenced by `path`.
+Returns `undefined`, or throws an exception when parameters are incorrect or
+the operation fails. This is the synchronous version of [`fs.lutimes()`][].
 
 ## `fs.link(existingPath, newPath, callback)`
 <!-- YAML
@@ -3895,6 +4029,7 @@ to be notified of filesystem changes.
 * On SunOS systems (including Solaris and SmartOS), this uses [`event ports`][].
 * On Windows systems, this feature depends on [`ReadDirectoryChangesW`][].
 * On Aix systems, this feature depends on [`AHAFS`][], which must be enabled.
+* On IBM i systems, this feature is not supported.
 
 If the underlying functionality is not available for some reason, then
 `fs.watch()` will not be able to function and may thrown an exception.
@@ -3960,6 +4095,7 @@ changes:
 * `listener` {Function}
   * `current` {fs.Stats}
   * `previous` {fs.Stats}
+* Returns: {fs.StatWatcher}
 
 Watch for changes on `filename`. The callback `listener` will be called each
 time the file is accessed.
@@ -3997,9 +4133,9 @@ Using [`fs.watch()`][] is more efficient than `fs.watchFile` and
 `fs.unwatchFile` when possible.
 
 When a file being watched by `fs.watchFile()` disappears and reappears,
-then the `previousStat` reported in the second callback event (the file's
-reappearance) will be the same as the `previousStat` of the first callback
-event (its disappearance).
+then the contents of `previous` in the second callback event (the file's
+reappearance) will be the same as the contents of `previous` in the first
+callback event (its disappearance).
 
 This happens when:
 
@@ -4828,6 +4964,11 @@ upon success.
 ### `fsPromises.copyFile(src, dest[, flags])`
 <!-- YAML
 added: v10.0.0
+changes:
+  - version: v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/27044
+    description: Changed 'flags' argument to 'mode' and imposed
+                 stricter type validation.
 -->
 
 * `src` {string|Buffer|URL} source filename to copy
@@ -4906,6 +5047,23 @@ changes:
 
 Changes the ownership on a symbolic link then resolves the `Promise` with
 no arguments upon success.
+
+### `fsPromises.lutimes(path, atime, mtime)`
+<!-- YAML
+added: v12.19.0
+-->
+
+* `path` {string|Buffer|URL}
+* `atime` {number|string|Date}
+* `mtime` {number|string|Date}
+* Returns: {Promise}
+
+Changes the access and modification times of a file in the same way as
+[`fsPromises.utimes()`][], with the difference that if the path refers to a
+symbolic link, then the link is not dereferenced: instead, the timestamps of
+the symbolic link itself are changed.
+
+Upon success, the `Promise` is resolved without arguments.
 
 ### `fsPromises.link(existingPath, newPath)`
 <!-- YAML
@@ -5653,10 +5811,10 @@ are available from `fs.constants`. On Windows, flags are translated to
 their equivalent ones where applicable, e.g. `O_WRONLY` to `FILE_GENERIC_WRITE`,
 or `O_EXCL|O_CREAT` to `CREATE_NEW`, as accepted by `CreateFileW`.
 
-The exclusive flag `'x'` (`O_EXCL` flag in open(2)) ensures that path is newly
-created. On POSIX systems, path is considered to exist even if it is a symlink
-to a non-existent file. The exclusive flag may or may not work with network
-file systems.
+The exclusive flag `'x'` (`O_EXCL` flag in open(2)) causes the operation to
+return an error if the path already exists. On POSIX, if the path is a symbolic
+link, using `O_EXCL` returns an error even if the link is to a path that does
+not exist. The exclusive flag may or may not work with network file systems.
 
 On Linux, positional writes don't work when the file is opened in append mode.
 The kernel ignores the position argument and always appends the data to
@@ -5690,13 +5848,13 @@ A call to `fs.ftruncate()` or `filehandle.truncate()` can be used to reset
 the file contents.
 
 [`AHAFS`]: https://www.ibm.com/developerworks/aix/library/au-aix_event_infrastructure/
-[`Buffer.byteLength`]: buffer.html#buffer_class_method_buffer_bytelength_string_encoding
+[`Buffer.byteLength`]: buffer.html#buffer_static_method_buffer_bytelength_string_encoding
 [`Buffer`]: buffer.html#buffer_buffer
 [`FSEvents`]: https://developer.apple.com/documentation/coreservices/file_system_events
 [`Number.MAX_SAFE_INTEGER`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
 [`ReadDirectoryChangesW`]: https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-readdirectorychangesw
 [`ReadStream`]: #fs_class_fs_readstream
-[Readable Stream]: #stream_class_stream_readable
+[Readable Stream]: stream.html#stream_class_stream_readable
 [`URL`]: url.html#url_the_whatwg_url_api
 [`UV_THREADPOOL_SIZE`]: cli.html#cli_uv_threadpool_size_size
 [`WriteStream`]: #fs_class_fs_writestream
@@ -5710,12 +5868,14 @@ the file contents.
 [`fs.chmod()`]: #fs_fs_chmod_path_mode_callback
 [`fs.chown()`]: #fs_fs_chown_path_uid_gid_callback
 [`fs.copyFile()`]: #fs_fs_copyfile_src_dest_flags_callback
+[`fs.createReadStream()`]: #fs_fs_createreadstream_path_options
 [`fs.createWriteStream()`]: #fs_fs_createwritestream_path_options
 [`fs.exists()`]: fs.html#fs_fs_exists_path_callback
 [`fs.fstat()`]: #fs_fs_fstat_fd_options_callback
 [`fs.ftruncate()`]: #fs_fs_ftruncate_fd_len_callback
 [`fs.futimes()`]: #fs_fs_futimes_fd_atime_mtime_callback
 [`fs.lstat()`]: #fs_fs_lstat_path_options_callback
+[`fs.lutimes()`]: #fs_fs_lutimes_path_atime_mtime_callback
 [`fs.mkdir()`]: #fs_fs_mkdir_path_options_callback
 [`fs.mkdtemp()`]: #fs_fs_mkdtemp_prefix_options_callback
 [`fs.open()`]: #fs_fs_open_path_flags_mode_callback
@@ -5739,7 +5899,8 @@ the file contents.
 [`fs.writev()`]: #fs_fs_writev_fd_buffers_position_callback
 [`fsPromises.open()`]: #fs_fspromises_open_path_flags_mode
 [`fsPromises.opendir()`]: #fs_fspromises_opendir_path_options
-[`inotify(7)`]: http://man7.org/linux/man-pages/man7/inotify.7.html
+[`fsPromises.utimes()`]: #fs_fspromises_utimes_path_atime_mtime
+[`inotify(7)`]: https://man7.org/linux/man-pages/man7/inotify.7.html
 [`kqueue(2)`]: https://www.freebsd.org/cgi/man.cgi?query=kqueue&sektion=2
 [`net.Socket`]: net.html#net_class_net_socket
 [`stat()`]: fs.html#fs_fs_stat_path_options_callback

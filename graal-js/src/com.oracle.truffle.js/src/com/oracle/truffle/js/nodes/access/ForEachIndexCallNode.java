@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,9 @@ import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -161,25 +163,29 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     protected final InteropLibrary getInterop() {
         if (interop == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            interop = insert(InteropLibrary.getFactory().createDispatched(3));
+            interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
         }
         return interop;
     }
 
-    protected Object foreignRead(Object target, long index) {
+    protected Object foreignRead(Object target, long index, boolean isForeignArray) {
         if (toJSTypeNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toJSTypeNode = insert(ImportValueNode.create());
         }
-        return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
+        if (isForeignArray) {
+            return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
+        } else {
+            return JSInteropUtil.readMemberOrDefault(target, Boundaries.stringValueOf(index), Undefined.instance, getInterop(), toJSTypeNode, this);
+        }
     }
 
-    protected Object getElement(Object target, long index, boolean isForeign) {
+    protected Object getElement(Object target, long index, boolean isForeign, boolean isForeignArray) {
         if (!isForeign) {
             assert JSDynamicObject.isJSDynamicObject(target);
             return JSObject.get((DynamicObject) target, index, targetClassProfile);
         } else {
-            return foreignRead(target, index);
+            return foreignRead(target, index, isForeignArray);
         }
     }
 
@@ -243,15 +249,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         protected Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
-            if (isForeign) {
-                if (!getInterop().hasArrayElements(target)) {
-                    // Foreign object would not understand our read calls with int indices
-                    return currentResult;
-                }
-            }
+            boolean isForeignArray = isForeign && getInterop().hasArrayElements(target);
             for (long index = fromIndex; index < length; index++) {
                 if (hasProperty(target, index)) {
-                    Object value = getElement(target, index, isForeign);
+                    Object value = getElement(target, index, isForeign, isForeignArray);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
                     checkHasDetachedBuffer(target);
@@ -308,16 +309,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         protected Object executeForEachIndexSlow(Object target, Object callback, Object callbackThisArg, long fromIndex, long length, Object initialResult) {
             Object currentResult = initialResult;
             boolean isForeign = JSRuntime.isForeignObject(target);
-            if (isForeign) {
-                if (!getInterop().hasArrayElements(target)) {
-                    // Foreign object would not understand our read calls with int indices
-                    return currentResult;
-                }
-            }
-
+            boolean isForeignArray = isForeign && getInterop().hasArrayElements(target);
             for (long index = fromIndex; index >= 0; index--) {
                 if (hasProperty(target, index)) {
-                    Object value = getElement(target, index, isForeign);
+                    Object value = getElement(target, index, isForeign, isForeignArray);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
                     checkHasDetachedBuffer(target);

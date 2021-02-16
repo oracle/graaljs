@@ -28,5 +28,3 @@ assertSame('foo', (class { static "foo" = function() {} }).foo.name);
 assertSame('100', (class { static 1e2 = class {} })[100].name);
 assertSame('42', (class { static 42n = class {} })[42].name);
 assertSame('foo', (class { static "foo" = class {} }).foo.name);
-
-true;

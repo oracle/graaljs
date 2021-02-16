@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -114,22 +115,22 @@ public final class JSObjectPrototype extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
         ScriptArray array = JSObject.getArray(store);
         if (array.hasElement(store, index)) {
             return array.getElement(store, index);
         }
-        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index));
+        return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key) {
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         long idx = JSRuntime.propertyKeyToArrayIndex(key);
         if (JSRuntime.isArrayIndex(idx)) {
-            return getOwnHelper(store, thisObj, idx);
+            return getOwnHelper(store, thisObj, idx, encapsulatingNode);
         }
-        return super.getOwnHelper(store, thisObj, key);
+        return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
 
     @TruffleBoundary
@@ -192,15 +193,15 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        boolean result = super.set(thisObj, index, value, receiver, isStrict);
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        boolean result = super.set(thisObj, index, value, receiver, isStrict, encapsulatingNode);
         JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         return result;
     }
 
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        boolean result = super.set(thisObj, key, value, receiver, isStrict);
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        boolean result = super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
         if (JSRuntime.isArrayIndex(key)) {
             JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(JSAbstractArray.ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
         }

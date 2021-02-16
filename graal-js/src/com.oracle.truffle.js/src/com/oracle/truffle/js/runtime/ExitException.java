@@ -40,40 +40,40 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import com.oracle.truffle.api.TruffleException;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
 
-public class ExitException extends RuntimeException implements TruffleException {
+@ExportLibrary(InteropLibrary.class)
+public class ExitException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -1456196298096686373L;
     private final int status;
-    private final Node location;
 
     public ExitException(int status) {
         this(status, null);
     }
 
     public ExitException(int status, Node location) {
+        super(location);
         this.status = status;
-        this.location = location;
     }
 
     public int getStatus() {
         return status;
     }
 
-    @Override
-    public Node getLocation() {
-        return location;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public ExceptionType getExceptionType() {
+        return ExceptionType.EXIT;
     }
 
-    @Override
-    public boolean isExit() {
-        return true;
-    }
-
-    @Override
-    public int getExitStatus() {
+    @ExportMessage
+    public int getExceptionExitStatus() {
         return getStatus();
     }
 }

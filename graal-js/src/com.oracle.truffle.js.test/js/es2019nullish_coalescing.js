@@ -16,5 +16,3 @@ load('assert.js');
 assertThrows(function() {
     eval("undefined ?? 42");
 }, SyntaxError);
-
-true;

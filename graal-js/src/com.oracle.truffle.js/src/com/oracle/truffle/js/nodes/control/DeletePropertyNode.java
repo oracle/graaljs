@@ -47,6 +47,7 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -69,6 +70,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -80,6 +82,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * 11.4.1 The delete Operator ({@code delete object[property]}).
  */
+@ImportStatic({JSConfig.class})
 @NodeInfo(shortName = "delete")
 public abstract class DeletePropertyNode extends JSTargetableNode {
     protected final boolean strict;
@@ -225,7 +228,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Specialization(guards = {"isForeignObject(target)"})
     protected boolean member(Object target, String name,
-                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         if (interop.isMemberExisting(target, name)) {
             try {
                 interop.removeMember(target, name);
@@ -242,13 +245,13 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Specialization(guards = {"isForeignObject(target)"})
     protected boolean arrayElementInt(Object target, int index,
-                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         return arrayElementLong(target, index, interop);
     }
 
     @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
     protected boolean arrayElement(Object target, Number index,
-                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop) {
+                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         return arrayElementLong(target, JSRuntime.longValue(index), interop);
     }
 
@@ -275,7 +278,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"isForeignObject(target)", "!isString(key)", "!isNumber(key)"})
     protected Object foreignObject(Object target, Object key,
-                    @Shared("interop") @CachedLibrary(limit = "3") InteropLibrary interop,
+                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                     @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
         Object index = toArrayIndexNode.execute(key);
         if (index instanceof String) {

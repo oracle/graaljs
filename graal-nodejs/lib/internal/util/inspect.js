@@ -12,6 +12,7 @@ const {
   DatePrototypeToString,
   ErrorPrototypeToString,
   Float32Array,
+  FunctionPrototypeCall,
   FunctionPrototypeToString,
   Int16Array,
   JSONStringify,
@@ -26,6 +27,7 @@ const {
   Number,
   NumberIsNaN,
   NumberPrototypeValueOf,
+  Object,
   ObjectAssign,
   ObjectCreate,
   ObjectDefineProperty,
@@ -38,6 +40,7 @@ const {
   ObjectPrototypeHasOwnProperty,
   ObjectPrototypePropertyIsEnumerable,
   ObjectSeal,
+  ObjectSetPrototypeOf,
   RegExp,
   RegExpPrototypeToString,
   Set,
@@ -49,6 +52,10 @@ const {
   SymbolIterator,
   SymbolToStringTag,
   Uint16Array,
+  Uint32Array,
+  Uint8Array,
+  Uint8ArrayPrototype,
+  Uint8ClampedArray,
   uncurryThis,
 } = primordials;
 
@@ -60,6 +67,7 @@ const {
   kRejected,
   previewEntries,
   getConstructorName: internalGetConstructorName,
+  getExternalValue,
   propertyFilter: {
     ALL_PROPERTIES,
     ONLY_ENUMERABLE
@@ -128,7 +136,7 @@ const mapSizeGetter = uncurryThis(
   ObjectGetOwnPropertyDescriptor(MapPrototype, 'size').get);
 const typedArraySizeGetter = uncurryThis(
   ObjectGetOwnPropertyDescriptor(
-    ObjectGetPrototypeOf(Uint8Array.prototype), 'length').get);
+    ObjectGetPrototypeOf(Uint8ArrayPrototype), 'length').get);
 
 let hexSlice;
 
@@ -211,8 +219,8 @@ const ansi = new RegExp(ansiPattern, 'g');
 
 let getStringWidth;
 
-function getUserOptions(ctx) {
-  return {
+function getUserOptions(ctx, isCrossContext) {
+  const ret = {
     stylize: ctx.stylize,
     showHidden: ctx.showHidden,
     depth: ctx.depth,
@@ -227,6 +235,33 @@ function getUserOptions(ctx) {
     getters: ctx.getters,
     ...ctx.userOptions
   };
+
+  // Typically, the target value will be an instance of `Object`. If that is
+  // *not* the case, the object may come from another vm.Context, and we want
+  // to avoid passing it objects from this Context in that case, so we remove
+  // the prototype from the returned object itself + the `stylize()` function,
+  // and remove all other non-primitives, including non-primitive user options.
+  if (isCrossContext) {
+    ObjectSetPrototypeOf(ret, null);
+    for (const key of ObjectKeys(ret)) {
+      if ((typeof ret[key] === 'object' || typeof ret[key] === 'function') &&
+          ret[key] !== null) {
+        delete ret[key];
+      }
+    }
+    ret.stylize = ObjectSetPrototypeOf((value, flavour) => {
+      let stylized;
+      try {
+        stylized = `${ctx.stylize(value, flavour)}`;
+      } catch {}
+
+      if (typeof stylized !== 'string') return value;
+      // `stylized` is a string as it should be, which is safe to pass along.
+      return stylized;
+    }, null);
+  }
+
+  return ret;
 }
 
 /**
@@ -306,7 +341,7 @@ ObjectDefineProperty(inspect, 'defaultOptions', {
   }
 });
 
-// Set Graphics Rendition http://en.wikipedia.org/wiki/ANSI_escape_code#graphics
+// Set Graphics Rendition https://en.wikipedia.org/wiki/ANSI_escape_code#graphics
 // Each color consists of an array with the color code as first entry and the
 // reset code as second entry.
 const defaultFG = 39;
@@ -722,7 +757,10 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
       // This makes sure the recurseTimes are reported as before while using
       // a counter internally.
       const depth = ctx.depth === null ? null : ctx.depth - recurseTimes;
-      const ret = maybeCustom.call(context, depth, getUserOptions(ctx));
+      const isCrossContext =
+        proxy !== undefined || !(context instanceof Object);
+      const ret = FunctionPrototypeCall(
+        maybeCustom, context, depth, getUserOptions(ctx, isCrossContext));
       // If the custom inspection method returned `this`, don't go into
       // infinite recursion.
       if (ret !== context) {
@@ -938,8 +976,10 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       }
     } else {
       if (keys.length === 0 && protoProps === undefined) {
-        if (isExternal(value))
-          return ctx.stylize('[External]', 'special');
+        if (isExternal(value)) {
+          const address = getExternalValue(value).toString(16);
+          return ctx.stylize(`[External: ${address}]`, 'special');
+        }
         return `${getCtxStyle(value, constructor, tag)}{}`;
       }
       braces[0] = `${getCtxStyle(value, constructor, tag)}{`;
@@ -1953,13 +1993,6 @@ function formatWithOptions(inspectOptions, ...args) {
   return str;
 }
 
-function prepareStringForGetStringWidth(str, removeControlChars) {
-  str = str.normalize('NFC');
-  if (removeControlChars)
-    str = stripVTControlCharacters(str);
-  return str;
-}
-
 if (internalBinding('config').hasIntl) {
   const icu = internalBinding('icu');
   // icu.getStringWidth(string, ambiguousAsFullWidth, expandEmojiSequence)
@@ -1970,13 +2003,14 @@ if (internalBinding('config').hasIntl) {
   getStringWidth = function getStringWidth(str, removeControlChars = true) {
     let width = 0;
 
-    str = prepareStringForGetStringWidth(str, removeControlChars);
+    if (removeControlChars)
+      str = stripVTControlCharacters(str);
     for (let i = 0; i < str.length; i++) {
       // Try to avoid calling into C++ by first handling the ASCII portion of
       // the string. If it is fully ASCII, we skip the C++ part.
       const code = str.charCodeAt(i);
       if (code >= 127) {
-        width += icu.getStringWidth(str.slice(i));
+        width += icu.getStringWidth(str.slice(i).normalize('NFC'));
         break;
       }
       width += code >= 32 ? 1 : 0;
@@ -1990,7 +2024,9 @@ if (internalBinding('config').hasIntl) {
   getStringWidth = function getStringWidth(str, removeControlChars = true) {
     let width = 0;
 
-    str = prepareStringForGetStringWidth(str, removeControlChars);
+    if (removeControlChars)
+      str = stripVTControlCharacters(str);
+    str = str.normalize('NFC');
     for (const char of str) {
       const code = char.codePointAt(0);
       if (isFullWidthCodePoint(code)) {
@@ -2009,7 +2045,7 @@ if (internalBinding('config').hasIntl) {
    */
   const isFullWidthCodePoint = (code) => {
     // Code points are partially derived from:
-    // http://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt
+    // https://www.unicode.org/Public/UNIDATA/EastAsianWidth.txt
     return code >= 0x1100 && (
       code <= 0x115f ||  // Hangul Jamo
       code === 0x2329 || // LEFT-POINTING ANGLE BRACKET

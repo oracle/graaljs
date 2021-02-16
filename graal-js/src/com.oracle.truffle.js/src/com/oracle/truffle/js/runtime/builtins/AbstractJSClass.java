@@ -44,6 +44,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -54,29 +55,29 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name) {
-        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentJSRealm().getContext(), name, thisObj, false, null);
+    public Object getOwnHelper(DynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
+        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentJSRealm().getContext(), name, thisObj, false, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public Object getOwnHelper(DynamicObject store, Object thisObj, long index) {
-        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentJSRealm().getContext(), String.valueOf(index), thisObj, false, null);
+    public Object getOwnHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+        throw Errors.createTypeErrorCannotGetProperty(JavaScriptLanguage.getCurrentJSRealm().getContext(), String.valueOf(index), thisObj, false, encapsulatingNode);
     }
 
     @Override
-    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key) {
-        return getHelper(store, thisObj, key);
+    public Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+        return getHelper(store, thisObj, key, encapsulatingNode);
     }
 
     @Override
-    public Object getHelper(DynamicObject store, Object thisObj, Object key) {
-        return getOwnHelper(store, thisObj, key);
+    public Object getHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+        return getOwnHelper(store, thisObj, key, encapsulatingNode);
     }
 
     @Override
-    public Object getHelper(DynamicObject store, Object thisObj, long index) {
-        return getOwnHelper(store, thisObj, index);
+    public Object getHelper(DynamicObject store, Object thisObj, long index, Node encapsulatingNode) {
+        return getOwnHelper(store, thisObj, index, encapsulatingNode);
     }
 
     @Override
@@ -101,14 +102,14 @@ public abstract class AbstractJSClass extends JSClass {
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict) {
-        throw Errors.createTypeErrorCannotSetProperty(key, thisObj, null);
+    public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        throw Errors.createTypeErrorCannotSetProperty(key, thisObj, encapsulatingNode);
     }
 
     @TruffleBoundary
     @Override
-    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict) {
-        throw Errors.createTypeErrorCannotSetProperty(String.valueOf(index), thisObj, null);
+    public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
+        throw Errors.createTypeErrorCannotSetProperty(String.valueOf(index), thisObj, encapsulatingNode);
     }
 
     @TruffleBoundary

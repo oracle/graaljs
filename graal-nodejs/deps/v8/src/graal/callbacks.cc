@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@
 #include "graal_boolean.h"
 #include "graal_context.h"
 #include "graal_date.h"
+#include "graal_external.h"
 #include "graal_function.h"
 #include "graal_function_callback_info.h"
 #include "graal_isolate.h"
@@ -57,19 +58,28 @@
 #include "graal_number.h"
 #include "graal_object.h"
 #include "graal_promise.h"
-#include "graal_proxy.h"
 #include "graal_property_callback_info.h"
+#include "graal_proxy.h"
+#include "graal_script_or_module.h"
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
-#include "graal_external.h"
-#include "graal_script_or_module.h"
 #include "jni.h"
-#include "../../../../out/coremodules/node_snapshots.h"
-#include <vector>
+#include <array>
 #include <stdlib.h>
 #include <string.h>
-#include <array>
+#include <vector>
+
+#include "graal_context-inl.h"
+#include "graal_function_callback_info-inl.h"
+#include "graal_missing_primitive-inl.h"
+#include "graal_module-inl.h"
+#include "graal_promise-inl.h"
+#include "graal_property_callback_info-inl.h"
+#include "graal_script_or_module-inl.h"
+#include "graal_string-inl.h"
+
+#include "../../../../out/coremodules/node_snapshots.h"
 
 #define CALLBACK(name, signature, pointer) {const_cast<char*>(name), const_cast<char*>(signature), reinterpret_cast<void*>(pointer)}
 
@@ -140,7 +150,7 @@ jobject GraalExecuteFunction(JNIEnv* env, GraalIsolate* isolate, jint id, GraalF
     bool context_mismatch = !isolate->GetJNIEnv()->IsSameObject(isolate->CurrentJavaContext(), java_context);
     v8::Local<v8::Context> context;
     if (context_mismatch) {
-        GraalContext* graal_context = new GraalContext(isolate, java_context);
+        GraalContext* graal_context = GraalContext::Allocate(isolate, java_context);
         context = reinterpret_cast<v8::Context*> (graal_context);
         isolate->ContextEnter(*context);
     }
@@ -195,9 +205,9 @@ jobject GraalExecuteFunction(JNIEnv* env, jclass nativeAccess, jint id, jobjectA
 
 GraalValue* AllocateNewTarget(GraalIsolate* isolate, jobject new_target, void* placement) {
     if (new_target == NULL) {
-        return new(placement) GraalMissingPrimitive(isolate, isolate->GetUndefined()->GetJavaObject(), true);
+        return GraalMissingPrimitive::Allocate(isolate, isolate->GetUndefined()->GetJavaObject(), true, placement);
     } else {
-        return new(placement) GraalObject(isolate, new_target);
+        return GraalObject::Allocate(isolate, new_target, placement);
     }
 }
 
@@ -377,7 +387,7 @@ jobject GraalExecuteAccessorGetter(JNIEnv* env, jclass nativeAccess, jlong point
     GraalIsolate* isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
 
-    GraalString* graal_name = new GraalString(isolate, name);
+    GraalString* graal_name = GraalString::Allocate(isolate, name);
     v8::String* property_name = reinterpret_cast<v8::String*> (graal_name);
 
     GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
@@ -392,7 +402,7 @@ void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer,
     GraalIsolate* isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (isolate));
 
-    GraalString* graal_name = new GraalString(isolate, name);
+    GraalString* graal_name = GraalString::Allocate(isolate, name);
     v8::String* property_name = reinterpret_cast<v8::String*> (graal_name);
 
     jobject java_value = env->GetObjectArrayElement(arguments, 2);
@@ -518,7 +528,7 @@ void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong 
     GraalValue* graal_key = GraalValue::FromJavaObject(isolate, java_key);
     GraalPropertyCallbackInfo<v8::Value> info = GraalPropertyCallbackInfo<v8::Value>::New(isolate, arguments, 0, data, holder);
     bool has_configurable = flags & (1 << 0);
-    bool congigurable = flags & (1 << 1);
+    bool configurable = flags & (1 << 1);
     bool has_enumerable = flags & (1 << 2);
     bool enumerable = flags & (1 << 3);
     bool has_writable = flags & (1 << 4);
@@ -543,7 +553,7 @@ void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong 
         descriptor = new v8::PropertyDescriptor();
     }
     if (has_configurable) {
-        descriptor->set_configurable(congigurable);
+        descriptor->set_configurable(configurable);
     }
     if (has_enumerable) {
         descriptor->set_enumerable(enumerable);
@@ -628,10 +638,14 @@ void GraalPolyglotEngineEntered(JNIEnv* env, jclass nativeAccess, jlong function
 GraalIsolate* CurrentIsolateChecked() {
     GraalIsolate* graal_isolate = CurrentIsolate();
     if (graal_isolate == nullptr) {
-        fprintf(stderr, "Unable to find GraalIsolate for this thread! This code should be executed in the main thread!");
-        exit(1);
+        NoCurrentIsolateError();
     }
     return graal_isolate;
+}
+
+void NoCurrentIsolateError() {
+    fprintf(stderr, "Unable to find GraalIsolate for this thread! This code should be executed in the main thread!");
+    exit(1);
 }
 
 jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstring modulePath) {
@@ -656,7 +670,7 @@ jobject GraalGetCoreModuleBinarySnapshot(JNIEnv* env, jclass nativeAccess, jstri
 void GraalNotifyPromiseHook(JNIEnv* env, jclass nativeAccess, jint changeType, jobject java_promise, jobject java_parent) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalPromise* graal_promise = new GraalPromise(graal_isolate, java_promise);
+    GraalPromise* graal_promise = GraalPromise::Allocate(graal_isolate, java_promise);
     GraalValue* graal_parent = GraalValue::FromJavaObject(graal_isolate, java_parent);
     v8::Local<v8::Promise> v8_promise = reinterpret_cast<v8::Promise*> (graal_promise);
     v8::Local<v8::Value> v8_parent = reinterpret_cast<v8::Value*> (graal_parent);
@@ -666,7 +680,7 @@ void GraalNotifyPromiseHook(JNIEnv* env, jclass nativeAccess, jint changeType, j
 void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobject java_promise, jint operation, jobject java_value) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalPromise* graal_promise = new GraalPromise(graal_isolate, java_promise);
+    GraalPromise* graal_promise = GraalPromise::Allocate(graal_isolate, java_promise);
     GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_value);
     v8::Local<v8::Promise> v8_promise = reinterpret_cast<v8::Promise*> (graal_promise);
     v8::PromiseRejectEvent event = static_cast<v8::PromiseRejectEvent> (operation);
@@ -677,8 +691,8 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
 void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject java_import_meta, jobject java_module) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalObject* graal_import_meta = new GraalObject(graal_isolate, java_import_meta);
-    GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
+    GraalObject* graal_import_meta = GraalObject::Allocate(graal_isolate, java_import_meta);
+    GraalModule* graal_module = GraalModule::Allocate(graal_isolate, java_module);
     v8::Local<v8::Object> import_meta = reinterpret_cast<v8::Object*> (graal_import_meta);
     v8::Local<v8::Module> module = reinterpret_cast<v8::Module*> (graal_module);
     graal_isolate->NotifyImportMetaInitializer(import_meta, module);
@@ -687,9 +701,9 @@ void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject 
 jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jstring java_specifier, jobject java_referrer) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
-    GraalString* graal_specifier = new GraalString(graal_isolate, java_specifier);
-    GraalModule* graal_referrer = new GraalModule(graal_isolate, java_referrer);
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+    GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
+    GraalModule* graal_referrer = GraalModule::Allocate(graal_isolate, java_referrer);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
     v8::Local<v8::Module> v8_referrer = reinterpret_cast<v8::Module*> (graal_referrer);
@@ -706,9 +720,9 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
 jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jstring java_specifier) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
-    GraalScriptOrModule* graal_referrer = new GraalScriptOrModule(graal_isolate, java_referrer);
-    GraalString* graal_specifier = new GraalString(graal_isolate, java_specifier);
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+    GraalScriptOrModule* graal_referrer = GraalScriptOrModule::Allocate(graal_isolate, java_referrer);
+    GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Local<v8::ScriptOrModule> v8_referrer = reinterpret_cast<v8::ScriptOrModule*> (graal_referrer);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
@@ -725,7 +739,7 @@ jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAc
 jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_error, jobject java_stack_trace) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
     GraalValue* graal_error = GraalValue::FromJavaObject(graal_isolate, java_error);
     GraalValue* graal_stack_trace = GraalValue::FromJavaObject(graal_isolate, java_stack_trace);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
@@ -764,7 +778,7 @@ jobject GraalReadHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate) {
 void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, jstring java_message) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalString* graal_message = new GraalString(graal_isolate, java_message);
+    GraalString* graal_message = GraalString::Allocate(graal_isolate, java_message);
     v8::String* message = reinterpret_cast<v8::String*> (graal_message);
     v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
     d->ThrowDataCloneError(message);
@@ -797,8 +811,8 @@ jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong 
 jobject GraalSyntheticModuleEvaluationSteps(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_module) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
-    GraalContext* graal_context = new GraalContext(graal_isolate, java_context);
-    GraalModule* graal_module = new GraalModule(graal_isolate, java_module);
+    GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
+    GraalModule* graal_module = GraalModule::Allocate(graal_isolate, java_module);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
     v8::Local<v8::Module> v8_module = reinterpret_cast<v8::Module*> (graal_module);
     v8::MaybeLocal<v8::Value> v8_result = ((v8::Module::SyntheticModuleEvaluationSteps) callback)(v8_context, v8_module);

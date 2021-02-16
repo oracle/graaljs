@@ -2,6 +2,8 @@
 
 const {
   NumberIsSafeInteger,
+  ObjectDefineProperties,
+  ObjectIs,
   ReflectApply,
   Symbol,
 } = primordials;
@@ -9,6 +11,7 @@ const {
 const {
   ERR_ASYNC_CALLBACK,
   ERR_ASYNC_TYPE,
+  ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ASYNC_ID
 } = require('internal/errors').codes;
 const { validateString } = require('internal/validators');
@@ -208,6 +211,32 @@ class AsyncResource {
   triggerAsyncId() {
     return this[trigger_async_id_symbol];
   }
+
+  bind(fn) {
+    if (typeof fn !== 'function')
+      throw new ERR_INVALID_ARG_TYPE('fn', 'Function', fn);
+    const ret = this.runInAsyncScope.bind(this, fn);
+    ObjectDefineProperties(ret, {
+      'length': {
+        configurable: true,
+        enumerable: false,
+        value: fn.length,
+        writable: false,
+      },
+      'asyncResource': {
+        configurable: true,
+        enumerable: true,
+        value: this,
+        writable: true,
+      }
+    });
+    return ret;
+  }
+
+  static bind(fn, type) {
+    type = type || fn.name;
+    return (new AsyncResource(type || 'bound-anonymous-fn')).bind(fn);
+  }
 }
 
 const storageList = [];
@@ -221,6 +250,7 @@ const storageHook = createHook({
   }
 });
 
+const defaultAlsResourceOpts = { requireManualDestroy: true };
 class AsyncLocalStorage {
   constructor() {
     this.kResourceStore = Symbol('kResourceStore');
@@ -257,8 +287,15 @@ class AsyncLocalStorage {
   }
 
   run(store, callback, ...args) {
-    const resource = new AsyncResource('AsyncLocalStorage');
-    return resource.runInAsyncScope(() => {
+    // Avoid creation of an AsyncResource if store is already active
+    if (ObjectIs(store, this.getStore())) {
+      return callback(...args);
+    }
+    const resource = new AsyncResource('AsyncLocalStorage',
+                                       defaultAlsResourceOpts);
+    // Calling emitDestroy before runInAsyncScope avoids a try/finally
+    // It is ok because emitDestroy only schedules calling the hook
+    return resource.emitDestroy().runInAsyncScope(() => {
       this.enterWith(store);
       return callback(...args);
     });
@@ -277,8 +314,8 @@ class AsyncLocalStorage {
   }
 
   getStore() {
-    const resource = executionAsyncResource();
     if (this.enabled) {
+      const resource = executionAsyncResource();
       return resource[this.kResourceStore];
     }
   }

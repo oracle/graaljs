@@ -83,6 +83,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.DeclareTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag.Type;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
@@ -427,7 +428,7 @@ public abstract class FineGrainedAccessTest {
     @Before
     public void initTest() {
         collecting = false;
-        context = TestUtil.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).build();
+        context = TestUtil.newContextBuilder().allowPolyglotAccess(PolyglotAccess.ALL).option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2021").build();
         instrument = context.getEngine().getInstruments().get(TestingExecutionInstrument.ID).lookup(TestingExecutionInstrument.class);
         instrumenter = instrument.getEnvironment().getInstrumenter();
         events = new ArrayList<>();

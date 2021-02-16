@@ -39,7 +39,9 @@ const EE = require('events');
 const Stream = require('stream');
 const { Buffer } = require('buffer');
 
-const debug = require('internal/util/debuglog').debuglog('stream');
+let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
+  debug = fn;
+});
 const BufferList = require('internal/streams/buffer_list');
 const destroyImpl = require('internal/streams/destroy');
 const {
@@ -64,7 +66,6 @@ ObjectSetPrototypeOf(Readable.prototype, Stream.prototype);
 ObjectSetPrototypeOf(Readable, Stream);
 
 const { errorOrDestroy } = destroyImpl;
-const kProxyEvents = ['error', 'close', 'destroy', 'pause', 'resume'];
 
 function prependListener(emitter, event, fn) {
   // Sadly this is not cacheable as some libraries bundle their own
@@ -284,7 +285,8 @@ function readableAddChunk(stream, chunk, encoding, addToFront) {
 }
 
 function addChunk(stream, state, chunk, addToFront) {
-  if (state.flowing && state.length === 0 && !state.sync) {
+  if (state.flowing && state.length === 0 && !state.sync &&
+      stream.listenerCount('data') > 0) {
     // Use the guard to avoid creating `Set()` repeatedly
     // when we have multiple pipes.
     if (state.multiAwaitDrain) {
@@ -1052,10 +1054,29 @@ Readable.prototype.wrap = function(stream) {
     }
   }
 
-  // Proxy certain important events.
-  for (const kProxyEvent of kProxyEvents) {
-    stream.on(kProxyEvent, this.emit.bind(this, kProxyEvent));
-  }
+  stream.on('error', (err) => {
+    errorOrDestroy(this, err);
+  });
+
+  stream.on('close', () => {
+    // TODO(ronag): Update readable state?
+    this.emit('close');
+  });
+
+  stream.on('destroy', () => {
+    // TODO(ronag): this.destroy()?
+    this.emit('destroy');
+  });
+
+  stream.on('pause', () => {
+    // TODO(ronag): this.pause()?
+    this.emit('pause');
+  });
+
+  stream.on('resume', () => {
+    // TODO(ronag): this.resume()?
+    this.emit('resume');
+  });
 
   // When we try to consume some more bytes, simply unpause the
   // underlying stream.

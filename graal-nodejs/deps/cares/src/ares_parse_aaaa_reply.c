@@ -165,7 +165,7 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
             {
               hostent->h_addr_list[i] = (char*)&addrs[i];
               memcpy(hostent->h_addr_list[i],
-                     &(((struct sockaddr_in6 *)next->ai_addr)->sin6_addr),
+                     &(CARES_INADDR_CAST(struct sockaddr_in6 *, next->ai_addr)->sin6_addr),
                      sizeof(struct ares_in6_addr));
               if (naddrttls && i < *naddrttls)
                 {
@@ -175,7 +175,7 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
                       addrttls[i].ttl = next->ai_ttl;
 
                     memcpy(&addrttls[i].ip6addr,
-                           &(((struct sockaddr_in6 *)next->ai_addr)->sin6_addr),
+                           &(CARES_INADDR_CAST(struct sockaddr_in6 *, next->ai_addr)->sin6_addr),
                            sizeof(struct ares_in6_addr));
                 }
               ++i;
@@ -200,7 +200,8 @@ int ares_parse_aaaa_reply(const unsigned char *abuf, int alen,
 
   if (naddrttls)
     {
-      *naddrttls = naddrs;
+      /* Truncated to at most *naddrttls entries */
+      *naddrttls = (naddrs > *naddrttls)?*naddrttls:naddrs;
     }
 
   ares__freeaddrinfo_cnames(ai.cnames);

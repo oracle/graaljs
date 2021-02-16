@@ -104,10 +104,6 @@ std::string GetHumanReadableProcessName();
 void InitializeContextRuntime(v8::Local<v8::Context>);
 bool InitializePrimordials(v8::Local<v8::Context> context);
 
-namespace task_queue {
-void PromiseRejectCallback(v8::PromiseRejectMessage message);
-}  // namespace task_queue
-
 class NodeArrayBufferAllocator : public ArrayBufferAllocator {
  public:
   inline uint32_t* zero_fill_field() { return &zero_fill_field_; }
@@ -301,8 +297,10 @@ void DefineZlibConstants(v8::Local<v8::Object> target);
 v8::Isolate* NewIsolate(v8::Isolate::CreateParams* params,
                         uv_loop_t* event_loop,
                         MultiIsolatePlatform* platform);
+// This overload automatically picks the right 'main_script_id' if no callback
+// was provided by the embedder.
 v8::MaybeLocal<v8::Value> StartExecution(Environment* env,
-                                         const char* main_script_id);
+                                         StartExecutionCallback cb = nullptr);
 v8::MaybeLocal<v8::Object> GetPerContextExports(v8::Local<v8::Context> context);
 v8::MaybeLocal<v8::Value> ExecuteBootstrapper(
     Environment* env,

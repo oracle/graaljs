@@ -10,7 +10,7 @@ The goals of GraalVM JavaScript are:
 * Support Node.js applications, including native packages ([check](https://www.graalvm.org/docs/reference-manual/compatibility/))
 * Allow simple upgrading from [Nashorn](docs/user/NashornMigrationGuide.md) or [Rhino](docs/user/RhinoMigrationGuide.md) based applications
 * [Fast interoperability](https://www.graalvm.org/docs/reference-manual/polyglot/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
-* Be embeddable in systems like [Oracle RDBMS](https://oracle.github.io/oracle-db-mle/) or MySQL
+* Be embeddable in systems like [Oracle RDBMS](https://labs.oracle.com/pls/apex/f?p=LABS:project_details:0:15) or MySQL
 
 
 ## Getting Started
@@ -36,8 +36,8 @@ For contributors, a guide how to build GraalVM JavaScript from source code can b
 ## Current Status
 
 GraalVM JavaScript is compatible with the [ECMAScript 2020 specification](http://www.ecma-international.org/ecma-262/11.0/index.html).
-Starting with GraalVM 20.1.0, ECMAScript 2020 is the default compatibility level.
-New features, e.g. `ECMAScript proposals` scheduled to land in future editions, are added frequently.
+Starting with GraalVM 21.0.0, ECMAScript 2021 - currently at the draft stage - is the default compatibility level.
+New features, e.g. `ECMAScript proposals` scheduled to land in future editions, are added frequently and are accessible behind a flag.
 
 In addition, some popular extensions of other engines are supported, see [`JavaScriptCompatibility.md`](https://github.com/graalvm/graaljs/tree/master/docs/user/JavaScriptCompatibility.md).
 

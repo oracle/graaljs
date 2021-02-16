@@ -205,7 +205,7 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, frameDescriptor, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
-        JavaScriptNode one = JSConstantNode.createInt(1);
+        JavaScriptNode one = JSConstantNode.createConstantNumericUnit();
         JavaScriptNode opNode;
         if (from.op instanceof DecOp) {
             opNode = JSSubtractNode.create(readTmp, one);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,15 +39,14 @@
  * SOFTWARE.
  */
 
-#include <cmath>
 #include "graal_isolate.h"
 #include "graal_number.h"
+#include <cmath>
 
-GraalNumber::GraalNumber(GraalIsolate* isolate, double value, jobject java_number) : GraalPrimitive(isolate, java_number), value_(value) {
-}
+#include "graal_number-inl.h"
 
 GraalHandleContent* GraalNumber::CopyImpl(jobject java_object_copy) {
-    return new GraalNumber(Isolate(), value_, java_object_copy);
+    return GraalNumber::Allocate(Isolate(), value_, java_object_copy);
 }
 
 bool GraalNumber::IsInt32() const {
@@ -72,7 +71,7 @@ v8::Local<v8::Number> GraalNumber::New(v8::Isolate* isolate, double value) {
         }
     }
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::number_new, Object, (jdouble) value);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value, java_number);
     return reinterpret_cast<v8::Number*> (graal_number);
 }
 
@@ -94,7 +93,7 @@ v8::Local<v8::Integer> GraalNumber::NewFromUnsigned(v8::Isolate* isolate, uint32
         }
     }
     JNI_CALL(jobject, java_number, graal_isolate, GraalAccessMethod::integer_new, Object, (jlong) value);
-    GraalNumber* graal_number = new GraalNumber(graal_isolate, value, java_number);
+    GraalNumber* graal_number = GraalNumber::Allocate(graal_isolate, value, java_number);
     return reinterpret_cast<v8::Integer*> (graal_number);
 }
 
@@ -105,5 +104,5 @@ double GraalNumber::Value() const {
 GraalNumber* GraalNumber::NewNotCached(GraalIsolate* isolate, int value) {
     JNI_CALL(jobject, java_number, isolate, GraalAccessMethod::integer_new, Object, (jlong) value);
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    return new GraalNumber(graal_isolate, value, java_number);
+    return GraalNumber::Allocate(graal_isolate, value, java_number);
 }

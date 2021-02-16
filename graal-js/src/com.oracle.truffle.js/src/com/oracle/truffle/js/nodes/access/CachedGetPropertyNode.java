@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,13 +49,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.FrequencyBasedPropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
-@ImportStatic(JSRuntime.class)
+@ImportStatic({JSRuntime.class})
 abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     static final int MAX_DEPTH = 2;
 
@@ -82,7 +83,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     Object doIntIndex(DynamicObject target, int index, Object receiver, Object defaultValue,
                     @Cached("create()") JSClassProfile jsclassProfile) {
-        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
+        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
     @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"})
@@ -93,7 +94,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") JSClassProfile jsclassProfile) {
         requireObjectCoercibleNode.executeVoid(target);
         long index = (long) maybeIndex;
-        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile);
+        return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
     @Specialization(guards = {"isJSProxy(target)"})
@@ -108,14 +109,20 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached("create()") RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,
                     @Cached("createBinaryProfile()") ConditionProfile getType,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile highFrequency,
+                    @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey) {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(arrayIndex instanceof Long)) {
-            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile);
+            return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, this);
         } else {
             assert JSRuntime.isPropertyKey(arrayIndex);
-            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile);
+            Object maybeRead = hotKey.executeFastGet(arrayIndex, target);
+            if (highFrequency.profile(maybeRead != null)) {
+                return maybeRead;
+            }
+            return JSObject.getOrDefault(target, arrayIndex, receiver, defaultValue, jsclassProfile, this);
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,11 +97,11 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpGroupsObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -111,6 +111,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -359,7 +360,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return JSProperty.getValue(property, receiverCheck.getStore(thisObj), receiver, guard);
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            Object value = property.get(store, guard);
+            if (JSProperty.isProxy(property)) {
+                return ((PropertyProxy) value).get(store);
+            } else {
+                assert JSProperty.isData(property);
+                return value;
+            }
         }
     }
 
@@ -821,7 +829,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         public JavaStringMethodGetNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            this.interop = InteropLibrary.getFactory().createDispatched(3);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Override
@@ -887,11 +895,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
-            if (root.isMethod()) {
-                return JSObject.getMethod((DynamicObject) thisObj, key);
-            } else {
-                return JSObject.get((DynamicObject) thisObj, key);
-            }
+            DynamicObject obj = (DynamicObject) thisObj;
+            Object result = root.isMethod() ? JSAdapter.INSTANCE.getMethodHelper(obj, obj, key, root) : JSAdapter.INSTANCE.getHelper(obj, obj, key, root);
+            return JSRuntime.nullToUndefined(result);
         }
     }
 
@@ -909,8 +915,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private ImportValueNode importValueNode;
+        @Child private JSToObjectNode toObjectNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
-        @Child private PropertyGetNode getFromPrototypeNode;
+        @Child private PropertyGetNode getFromJSObjectNode;
         private final boolean isLength;
         private final boolean isMethod;
         private final boolean isGlobal;
@@ -925,10 +932,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.importValueNode = ImportValueNode.create();
+            this.toObjectNode = JSToObjectNode.createToObject(context);
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
-            this.interop = InteropLibrary.getFactory().createDispatched(5);
+            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         private Object foreignGet(Object thisObj, PropertyGetNode root) {
@@ -937,6 +945,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(context, key, thisObj, isMethod, this);
             }
+            Object object = toObjectNode.execute(thisObj);
+            if (thisObj != object) {
+                // thisObj is foreign boxed primitive => object is JS object
+                assert JSObject.isJSObject(object);
+                return getFromJSObject(object, key);
+            }
             if (!(key instanceof String)) {
                 return Undefined.instance;
             }
@@ -944,7 +958,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(thisObj, root);
                 if (result != null) {
-                    return result;
+                    return importValueNode.executeWithTarget(result);
                 }
             }
             Object foreignResult;
@@ -972,16 +986,24 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
             if (context.getContextOptions().hasForeignObjectPrototype()) {
-                if (getFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
+                if (foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    getFromPrototypeNode = insert(PropertyGetNode.create(key, context));
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
-                assert key.equals(getFromPrototypeNode.getKey());
                 DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(thisObj);
-                return getFromPrototypeNode.getValue(prototype);
+                return getFromJSObject(prototype, key);
             }
             return Undefined.instance;
+        }
+
+        private Object getFromJSObject(Object object, Object key) {
+            assert JSObject.isJSObject(object);
+            if (getFromJSObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getFromJSObjectNode = insert(PropertyGetNode.create(key, context));
+            }
+            assert key.equals(getFromJSObjectNode.getKey());
+            return getFromJSObjectNode.getValue(object);
         }
 
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
@@ -1010,7 +1032,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             if (getterInterop == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getterInterop = insert(InteropLibrary.getFactory().createDispatched(3));
+                getterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
             }
             if (!getterInterop.isMemberInvocable(thisObj, getterKey)) {
                 return null;
@@ -1164,7 +1186,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
 
             // 1. try to get a JS property
-            Object value = isMethod ? jsclass.getMethodHelper(object, receiver, key) : jsclass.getHelper(object, receiver, key);
+            Object value = isMethod ? jsclass.getMethodHelper(object, receiver, key, this) : jsclass.getHelper(object, receiver, key, this);
             if (value != null) {
                 return value;
             }

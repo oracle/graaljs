@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,9 @@
 #include "graal_string.h"
 #include "graal_unbound_script.h"
 
-GraalModule::GraalModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
-}
+#include "graal_module-inl.h"
+#include "graal_string-inl.h"
+#include "graal_unbound_script-inl.h"
 
 GraalHandleContent* GraalModule::CopyImpl(jobject java_object_copy) {
     return new GraalModule(Isolate(), java_object_copy);
@@ -106,7 +107,7 @@ int GraalModule::GetModuleRequestsLength() const {
 v8::Local<v8::String> GraalModule::GetModuleRequest(int index) const {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_request, graal_isolate, GraalAccessMethod::module_get_request, Object, GetJavaObject(), (jint) index);
-    GraalString* graal_request = new GraalString(graal_isolate, (jstring) java_request);
+    GraalString* graal_request = GraalString::Allocate(graal_isolate, (jstring) java_request);
     return reinterpret_cast<v8::String*> (graal_request);
 }
 
@@ -161,6 +162,6 @@ void GraalModule::SetSyntheticModuleExport(v8::Local<v8::String> export_name, v8
 v8::Local<v8::UnboundModuleScript> GraalModule::GetUnboundModuleScript() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_script, graal_isolate, GraalAccessMethod::module_get_unbound_module_script, Object, GetJavaObject());
-    GraalUnboundScript* graal_script = new GraalUnboundScript(graal_isolate, java_script);
+    GraalUnboundScript* graal_script = GraalUnboundScript::Allocate(graal_isolate, java_script);
     return reinterpret_cast<v8::UnboundModuleScript*> (graal_script);
 }

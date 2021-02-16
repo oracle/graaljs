@@ -5,6 +5,7 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol,
+  Uint8Array,
 } = primordials;
 
 const {
@@ -912,13 +913,13 @@ function getValidStdio(stdio, sync) {
   if (typeof stdio === 'string') {
     stdio = stdioStringToArray(stdio);
   } else if (!ArrayIsArray(stdio)) {
-    throw new ERR_INVALID_OPT_VALUE('stdio', inspect(stdio));
+    throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
   }
 
   // At least 3 stdio will be created
   // Don't concat() a new Array() because it would be sparse, and
   // stdio.reduce() would skip the sparse elements of stdio.
-  // See http://stackoverflow.com/a/5501711/3561
+  // See https://stackoverflow.com/a/5501711/3561
   while (stdio.length < 3) stdio.push(undefined);
 
   // Translate stdio into C++-readable form
@@ -997,7 +998,7 @@ function getValidStdio(stdio, sync) {
     } else {
       // Cleanup
       cleanup();
-      throw new ERR_INVALID_OPT_VALUE('stdio', inspect(stdio));
+      throw new ERR_INVALID_OPT_VALUE('stdio', stdio);
     }
 
     return acc;

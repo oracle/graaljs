@@ -160,6 +160,24 @@ assert.strictEqual(newObject.test_string, 'test string');
 }
 
 {
+  // Verify that objects can be type-tagged and type-tag-checked.
+  const obj1 = test_object.TypeTaggedInstance(0);
+  const obj2 = test_object.TypeTaggedInstance(1);
+
+  // Verify that type tags are correctly accepted.
+  assert.strictEqual(test_object.CheckTypeTag(0, obj1), true);
+  assert.strictEqual(test_object.CheckTypeTag(1, obj2), true);
+
+  // Verify that wrongly tagged objects are rejected.
+  assert.strictEqual(test_object.CheckTypeTag(0, obj2), false);
+  assert.strictEqual(test_object.CheckTypeTag(1, obj1), false);
+
+  // Verify that untagged objects are rejected.
+  assert.strictEqual(test_object.CheckTypeTag(0, {}), false);
+  assert.strictEqual(test_object.CheckTypeTag(1, {}), false);
+}
+
+{
   // Verify that normal and nonexistent properties can be deleted.
   const sym = Symbol();
   const obj = { foo: 'bar', [sym]: 'baz' };
@@ -257,3 +275,43 @@ assert.deepStrictEqual(test_object.TestGetProperty(), {
   keyIsNull: 'Invalid argument',
   resultIsNull: 'Invalid argument'
 });
+
+{
+  const obj = { x: 'a', y: 'b', z: 'c' };
+
+  test_object.TestSeal(obj);
+
+  assert.strictEqual(Object.isSealed(obj), true);
+
+  assert.throws(() => {
+    obj.w = 'd';
+  }, TypeError);
+
+  assert.throws(() => {
+    delete obj.x;
+  }, TypeError);
+
+  // Sealed objects allow updating existing properties,
+  // so this should not throw.
+  obj.x = 'd';
+}
+
+{
+  const obj = { x: 10, y: 10, z: 10 };
+
+  test_object.TestFreeze(obj);
+
+  assert.strictEqual(Object.isFrozen(obj), true);
+
+  assert.throws(() => {
+    obj.x = 10;
+  }, TypeError);
+
+  assert.throws(() => {
+    obj.w = 15;
+  }, TypeError);
+
+  assert.throws(() => {
+    delete obj.x;
+  }, TypeError);
+}

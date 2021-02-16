@@ -3,12 +3,18 @@
 /* global WebAssembly */
 
 const {
+  Boolean,
   JSONParse,
+  ObjectPrototypeHasOwnProperty,
   ObjectKeys,
   PromisePrototypeCatch,
   PromiseReject,
+  RegExpPrototypeTest,
   SafeMap,
+  SafeSet,
   StringPrototypeReplace,
+  StringPrototypeSplit,
+  StringPrototypeStartsWith,
 } = primordials;
 
 let _TYPES = null;
@@ -17,11 +23,16 @@ function lazyTypes() {
   return _TYPES = require('internal/util/types');
 }
 
+const { readFileSync } = require('fs');
+const { extname, isAbsolute } = require('path');
 const {
   stripBOM,
   loadNativeModule
 } = require('internal/modules/cjs/helpers');
-const CJSModule = require('internal/modules/cjs/loader').Module;
+const {
+  Module: CJSModule,
+  cjsParseCache
+} = require('internal/modules/cjs/loader');
 const internalURLModule = require('internal/url');
 const { defaultGetSource } = require(
   'internal/modules/esm/get_source');
@@ -30,7 +41,9 @@ const { defaultTransformSource } = require(
 const createDynamicModule = require(
   'internal/modules/esm/create_dynamic_module');
 const { fileURLToPath, URL } = require('url');
-const { debuglog } = require('internal/util/debuglog');
+let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
+  debug = fn;
+});
 const { emitExperimentalWarning } = require('internal/util');
 const {
   ERR_UNKNOWN_BUILTIN_MODULE,
@@ -42,11 +55,23 @@ const { ModuleWrap } = moduleWrap;
 const { getOptionValue } = require('internal/options');
 const experimentalImportMetaResolve =
     getOptionValue('--experimental-import-meta-resolve');
+const asyncESM = require('internal/process/esm_loader');
 
-const debug = debuglog('esm');
+let cjsParse;
+async function initCJSParse() {
+  if (typeof WebAssembly === 'undefined') {
+    cjsParse = require('internal/deps/cjs-module-lexer/lexer').parse;
+  } else {
+    const { parse, init } =
+        require('internal/deps/cjs-module-lexer/dist/lexer');
+    await init();
+    cjsParse = parse;
+  }
+}
 
 const translators = new SafeMap();
 exports.translators = translators;
+exports.enrichCJSError = enrichCJSError;
 
 let DECODER = null;
 function assertBufferSource(body, allowString, hookName) {
@@ -80,21 +105,14 @@ function errPath(url) {
   return url;
 }
 
-let esmLoader;
 async function importModuleDynamically(specifier, { url }) {
-  if (!esmLoader) {
-    esmLoader = require('internal/process/esm_loader').ESMLoader;
-  }
-  return esmLoader.import(specifier, url);
+  return asyncESM.ESMLoader.import(specifier, url);
 }
 
 function createImportMetaResolve(defaultParentUrl) {
   return async function resolve(specifier, parentUrl = defaultParentUrl) {
-    if (!esmLoader) {
-      esmLoader = require('internal/process/esm_loader').ESMLoader;
-    }
     return PromisePrototypeCatch(
-      esmLoader.resolve(specifier, parentUrl),
+      asyncESM.ESMLoader.resolve(specifier, parentUrl),
       (error) => (
         error.code === 'ERR_UNSUPPORTED_DIR_IMPORT' ?
           error.url : PromiseReject(error))
@@ -109,7 +127,7 @@ function initializeImportMeta(meta, { url }) {
   meta.url = url;
 }
 
-// Strategy for loading a standard JavaScript module
+// Strategy for loading a standard JavaScript module.
 translators.set('module', async function moduleStrategy(url) {
   let { source } = await this._getSource(
     url, { format: 'module' }, defaultGetSource);
@@ -127,44 +145,140 @@ translators.set('module', async function moduleStrategy(url) {
   return module;
 });
 
+
+function enrichCJSError(err) {
+  const stack = StringPrototypeSplit(err.stack, '\n');
+  /*
+    The regular expression below targets the most common import statement
+    usage. However, some cases are not matching, cases like import statement
+    after a comment block and/or after a variable definition.
+  */
+  if (StringPrototypeStartsWith(err.message, 'Unexpected token \'export\'') ||
+    (RegExpPrototypeTest(/^\s*import(?=[ {'"*])\s*(?![ (])/, stack[1]))) {
+    // Emit the warning synchronously because we are in the middle of handling
+    // a SyntaxError that will throw and likely terminate the process before an
+    // asynchronous warning would be emitted.
+    process.emitWarning(
+      'To load an ES module, set "type": "module" in the package.json or use ' +
+      'the .mjs extension.',
+      undefined,
+      undefined,
+      undefined,
+      true);
+  }
+}
+
 // Strategy for loading a node-style CommonJS module
 const isWindows = process.platform === 'win32';
 const winSepRegEx = /\//g;
-translators.set('commonjs', function commonjsStrategy(url, isMain) {
+translators.set('commonjs', async function commonjsStrategy(url, isMain) {
   debug(`Translating CJSModule ${url}`);
-  const pathname = internalURLModule.fileURLToPath(new URL(url));
-  const cached = this.cjsCache.get(url);
-  if (cached) {
-    this.cjsCache.delete(url);
-    return cached;
-  }
-  const module = CJSModule._cache[
-    isWindows ? StringPrototypeReplace(pathname, winSepRegEx, '\\') : pathname
-  ];
-  if (module && module.loaded) {
-    const exports = module.exports;
-    return new ModuleWrap(url, undefined, ['default'], function() {
-      this.setExport('default', exports);
-    });
-  }
-  return new ModuleWrap(url, undefined, ['default'], function() {
+
+  let filename = internalURLModule.fileURLToPath(new URL(url));
+  if (isWindows)
+    filename = StringPrototypeReplace(filename, winSepRegEx, '\\');
+
+  if (!cjsParse) await initCJSParse();
+  const { module, exportNames } = cjsPreparseModuleExports(filename);
+  const namesWithDefault = exportNames.has('default') ?
+    [...exportNames] : ['default', ...exportNames];
+
+  return new ModuleWrap(url, undefined, namesWithDefault, function() {
     debug(`Loading CJSModule ${url}`);
-    // We don't care about the return val of _load here because Module#load
-    // will handle it for us by checking the loader registry and filling the
-    // exports like above
-    CJSModule._load(pathname, undefined, isMain);
+
+    let exports;
+    if (asyncESM.ESMLoader.cjsCache.has(module)) {
+      exports = asyncESM.ESMLoader.cjsCache.get(module);
+      asyncESM.ESMLoader.cjsCache.delete(module);
+    } else {
+      try {
+        exports = CJSModule._load(filename, undefined, isMain);
+      } catch (err) {
+        enrichCJSError(err);
+        throw err;
+      }
+    }
+
+    for (const exportName of exportNames) {
+      if (!ObjectPrototypeHasOwnProperty(exports, exportName) ||
+          exportName === 'default')
+        continue;
+      // We might trigger a getter -> dont fail.
+      let value;
+      try {
+        value = exports[exportName];
+      } catch {}
+      this.setExport(exportName, value);
+    }
+    this.setExport('default', exports);
   });
 });
+
+function cjsPreparseModuleExports(filename) {
+  let module = CJSModule._cache[filename];
+  if (module) {
+    const cached = cjsParseCache.get(module);
+    if (cached)
+      return { module, exportNames: cached.exportNames };
+  }
+  const loaded = Boolean(module);
+  if (!loaded) {
+    module = new CJSModule(filename);
+    module.filename = filename;
+    module.paths = CJSModule._nodeModulePaths(module.path);
+    CJSModule._cache[filename] = module;
+  }
+
+  let source;
+  try {
+    source = readFileSync(filename, 'utf8');
+  } catch {}
+
+  let exports, reexports;
+  try {
+    ({ exports, reexports } = cjsParse(source || ''));
+  } catch {
+    exports = [];
+    reexports = [];
+  }
+
+  const exportNames = new SafeSet(exports);
+
+  // Set first for cycles.
+  cjsParseCache.set(module, { source, exportNames, loaded });
+
+  if (reexports.length) {
+    module.filename = filename;
+    module.paths = CJSModule._nodeModulePaths(module.path);
+  }
+  for (const reexport of reexports) {
+    let resolved;
+    try {
+      resolved = CJSModule._resolveFilename(reexport, module);
+    } catch {
+      continue;
+    }
+    const ext = extname(resolved);
+    if ((ext === '.js' || ext === '.cjs' || !CJSModule._extensions[ext]) &&
+        isAbsolute(resolved)) {
+      const { exportNames: reexportNames } = cjsPreparseModuleExports(resolved);
+      for (const name of reexportNames)
+        exportNames.add(name);
+    }
+  }
+
+  return { module, exportNames };
+}
 
 // Strategy for loading a node builtin CommonJS module that isn't
 // through normal resolution
 translators.set('builtin', async function builtinStrategy(url) {
   debug(`Translating BuiltinModule ${url}`);
-  // Slice 'nodejs:' scheme
-  const id = url.slice(7);
+  // Slice 'node:' scheme
+  const id = url.slice(5);
   const module = loadNativeModule(id, url, true);
-  if (!url.startsWith('nodejs:') || !module) {
-    throw new ERR_UNKNOWN_BUILTIN_MODULE(id);
+  if (!url.startsWith('node:') || !module) {
+    throw new ERR_UNKNOWN_BUILTIN_MODULE(url);
   }
   debug(`Loading BuiltinModule ${url}`);
   return module.getESMFacade();

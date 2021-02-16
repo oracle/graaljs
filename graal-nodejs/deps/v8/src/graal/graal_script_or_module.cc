@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,8 @@
 #include "graal_script_or_module.h"
 #include "graal_value.h"
 
-GraalScriptOrModule::GraalScriptOrModule(GraalIsolate* isolate, jobject java_module) : GraalHandleContent(isolate, java_module) {
-}
+#include "graal_primitive_array-inl.h"
+#include "graal_script_or_module-inl.h"
 
 GraalHandleContent* GraalScriptOrModule::CopyImpl(jobject java_object_copy) {
     return new GraalScriptOrModule(Isolate(), java_object_copy);
@@ -62,6 +62,6 @@ v8::Local<v8::Value> GraalScriptOrModule::GetResourceName() {
 v8::Local<v8::PrimitiveArray> GraalScriptOrModule::GetHostDefinedOptions() {
     GraalIsolate* graal_isolate = Isolate();
     JNI_CALL(jobject, java_options, graal_isolate, GraalAccessMethod::script_or_module_get_host_defined_options, Object, GetJavaObject());
-    GraalPrimitiveArray* graal_options = new GraalPrimitiveArray(graal_isolate, java_options);
+    GraalPrimitiveArray* graal_options = GraalPrimitiveArray::Allocate(graal_isolate, java_options);
     return reinterpret_cast<v8::PrimitiveArray*> (graal_options);
 }

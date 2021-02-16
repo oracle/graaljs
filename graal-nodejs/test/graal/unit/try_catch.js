@@ -121,8 +121,27 @@ describe('TryCatch', function () {
         });
     });
     describe('HasTerminated', function () {
-        it('should be callable', function () {
+        it('should return false when the execution is not terminated', function () {
             assert.strictEqual(module.TryCatch_HasTerminatedNoException(), false);
+        });
+        it('should return true when the execution is terminated', function () {
+            this.timeout(5000);
+            assert.strictEqual(module.TryCatch_HasTerminatedBasic(function() {
+                while (true); // This loop should be terminated
+            }), true);
+        });
+        it('should return true when the termination was not cancelled by innner TryCatch', function () {
+            this.timeout(5000);
+            var skipped = true;
+            assert.strictEqual(module.TryCatch_HasTerminatedNestedOuter(function() {
+                module.TryCatch_HasTerminatedNestedInner(function() {
+                    while (true); // This loop should be terminated
+                });
+                // This code should be skipped
+                skipped = false;
+                assert.fail();
+            }), true);
+            assert.ok(skipped);
         });
     });
     describe('Fatal Error', function () {

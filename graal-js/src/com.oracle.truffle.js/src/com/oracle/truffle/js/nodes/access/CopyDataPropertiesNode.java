@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -63,6 +65,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
+@ImportStatic({JSConfig.class})
 public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
     protected final JSContext context;
 
@@ -126,11 +129,11 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return false;
     }
 
-    @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "3")
+    @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
     protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
-                    @CachedLibrary(limit = "3") InteropLibrary keysInterop,
-                    @CachedLibrary(limit = "3") InteropLibrary stringInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
                     @Cached ImportValueNode importValue) {
         if (objInterop.isNull(from)) {
             return target;

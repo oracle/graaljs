@@ -58,6 +58,7 @@ const {
   PromiseRace,
   RegExp,
   Set,
+  StringPrototypeIncludes,
   Symbol,
   WeakSet,
 } = primordials;
@@ -88,7 +89,9 @@ const { Console } = require('console');
 const cjsLoader = require('internal/modules/cjs/loader');
 const { Module: CJSModule } = cjsLoader;
 const domain = require('domain');
-const debug = require('internal/util/debuglog').debuglog('repl');
+let debug = require('internal/util/debuglog').debuglog('repl', (fn) => {
+  debug = fn;
+});
 const {
   codes: {
     ERR_CANNOT_WATCH_SIGINT,
@@ -122,6 +125,12 @@ const {
 } = internalBinding('contextify');
 
 const history = require('internal/repl/history');
+let nextREPLResourceNumber = 1;
+// This prevents v8 code cache from getting confused and using a different
+// cache from a resource of the same name
+function getREPLResourceName() {
+  return `REPL${nextREPLResourceNumber++}`;
+}
 
 // Lazy-loaded.
 let processTopLevelAwait;
@@ -543,10 +552,18 @@ function REPLServer(prompt,
           if (e.name === 'SyntaxError') {
             // Remove stack trace.
             e.stack = e.stack
-              .replace(/^repl:\d+\r?\n/, '')
+              .replace(/^REPL\d+:\d+\r?\n/, '')
               .replace(/^\s+at\s.*\n?/gm, '');
+            const importErrorStr = 'Cannot use import statement outside a ' +
+              'module';
+            if (StringPrototypeIncludes(e.message, importErrorStr)) {
+              e.message = 'Cannot use import statement inside the Node.js ' +
+                'repl, alternatively use dynamic import';
+              e.stack = e.stack.replace(/SyntaxError:.*\n/,
+                                        `SyntaxError: ${e.message}\n`);
+            }
           } else if (self.replMode === exports.REPL_MODE_STRICT) {
-            e.stack = e.stack.replace(/(\s+at\s+repl:)(\d+)/,
+            e.stack = e.stack.replace(/(\s+at\s+REPL\d+:)(\d+)/,
                                       (_, pre, line) => pre + (line - 1));
           }
         }
@@ -761,7 +778,7 @@ function REPLServer(prompt,
     const evalCmd = self[kBufferedCommandSymbol] + cmd + '\n';
 
     debug('eval %j', evalCmd);
-    self.eval(evalCmd, self.context, 'repl', finish);
+    self.eval(evalCmd, self.context, getREPLResourceName(), finish);
 
     function finish(e, ret) {
       debug('finish', e, ret);
@@ -1277,7 +1294,7 @@ function complete(line, callback) {
     }
 
     const evalExpr = `try { ${expr} } catch {}`;
-    this.eval(evalExpr, this.context, 'repl', (e, obj) => {
+    this.eval(evalExpr, this.context, getREPLResourceName(), (e, obj) => {
       if (obj != null) {
         if (typeof obj === 'object' || typeof obj === 'function') {
           try {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,9 @@
 #include "graal_string.h"
 #include "include/v8.h"
 
+#include "graal_object-inl.h"
+#include "graal_object_template-inl.h"
+
 v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> constructor) {
     if (!constructor.IsEmpty()) {
         fprintf(stderr, "GraalObjectTemplate::New - constructor argument is not supported yet!\n");
@@ -55,9 +58,6 @@ v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8:
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     GraalObjectTemplate* graal_object_template = new GraalObjectTemplate(graal_isolate, java_object_template);
     return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
-}
-
-GraalObjectTemplate::GraalObjectTemplate(GraalIsolate* isolate, jobject java_template) : GraalTemplate(isolate, java_template), internal_field_count_(0) {
 }
 
 GraalHandleContent* GraalObjectTemplate::CopyImpl(jobject java_object_copy) {
@@ -69,15 +69,13 @@ v8::Local<v8::Object> GraalObjectTemplate::NewInstance(v8::Local<v8::Context> co
     GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
     jobject java_context = graal_context->GetJavaObject();
     JNI_CALL(jobject, java_object, graal_isolate, GraalAccessMethod::object_template_new_instance, Object, java_context, GetJavaObject());
-    GraalObject* graal_object = new GraalObject(graal_isolate, java_object);
+    GraalObject* graal_object = GraalObject::Allocate(graal_isolate, java_object);
     return reinterpret_cast<v8::Object*> (graal_object);
 }
 
 void GraalObjectTemplate::SetInternalFieldCount(int count) {
     internal_field_count_ = count;
-    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (Isolate());
-    v8::Local<v8::Integer> value = v8::Integer::New(isolate, count);
-    Set(Isolate()->InternalFieldCountKey(), value, v8::PropertyAttribute::DontEnum);
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_template_set_internal_field_count, GetJavaObject(), (jint) count);
 }
 
 void GraalObjectTemplate::SetAccessor(

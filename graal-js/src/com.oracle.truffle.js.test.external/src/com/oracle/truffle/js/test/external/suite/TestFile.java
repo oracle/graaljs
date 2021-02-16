@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -372,10 +372,13 @@ public final class TestFile {
         LITTLE_ENDIAN(cfg -> ByteOrder.LITTLE_ENDIAN.equals(ByteOrder.nativeOrder())),
         SVM(cfg -> cfg.isExtLauncher()),
         COMPILE_IMMEDIATELY(cfg -> cfg.isCompile()),
+        INSTRUMENT(cfg -> cfg.isInstrument()),
+        POLYGLOT(cfg -> cfg.isPolyglot()),
         AMD64(cfg -> System.getProperty("os.arch").equals("amd64") || System.getProperty("os.arch").equals("x86_64")),
         AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
         WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows")),
-        JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15);
+        JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15),
+        LAZY_TRANSLATION(cfg -> "true".equals(System.getProperty("polyglot.js.lazy-translation")));
 
         private final Predicate<SuiteConfig> condition;
 

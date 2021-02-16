@@ -141,9 +141,8 @@ function ClientRequest(input, options, cb) {
   if (this.agent && this.agent.protocol)
     expectedProtocol = this.agent.protocol;
 
-  let path;
   if (options.path) {
-    path = String(options.path);
+    const path = String(options.path);
     if (INVALID_PATH_REGEX.test(path))
       throw new ERR_UNESCAPED_CHARACTERS('Request path');
   }
@@ -213,6 +212,8 @@ function ClientRequest(input, options, cb) {
   this.parser = null;
   this.maxHeadersCount = null;
   this.reusedSocket = false;
+  this.host = host;
+  this.protocol = protocol;
 
   let called = false;
 
@@ -431,8 +432,12 @@ function socketErrorListener(err) {
 
   const parser = socket.parser;
   if (parser) {
-    parser.finish();
-    freeParser(parser, req, socket);
+    // Use process.nextTick() on v12.x since 'error' events might be
+    // emitted synchronously from e.g. a failed write() call on the socket.
+    process.nextTick(() => {
+      parser.finish();
+      freeParser(parser, req, socket);
+    });
   }
 
   // Ensure that no further data will come out of the socket
@@ -674,7 +679,8 @@ function tickOnSocket(req, socket) {
   parser.initialize(HTTPParser.RESPONSE,
                     new HTTPClientAsyncResource('HTTPINCOMINGMESSAGE', req),
                     req.insecureHTTPParser === undefined ?
-                      isLenient() : req.insecureHTTPParser);
+                      isLenient() : req.insecureHTTPParser,
+                    0);
   parser.socket = socket;
   parser.outgoing = req;
   req.parser = parser;

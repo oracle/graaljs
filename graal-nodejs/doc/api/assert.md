@@ -4,6 +4,8 @@
 
 > Stability: 2 - Stable
 
+<!-- source_link=lib/assert.js -->
+
 The `assert` module provides a set of assertion functions for verifying
 invariants.
 
@@ -14,7 +16,7 @@ changes:
   - version: v12.16.2
     description: Changed "strict mode" to "strict assertion mode" and "legacy
                  mode" to "legacy assertion mode" to avoid confusion with the
-                 more usual meaining of "strict mode".
+                 more usual meaning of "strict mode".
   - version: v9.9.0
     pr-url: https://github.com/nodejs/node/pull/17615
     description: Added error diffs to the strict assertion mode.
@@ -145,6 +147,144 @@ try {
   assert.strictEqual(err.operator, 'strictEqual');
   assert.strictEqual(err.generatedMessage, true);
 }
+```
+
+## Class: `assert.CallTracker`
+<!-- YAML
+added: v12.19.0
+-->
+
+> Stability: 1 - Experimental
+
+This feature is currently experimental and behavior might still change.
+
+### `new assert.CallTracker()`
+<!-- YAML
+added: v12.19.0
+-->
+
+Creates a new [`CallTracker`][] object which can be used to track if functions
+were called a specific number of times. The `tracker.verify()` must be called
+for the verification to take place. The usual pattern would be to call it in a
+[`process.on('exit')`][] handler.
+
+```js
+const assert = require('assert');
+
+const tracker = new assert.CallTracker();
+
+function func() {}
+
+// callsfunc() must be called exactly 1 time before tracker.verify().
+const callsfunc = tracker.calls(func, 1);
+
+callsfunc();
+
+// Calls tracker.verify() and verifies if all tracker.calls() functions have
+// been called exact times.
+process.on('exit', () => {
+  tracker.verify();
+});
+```
+
+### `tracker.calls([fn][, exact])`
+<!-- YAML
+added: v12.19.0
+-->
+
+* `fn` {Function} **Default** A no-op function.
+* `exact` {number} **Default** `1`.
+* Returns: {Function} that wraps `fn`.
+
+The wrapper function is expected to be called exactly `exact` times. If the
+function has not been called exactly `exact` times when
+[`tracker.verify()`][] is called, then [`tracker.verify()`][] will throw an
+error.
+
+```js
+const assert = require('assert');
+
+// Creates call tracker.
+const tracker = new assert.CallTracker();
+
+function func() {}
+
+// Returns a function that wraps func() that must be called exact times
+// before tracker.verify().
+const callsfunc = tracker.calls(func);
+```
+
+### `tracker.report()`
+<!-- YAML
+added: v12.19.0
+-->
+
+* Returns: {Array} of objects containing information about the wrapper functions
+returned by [`tracker.calls()`][].
+* Object {Object}
+  * `message` {string}
+  * `actual` {number} The actual number of times the function was called.
+  * `expected` {number} The number of times the function was expected to be
+    called.
+  * `operator` {string} The name of the function that is wrapped.
+  * `stack` {Object} A stack trace of the function.
+
+The arrays contains information about the expected and actual number of calls of
+the functions that have not been called the expected number of times.
+
+```js
+const assert = require('assert');
+
+// Creates call tracker.
+const tracker = new assert.CallTracker();
+
+function func() {}
+
+function foo() {}
+
+// Returns a function that wraps func() that must be called exact times
+// before tracker.verify().
+const callsfunc = tracker.calls(func, 2);
+
+// Returns an array containing information on callsfunc()
+tracker.report();
+// [
+//  {
+//    message: 'Expected the func function to be executed 2 time(s) but was
+//    executed 0 time(s).',
+//    actual: 0,
+//    expected: 2,
+//    operator: 'func',
+//    stack: stack trace
+//  }
+// ]
+```
+
+### `tracker.verify()`
+<!-- YAML
+added: v12.19.0
+-->
+
+Iterates through the list of functions passed to
+[`tracker.calls()`][] and will throw an error for functions that
+have not been called the expected number of times.
+
+```js
+const assert = require('assert');
+
+// Creates call tracker.
+const tracker = new assert.CallTracker();
+
+function func() {}
+
+// Returns a function that wraps func() that must be called exact times
+// before tracker.verify().
+const callsfunc = tracker.calls(func, 2);
+
+callsfunc();
+
+// Will throw an error since callsfunc() was only called once.
+tracker.verify();
 ```
 
 ## `assert(value[, message])`
@@ -1400,6 +1540,7 @@ argument.
 [`TypeError`]: errors.html#errors_class_typeerror
 [`WeakMap`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakMap
 [`WeakSet`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WeakSet
+[`CallTracker`]: #assert_class_assert_calltracker
 [`assert.deepEqual()`]: #assert_assert_deepequal_actual_expected_message
 [`assert.deepStrictEqual()`]: #assert_assert_deepstrictequal_actual_expected_message
 [`assert.doesNotThrow()`]: #assert_assert_doesnotthrow_fn_error_message
@@ -1411,6 +1552,9 @@ argument.
 [`assert.ok()`]: #assert_assert_ok_value_message
 [`assert.strictEqual()`]: #assert_assert_strictequal_actual_expected_message
 [`assert.throws()`]: #assert_assert_throws_fn_error_message
+[`process.on('exit')`]: process.html#process_event_exit
+[`tracker.calls()`]: #assert_tracker_calls_fn_exact
+[`tracker.verify()`]: #assert_tracker_verify
 [strict assertion mode]: #assert_strict_assertion_mode
 [Abstract Equality Comparison]: https://tc39.github.io/ecma262/#sec-abstract-equality-comparison
 [Object wrappers]: https://developer.mozilla.org/en-US/docs/Glossary/Primitive#Primitive_wrapper_objects_in_JavaScript

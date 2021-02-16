@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,6 +93,11 @@ public class SimpleArrayList<E> {
     public void set(int index, E elem) {
         assert index < size : "out of bounds";
         elements[index] = elem;
+    }
+
+    public Object pop() {
+        assert size > 0;
+        return elements[--size];
     }
 
     public int size() {

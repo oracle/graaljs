@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.instrumentation;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
 
 import java.util.Set;
 
@@ -55,6 +56,7 @@ public final class JSInputGeneratingNodeWrapper extends JavaScriptNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode toWrap) {
+        assert !(toWrap instanceof SuperPropertyReferenceNode);
         JSInputGeneratingNodeWrapper wrapper = new JSInputGeneratingNodeWrapper(toWrap);
         transferSourceSectionAndTags(toWrap, wrapper);
         return wrapper;

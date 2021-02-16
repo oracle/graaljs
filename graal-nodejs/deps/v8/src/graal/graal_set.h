@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,17 @@
 
 class GraalSet : public GraalObject {
 public:
-    GraalSet(GraalIsolate* isolate, jobject java_set);
+    inline static GraalSet* Allocate(GraalIsolate* isolate, jobject java_set);
+    inline static GraalSet* Allocate(GraalIsolate* isolate, jobject java_set, void* placement);
     bool IsSet() const override;
     static v8::Local<v8::Set> New(v8::Isolate* isolate);
     v8::MaybeLocal<v8::Set> Add(v8::Local<v8::Context> context, v8::Local<v8::Value> key);
 protected:
+    inline GraalSet(GraalIsolate* isolate, jobject java_set);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
+    inline void Recycle() override {
+        delete this;
+    }
 };
 
 #endif /* GRAAL_SET_H_ */

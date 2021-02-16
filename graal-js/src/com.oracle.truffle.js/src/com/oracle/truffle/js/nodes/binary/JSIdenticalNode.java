@@ -65,16 +65,16 @@ import com.oracle.truffle.js.nodes.unary.IsIdenticalStringNode;
 import com.oracle.truffle.js.nodes.unary.IsIdenticalUndefinedNode;
 import com.oracle.truffle.js.nodes.unary.IsNullNode;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "===")
-@ImportStatic(JSRuntime.class)
+@ImportStatic({JSRuntime.class, JSConfig.class})
 public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int MAX_CLASSES = 3;
-    protected static final int INTEROP_LIMIT = 5;
 
     protected static final int STRICT_EQUALITY_COMPARISON = 0;
     protected static final int SAME_VALUE = 1;
@@ -215,14 +215,14 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return false;
     }
 
-    @Specialization(guards = {"isJSNull(a)", "!isJSNull(b)", "!isUndefined(b)"}, limit = "INTEROP_LIMIT")
+    @Specialization(guards = {"isJSNull(a)", "!isJSNull(b)", "!isUndefined(b)"}, limit = "InteropLibraryLimit")
     protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
                     @CachedLibrary("b") InteropLibrary bInterop) {
         assert b != Undefined.instance;
         return bInterop.isNull(b);
     }
 
-    @Specialization(guards = {"!isJSNull(a)", "!isUndefined(a)", "isJSNull(b)"}, limit = "INTEROP_LIMIT")
+    @Specialization(guards = {"!isJSNull(a)", "!isUndefined(a)", "isJSNull(b)"}, limit = "InteropLibraryLimit")
     protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
                     @CachedLibrary("a") InteropLibrary aInterop) {
         assert a != Undefined.instance;
@@ -343,7 +343,7 @@ public abstract class JSIdenticalNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
     }
 
-    @Specialization(guards = {"isForeignObject(a)", "isForeignObject(b)"}, limit = "INTEROP_LIMIT")
+    @Specialization(guards = {"isForeignObject(a)", "isForeignObject(b)"}, limit = "InteropLibraryLimit")
     protected static boolean doForeignObject(Object a, Object b,
                     @CachedLibrary("a") InteropLibrary aInterop,
                     @CachedLibrary("b") InteropLibrary bInterop) {

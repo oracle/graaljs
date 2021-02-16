@@ -13,6 +13,10 @@
 
 #define UVWASI__READDIR_NUM_ENTRIES 1
 
+#if !defined(_WIN32) && !defined(__ANDROID__)
+# define UVWASI_FD_READDIR_SUPPORTED 1
+#endif
+
 #include "uvwasi.h"
 #include "uvwasi_alloc.h"
 #include "uv.h"
@@ -22,12 +26,85 @@
 #include "path_resolver.h"
 #include "poll_oneoff.h"
 #include "wasi_rights.h"
+#include "wasi_serdes.h"
 #include "debug.h"
 
 /* IBMi PASE does not support posix_fadvise() */
 #ifdef __PASE__
 # undef POSIX_FADV_NORMAL
 #endif
+
+#define VALIDATE_FSTFLAGS_OR_RETURN(flags)                                    \
+  do {                                                                        \
+    if ((flags) & ~(UVWASI_FILESTAT_SET_ATIM |                                \
+                    UVWASI_FILESTAT_SET_ATIM_NOW |                            \
+                    UVWASI_FILESTAT_SET_MTIM |                                \
+                    UVWASI_FILESTAT_SET_MTIM_NOW)) {                          \
+      return UVWASI_EINVAL;                                                   \
+    }                                                                         \
+  } while (0)
+
+static uvwasi_errno_t uvwasi__get_filestat_set_times(
+                                                    uvwasi_timestamp_t* st_atim,
+                                                    uvwasi_timestamp_t* st_mtim,
+                                                    uvwasi_fstflags_t fst_flags,
+                                                    uv_file* fd,
+                                                    char* path
+                                                  ) {
+  uvwasi_filestat_t stat;
+  uvwasi_timestamp_t now;
+  uvwasi_errno_t err;
+  uv_fs_t req;
+  int r;
+
+  /* Check if either value requires the current time. */
+  if ((fst_flags &
+      (UVWASI_FILESTAT_SET_ATIM_NOW | UVWASI_FILESTAT_SET_MTIM_NOW)) != 0) {
+    err = uvwasi__clock_gettime_realtime(&now);
+    if (err != UVWASI_ESUCCESS)
+      return err;
+  }
+
+  /* Check if either value is omitted. libuv doesn't have an 'omitted' option,
+     so get the current stats for the file. This approach isn't perfect, but it
+     will do until libuv can get better support here. */
+  if ((fst_flags &
+       (UVWASI_FILESTAT_SET_ATIM | UVWASI_FILESTAT_SET_ATIM_NOW)) == 0 ||
+      (fst_flags &
+       (UVWASI_FILESTAT_SET_MTIM | UVWASI_FILESTAT_SET_MTIM_NOW)) == 0) {
+
+    if (fd != NULL)
+      r = uv_fs_fstat(NULL, &req, *fd, NULL);
+    else
+      r = uv_fs_lstat(NULL, &req, path, NULL);
+
+    if (r != 0) {
+      uv_fs_req_cleanup(&req);
+      return uvwasi__translate_uv_error(r);
+    }
+
+    uvwasi__stat_to_filestat(&req.statbuf, &stat);
+    uv_fs_req_cleanup(&req);
+  }
+
+  /* Choose the provided time or 'now' and convert WASI timestamps from
+     nanoseconds to seconds due to libuv. */
+  if ((fst_flags & UVWASI_FILESTAT_SET_ATIM_NOW) != 0)
+    *st_atim = now / NANOS_PER_SEC;
+  else if ((fst_flags & UVWASI_FILESTAT_SET_ATIM) != 0)
+    *st_atim = *st_atim / NANOS_PER_SEC;
+  else
+    *st_atim = stat.st_atim / NANOS_PER_SEC;
+
+  if ((fst_flags & UVWASI_FILESTAT_SET_MTIM_NOW) != 0)
+    *st_mtim = now / NANOS_PER_SEC;
+  else if ((fst_flags & UVWASI_FILESTAT_SET_MTIM) != 0)
+    *st_mtim = *st_mtim / NANOS_PER_SEC;
+  else
+    *st_mtim = stat.st_mtim / NANOS_PER_SEC;
+
+  return UVWASI_ESUCCESS;
+}
 
 static void* default_malloc(size_t size, void* mem_user_data) {
   return malloc(size);
@@ -308,6 +385,23 @@ void uvwasi_destroy(uvwasi_t* uvwasi) {
 }
 
 
+void uvwasi_options_init(uvwasi_options_t* options) {
+  if (options == NULL)
+    return;
+
+  options->in = 0;
+  options->out = 1;
+  options->err = 2;
+  options->fd_table_size = 3;
+  options->argc = 0;
+  options->argv = NULL;
+  options->envp = NULL;
+  options->preopenc = 0;
+  options->preopens = NULL;
+  options->allocator = NULL;
+}
+
+
 uvwasi_errno_t uvwasi_embedder_remap_fd(uvwasi_t* uvwasi,
                                         const uvwasi_fd_t fd,
                                         uv_file new_host_fd) {
@@ -330,10 +424,10 @@ uvwasi_errno_t uvwasi_embedder_remap_fd(uvwasi_t* uvwasi,
 uvwasi_errno_t uvwasi_args_get(uvwasi_t* uvwasi, char** argv, char* argv_buf) {
   uvwasi_size_t i;
 
-  DEBUG("uvwasi_args_get(uvwasi=%p, argv=%p, argv_buf=%p)\n",
-        uvwasi,
-        argv,
-        argv_buf);
+  UVWASI_DEBUG("uvwasi_args_get(uvwasi=%p, argv=%p, argv_buf=%p)\n",
+               uvwasi,
+               argv,
+               argv_buf);
 
   if (uvwasi == NULL || argv == NULL || argv_buf == NULL)
     return UVWASI_EINVAL;
@@ -350,10 +444,10 @@ uvwasi_errno_t uvwasi_args_get(uvwasi_t* uvwasi, char** argv, char* argv_buf) {
 uvwasi_errno_t uvwasi_args_sizes_get(uvwasi_t* uvwasi,
                                      uvwasi_size_t* argc,
                                      uvwasi_size_t* argv_buf_size) {
-  DEBUG("uvwasi_args_sizes_get(uvwasi=%p, argc=%p, argv_buf_size=%p)\n",
-        uvwasi,
-        argc,
-        argv_buf_size);
+  UVWASI_DEBUG("uvwasi_args_sizes_get(uvwasi=%p, argc=%p, argv_buf_size=%p)\n",
+               uvwasi,
+               argc,
+               argv_buf_size);
 
   if (uvwasi == NULL || argc == NULL || argv_buf_size == NULL)
     return UVWASI_EINVAL;
@@ -367,10 +461,10 @@ uvwasi_errno_t uvwasi_args_sizes_get(uvwasi_t* uvwasi,
 uvwasi_errno_t uvwasi_clock_res_get(uvwasi_t* uvwasi,
                                     uvwasi_clockid_t clock_id,
                                     uvwasi_timestamp_t* resolution) {
-  DEBUG("uvwasi_clock_res_get(uvwasi=%p, clock_id=%d, resolution=%p)\n",
-        uvwasi,
-        clock_id,
-        resolution);
+  UVWASI_DEBUG("uvwasi_clock_res_get(uvwasi=%p, clock_id=%d, resolution=%p)\n",
+               uvwasi,
+               clock_id,
+               resolution);
 
   if (uvwasi == NULL || resolution == NULL)
     return UVWASI_EINVAL;
@@ -394,12 +488,12 @@ uvwasi_errno_t uvwasi_clock_time_get(uvwasi_t* uvwasi,
                                      uvwasi_clockid_t clock_id,
                                      uvwasi_timestamp_t precision,
                                      uvwasi_timestamp_t* time) {
-  DEBUG("uvwasi_clock_time_get(uvwasi=%p, clock_id=%d, "
-        "precision=%"PRIu64", time=%p)\n",
-        uvwasi,
-        clock_id,
-        precision,
-        time);
+  UVWASI_DEBUG("uvwasi_clock_time_get(uvwasi=%p, clock_id=%d, "
+               "precision=%"PRIu64", time=%p)\n",
+               uvwasi,
+               clock_id,
+               precision,
+               time);
 
   if (uvwasi == NULL || time == NULL)
     return UVWASI_EINVAL;
@@ -425,10 +519,11 @@ uvwasi_errno_t uvwasi_environ_get(uvwasi_t* uvwasi,
                                   char* environ_buf) {
   uvwasi_size_t i;
 
-  DEBUG("uvwasi_environ_get(uvwasi=%p, environment=%p, environ_buf=%p)\n",
-        uvwasi,
-        environment,
-        environ_buf);
+  UVWASI_DEBUG("uvwasi_environ_get(uvwasi=%p, environment=%p, "
+               "environ_buf=%p)\n",
+               uvwasi,
+               environment,
+               environ_buf);
 
   if (uvwasi == NULL || environment == NULL || environ_buf == NULL)
     return UVWASI_EINVAL;
@@ -445,11 +540,11 @@ uvwasi_errno_t uvwasi_environ_get(uvwasi_t* uvwasi,
 uvwasi_errno_t uvwasi_environ_sizes_get(uvwasi_t* uvwasi,
                                         uvwasi_size_t* environ_count,
                                         uvwasi_size_t* environ_buf_size) {
-  DEBUG("uvwasi_environ_sizes_get(uvwasi=%p, environ_count=%p, "
-        "environ_buf_size=%p)\n",
-        uvwasi,
-        environ_count,
-        environ_buf_size);
+  UVWASI_DEBUG("uvwasi_environ_sizes_get(uvwasi=%p, environ_count=%p, "
+               "environ_buf_size=%p)\n",
+               uvwasi,
+               environ_count,
+               environ_buf_size);
 
   if (uvwasi == NULL || environ_count == NULL || environ_buf_size == NULL)
     return UVWASI_EINVAL;
@@ -472,13 +567,13 @@ uvwasi_errno_t uvwasi_fd_advise(uvwasi_t* uvwasi,
   int r;
 #endif /* POSIX_FADV_NORMAL */
 
-  DEBUG("uvwasi_fd_advise(uvwasi=%p, fd=%d, offset=%"PRIu64", len=%"PRIu64", "
-        "advice=%d)\n",
-        uvwasi,
-        fd,
-        offset,
-        len,
-        advice);
+  UVWASI_DEBUG("uvwasi_fd_advise(uvwasi=%p, fd=%d, offset=%"PRIu64", "
+               "len=%"PRIu64", advice=%d)\n",
+               uvwasi,
+               fd,
+               offset,
+               len,
+               advice);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -546,12 +641,12 @@ uvwasi_errno_t uvwasi_fd_allocate(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_fd_allocate(uvwasi=%p, fd=%d, offset=%"PRIu64", "
-        "len=%"PRIu64")\n",
-        uvwasi,
-        fd,
-        offset,
-        len);
+  UVWASI_DEBUG("uvwasi_fd_allocate(uvwasi=%p, fd=%d, offset=%"PRIu64", "
+               "len=%"PRIu64")\n",
+               uvwasi,
+               fd,
+               offset,
+               len);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -603,7 +698,7 @@ uvwasi_errno_t uvwasi_fd_close(uvwasi_t* uvwasi, uvwasi_fd_t fd) {
   uv_fs_t req;
   int r;
 
-  DEBUG("uvwasi_fd_close(uvwasi=%p, fd=%d)\n", uvwasi, fd);
+  UVWASI_DEBUG("uvwasi_fd_close(uvwasi=%p, fd=%d)\n", uvwasi, fd);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -637,7 +732,7 @@ uvwasi_errno_t uvwasi_fd_datasync(uvwasi_t* uvwasi, uvwasi_fd_t fd) {
   uv_fs_t req;
   int r;
 
-  DEBUG("uvwasi_fd_datasync(uvwasi=%p, fd=%d)\n", uvwasi, fd);
+  UVWASI_DEBUG("uvwasi_fd_datasync(uvwasi=%p, fd=%d)\n", uvwasi, fd);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -670,7 +765,10 @@ uvwasi_errno_t uvwasi_fd_fdstat_get(uvwasi_t* uvwasi,
   int r;
 #endif
 
-  DEBUG("uvwasi_fd_fdstat_get(uvwasi=%p, fd=%d, buf=%p)\n", uvwasi, fd, buf);
+  UVWASI_DEBUG("uvwasi_fd_fdstat_get(uvwasi=%p, fd=%d, buf=%p)\n",
+               uvwasi,
+               fd,
+               buf);
 
   if (uvwasi == NULL || buf == NULL)
     return UVWASI_EINVAL;
@@ -703,10 +801,10 @@ uvwasi_errno_t uvwasi_fd_fdstat_set_flags(uvwasi_t* uvwasi,
                                           uvwasi_fd_t fd,
                                           uvwasi_fdflags_t flags) {
 #ifdef _WIN32
-  DEBUG("uvwasi_fd_fdstat_set_flags(uvwasi=%p, fd=%d, flags=%d)\n",
-        uvwasi,
-        fd,
-        flags);
+  UVWASI_DEBUG("uvwasi_fd_fdstat_set_flags(uvwasi=%p, fd=%d, flags=%d)\n",
+               uvwasi,
+               fd,
+               flags);
 
   /* TODO(cjihrig): Windows is not supported. */
   return UVWASI_ENOSYS;
@@ -716,10 +814,10 @@ uvwasi_errno_t uvwasi_fd_fdstat_set_flags(uvwasi_t* uvwasi,
   int mapped_flags;
   int r;
 
-  DEBUG("uvwasi_fd_fdstat_set_flags(uvwasi=%p, fd=%d, flags=%d)\n",
-        uvwasi,
-        fd,
-        flags);
+  UVWASI_DEBUG("uvwasi_fd_fdstat_set_flags(uvwasi=%p, fd=%d, flags=%d)\n",
+               uvwasi,
+               fd,
+               flags);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -777,12 +875,12 @@ uvwasi_errno_t uvwasi_fd_fdstat_set_rights(uvwasi_t* uvwasi,
   struct uvwasi_fd_wrap_t* wrap;
   uvwasi_errno_t err;
 
-  DEBUG("uvwasi_fd_fdstat_set_rights(uvwasi=%p, fd=%d, "
-        "fs_rights_base=%"PRIu64", fs_rights_inheriting=%"PRIu64")\n",
-        uvwasi,
-        fd,
-        fs_rights_base,
-        fs_rights_inheriting);
+  UVWASI_DEBUG("uvwasi_fd_fdstat_set_rights(uvwasi=%p, fd=%d, "
+               "fs_rights_base=%"PRIu64", fs_rights_inheriting=%"PRIu64")\n",
+               uvwasi,
+               fd,
+               fs_rights_base,
+               fs_rights_inheriting);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -820,7 +918,10 @@ uvwasi_errno_t uvwasi_fd_filestat_get(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_fd_filestat_get(uvwasi=%p, fd=%d, buf=%p)\n", uvwasi, fd, buf);
+  UVWASI_DEBUG("uvwasi_fd_filestat_get(uvwasi=%p, fd=%d, buf=%p)\n",
+               uvwasi,
+               fd,
+               buf);
 
   if (uvwasi == NULL || buf == NULL)
     return UVWASI_EINVAL;
@@ -857,10 +958,11 @@ uvwasi_errno_t uvwasi_fd_filestat_set_size(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_fd_filestat_set_size(uvwasi=%p, fd=%d, st_size=%"PRIu64")\n",
-        uvwasi,
-        fd,
-        st_size);
+  UVWASI_DEBUG("uvwasi_fd_filestat_set_size(uvwasi=%p, fd=%d, "
+               "st_size=%"PRIu64")\n",
+               uvwasi,
+               fd,
+               st_size);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -889,27 +991,25 @@ uvwasi_errno_t uvwasi_fd_filestat_set_times(uvwasi_t* uvwasi,
                                             uvwasi_timestamp_t st_atim,
                                             uvwasi_timestamp_t st_mtim,
                                             uvwasi_fstflags_t fst_flags) {
-  /* TODO(cjihrig): libuv does not currently support nanosecond precision. */
   struct uvwasi_fd_wrap_t* wrap;
+  uvwasi_timestamp_t atim;
+  uvwasi_timestamp_t mtim;
   uv_fs_t req;
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_fd_filestat_set_times(uvwasi=%p, fd=%d, st_atim=%"PRIu64", "
-        "st_mtim=%"PRIu64", fst_flags=%d)\n",
-        uvwasi,
-        fd,
-        st_atim,
-        st_mtim,
-        fst_flags);
+  UVWASI_DEBUG("uvwasi_fd_filestat_set_times(uvwasi=%p, fd=%d, "
+               "st_atim=%"PRIu64", st_mtim=%"PRIu64", fst_flags=%d)\n",
+               uvwasi,
+               fd,
+               st_atim,
+               st_mtim,
+               fst_flags);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
 
-  if (fst_flags & ~(UVWASI_FILESTAT_SET_ATIM | UVWASI_FILESTAT_SET_ATIM_NOW |
-                    UVWASI_FILESTAT_SET_MTIM | UVWASI_FILESTAT_SET_MTIM_NOW)) {
-    return UVWASI_EINVAL;
-  }
+  VALIDATE_FSTFLAGS_OR_RETURN(fst_flags);
 
   err = uvwasi_fd_table_get(uvwasi->fds,
                             fd,
@@ -919,8 +1019,20 @@ uvwasi_errno_t uvwasi_fd_filestat_set_times(uvwasi_t* uvwasi,
   if (err != UVWASI_ESUCCESS)
     return err;
 
-  /* TODO(cjihrig): st_atim and st_mtim should not be unconditionally passed. */
-  r = uv_fs_futime(NULL, &req, wrap->fd, st_atim, st_mtim, NULL);
+  atim = st_atim;
+  mtim = st_mtim;
+  err = uvwasi__get_filestat_set_times(&atim,
+                                       &mtim,
+                                       fst_flags,
+                                       &wrap->fd,
+                                       NULL);
+  if (err != UVWASI_ESUCCESS) {
+    uv_mutex_unlock(&wrap->mutex);
+    return err;
+  }
+
+  /* libuv does not currently support nanosecond precision. */
+  r = uv_fs_futime(NULL, &req, wrap->fd, atim, mtim, NULL);
   uv_mutex_unlock(&wrap->mutex);
   uv_fs_req_cleanup(&req);
 
@@ -944,14 +1056,14 @@ uvwasi_errno_t uvwasi_fd_pread(uvwasi_t* uvwasi,
   size_t uvread;
   int r;
 
-  DEBUG("uvwasi_fd_pread(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%zu, "
-        "offset=%"PRIu64", nread=%p)\n",
-        uvwasi,
-        fd,
-        iovs,
-        iovs_len,
-        offset,
-        nread);
+  UVWASI_DEBUG("uvwasi_fd_pread(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%d, "
+               "offset=%"PRIu64", nread=%p)\n",
+               uvwasi,
+               fd,
+               iovs,
+               iovs_len,
+               offset,
+               nread);
 
   if (uvwasi == NULL || iovs == NULL || nread == NULL)
     return UVWASI_EINVAL;
@@ -990,10 +1102,10 @@ uvwasi_errno_t uvwasi_fd_prestat_get(uvwasi_t* uvwasi,
   struct uvwasi_fd_wrap_t* wrap;
   uvwasi_errno_t err;
 
-  DEBUG("uvwasi_fd_prestat_get(uvwasi=%p, fd=%d, buf=%p)\n",
-        uvwasi,
-        fd,
-        buf);
+  UVWASI_DEBUG("uvwasi_fd_prestat_get(uvwasi=%p, fd=%d, buf=%p)\n",
+               uvwasi,
+               fd,
+               buf);
 
   if (uvwasi == NULL || buf == NULL)
     return UVWASI_EINVAL;
@@ -1023,11 +1135,12 @@ uvwasi_errno_t uvwasi_fd_prestat_dir_name(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   size_t size;
 
-  DEBUG("uvwasi_fd_prestat_dir_name(uvwasi=%p, fd=%d, path=%p, path_len=%zu)\n",
-        uvwasi,
-        fd,
-        path,
-        path_len);
+  UVWASI_DEBUG("uvwasi_fd_prestat_dir_name(uvwasi=%p, fd=%d, path=%p, "
+               "path_len=%d)\n",
+               uvwasi,
+               fd,
+               path,
+               path_len);
 
   if (uvwasi == NULL || path == NULL)
     return UVWASI_EINVAL;
@@ -1067,14 +1180,14 @@ uvwasi_errno_t uvwasi_fd_pwrite(uvwasi_t* uvwasi,
   size_t uvwritten;
   int r;
 
-  DEBUG("uvwasi_fd_pwrite(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%zu, "
-        "offset=%"PRIu64", nwritten=%p)\n",
-        uvwasi,
-        fd,
-        iovs,
-        iovs_len,
-        offset,
-        nwritten);
+  UVWASI_DEBUG("uvwasi_fd_pwrite(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%d, "
+               "offset=%"PRIu64", nwritten=%p)\n",
+               uvwasi,
+               fd,
+               iovs,
+               iovs_len,
+               offset,
+               nwritten);
 
   if (uvwasi == NULL || iovs == NULL || nwritten == NULL)
     return UVWASI_EINVAL;
@@ -1119,12 +1232,13 @@ uvwasi_errno_t uvwasi_fd_read(uvwasi_t* uvwasi,
   size_t uvread;
   int r;
 
-  DEBUG("uvwasi_fd_read(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%zu, nread=%p)\n",
-        uvwasi,
-        fd,
-        iovs,
-        iovs_len,
-        nread);
+  UVWASI_DEBUG("uvwasi_fd_read(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%d, "
+               "nread=%p)\n",
+               uvwasi,
+               fd,
+               iovs,
+               iovs_len,
+               nread);
 
   if (uvwasi == NULL || iovs == NULL || nread == NULL)
     return UVWASI_EINVAL;
@@ -1159,7 +1273,7 @@ uvwasi_errno_t uvwasi_fd_readdir(uvwasi_t* uvwasi,
                                  uvwasi_size_t buf_len,
                                  uvwasi_dircookie_t cookie,
                                  uvwasi_size_t* bufused) {
-  /* TODO(cjihrig): Support Windows where seekdir() and telldir() are used. */
+#if defined(UVWASI_FD_READDIR_SUPPORTED)
   /* TODO(cjihrig): Avoid opening and closing the directory on each call. */
   struct uvwasi_fd_wrap_t* wrap;
   uvwasi_dirent_t dirent;
@@ -1173,19 +1287,21 @@ uvwasi_errno_t uvwasi_fd_readdir(uvwasi_t* uvwasi,
   long tell;
   int i;
   int r;
+#endif /* defined(UVWASI_FD_READDIR_SUPPORTED) */
 
-  DEBUG("uvwasi_fd_readdir(uvwasi=%p, fd=%d, buf=%p, buf_len=%zu, "
-        "cookie=%"PRIu64", bufused=%p)\n",
-        uvwasi,
-        fd,
-        buf,
-        buf_len,
-        cookie,
-        bufused);
+  UVWASI_DEBUG("uvwasi_fd_readdir(uvwasi=%p, fd=%d, buf=%p, buf_len=%d, "
+               "cookie=%"PRIu64", bufused=%p)\n",
+               uvwasi,
+               fd,
+               buf,
+               buf_len,
+               cookie,
+               bufused);
 
   if (uvwasi == NULL || buf == NULL || bufused == NULL)
     return UVWASI_EINVAL;
 
+#if defined(UVWASI_FD_READDIR_SUPPORTED)
   err = uvwasi_fd_table_get(uvwasi->fds,
                             fd,
                             &wrap,
@@ -1207,12 +1323,9 @@ uvwasi_errno_t uvwasi_fd_readdir(uvwasi_t* uvwasi,
   dir->nentries = UVWASI__READDIR_NUM_ENTRIES;
   uv_fs_req_cleanup(&req);
 
-#ifndef _WIN32
-  /* TODO(cjihrig): Need a Windows equivalent of this logic. */
   /* Seek to the proper location in the directory. */
   if (cookie != UVWASI_DIRCOOKIE_START)
     seekdir(dir->dir, cookie);
-#endif
 
   /* Read the directory entries into the provided buffer. */
   err = UVWASI_ESUCCESS;
@@ -1224,25 +1337,20 @@ uvwasi_errno_t uvwasi_fd_readdir(uvwasi_t* uvwasi,
       goto exit;
     }
 
+    available = 0;
+
     for (i = 0; i < r; i++) {
-      /* TODO(cjihrig): This should probably be serialized to the buffer
-         consistently across platforms. In other words, d_next should always
-         be 8 bytes, d_ino should always be 8 bytes, d_namlen should always be
-         4 bytes, and d_type should always be 1 byte. */
-#ifndef _WIN32
       tell = telldir(dir->dir);
       if (tell < 0) {
         err = uvwasi__translate_uv_error(uv_translate_sys_error(errno));
         uv_fs_req_cleanup(&req);
         goto exit;
       }
-#else
-      tell = 0; /* TODO(cjihrig): Need to support Windows. */
-#endif /* _WIN32 */
 
       name_len = strlen(dirents[i].name);
       dirent.d_next = (uvwasi_dircookie_t) tell;
-      /* TODO(cjihrig): Missing ino libuv (and Windows) support. fstat()? */
+      /* TODO(cjihrig): libuv doesn't provide d_ino, and d_type is not
+                        supported on all platforms. Use stat()? */
       dirent.d_ino = 0;
       dirent.d_namlen = name_len;
 
@@ -1272,21 +1380,24 @@ uvwasi_errno_t uvwasi_fd_readdir(uvwasi_t* uvwasi,
           break;
       }
 
-      /* Write dirent to the buffer. */
+      /* Write dirent to the buffer if it will fit. */
+      if (UVWASI_SERDES_SIZE_dirent_t + *bufused > buf_len)
+        break;
+
+      uvwasi_serdes_write_dirent_t(buf, *bufused, &dirent);
+      *bufused += UVWASI_SERDES_SIZE_dirent_t;
       available = buf_len - *bufused;
-      size_to_cp = sizeof(dirent) > available ? available : sizeof(dirent);
-      memcpy((char*)buf + *bufused, &dirent, size_to_cp);
-      *bufused += size_to_cp;
-      /* Write the entry name to the buffer. */
-      available = buf_len - *bufused;
+
+      /* Write as much of the entry name to the buffer as possible. */
       size_to_cp = name_len > available ? available : name_len;
-      memcpy((char*)buf + *bufused, &dirents[i].name, size_to_cp);
+      memcpy((char*)buf + *bufused, dirents[i].name, size_to_cp);
       *bufused += size_to_cp;
+      available = buf_len - *bufused;
     }
 
     uv_fs_req_cleanup(&req);
 
-    if (*bufused >= buf_len)
+    if (available == 0)
       break;
   }
 
@@ -1299,13 +1410,20 @@ exit:
     return uvwasi__translate_uv_error(r);
 
   return err;
+#else
+  /* TODO(cjihrig): Need a solution for Windows and Android. */
+  return UVWASI_ENOSYS;
+#endif /* defined(UVWASI_FD_READDIR_SUPPORTED) */
 }
 
 
 uvwasi_errno_t uvwasi_fd_renumber(uvwasi_t* uvwasi,
                                   uvwasi_fd_t from,
                                   uvwasi_fd_t to) {
-  DEBUG("uvwasi_fd_renumber(uvwasi=%p, from=%d, to=%d)\n", uvwasi, from, to);
+  UVWASI_DEBUG("uvwasi_fd_renumber(uvwasi=%p, from=%d, to=%d)\n",
+               uvwasi,
+               from,
+               to);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -1322,13 +1440,13 @@ uvwasi_errno_t uvwasi_fd_seek(uvwasi_t* uvwasi,
   struct uvwasi_fd_wrap_t* wrap;
   uvwasi_errno_t err;
 
-  DEBUG("uvwasi_fd_seek(uvwasi=%p, fd=%d, offset=%"PRId64", "
-        "whence=%d, newoffset=%p)\n",
-        uvwasi,
-        fd,
-        offset,
-        whence,
-        newoffset);
+  UVWASI_DEBUG("uvwasi_fd_seek(uvwasi=%p, fd=%d, offset=%"PRId64", "
+               "whence=%d, newoffset=%p)\n",
+               uvwasi,
+               fd,
+               offset,
+               whence,
+               newoffset);
 
   if (uvwasi == NULL || newoffset == NULL)
     return UVWASI_EINVAL;
@@ -1349,7 +1467,7 @@ uvwasi_errno_t uvwasi_fd_sync(uvwasi_t* uvwasi, uvwasi_fd_t fd) {
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_fd_sync(uvwasi=%p, fd=%d)\n", uvwasi, fd);
+  UVWASI_DEBUG("uvwasi_fd_sync(uvwasi=%p, fd=%d)\n", uvwasi, fd);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -1379,7 +1497,10 @@ uvwasi_errno_t uvwasi_fd_tell(uvwasi_t* uvwasi,
   struct uvwasi_fd_wrap_t* wrap;
   uvwasi_errno_t err;
 
-  DEBUG("uvwasi_fd_tell(uvwasi=%p, fd=%d, offset=%p)\n", uvwasi, fd, offset);
+  UVWASI_DEBUG("uvwasi_fd_tell(uvwasi=%p, fd=%d, offset=%p)\n",
+               uvwasi,
+               fd,
+               offset);
 
   if (uvwasi == NULL || offset == NULL)
     return UVWASI_EINVAL;
@@ -1406,13 +1527,13 @@ uvwasi_errno_t uvwasi_fd_write(uvwasi_t* uvwasi,
   size_t uvwritten;
   int r;
 
-  DEBUG("uvwasi_fd_write(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%zu, "
-        "nwritten=%p)\n",
-        uvwasi,
-        fd,
-        iovs,
-        iovs_len,
-        nwritten);
+  UVWASI_DEBUG("uvwasi_fd_write(uvwasi=%p, fd=%d, iovs=%p, iovs_len=%d, "
+               "nwritten=%p)\n",
+               uvwasi,
+               fd,
+               iovs,
+               iovs_len,
+               nwritten);
 
   if (uvwasi == NULL || iovs == NULL || nwritten == NULL)
     return UVWASI_EINVAL;
@@ -1451,12 +1572,12 @@ uvwasi_errno_t uvwasi_path_create_directory(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_path_create_directory(uvwasi=%p, fd=%d, path='%s', "
-        "path_len=%zu)\n",
-        uvwasi,
-        fd,
-        path,
-        path_len);
+  UVWASI_DEBUG("uvwasi_path_create_directory(uvwasi=%p, fd=%d, path='%s', "
+               "path_len=%d)\n",
+               uvwasi,
+               fd,
+               path,
+               path_len);
 
   if (uvwasi == NULL || path == NULL)
     return UVWASI_EINVAL;
@@ -1501,14 +1622,14 @@ uvwasi_errno_t uvwasi_path_filestat_get(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_path_filestat_get(uvwasi=%p, fd=%d, flags=%d, path='%s', "
-        "path_len=%zu, buf=%p)\n",
-        uvwasi,
-        fd,
-        flags,
-        path,
-        path_len,
-        buf);
+  UVWASI_DEBUG("uvwasi_path_filestat_get(uvwasi=%p, fd=%d, flags=%d, "
+               "path='%s', path_len=%d, buf=%p)\n",
+               uvwasi,
+               fd,
+               flags,
+               path,
+               path_len,
+               buf);
 
   if (uvwasi == NULL || path == NULL || buf == NULL)
     return UVWASI_EINVAL;
@@ -1530,7 +1651,7 @@ uvwasi_errno_t uvwasi_path_filestat_get(uvwasi_t* uvwasi,
   if (err != UVWASI_ESUCCESS)
     goto exit;
 
-  r = uv_fs_stat(NULL, &req, resolved_path, NULL);
+  r = uv_fs_lstat(NULL, &req, resolved_path, NULL);
   uvwasi__free(uvwasi, resolved_path);
   if (r != 0) {
     uv_fs_req_cleanup(&req);
@@ -1555,31 +1676,30 @@ uvwasi_errno_t uvwasi_path_filestat_set_times(uvwasi_t* uvwasi,
                                               uvwasi_timestamp_t st_atim,
                                               uvwasi_timestamp_t st_mtim,
                                               uvwasi_fstflags_t fst_flags) {
-  /* TODO(cjihrig): libuv does not currently support nanosecond precision. */
   char* resolved_path;
   struct uvwasi_fd_wrap_t* wrap;
+  uvwasi_timestamp_t atim;
+  uvwasi_timestamp_t mtim;
   uv_fs_t req;
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_path_filestat_set_times(uvwasi=%p, fd=%d, flags=%d, path='%s', "
-        "path_len=%zu, st_atim=%"PRIu64", st_mtim=%"PRIu64", fst_flags=%d)\n",
-        uvwasi,
-        fd,
-        flags,
-        path,
-        path_len,
-        st_atim,
-        st_mtim,
-        fst_flags);
+  UVWASI_DEBUG("uvwasi_path_filestat_set_times(uvwasi=%p, fd=%d, "
+               "flags=%d, path='%s', path_len=%d, "
+               "st_atim=%"PRIu64", st_mtim=%"PRIu64", fst_flags=%d)\n",
+               uvwasi,
+               fd,
+               flags,
+               path,
+               path_len,
+               st_atim,
+               st_mtim,
+               fst_flags);
 
   if (uvwasi == NULL || path == NULL)
     return UVWASI_EINVAL;
 
-  if (fst_flags & ~(UVWASI_FILESTAT_SET_ATIM | UVWASI_FILESTAT_SET_ATIM_NOW |
-                    UVWASI_FILESTAT_SET_MTIM | UVWASI_FILESTAT_SET_MTIM_NOW)) {
-    return UVWASI_EINVAL;
-  }
+  VALIDATE_FSTFLAGS_OR_RETURN(fst_flags);
 
   err = uvwasi_fd_table_get(uvwasi->fds,
                             fd,
@@ -1598,8 +1718,20 @@ uvwasi_errno_t uvwasi_path_filestat_set_times(uvwasi_t* uvwasi,
   if (err != UVWASI_ESUCCESS)
     goto exit;
 
-  /* TODO(cjihrig): st_atim and st_mtim should not be unconditionally passed. */
-  r = uv_fs_utime(NULL, &req, resolved_path, st_atim, st_mtim, NULL);
+  atim = st_atim;
+  mtim = st_mtim;
+  err = uvwasi__get_filestat_set_times(&atim,
+                                       &mtim,
+                                       fst_flags,
+                                       NULL,
+                                       resolved_path);
+  if (err != UVWASI_ESUCCESS) {
+    uvwasi__free(uvwasi, resolved_path);
+    goto exit;
+  }
+
+  /* libuv does not currently support nanosecond precision. */
+  r = uv_fs_lutime(NULL, &req, resolved_path, atim, mtim, NULL);
   uvwasi__free(uvwasi, resolved_path);
   uv_fs_req_cleanup(&req);
 
@@ -1631,16 +1763,17 @@ uvwasi_errno_t uvwasi_path_link(uvwasi_t* uvwasi,
   uv_fs_t req;
   int r;
 
-  DEBUG("uvwasi_path_link(uvwasi=%p, old_fd=%d, old_flags=%d, old_path='%s', "
-        "old_path_len=%zu, new_fd=%d, new_path='%s', new_path_len=%zu)\n",
-        uvwasi,
-        old_fd,
-        old_flags,
-        old_path,
-        old_path_len,
-        new_fd,
-        new_path,
-        new_path_len);
+  UVWASI_DEBUG("uvwasi_path_link(uvwasi=%p, old_fd=%d, old_flags=%d, "
+               "old_path='%s', old_path_len=%d, new_fd=%d, new_path='%s', "
+               "new_path_len=%d)\n",
+               uvwasi,
+               old_fd,
+               old_flags,
+               old_path,
+               old_path_len,
+               new_fd,
+               new_path,
+               new_path_len);
 
   if (uvwasi == NULL || old_path == NULL || new_path == NULL)
     return UVWASI_EINVAL;
@@ -1745,19 +1878,19 @@ uvwasi_errno_t uvwasi_path_open(uvwasi_t* uvwasi,
   int write;
   int r;
 
-  DEBUG("uvwasi_path_open(uvwasi=%p, dirfd=%d, dirflags=%d, path='%s', "
-        "path_len=%zu, o_flags=%d, fs_rights_base=%"PRIu64", "
-        "fs_rights_inheriting=%"PRIu64", fs_flags=%d, fd=%p)\n",
-        uvwasi,
-        dirfd,
-        dirflags,
-        path,
-        path_len,
-        o_flags,
-        fs_rights_base,
-        fs_rights_inheriting,
-        fs_flags,
-        fd);
+  UVWASI_DEBUG("uvwasi_path_open(uvwasi=%p, dirfd=%d, dirflags=%d, path='%s', "
+               "path_len=%d, o_flags=%d, fs_rights_base=%"PRIu64", "
+               "fs_rights_inheriting=%"PRIu64", fs_flags=%d, fd=%p)\n",
+               uvwasi,
+               dirfd,
+               dirflags,
+               path,
+               path_len,
+               o_flags,
+               fs_rights_base,
+               fs_rights_inheriting,
+               fs_flags,
+               fd);
 
   if (uvwasi == NULL || path == NULL || fd == NULL)
     return UVWASI_EINVAL;
@@ -1892,15 +2025,15 @@ uvwasi_errno_t uvwasi_path_readlink(uvwasi_t* uvwasi,
   size_t len;
   int r;
 
-  DEBUG("uvwasi_path_readlink(uvwasi=%p, fd=%d, path='%s', path_len=%zu, "
-        "buf=%p, buf_len=%zu, bufused=%p)\n",
-        uvwasi,
-        fd,
-        path,
-        path_len,
-        buf,
-        buf_len,
-        bufused);
+  UVWASI_DEBUG("uvwasi_path_readlink(uvwasi=%p, fd=%d, path='%s', path_len=%d, "
+               "buf=%p, buf_len=%d, bufused=%p)\n",
+               uvwasi,
+               fd,
+               path,
+               path_len,
+               buf,
+               buf_len,
+               bufused);
 
   if (uvwasi == NULL || path == NULL || buf == NULL || bufused == NULL)
     return UVWASI_EINVAL;
@@ -1951,12 +2084,12 @@ uvwasi_errno_t uvwasi_path_remove_directory(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_path_remove_directory(uvwasi=%p, fd=%d, path='%s', "
-        "path_len=%zu)\n",
-        uvwasi,
-        fd,
-        path,
-        path_len);
+  UVWASI_DEBUG("uvwasi_path_remove_directory(uvwasi=%p, fd=%d, path='%s', "
+               "path_len=%d)\n",
+               uvwasi,
+               fd,
+               path,
+               path_len);
 
   if (uvwasi == NULL || path == NULL)
     return UVWASI_EINVAL;
@@ -2002,15 +2135,15 @@ uvwasi_errno_t uvwasi_path_rename(uvwasi_t* uvwasi,
   uv_fs_t req;
   int r;
 
-  DEBUG("uvwasi_path_rename(uvwasi=%p, old_fd=%d, old_path='%s', "
-        "old_path_len=%zu, new_fd=%d, new_path='%s', new_path_len=%zu)\n",
-        uvwasi,
-        old_fd,
-        old_path,
-        old_path_len,
-        new_fd,
-        new_path,
-        new_path_len);
+  UVWASI_DEBUG("uvwasi_path_rename(uvwasi=%p, old_fd=%d, old_path='%s', "
+               "old_path_len=%d, new_fd=%d, new_path='%s', new_path_len=%d)\n",
+               uvwasi,
+               old_fd,
+               old_path,
+               old_path_len,
+               new_fd,
+               new_path,
+               new_path_len);
 
   if (uvwasi == NULL || old_path == NULL || new_path == NULL)
     return UVWASI_EINVAL;
@@ -2102,14 +2235,14 @@ uvwasi_errno_t uvwasi_path_symlink(uvwasi_t* uvwasi,
   uv_fs_t req;
   int r;
 
-  DEBUG("uvwasi_path_symlink(uvwasi=%p, old_path='%s', old_path_len=%zu, "
-        "fd=%d, new_path='%s', new_path_len=%zu)\n",
-        uvwasi,
-        old_path,
-        old_path_len,
-        fd,
-        new_path,
-        new_path_len);
+  UVWASI_DEBUG("uvwasi_path_symlink(uvwasi=%p, old_path='%s', old_path_len=%d, "
+               "fd=%d, new_path='%s', new_path_len=%d)\n",
+               uvwasi,
+               old_path,
+               old_path_len,
+               fd,
+               new_path,
+               new_path_len);
 
   if (uvwasi == NULL || old_path == NULL || new_path == NULL)
     return UVWASI_EINVAL;
@@ -2155,11 +2288,12 @@ uvwasi_errno_t uvwasi_path_unlink_file(uvwasi_t* uvwasi,
   uvwasi_errno_t err;
   int r;
 
-  DEBUG("uvwasi_path_unlink_file(uvwasi=%p, fd=%d, path='%s', path_len=%zu)\n",
-        uvwasi,
-        fd,
-        path,
-        path_len);
+  UVWASI_DEBUG("uvwasi_path_unlink_file(uvwasi=%p, fd=%d, path='%s', "
+               "path_len=%d)\n",
+               uvwasi,
+               fd,
+               path,
+               path_len);
 
   if (uvwasi == NULL || path == NULL)
     return UVWASI_EINVAL;
@@ -2207,13 +2341,13 @@ uvwasi_errno_t uvwasi_poll_oneoff(uvwasi_t* uvwasi,
   int has_timeout;
   uvwasi_size_t i;
 
-  DEBUG("uvwasi_poll_oneoff(uvwasi=%p, in=%p, out=%p, nsubscriptions=%zu, "
-        "nevents=%p)\n",
-        uvwasi,
-        in,
-        out,
-        nsubscriptions,
-        nevents);
+  UVWASI_DEBUG("uvwasi_poll_oneoff(uvwasi=%p, in=%p, out=%p, "
+               "nsubscriptions=%d, nevents=%p)\n",
+               uvwasi,
+               in,
+               out,
+               nsubscriptions,
+               nevents);
 
   if (uvwasi == NULL || in == NULL || out == NULL ||
       nsubscriptions == 0 || nevents == NULL) {
@@ -2225,6 +2359,7 @@ uvwasi_errno_t uvwasi_poll_oneoff(uvwasi_t* uvwasi,
   if (err != UVWASI_ESUCCESS)
     return err;
 
+  timer_userdata = 0;
   has_timeout = 0;
   min_timeout = 0;
 
@@ -2313,7 +2448,7 @@ exit:
 
 
 uvwasi_errno_t uvwasi_proc_exit(uvwasi_t* uvwasi, uvwasi_exitcode_t rval) {
-  DEBUG("uvwasi_proc_exit(uvwasi=%p, rval=%d)\n", uvwasi, rval);
+  UVWASI_DEBUG("uvwasi_proc_exit(uvwasi=%p, rval=%d)\n", uvwasi, rval);
   exit(rval);
   return UVWASI_ESUCCESS; /* This doesn't happen. */
 }
@@ -2322,7 +2457,7 @@ uvwasi_errno_t uvwasi_proc_exit(uvwasi_t* uvwasi, uvwasi_exitcode_t rval) {
 uvwasi_errno_t uvwasi_proc_raise(uvwasi_t* uvwasi, uvwasi_signal_t sig) {
   int r;
 
-  DEBUG("uvwasi_proc_raise(uvwasi=%p, sig=%d)\n", uvwasi, sig);
+  UVWASI_DEBUG("uvwasi_proc_raise(uvwasi=%p, sig=%d)\n", uvwasi, sig);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -2344,10 +2479,10 @@ uvwasi_errno_t uvwasi_random_get(uvwasi_t* uvwasi,
                                  uvwasi_size_t buf_len) {
   int r;
 
-  DEBUG("uvwasi_random_get(uvwasi=%p, buf=%p, buf_len=%zu)\n",
-        uvwasi,
-        buf,
-        buf_len);
+  UVWASI_DEBUG("uvwasi_random_get(uvwasi=%p, buf=%p, buf_len=%d)\n",
+               uvwasi,
+               buf,
+               buf_len);
 
   if (uvwasi == NULL || buf == NULL)
     return UVWASI_EINVAL;
@@ -2361,7 +2496,7 @@ uvwasi_errno_t uvwasi_random_get(uvwasi_t* uvwasi,
 
 
 uvwasi_errno_t uvwasi_sched_yield(uvwasi_t* uvwasi) {
-  DEBUG("uvwasi_sched_yield(uvwasi=%p)\n", uvwasi);
+  UVWASI_DEBUG("uvwasi_sched_yield(uvwasi=%p)\n", uvwasi);
 
   if (uvwasi == NULL)
     return UVWASI_EINVAL;
@@ -2386,7 +2521,7 @@ uvwasi_errno_t uvwasi_sock_recv(uvwasi_t* uvwasi,
                                 uvwasi_roflags_t* ro_flags) {
   /* TODO(cjihrig): Waiting to implement, pending
                     https://github.com/WebAssembly/WASI/issues/4 */
-  DEBUG("uvwasi_sock_recv(uvwasi=%p, unimplemented)\n", uvwasi);
+  UVWASI_DEBUG("uvwasi_sock_recv(uvwasi=%p, unimplemented)\n", uvwasi);
   return UVWASI_ENOTSUP;
 }
 
@@ -2399,7 +2534,7 @@ uvwasi_errno_t uvwasi_sock_send(uvwasi_t* uvwasi,
                                 uvwasi_size_t* so_datalen) {
   /* TODO(cjihrig): Waiting to implement, pending
                     https://github.com/WebAssembly/WASI/issues/4 */
-  DEBUG("uvwasi_sock_send(uvwasi=%p, unimplemented)\n", uvwasi);
+  UVWASI_DEBUG("uvwasi_sock_send(uvwasi=%p, unimplemented)\n", uvwasi);
   return UVWASI_ENOTSUP;
 }
 
@@ -2409,7 +2544,7 @@ uvwasi_errno_t uvwasi_sock_shutdown(uvwasi_t* uvwasi,
                                     uvwasi_sdflags_t how) {
   /* TODO(cjihrig): Waiting to implement, pending
                     https://github.com/WebAssembly/WASI/issues/4 */
-  DEBUG("uvwasi_sock_shutdown(uvwasi=%p, unimplemented)\n", uvwasi);
+  UVWASI_DEBUG("uvwasi_sock_shutdown(uvwasi=%p, unimplemented)\n", uvwasi);
   return UVWASI_ENOTSUP;
 }
 

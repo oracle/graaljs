@@ -89,6 +89,7 @@ public class Test262Runnable extends TestRunnable {
 
     private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "AggregateError",
+                    "Array.prototype.at",
                     "Array.prototype.flat",
                     "Array.prototype.flatMap",
                     "Array.prototype.values",
@@ -105,8 +106,10 @@ public class Test262Runnable extends TestRunnable {
                     "DataView.prototype.getUint32",
                     "DataView.prototype.setUint8",
                     "FinalizationRegistry",
+                    "FinalizationRegistry.prototype.cleanupSome",
                     "Float32Array",
                     "Float64Array",
+                    "Int16Array",
                     "Int32Array",
                     "Int8Array",
                     "Intl.DateTimeFormat-datetimestyle",
@@ -119,6 +122,7 @@ public class Test262Runnable extends TestRunnable {
                     "Map",
                     "Object.fromEntries",
                     "Object.is",
+                    "Promise",
                     "Promise.allSettled",
                     "Promise.any",
                     "Promise.prototype.finally",
@@ -130,6 +134,7 @@ public class Test262Runnable extends TestRunnable {
                     "Set",
                     "SharedArrayBuffer",
                     "String.fromCodePoint",
+                    "String.prototype.at",
                     "String.prototype.endsWith",
                     "String.prototype.includes",
                     "String.prototype.matchAll",
@@ -152,13 +157,18 @@ public class Test262Runnable extends TestRunnable {
                     "Symbol.toStringTag",
                     "Symbol.unscopables",
                     "TypedArray",
+                    "TypedArray.prototype.at",
                     "Uint16Array",
+                    "Uint32Array",
                     "Uint8Array",
                     "Uint8ClampedArray",
                     "WeakMap",
                     "WeakRef",
                     "WeakSet",
 
+                    "__getter__",
+                    "__proto__",
+                    "__setter__",
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
@@ -170,6 +180,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",
+                    "cleanupSome",
                     "coalesce-expression",
                     "computed-property-names",
                     "const",
@@ -185,8 +196,10 @@ public class Test262Runnable extends TestRunnable {
                     "globalThis",
                     "hashbang",
                     "host-gc-required",
+                    "intl-normative-optional",
                     "import.meta",
                     "json-superset",
+                    "legacy-regexp",
                     "let",
                     "logical-assignment-operators",
                     "new.target",
@@ -215,22 +228,20 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "IsHTMLDDA",
+                    "align-detached-buffer-semantics-with-web-reality",
+                    "arbitrary-module-namespace-names",
                     "tail-call-optimization",
     }));
-    private static final Set<String> ES2021_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "AggregateError",
-                    "FinalizationRegistry",
-                    "Promise.any",
-                    "String.prototype.replaceAll",
-                    "WeakRef",
+    private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Array.prototype.at",
+                    "String.prototype.at",
+                    "TypedArray.prototype.at",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",
-                    "host-gc-required",
-                    "logical-assignment-operators",
                     "regexp-match-indices",
                     "top-level-await",
     }));
@@ -277,8 +288,8 @@ public class Test262Runnable extends TestRunnable {
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
-                if (ES2021_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2021;
+                if (ES2022_FEATURES.contains(feature)) {
+                    featureVersion = JSConfig.ECMAScript2022;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;

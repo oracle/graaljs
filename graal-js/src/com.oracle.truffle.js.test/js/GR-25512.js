@@ -17,5 +17,3 @@
     f.apply(undefined, new java.util.ArrayList());
     f.apply(undefined, arguments);
 })();
-
-true;

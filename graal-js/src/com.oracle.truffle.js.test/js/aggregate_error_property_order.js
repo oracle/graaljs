@@ -19,5 +19,3 @@ assertSame(3, propertyNames.length);
 assertSame('message', propertyNames[0]);
 assertSame('errors', propertyNames[1]);
 assertSame('stack', propertyNames[2]);
-
-true;

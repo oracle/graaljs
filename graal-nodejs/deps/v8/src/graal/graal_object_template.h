@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@
 class GraalObjectTemplate : public GraalTemplate {
 public:
     static v8::Local<v8::ObjectTemplate> New(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> constructor);
-    GraalObjectTemplate(GraalIsolate* isolate, jobject java_template);
+    inline static GraalObjectTemplate* Allocate(GraalIsolate* isolate, jobject java_template);
     v8::Local<v8::Object> NewInstance(v8::Local<v8::Context> context);
     void SetInternalFieldCount(int);
     void SetAccessor(
@@ -66,6 +66,7 @@ public:
         return internal_field_count_;
     }
 protected:
+    inline GraalObjectTemplate(GraalIsolate* isolate, jobject java_template);
     GraalHandleContent* CopyImpl(jobject java_object_copy);
 private:
     int internal_field_count_;

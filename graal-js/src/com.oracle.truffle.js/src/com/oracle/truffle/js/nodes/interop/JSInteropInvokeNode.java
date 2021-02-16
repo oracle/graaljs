@@ -57,7 +57,6 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @GenerateUncached
 public abstract class JSInteropInvokeNode extends JSInteropCallNode {
@@ -98,7 +97,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function;
         if (readNode == null) {
-            function = JSObject.getOrDefault(receiver, name, receiver, null, JSClassProfile.getUncached());
+            function = JSObject.getOrDefault(receiver, name, receiver, null);
         } else {
             function = readNode.executeWithTargetAndIndexOrDefault(receiver, name, null);
         }

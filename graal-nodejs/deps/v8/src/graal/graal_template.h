@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@
 
 class GraalTemplate : public GraalData {
 public:
-    GraalTemplate(GraalIsolate* isolate, jobject java_template);
+    inline GraalTemplate(GraalIsolate* isolate, jobject java_template);
     void Set(v8::Local<v8::Value> key, v8::Local<v8::Data> value, v8::PropertyAttribute attributes);
     void SetAccessorProperty(
             v8::Local<v8::Name> name,

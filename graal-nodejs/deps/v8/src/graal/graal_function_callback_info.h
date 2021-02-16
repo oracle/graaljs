@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,16 +42,16 @@
 #ifndef GRAAL_FUNCTION_CALLBACK_INFO_H_
 #define GRAAL_FUNCTION_CALLBACK_INFO_H_
 
+#include "graal_function_callback_arguments.h"
 #include "graal_isolate.h"
 #include "graal_value.h"
 #include "include/v8.h"
-#include "graal_function_callback_arguments.h"
 
 class GraalFunctionCallbackInfo : public v8::FunctionCallbackInfo<v8::Value> {
 public:
-    GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args);
+    V8_INLINE GraalFunctionCallbackInfo(GraalFunctionCallbackArguments& args);
 private:
-    GraalFunctionCallbackInfo(
+    V8_INLINE GraalFunctionCallbackInfo(
             void** implicit_args,
             GraalValue** values,
             int length);

@@ -5,17 +5,18 @@
 
 <!--introduced_in=v0.10.0-->
 
-* [About these docs](documentation.html)
+* [About this documentation](documentation.html)
 * [Usage and example](synopsis.html)
 
-<div class="line"></div>
+<hr class="line"/>
 
 * [Assertion testing](assert.html)
 * [Async hooks](async_hooks.html)
 * [Buffer](buffer.html)
-* [C++ addons](addons.html)
-* [C/C++ addons with N-API](n-api.html)
-* [Child processes](child_process.html)
+* [C++ Addons](addons.html)
+* [C/C++ Addons with N-API](n-api.html)
+* [C++ Embedder API](embedding.html)
+* [Child Processes](child_process.html)
 * [Cluster](cluster.html)
 * [Command line options](cli.html)
 * [Console](console.html)
@@ -24,7 +25,6 @@
 * [Deprecated APIs](deprecations.html)
 * [DNS](dns.html)
 * [Domain](domain.html)
-* [ECMAScript modules](esm.html)
 * [Errors](errors.html)
 * [Events](events.html)
 * [File system](fs.html)
@@ -34,7 +34,10 @@
 * [HTTPS](https.html)
 * [Inspector](inspector.html)
 * [Internationalization](intl.html)
-* [Modules](modules.html)
+* [Modules: CommonJS modules](modules.html)
+* [Modules: ECMAScript modules](esm.html)
+* [Modules: `module` API](module.html)
+* [Modules: Packages](packages.html)
 * [Net](net.html)
 * [OS](os.html)
 * [Path](path.html)
@@ -61,6 +64,6 @@
 * [Worker threads](worker_threads.html)
 * [Zlib](zlib.html)
 
-<div class="line"></div>
+<hr class="line"/>
 
 * [Code repository and issue tracker](https://github.com/nodejs/node)

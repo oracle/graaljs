@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -56,20 +58,19 @@ import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * @see JSRuntime#typeof(Object)
@@ -77,7 +78,7 @@ import java.util.Set;
  */
 @SuppressWarnings("unused")
 @NodeInfo(shortName = "typeof")
-@ImportStatic({JSRuntime.class})
+@ImportStatic({JSRuntime.class, JSConfig.class})
 public abstract class TypeOfNode extends JSUnaryNode {
     protected static final int MAX_CLASSES = 3;
 
@@ -174,7 +175,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @TruffleBoundary
-    @Specialization(guards = "isForeignObject(operand)", limit = "5")
+    @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected String doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
         if (interop.isBoolean(operand)) {
