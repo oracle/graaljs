@@ -61,14 +61,20 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class TypedArray extends ScriptArray {
 
-    private final boolean offset;
     private final int bytesPerElement;
+    private final boolean offset;
+    private final byte bufferType;
     private final String name;
     private final TypedArrayFactory factory;
 
-    protected TypedArray(TypedArrayFactory factory, boolean offset) {
-        this.offset = offset;
+    protected static final byte BUFFER_TYPE_ARRAY = 0;
+    protected static final byte BUFFER_TYPE_DIRECT = 1;
+    protected static final byte BUFFER_TYPE_INTEROP = -1;
+
+    protected TypedArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
         this.bytesPerElement = factory.getBytesPerElement();
+        this.offset = offset;
+        this.bufferType = bufferType;
         this.name = factory.getName();
         this.factory = factory;
     }
@@ -226,12 +232,12 @@ public abstract class TypedArray extends ScriptArray {
         return this;
     }
 
-    public boolean isDirect() {
-        return false;
+    public final boolean isDirect() {
+        return bufferType > 0;
     }
 
-    public boolean isInterop() {
-        return false;
+    public final boolean isInterop() {
+        return bufferType < 0;
     }
 
     public final boolean hasOffset() {
@@ -256,8 +262,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedIntArray<T> extends TypedArray {
-        protected TypedIntArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        protected TypedIntArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
+            super(factory, offset, bufferType);
         }
 
         @Override
@@ -300,7 +306,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Int8Array extends TypedIntArray<byte[]> {
         Int8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -326,7 +332,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectInt8Array extends TypedIntArray<ByteBuffer> {
         DirectInt8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -337,11 +343,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             getDirectByteBuffer(buffer).put(offset + index * INT8_BYTES_PER_ELEMENT, (byte) value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -357,7 +358,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropInt8Array extends TypedIntArray<Object> {
         InteropInt8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -378,11 +379,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -410,7 +406,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Uint8Array extends TypedIntArray<byte[]> {
         Uint8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -436,7 +432,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectUint8Array extends TypedIntArray<ByteBuffer> {
         DirectUint8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -447,11 +443,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             getDirectByteBuffer(buffer).put(offset + index * UINT8_BYTES_PER_ELEMENT, (byte) value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -467,7 +458,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropUint8Array extends TypedIntArray<Object> {
         InteropUint8Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -488,11 +479,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -517,8 +503,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class AbstractUint8ClampedArray<T> extends TypedIntArray<T> {
-        private AbstractUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        private AbstractUint8ClampedArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
+            super(factory, offset, bufferType);
         }
 
         @Override
@@ -540,7 +526,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Uint8ClampedArray extends AbstractUint8ClampedArray<byte[]> {
         Uint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -566,7 +552,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectUint8ClampedArray extends AbstractUint8ClampedArray<ByteBuffer> {
         DirectUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -577,11 +563,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             getDirectByteBuffer(buffer).put(offset + index * UINT8_BYTES_PER_ELEMENT, (byte) uint8Clamp(value));
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -597,7 +578,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropUint8ClampedArray extends AbstractUint8ClampedArray<Object> {
         InteropUint8ClampedArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -618,11 +599,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -650,7 +626,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Int16Array extends TypedIntArray<byte[]> {
         Int16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -676,7 +652,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectInt16Array extends TypedIntArray<ByteBuffer> {
         DirectInt16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -687,11 +663,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             ByteBufferAccess.nativeOrder().putInt16(getDirectByteBuffer(buffer), offset + index * INT16_BYTES_PER_ELEMENT, (short) value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -707,7 +678,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropInt16Array extends TypedIntArray<Object> {
         InteropInt16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -728,11 +699,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -760,7 +726,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Uint16Array extends TypedIntArray<byte[]> {
         Uint16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -786,7 +752,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectUint16Array extends TypedIntArray<ByteBuffer> {
         DirectUint16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -797,11 +763,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             ByteBufferAccess.nativeOrder().putInt16(getDirectByteBuffer(buffer), offset + index * UINT16_BYTES_PER_ELEMENT, (char) value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -817,7 +778,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropUint16Array extends TypedIntArray<Object> {
         InteropUint16Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -838,11 +799,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -870,7 +826,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Int32Array extends TypedIntArray<byte[]> {
         Int32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -896,7 +852,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectInt32Array extends TypedIntArray<ByteBuffer> {
         DirectInt32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -907,11 +863,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             ByteBufferAccess.nativeOrder().putInt32(getDirectByteBuffer(buffer), offset + index * INT32_BYTES_PER_ELEMENT, value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -927,7 +878,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropInt32Array extends TypedIntArray<Object> {
         InteropInt32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -948,11 +899,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -979,8 +925,8 @@ public abstract class TypedArray extends ScriptArray {
     static final int UINT32_BYTES_PER_ELEMENT = 4;
 
     public abstract static class AbstractUint32Array<T> extends TypedIntArray<T> {
-        private AbstractUint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        private AbstractUint32Array(TypedArrayFactory factory, boolean offset, byte bufferType) {
+            super(factory, offset, bufferType);
         }
 
         @Override
@@ -1010,7 +956,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Uint32Array extends AbstractUint32Array<byte[]> {
         Uint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1036,7 +982,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectUint32Array extends AbstractUint32Array<ByteBuffer> {
         DirectUint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1047,11 +993,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setIntImpl(Object buffer, int offset, int index, int value) {
             ByteBufferAccess.nativeOrder().putInt32(getDirectByteBuffer(buffer), offset + index * UINT32_BYTES_PER_ELEMENT, value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -1067,7 +1008,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropUint32Array extends AbstractUint32Array<Object> {
         InteropUint32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1088,11 +1029,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -1117,8 +1053,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedBigIntArray<T> extends TypedArray {
-        protected TypedBigIntArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        protected TypedBigIntArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
+            super(factory, offset, bufferType);
         }
 
         @Override
@@ -1161,7 +1097,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class BigInt64Array extends TypedBigIntArray<byte[]> {
         BigInt64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1187,12 +1123,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectBigInt64Array extends TypedBigIntArray<ByteBuffer> {
         DirectBigInt64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1218,7 +1149,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropBigInt64Array extends TypedBigIntArray<Object> {
         InteropBigInt64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1239,11 +1170,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -1271,7 +1197,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class BigUint64Array extends TypedBigIntArray<byte[]> {
         BigUint64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1298,12 +1224,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectBigUint64Array extends TypedBigIntArray<ByteBuffer> {
         DirectBigUint64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1329,7 +1250,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropBigUint64Array extends TypedBigIntArray<Object> {
         InteropBigUint64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1350,11 +1271,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -1379,8 +1295,8 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     public abstract static class TypedFloatArray<T> extends TypedArray {
-        protected TypedFloatArray(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+        protected TypedFloatArray(TypedArrayFactory factory, boolean offset, byte bufferType) {
+            super(factory, offset, bufferType);
         }
 
         @Override
@@ -1423,7 +1339,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Float32Array extends TypedFloatArray<byte[]> {
         Float32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1449,7 +1365,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectFloat32Array extends TypedFloatArray<ByteBuffer> {
         DirectFloat32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1460,11 +1376,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setDoubleImpl(Object buffer, int offset, int index, double value) {
             ByteBufferAccess.nativeOrder().putFloat(getDirectByteBuffer(buffer), offset + index * FLOAT32_BYTES_PER_ELEMENT, (float) value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -1480,7 +1391,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropFloat32Array extends TypedFloatArray<Object> {
         InteropFloat32Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1501,11 +1412,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
@@ -1533,7 +1439,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class Float64Array extends TypedFloatArray<byte[]> {
         Float64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_ARRAY);
         }
 
         @Override
@@ -1559,7 +1465,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class DirectFloat64Array extends TypedFloatArray<ByteBuffer> {
         DirectFloat64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_DIRECT);
         }
 
         @Override
@@ -1570,11 +1476,6 @@ public abstract class TypedArray extends ScriptArray {
         @Override
         public void setDoubleImpl(Object buffer, int offset, int index, double value) {
             ByteBufferAccess.nativeOrder().putDouble(getDirectByteBuffer(buffer), offset + index * FLOAT64_BYTES_PER_ELEMENT, value);
-        }
-
-        @Override
-        public boolean isDirect() {
-            return true;
         }
 
         @Override
@@ -1590,7 +1491,7 @@ public abstract class TypedArray extends ScriptArray {
 
     public static final class InteropFloat64Array extends TypedFloatArray<Object> {
         InteropFloat64Array(TypedArrayFactory factory, boolean offset) {
-            super(factory, offset);
+            super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
         @Override
@@ -1611,11 +1512,6 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
-        }
-
-        @Override
-        public boolean isInterop() {
-            return true;
         }
 
         @Override
