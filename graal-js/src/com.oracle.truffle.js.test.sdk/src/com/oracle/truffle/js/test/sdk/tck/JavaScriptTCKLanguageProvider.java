@@ -276,7 +276,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.union(
                                         TypeDescriptor.STRING,
                                         TypeDescriptor.OBJECT,
-                                        TypeDescriptor.ARRAY)));
+                                        TypeDescriptor.ARRAY,
+                                        TypeDescriptor.ITERABLE)));
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
