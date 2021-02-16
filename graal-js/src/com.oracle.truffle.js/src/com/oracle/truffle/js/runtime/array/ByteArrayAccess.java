@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
-abstract class ByteArrayAccess {
+public abstract class ByteArrayAccess {
 
     @SuppressWarnings("static-method")
     public final int getInt8(byte[] buffer, int byteIndex) {
@@ -84,19 +84,19 @@ abstract class ByteArrayAccess {
 
     public abstract void putInt64(byte[] buffer, int byteIndex, long value);
 
-    static final ByteArrayAccess littleEndian() {
+    public static final ByteArrayAccess littleEndian() {
         return ByteArraySupport.littleEndian();
     }
 
-    static final ByteArrayAccess bigEndian() {
+    public static final ByteArrayAccess bigEndian() {
         return ByteArraySupport.bigEndian();
     }
 
-    static final ByteArrayAccess nativeOrder() {
+    public static final ByteArrayAccess nativeOrder() {
         return ByteArraySupport.nativeOrder();
     }
 
-    static final ByteArrayAccess forOrder(boolean littleEndian) {
+    public static final ByteArrayAccess forOrder(boolean littleEndian) {
         return littleEndian ? littleEndian() : bigEndian();
     }
 }

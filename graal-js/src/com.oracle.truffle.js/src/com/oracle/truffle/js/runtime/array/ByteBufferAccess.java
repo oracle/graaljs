@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.js.runtime.Boundaries;
 
-abstract class ByteBufferAccess {
+public abstract class ByteBufferAccess {
 
     @SuppressWarnings("static-method")
     public final int getInt8(ByteBuffer buffer, int index) {
@@ -89,19 +89,19 @@ abstract class ByteBufferAccess {
 
     public abstract void putInt64(ByteBuffer buffer, int index, long value);
 
-    static final ByteBufferAccess littleEndian() {
+    public static final ByteBufferAccess littleEndian() {
         return ByteBufferSupport.littleEndian();
     }
 
-    static final ByteBufferAccess bigEndian() {
+    public static final ByteBufferAccess bigEndian() {
         return ByteBufferSupport.bigEndian();
     }
 
-    static final ByteBufferAccess nativeOrder() {
+    public static final ByteBufferAccess nativeOrder() {
         return ByteBufferSupport.nativeOrder();
     }
 
-    static final ByteBufferAccess forOrder(boolean littleEndian) {
+    public static final ByteBufferAccess forOrder(boolean littleEndian) {
         return littleEndian ? littleEndian() : bigEndian();
     }
 }
