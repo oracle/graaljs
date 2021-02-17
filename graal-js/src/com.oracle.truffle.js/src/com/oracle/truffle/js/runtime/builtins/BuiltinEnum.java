@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,11 +51,11 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
     }
 
     default String getName() {
-        return stripName(asEnum().name());
+        return prependAccessorPrefix(stripName(asEnum().name()));
     }
 
     default Object getKey() {
-        return getName();
+        return stripName(asEnum().name());
     }
 
     default boolean isConstructor() {
@@ -96,6 +96,14 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
         return false;
     }
 
+    default boolean isGetter() {
+        return false;
+    }
+
+    default boolean isSetter() {
+        return false;
+    }
+
     @SuppressWarnings("unused")
     default Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
         throw new UnsupportedOperationException();
@@ -106,6 +114,19 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
     }
 
     static String stripName(String name) {
-        return name.endsWith("_") ? name.substring(0, name.length() - 1) : name;
+        if (name.endsWith("_") && !name.endsWith("__")) {
+            return name.substring(0, name.length() - 1);
+        } else {
+            return name;
+        }
+    }
+
+    default String prependAccessorPrefix(String name) {
+        if (isGetter()) {
+            return "get " + name;
+        } else if (isSetter()) {
+            return "set " + name;
+        }
+        return name;
     }
 }
