@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ public class InteropByteBufferTest {
     @Test
     public void testJavaBufferToTypedArray() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -73,7 +73,7 @@ public class InteropByteBufferTest {
         ByteBuffer buffer = ByteBuffer.allocateDirect(3);
         buffer.put(new byte[]{1, 2, 3});
         buffer.position(0);
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -86,7 +86,7 @@ public class InteropByteBufferTest {
     @Test
     public void testJavaScriptCanWrite() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "(new Int8Array(new ArrayBuffer(buffer))).map(x => 42);");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -99,7 +99,7 @@ public class InteropByteBufferTest {
     @Test
     public void testSameBuffer() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             buffer.position(0);
@@ -113,7 +113,7 @@ public class InteropByteBufferTest {
     @Test
     public void testBufferAsArgument() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             Value fun = context.eval(ID, "(function fun(buff) {return new Int8Array(new ArrayBuffer(buff))})");
             Value jsBuffer = fun.execute(buffer);
             buffer.position(0);
