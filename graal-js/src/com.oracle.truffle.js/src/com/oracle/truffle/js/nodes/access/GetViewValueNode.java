@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,9 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 
 import java.util.Set;
 
+/**
+ * @see SetViewValueNode
+ */
 public abstract class GetViewValueNode extends JavaScriptNode {
     private final TypedArrayFactory factory;
     private final JSContext context;
@@ -95,13 +98,14 @@ public abstract class GetViewValueNode extends JavaScriptNode {
     protected final Object doGet(Object view, Object requestIndex, Object littleEndian,
                     @Cached("create()") JSToIndexNode toIndexNode,
                     @Cached("create()") BranchProfile errorBranch,
-                    @Cached("createClassProfile()") ValueProfile typeProfile) {
+                    @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
+                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
         if (!JSDataView.isJSDataView(view)) {
             errorBranch.enter();
             throw Errors.createTypeErrorNotADataView();
         }
         DynamicObject dataView = (DynamicObject) view;
-        DynamicObject buffer = JSDataView.getArrayBuffer(dataView);
+        DynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
         long getIndex = toIndexNode.executeLong(requestIndex);
         boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
 
@@ -122,7 +126,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
 
         assert getIndex + viewOffset <= Integer.MAX_VALUE;
         int bufferIndex = (int) (getIndex + viewOffset);
-        TypedArray strategy = typeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true));
+        TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, JSArrayBuffer.isJSInteropArrayBuffer(buffer)));
         return strategy.getBufferElement(buffer, bufferIndex, isLittleEndian);
     }
 

@@ -68,6 +68,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
@@ -194,6 +195,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -1989,19 +1991,25 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("create()") BranchProfile errorBranch,
                         @Cached("createBinaryProfile()") ConditionProfile arrayBufferCondition,
                         @Cached("createBinaryProfile()") ConditionProfile byteLengthCondition,
+                        @Cached("createClassProfile()") ValueProfile bufferProfile,
                         @Cached("create()") JSToIndexNode offsetToIndexNode,
                         @Cached("create()") JSToIndexNode lengthToIndexNode) {
             boolean direct;
-            if (arrayBufferCondition.profile(JSArrayBuffer.isJSHeapArrayBuffer(buffer))) {
+            boolean isInteropBuffer = false;
+            Object profiledBuffer = bufferProfile.profile(buffer);
+            if (arrayBufferCondition.profile(JSArrayBuffer.isJSHeapArrayBuffer(profiledBuffer))) {
                 direct = false;
-            } else if (JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer)) {
+            } else if (JSArrayBuffer.isJSDirectOrSharedArrayBuffer(profiledBuffer)) {
                 direct = true;
+            } else if (JSArrayBuffer.isJSInteropArrayBuffer(profiledBuffer)) {
+                direct = false;
+                isInteropBuffer = true;
             } else {
                 errorBranch.enter();
                 throw Errors.createTypeError("Not an ArrayBuffer");
             }
 
-            DynamicObject arrayBuffer = (DynamicObject) buffer;
+            DynamicObject arrayBuffer = (DynamicObject) profiledBuffer;
 
             long offset = offsetToIndexNode.executeLong(byteOffset);
 
@@ -2010,7 +2018,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw Errors.createTypeError("detached buffer cannot be used");
             }
 
-            int bufferByteLength = direct ? JSArrayBuffer.getDirectByteLength(arrayBuffer) : JSArrayBuffer.getByteLength(arrayBuffer);
+            int bufferByteLength;
+            if (isInteropBuffer) {
+                bufferByteLength = ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+            } else if (direct) {
+                bufferByteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
+            } else {
+                bufferByteLength = JSArrayBuffer.getByteLength(arrayBuffer);
+            }
             if (offset > bufferByteLength) {
                 errorBranch.enter();
                 throw Errors.createRangeError("offset > bufferByteLength");
