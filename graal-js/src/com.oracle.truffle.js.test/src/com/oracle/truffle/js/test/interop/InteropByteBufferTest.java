@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.test.interop;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
-
-import java.nio.ByteBuffer;
-
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class InteropByteBufferTest {
 
@@ -126,39 +128,93 @@ public class InteropByteBufferTest {
 
     @Test
     public void testJavaInteropDirect() {
-        try (Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
-            Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
-                            "const bb = ByteBuffer.allocateDirect(3);" +
-                            "const ab = new ArrayBuffer(bb);" +
-                            "const ia = new Int8Array(ab);" +
-                            "ia[0] = 41;" +
-                            "ia[1] = 42;" +
-                            "ia[2] = 43;" +
-                            "bb;");
-            ByteBuffer jBuffer = buffer.as(ByteBuffer.class);
-            assertTrue(jBuffer.isDirect());
-            assertEquals(jBuffer.get(0), 41);
-            assertEquals(jBuffer.get(1), 42);
-            assertEquals(jBuffer.get(2), 43);
-        }
+        testJavaInteropCommon(true);
     }
 
     @Test
     public void testJavaInteropHeap() {
+        testJavaInteropCommon(false);
+    }
+
+    private static void testJavaInteropCommon(boolean direct) {
         try (Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
             Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
-                            "const bb = ByteBuffer.allocate(3);" +
+                            "const bb = ByteBuffer.allocate" + (direct ? "Direct" : "") + "(32);" +
                             "const ab = new ArrayBuffer(bb);" +
-                            "const ia = new Int8Array(ab);" +
+                            "let ia = new Int8Array(ab);" +
                             "ia[0] = 41;" +
                             "ia[1] = 42;" +
                             "ia[2] = 43;" +
+                            "const ua = new Uint8Array(32);" +
+                            "ua.set(ia);" +
+                            "ua[3] = 212;" +
+                            "ia.set(ua);" +
+                            "ia = new Int32Array(ab, 4, 2);" +
+                            "ia[0] = 45;" +
+                            "ia[1] = 46;" +
+                            "ia[2] = 47;" +
+                            "ia = new BigInt64Array(ab, 16);" +
+                            "ia[0] = 2n ** 63n - 43n;" +
                             "bb;");
             ByteBuffer jBuffer = buffer.as(ByteBuffer.class);
-            assertTrue(!jBuffer.isDirect());
+            assertEquals(direct, jBuffer.isDirect());
             assertEquals(jBuffer.get(0), 41);
             assertEquals(jBuffer.get(1), 42);
             assertEquals(jBuffer.get(2), 43);
+            assertEquals(jBuffer.get(3), -44);
+            jBuffer.order(ByteOrder.nativeOrder());
+            assertEquals(jBuffer.getInt(4), 45);
+            assertEquals(jBuffer.getInt(8), 46);
+            assertEquals(jBuffer.getInt(12), 0);
+            assertEquals(jBuffer.getLong(16), Long.MAX_VALUE - 42);
+        }
+    }
+
+    @Test
+    public void testArrayBufferInteropDirect() {
+        testArrayBufferInteropCommon(true);
+    }
+
+    @Test
+    public void testArrayBufferInteropHeap() {
+        testArrayBufferInteropCommon(false);
+    }
+
+    private static void testArrayBufferInteropCommon(boolean direct) {
+        try (Context cx = JSTest.newContextBuilder().option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, Boolean.toString(direct)).build()) {
+            Value buffer = cx.eval("js", "" +
+                            "const ab = new ArrayBuffer(25);" +
+                            "let ia = new Int8Array(ab);" +
+                            "ia[0] = 41;" +
+                            "ia[1] = 42;" +
+                            "ia[2] = 43;" +
+                            "ia[3] = 44;" +
+                            "ia = new Int32Array(ab, 4, 2);" +
+                            "ia[0] = 45;" +
+                            "ia[1] = 46;" +
+                            "ia = new BigInt64Array(ab, 16, 1);" +
+                            "ia[0] = 2n ** 63n - 43n;" +
+                            "ab;");
+            assertEquals(25, buffer.getBufferSize());
+            assertEquals(buffer.readBufferByte(0), 41);
+            assertEquals(buffer.readBufferByte(1), 42);
+            assertEquals(buffer.readBufferByte(2), 43);
+            assertEquals(buffer.readBufferByte(3), 44);
+            assertEquals(buffer.readBufferShort(ByteOrder.LITTLE_ENDIAN, 0), 0x2a29);
+            assertEquals(buffer.readBufferShort(ByteOrder.BIG_ENDIAN, 0), 0x292a);
+            assertEquals(buffer.readBufferInt(ByteOrder.LITTLE_ENDIAN, 0), 0x2c2b2a29);
+            assertEquals(buffer.readBufferInt(ByteOrder.BIG_ENDIAN, 0), 0x292a2b2c);
+
+            assertEquals(buffer.readBufferFloat(ByteOrder.LITTLE_ENDIAN, 0), 2.4323965e-12f, 0f);
+            assertEquals(buffer.readBufferFloat(ByteOrder.BIG_ENDIAN, 0), 3.778503e-14f, 0f);
+
+            assertEquals(buffer.readBufferInt(ByteOrder.nativeOrder(), 4), 45);
+            assertEquals(buffer.readBufferInt(ByteOrder.nativeOrder(), 8), 46);
+            assertEquals(buffer.readBufferLong(ByteOrder.nativeOrder(), 16), Long.MAX_VALUE - 42);
+
+            assertTrue(buffer.isBufferWritable());
+            buffer.writeBufferLong(ByteOrder.nativeOrder(), 16, Double.doubleToRawLongBits(Double.NEGATIVE_INFINITY));
+            assertEquals(buffer.readBufferDouble(ByteOrder.nativeOrder(), 16), Double.NEGATIVE_INFINITY, 0.0);
         }
     }
 }
