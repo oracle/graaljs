@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,15 @@ package com.oracle.truffle.js.builtins;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferSliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
@@ -53,20 +59,107 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSArrayBuffer}.prototype.
  */
-public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lambda {
+public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayBufferPrototypeBuiltins.ArrayBufferPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new ArrayBufferPrototypeBuiltins();
 
     protected ArrayBufferPrototypeBuiltins() {
-        super(JSArrayBuffer.PROTOTYPE_NAME);
-        defineFunction("slice", 2, (context, builtin) -> JSArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context)));
+        super(JSArrayBuffer.PROTOTYPE_NAME, ArrayBufferPrototype.class);
+    }
+
+    public enum ArrayBufferPrototype implements BuiltinEnum<ArrayBufferPrototype> {
+        byteLength(0),
+        slice(2);
+
+        private final int length;
+
+        ArrayBufferPrototype(int length) {
+            this.length = length;
+        }
+
+        @Override
+        public int getLength() {
+            return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == byteLength;
+        }
+    }
+
+    @Override
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayBufferPrototype builtinEnum) {
+        switch (builtinEnum) {
+            case slice:
+                return JSArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case byteLength:
+                return ByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+        }
+        return null;
+    }
+
+    @ImportStatic({JSArrayBuffer.class, JSConfig.class})
+    public abstract static class ByteLengthGetterNode extends JSBuiltinNode {
+
+        public ByteLengthGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
+        protected int heapArrayBuffer(Object thisObj) {
+            byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && byteArray == null) {
+                return handleDetachedBuffer();
+            }
+            return byteArray.length;
+        }
+
+        @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
+        protected int directArrayBuffer(Object thisObj) {
+            ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && byteBuffer == null) {
+                return handleDetachedBuffer();
+            }
+            return byteBuffer.capacity();
+        }
+
+        @Specialization(guards = "isJSInteropArrayBuffer(thisObj)")
+        protected int interopArrayBuffer(Object thisObj,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+            Object buffer = JSArrayBuffer.getInteropBuffer(thisObj);
+            try {
+                long bufferSize = interop.getBufferSize(buffer);
+                // Buffer size was already checked in the ArrayBuffer constructor.
+                assert JSRuntime.longIsRepresentableAsInt(bufferSize);
+                return (int) bufferSize;
+            } catch (UnsupportedMessageException e) {
+                return 0;
+            }
+        }
+
+        @Fallback
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeErrorArrayBufferExpected();
+        }
+
+        private int handleDetachedBuffer() {
+            if (getContext().isOptionV8CompatibilityMode()) {
+                return 0;
+            } else {
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+        }
     }
 
     public abstract static class JSArrayBufferOperation extends JSBuiltinNode {

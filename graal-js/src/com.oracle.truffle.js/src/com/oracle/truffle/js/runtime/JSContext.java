@@ -258,7 +258,6 @@ public class JSContext {
         SymbolGetDescription,
         MapGetSize,
         SetGetSize,
-        ArrayBufferByteLength,
         ArrayBufferViewLength,
         ArrayBufferViewBuffer,
         ArrayBufferViewByteLength,

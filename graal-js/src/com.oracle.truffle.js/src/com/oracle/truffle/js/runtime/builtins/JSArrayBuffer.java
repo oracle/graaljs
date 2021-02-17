@@ -45,28 +45,17 @@ import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFro
 
 import java.nio.ByteBuffer;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
@@ -145,54 +134,9 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
 
         putConstructorProperty(context, arrayBufferPrototype, ctor);
         putFunctionsFromContainer(realm, arrayBufferPrototype, ArrayBufferPrototypeBuiltins.BUILTINS);
-
-        JSFunctionData byteLengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ArrayBufferByteLength, (c) -> {
-            return JSFunctionData.createCallOnly(context, createByteLengthGetterCallTarget(c), 0, "get " + BYTE_LENGTH);
-        });
-
-        DynamicObject byteLengthGetter = JSFunction.create(realm, byteLengthGetterData);
-        JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, byteLengthGetter, Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, realm.lookupAccessor(ArrayBufferPrototypeBuiltins.BUILTINS, BYTE_LENGTH));
         JSObjectUtil.putToStringTag(arrayBufferPrototype, CLASS_NAME);
         return arrayBufferPrototype;
-    }
-
-    private static CallTarget createByteLengthGetterCallTarget(JSContext context) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final ConditionProfile isArrayBuffer = ConditionProfile.createBinaryProfile();
-            private final ConditionProfile isDirectByteBuffer = ConditionProfile.createBinaryProfile();
-            private final BranchProfile errorBranch = BranchProfile.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (JSDynamicObject.isJSDynamicObject(obj)) {
-                    DynamicObject buffer = (DynamicObject) obj;
-                    if (isArrayBuffer.profile(isJSHeapArrayBuffer(buffer))) {
-                        if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {
-                            return handleDetachedBuffer();
-                        }
-                        return getByteLength(buffer);
-                    } else if (isDirectByteBuffer.profile(isJSDirectArrayBuffer(buffer))) {
-                        if (!context.getTypedArrayNotDetachedAssumption().isValid() && isDetachedBuffer(buffer)) {
-                            return handleDetachedBuffer();
-                        }
-                        return getDirectByteLength(buffer);
-                    } else if (isJSInteropArrayBuffer(buffer)) {
-                        return ((JSArrayBufferObject) buffer).getByteLength();
-                    }
-                }
-                errorBranch.enter();
-                throw Errors.createTypeErrorArrayBufferExpected();
-            }
-
-            private Object handleDetachedBuffer() {
-                if (context.isOptionV8CompatibilityMode()) {
-                    return 0;
-                } else {
-                    throw Errors.createTypeErrorDetachedBuffer();
-                }
-            }
-        });
     }
 
     @Override
