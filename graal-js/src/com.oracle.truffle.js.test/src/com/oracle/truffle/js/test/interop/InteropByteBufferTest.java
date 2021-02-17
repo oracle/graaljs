@@ -217,4 +217,49 @@ public class InteropByteBufferTest {
             assertEquals(buffer.readBufferDouble(ByteOrder.nativeOrder(), 16), Double.NEGATIVE_INFINITY, 0.0);
         }
     }
+
+    @Test
+    public void testDataViewBackedByHostByteBuffer() {
+        testDataViewBackedByHostByteBuffer(false);
+        testDataViewBackedByHostByteBuffer(true);
+    }
+
+    private static void testDataViewBackedByHostByteBuffer(boolean direct) {
+        ByteBuffer buffer = direct ? ByteBuffer.allocateDirect(32) : ByteBuffer.allocate(32);
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
+            context.getBindings(ID).putMember("bb", buffer);
+            Value dataView = context.eval(ID, "" +
+                            "const ab = new ArrayBuffer(bb);" +
+                            "let dv = new DataView(ab);" +
+                            "dv;");
+            context.eval(ID, "" +
+                            "dv.setInt8(0, 41);" +
+                            "dv.setInt8(1, dv.getInt8(0) + 1);" +
+                            "dv.setUint8(2, dv.getUint8(1) + 1);" +
+                            "dv.setInt32(3, -44, true);");
+            assertEquals(41, buffer.get(0));
+            assertEquals(42, buffer.get(1));
+            assertEquals(43, buffer.get(2));
+            assertEquals(-44, buffer.get(3));
+            assertEquals(-1, buffer.get(4));
+            buffer.put(3, (byte) 44);
+            assertEquals(0x2a29, dataView.invokeMember("getInt16", 0, true).asInt());
+            assertEquals(0x292a, dataView.invokeMember("getInt16", 0, false).asInt());
+            assertEquals(0x2c2b2a29, dataView.invokeMember("getInt32", 0, true).asInt());
+            assertEquals(0x292a2b2c, dataView.invokeMember("getInt32", 0, false).asInt());
+            assertEquals(2.4323965e-12f, dataView.invokeMember("getFloat32", 0, true).asFloat(), 0f);
+            assertEquals(3.778503e-14f, dataView.invokeMember("getFloat32", 0, false).asFloat(), 0f);
+            assertEquals(0x00ffffff2c2b2a29L, dataView.invokeMember("getBigInt64", 0, true).asLong());
+            assertEquals(0x292a2b2cffffff00L, dataView.invokeMember("getBigInt64", 0, false).asLong());
+            assertEquals(0x00ffffff2c2b2a29L, dataView.invokeMember("getBigUint64", 0, true).asLong());
+
+            context.eval(ID, "new DataView(ab, 8).setFloat64(8, -Infinity, true);");
+            assertEquals(Double.NEGATIVE_INFINITY, dataView.invokeMember("getFloat64", 16, true).asDouble(), 0.0);
+            assertEquals(0xfff0000000000000L, dataView.invokeMember("getBigInt64", 16, true).asLong());
+
+            context.eval(ID, "dv.setBigInt64(24, 1742123762643437888n, false);");
+            assertEquals(4614256656552045848L, dataView.invokeMember("getBigInt64", 24, true).asLong());
+            assertEquals(Math.PI, dataView.invokeMember("getFloat64", 24, true).asDouble(), 0.0);
+        }
+    }
 }
