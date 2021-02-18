@@ -83,6 +83,16 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return context.trackAllocation(obj);
     }
 
+    public static byte[] getByteArray(Object thisObj) {
+        assert isJSHeapArrayBuffer(thisObj);
+        return JSArrayBufferObject.getByteArray(thisObj);
+    }
+
+    public static int getByteLength(Object thisObj) {
+        assert isJSHeapArrayBuffer(thisObj);
+        return getByteArray(thisObj).length;
+    }
+
     public static int getDirectByteLength(DynamicObject thisObj) {
         return getDirectByteBuffer(thisObj).capacity();
     }

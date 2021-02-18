@@ -78,21 +78,8 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public abstract boolean isDetached();
 
     public static byte[] getByteArray(Object thisObj) {
-        assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
+        assert JSArrayBuffer.isJSHeapArrayBuffer(thisObj);
         return ((Heap) thisObj).getByteArray();
-    }
-
-    public static int getByteLength(DynamicObject thisObj) {
-        assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
-        return getByteArray(thisObj).length;
-    }
-
-    public static int getDirectByteLength(DynamicObject thisObj) {
-        return getDirectByteBuffer(thisObj).capacity();
-    }
-
-    public static void setDirectByteBuffer(DynamicObject thisObj, ByteBuffer buffer) {
-        ((DirectBase) thisObj).setByteBuffer(buffer);
     }
 
     public static ByteBuffer getDirectByteBuffer(Object thisObj) {

@@ -40,27 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
-
 public abstract class JSAbstractBuffer extends JSNonProxy {
 
     protected static final String BYTE_LENGTH = "byteLength";
 
     protected JSAbstractBuffer() {
-    }
-
-    public static byte[] getByteArray(Object thisObj) {
-        assert isJSAbstractHeapBuffer(thisObj);
-        return JSArrayBufferObject.getByteArray(thisObj);
-    }
-
-    public static int getByteLength(DynamicObject thisObj) {
-        assert isJSAbstractHeapBuffer(thisObj);
-        return getByteArray(thisObj).length;
-    }
-
-    public static boolean isJSAbstractHeapBuffer(Object obj) {
-        return JSArrayBuffer.isJSHeapArrayBuffer(obj);
     }
 
     public static boolean isJSAbstractBuffer(Object obj) {
