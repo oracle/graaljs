@@ -2024,7 +2024,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } else if (direct) {
                 bufferByteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
             } else {
-                bufferByteLength = JSArrayBuffer.getByteLength(arrayBuffer);
+                bufferByteLength = JSArrayBuffer.getHeapByteLength(arrayBuffer);
             }
             if (offset > bufferByteLength) {
                 errorBranch.enter();

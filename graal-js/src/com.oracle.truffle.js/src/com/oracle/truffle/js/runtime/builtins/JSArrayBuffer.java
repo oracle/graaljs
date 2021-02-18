@@ -88,7 +88,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObject.getByteArray(thisObj);
     }
 
-    public static int getByteLength(Object thisObj) {
+    public static int getHeapByteLength(Object thisObj) {
         assert isJSHeapArrayBuffer(thisObj);
         return getByteArray(thisObj).length;
     }

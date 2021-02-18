@@ -290,7 +290,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter();
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
             }
-            if ((direct && JSArrayBuffer.getDirectByteLength(resObj) < newLen) || (!direct && JSArrayBuffer.getByteLength(resObj) < newLen)) {
+            if ((direct && JSArrayBuffer.getDirectByteLength(resObj) < newLen) || (!direct && JSArrayBuffer.getHeapByteLength(resObj) < newLen)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("insufficient length constructed");
             }
