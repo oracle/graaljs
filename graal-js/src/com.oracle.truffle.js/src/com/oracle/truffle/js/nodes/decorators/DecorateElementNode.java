@@ -1,7 +1,7 @@
 package com.oracle.truffle.js.nodes.decorators;
 
-import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -15,6 +15,7 @@ public class DecorateElementNode extends JavaScriptBaseNode {
     protected static final String EXTRAS = "extras";
 
     protected final JSContext context;
+    protected final BranchProfile errorBranch = BranchProfile.create();
 
     @Child
     private JSFunctionCallNode decoratorCallNode;
@@ -31,11 +32,11 @@ public class DecorateElementNode extends JavaScriptBaseNode {
         return new DecorateElementNode(context);
     }
 
-    @ExplodeLoop
     public void decorateElement(ElementDescriptor element, ClassElementList elements) {
         for(Object decorator: element.getDecorators()) {
             if (element.isHook()) {
                 //Can not test
+                errorBranch.enter();
                 throw Errors.createTypeErrorElementDescriptorProperty("kind", "must not have value 'hook'.", this);
             }
             Object elementObject = ElementDescriptorUtil.fromElementDescriptor(element, context);
@@ -47,7 +48,7 @@ public class DecorateElementNode extends JavaScriptBaseNode {
             }
             //ToElementExtras
             assert JSRuntime.isObject(decoratedObject);
-            elements.enqueue(ElementDescriptorUtil.toElementDescriptor(decoratedObject, this), false, this);
+            elements.enqueue(ElementDescriptorUtil.toElementDescriptor(decoratedObject, this), false, this, true);
             Object extrasObject = JSOrdinaryObject.get((DynamicObject) decoratedObject, EXTRAS);
             toElementDescriptorsNode.toElementDescriptors(extrasObject, elements);
         }

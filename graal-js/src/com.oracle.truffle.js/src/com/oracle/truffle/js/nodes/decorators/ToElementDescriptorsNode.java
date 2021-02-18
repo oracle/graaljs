@@ -1,6 +1,7 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -16,6 +17,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public class ToElementDescriptorsNode extends JavaScriptBaseNode {
     protected static final String EXTRAS = "extras";
     private final JSContext context;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     @Child
     private GetIteratorNode getIteratorNode;
@@ -47,9 +49,10 @@ public class ToElementDescriptorsNode extends JavaScriptBaseNode {
         while ((next = getNext(iterator)) != null) {
             Object elementObject = JSRuntime.toObject(context, next);
             if (JSOrdinaryObject.get((DynamicObject) elementObject, EXTRAS) != Undefined.instance) {
+                errorBranch.enter();
                 throw Errors.createTypeError("Property extras of element descriptor must not have nested property extras.", this);
             }
-            elements.enqueue(ElementDescriptorUtil.toElementDescriptor(elementObject, this), false, this);
+            elements.enqueue(ElementDescriptorUtil.toElementDescriptor(elementObject, this), false, this, true);
         }
     }
 

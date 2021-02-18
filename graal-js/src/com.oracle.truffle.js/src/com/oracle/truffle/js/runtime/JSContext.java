@@ -1690,4 +1690,6 @@ public class JSContext {
     public boolean isOptionTopLevelAwait() {
         return getContextOptions().isTopLevelAwait();
     }
+
+    public boolean areDecoratorsEnabled() { return getEcmaScriptVersion() > 12; }
 }

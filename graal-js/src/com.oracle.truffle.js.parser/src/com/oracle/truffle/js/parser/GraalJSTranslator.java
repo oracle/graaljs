@@ -3272,7 +3272,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JavaScriptNode classDefinition;
 
-            if(context.getEcmaScriptVersion() <= 12){
+            if(!context.areDecoratorsEnabled()){
                 JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
                 ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
                 classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,

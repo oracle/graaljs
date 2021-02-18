@@ -27,19 +27,22 @@ public class DecorateClassNode extends JavaScriptBaseNode {
         return new DecorateClassNode(context, classDecorators);
     }
 
-
-    @ExplodeLoop
-    public void execute(VirtualFrame frame, ClassElementList elements) {
-        //DecorateElements
-        for (int i = 0; i < elements.size(); i++) {
-            ElementDescriptor element = elements.dequeue();
+    //DecorateElements
+    public ClassElementList executeElementDecoration(ElementDescriptor[] elements) {
+        ClassElementList list = ClassElementList.create();
+        for (ElementDescriptor element: elements) {
             if(element.hasDecorators()) {
-                decorateElementNode.decorateElement(element, elements);
+                decorateElementNode.decorateElement(element, list);
             } else {
-                elements.enqueue(element);
+                list.enqueue(element);
             }
         }
-        //DecorateClass
+        return list;
+    }
+
+    //DecorateClass
+    @ExplodeLoop
+    public void executeClassDecoration(VirtualFrame frame, ClassElementList elements) {
         if(classDecorators.length > 0) {
             Object[] d = new Object[classDecorators.length];
             for(int i = 0; i < classDecorators.length; i++) {

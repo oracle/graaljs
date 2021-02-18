@@ -132,8 +132,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
 
-        if(context.getEcmaScriptVersion() > 12) {
-
+        if(context.areDecoratorsEnabled()) {
             this.setElementsNode = PropertySetNode.createSetHidden(JSFunction.ELEMENTS_ID, context);
             this.evaluateClassElementsNode = EvaluateClassElementsNode.create(context, classElementNodes);
             this.initializeClassElementsNode = InitializeClassElementsNode.create(context);
@@ -235,59 +234,71 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         // Perform CreateMethodProperty(proto, "constructor", F).
         setConstructorNode.executeVoid(proto, constructor);
 
-        if(context.getEcmaScriptVersion() <= 12) {
-            //Non-decorator Class Initialization
-            Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
-            Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
-
-            initializeMembers(frame, proto, constructor, instanceFields, staticFields);
-
-            if(writeClassBindingNode != null) {
-                writeClassBindingNode.executeWrite(frame, constructor);
-            }
-
-            if(setFieldsNode != null) {
-                setFieldsNode.setValue(constructor, instanceFields);
-            }
-
-            //If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
-            if(setPrivateBrandNode != null) {
-                HiddenKey privateBrand = new HiddenKey("Brand");
-                setPrivateBrandNode.setValue(constructor, privateBrand);
-            }
-
-            if(staticFieldCount != 0) {
-                InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
-                if (defineStaticFields == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    this.staticFieldsNode = defineStaticFields = insert(InitializeInstanceElementsNode.create(context));
-                }
-                defineStaticFields.executeStaticFields(constructor, staticFields);
-            }
+        if(context.areDecoratorsEnabled()) {
+            return executeWithDecorators(frame, constructor, proto);
         } else {
-            //Decorator Class Initialization
-
-            //ClassElementEvaluation
-            //CoalesceClassElements
-            ClassElementList classElements = evaluateClassElementsNode.execute(frame, proto, constructor);
-
-            //DecorateClass
-            decorateClassNode.execute(frame, classElements);
-
-            //AssignPrivatNames
-            assignPrivateNames(classElements);
-
-            //InitializeClassElements
-            constructor = initializeClassElementsNode.execute(proto, constructor, classElements);
-
-            if(writeClassBindingNode != null) {
-                writeClassBindingNode.executeWrite(frame, constructor);
-            }
-
-            //Only elements with kind "own" get pushed to the initialization.
-            setElementsNode.setValue(constructor, classElements);
+            executeWithoutDecorators(frame, constructor, proto);
         }
 
+        return constructor;
+    }
+
+    private void executeWithoutDecorators(VirtualFrame frame, DynamicObject constructor, DynamicObject proto) {
+        //Non-decorator Class Initialization
+        Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
+        Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
+
+        initializeMembers(frame, proto, constructor, instanceFields, staticFields);
+
+        if(writeClassBindingNode != null) {
+            writeClassBindingNode.executeWrite(frame, constructor);
+        }
+
+        if(setFieldsNode != null) {
+            setFieldsNode.setValue(constructor, instanceFields);
+        }
+
+        //If the class contains a private instance method or accessor, set F.[[PrivateBrand]].
+        if(setPrivateBrandNode != null) {
+            HiddenKey privateBrand = new HiddenKey("Brand");
+            setPrivateBrandNode.setValue(constructor, privateBrand);
+        }
+
+        if(staticFieldCount != 0) {
+            InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
+            if (defineStaticFields == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.staticFieldsNode = defineStaticFields = insert(InitializeInstanceElementsNode.create(context));
+            }
+            defineStaticFields.executeStaticFields(constructor, staticFields);
+        }
+    }
+
+    private DynamicObject executeWithDecorators(VirtualFrame frame,DynamicObject constructor, DynamicObject proto) {
+        //Decorator Class Initialization
+
+        //ClassElementEvaluation
+        //CoalesceClassElements
+        ElementDescriptor[] elements = evaluateClassElementsNode.execute(frame, proto, constructor);
+
+        //DecorateClass
+        ClassElementList classElements = decorateClassNode.executeElementDecoration(elements);
+        decorateClassNode.executeClassDecoration(frame, classElements);
+
+        //AssignPrivatNames
+        assignPrivateNames(classElements);
+
+        //InitializeClassElements
+        constructor = initializeClassElementsNode.execute(proto, constructor, classElements);
+
+        if(writeClassBindingNode != null) {
+            writeClassBindingNode.executeWrite(frame, constructor);
+        }
+
+        //Only elements with kind "own" get pushed to the initialization.
+        if(classElements.size() != 0) {
+            setElementsNode.setValue(constructor, classElements);
+        }
         return constructor;
     }
 
@@ -315,19 +326,22 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
     }
 
-    @ExplodeLoop
     private void assignPrivateNames(ClassElementList elements) {
-        int size = elements.size();
-        for (int i = 0; i < size; i++) {
-            ElementDescriptor element = elements.dequeue();
-            if(element.hasKey() && element.hasPrivateKey()) {
-                PrivateName key = element.getPrivateKey();
-                if(element.isField() || element.isMethod() || element.isAccessor()) {
-                    key.setKind(element.getKind());
-                }
-                key.setDescriptor(element.getDescriptor());
+        for (ElementDescriptor element : elements.getOwnElements()) {
+            assignPrivateName(element);
+        }
+        for(ElementDescriptor element: elements.getStaticAndPrototypeElements()) {
+            assignPrivateName(element);
+        }
+    }
+
+    private void assignPrivateName(ElementDescriptor element) {
+        if(element.hasKey() && element.hasPrivateKey()) {
+            PrivateName key = element.getPrivateKey();
+            if(element.isField() || element.isMethod() || element.isAccessor()) {
+                key.setKind(element.getKind());
             }
-            elements.enqueue(element);
+            key.setDescriptor(element.getDescriptor());
         }
     }
 
@@ -348,7 +362,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        if(context.getEcmaScriptVersion() <= 12)
+        if(!context.areDecoratorsEnabled())
         {
             return create(context,(JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
                     ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),

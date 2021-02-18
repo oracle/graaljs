@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -312,6 +313,9 @@ public final class Boundaries {
     public static <K, V> V mapRemove(Map<K, V> map, Object key) {
         return map.remove(key);
     }
+
+    @TruffleBoundary
+    public static <K,V> Map<K,V> hashMapCreate() { return new HashMap<>(); }
 
     @TruffleBoundary
     public static <T> T listGet(List<T> list, int index) {

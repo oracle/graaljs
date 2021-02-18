@@ -267,8 +267,12 @@ public class ElementDescriptorUtil {
     @TruffleBoundary
     public static Object fromClassDescriptor(ClassElementList elements, JSContext context) {
         Object[] elementObjects = new Object[elements.size()];
-        for (int i = 0; i < elements.size(); i++){
-            elementObjects[i] = fromElementDescriptor(elements.dequeue(),context);
+        int i = 0;
+        for (ElementDescriptor element: elements.getOwnElements()){
+            elementObjects[i++] = fromElementDescriptor(element,context);
+        }
+        for(ElementDescriptor element: elements.getStaticAndPrototypeElements()) {
+            elementObjects[i++] = fromElementDescriptor(element,context);
         }
         DynamicObject obj = JSOrdinary.create(context);
         PropertyDescriptor desc = PropertyDescriptor.createData(ELEMENT_DESCRIPTOR_VALUE,false,false,true);
