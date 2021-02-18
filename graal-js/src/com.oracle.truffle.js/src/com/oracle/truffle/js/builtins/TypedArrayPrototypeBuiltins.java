@@ -93,7 +93,6 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -484,8 +483,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (sourceType instanceof TypedArray.TypedBigIntArray && targetType instanceof TypedArray.TypedBigIntArray) {
                 bigIntToBigIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    BigInt value = ((TypedArray.TypedBigIntArray) sourceType).getBigIntImpl(sourceBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedBigIntArray) targetType).setBigIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
+                    long value = ((TypedArray.TypedBigIntArray) sourceType).getLongImpl(sourceBuffer, sourceByteIndex, i);
+                    ((TypedArray.TypedBigIntArray) targetType).setLongImpl(targetBuffer, targetByteOffset, i + targetOffset, value);
                 }
             } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
