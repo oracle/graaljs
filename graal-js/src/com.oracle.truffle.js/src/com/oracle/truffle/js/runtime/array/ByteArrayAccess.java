@@ -59,10 +59,6 @@ public abstract class ByteArrayAccess {
 
     public abstract int getInt32(byte[] buffer, int byteIndex);
 
-    public final long getUint32(byte[] buffer, int byteIndex) {
-        return getInt32(buffer, byteIndex) & 0xffffffffL;
-    }
-
     public abstract float getFloat(byte[] buffer, int byteIndex);
 
     public abstract double getDouble(byte[] buffer, int byteIndex);

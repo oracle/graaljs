@@ -64,10 +64,6 @@ public abstract class ByteBufferAccess {
 
     public abstract int getInt32(ByteBuffer buffer, int index);
 
-    public final long getUint32(ByteBuffer buffer, int index) {
-        return getInt32(buffer, index) & 0xffffffffL;
-    }
-
     public abstract float getFloat(ByteBuffer buffer, int index);
 
     public abstract double getDouble(ByteBuffer buffer, int index);
