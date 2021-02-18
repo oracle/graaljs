@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.Errors;
 
@@ -39,13 +40,18 @@ public class ClassElementList {
             if(placementMap.containsKey(e.getKey())) {
                 int placement = placementMap.get(e.getKey());
                 if(e.getPlacement() == placement && !isSilent) {
-                    throw Errors.createTypeError(String.format("Duplicate key %s.", e.getKey()), originatingNode);
+                    error(e, originatingNode);
                 }
             } else {
                 placementMap.put(e.getKey(), e.getPlacement());
             }
         }
         elements.addLast(e);
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    public void error(ElementDescriptor e, Node originatingNode) {
+        throw Errors.createTypeError(String.format("Duplicate key %s.", e.getKey()), originatingNode);
     }
 
     public ElementDescriptor dequeue() {

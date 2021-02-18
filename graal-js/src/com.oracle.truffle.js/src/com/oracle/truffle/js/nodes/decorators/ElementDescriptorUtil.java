@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
@@ -32,6 +33,7 @@ public class ElementDescriptorUtil {
     private static final String CLASS = "class";
     private static final String EXTRAS = "extras";
 
+    @TruffleBoundary
     public static Object fromElementDescriptor(ElementDescriptor element, JSContext context) {
         DynamicObject obj = JSOrdinary.create(context);
         PropertyDescriptor desc = PropertyDescriptor.createData(ELEMENT_DESCRIPTOR_VALUE,false, false, true);
@@ -73,6 +75,7 @@ public class ElementDescriptorUtil {
         return obj;
     }
 
+    @TruffleBoundary
     public static ElementDescriptor toElementDescriptor(Object e, Node originatingNode) {
         assert JSRuntime.isObject(e);
         DynamicObject elementObject = (DynamicObject) e;
@@ -192,6 +195,7 @@ public class ElementDescriptorUtil {
         throw Errors.shouldNotReachHere();
     }
 
+    @TruffleBoundary
     public static PropertyDescriptor toDecoratorPropertyDescriptor(Object elementObject, int kind, Node originatingNode){
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
         DynamicObject obj = (DynamicObject) elementObject;
@@ -232,6 +236,7 @@ public class ElementDescriptorUtil {
         return desc;
     }
 
+    @TruffleBoundary
     private static void completePropertyDescriptor(PropertyDescriptor desc, int kind) {
         if(JSKind.isField(kind) || JSKind.isMethod(kind)) {
             if(!desc.hasWritable()) {
@@ -259,6 +264,7 @@ public class ElementDescriptorUtil {
         }
     }
 
+    @TruffleBoundary
     public static Object fromClassDescriptor(ClassElementList elements, JSContext context) {
         Object[] elementObjects = new Object[elements.size()];
         for (int i = 0; i < elements.size(); i++){
@@ -272,6 +278,7 @@ public class ElementDescriptorUtil {
         return obj;
     }
 
+    @TruffleBoundary
     public static void checkClassDescriptor(Object classDescriptor, Node originatingNode) {
         DynamicObject obj = (DynamicObject) classDescriptor;
         int kind = JSKind.fromString(JSRuntime.toString(JSOrdinaryObject.get(obj,KIND)));

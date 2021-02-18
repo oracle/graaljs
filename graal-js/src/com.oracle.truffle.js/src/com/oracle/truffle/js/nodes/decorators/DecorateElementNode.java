@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -30,6 +31,7 @@ public class DecorateElementNode extends JavaScriptBaseNode {
         return new DecorateElementNode(context);
     }
 
+    @ExplodeLoop
     public void decorateElement(ElementDescriptor element, ClassElementList elements) {
         for(Object decorator: element.getDecorators()) {
             if (element.isHook()) {

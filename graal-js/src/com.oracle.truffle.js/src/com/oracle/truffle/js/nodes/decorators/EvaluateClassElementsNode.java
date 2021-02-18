@@ -2,6 +2,7 @@ package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -33,6 +34,7 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
         return evaluateClassElementsNode.copyUninitialized(materializedTags);
     }
 
+    @ExplodeLoop
     public ClassElementList execute(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
         ClassElementList elements = new ClassElementList();
         HashMap<Object, ElementDescriptor> elementMap = new HashMap<>();
