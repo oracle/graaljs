@@ -298,22 +298,16 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        protected boolean isRootTarget(DynamicObject fnObj) {
-            return JSFunction.getCallTarget(fnObj) instanceof RootCallTarget;
-        }
-
         protected boolean isBoundTarget(DynamicObject fnObj) {
             return JSFunction.isBoundFunction(fnObj);
         }
 
-        @TruffleBoundary
-        @Specialization(guards = {"isJSFunction(fnObj)", "isRootTarget(fnObj)", "!isBoundTarget(fnObj)"})
+        @Specialization(guards = {"isJSFunction(fnObj)", "!isBoundTarget(fnObj)"})
         protected String toStringDefault(DynamicObject fnObj) {
-            RootCallTarget dct = (RootCallTarget) JSFunction.getCallTarget(fnObj);
-            return toStringDefaultTarget(dct, fnObj);
+            return toStringDefaultTarget(fnObj);
         }
 
-        @Specialization(guards = {"isJSFunction(fnObj)", "isRootTarget(fnObj)", "isBoundTarget(fnObj)"})
+        @Specialization(guards = {"isJSFunction(fnObj)", "isBoundTarget(fnObj)"})
         protected String toStringBound(DynamicObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
                 return NATIVE_CODE_STR;
@@ -326,13 +320,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @TruffleBoundary
         private static String getNameIntl(String name) {
             return "function " + name.substring(name.lastIndexOf(' ') + 1) + "() { [native code] }";
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"isJSFunction(fnObj)", "!isRootTarget(fnObj)"})
-        protected String toString(DynamicObject fnObj) {
-            CallTarget ct = JSFunction.getCallTarget(fnObj);
-            return ct.toString();
         }
 
         @SuppressWarnings("unused")
@@ -373,7 +360,12 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @TruffleBoundary
-        private static String toStringDefaultTarget(RootCallTarget dct, DynamicObject fnObj) {
+        private static String toStringDefaultTarget(DynamicObject fnObj) {
+            CallTarget ct = JSFunction.getCallTarget(fnObj);
+            if (!(ct instanceof RootCallTarget)) {
+                return ct.toString();
+            }
+            RootCallTarget dct = (RootCallTarget) ct;
             RootNode rn = dct.getRootNode();
             SourceSection ssect = rn.getSourceSection();
             String result;
