@@ -1980,14 +1980,6 @@
     "status" : "FAIL",
     "comment" : "new test failures 2021-02-09"
   }, {
-    "filePath" : "intl402/Intl/toStringTag/toString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "intl402/Intl/toStringTag/toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "intl402/Locale/extensions-grandfathered.js",
     "status" : "FAIL",
     "comment" : "new test failures 2021-02-09"
