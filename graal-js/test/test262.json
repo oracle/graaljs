@@ -2631,9 +2631,5 @@
     "filePath" : "language/statements/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/statements/for-of/head-lhs-async-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
   } ]
 }
