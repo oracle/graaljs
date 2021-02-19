@@ -8,6 +8,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -53,22 +54,20 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 //PrivateBrandAdd
                 setStaticBrand = true;
             }
-            if(element.isPrototype() || element.isStatic()) {
-                if ((element.isMethod() || element.isAccessor()) && !element.hasPrivateKey()) {
-                    DynamicObject receiver = element.isStatic() ? constructor : proto;
-                    JSRuntime.definePropertyOrThrow(receiver, element.getKey(), element.getDescriptor());
+            if ((element.isMethod() || element.isAccessor()) && !element.hasPrivateKey()) {
+                DynamicObject receiver = element.isStatic() ? constructor : proto;
+                JSRuntime.definePropertyOrThrow(receiver, element.getKey(), element.getDescriptor());
+            }
+            if (element.isField()) {
+                assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
+                fields[fieldIndex++] = element;
+            }
+            if (element.isHook()) {
+                if (element.hasStart()) {
+                    startHooks.add(element);
                 }
-                if (element.isField()) {
-                    assert !element.getDescriptor().hasValue() && !element.getDescriptor().hasGet() && !element.getDescriptor().hasSet();
-                    fields[fieldIndex++] = element;
-                }
-                if (element.isHook()) {
-                    if (element.hasStart()) {
-                        startHooks.add(element);
-                    }
-                    if (element.hasReplace() || element.hasFinish()) {
-                        otherHooks.add(element);
-                    }
+                if (element.hasReplace() || element.hasFinish()) {
+                    otherHooks.add(element);
                 }
             }
         }
@@ -84,6 +83,17 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
         if(initializeInstanceElementsNode != null) {
             initializeInstanceElementsNode.executeFields(proto, constructor, fields);
         }
+        if(Boundaries.listSize(startHooks) != 0) {
+            executeStartHooks(startHooks, constructor, proto);
+        }
+        if(Boundaries.listSize(otherHooks) != 0) {
+            executeOtherHooks(otherHooks, constructor, proto);
+        }
+
+        return constructor;
+    }
+
+    private void executeStartHooks(List<ElementDescriptor> startHooks, DynamicObject constructor, DynamicObject proto) {
         for(ElementDescriptor element: startHooks) {
             DynamicObject receiver = element.isStatic() ? constructor : proto;
             Object res = hookCallNode.executeCall(JSArguments.createZeroArg(receiver, element.getStart()));
@@ -92,6 +102,9 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 throw Errors.createTypeErrorHookReturnValue("Start",this);
             }
         }
+    }
+
+    private void executeOtherHooks(List<ElementDescriptor> otherHooks, DynamicObject constructor, DynamicObject proto) {
         for(ElementDescriptor element: otherHooks) {
             if(element.hasReplace()) {
                 assert !element.hasFinish();
@@ -112,7 +125,6 @@ public class InitializeClassElementsNode extends JavaScriptBaseNode {
                 }
             }
         }
-        return constructor;
     }
 
     private List<ElementDescriptor> createList() {

@@ -11,7 +11,7 @@ import java.util.Map;
 
 public class ClassElementList {
     private final List<ElementDescriptor> ownElements;
-    private final List<ElementDescriptor> staticAndPrototypeElements;
+    private List<ElementDescriptor> staticAndPrototypeElements;
     private int prototypeAndStaticFieldCount = 0;
     private int ownFieldCount = 0;
     private int ownHookStartCount = 0;
@@ -98,5 +98,10 @@ public class ClassElementList {
     @TruffleBoundary
     public int size() {
         return ownElements.size() + staticAndPrototypeElements.size();
+    }
+
+    @TruffleBoundary
+    public void removeStaticAndPrototypeElements() {
+        staticAndPrototypeElements = null;
     }
 }

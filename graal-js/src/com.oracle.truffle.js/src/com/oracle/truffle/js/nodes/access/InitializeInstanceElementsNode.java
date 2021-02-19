@@ -249,6 +249,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     }
 
     static DefineFieldNode[] createDecoratorFieldNodes(ElementDescriptor[] elements, JSContext context, int size) {
+        CompilerAsserts.neverPartOfCompilation();
         DefineFieldNode[] fieldNodes = new DefineFieldNode[size];
         int fieldNodeCount = 0;
         for(ElementDescriptor element : elements) {

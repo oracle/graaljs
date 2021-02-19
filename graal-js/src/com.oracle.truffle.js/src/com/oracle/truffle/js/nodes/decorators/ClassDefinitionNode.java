@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.function.DefineMethodNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -296,7 +297,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         }
 
         //Only elements with kind "own" get pushed to the initialization.
-        if(classElements.size() != 0) {
+        if(Boundaries.listSize(classElements.getOwnElements()) != 0) {
+            classElements.removeStaticAndPrototypeElements();
             setElementsNode.setValue(constructor, classElements);
         }
         return constructor;
