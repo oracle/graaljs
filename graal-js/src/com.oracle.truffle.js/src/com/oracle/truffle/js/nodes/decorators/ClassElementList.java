@@ -2,12 +2,12 @@ package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 
 public class ClassElementList {
     private final List<ElementDescriptor> ownElements;
@@ -17,12 +17,16 @@ public class ClassElementList {
     private int ownHookStartCount = 0;
     private boolean methodOrAccessorWithPrivateKey = false;
 
-    private final Map<Object, Integer> placementMap;
+    private final Set<Object> staticKeys;
+    private final Set<Object> ownKeys;
+    private final Set<Object> prototypeKeys;
 
     private ClassElementList() {
         ownElements = new ArrayList<>();
         staticAndPrototypeElements = new ArrayList<>();
-        placementMap = Boundaries.hashMapCreate();
+        staticKeys = new HashSet<>();
+        ownKeys = new HashSet<>();
+        prototypeKeys = new HashSet<>();
     }
 
     @TruffleBoundary
@@ -62,14 +66,30 @@ public class ClassElementList {
     private void addElementPlacement(ElementDescriptor e, boolean isSilent, Node originatingNode) {
         //AddElementPlacement
         if(e.hasKey()) {
-            if(placementMap.containsKey(e.getKey())) {
-                int placement = placementMap.get(e.getKey());
-                if(e.getPlacement() == placement && !isSilent) {
-                    throw Errors.createTypeError(String.format("Duplicate key %s.", e.getKey()), originatingNode);
-                }
-            } else {
-                placementMap.put(e.getKey(), e.getPlacement());
+            Object key = e.getKey();
+            if(e.isStatic()) {
+                checkKey(staticKeys, key, isSilent, originatingNode);
             }
+            else if(e.isOwn()) {
+                checkKey(ownKeys, key, isSilent, originatingNode);
+            } else {
+                assert e.isPrototype();
+                checkKey(prototypeKeys, key, isSilent, originatingNode);
+            }
+        }
+    }
+
+    private void checkKey(Set<Object> collection, Object key, boolean isSilent, Node originatingNode) {
+        if(collection.contains(key)) {
+            error(key, isSilent, originatingNode);
+        } else {
+            collection.add(key);
+        }
+    }
+
+    private void error(Object key, boolean isSilent, Node originatingNode) {
+        if(!isSilent) {
+            throw Errors.createTypeError(String.format("Duplicate key %s.", key), originatingNode);
         }
     }
 
