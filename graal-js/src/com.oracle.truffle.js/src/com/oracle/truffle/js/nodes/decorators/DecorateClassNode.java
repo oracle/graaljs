@@ -42,13 +42,15 @@ public class DecorateClassNode extends JavaScriptBaseNode {
 
     //DecorateClass
     @ExplodeLoop
-    public void executeClassDecoration(VirtualFrame frame, ClassElementList elements) {
+    public ClassElementList executeClassDecoration(VirtualFrame frame, ClassElementList elements) {
         if(classDecorators.length > 0) {
             Object[] d = new Object[classDecorators.length];
             for(int i = 0; i < classDecorators.length; i++) {
                 d[i] = classDecorators[i].execute(frame);
             }
-            decorateConstructorNode.decorateConstructor(elements, d);
+            return decorateConstructorNode.decorateConstructor(elements, d);
+        } else {
+            return elements;
         }
     }
 

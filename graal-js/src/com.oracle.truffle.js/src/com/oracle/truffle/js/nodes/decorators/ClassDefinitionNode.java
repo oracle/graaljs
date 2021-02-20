@@ -284,7 +284,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         //DecorateClass
         ClassElementList classElements = decorateClassNode.executeElementDecoration(elements);
-        decorateClassNode.executeClassDecoration(frame, classElements);
+        classElements = decorateClassNode.executeClassDecoration(frame, classElements);
 
         //AssignPrivatNames
         assignPrivateNames(classElements);

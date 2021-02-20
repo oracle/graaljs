@@ -29,7 +29,8 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
         return new DecorateConstructorNode(context);
     }
 
-    public void decorateConstructor(ClassElementList elements, Object[] decorators) {
+    public ClassElementList decorateConstructor(ClassElementList elements, Object[] decorators) {
+        ClassElementList newElements = ClassElementList.create();
         for(Object decorator: decorators) {
             Object obj = ElementDescriptorUtil.fromClassDescriptor(elements, context);
             Object result = decoratorCallNode.executeCall(JSArguments.createOneArg(null, decorator, obj));
@@ -40,9 +41,10 @@ public class DecorateConstructorNode extends JavaScriptBaseNode {
             }
             ElementDescriptorUtil.checkClassDescriptor(result,this);
             Object elementsObject = getElementsObject((DynamicObject)result);
-            toElementDescriptorsNode.toElementDescriptors(elementsObject, elements);
+            toElementDescriptorsNode.toElementDescriptors(elementsObject, newElements);
             //duplicates are checked in ClassElementList.
         }
+        return newElements;
     }
 
     @TruffleBoundary
