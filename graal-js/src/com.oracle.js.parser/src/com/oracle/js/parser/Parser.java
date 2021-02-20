@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2669,6 +2669,8 @@ public class Parser extends AbstractParser {
         boolean isForAwaitOf = false;
         // used for lookahead != let checks in "for (await) of" grammar
         boolean initStartsWithLet = false;
+        // used for "lookahead != async of" check in "for of" grammar
+        boolean initStartsWithAsyncOf = false;
 
         try {
             // FOR tested in caller.
@@ -2719,6 +2721,7 @@ public class Parser extends AbstractParser {
                     }
 
                     initStartsWithLet = (type == LET);
+                    initStartsWithAsyncOf = (type == ASYNC && !isForAwaitOf && lookaheadIsOf());
                     init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
                     break;
             }
@@ -2762,7 +2765,7 @@ public class Parser extends AbstractParser {
                 case OF:
                     if (ES8_FOR_AWAIT_OF && isForAwaitOf && !initStartsWithLet) {
                         // fall through
-                    } else if (ES6_FOR_OF && !initStartsWithLet) {
+                    } else if (ES6_FOR_OF && !initStartsWithLet && !initStartsWithAsyncOf) {
                         isForOf = true;
                         // fall through
                     } else {
@@ -2888,6 +2891,21 @@ public class Parser extends AbstractParser {
                         return t;
                     }
                     return null;
+            }
+        }
+    }
+
+    private boolean lookaheadIsOf() {
+        for (int i = 1;; i++) {
+            TokenType t = T(k + i);
+            switch (t) {
+                case EOL:
+                case COMMENT:
+                    continue;
+                case OF:
+                    return true;
+                default:
+                    return false;
             }
         }
     }
