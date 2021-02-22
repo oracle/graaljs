@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -51,13 +55,12 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
-
-import java.util.Set;
 
 /**
  * @see SetViewValueNode
@@ -69,6 +72,7 @@ public abstract class GetViewValueNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode requestIndexNode;
     @Child @Executed protected JavaScriptNode isLittleEndianNode;
     @Child private JSToBooleanNode toBooleanNode;
+    @Child private InteropLibrary interopLibrary;
 
     protected GetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {
         this(context, typedArrayFactoryFromType(type, context), view, requestIndex, isLittleEndian);
@@ -126,8 +130,18 @@ public abstract class GetViewValueNode extends JavaScriptNode {
 
         assert getIndex + viewOffset <= Integer.MAX_VALUE;
         int bufferIndex = (int) (getIndex + viewOffset);
-        TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, JSArrayBuffer.isJSInteropArrayBuffer(buffer)));
-        return strategy.getBufferElement(buffer, bufferIndex, isLittleEndian);
+        boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
+        TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
+        return strategy.getBufferElement(buffer, bufferIndex, isLittleEndian, isInteropBuffer ? getInterop() : null);
+    }
+
+    private InteropLibrary getInterop() {
+        InteropLibrary lib = interopLibrary;
+        if (lib == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            interopLibrary = lib = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+        }
+        return lib;
     }
 
     public static GetViewValueNode create(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian) {

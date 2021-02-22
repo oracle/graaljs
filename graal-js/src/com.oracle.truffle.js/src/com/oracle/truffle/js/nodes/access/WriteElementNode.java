@@ -732,15 +732,15 @@ public class WriteElementNode extends JSTargetableNode {
             return new WritableArrayWriteElementCacheNode(array, next);
         } else if (array instanceof TypedArray) {
             if (array instanceof TypedArray.AbstractUint32Array) {
-                return new Uint32ArrayWriteElementCacheNode(array, next);
+                return new Uint32ArrayWriteElementCacheNode((TypedArray) array, next);
             } else if (array instanceof TypedArray.AbstractUint8ClampedArray) {
-                return new Uint8ClampedArrayWriteElementCacheNode(array, next);
+                return new Uint8ClampedArrayWriteElementCacheNode((TypedArray) array, next);
             } else if (array instanceof TypedIntArray) {
-                return new TypedIntArrayWriteElementCacheNode(array, next);
+                return new TypedIntArrayWriteElementCacheNode((TypedArray) array, next);
             } else if (array instanceof TypedFloatArray) {
-                return new TypedFloatArrayWriteElementCacheNode(array, next);
+                return new TypedFloatArrayWriteElementCacheNode((TypedArray) array, next);
             } else if (array instanceof TypedBigIntArray) {
-                return new TypedBigIntArrayWriteElementCacheNode(array, next);
+                return new TypedBigIntArrayWriteElementCacheNode((TypedArray) array, next);
             } else {
                 throw Errors.shouldNotReachHere();
             }
@@ -780,12 +780,6 @@ public class WriteElementNode extends JSTargetableNode {
 
         protected final ScriptArray getArrayType() {
             return arrayType;
-        }
-
-        protected void checkDetachedArrayBuffer(DynamicObject target, WriteElementNode root) {
-            if (JSArrayBufferView.hasDetachedBuffer(target, root.context)) {
-                throw Errors.createTypeErrorDetachedBuffer();
-            }
         }
     }
 
@@ -1453,10 +1447,25 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private abstract static class AbstractTypedIntArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    private abstract static class AbstractTypedArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+        @Child protected InteropLibrary interop;
+
+        AbstractTypedArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+            super(arrayType, arrayCacheNext);
+            this.interop = arrayType.isInterop() ? InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit) : InteropLibrary.getUncached();
+        }
+
+        protected void checkDetachedArrayBuffer(DynamicObject target, WriteElementNode root) {
+            if (JSArrayBufferView.hasDetachedBuffer(target, root.context)) {
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+        }
+    }
+
+    private abstract static class AbstractTypedIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
         private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
 
-        AbstractTypedIntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+        AbstractTypedIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
         }
 
@@ -1466,7 +1475,7 @@ public class WriteElementNode extends JSTargetableNode {
             int iValue = toInt(value); // could throw
             checkDetachedArrayBuffer(target, root);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index))) {
-                typedArray.setInt(target, (int) index, iValue);
+                typedArray.setInt(target, (int) index, iValue, interop);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }
@@ -1479,7 +1488,7 @@ public class WriteElementNode extends JSTargetableNode {
     private static class TypedIntArrayWriteElementCacheNode extends AbstractTypedIntArrayWriteElementCacheNode {
         @Child private JSToInt32Node toIntNode;
 
-        TypedIntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+        TypedIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
             this.toIntNode = JSToInt32Node.create();
         }
@@ -1490,12 +1499,12 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class TypedBigIntArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    private static class TypedBigIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
 
         @Child private JSToBigIntNode toBigIntNode;
         private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
 
-        TypedBigIntArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+        TypedBigIntArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
             this.toBigIntNode = JSToBigIntNode.create();
         }
@@ -1506,7 +1515,7 @@ public class WriteElementNode extends JSTargetableNode {
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
             checkDetachedArrayBuffer(target, root);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index))) {
-                typedArray.setBigInt(target, (int) index, biValue);
+                typedArray.setBigInt(target, (int) index, biValue, interop);
             }
             return true;
         }
@@ -1516,7 +1525,7 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToDoubleNode toDoubleNode;
 
-        Uint8ClampedArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+        Uint8ClampedArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
         }
 
@@ -1543,7 +1552,7 @@ public class WriteElementNode extends JSTargetableNode {
         private final ConditionProfile toIntProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToNumberNode toNumberNode;
 
-        Uint32ArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+        Uint32ArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
         }
 
@@ -1565,11 +1574,11 @@ public class WriteElementNode extends JSTargetableNode {
         }
     }
 
-    private static class TypedFloatArrayWriteElementCacheNode extends ArrayClassGuardCachedArrayWriteElementCacheNode {
+    private static class TypedFloatArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
         private final ConditionProfile inBoundsProfile = ConditionProfile.createBinaryProfile();
         @Child private JSToDoubleNode toDoubleNode;
 
-        TypedFloatArrayWriteElementCacheNode(ScriptArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
+        TypedFloatArrayWriteElementCacheNode(TypedArray arrayType, ArrayWriteElementCacheNode arrayCacheNext) {
             super(arrayType, arrayCacheNext);
             this.toDoubleNode = JSToDoubleNode.create();
         }
@@ -1580,7 +1589,7 @@ public class WriteElementNode extends JSTargetableNode {
             double dValue = toDouble(value); // could throw
             checkDetachedArrayBuffer(target, root);
             if (inBoundsProfile.profile(typedArray.hasElement(target, index))) {
-                typedArray.setDouble(target, (int) index, dValue);
+                typedArray.setDouble(target, (int) index, dValue, interop);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
             }

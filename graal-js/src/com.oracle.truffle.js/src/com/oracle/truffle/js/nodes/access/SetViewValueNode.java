@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -53,6 +57,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -60,8 +65,6 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * @see GetViewValueNode
@@ -76,6 +79,7 @@ public abstract class SetViewValueNode extends JavaScriptNode {
     @Child private JSToBooleanNode toBooleanNode;
     @Child private JSToNumberNode toNumberNode;
     @Child private JSToBigIntNode toBigIntNode;
+    @Child private InteropLibrary interopLibrary;
 
     protected SetViewValueNode(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
         this(context, GetViewValueNode.typedArrayFactoryFromType(type, context), view, requestIndex, isLittleEndian, value);
@@ -131,9 +135,19 @@ public abstract class SetViewValueNode extends JavaScriptNode {
 
         assert getIndex + viewOffset <= Integer.MAX_VALUE;
         int bufferIndex = (int) (getIndex + viewOffset);
-        TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, JSArrayBuffer.isJSInteropArrayBuffer(buffer)));
-        strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, numberValue);
+        boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
+        TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
+        strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, numberValue, isInteropBuffer ? getInterop() : null);
         return Undefined.instance;
+    }
+
+    private InteropLibrary getInterop() {
+        InteropLibrary lib = interopLibrary;
+        if (lib == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            interopLibrary = lib = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+        }
+        return lib;
     }
 
     public static SetViewValueNode create(JSContext context, String type, JavaScriptNode view, JavaScriptNode requestIndex, JavaScriptNode isLittleEndian, JavaScriptNode value) {
