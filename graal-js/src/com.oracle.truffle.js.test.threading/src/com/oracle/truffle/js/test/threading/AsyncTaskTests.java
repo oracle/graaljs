@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class AsyncTaskTests {
@@ -124,9 +125,9 @@ public class AsyncTaskTests {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(err).build()) {
-            // Expose a Java method as a JavaScript function.
-            cx.getBindings("js").putMember("javaPromiseInstance", (ThenableInt) (onResolve, onReject) -> {
-                // Submit a JavaScript function for async execution in another thread.
+            // Expose a Java thenable object as a JavaScript Promise.
+            cx.getBindings("js").putMember("javaThenableInstance", (ThenableInt) (onResolve, onReject) -> {
+                // Submit a completable future for async execution in another thread.
                 CompletableFuture.supplyAsync(() -> {
                     asyncTaskExecuted.set(true);
                     synchronized (cx) {
@@ -156,7 +157,7 @@ public class AsyncTaskTests {
             // executor.
             Value asyncJsFunction = cx.eval("js", "(async function() {" +
                             "    console.log('pre');" +
-                            "    var post = await javaPromiseInstance;" +
+                            "    var post = await javaThenableInstance;" +
                             "    console.log(post);" +
                             "})");
             // The callback will execute a JS function in another concurrent thread. Synchronization
@@ -173,6 +174,76 @@ public class AsyncTaskTests {
             Assert.assertEquals("pre\npost\n", new String(out.toByteArray()));
             Assert.assertEquals(42, asyncJsResult.get());
         }
+    }
+
+    /**
+     * Asynchronous execution in Java can be mapped to a JavaScript Promise. JavaScript code can
+     * wait on multiple Java completable futures.
+     */
+    @Test
+    public void completableFuturePromiseAll() throws InterruptedException {
+        final AtomicInteger asyncTasksExecuted = new AtomicInteger(0);
+        final AtomicReference<Throwable> asyncException = new AtomicReference<>();
+        final ForkJoinPool testExecutor = new ForkJoinPool();
+        final ByteArrayOutputStream out = new ByteArrayOutputStream();
+        final ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(err).build()) {
+            // Register three Java async tasks in the Polyglot context. JavaScript will treat them
+            // as Promise objects.
+            cx.getBindings("js").putMember("javaThenable1", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 39));
+            cx.getBindings("js").putMember("javaThenable2", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 1));
+            cx.getBindings("js").putMember("javaThenable3", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 2));
+            // Create an async JS function that will wait for an async task executed in a Java async
+            // executor.
+            Value asyncJsFunction = cx.eval("js", "(async function() {" +
+                            "    console.log('pre');" +
+                            "    var all = await Promise.all([javaThenable1, javaThenable2, javaThenable3]);" +
+                            "    console.log('post');" +
+                            "    console.log(all.reduce((x,y)=>x+y));" +
+                            "})");
+            // The callback will execute a JS function in another concurrent thread. Synchronization
+            // is needed to prevent data races.
+            synchronized (cx) {
+                // Execute the JS function. Context enter and leave are implicit.
+                asyncJsFunction.executeVoid();
+            }
+            testExecutor.shutdown();
+            testExecutor.awaitTermination(1, TimeUnit.MINUTES);
+            Assert.assertNull(asyncException.get());
+            Assert.assertEquals(3, asyncTasksExecuted.get());
+            Assert.assertTrue(new String(err.toByteArray()).isEmpty());
+            Assert.assertEquals("pre\npost\n42\n", new String(out.toByteArray()));
+        }
+    }
+
+    private static ThenableInt createThenable(AtomicInteger asyncTaskExecuted, AtomicReference<Throwable> asyncException, ForkJoinPool testExecutor, Context cx, int result) {
+        return (onResolve, onReject) -> {
+            // Submit a Java function for async execution in another thread.
+            CompletableFuture.runAsync(() -> {
+                asyncTaskExecuted.incrementAndGet();
+                try {
+                    // Simulate some parallel work.
+                    // For example, blocking IO or a long-running Java method call.
+                    Thread.sleep(500);
+                } catch (InterruptedException ex) {
+                    asyncException.set(ex);
+                }
+                synchronized (cx) {
+                    // Re-enter context.
+                    cx.enter();
+                    try {
+                        // Resolve the JS Promise using an integer value.
+                        // Execution flow will continue in the JS engine.
+                        onResolve.execute(result);
+                    } catch (Throwable t) {
+                        onReject.executeVoid(t);
+                    } finally {
+                        // Leave context.
+                        cx.leave();
+                    }
+                }
+            }, testExecutor).whenComplete((r, ex) -> asyncException.set(ex));
+        };
     }
 
     /**
