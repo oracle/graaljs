@@ -19,6 +19,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -582,6 +583,43 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECONDS, mus * sign);
         JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECONDS, ns * sign);
         return result;
+    }
+
+    // 7.5.14
+    public static DynamicObject unbalanceDurationRelative(long years, long months, long weeks, long days,
+                                                          String largestUnit, DynamicObject relativeTo, JSRealm realm) {
+        if(largestUnit.equals(YEARS) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
+            DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
+        }
+        long sign = JSTemporalDuration.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        assert sign != 0;
+        DynamicObject oneYear = JSTemporalDuration.createTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, realm);
+        DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, realm);
+        DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, realm);
+        DynamicObject oneDay = JSTemporalDuration.createTemporalDuration(0, 0, 0, sign, 0, 0, 0, 0, 0, 0, realm);
+        DynamicObject calendar = null;
+        if (relativeTo != null) {
+            assert JSObject.hasProperty(relativeTo, "calendar");
+            calendar = (DynamicObject) JSObject.get(relativeTo, "calendar");
+        }
+        if (largestUnit.equals(MONTHS)) {
+            if (calendar == null) {
+                throw Errors.createRangeError("No calender provided.");
+            }
+            // TODO: Get function dateAdd
+            // TODO: Get function dateUntil
+            DynamicObject untilOptions = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), untilOptions, "largestUnit", "months");
+            while (Math.abs(years) > 0) {
+                // TODO: Call dateAdd
+                // TODO: call dateUntil
+
+            }
+        }
     }
 
     // 7.5.16
