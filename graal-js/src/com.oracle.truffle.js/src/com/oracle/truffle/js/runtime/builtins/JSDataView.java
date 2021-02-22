@@ -67,12 +67,12 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     private static final String BUFFER = "buffer";
     private static final String BYTE_OFFSET = "byteOffset";
 
-    public static int typedArrayGetLength(DynamicObject thisObj) {
+    public static int typedArrayGetLength(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getLength(thisObj);
     }
 
-    public static int typedArrayGetOffset(DynamicObject thisObj) {
+    public static int typedArrayGetOffset(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getOffset(thisObj);
     }
@@ -80,7 +80,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     private JSDataView() {
     }
 
-    public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
+    public static DynamicObject getArrayBuffer(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getArrayBuffer(thisObj);
     }

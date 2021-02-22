@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,32 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewGetNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewSetNodeGen;
-import com.oracle.truffle.js.nodes.access.GetViewValueNode;
-import com.oracle.truffle.js.nodes.access.SetViewValueNode;
+import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DataViewPrototypeBuiltins.DataViewPrototype> {
 
@@ -125,18 +138,73 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         return null;
     }
 
+    public abstract static class DataViewAccessNode extends JSBuiltinNode {
+        protected final TypedArrayFactory factory;
+        @Child protected JSToBooleanNode toBooleanNode;
+        @Child private InteropLibrary interopLibrary;
+
+        public DataViewAccessNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.factory = typedArrayFactoryFromType(builtin.getName().substring(3), context);
+            this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
+        }
+
+        private static TypedArrayFactory typedArrayFactoryFromType(String type, JSContext context) {
+            for (TypedArrayFactory factory : TypedArray.factories(context)) {
+                if (factory.getName().startsWith(type)) {
+                    return factory;
+                }
+            }
+            throw new IllegalArgumentException(type);
+        }
+
+        protected final InteropLibrary getInterop() {
+            InteropLibrary lib = interopLibrary;
+            if (lib == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopLibrary = lib = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+            }
+            return lib;
+        }
+    }
+
     @ImportStatic({JSDataView.class})
-    public abstract static class DataViewGetNode extends JSBuiltinNode {
-        @Child private GetViewValueNode getViewValueNode;
+    public abstract static class DataViewGetNode extends DataViewAccessNode {
 
         public DataViewGetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getViewValueNode = GetViewValueNode.create(context, builtin.getName().substring(3), null, null, null);
         }
 
         @Specialization(guards = "isJSDataView(dataView)")
-        protected Object doDataView(DynamicObject dataView, Object byteOffset, Object littleEndian) {
-            return getViewValueNode.execute(dataView, byteOffset, littleEndian);
+        protected final Object doDataView(Object dataView, Object byteOffset, Object littleEndian,
+                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached("create()") BranchProfile errorBranch,
+                        @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
+                        @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+            DynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
+            long getIndex = toIndexNode.executeLong(byteOffset);
+            boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
+
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid()) {
+                if (JSArrayBuffer.isDetachedBuffer(buffer)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorDetachedBuffer();
+                }
+            }
+
+            int viewLength = JSDataView.typedArrayGetLength(dataView);
+            int elementSize = factory.getBytesPerElement();
+            if (getIndex + elementSize > viewLength) {
+                errorBranch.enter();
+                throw Errors.createRangeError("index + elementSize > viewLength");
+            }
+            int viewOffset = JSDataView.typedArrayGetOffset(dataView);
+
+            assert getIndex + viewOffset <= Integer.MAX_VALUE;
+            int bufferIndex = (int) (getIndex + viewOffset);
+            boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
+            TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
+            return strategy.getBufferElement(buffer, bufferIndex, isLittleEndian, isInteropBuffer ? getInterop() : null);
         }
 
         @SuppressWarnings("unused")
@@ -147,17 +215,51 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     @ImportStatic({JSDataView.class})
-    public abstract static class DataViewSetNode extends JSBuiltinNode {
-        @Child private SetViewValueNode setViewValueNode;
+    public abstract static class DataViewSetNode extends DataViewAccessNode {
+        @Child private JSToNumberNode toNumberNode;
+        @Child private JSToBigIntNode toBigIntNode;
 
         public DataViewSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setViewValueNode = SetViewValueNode.create(context, builtin.getName().substring(3), null, null, null, null);
+            if (JSRuntime.isTypedArrayBigIntFactory(factory)) {
+                this.toBigIntNode = JSToBigIntNode.create();
+            } else {
+                this.toNumberNode = JSToNumberNode.create();
+            }
         }
 
         @Specialization(guards = "isJSDataView(dataView)")
-        protected Object doDataView(DynamicObject dataView, Object byteOffset, Object value, Object littleEndian) {
-            return setViewValueNode.execute(dataView, byteOffset, littleEndian, value);
+        protected Object doDataView(Object dataView, Object byteOffset, Object value, Object littleEndian,
+                        @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached("create()") BranchProfile errorBranch,
+                        @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
+                        @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+            DynamicObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
+
+            long getIndex = toIndexNode.executeLong(byteOffset);
+            Object numberValue = JSRuntime.isTypedArrayBigIntFactory(factory) ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
+            boolean isLittleEndian = factory.getBytesPerElement() == 1 ? true : toBooleanNode.executeBoolean(littleEndian);
+
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid()) {
+                if (JSArrayBuffer.isDetachedBuffer(buffer)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorDetachedBuffer();
+                }
+            }
+            int viewLength = JSDataView.typedArrayGetLength(dataView);
+            int elementSize = factory.getBytesPerElement();
+            if (getIndex + elementSize > viewLength) {
+                errorBranch.enter();
+                throw Errors.createRangeError("index + elementSize > viewLength");
+            }
+            int viewOffset = JSDataView.typedArrayGetOffset(dataView);
+
+            assert getIndex + viewOffset <= Integer.MAX_VALUE;
+            int bufferIndex = (int) (getIndex + viewOffset);
+            boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
+            TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
+            strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, numberValue, isInteropBuffer ? getInterop() : null);
+            return Undefined.instance;
         }
 
         @SuppressWarnings("unused")
