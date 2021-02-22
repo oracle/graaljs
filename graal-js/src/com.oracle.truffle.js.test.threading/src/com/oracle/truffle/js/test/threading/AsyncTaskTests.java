@@ -125,8 +125,8 @@ public class AsyncTaskTests {
         final ByteArrayOutputStream out = new ByteArrayOutputStream();
         final ByteArrayOutputStream err = new ByteArrayOutputStream();
         try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(err).build()) {
-            // Expose a Java object as a JavaScript Promise.
-            cx.getBindings("js").putMember("javaPromiseInstance", (ThenableInt) (onResolve, onReject) -> {
+            // Expose a Java thenable object as a JavaScript Promise.
+            cx.getBindings("js").putMember("javaThenableInstance", (ThenableInt) (onResolve, onReject) -> {
                 // Submit a completable future for async execution in another thread.
                 CompletableFuture.supplyAsync(() -> {
                     asyncTaskExecuted.set(true);
@@ -157,7 +157,7 @@ public class AsyncTaskTests {
             // executor.
             Value asyncJsFunction = cx.eval("js", "(async function() {" +
                             "    console.log('pre');" +
-                            "    var post = await javaPromiseInstance;" +
+                            "    var post = await javaThenableInstance;" +
                             "    console.log(post);" +
                             "})");
             // The callback will execute a JS function in another concurrent thread. Synchronization
@@ -190,14 +190,14 @@ public class AsyncTaskTests {
         try (Context cx = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowPolyglotAccess(PolyglotAccess.ALL).out(out).err(err).build()) {
             // Register three Java async tasks in the Polyglot context. JavaScript will treat them
             // as Promise objects.
-            cx.getBindings("js").putMember("javaPromise1", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 39));
-            cx.getBindings("js").putMember("javaPromise2", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 1));
-            cx.getBindings("js").putMember("javaPromise3", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 2));
+            cx.getBindings("js").putMember("javaThenable1", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 39));
+            cx.getBindings("js").putMember("javaThenable2", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 1));
+            cx.getBindings("js").putMember("javaThenable3", createThenable(asyncTasksExecuted, asyncException, testExecutor, cx, 2));
             // Create an async JS function that will wait for an async task executed in a Java async
             // executor.
             Value asyncJsFunction = cx.eval("js", "(async function() {" +
                             "    console.log('pre');" +
-                            "    var all = await Promise.all([javaPromise1, javaPromise2, javaPromise3]);" +
+                            "    var all = await Promise.all([javaThenable1, javaThenable2, javaThenable3]);" +
                             "    console.log('post');" +
                             "    console.log(all.reduce((x,y)=>x+y));" +
                             "})");
@@ -219,22 +219,24 @@ public class AsyncTaskTests {
     private static ThenableInt createThenable(AtomicInteger asyncTaskExecuted, AtomicReference<Throwable> asyncException, ForkJoinPool testExecutor, Context cx, int result) {
         return (onResolve, onReject) -> {
             // Submit a Java function for async execution in another thread.
-            CompletableFuture.supplyAsync(() -> {
+            CompletableFuture.runAsync(() -> {
                 asyncTaskExecuted.incrementAndGet();
+                try {
+                    // Simulate some parallel work.
+                    // For example, blocking IO or a long-running Java method call.
+                    Thread.sleep(500);
+                } catch (InterruptedException ex) {
+                    asyncException.set(ex);
+                }
                 synchronized (cx) {
                     // Re-enter context.
                     cx.enter();
                     try {
-                        // Simulate some parallel work.
-                        Thread.sleep(500);
                         // Resolve the JS Promise using an integer value.
                         // Execution flow will continue in the JS engine.
                         onResolve.execute(result);
-                        // Ignore Java completable future result.
-                        return null;
                     } catch (Throwable t) {
                         onReject.executeVoid(t);
-                        return t;
                     } finally {
                         // Leave context.
                         cx.leave();
