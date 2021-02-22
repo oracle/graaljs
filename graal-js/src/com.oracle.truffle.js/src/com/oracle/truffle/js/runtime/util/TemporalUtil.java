@@ -9,9 +9,11 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -19,6 +21,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class TemporalUtil {
+
+    private static final String YEAR = "year";
+    private static final String MONTH = "month";
+    private static final String DAY = "day";
+    private static final String HOUR = "hour";
+    private static final String MINUTE = "minute";
+    private static final String SECOND = "second";
+    private static final String MILLISECOND = "millisecond";
+    private static final String MICROSECOND = "microsecond";
+    private static final String NANOSECOND = "nanosecond";
 
     private static final String YEARS = "years";
     private static final String MONTHS = "months";
@@ -31,16 +43,20 @@ public final class TemporalUtil {
     private static final String MICROSECONDS = "microseconds";
     private static final String NANOSECONDS = "nanoseconds";
 
-    private static final Set<String> singularUnits = toSet("year", "month", "day", "hour", "minute", "second",
-            "millisecond", "microsecond", "nanosecond");
+    private static final Set<String> singularUnits = toSet(YEAR, MONTH, DAY, HOUR, MINUTE, SECOND,
+            MILLISECOND, MICROSECOND, NANOSECOND);
     private static final Set<String> pluralUnits = toSet(YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS,
             MILLISECONDS, MICROSECONDS, NANOSECONDS);
     private static final Map<String, String> pluralToSingular = toMap(
             new String[] {YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS},
-            new String[] {"year", "month", "day", "hour", "minute", "second", "millisecond", "microsecond", "nanosecond"}
+            new String[] {YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND}
+    );
+    private static final Map<String, String> singularToPlural = toMap(
+            new String[] {YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND},
+            new String[] {YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS}
     );
 
-    // 15.1
+    // 13.1
     public static DynamicObject normalizeOptionsObject(DynamicObject options,
                                                        JSRealm realm,
                                                        IsObjectNode isObject) {
@@ -54,7 +70,7 @@ public final class TemporalUtil {
         throw Errors.createTypeError("Options is not undefined and not an object.");
     }
 
-    // 15.2
+    // 13.2
     public static Object getOptions(DynamicObject options, String property, String type,
                                     Set<Object> values, Object fallback,
                                     DynamicObjectLibrary dol, IsObjectNode isObjectNode,
@@ -77,7 +93,7 @@ public final class TemporalUtil {
         return value;
     }
 
-    // 15.3
+    // 13.3
     public static double defaultNumberOptions(Object value, double minimum, double maximum, double fallback,
                                              JSToNumberNode toNumber) {
         if (value == null) {
@@ -90,7 +106,7 @@ public final class TemporalUtil {
         return Math.floor(numberValue);
     }
 
-    // 15.4
+    // 13.4
     public static double getNumberOption(DynamicObject options, String property, double minimum, double maximum,
                                    double fallback, DynamicObjectLibrary dol, IsObjectNode isObject,
                                    JSToNumberNode numberNode) {
@@ -99,7 +115,7 @@ public final class TemporalUtil {
         return defaultNumberOptions(value, minimum, maximum, fallback, numberNode);
     }
 
-    // 15.8
+    // 13.8
     public static String toTemporalOverflow(DynamicObject normalizedOptions,
                                             DynamicObjectLibrary dol,
                                             IsObjectNode isObjectNode,
@@ -111,7 +127,7 @@ public final class TemporalUtil {
                 isObjectNode, toBoolean, toString);
     }
 
-    // 15.11
+    // 13.11
     public static String toTemporalRoundingMode(DynamicObject normalizedOptions, String fallback,
                                                 DynamicObjectLibrary dol, IsObjectNode isObjectNode,
                                                 JSToBooleanNode toBoolean, JSToStringNode toString) {
@@ -119,7 +135,7 @@ public final class TemporalUtil {
                 fallback, dol, isObjectNode, toBoolean, toString);
     }
 
-    // 15.17
+    // 13.17
     public static double toTemporalRoundingIncrement(DynamicObject normalizedOptions, Double dividend, boolean inclusive,
                                                      DynamicObjectLibrary dol, IsObjectNode isObject,
                                                      JSToNumberNode toNumber) {
@@ -141,7 +157,7 @@ public final class TemporalUtil {
         return increment;
     }
 
-    // 15.21
+    // 13.21
     public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits,
                                                 DynamicObjectLibrary dol, IsObjectNode isObjectNode,
                                                 JSToBooleanNode toBoolean, JSToStringNode toString) {
@@ -160,7 +176,21 @@ public final class TemporalUtil {
         return smallestUnit;
     }
 
-    // 15.25
+    // 13.23
+    public static String toTemporalDurationTotalUnit(DynamicObject normalizedOptions,
+                                                     DynamicObjectLibrary dol, IsObjectNode isObjectNode,
+                                                     JSToBooleanNode toBoolean, JSToStringNode toString) {
+        String unit = (String) getOptions(normalizedOptions, "unit", "string", toSet(YEARS, YEAR, MONTHS, MONTH, WEEKS,
+                DAYS, DAY, HOURS, HOUR, MINUTES, MINUTE, SECONDS, SECOND, MILLISECONDS, MILLISECOND, MICROSECONDS,
+                MICROSECOND, NANOSECONDS, NANOSECONDS),
+                null, dol, isObjectNode, toBoolean, toString);
+        if (singularUnits.contains(unit)) {
+            unit = singularToPlural.get(unit);
+        }
+        return unit;
+    }
+
+    // 13.25
     public static DynamicObject toRelativeTemporalObject(DynamicObject options, IsObjectNode isObject,
                                                          DynamicObjectLibrary dol) {
         assert isObject.executeBoolean(options);
@@ -172,7 +202,7 @@ public final class TemporalUtil {
         return null;
     }
 
-    // 15.27
+    // 13.27
     public static String largerOfTwoTemporalDurationUnits(String u1, String u2) {
         if(u1.equals(YEARS) || u2.equals(YEARS)) {
             return YEARS;
@@ -204,7 +234,7 @@ public final class TemporalUtil {
         return NANOSECONDS;
     }
 
-    // 15.30
+    // 13.30
     public static double nonNegativeModulo(double x, double y) {
         double result = x % y;
         if (result == -0) {
@@ -216,17 +246,17 @@ public final class TemporalUtil {
         return result;
     }
 
-    // 15.32
+    // 13.32
     public static long constraintToRange(long x, long minimum, long maximum) {
         return Math.min(Math.max(x, minimum), maximum);
     }
 
-    // 15.34
+    // 13.34
     public static double roundHalfAwayFromZero(double x) {
         return Math.round(x);
     }
 
-    // 15.35
+    // 13.35
     public static double roundNumberToIncrement(double x, double increment, String roundingMode) {
         assert roundingMode.equals("ceil") || roundingMode.equals("floor") || roundingMode.equals("trunc")
                 || roundingMode.equals("nearest");

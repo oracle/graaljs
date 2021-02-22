@@ -14,6 +14,7 @@ import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.J
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -24,6 +25,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.util.Collections;
@@ -262,6 +264,26 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (UnexpectedResultException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    // 7.3.21
+    public abstract static class JSTemporalDurationTotal extends JSBuiltinNode {
+
+        protected JSTemporalDurationTotal(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected long total(DynamicObject thisObj, DynamicObject options,
+                             @Cached("create()") IsObjectNode isObject,
+                             @CachedLibrary("options") DynamicObjectLibrary dol,
+                             @Cached("create()") JSToBooleanNode toBoolean,
+                             @Cached("create()") JSToStringNode toString) {
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
+            String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, dol, isObject, toBoolean, toString);
+
         }
     }
 
