@@ -251,6 +251,17 @@ public final class TemporalUtil {
         return Math.min(Math.max(x, minimum), maximum);
     }
 
+    // 13.33
+    public static long sign(long n) {
+        if (n > 0) {
+            return 1;
+        }
+        if (n < 0) {
+            return -1;
+        }
+        return n;
+    }
+
     // 13.34
     public static double roundHalfAwayFromZero(double x) {
         return Math.round(x);

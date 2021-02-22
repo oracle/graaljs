@@ -11,6 +11,7 @@ import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.J
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationSubtractNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -44,6 +45,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         abs(0),
         add(2),
         subtract(2),
+        total(1),
         toString(0),
         toJSON(0),
         valueOf(0);
@@ -73,6 +75,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case subtract:
                 return JSTemporalDurationSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case total:
+                return JSTemporalDurationTotalNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -274,16 +278,80 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
+        @Specialization(limit = "3")
         protected long total(DynamicObject thisObj, DynamicObject options,
                              @Cached("create()") IsObjectNode isObject,
                              @CachedLibrary("options") DynamicObjectLibrary dol,
                              @Cached("create()") JSToBooleanNode toBoolean,
                              @Cached("create()") JSToStringNode toString) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
-            String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, dol, isObject, toBoolean, toString);
-
+            try {
+                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
+                String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, dol, isObject, toBoolean, toString);
+                if(unit == null) {
+                    throw Errors.createRangeError("Unit not defined.");
+                }
+                DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
+                        duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo, dol,
+                        getContext().getRealm());
+                DynamicObject intermediate = null;
+                // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes intermediate = moveRelativeZonedDateTime()
+                DynamicObject balanceResult = JSTemporalDuration.balanceDuration(
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.DAYS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.NANOSECONDS, 0),
+                        unit, intermediate, getContext().getRealm()
+                );
+                DynamicObject roundResult = JSTemporalDuration.roundDuration(
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.YEARS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.MONTHS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.WEEKS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.DAYS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.NANOSECONDS, 0),
+                        1, unit,"trunc", relativeTo, dol, getContext().getRealm()
+                );
+                long whole = 0;
+                if (unit.equals(JSTemporalDuration.YEARS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.YEARS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.MONTHS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.MONTHS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.WEEKS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.WEEKS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.DAYS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.DAYS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.HOURS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.HOURS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.MINUTES)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.MINUTES, 0);
+                }
+                if (unit.equals(JSTemporalDuration.SECONDS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.SECONDS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.MILLISECONDS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.MILLISECONDS, 0);
+                }
+                if (unit.equals(JSTemporalDuration.MICROSECONDS)) {
+                    whole = dol.getLongOrDefault(roundResult, JSTemporalDuration.MICROSECONDS, 0);
+                }
+                return whole + dol.getLongOrDefault(roundResult, "remainder", 0);
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 
