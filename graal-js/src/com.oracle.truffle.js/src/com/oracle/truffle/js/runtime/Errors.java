@@ -530,6 +530,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorReadOnlyBuffer() {
+        return Errors.createTypeError("Read-only buffer");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorArrayBufferExpected() {
         return Errors.createTypeError("ArrayBuffer expected");
     }

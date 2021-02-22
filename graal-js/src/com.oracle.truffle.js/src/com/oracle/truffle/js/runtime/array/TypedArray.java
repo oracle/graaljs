@@ -408,7 +408,9 @@ public abstract class TypedArray extends ScriptArray {
             InteropLibrary interop = InteropLibrary.getUncached(buffer);
             try {
                 interop.writeBufferByte(buffer, byteIndex, value);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
         }
@@ -685,7 +687,9 @@ public abstract class TypedArray extends ScriptArray {
             InteropLibrary interop = InteropLibrary.getUncached(buffer);
             try {
                 interop.writeBufferShort(buffer, order, byteIndex, value);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
         }
@@ -853,7 +857,9 @@ public abstract class TypedArray extends ScriptArray {
             InteropLibrary interop = InteropLibrary.getUncached(buffer);
             try {
                 interop.writeBufferInt(buffer, order, byteIndex, value);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
         }
@@ -1125,7 +1131,9 @@ public abstract class TypedArray extends ScriptArray {
             InteropLibrary interop = InteropLibrary.getUncached(buffer);
             try {
                 interop.writeBufferLong(buffer, order, byteIndex, value);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
         }
@@ -1354,7 +1362,9 @@ public abstract class TypedArray extends ScriptArray {
             InteropLibrary interop = InteropLibrary.getUncached(buffer);
             try {
                 interop.writeBufferFloat(buffer, order, byteIndex, value);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
         }
@@ -1452,7 +1462,9 @@ public abstract class TypedArray extends ScriptArray {
             InteropLibrary interop = InteropLibrary.getUncached(buffer);
             try {
                 interop.writeBufferDouble(buffer, order, byteIndex, value);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
                 throw indexOfOutBoundsException();
             }
         }
