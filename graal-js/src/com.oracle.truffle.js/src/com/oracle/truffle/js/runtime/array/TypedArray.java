@@ -248,6 +248,10 @@ public abstract class TypedArray extends ScriptArray {
 
     public abstract void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop);
 
+    public static TypedArrayFactory[] factories() {
+        return TypedArrayFactory.FACTORIES;
+    }
+
     public static TypedArrayFactory[] factories(JSContext context) {
         if (context.getContextOptions().isBigInt()) {
             return TypedArrayFactory.FACTORIES;

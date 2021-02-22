@@ -145,12 +145,12 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         public DataViewAccessNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.factory = typedArrayFactoryFromType(builtin.getName().substring(3), context);
+            this.factory = typedArrayFactoryFromType(builtin.getName().substring(3));
             this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
         }
 
-        private static TypedArrayFactory typedArrayFactoryFromType(String type, JSContext context) {
-            for (TypedArrayFactory factory : TypedArray.factories(context)) {
+        private static TypedArrayFactory typedArrayFactoryFromType(String type) {
+            for (TypedArrayFactory factory : TypedArray.factories()) {
                 if (factory.getName().startsWith(type)) {
                     return factory;
                 }

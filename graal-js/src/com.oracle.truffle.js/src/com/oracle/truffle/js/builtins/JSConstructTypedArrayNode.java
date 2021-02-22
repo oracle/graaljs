@@ -110,11 +110,11 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     public JSConstructTypedArrayNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.factory = findTypedArrayFactory(builtin.getName(), context);
+        this.factory = findTypedArrayFactory(builtin.getName());
     }
 
-    private static TypedArrayFactory findTypedArrayFactory(String name, JSContext context) {
-        for (TypedArrayFactory typedArrayFactory : TypedArray.factories(context)) {
+    private static TypedArrayFactory findTypedArrayFactory(String name) {
+        for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
             if (typedArrayFactory.getName().equals(name)) {
                 return typedArrayFactory;
             }
