@@ -158,6 +158,27 @@ public final class TemporalUtil {
     }
 
     // 13.21
+    public static String toLargestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String defaultUnit,
+                                               DynamicObjectLibrary dol, IsObjectNode isObjectNode,
+                                               JSToBooleanNode toBoolean, JSToStringNode toString) {
+        assert !disallowedUnits.contains(defaultUnit) && !disallowedUnits.contains("auto");
+        String largestUnit = (String) getOptions(normalizedOptions, "largestUnit", "string", toSet(
+                "auto", "year", "years", "month", "months", "week", "weeks", "day", "days", "hour",
+                "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
+                "microseconds", "nanosecond", "nanoseconds"), "auto", dol, isObjectNode, toBoolean, toString);
+        if (largestUnit.equals("auto")) {
+            return defaultUnit;
+        }
+        if (singularUnits.contains(largestUnit)) {
+            largestUnit = singularToPlural.get(largestUnit);
+        }
+        if (disallowedUnits.contains(largestUnit)) {
+            throw Errors.createRangeError("Largest unit is not allowed.");
+        }
+        return largestUnit;
+    }
+
+    // 13.22
     public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits,
                                                 DynamicObjectLibrary dol, IsObjectNode isObjectNode,
                                                 JSToBooleanNode toBoolean, JSToStringNode toString) {
@@ -171,12 +192,29 @@ public final class TemporalUtil {
             smallestUnit = pluralToSingular.get(smallestUnit);
         }
         if(disallowedUnits.contains(smallestUnit)) {
-            throw Errors.createRangeError("Smallest unit not allowed");
+            throw Errors.createRangeError("Smallest unit not allowed.");
         }
         return smallestUnit;
     }
 
     // 13.23
+    public static String toSmallestTemporalDurationUnit(DynamicObject normalizedOptions, String fallback, Set<String> disallowedUnits,
+                                                        DynamicObjectLibrary dol, IsObjectNode isObjectNode,
+                                                        JSToBooleanNode toBoolean, JSToStringNode toString) {
+        String smallestUnit = (String) getOptions(normalizedOptions, "smallestUnit", "string", toSet(
+                "year", "years", "month", "months", "week", "weeks", "day", "days", "hour",
+                "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
+                "microseconds", "nanosecond", "nanoseconds"), fallback, dol , isObjectNode, toBoolean, toString);
+        if (singularUnits.contains(smallestUnit)) {
+            smallestUnit = singularToPlural.get(smallestUnit);
+        }
+        if (disallowedUnits.contains(smallestUnit)) {
+            throw Errors.createRangeError("Smallest unit not allowed.");
+        }
+        return smallestUnit;
+    }
+
+    // 13.24
     public static String toTemporalDurationTotalUnit(DynamicObject normalizedOptions,
                                                      DynamicObjectLibrary dol, IsObjectNode isObjectNode,
                                                      JSToBooleanNode toBoolean, JSToStringNode toString) {
@@ -190,7 +228,7 @@ public final class TemporalUtil {
         return unit;
     }
 
-    // 13.25
+    // 13.26
     public static DynamicObject toRelativeTemporalObject(DynamicObject options, IsObjectNode isObject,
                                                          DynamicObjectLibrary dol) {
         assert isObject.executeBoolean(options);
@@ -203,6 +241,37 @@ public final class TemporalUtil {
     }
 
     // 13.27
+    public static void validateTemporalUnitRange(String largestUnit, String smallestUnit) {
+        if(smallestUnit.equals(YEARS) && !largestUnit.equals(YEARS)) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if (smallestUnit.equals(MONTHS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS)) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if (smallestUnit.equals(WEEKS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS)) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if (smallestUnit.equals(DAYS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS) && !largestUnit.equals(DAYS)) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if (smallestUnit.equals(HOURS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS) && !largestUnit.equals(DAYS) && !largestUnit.equals(HOURS)) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if (smallestUnit.equals(MINUTES) && (largestUnit.equals(SECONDS) || largestUnit.equals(MILLISECONDS) || largestUnit.equals(MICROSECONDS) || largestUnit.equals(NANOSECONDS))) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if(smallestUnit.equals(SECONDS) && (largestUnit.equals(MILLISECONDS) || largestUnit.equals(MICROSECONDS) || largestUnit.equals(NANOSECONDS))) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if(smallestUnit.equals(MILLISECONDS) && (largestUnit.equals(MICROSECONDS) || largestUnit.equals(NANOSECONDS))) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+        if(smallestUnit.equals(MICROSECONDS) && largestUnit.equals(NANOSECONDS)) {
+            throw Errors.createRangeError("Smallest unit is out of range.");
+        }
+    }
+
+    // 13.28
     public static String largerOfTwoTemporalDurationUnits(String u1, String u2) {
         if(u1.equals(YEARS) || u2.equals(YEARS)) {
             return YEARS;
@@ -235,6 +304,21 @@ public final class TemporalUtil {
     }
 
     // 13.30
+    public static Long maximumTemporalDurationRoundingIncrement(String unit) {
+        if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS)) {
+            return null;
+        }
+        if (unit.equals(HOURS)) {
+            return 24L;
+        }
+        if (unit.equals(MINUTES) || unit.equals(SECONDS)) {
+            return 60L;
+        }
+        assert unit.equals(MILLISECONDS) || unit.equals(MICROSECONDS) || unit.equals(NANOSECONDS);
+        return 1000L;
+    }
+
+    // 13.32
     public static double nonNegativeModulo(double x, double y) {
         double result = x % y;
         if (result == -0) {
@@ -244,11 +328,6 @@ public final class TemporalUtil {
             result = result + y;
         }
         return result;
-    }
-
-    // 13.32
-    public static long constraintToRange(long x, long minimum, long maximum) {
-        return Math.min(Math.max(x, minimum), maximum);
     }
 
     // 13.33
@@ -263,11 +342,16 @@ public final class TemporalUtil {
     }
 
     // 13.34
+    public static long constraintToRange(long x, long minimum, long maximum) {
+        return Math.min(Math.max(x, minimum), maximum);
+    }
+
+    // 13.36
     public static double roundHalfAwayFromZero(double x) {
         return Math.round(x);
     }
 
-    // 13.35
+    // 13.37
     public static double roundNumberToIncrement(double x, double increment, String roundingMode) {
         assert roundingMode.equals("ceil") || roundingMode.equals("floor") || roundingMode.equals("trunc")
                 || roundingMode.equals("nearest");
