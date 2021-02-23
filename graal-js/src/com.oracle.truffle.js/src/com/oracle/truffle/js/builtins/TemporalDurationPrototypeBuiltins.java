@@ -9,6 +9,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationSubtractNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
@@ -17,6 +18,7 @@ import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.J
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -45,6 +47,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         abs(0),
         add(2),
         subtract(2),
+        round(1),
         total(1),
         toString(0),
         toJSON(0),
@@ -75,6 +78,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case subtract:
                 return JSTemporalDurationSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case round:
+                return JSTemporalDurationRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case total:
                 return JSTemporalDurationTotalNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toString:
@@ -263,6 +268,116 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0L),
                         dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0L),
                         dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0L),
+                        getContext().getRealm(), callNode
+                );
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
+    // 7.3.20
+    public abstract static class JSTemporalDurationRound extends JSBuiltinNode {
+
+        protected JSTemporalDurationRound(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        protected DynamicObject round(DynamicObject thisObj, DynamicObject options,
+                                         @Cached("create()") IsObjectNode isObject,
+                                         @Cached("create()") JSToStringNode toString,
+                                         @Cached("create()") JSToBooleanNode toBoolean,
+                                         @Cached("create()") JSToNumberNode toNumber,
+                                         @CachedLibrary("options") DynamicObjectLibrary dol,
+                                         @Cached("createNew()") JSFunctionCallNode callNode) {
+            try {
+                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+                if (options == null) {
+                    throw Errors.createTypeError("No options given.");
+                }
+                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                boolean smallestUnitPresent = true;
+                boolean largestUnitPresent = true;
+                String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, null,
+                        Collections.emptySet(), dol, isObject, toBoolean, toString);
+                if (smallestUnit == null) {
+                    smallestUnitPresent = false;
+                    smallestUnit = JSTemporalDuration.NANOSECONDS;
+                }
+                String defaultLargestUnit = JSTemporalDuration.defaultTemporalLargestUnit(duration.getYears(),
+                        duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
+                        duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                        duration.getMicroseconds(), duration.getNanoseconds());
+                defaultLargestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits(defaultLargestUnit, smallestUnit);
+                String largestUnit = TemporalUtil.toLargestTemporalUnit(normalizedOptions, Collections.emptySet(),
+                        null, dol, isObject, toBoolean, toString);
+                if (largestUnit == null) {
+                    largestUnitPresent = false;
+                    largestUnit = defaultLargestUnit;
+                }
+                TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
+                String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, "nearest", dol,
+                        isObject, toBoolean, toString);
+                Long maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+                double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options,
+                        maximum == null ? null : maximum.doubleValue(), false, dol, isObject, toNumber);
+                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, isObject, dol);
+                DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
+                        duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit, relativeTo, dol,
+                        getContext().getRealm());
+                DynamicObject roundResult = JSTemporalDuration.roundDuration(
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.YEARS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.MONTHS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.WEEKS, 0),
+                        dol.getLongOrDefault(unbalanceResult, JSTemporalDuration.DAYS, 0),
+                        duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                        duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
+                        roundingMode, relativeTo, dol, getContext().getRealm()
+                );
+                DynamicObject adjustResult = JSTemporalDuration.adjustRoundedDurationDays(
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.YEARS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.MONTHS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.WEEKS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.DAYS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalDuration.NANOSECONDS, 0),
+                        (long) roundingIncrement, smallestUnit, roundingMode, relativeTo, dol, getContext().getRealm()
+                );
+                DynamicObject balanceResult = JSTemporalDuration.balanceDurationRelative(
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.YEARS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.MONTHS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.WEEKS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.DAYS, 0),
+                        largestUnit, relativeTo, dol, getContext().getRealm()
+                );
+                // TODO: Check if relativeTo has InitializedTemporalZonedDateTime 7.3.22.22
+                DynamicObject result = JSTemporalDuration.balanceDuration(
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.DAYS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(adjustResult, JSTemporalDuration.NANOSECONDS, 0),
+                        largestUnit, relativeTo, getContext().getRealm()
+                );
+                return JSTemporalDuration.createTemporalDurationFromInstance(
+                        duration,
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.YEARS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.MONTHS, 0),
+                        dol.getLongOrDefault(balanceResult, JSTemporalDuration.WEEKS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.DAYS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0),
                         getContext().getRealm(), callNode
                 );
             } catch (UnexpectedResultException e) {

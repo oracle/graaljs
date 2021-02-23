@@ -682,6 +682,98 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return null;
     }
 
+    // 7.5.15
+    public static DynamicObject balanceDurationRelative(long years, long months, long weeks, long days, String largestUnit, DynamicObject relativeTo, DynamicObjectLibrary dol, JSRealm realm) {
+        try {
+            if ((!largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS)) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
+                DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
+            }
+            long sign = durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+            assert sign != 0;
+            DynamicObject oneYear = createTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, realm);
+            DynamicObject oneMonth = createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, realm);
+            DynamicObject oneWeek = createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, realm);
+            if (relativeTo == null) {
+                throw Errors.createRangeError("RelativeTo should not be null.");
+            }
+            assert dol.containsKey(relativeTo, "calendar");
+            DynamicObject calendar = (DynamicObject) dol.getOrDefault(relativeTo, "calendar", null);
+            if (largestUnit.equals(YEARS)) {
+                DynamicObject dateAdd = null;   // TODO: Get method dateAdd
+                DynamicObject addOptions = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+                DynamicObject dateUntil = null; // TODO: Get method dateUntil
+                DynamicObject untilOptions = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+                JSObjectUtil.putDataProperty(realm.getContext(), untilOptions, "largestUnit", MONTHS);
+                DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, dol, realm);
+                relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                long oneYearDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                while (Math.abs(days) >= Math.abs(oneYearDays)) {
+                    days = days - oneYearDays;
+                    years = years + sign;
+                    moveResult = moveRelativeDate(calendar, relativeTo, oneYear, dol, realm);
+                    relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                    oneYearDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                }
+                moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, dol, realm);
+                relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                long oneMonthDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                while (Math.abs(days) >= Math.abs(oneMonthDays)) {
+                    days = days - oneMonthDays;
+                    months = months + sign;
+                    moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, dol, realm);
+                    relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                    oneMonthDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                }
+                DynamicObject newRelativeTo = null; // TODO: Call dateAdd
+                DynamicObject untilResult = null;   // TODO: Call dateUntil
+                long oneYearMonths = dol.getLongOrDefault(untilResult, MONTHS, 0);
+                while (Math.abs(months) >= Math.abs((oneYearMonths))) {
+                    months = months - oneYearMonths;
+                    years = years + sign;
+                    relativeTo = newRelativeTo;
+                    newRelativeTo = null;   // TODO: Call dateAdd
+                    untilResult = null;     // TODO: Call dateUntil
+                    oneYearMonths = dol.getLongOrDefault(untilResult, MONTHS, 0);
+                }
+            } else if (largestUnit.equals(MONTHS)) {
+                DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, dol, realm);
+                relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                long oneMonthDays = dol.getLongOrDefault(moveResult, DAYS, null);
+                while (Math.abs(days) >= Math.abs(oneMonthDays)) {
+                    days = days - oneMonthDays;
+                    months = months + sign;
+                    moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, dol, realm);
+                    relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                    oneMonthDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                }
+            } else {
+                assert largestUnit.equals(WEEKS);
+                DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, dol, realm);
+                relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                long oneWeekDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                while (Math.abs(days) >= Math.abs(oneWeekDays)) {
+                    days = days - oneWeekDays;
+                    weeks = weeks + sign;
+                    moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, dol, realm);
+                    relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
+                    oneWeekDays = dol.getLongOrDefault(moveResult, DAYS, 0);
+                }
+            }
+            DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
+            return record;
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // 7.5.16
     public static DynamicObject addDuration(long y1, long mon1, long w1, long d1, long h1, long min1, long s1, long ms1, long mus1, long ns1,
                                             long y2, long mon2, long w2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
@@ -940,6 +1032,69 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             JSObjectUtil.putDataProperty(realm.getContext(), record, MICROSECONDS, microseconds);
             JSObjectUtil.putDataProperty(realm.getContext(), record, NANOSECONDS, nanoseconds);
             JSObjectUtil.putDataProperty(realm.getContext(), record, "remainder", remainder);
+            return record;
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // 7.5.21
+    public static DynamicObject adjustRoundedDurationDays(long years, long months, long weeks, long days, long hours,
+                                                          long minutes, long seconds, long milliseconds, long microseconds,
+                                                          long nanoseconds, long increment, String unit,
+                                                          String roundingMode, DynamicObject relativeTo,
+                                                          DynamicObjectLibrary dol, JSRealm realm) {
+        try {
+            if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) || // TODO: CHeck for InitializedTemporalZonedDateTime internal slot
+                    (unit.equals(NANOSECONDS) && increment == 1)) {
+                DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, HOURS, hours);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MINUTES, minutes);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, SECONDS, seconds);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MILLISECONDS, milliseconds);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MICROSECONDS, microseconds);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, NANOSECONDS, nanoseconds);
+                return record;
+            }
+            long timeRemainderNs = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+            long direction = TemporalUtil.sign(timeRemainderNs);
+            long dayStart = 0; // TODO: Call addZonedDateTime
+            long dayEnd = 0; // TODO: Call addZonedDateTime
+            long dayLengthNs = dayEnd - dayStart;
+            if ((timeRemainderNs - dayLengthNs) * direction < 0) {
+                DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, HOURS, hours);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MINUTES, minutes);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, SECONDS, seconds);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MILLISECONDS, milliseconds);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MICROSECONDS, microseconds);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, NANOSECONDS, nanoseconds);
+                return record;
+            }
+            timeRemainderNs = 0; // TODO: Call roundTemporalInstant
+            DynamicObject adjustedDateDuration = addDuration(years, months, weeks, days, 0, 0, 0, 0,
+                    0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
+                    relativeTo, realm, dol);
+            DynamicObject adjustedTimeDuration = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", null, realm);
+            DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, dol.getLongOrDefault(adjustedDateDuration, YEARS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, dol.getLongOrDefault(adjustedDateDuration, MONTHS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, dol.getLongOrDefault(adjustedDateDuration, WEEKS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, dol.getLongOrDefault(adjustedDateDuration, DAYS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, HOURS, dol.getLongOrDefault(adjustedTimeDuration, HOURS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MINUTES, dol.getLongOrDefault(adjustedTimeDuration, MINUTES, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, SECONDS, dol.getLongOrDefault(adjustedTimeDuration, SECONDS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MILLISECONDS, dol.getLongOrDefault(adjustedTimeDuration, MILLISECONDS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, MICROSECONDS, dol.getLongOrDefault(adjustedTimeDuration, MICROSECONDS, 0));
+            JSObjectUtil.putDataProperty(realm.getContext(), record, NANOSECONDS, dol.getLongOrDefault(adjustedTimeDuration, NANOSECONDS, 0));
             return record;
         } catch (UnexpectedResultException e) {
             throw new RuntimeException(e);
