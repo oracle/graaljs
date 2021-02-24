@@ -142,7 +142,10 @@ async function pump(iterable, writable, finish) {
 function pipeline(...streams) {
   const callback = once(popCallback(streams));
 
-  if (ArrayIsArray(streams[0])) streams = streams[0];
+  // stream.pipeline(streams, callback)
+  if (ArrayIsArray(streams[0]) && streams.length === 1) {
+    streams = streams[0];
+  }
 
   if (streams.length < 2) {
     throw new ERR_MISSING_ARGS('streams');
@@ -210,7 +213,7 @@ function pipeline(...streams) {
         }
       } else {
         if (!PassThrough) {
-          PassThrough = require('_stream_passthrough');
+          PassThrough = require('internal/streams/passthrough');
         }
 
         // If the last argument to pipeline is not a stream

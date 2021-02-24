@@ -535,6 +535,14 @@ function getEmptyFormatArray() {
   return [];
 }
 
+function isInstanceof(object, proto) {
+  try {
+    return object instanceof proto;
+  } catch {
+    return false;
+  }
+}
+
 function getConstructorName(obj, ctx, recurseTimes, protoProps) {
   let firstProto;
   const tmp = obj;
@@ -543,7 +551,7 @@ function getConstructorName(obj, ctx, recurseTimes, protoProps) {
     if (descriptor !== undefined &&
         typeof descriptor.value === 'function' &&
         descriptor.value.name !== '' &&
-        tmp instanceof descriptor.value) {
+        isInstanceof(tmp, descriptor.value)) {
       if (protoProps !== undefined &&
          (firstProto !== obj ||
          !builtInObjects.has(descriptor.value.name))) {
@@ -645,7 +653,7 @@ function addPrototypeProperties(ctx, main, obj, recurseTimes, output) {
 
 function getPrefix(constructor, tag, fallback, size = '') {
   if (constructor === null) {
-    if (tag !== '') {
+    if (tag !== '' && fallback !== tag) {
       return `[${fallback}${size}: null prototype] [${tag}] `;
     }
     return `[${fallback}${size}: null prototype] `;
@@ -979,7 +987,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       braces[0] = `${getPrefix(constructor, tag, 'WeakMap')}{`;
       formatter = ctx.showHidden ? formatWeakMap : formatWeakCollection;
     } else if (isModuleNamespaceObject(value)) {
-      braces[0] = `[${tag}] {`;
+      braces[0] = `${getPrefix(constructor, tag, 'Module')}{`;
       // Special handle keys for namespace objects.
       formatter = formatNamespaceObject.bind(null, keys);
     } else if (isBoxedPrimitive(value)) {
