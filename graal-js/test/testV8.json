@@ -1550,6 +1550,12 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1038178.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1041232.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
