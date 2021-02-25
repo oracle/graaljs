@@ -11,9 +11,11 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
 * git (to download, update, and locate repositories)
 * Java JDK 8 or newer
 
+Building the Node.js support is optional, and requires additional tools, see futher below.
+
 ### Building
 
-1. to build GraalVM JavaScript from sources you need to clone several repositories. We recommend to do it in a dedicated directory:
+1. to build GraalVM JavaScript from sources you need to clone several repositories, at least `graaljs`, `mx` and `graal`. We recommend to put them in a dedicated directory:
     ```bash
     mkdir graalvm
     cd graalvm
@@ -24,6 +26,7 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
     git clone https://github.com/graalvm/mx.git
     export PATH=$PWD/mx:$PATH
     ```
+    You can put `mx` in your `graalvm` folder, but anywhere else in the system is fine as you are putting it on the `PATH` anyway.
 
 3. clone the `graaljs` repository and enter it:
     ```bash
@@ -62,7 +65,25 @@ The average user will prefer the pre-built binaries as part of [GraalVM](http://
    mx ideinit
    ```
 
-For future updates, you will want to `git pull` in the `graaljs` repository, then call `mx sforceimports` to update the `graal` repository, and then `mx build && mx ideinit` to build and update the IDE configuration.
+For future updates, you will want to `git pull` in the `graaljs` repository, then call `mx sforceimports` (in `graalvm/graaljs/graal-js`) to update the `graal` repository, and then (again in the `graal-js` suite) call `mx build && mx ideinit` to build and update the IDE configuration.
+
+After cloning all required repositories, a possible directory structure could look similar to the following pattern (the first level is the project directory, on the second level are the repositories, on the third level are the `suites` and additional directories of the repositories):
+```bash
+graalvm
+├── graal
+|   ├── compiler
+|   ├── regex
+|   ├── sdk
+|   ├── truffle
+|   `── (some more directories here)
+├── graaljs
+|   ├── graal-js
+|   ├── graal-nodejs
+|   `── docs
+`── mx
+```
+The main requirement here is that `mx` is on the `PATH` and that the two repositories `graaljs` and `graal` are checked out as sibling directories.
+
 
 ### Running
 
