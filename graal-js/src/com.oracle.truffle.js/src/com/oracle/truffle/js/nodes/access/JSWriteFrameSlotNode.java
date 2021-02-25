@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,13 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -131,13 +133,14 @@ abstract class JSWriteScopeFrameSlotNode extends JSWriteFrameSlotNode {
         return value;
     }
 
-    @Specialization(guards = "(isIntegerKind(frame) || isLongKind(frame)) || isDoubleKind(frame)")
-    protected final int doInteger(Frame frame, int value) {
-        if (isIntegerKind(frame)) {
+    @Specialization(guards = "(isIntegerKind(frame, kind) || isLongKind(frame, kind)) || isDoubleKind(frame, kind)")
+    protected final int doInteger(Frame frame, int value,
+                    @Bind("frameDescriptor.getFrameSlotKind(frameSlot)") FrameSlotKind kind) {
+        if (isIntegerKind(frame, kind)) {
             frame.setInt(frameSlot, value);
-        } else if (isLongKind(frame)) {
+        } else if (isLongKind(frame, kind)) {
             frame.setLong(frameSlot, value);
-        } else if (isDoubleKind(frame)) {
+        } else if (isDoubleKind(frame, kind)) {
             frame.setDouble(frameSlot, value);
         }
         return value;
@@ -211,13 +214,14 @@ abstract class JSWriteCurrentFrameSlotNode extends JSWriteFrameSlotNode {
         return value;
     }
 
-    @Specialization(guards = "(isIntegerKind(frame) || isLongKind(frame)) || isDoubleKind(frame)")
-    protected final int doInteger(VirtualFrame frame, int value) {
-        if (isIntegerKind(frame)) {
+    @Specialization(guards = "(isIntegerKind(frame, kind) || isLongKind(frame, kind)) || isDoubleKind(frame, kind)")
+    protected final int doInteger(VirtualFrame frame, int value,
+                    @Bind("frameDescriptor.getFrameSlotKind(frameSlot)") FrameSlotKind kind) {
+        if (isIntegerKind(frame, kind)) {
             frame.setInt(frameSlot, value);
-        } else if (isLongKind(frame)) {
+        } else if (isLongKind(frame, kind)) {
             frame.setLong(frameSlot, value);
-        } else if (isDoubleKind(frame)) {
+        } else if (isDoubleKind(frame, kind)) {
             frame.setDouble(frameSlot, value);
         }
         return value;

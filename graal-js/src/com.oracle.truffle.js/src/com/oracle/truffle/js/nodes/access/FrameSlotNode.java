@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,6 +150,18 @@ public abstract class FrameSlotNode extends JavaScriptNode {
             return isOrSetKind(frame, FrameSlotKind.Long);
         }
 
+        protected final boolean isIntegerKind(Frame frame, FrameSlotKind currentKind) {
+            return isOrSetKind(frame, currentKind, FrameSlotKind.Int);
+        }
+
+        protected final boolean isDoubleKind(Frame frame, FrameSlotKind currentKind) {
+            return isOrSetKind(frame, currentKind, FrameSlotKind.Double);
+        }
+
+        protected final boolean isLongKind(Frame frame, FrameSlotKind currentKind) {
+            return isOrSetKind(frame, currentKind, FrameSlotKind.Long);
+        }
+
         protected final void ensureObjectKind(Frame frame) {
             assert frameDescriptor == frame.getFrameDescriptor();
             if (frameDescriptor.getFrameSlotKind(frameSlot) != FrameSlotKind.Object) {
@@ -159,8 +171,12 @@ public abstract class FrameSlotNode extends JavaScriptNode {
         }
 
         private boolean isOrSetKind(Frame frame, FrameSlotKind targetKind) {
-            assert frameDescriptor == frame.getFrameDescriptor();
             FrameSlotKind currentKind = frameDescriptor.getFrameSlotKind(frameSlot);
+            return isOrSetKind(frame, currentKind, targetKind);
+        }
+
+        private boolean isOrSetKind(Frame frame, FrameSlotKind currentKind, FrameSlotKind targetKind) {
+            assert frameDescriptor == frame.getFrameDescriptor();
             if (currentKind == targetKind) {
                 return true;
             } else if (currentKind == FrameSlotKind.Illegal) {
