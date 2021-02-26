@@ -630,6 +630,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorInvalidBufferSize() {
+        return Errors.createRangeError("Buffer too large");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorInvalidTimeZone(CharSequence timeZoneName) {
         return Errors.createRangeError(String.format("Invalid time zone %s", timeZoneName));
     }

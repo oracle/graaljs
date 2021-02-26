@@ -220,16 +220,18 @@ public class InteropByteBufferTest {
 
     @Test
     public void testDataViewBackedByHostByteBuffer() {
-        testDataViewBackedByHostByteBuffer(false);
-        testDataViewBackedByHostByteBuffer(true);
+        testDataViewBackedByHostByteBuffer(false, true);
+        testDataViewBackedByHostByteBuffer(true, true);
+        testDataViewBackedByHostByteBuffer(false, false);
+        testDataViewBackedByHostByteBuffer(true, false);
     }
 
-    private static void testDataViewBackedByHostByteBuffer(boolean direct) {
+    private static void testDataViewBackedByHostByteBuffer(boolean direct, boolean viaArrayBuffer) {
         ByteBuffer buffer = direct ? ByteBuffer.allocateDirect(32) : ByteBuffer.allocate(32);
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings(ID).putMember("bb", buffer);
             Value dataView = context.eval(ID, "" +
-                            "const ab = new ArrayBuffer(bb);" +
+                            "const ab = " + (viaArrayBuffer ? "new ArrayBuffer(bb)" : "bb") + ";" +
                             "let dv = new DataView(ab);" +
                             "dv;");
             context.eval(ID, "" +

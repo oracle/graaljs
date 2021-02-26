@@ -68,7 +68,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
@@ -195,7 +194,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -1824,7 +1822,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     @ImportStatic({JSConfig.class})
     public abstract static class ConstructArrayBufferNode extends ConstructWithNewTargetNode {
-        private final ConditionProfile badLengthCondition = ConditionProfile.createBinaryProfile();
         private final boolean useShared;
         @Child private GetPrototypeFromConstructorNode getPrototypeFromConstructorNode;
 
@@ -1843,6 +1840,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected DynamicObject constructFromLength(DynamicObject newTarget, Object length,
                         @Cached("create()") JSToIndexNode toIndexNode,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
 
@@ -1851,7 +1849,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 prototype = getPrototypeFromConstructorNode.executeWithConstructor(newTarget);
             }
 
-            if (badLengthCondition.profile(byteLength > getContext().getContextOptions().getMaxTypedArrayLength())) {
+            if (byteLength > getContext().getContextOptions().getMaxTypedArrayLength()) {
+                errorBranch.enter();
                 throw Errors.createRangeError("Array buffer allocation failed");
             }
 
@@ -1874,7 +1873,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
         protected DynamicObject constructFromInteropBuffer(DynamicObject newTarget, Object buffer,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
+            getBufferSizeSafe(buffer, bufferInterop, errorBranch);
             return swapPrototype(JSArrayBuffer.createInteropArrayBuffer(getContext(), buffer), newTarget);
         }
 
@@ -1883,6 +1884,18 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return useShared ? realm.getSharedArrayBufferPrototype() : realm.getArrayBufferPrototype();
         }
 
+        static int getBufferSizeSafe(Object buffer, InteropLibrary bufferInterop, BranchProfile errorBranch) {
+            try {
+                long bufferSize = bufferInterop.getBufferSize(buffer);
+                if (bufferSize < 0 || bufferSize > Integer.MAX_VALUE) {
+                    errorBranch.enter();
+                    throw Errors.createRangeErrorInvalidBufferSize();
+                }
+                return (int) bufferSize;
+            } catch (UnsupportedMessageException e) {
+                return 0;
+            }
+        }
     }
 
     public abstract static class ConstructErrorNode extends ConstructWithNewTargetNode {
@@ -1981,36 +1994,65 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    @ImportStatic({JSArrayBuffer.class, JSConfig.class})
     public abstract static class ConstructDataViewNode extends ConstructWithNewTargetNode {
         public ConstructDataViewNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization
-        protected final DynamicObject constructDataView(DynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
-                        @Cached("create()") BranchProfile errorBranch,
-                        @Cached("createBinaryProfile()") ConditionProfile arrayBufferCondition,
-                        @Cached("createBinaryProfile()") ConditionProfile byteLengthCondition,
-                        @Cached("createClassProfile()") ValueProfile bufferProfile,
-                        @Cached("create()") JSToIndexNode offsetToIndexNode,
-                        @Cached("create()") JSToIndexNode lengthToIndexNode) {
-            boolean direct;
-            boolean isInteropBuffer = false;
-            Object profiledBuffer = bufferProfile.profile(buffer);
-            if (arrayBufferCondition.profile(JSArrayBuffer.isJSHeapArrayBuffer(profiledBuffer))) {
-                direct = false;
-            } else if (JSArrayBuffer.isJSDirectOrSharedArrayBuffer(profiledBuffer)) {
-                direct = true;
-            } else if (JSArrayBuffer.isJSInteropArrayBuffer(profiledBuffer)) {
-                direct = false;
-                isInteropBuffer = true;
-            } else {
-                errorBranch.enter();
-                throw Errors.createTypeError("Not an ArrayBuffer");
-            }
+        @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
+        protected final DynamicObject ofHeapArrayBuffer(DynamicObject newTarget, DynamicObject buffer, Object byteOffset, Object byteLength,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
+        }
 
-            DynamicObject arrayBuffer = (DynamicObject) profiledBuffer;
+        @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
+        protected final DynamicObject ofDirectArrayBuffer(DynamicObject newTarget, DynamicObject buffer, Object byteOffset, Object byteLength,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, true, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
+        }
 
+        @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
+        protected final DynamicObject ofInteropArrayBuffer(DynamicObject newTarget, DynamicObject buffer, Object byteOffset, Object byteLength,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, true, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
+        }
+
+        @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
+        protected final DynamicObject ofInteropBuffer(DynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
+                        @Cached @Shared("errorBranch") BranchProfile errorBranch,
+                        @Cached("createBinaryProfile()") @Shared("byteLengthCondition") ConditionProfile byteLengthCondition,
+                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
+            DynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), buffer);
+            return ofInteropArrayBuffer(newTarget, arrayBuffer, byteOffset, byteLength, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "!bufferInterop.hasBufferElements(buffer)"})
+        protected static DynamicObject error(DynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
+            throw Errors.createTypeError("Not an ArrayBuffer");
+        }
+
+        protected final DynamicObject constructDataView(DynamicObject newTarget, DynamicObject arrayBuffer, Object byteOffset, Object byteLength,
+                        boolean direct, boolean isInteropBuffer,
+                        BranchProfile errorBranch,
+                        ConditionProfile byteLengthCondition,
+                        JSToIndexNode offsetToIndexNode,
+                        JSToIndexNode lengthToIndexNode,
+                        InteropLibrary bufferInterop) {
             long offset = offsetToIndexNode.executeLong(byteOffset);
 
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
@@ -2020,7 +2062,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             int bufferByteLength;
             if (isInteropBuffer) {
-                bufferByteLength = ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+                bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, errorBranch);
             } else if (direct) {
                 bufferByteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
             } else {

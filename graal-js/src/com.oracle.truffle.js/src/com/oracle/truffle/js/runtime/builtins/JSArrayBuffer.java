@@ -93,7 +93,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return getByteArray(thisObj).length;
     }
 
-    public static int getDirectByteLength(DynamicObject thisObj) {
+    public static int getDirectByteLength(Object thisObj) {
         return getDirectByteBuffer(thisObj).capacity();
     }
 
