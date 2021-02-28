@@ -1768,6 +1768,11 @@ public final class GraalJSAccess {
             } // else set on target (in objectTemplateInstantiate) already
         }
 
+        int internalFieldCount = template.getInternalFieldCount();
+        if (internalFieldCount > 0) {
+            JSObjectUtil.putHiddenProperty(proxy, INTERNAL_FIELD_COUNT_KEY, internalFieldCount);
+        }
+
         return proxy;
     }
 
