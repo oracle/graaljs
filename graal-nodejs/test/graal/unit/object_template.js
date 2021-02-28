@@ -79,5 +79,11 @@ describe('ObjectTemplate', function () {
             assert.strictEqual(obj.hasOwnProperty("mySetValue"), true);
         });
     });
+    describe('SetHandler', function () {
+        it('should create object with the specified internal field count', function () {
+            var result = module.ObjectTemplate_CheckNamedHandlerWithInternalFields();
+            assert.ok(result);
+        });        
+    });
 });
 
