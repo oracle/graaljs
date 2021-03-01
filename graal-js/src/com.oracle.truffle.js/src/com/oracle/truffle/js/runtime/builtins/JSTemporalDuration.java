@@ -539,6 +539,20 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return (JSTemporalDurationObject) result;
     }
 
+    // 7.5.11
+    public static long calculateOffsetShift(DynamicObject relativeTo, long y, long mon, long w, long d, long h, long min,
+                                            long s, long ms, long mus, long ns, IsObjectNode isObject) {
+        if(isObject.executeBoolean(relativeTo)) { // TODO: Check if there is an internal slot for InitializedTemporalZoneDateTime
+            return 0;
+        }
+        DynamicObject instant = null;   // TODO: Call JSTemporalInstant.createTemporalInstant()
+        long offsetBefore = 0;          // TODO: Call JSTemporalTimeZone.getOffsetNanoSecondsFor()
+        long after = 0;                 // TODO: Call JSTemporalZonedDateTime.addZonedDateTime()
+        DynamicObject instantAfter = null;  // TODO: Call JSTemporalInstant.createTemporalInstant()
+        long offsetAfter = 0;           // TODO: Call JSTemporalTimeZone.getOffsetNanoSecondsFor()
+        return offsetAfter - offsetBefore;
+    }
+
     // 7.5.10
     public static Object createTemporalDurationFromStatic(DynamicObject constructor, long years, long months,
                                                                  long weeks, long days, long hours, long minutes,
