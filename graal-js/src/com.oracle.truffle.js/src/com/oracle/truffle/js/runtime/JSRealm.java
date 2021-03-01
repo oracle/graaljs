@@ -61,7 +61,7 @@ import java.util.WeakHashMap;
 import org.graalvm.collections.Pair;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -267,8 +267,8 @@ public class JSRealm {
     private final Shape initialRegExpPrototypeShape;
     private final JSObjectFactory.RealmData objectFactories;
 
-    private final DynamicObject temporalTimeConstructor;
-    private final DynamicObject temporalTimePrototype;
+    private final DynamicObject temporalPlainTimeConstructor;
+    private final DynamicObject temporalPlainTimePrototype;
     private final DynamicObject temporalPlainDateConstructor;
     private final DynamicObject temporalPlainDatePrototype;
     private final DynamicObject temporalDurationConstructor;
@@ -884,9 +884,9 @@ public class JSRealm {
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
 
-        ctor = JSTemporalTime.createConstructor(this);
-        this.temporalTimeConstructor = ctor.getFunctionObject();
-        this.temporalTimePrototype = ctor.getPrototype();
+        ctor = JSTemporalPlainTime.createConstructor(this);
+        this.temporalPlainTimeConstructor = ctor.getFunctionObject();
+        this.temporalPlainTimePrototype = ctor.getPrototype();
 
         ctor = JSTemporalPlainDate.createConstructor(this);
         this.temporalPlainDateConstructor = ctor.getFunctionObject();
@@ -1332,12 +1332,12 @@ public class JSRealm {
         return javaPackageToPrimitiveFunction;
     }
 
-    public final DynamicObject getTemporalTimeConstructor() {
-        return temporalTimeConstructor;
+    public final DynamicObject getTemporalPlainTimeConstructor() {
+        return temporalPlainTimeConstructor;
     }
 
-    public final DynamicObject getTemporalTimePrototype() {
-        return temporalTimePrototype;
+    public final DynamicObject getTemporalPlainTimePrototype() {
+        return temporalPlainTimePrototype;
     }
 
     public final DynamicObject getTemporalPlainDateConstructor() {
@@ -1761,7 +1761,7 @@ public class JSRealm {
     private void addTemporalGlobals() {
         DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 
-        JSObjectUtil.putDataProperty(context, temporalObject, "Time", getTemporalTimeConstructor());
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor());
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor());
         JSObjectUtil.putDataProperty(context, temporalObject, "Duration", getTemporalDurationConstructor());
 

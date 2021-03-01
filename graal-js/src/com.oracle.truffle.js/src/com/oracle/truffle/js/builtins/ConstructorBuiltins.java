@@ -112,7 +112,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructString
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalTimeNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
@@ -217,7 +217,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -330,7 +330,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Module(1),
         Table(1),
 
-        TemporalTime(6),
+        TemporalPlainTime(6),
         TemporalPlainDate(4),
         TemporalDuration(10),
 
@@ -610,10 +610,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return createCallRequiresNew(context, builtin);
                 }
 
-            case TemporalTime:
+            case TemporalPlainTime:
                 if(construct) {
-                    return newTarget ? ConstructTemporalTimeNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                    : ConstructTemporalTimeNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                    return newTarget ? ConstructTemporalPlainTimeNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
+                                    : ConstructTemporalPlainTimeNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1034,95 +1034,95 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalTimePrototype();
+            return realm.getTemporalPlainTimePrototype();
         }
     }
 
-    public abstract static class ConstructTemporalTimeNode extends ConstructWithNewTargetNode {
+    public abstract static class ConstructTemporalPlainTimeNode extends ConstructWithNewTargetNode {
 
-        protected ConstructTemporalTimeNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+        protected ConstructTemporalPlainTimeNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
         }
 
         @Specialization(guards = {"args.length == 0"})
-        protected DynamicObject constructTemporalTime(DynamicObject newTarget, Object[] args) {
-            return swapPrototype(JSTemporalTime.create(getContext(),
+        protected DynamicObject constructTemporalPlainTime(DynamicObject newTarget, Object[] args) {
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     0, 0, 0, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 1"})
-        protected DynamicObject constructTemporalTimeH(DynamicObject newTarget, Object[] args,
-                                                       @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+        protected DynamicObject constructTemporalPlainTimeH(DynamicObject newTarget, Object[] args,
+                                                            @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(args[0]);
-            return swapPrototype(JSTemporalTime.create(getContext(),
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, 0, 0, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 2"})
-        protected DynamicObject constructTemporalTimeHM(DynamicObject newTarget, Object[] args,
-                                                        @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+        protected DynamicObject constructTemporalPlainTimeHM(DynamicObject newTarget, Object[] args,
+                                                             @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(args[0]);
             final long minute = toIntegerNode.executeLong(args[1]);
-            return swapPrototype(JSTemporalTime.create(getContext(),
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, minute, 0, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 3"})
-        protected DynamicObject constructTemporalTimeHMS(DynamicObject newTarget, Object[] args,
-                                                         @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+        protected DynamicObject constructTemporalPlainTimeHMS(DynamicObject newTarget, Object[] args,
+                                                              @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(args[0]);
             final long minute = toIntegerNode.executeLong(args[1]);
             final long second = toIntegerNode.executeLong(args[2]);
-            return swapPrototype(JSTemporalTime.create(getContext(),
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, minute, second, 0, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 4"})
-        protected DynamicObject constructTemporalTimeHMSMil(DynamicObject newTarget, Object[] args,
-                                                            @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+        protected DynamicObject constructTemporalPlainTimeHMSMil(DynamicObject newTarget, Object[] args,
+                                                                 @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(args[0]);
             final long minute = toIntegerNode.executeLong(args[1]);
             final long second = toIntegerNode.executeLong(args[2]);
             final long millisecond = toIntegerNode.executeLong(args[3]);
-            return swapPrototype(JSTemporalTime.create(getContext(),
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, minute, second, millisecond, 0, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 5"})
-        protected DynamicObject constructTemporalTimeHMSMilMic(DynamicObject newTarget, Object[] args,
-                                                               @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+        protected DynamicObject constructTemporalPlainTimeHMSMilMic(DynamicObject newTarget, Object[] args,
+                                                                    @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(args[0]);
             final long minute = toIntegerNode.executeLong(args[1]);
             final long second = toIntegerNode.executeLong(args[2]);
             final long millisecond = toIntegerNode.executeLong(args[3]);
             final long microsecond = toIntegerNode.executeLong(args[4]);
-            return swapPrototype(JSTemporalTime.create(getContext(),
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, minute, second, millisecond, microsecond, 0
             ), newTarget);
         }
 
         @Specialization(guards = {"args.length == 6"})
-        protected DynamicObject constructTemporalTimeHMSMilMicN(DynamicObject newTarget, Object[] args,
-                                                                @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+        protected DynamicObject constructTemporalPlainTimeHMSMilMicN(DynamicObject newTarget, Object[] args,
+                                                                     @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(args[0]);
             final long minute = toIntegerNode.executeLong(args[1]);
             final long second = toIntegerNode.executeLong(args[2]);
             final long millisecond = toIntegerNode.executeLong(args[3]);
             final long microsecond = toIntegerNode.executeLong(args[4]);
             final long nanosecond = toIntegerNode.executeLong(args[5]);
-            return swapPrototype(JSTemporalTime.create(getContext(),
+            return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, minute, second, millisecond, microsecond, nanosecond
             ), newTarget);
         }
 
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-            return realm.getTemporalTimePrototype();
+            return realm.getTemporalPlainTimePrototype();
         }
     }
 
