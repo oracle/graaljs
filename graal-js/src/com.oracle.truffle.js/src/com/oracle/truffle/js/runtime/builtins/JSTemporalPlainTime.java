@@ -7,8 +7,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.builtins.TemporalTimeFunctionBuiltins;
-import com.oracle.truffle.js.builtins.TemporalTimePrototypeBuiltins;
+import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltins;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -146,7 +146,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                 createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeMicrosecond, MICROSECOND), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECOND,
                 createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeNanosecond, NANOSECOND), Undefined.instance);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalTimePrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainTimePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.Time");
 
         return prototype;
@@ -169,7 +169,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm, TemporalTimeFunctionBuiltins.BUILTINS);
+        return INSTANCE.createConstructorAndPrototype(realm, TemporalPlainTimeFunctionBuiltins.BUILTINS);
     }
 
     public static boolean isJSTemporalTime(Object obj) {
