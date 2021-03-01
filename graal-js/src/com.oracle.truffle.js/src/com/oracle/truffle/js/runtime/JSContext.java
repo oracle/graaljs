@@ -281,7 +281,6 @@ public class JSContext {
         LocaleLanguage,
         LocaleScript,
         LocaleRegion,
-        SharedArrayBufferGetByteLength,
         FunctionAsyncIterator,
         IsGraalRuntime,
         AsyncModuleExecutionFulfilled,
