@@ -5,8 +5,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.js.builtins.TemporalTimeFunctionBuiltinsFactory.JSTemporalTimeCompareNodeGen;
-import com.oracle.truffle.js.builtins.TemporalTimeFunctionBuiltinsFactory.JSTemporalTimeFromNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeCompareNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
@@ -22,21 +22,21 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimeFunctionBuiltins.TemporalTimeFunction>{
+public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimeFunctionBuiltins.TemporalPlainTimeFunction>{
 
-    public static final JSBuiltinsContainer BUILTINS = new TemporalTimeFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new TemporalPlainTimeFunctionBuiltins();
 
-    protected TemporalTimeFunctionBuiltins() {
-        super(JSTemporalPlainTime.CLASS_NAME, TemporalTimeFunction.class);
+    protected TemporalPlainTimeFunctionBuiltins() {
+        super(JSTemporalPlainTime.CLASS_NAME, TemporalPlainTimeFunction.class);
     }
 
-    public enum TemporalTimeFunction implements BuiltinEnum<TemporalTimeFunction> {
+    public enum TemporalPlainTimeFunction implements BuiltinEnum<TemporalPlainTimeFunction> {
         from(2),
         compare(2);
 
         private final int length;
 
-        TemporalTimeFunction(int length) {
+        TemporalPlainTimeFunction(int length) {
             this.length = length;
         }
 
@@ -47,19 +47,19 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimeFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainTimeFunction builtinEnum) {
         switch (builtinEnum) {
             case from:
-                return JSTemporalTimeFromNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainTimeFromNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case compare:
-                return JSTemporalTimeCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainTimeCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class JSTemporalTimeFromNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainTimeFromNode extends JSBuiltinNode {
 
-        public JSTemporalTimeFromNode(JSContext context, JSBuiltin builtin) {
+        public JSTemporalPlainTimeFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -88,9 +88,9 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     }
 
-    public abstract static class JSTemporalTimeCompareNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainTimeCompareNode extends JSBuiltinNode {
 
-        public JSTemporalTimeCompareNode(JSContext context, JSBuiltin builtin) {
+        public JSTemporalPlainTimeCompareNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
