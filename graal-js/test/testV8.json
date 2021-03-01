@@ -765,49 +765,11 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/harmony/optional-chaining-this-private.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
     "filePath" : "mjsunit/harmony/private-brand-checks.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/harmony/private-fields-ic.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-fields-special-object.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-fields-static.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-fields.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
     "filePath" : "mjsunit/harmony/private-name-scopes.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
     "status" : "FAIL",
     "comment" : "Uses private fields"
   }, {
@@ -822,20 +784,6 @@
     "filePath" : "mjsunit/harmony/promise-any-overflow-1.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
-  }, {
-    "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses public fields"
-  }, {
-    "filePath" : "mjsunit/harmony/public-static-class-fields.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses public fields"
   }, {
     "filePath" : "mjsunit/harmony/regexp-match-indices.js",
     "status" : "FAIL",
@@ -868,13 +816,6 @@
     "filePath" : "mjsunit/harmony/regexp-property-special.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
-  }, {
-    "filePath" : "mjsunit/harmony/regress/regress-952722.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/relative-indexing-methods.js",
     "status" : "FAIL",
@@ -1472,13 +1413,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-899537.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses public fields"
-  }, {
     "filePath" : "mjsunit/regress/regress-9022.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -1530,13 +1464,6 @@
     "filePath" : "mjsunit/regress/regress-961709-classes.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-982702.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/regress/regress-9832.js",
     "status" : "SKIP",
@@ -3000,13 +2927,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
-  }, {
-    "filePath" : "mjsunit/reindexing-in-classes.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses class fields"
   }, {
     "filePath" : "mjsunit/runtime-callstats-helpers.js",
     "status" : "FAIL",
