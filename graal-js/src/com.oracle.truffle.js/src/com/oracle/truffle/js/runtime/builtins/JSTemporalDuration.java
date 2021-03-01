@@ -8,11 +8,13 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -27,7 +29,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.util.Set;
 
-public class JSTemporalDuration extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
+public class JSTemporalDuration extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
         PrototypeSupplier {
 
     public static final JSTemporalDuration INSTANCE = new JSTemporalDuration();
@@ -230,7 +232,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, TemporalDurationFunctionBuiltins.BUILTINS);
     }
 
     public static boolean isJSTemporalDuration(Object obj) {
@@ -238,6 +240,42 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     //region Abstract methods
+    // 7.2.1
+    public static Object toTemporalDuration(DynamicObject item, DynamicObject constructor, JSRealm realm,
+                                            IsObjectNode isObject, JSToIntegerAsLongNode toInt, DynamicObjectLibrary dol,
+                                            JSToStringNode toString, IsConstructorNode isConstructor,
+                                            JSFunctionCallNode callNode) {
+        try {
+            constructor = constructor != null ? constructor : realm.getTemporalDurationConstructor();
+            DynamicObject result;
+            if (isObject.executeBoolean(item)) {
+                if (isJSTemporalDuration(item)) {
+                    return item;
+                }
+                result = toTemporalDurationRecord(item, realm, isObject, toInt, dol);
+            } else {
+                String string = toString.executeString(item);
+                result = null;      // TODO: https://tc39.es/proposal-temporal/#sec-temporal-parsetemporaldurationstring
+            }
+            return createTemporalDurationFromStatic(
+                    constructor,
+                    dol.getLongOrDefault(result, YEARS, 0),
+                    dol.getLongOrDefault(result, MONTHS, 0),
+                    dol.getLongOrDefault(result, WEEKS, 0),
+                    dol.getLongOrDefault(result, DAYS, 0),
+                    dol.getLongOrDefault(result, HOURS, 0),
+                    dol.getLongOrDefault(result, MINUTES, 0),
+                    dol.getLongOrDefault(result, SECONDS, 0),
+                    dol.getLongOrDefault(result, MILLISECONDS, 0),
+                    dol.getLongOrDefault(result, MICROSECONDS, 0),
+                    dol.getLongOrDefault(result, NANOSECONDS, 0),
+                    isConstructor, callNode
+            );
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     // 7.5.2
     public static DynamicObject toTemporalDurationRecord(DynamicObject temporalDurationLike, JSRealm realm,
                                                          IsObjectNode isObject, JSToIntegerAsLongNode toInt,
@@ -499,6 +537,23 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
         Object result = callNode.executeCall(args);
         return (JSTemporalDurationObject) result;
+    }
+
+    // 7.5.10
+    public static Object createTemporalDurationFromStatic(DynamicObject constructor, long years, long months,
+                                                                 long weeks, long days, long hours, long minutes,
+                                                                 long seconds, long milliseconds, long microseconds,
+                                                                 long nanoseconds, IsConstructorNode isConstructor,
+                                                                 JSFunctionCallNode callNode) {
+        assert validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        if (!isConstructor.executeBoolean(constructor)) {
+            throw Errors.createTypeError("Given constructor is not an constructor.");
+        }
+        Object[] ctorArgs = new Object[]{years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
+        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
+        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
+        Object result = callNode.executeCall(args);
+        return result;
     }
 
     // 7.5.12
