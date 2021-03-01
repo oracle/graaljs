@@ -95,6 +95,7 @@ import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
+import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -370,6 +371,9 @@ public class JSRealm {
     private final DynamicObject webAssemblyModulePrototype;
     private final DynamicObject webAssemblyTableConstructor;
     private final DynamicObject webAssemblyTablePrototype;
+
+    /** Foreign object prototypes. */
+    private final DynamicObject foreignIterablePrototype;
 
     /**
      * Local time zone ID. Initialized lazily.
@@ -746,6 +750,8 @@ public class JSRealm {
             this.webAssemblyTableConstructor = null;
             this.webAssemblyTablePrototype = null;
         }
+
+        this.foreignIterablePrototype = createForeignIterablePrototype();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1727,6 +1733,15 @@ public class JSRealm {
         return prototype;
     }
 
+    /**
+     * Creates the prototype object of foreign iterables.
+     */
+    private DynamicObject createForeignIterablePrototype() {
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, ForeignIterablePrototypeBuiltins.BUILTINS);
+        return prototype;
+    }
+
     public DynamicObject getArrayProtoValuesIterator() {
         return arrayProtoValuesIterator;
     }
@@ -2396,6 +2411,10 @@ public class JSRealm {
 
     public DynamicObject getWebAssemblyGlobalPrototype() {
         return webAssemblyGlobalPrototype;
+    }
+
+    public DynamicObject getForeignIterablePrototype() {
+        return foreignIterablePrototype;
     }
 
 }

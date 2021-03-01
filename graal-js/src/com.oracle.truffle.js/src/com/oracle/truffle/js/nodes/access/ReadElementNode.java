@@ -1534,46 +1534,50 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
             }
             Object exportedKey = exportKeyNode.execute(index);
+            Object foreignResult = getImpl(truffleObject, exportedKey, root);
+            return importValueNode.executeWithTarget(foreignResult);
+        }
+
+        private Object getImpl(Object truffleObject, Object exportedKey, ReadElementNode root) {
             if (exportedKey instanceof Symbol) {
-                return Undefined.instance;
+                return maybeReadFromPrototype(truffleObject, exportedKey, root.context);
             }
-            Object foreignResult;
             boolean hasArrayElements = interop.hasArrayElements(truffleObject);
             if (hasArrayElements && keyInterop.fitsInLong(exportedKey)) {
                 try {
-                    foreignResult = interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
+                    return interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
             } else {
                 String stringKey = toStringNode.executeString(exportedKey);
+                if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
+                    return getSize(truffleObject);
+                }
                 if (optimistic) {
                     try {
-                        foreignResult = interop.readMember(truffleObject, stringKey);
+                        return interop.readMember(truffleObject, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         optimistic = false;
-                        foreignResult = fallback(truffleObject, stringKey, root, hasArrayElements, e instanceof UnknownIdentifierException);
+                        return fallback(truffleObject, stringKey, root, e instanceof UnknownIdentifierException);
                     }
                 } else {
                     if (interop.isMemberReadable(truffleObject, stringKey)) {
                         try {
-                            foreignResult = interop.readMember(truffleObject, stringKey);
+                            return interop.readMember(truffleObject, stringKey);
                         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                             return Undefined.instance;
                         }
                     } else {
-                        foreignResult = fallback(truffleObject, stringKey, root, hasArrayElements, true);
+                        return fallback(truffleObject, stringKey, root, true);
                     }
                 }
             }
-            return importValue(foreignResult);
         }
 
-        private Object fallback(Object truffleObject, String stringKey, ReadElementNode root, boolean hasArrayElements, boolean mayHaveMembers) {
-            if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
-                return getSize(truffleObject);
-            } else if (mayHaveMembers && root.context.isOptionNashornCompatibilityMode()) {
+        private Object fallback(Object truffleObject, String stringKey, ReadElementNode root, boolean mayHaveMembers) {
+            if (mayHaveMembers && root.context.isOptionNashornCompatibilityMode()) {
                 return tryInvokeGetter(truffleObject, stringKey, root.context);
             } else {
                 return maybeReadFromPrototype(truffleObject, stringKey, root.context);
@@ -1615,14 +1619,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object importValue(Object value) {
-            if (importValueNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                importValueNode = insert(ImportValueNode.create());
-            }
-            return importValueNode.executeWithTarget(value);
-        }
-
         private Object getSize(Object truffleObject) {
             try {
                 return JSRuntime.longToIntOrDouble(interop.getArraySize(truffleObject));
@@ -1632,7 +1628,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object maybeReadFromPrototype(Object truffleObject, String index, JSContext context) {
+        private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
+            assert JSRuntime.isPropertyKey(key);
             if (context.getContextOptions().hasForeignObjectPrototype()) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1640,7 +1637,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
                 DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
-                return readFromPrototypeNode.executeWithTargetAndIndex(prototype, index);
+                return readFromPrototypeNode.executeWithTargetAndIndex(prototype, key);
             } else {
                 return Undefined.instance;
             }
