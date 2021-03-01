@@ -5,7 +5,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
@@ -132,7 +131,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                                           long millisecond, long microsecond, long nanosecond) {
         assert month >= 1 && month <= 12;
         assert day >= 1 && day <= daysInMonth(year, month);
-        assert JSTemporalTime.validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
+        assert JSTemporalPlainTime.validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
         double date = JSDate.makeDay(year, month, day);
         double time = JSDate.makeTime(hour, minute, second, millisecond);
         double ms = JSDate.makeDate(date, time);

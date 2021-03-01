@@ -102,7 +102,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -573,7 +573,7 @@ public class JSContext {
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
-        this.temporalTimeFactory = builder.create(JSTemporalTime.INSTANCE);
+        this.temporalTimeFactory = builder.create(JSTemporalPlainTime.INSTANCE);
         this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
         this.temporalDurationFactory = builder.create(JSTemporalDuration.INSTANCE);
 

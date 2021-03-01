@@ -3,7 +3,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -25,13 +24,13 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
+public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
         PrototypeSupplier {
 
-    public static final JSTemporalTime INSTANCE = new JSTemporalTime();
+    public static final JSTemporalPlainTime INSTANCE = new JSTemporalPlainTime();
 
-    public static final String CLASS_NAME = "TemporalTime";
-    public static final String PROTOTYPE_NAME = "TemporalTime.prototype";
+    public static final String CLASS_NAME = "TemporalPlainTime";
+    public static final String PROTOTYPE_NAME = "TemporalPlainTime.prototype";
 
     public static final String HOUR = "hour";
     public static final String MINUTE = "minute";
@@ -41,7 +40,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
     public static final String NANOSECOND = "nanosecond";
     private static final String[] PROPERTIES = new String[]{HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
 
-    private JSTemporalTime() {
+    private JSTemporalPlainTime() {
     }
 
     public static DynamicObject create(JSContext context, long hours, long minutes, long seconds, long milliseconds,
@@ -82,7 +81,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
 
     @Override
     public String getClassName(DynamicObject object) {
-        return "Temporal.Time";
+        return "Temporal.PlainTime";
     }
 
     @Override
@@ -98,7 +97,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
-                    if (JSTemporalTime.isJSTemporalTime(obj)) {
+                    if (JSTemporalPlainTime.isJSTemporalTime(obj)) {
                         JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) obj;
                         switch (property) {
                             case HOUR:
@@ -155,13 +154,13 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalTime.INSTANCE, context);
+        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, JSTemporalPlainTime.INSTANCE, context);
         return initialShape;
     }
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getTemporalTimePrototype();
+        return realm.getTemporalPlainTimePrototype();
     }
 
     @Override
@@ -185,7 +184,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
                                         JSToIntegerAsIntNode toInt, JSToStringNode toString,
                                         IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
 
-        DynamicObject constructor = varConstructor == null ? realm.getTemporalTimeConstructor() : varConstructor;
+        DynamicObject constructor = varConstructor == null ? realm.getTemporalPlainTimeConstructor() : varConstructor;
         String overflow = varOverflow == null ? "constraint" : varOverflow;
         assert overflow.equals("constraint") || overflow.equals("reject");
         DynamicObject result;
@@ -337,7 +336,7 @@ public class JSTemporalTime extends JSNonProxy implements JSConstructorFactory.D
                                                                       long nanosecond, JSRealm realm,
                                                                       JSFunctionCallNode callNode) {
         assert validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
-        DynamicObject constructor = realm.getTemporalTimeConstructor();
+        DynamicObject constructor = realm.getTemporalPlainTimeConstructor();
         Object[] ctorArgs = new Object[] {hour, minute, second, millisecond, microsecond, nanosecond};
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
         System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);

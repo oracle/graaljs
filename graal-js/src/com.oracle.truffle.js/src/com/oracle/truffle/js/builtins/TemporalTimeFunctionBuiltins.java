@@ -18,7 +18,7 @@ import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -27,7 +27,7 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     public static final JSBuiltinsContainer BUILTINS = new TemporalTimeFunctionBuiltins();
 
     protected TemporalTimeFunctionBuiltins() {
-        super(JSTemporalTime.CLASS_NAME, TemporalTimeFunction.class);
+        super(JSTemporalPlainTime.CLASS_NAME, TemporalTimeFunction.class);
     }
 
     public enum TemporalTimeFunction implements BuiltinEnum<TemporalTimeFunction> {
@@ -72,17 +72,17 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                                      @Cached("create()") JSToStringNode toString,
                                      @Cached("create()") JSToIntegerAsIntNode toInt,
                                      @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject constructor = getContext().getRealm().getTemporalTimeConstructor();
+            DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
             DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options,
                     getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, dol, isObject, toBoolean, toString);
-            if(isObject.executeBoolean(item) && JSTemporalTime.isJSTemporalTime(item)) {
+            if(isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalTime(item)) {
                 JSTemporalTimeObject timeItem = (JSTemporalTimeObject) item;
-                return JSTemporalTime.createTemporalTimeFromStatic(constructor,
+                return JSTemporalPlainTime.createTemporalTimeFromStatic(constructor,
                         timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
                         timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
             }
-            return JSTemporalTime.toTemporalTime(item, constructor, overflow, getContext().getRealm(),
+            return JSTemporalPlainTime.toTemporalTime(item, constructor, overflow, getContext().getRealm(),
                     isObject, dol, toInt, toString, isConstructor, callNode);
         }
 
@@ -98,7 +98,7 @@ public class TemporalTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected int compare(DynamicObject obj1, DynamicObject obj2) {
             JSTemporalTimeObject time1 = (JSTemporalTimeObject) obj1;
             JSTemporalTimeObject time2 = (JSTemporalTimeObject) obj2;
-            return JSTemporalTime.compareTemporalTime(
+            return JSTemporalPlainTime.compareTemporalTime(
                     time1.getHours(), time1.getMinutes(), time1.getSeconds(),
                     time1.getMilliseconds(), time1.getMicroseconds(), time1.getNanoseconds(),
                     time2.getHours(), time2.getMinutes(), time2.getSeconds(),
