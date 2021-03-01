@@ -818,8 +818,10 @@
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
     "filePath" : "mjsunit/harmony/relative-indexing-methods.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "ecmaVersion" : {
+      "minVersion" : 13
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
