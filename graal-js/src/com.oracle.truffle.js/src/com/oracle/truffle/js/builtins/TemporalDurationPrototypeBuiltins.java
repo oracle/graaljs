@@ -11,7 +11,7 @@ import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.J
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationSubtractNodeGen;
-import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
@@ -28,7 +28,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.util.Collections;
@@ -49,8 +48,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         subtract(2),
         round(1),
         total(1),
-        toString(0),
         toJSON(0),
+        toLocaleString(0),
         valueOf(0);
 
         private final int length;
@@ -82,9 +81,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case total:
                 return JSTemporalDurationTotalNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case toString:
             case toJSON:
-                return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case toLocaleString:
+                return JSTemporalDurationToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return JSTemporalDurationValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -470,10 +469,10 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    // 7.3.23
-    public abstract static class JSTemporalDurationToString extends JSBuiltinNode {
+    // 7.3.23 & 7.3.24
+    public abstract static class JSTemporalDurationToLocaleString extends JSBuiltinNode {
 
-        protected JSTemporalDurationToString(JSContext context, JSBuiltin builtin) {
+        protected JSTemporalDurationToLocaleString(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
