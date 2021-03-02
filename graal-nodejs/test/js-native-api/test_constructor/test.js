@@ -17,7 +17,7 @@ test_object.readwriteValue = 2;
 assert.strictEqual(test_object.readwriteValue, 2);
 
 assert.throws(() => { test_object.readonlyValue = 3; },
-              /^TypeError: Cannot assign to read only property 'readonlyValue' of object '#<MyObject>'$|^TypeError: ".*" is not a writable property of/);
+              /^TypeError: Cannot assign to read only property 'readonlyValue' of|^TypeError: ".*" is not a writable property of/);
 
 assert.ok(test_object.hiddenValue);
 
