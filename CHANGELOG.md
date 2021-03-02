@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 21.1.0
 * Prototype of WebAssembly JavaScript Interface implemented. It is available behind the `--js.webassembly` flag.
+* Implemented iterator interop support, enabling foreign objects that have an iterator to be used where JS expects iterables, as well as JS iterables to be used in other languages and via the [Value](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getIterator--) API.
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.
