@@ -50,6 +50,7 @@ import static org.junit.Assert.fail;
 import java.util.NoSuchElementException;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -125,6 +126,32 @@ public class IteratorInteropTest {
             assertEquals(42, iterator.getIteratorNextElement().asInt());
             assertFalse(iterator.hasIteratorNextElement());
         }
+    }
+
+    @Test
+    public void testInvalidIteratorResult() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value iterable = context.eval(ID, "({ [Symbol.iterator]() {return { next() {return 42;} };} })");
+            assertTrue(iterable.hasIterator());
+            Value badIterator = iterable.getIterator();
+            assertTrue(badIterator.isIterator());
+
+            try {
+                assertTrue(badIterator.hasIteratorNextElement());
+                fail("Expected TypeError");
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertTrue(e.getMessage().contains("TypeError"));
+            }
+            try {
+                badIterator.getIteratorNextElement();
+                fail("Expected TypeError");
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertTrue(e.getMessage().contains("TypeError"));
+            }
+        }
+
     }
 
     private static void assertJSIteratorNext(Value iterator, Value expectedValue) {

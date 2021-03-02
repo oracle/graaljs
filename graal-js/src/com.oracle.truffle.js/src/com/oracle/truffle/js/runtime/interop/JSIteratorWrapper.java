@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -85,7 +84,7 @@ public final class JSIteratorWrapper implements TruffleObject {
         return true;
     }
 
-    private Object next(JavaScriptLanguage language, JSRealm realm, JSInteropGetIteratorNextNode iteratorNextNode) throws UnsupportedMessageException {
+    private Object next(JavaScriptLanguage language, JSRealm realm, JSInteropGetIteratorNextNode iteratorNextNode) {
         language.interopBoundaryEnter(realm);
         try {
             return iteratorNextNode.getIteratorNextElement(iteratorRecord, language, STOP);
@@ -98,7 +97,7 @@ public final class JSIteratorWrapper implements TruffleObject {
     boolean hasIteratorNextElement(
                     @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws UnsupportedMessageException {
+                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) {
         if (next == null) {
             next = next(language, realm, iteratorNextNode);
         }
@@ -109,7 +108,7 @@ public final class JSIteratorWrapper implements TruffleObject {
     Object getIteratorNextElement(
                     @CachedLanguage JavaScriptLanguage language,
                     @CachedContext(JavaScriptLanguage.class) JSRealm realm,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws UnsupportedMessageException, StopIterationException {
+                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws StopIterationException {
         if (hasIteratorNextElement(language, realm, iteratorNextNode)) {
             Object result = next;
             next = null;

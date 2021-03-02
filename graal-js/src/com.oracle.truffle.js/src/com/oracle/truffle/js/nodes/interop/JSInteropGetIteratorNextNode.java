@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.StopIterationException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -69,7 +68,7 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
         return JSInteropGetIteratorNextNodeGen.create();
     }
 
-    public final Object getIteratorNextElement(IteratorRecord receiver, JavaScriptLanguage language, Object stopValue) throws UnsupportedMessageException {
+    public final Object getIteratorNextElement(IteratorRecord receiver, JavaScriptLanguage language, Object stopValue) {
         try {
             return execute(receiver, language, stopValue);
         } catch (StopIterationException e) {
@@ -77,11 +76,11 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
         }
     }
 
-    public final Object getIteratorNextElement(IteratorRecord iterator, JavaScriptLanguage language) throws UnsupportedMessageException, StopIterationException {
+    public final Object getIteratorNextElement(IteratorRecord iterator, JavaScriptLanguage language) throws StopIterationException {
         return execute(iterator, language, null);
     }
 
-    protected abstract Object execute(IteratorRecord iterator, JavaScriptLanguage language, Object stopValue) throws UnsupportedMessageException, StopIterationException;
+    protected abstract Object execute(IteratorRecord iterator, JavaScriptLanguage language, Object stopValue) throws StopIterationException;
 
     @Specialization
     Object doDefault(IteratorRecord iterator, @SuppressWarnings("unused") JavaScriptLanguage language, Object stopValue,
@@ -90,7 +89,7 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
                     @Cached(value = "create(VALUE, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode valuePropertyGetNode,
                     @Cached JSToBooleanNode toBooleanNode,
                     @Cached ExportValueNode exportValueNode,
-                    @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException, StopIterationException {
+                    @Cached BranchProfile exceptionBranch) throws StopIterationException {
         Object iterResult = callNode.executeCall(JSArguments.createZeroArg(iterator.getIterator(), iterator.getNextMethod()));
         if (iterResult instanceof JSObject) {
             JSObject iterResultObject = (JSObject) iterResult;
@@ -108,7 +107,7 @@ public abstract class JSInteropGetIteratorNextNode extends JSInteropCallNode {
             }
         }
         exceptionBranch.enter();
-        throw UnsupportedMessageException.create();
+        throw Errors.createTypeErrorIteratorResultNotObject(iterResult, null);
     }
 
 }
