@@ -361,7 +361,7 @@ public final class Errors {
         if (JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode()) {
             return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj), originatingNode);
         } else {
-            return Errors.createTypeError("Cannot assign to read only property '" + keyToString(key) + "' of " + JSRuntime.safeToString(thisObj), originatingNode);
+            return Errors.createTypeError("Cannot assign to read only property '" + key.toString() + "' of " + JSRuntime.safeToString(thisObj), originatingNode);
         }
     }
 
