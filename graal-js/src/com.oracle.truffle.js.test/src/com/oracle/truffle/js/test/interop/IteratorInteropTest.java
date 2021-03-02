@@ -74,11 +74,7 @@ public class IteratorInteropTest {
             assertEquals(43, iterator.getIteratorNextElement().asInt());
 
             assertFalse(iterator.hasIteratorNextElement());
-            try {
-                iterator.getIteratorNextElement();
-                fail("Expected NoSuchElementException");
-            } catch (NoSuchElementException e) {
-            }
+            assertThrows(() -> iterator.getIteratorNextElement(), NoSuchElementException.class);
             assertFalse(iterator.hasIteratorNextElement());
         }
     }
@@ -136,22 +132,35 @@ public class IteratorInteropTest {
             Value badIterator = iterable.getIterator();
             assertTrue(badIterator.isIterator());
 
-            try {
-                assertTrue(badIterator.hasIteratorNextElement());
-                fail("Expected TypeError");
-            } catch (PolyglotException e) {
-                assertTrue(e.isGuestException());
-                assertTrue(e.getMessage().contains("TypeError"));
-            }
-            try {
-                badIterator.getIteratorNextElement();
-                fail("Expected TypeError");
-            } catch (PolyglotException e) {
-                assertTrue(e.isGuestException());
-                assertTrue(e.getMessage().contains("TypeError"));
-            }
+            assertThrowsTypeError(() -> badIterator.hasIteratorNextElement());
+            assertThrowsTypeError(() -> badIterator.getIteratorNextElement());
         }
+    }
 
+    @Test
+    public void testInvalidIterator() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value badIterable1 = context.eval(ID, "({ [Symbol.iterator]() {return { next: 42 };} })");
+            assertTrue(badIterable1.hasIterator());
+            assertThrowsTypeError(() -> badIterable1.getIterator());
+
+            Value badIterable2 = context.eval(ID, "({ [Symbol.iterator]() {return {};} })");
+            assertTrue(badIterable2.hasIterator());
+            assertThrowsTypeError(() -> badIterable2.getIterator());
+
+            Value badIterable3 = context.eval(ID, "({ [Symbol.iterator]() {return 42;} })");
+            assertTrue(badIterable3.hasIterator());
+            assertThrowsTypeError(() -> badIterable3.getIterator());
+        }
+    }
+
+    @Test
+    public void testUnsupportedGetIterator() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value object = context.eval(ID, "({})");
+            assertFalse(object.hasIterator());
+            assertThrows(() -> object.getIterator(), UnsupportedOperationException.class);
+        }
     }
 
     private static void assertJSIteratorNext(Value iterator, Value expectedValue) {
@@ -170,6 +179,25 @@ public class IteratorInteropTest {
         assertTrue(iterResult.getMember("done").asBoolean());
         assertNotNull(iterResult.getMember("value"));
         assertTrue(iterResult.getMember("value").isNull());
+    }
+
+    private static void assertThrows(Runnable runnable, Class<? extends Throwable> expectedException) {
+        try {
+            runnable.run();
+            fail("Expected " + expectedException.getName());
+        } catch (Throwable e) {
+            assertTrue("Expected " + expectedException.getName() + ", caught " + e.getClass().getName(), expectedException.isInstance(e));
+        }
+    }
+
+    private static void assertThrowsTypeError(Runnable runnable) {
+        try {
+            runnable.run();
+            fail("Expected TypeError");
+        } catch (PolyglotException e) {
+            assertTrue(e.isGuestException());
+            assertTrue(e.getMessage().startsWith("TypeError"));
+        }
     }
 
 }
