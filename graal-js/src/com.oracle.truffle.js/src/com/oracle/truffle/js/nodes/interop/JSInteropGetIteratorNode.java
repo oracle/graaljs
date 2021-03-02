@@ -81,10 +81,10 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
         return execute(receiver, language, false);
     }
 
-    protected abstract Object execute(JSObject receiver, JavaScriptLanguage language, boolean hasIteratorMethod) throws UnsupportedMessageException;
+    protected abstract Object execute(JSObject receiver, JavaScriptLanguage language, boolean hasIteratorCheck) throws UnsupportedMessageException;
 
     @Specialization
-    Object doDefault(JSObject receiver, @SuppressWarnings("unused") JavaScriptLanguage language, boolean hasIteratorMethod,
+    Object doDefault(JSObject receiver, @SuppressWarnings("unused") JavaScriptLanguage language, boolean hasIteratorCheck,
                     @Cached(value = "create(SYMBOL_ITERATOR, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode iteratorPropertyGetNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
@@ -92,7 +92,7 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException {
         Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
         boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
-        if (hasIteratorMethod) {
+        if (hasIteratorCheck) {
             return hasIterator;
         }
         if (hasIterator) {
@@ -104,8 +104,11 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
                 }
             }
+            exceptionBranch.enter();
+            throw Errors.createTypeErrorNotIterable(receiver, null);
+        } else {
+            exceptionBranch.enter();
+            throw UnsupportedMessageException.create();
         }
-        exceptionBranch.enter();
-        throw UnsupportedMessageException.create();
     }
 }
