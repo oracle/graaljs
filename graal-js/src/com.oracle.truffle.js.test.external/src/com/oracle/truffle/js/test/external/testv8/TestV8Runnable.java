@@ -80,7 +80,22 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
 
     private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
-                    "--harmony-import-assertions"
+                    "--experimental-wasm-bulk-memory",
+                    "--experimental-wasm-compilation-hints",
+                    "--experimental-wasm-eh",
+                    "--experimental-wasm-gc",
+                    "--experimental-wasm-memory64",
+                    "--experimental-wasm-mv",
+                    "--experimental-wasm-reftypes",
+                    "--experimental-wasm-return-call",
+                    "--experimental-wasm-simd",
+                    "--experimental-wasm-threads",
+                    "--experimental-wasm-typed-funcref",
+                    "--experimental-wasm-type-reflection",
+                    "--harmony-import-assertions",
+                    "--no-wasm-trap-handler",
+                    "--wasm-staging",
+                    "--wasm-tier-up"
     }));
     private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-regexp-match-indices",
@@ -153,6 +168,7 @@ public class TestV8Runnable extends TestRunnable {
             testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions, setupFiles)));
         } else {
             testFile.setStatus(TestFile.Status.SKIP);
+            testFile.setStatusOverrides(null);
         }
     }
 
