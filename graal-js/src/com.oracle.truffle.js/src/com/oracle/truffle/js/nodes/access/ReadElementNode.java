@@ -1554,13 +1554,19 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
                     return getSize(truffleObject);
                 }
+                if (root.context.isOptionNashornCompatibilityMode()) {
+                    Object result = tryGetters(truffleObject, stringKey, root.context);
+                    if (result != null) {
+                        return result;
+                    }
+                }
                 if (optimistic) {
                     try {
                         return interop.readMember(truffleObject, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         optimistic = false;
-                        return fallback(truffleObject, stringKey, root, e instanceof UnknownIdentifierException);
+                        return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                     }
                 } else {
                     if (interop.isMemberReadable(truffleObject, stringKey)) {
@@ -1570,37 +1576,29 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                             return Undefined.instance;
                         }
                     } else {
-                        return fallback(truffleObject, stringKey, root, true);
+                        return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                     }
                 }
             }
         }
 
-        private Object fallback(Object truffleObject, String stringKey, ReadElementNode root, boolean mayHaveMembers) {
-            if (mayHaveMembers && root.context.isOptionNashornCompatibilityMode()) {
-                return tryInvokeGetter(truffleObject, stringKey, root.context);
-            } else {
-                return maybeReadFromPrototype(truffleObject, stringKey, root.context);
-            }
-        }
-
-        private Object tryInvokeGetter(Object thisObj, String key, JSContext context) {
+        private Object tryGetters(Object thisObj, String key, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                Object result = tryGetResult(thisObj, "get", key);
+                Object result = tryInvokeGetter(thisObj, "get", key);
                 if (result != null) {
                     return result;
                 }
-                result = tryGetResult(thisObj, "is", key);
+                result = tryInvokeGetter(thisObj, "is", key);
                 if (result != null) {
                     return result;
                 }
             }
-            return maybeReadFromPrototype(thisObj, key, context);
+            return null;
         }
 
-        private Object tryGetResult(Object thisObj, String prefix, String key) {
+        private Object tryInvokeGetter(Object thisObj, String prefix, String key) {
             String getterKey = PropertyCacheNode.getAccessorKey(prefix, key);
             if (getterKey == null) {
                 return null;

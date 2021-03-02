@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1799,12 +1799,14 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);
+                if (root.context.isOptionNashornCompatibilityMode()) {
+                    if (tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context)) {
+                        return;
+                    }
+                }
                 try {
                     interop.writeMember(truffleObject, propertyKey, exportedValue);
                 } catch (UnknownIdentifierException e) {
-                    if (root.context.isOptionNashornCompatibilityMode()) {
-                        tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context);
-                    }
                     // do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
@@ -1822,27 +1824,29 @@ public class WriteElementNode extends JSTargetableNode {
             return targetClass.isInstance(target) && !JSDynamicObject.isJSDynamicObject(target);
         }
 
-        private void tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {
+        private boolean tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 String setterKey = PropertyCacheNode.getAccessorKey("set", key);
                 if (setterKey == null) {
-                    return;
+                    return false;
                 }
                 if (setterInterop == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     setterInterop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 if (!setterInterop.isMemberInvocable(thisObj, setterKey)) {
-                    return;
+                    return false;
                 }
                 try {
                     setterInterop.invokeMember(thisObj, setterKey, value);
+                    return true;
                 } catch (UnknownIdentifierException | UnsupportedMessageException | UnsupportedTypeException | ArityException e) {
                     // silently ignore
                 }
             }
+            return false;
         }
     }
 
