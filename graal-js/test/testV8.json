@@ -1048,6 +1048,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-25389)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1034322.js",
+    "status" : "SKIP",
+    "comment" : "forces stack overflow"
+  }, {
     "filePath" : "mjsunit/regress/regress-1034394.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -1690,11 +1694,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-808192.js",
-    "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
-    "comment" : "needs larger stack, at least 6m is needed"
+    "status" : "SKIP",
+    "comment" : "causes stack overflows and excessive execution times"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-816961.js",
     "status" : "SKIP",
