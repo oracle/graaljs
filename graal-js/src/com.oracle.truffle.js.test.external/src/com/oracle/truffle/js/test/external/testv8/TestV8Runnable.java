@@ -107,6 +107,8 @@ public class TestV8Runnable extends TestRunnable {
     private static final Pattern SPLIT_PATTERN = Pattern.compile("\\s+");
     private static final String MODULE_FILE_EXT = ".mjs";
 
+    private static final Source GC_NOOP_SOURCE = Source.newBuilder("js", "gc = function() { };", "").buildLiteral();
+
     public TestV8Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
     }
@@ -200,8 +202,9 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private TestFile.Result runInJVM(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
+        boolean replaceGCBuiltin = shouldReplaceGCBuiltin(file);
         Source[] prequelSources = loadHarnessSources(ecmaVersion);
-        Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2 + setupFiles.size());
+        Source[] sources = Arrays.copyOf(prequelSources, prequelSources.length + 2 + (replaceGCBuiltin ? 1 : 0) + setupFiles.size());
         int sourceIdx = prequelSources.length;
         try {
             for (String setupFile : setupFiles) {
@@ -210,8 +213,12 @@ public class TestV8Runnable extends TestRunnable {
         } catch (IOException ioex) {
             return TestFile.Result.failed(ioex);
         }
-        sources[sources.length - 1] = Source.newBuilder(JavaScriptLanguage.ID, createTestFileNamePrefix(file), "").buildLiteral();
-        sources[sources.length - 2] = ((TestV8) suite).getMockupSource();
+        sources[sourceIdx++] = ((TestV8) suite).getMockupSource();
+        if (replaceGCBuiltin) {
+            sources[sourceIdx++] = GC_NOOP_SOURCE;
+        }
+        sources[sourceIdx++] = Source.newBuilder(JavaScriptLanguage.ID, createTestFileNamePrefix(file), "").buildLiteral();
+        assert sourceIdx == sources.length;
 
         TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, extraOptions);
         if (!suite.getConfig().isPrintFullOutput()) {
@@ -230,6 +237,13 @@ public class TestV8Runnable extends TestRunnable {
                 return TestFile.Result.failed(e);
             }
         }
+    }
+
+    // delete the gc() builtin in cases where not strictly needed
+    // this avoids excessive gc()ing in some tests
+    private static boolean shouldReplaceGCBuiltin(File file) {
+        String fp = file.getPath();
+        return fp.endsWith("es6/typedarray-of.js") || fp.endsWith("regress/regress-crbug-854299.js");
     }
 
     private TestFile.Result runExtLauncher(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {
