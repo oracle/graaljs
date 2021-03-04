@@ -12,6 +12,7 @@ import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSinceNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSubtractNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeValueOfNodeGen;
@@ -30,6 +31,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -53,6 +56,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         since(2),
         round(1),
         equals(1),
+        toPlainDateTime(1),
         getISOFields(0),
         toString(0),
         toJSON(0),
@@ -87,6 +91,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSTemporalPlainTimeRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
                 return JSTemporalPlainTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case toPlainDateTime:
+                return JSTemporalPlainTimeToPlainDateTimeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case getISOFields:
                 return JSTemporalPlainTimeGetISOFieldsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toString:
@@ -543,6 +549,27 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization(guards = {"!isJSTemporalTime(otherObj) || isJavaPrimitive(otherObj)"})
         protected static boolean otherNotTemporalTime(DynamicObject thisObj, DynamicObject otherObj) {
             return false;
+        }
+    }
+
+    public abstract static class JSTemporalPlainTimeToPlainDateTime extends JSBuiltinNode {
+
+        protected JSTemporalPlainTimeToPlainDateTime(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        public DynamicObject toPlainDateTime(DynamicObject thisObj, DynamicObject temporalDateObj,
+                                             @Cached("create()") IsObjectNode isObject,
+                                             @Cached("create()") JSToBooleanNode toBoolean,
+                                             @Cached("create()") JSToStringNode toString,
+                                             @Cached("create()") IsConstructorNode isConstructor,
+                                             @Cached("createNew()") JSFunctionCallNode callNode,
+                                             @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+            JSTemporalPlainDateObject temporalDate = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(temporalDateObj, null,
+                    null, getContext().getRealm(), isObject, dol, toBoolean, toString, isConstructor, callNode);
+            return null;    // TODO: Call JSTemporalPlainDateTime.createTemporalDateTime()
         }
     }
 
