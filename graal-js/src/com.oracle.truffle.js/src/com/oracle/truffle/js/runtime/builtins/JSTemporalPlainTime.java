@@ -420,6 +420,19 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         return 0;
     }
 
+    // 4.5.14
+    public static DynamicObject addTime(long hour, long minute, long second, long millisecond, long microsecond,
+                                        long nanosecond, long hours, long minutes, long seconds, long milliseconds,
+                                        long microseconds, long nanoseconds, JSRealm realm) {
+        hour = hour + hours;
+        minute = minute + minutes;
+        second = second + seconds;
+        millisecond = millisecond + microseconds;
+        microsecond = microsecond + microseconds;
+        nanosecond = nanosecond + nanoseconds;
+        return balanceTime(hour, minute, second, millisecond, microsecond, nanosecond, realm);
+    }
+
     // 4.5.15
     public static DynamicObject roundTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
                                           long nanoseconds, double increment, String unit, String roundingMode,
