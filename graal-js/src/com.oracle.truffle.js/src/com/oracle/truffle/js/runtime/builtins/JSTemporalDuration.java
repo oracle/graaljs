@@ -377,6 +377,71 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return 0;
     }
 
+    // 7.5.4
+    public static void rejectDurationSign(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+        long sign = durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        if (years < 0 && sign > 0) {
+            throw Errors.createRangeError("Years is negative but it should be positive.");
+        }
+        if (years > 0 && sign < 0) {
+            throw Errors.createRangeError("Years is positive but it should be negative.");
+        }
+        if (months < 0 && sign > 0) {
+            throw Errors.createRangeError("Months is negative but it should be positive.");
+        }
+        if (months > 0 && sign < 0) {
+            throw Errors.createRangeError("Months is positive but it should be negative.");
+        }
+        if (weeks < 0 && sign > 0) {
+            throw Errors.createRangeError("Weeks is negative but it should be positive.");
+        }
+        if (weeks > 0 && sign < 0) {
+            throw Errors.createRangeError("Weeks is positive but it should be negative.");
+        }
+        if (days < 0 && sign > 0) {
+            throw Errors.createRangeError("Days is negative but it should be positive.");
+        }
+        if (days > 0 && sign < 0) {
+            throw Errors.createRangeError("Days is positive but it should be negative.");
+        }
+        if (hours < 0 && sign > 0) {
+            throw Errors.createRangeError("Hours is negative but it should be positive.");
+        }
+        if (hours > 0 && sign < 0) {
+            throw Errors.createRangeError("Hours is positive but it should be negative.");
+        }
+        if (minutes < 0 && sign > 0) {
+            throw Errors.createRangeError("Minutes is negative but it should be positive.");
+        }
+        if (minutes > 0 && sign < 0) {
+            throw Errors.createRangeError("Minutes is positive but it should be negative.");
+        }
+        if (seconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Seconds is negative but it should be positive.");
+        }
+        if (seconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Seconds is positive but it should be negative.");
+        }
+        if (milliseconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Milliseconds is negative but it should be positive.");
+        }
+        if (milliseconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Milliseconds is positive but it should be negative.");
+        }
+        if (microseconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Microseconds is negative but it should be positive.");
+        }
+        if (microseconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Microseconds is positive but it should be negative.");
+        }
+        if (nanoseconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Nanoseconds is negative but it should be positive.");
+        }
+        if (nanoseconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Nanoseconds is positive but it should be negative.");
+        }
+    }
+
     // 7.5.5
     public static boolean validateTemporalDuration(long years, long months, long weeks, long days, long hours,
                                                    long minutes, long seconds, long milliseconds, long microseconds,

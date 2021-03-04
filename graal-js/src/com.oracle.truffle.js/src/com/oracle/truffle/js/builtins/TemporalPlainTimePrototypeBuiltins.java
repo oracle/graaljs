@@ -6,14 +6,17 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetISOFieldsNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -22,14 +25,13 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.util.Collections;
-
-import static com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen.*;
 
 public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimePrototypeBuiltins.TemporalTimePrototype> {
 
@@ -40,6 +42,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public enum TemporalTimePrototype implements BuiltinEnum<TemporalTimePrototype> {
+        add(1),
         with(2),
         round(1),
         equals(1),
@@ -63,10 +66,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimePrototype builtinEnum) {
         switch (builtinEnum) {
+            case add:
+                return JSTemporalPlainTimeAddNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case with:
                 return JSTemporalPlainTimeWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case round:
-                return create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalPlainTimeRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
                 return JSTemporalPlainTimeEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case getISOFields:
@@ -78,6 +83,71 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSTemporalPlainTimeValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    // 4.3.10
+    public abstract static class JSTemporalPlainTimeAdd extends JSBuiltinNode {
+
+        protected JSTemporalPlainTimeAdd(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        public DynamicObject add(DynamicObject thisObj, DynamicObject temporalDurationLike,
+                                 @Cached("create()") IsObjectNode isObject,
+                                 @Cached("create()") JSToStringNode toString,
+                                 @Cached("create()") JSToIntegerAsLongNode toInt,
+                                 @Cached("createNew()") JSFunctionCallNode callNode,
+                                 @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            try {
+                JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+                DynamicObject duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
+                        Collections.emptySet(), getContext().getRealm(), isObject, toString, toInt, dol);
+                JSTemporalDuration.rejectDurationSign(
+                        dol.getLongOrDefault(duration, JSTemporalDuration.YEARS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MONTHS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.WEEKS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.DAYS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.NANOSECONDS, 0)
+                );
+                DynamicObject result = JSTemporalPlainTime.addTime(
+                        temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(),
+                        temporalTime.getMilliseconds(), temporalTime.getMicroseconds(), temporalTime.getNanoseconds(),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(duration, JSTemporalDuration.NANOSECONDS, 0),
+                        getContext().getRealm()
+                );
+                result = JSTemporalPlainTime.regulateTime(
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.HOUR, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.MINUTE, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.SECOND, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.MILLISECOND, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.MICROSECOND, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.NANOSECOND, 0),
+                        "reject", getContext().getRealm()
+                );
+                return JSTemporalPlainTime.createTemporalTimeFromInstance(temporalTime,
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.HOUR, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.MINUTE, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.SECOND, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.MILLISECOND, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.MICROSECOND, 0),
+                        dol.getLongOrDefault(result, JSTemporalPlainTime.NANOSECOND, 0),
+                        getContext().getRealm(), callNode
+                );
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     // 4.3.12
