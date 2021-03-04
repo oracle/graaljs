@@ -369,7 +369,7 @@ public final class TemporalUtil {
         return rounded * increment;
     }
 
-    private static <T> Set<T> toSet(T... values) {
+    public static <T> Set<T> toSet(T... values) {
         return Arrays.stream(values).collect(Collectors.toSet());
     }
 

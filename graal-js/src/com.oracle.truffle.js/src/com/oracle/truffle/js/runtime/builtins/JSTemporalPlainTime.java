@@ -3,6 +3,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -177,6 +178,33 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     //region Abstract methods
+
+    // 4.5.1
+    public static DynamicObject differenceTime(long h1, long min1, long s1, long ms1, long mus1, long ns1,
+                                               long h2, long min2, long s2, long ms2, long mus2, long ns2,
+                                               JSRealm realm, DynamicObjectLibrary dol) {
+        try {
+            long hours = h2 - h1;
+            long minutes = min2 - min1;
+            long seconds = s2 - s1;
+            long milliseconds = ms2 - ms1;
+            long microseconds = mus2 - mus1;
+            long nanoseconds = ns2 - ns1;
+            long sign = JSTemporalDuration.durationSign(0, 0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+            DynamicObject bt = balanceTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, realm);
+            DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.DAYS, dol.getLongOrDefault(bt, JSTemporalDuration.DAYS, 0) * sign);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.HOURS, dol.getLongOrDefault(bt, JSTemporalDuration.HOURS, 0) * sign);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MINUTES, dol.getLongOrDefault(bt, JSTemporalDuration.MINUTES, 0) * sign);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.SECONDS, dol.getLongOrDefault(bt, JSTemporalDuration.SECONDS, 0) * sign);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MILLISECONDS, dol.getLongOrDefault(bt, JSTemporalDuration.MILLISECONDS, 0) * sign);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MICROSECONDS, dol.getLongOrDefault(bt, JSTemporalDuration.MICROSECONDS, 0) * sign);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.NANOSECONDS, dol.getLongOrDefault(bt, JSTemporalDuration.NANOSECONDS, 0) * sign);
+            return record;
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     // 4.5.2
     public static Object toTemporalTime(DynamicObject item, DynamicObject varConstructor, String varOverflow,
