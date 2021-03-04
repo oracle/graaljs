@@ -4,6 +4,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -18,12 +20,15 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public final class TemporalUtil {
 
     private static final String YEAR = "year";
     private static final String MONTH = "month";
+    private static final String MONTH_CODE = "monthCode";
     private static final String DAY = "day";
     private static final String HOUR = "hour";
     private static final String MINUTE = "minute";
@@ -43,6 +48,15 @@ public final class TemporalUtil {
     private static final String MICROSECONDS = "microseconds";
     private static final String NANOSECONDS = "nanoseconds";
 
+    private static final String OFFSET = "offset";
+    private static final String ERA = "era";
+    private static final String ERA_YEAR = "eraYear";
+
+    private static final Function<Object, Object> toIntegerOrInfinity = (argument-> (long) JSToDoubleNode.create().executeDouble(argument));
+    private static final Function<Object, Object> toPositiveIntegerOrInfinity = TemporalUtil::toPositiveIntegerOrInfinity;
+    private static final Function<Object, Object> toInteger = (argument -> (long) JSToIntegerAsLongNode.create().executeLong(argument));
+    private static final Function<Object, Object> toString = (argument -> JSToStringNode.create().executeString(argument));
+
     private static final Set<String> singularUnits = toSet(YEAR, MONTH, DAY, HOUR, MINUTE, SECOND,
             MILLISECOND, MICROSECOND, NANOSECOND);
     private static final Set<String> pluralUnits = toSet(YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS,
@@ -54,6 +68,15 @@ public final class TemporalUtil {
     private static final Map<String, String> singularToPlural = toMap(
             new String[] {YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND},
             new String[] {YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS}
+    );
+    private static final Map<String, Function<Object, Object>> temporalFieldConversion = toMap(
+            new String[]{YEAR, MONTH, MONTH_CODE, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR},
+            new Function[]{toIntegerOrInfinity, toPositiveIntegerOrInfinity, toString, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity,
+                    toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toIntegerOrInfinity, toString, toString, toInteger}
+    );
+    private static final Map<String, Object> temporalFieldDefaults = toMap(
+            new String[] { YEAR, MONTH, MONTH_CODE, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR },
+            new Object[] { null, null, null, null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null, null, null }
     );
 
     // 13.1
@@ -341,7 +364,7 @@ public final class TemporalUtil {
         return n;
     }
 
-    // 13.34
+    // 13.35
     public static long constraintToRange(long x, long minimum, long maximum) {
         return Math.min(Math.max(x, minimum), maximum);
     }
@@ -367,6 +390,43 @@ public final class TemporalUtil {
             rounded = roundHalfAwayFromZero(x);
         }
         return rounded * increment;
+    }
+
+    // 13.51
+    public static long toPositiveIntegerOrInfinity(Object argument) {
+        double integer = JSToDoubleNode.create().executeDouble(argument);
+        if (integer == Double.NEGATIVE_INFINITY) {
+            throw Errors.createRangeError("Integer should not be negative infinity.");
+        }
+        if (integer <= 0) {
+            throw Errors.createRangeError("Integer should be positive.");
+        }
+        return (long) integer;
+    }
+
+    // 13.52
+    public static DynamicObject prepareTemporalFields(DynamicObject fields, Set<String> fieldNames, Set<String> requiredFields, JSRealm realm, IsObjectNode isObjectNode, DynamicObjectLibrary dol) {
+        assert isObjectNode.executeBoolean(fields);
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        for (String property : fieldNames) {
+            Object value = dol.getOrDefault(fields, property, null);
+            if (value == null) {
+                if (requiredFields.contains(property)) {
+                    throw Errors.createTypeError(String.format("Property %s is required.", property));
+                } else {
+                    if (temporalFieldDefaults.containsKey(property)) {
+                        value = temporalFieldDefaults.get(property);
+                    }
+                }
+            } else {
+                if (temporalFieldConversion.containsKey(property)) {
+                    Function<Object, Object> conversion = temporalFieldConversion.get(property);
+                    value = conversion.apply(value);
+                }
+            }
+            JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
+        }
+        return result;
     }
 
     public static <T> Set<T> toSet(T... values) {
