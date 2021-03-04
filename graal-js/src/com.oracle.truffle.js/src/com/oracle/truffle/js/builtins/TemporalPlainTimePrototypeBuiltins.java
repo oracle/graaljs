@@ -6,13 +6,14 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTImeUntilNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSinceNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSubtractNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeValueOfNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -49,6 +50,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         subtract(1),
         with(2),
         until(2),
+        since(2),
         round(1),
         equals(1),
         getISOFields(0),
@@ -78,7 +80,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             case with:
                 return JSTemporalPlainTimeWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case until:
-                return JSTemporalPlainTImeUntilNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainTimeUntilNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case since:
+                return JSTemporalPlainTimeSinceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case round:
                 return JSTemporalPlainTimeRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
@@ -305,9 +309,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.13
-    public abstract static class JSTemporalPlainTImeUntil extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainTimeUntil extends JSBuiltinNode {
 
-        protected JSTemporalPlainTImeUntil(JSContext context, JSBuiltin builtin) {
+        protected JSTemporalPlainTimeUntil(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -378,6 +382,80 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
+    // 4.3.14
+    public abstract static class JSTemporalPlainTimeSince extends JSBuiltinNode {
+
+        protected JSTemporalPlainTimeSince(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        public DynamicObject until(DynamicObject thisObj, DynamicObject otherObj, DynamicObject options,
+                                   @Cached("create()") IsObjectNode isObject,
+                                   @Cached("create()") JSToIntegerAsIntNode toInt,
+                                   @Cached("create()") JSToStringNode toString,
+                                   @Cached("create()") JSToBooleanNode toBoolean,
+                                   @Cached("create()") JSToNumberNode toNumber,
+                                   @Cached("create()") IsConstructorNode isConstructor,
+                                   @Cached("createNew()") JSFunctionCallNode callNode,
+                                   @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            try {
+                JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+                JSTemporalTimeObject other = (JSTemporalTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj,
+                        null, null, getContext().getRealm(), isObject, dol, toInt, toString,
+                        isConstructor, callNode);
+                options = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, JSTemporalDuration.NANOSECONDS,
+                        TemporalUtil.toSet(JSTemporalDuration.YEARS, JSTemporalDuration.MONTHS, JSTemporalDuration.WEEKS, JSTemporalDuration.DAYS),
+                        dol, isObject, toBoolean, toString);
+                String largestUnit = TemporalUtil.toLargestTemporalUnit(options,
+                        TemporalUtil.toSet(JSTemporalDuration.YEARS, JSTemporalDuration.MONTHS, JSTemporalDuration.WEEKS, JSTemporalDuration.DAYS),
+                        JSTemporalDuration.HOURS, dol, isObject, toBoolean, toString);
+                TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
+                String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", dol, isObject, toBoolean, toString);
+                long maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+                long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, (double) maximum, false, dol, isObject, toNumber);
+                DynamicObject result = JSTemporalPlainTime.differenceTime(
+                        temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(), temporalTime.getMilliseconds(), temporalTime.getMicroseconds(), temporalTime.getNanoseconds(),
+                        other.getHours(), other.getMinutes(), other.getSeconds(), other.getMilliseconds(), other.getMicroseconds(), other.getNanoseconds(),
+                        getContext().getRealm(), dol
+                );
+                result = JSTemporalDuration.roundDuration(
+                        0, 0, 0, 0,
+                        -dol.getLongOrDefault(result, JSTemporalDuration.HOURS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.MINUTES, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.SECONDS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0),
+                        roundingIncrement, smallestUnit, roundingMode, null, dol, getContext().getRealm()
+                );
+                result = JSTemporalDuration.balanceDuration(
+                        0,
+                        -dol.getLongOrDefault(result, JSTemporalDuration.HOURS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.MINUTES, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.SECONDS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0),
+                        -dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0),
+                        largestUnit, null, getContext().getRealm()
+                );
+                return JSTemporalDuration.createTemporalDuration(
+                        0, 0, 0, 0,
+                        dol.getLongOrDefault(result, JSTemporalDuration.HOURS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MINUTES, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.SECONDS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MILLISECONDS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.MICROSECONDS, 0),
+                        dol.getLongOrDefault(result, JSTemporalDuration.NANOSECONDS, 0),
+                        getContext().getRealm()
+                );
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+    
     // 4.3.15
     public abstract static class JSTemporalPlainTimeRound extends JSBuiltinNode {
 
