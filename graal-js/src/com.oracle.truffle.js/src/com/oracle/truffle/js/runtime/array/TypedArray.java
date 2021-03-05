@@ -46,7 +46,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArra
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -260,9 +261,9 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    protected static RuntimeException indexOfOutBoundsException() {
-        CompilerDirectives.transferToInterpreter();
-        throw new IndexOutOfBoundsException();
+    @TruffleBoundary
+    protected static JSException unsupportedBufferAccess(Object buffer, UnsupportedMessageException e) {
+        return Errors.createTypeErrorInteropException(buffer, e, "buffer access", null);
     }
 
     public abstract static class TypedIntArray extends TypedArray {
@@ -402,8 +403,10 @@ public abstract class TypedArray extends ScriptArray {
         static byte readBufferByte(Object buffer, int byteIndex, InteropLibrary interop) {
             try {
                 return interop.readBufferByte(buffer, byteIndex);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
 
@@ -413,7 +416,7 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
     }
@@ -679,8 +682,10 @@ public abstract class TypedArray extends ScriptArray {
         static short readBufferShort(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
             try {
                 return interop.readBufferShort(buffer, order, byteIndex);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
 
@@ -690,7 +695,7 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
     }
@@ -847,8 +852,10 @@ public abstract class TypedArray extends ScriptArray {
         static int readBufferInt(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
             try {
                 return interop.readBufferInt(buffer, order, byteIndex);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
 
@@ -858,7 +865,7 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
     }
@@ -1119,8 +1126,10 @@ public abstract class TypedArray extends ScriptArray {
         static long readBufferLong(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
             try {
                 return interop.readBufferLong(buffer, order, byteIndex);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
 
@@ -1130,7 +1139,7 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
     }
@@ -1348,8 +1357,10 @@ public abstract class TypedArray extends ScriptArray {
         static float readBufferFloat(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
             try {
                 return interop.readBufferFloat(buffer, order, byteIndex);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
 
@@ -1359,7 +1370,7 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
     }
@@ -1446,8 +1457,10 @@ public abstract class TypedArray extends ScriptArray {
         static double readBufferDouble(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
             try {
                 return interop.readBufferDouble(buffer, order, byteIndex);
-            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
 
@@ -1457,7 +1470,7 @@ public abstract class TypedArray extends ScriptArray {
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
-                throw indexOfOutBoundsException();
+                throw Errors.createRangeErrorInvalidBufferOffset();
             }
         }
     }
