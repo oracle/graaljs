@@ -128,9 +128,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
             return byteArray.length;
         }
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         boolean hasBufferElements() {
-            return !isDetached();
+            return true;
         }
 
         @ExportMessage
@@ -138,16 +139,16 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
             return isDetached() ? 0 : getByteLength();
         }
 
-        private void ensureNotDetached() throws UnsupportedMessageException {
+        private void ensureNotDetached() throws IndexOutOfBoundsException {
             if (isDetached()) {
-                throw UnsupportedMessageException.create();
+                throw DetachedBufferIndexOutOfBoundsException.INSTANCE;
             }
         }
 
         @ExportMessage
-        byte readBufferByte(long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return byteArray[Math.toIntExact(byteOffset)];
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
@@ -155,9 +156,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        short readBufferShort(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return (short) ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt16(byteArray, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
@@ -165,9 +166,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        int readBufferInt(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt32(byteArray, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
@@ -175,9 +176,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        long readBufferLong(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt64(byteArray, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
@@ -185,9 +186,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        float readBufferFloat(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getFloat(byteArray, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
@@ -195,9 +196,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        double readBufferDouble(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getDouble(byteArray, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
@@ -210,9 +211,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        void writeBufferByte(long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        void writeBufferByte(long byteOffset, byte value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 byteArray[Math.toIntExact(byteOffset)] = value;
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
@@ -220,9 +221,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        void writeBufferShort(ByteOrder order, long byteOffset, short value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt16(byteArray, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
@@ -230,9 +231,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        void writeBufferInt(ByteOrder order, long byteOffset, int value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt32(byteArray, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
@@ -240,9 +241,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        void writeBufferLong(ByteOrder order, long byteOffset, long value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt64(byteArray, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
@@ -250,9 +251,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putFloat(byteArray, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
@@ -260,9 +261,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putDouble(byteArray, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
@@ -295,9 +296,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         @Override
         public abstract void detachArrayBuffer();
 
+        @SuppressWarnings("static-method")
         @ExportMessage
         final boolean hasBufferElements() {
-            return !isDetached();
+            return true;
         }
 
         @ExportMessage
@@ -305,16 +307,16 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
             return isDetached() ? 0 : getByteLength();
         }
 
-        private void ensureNotDetached() throws UnsupportedMessageException {
+        private void ensureNotDetached() {
             if (isDetached()) {
-                throw UnsupportedMessageException.create();
+                throw DetachedBufferIndexOutOfBoundsException.INSTANCE;
             }
         }
 
         @ExportMessage
-        final byte readBufferByte(long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return byteBuffer.get(Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
@@ -322,9 +324,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final short readBufferShort(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final short readBufferShort(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return (short) ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt16(byteBuffer, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
@@ -332,9 +334,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final int readBufferInt(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final int readBufferInt(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt32(byteBuffer, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
@@ -342,9 +344,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final long readBufferLong(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final long readBufferLong(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt64(byteBuffer, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
@@ -352,9 +354,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final float readBufferFloat(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final float readBufferFloat(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getFloat(byteBuffer, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
@@ -362,9 +364,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final double readBufferDouble(ByteOrder order, long byteOffset) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final double readBufferDouble(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getDouble(byteBuffer, Math.toIntExact(byteOffset));
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
@@ -377,9 +379,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final void writeBufferByte(long byteOffset, byte value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final void writeBufferByte(long byteOffset, byte value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 byteBuffer.put(Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
@@ -387,9 +389,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final void writeBufferShort(ByteOrder order, long byteOffset, short value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final void writeBufferShort(ByteOrder order, long byteOffset, short value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt16(byteBuffer, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
@@ -397,9 +399,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final void writeBufferInt(ByteOrder order, long byteOffset, int value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final void writeBufferInt(ByteOrder order, long byteOffset, int value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt32(byteBuffer, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
@@ -407,9 +409,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final void writeBufferLong(ByteOrder order, long byteOffset, long value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final void writeBufferLong(ByteOrder order, long byteOffset, long value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt64(byteBuffer, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
@@ -417,9 +419,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putFloat(byteBuffer, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
@@ -427,9 +429,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        final void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws UnsupportedMessageException, InvalidBufferOffsetException {
-            ensureNotDetached();
+        final void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws InvalidBufferOffsetException {
             try {
+                ensureNotDetached();
                 ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putDouble(byteBuffer, Math.toIntExact(byteOffset), value);
             } catch (IndexOutOfBoundsException | ArithmeticException e) {
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
@@ -530,5 +532,19 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
     public static DynamicObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
         return new Interop(shape, interopBuffer);
+    }
+
+    @SuppressWarnings("serial")
+    static final class DetachedBufferIndexOutOfBoundsException extends IndexOutOfBoundsException {
+        private static final IndexOutOfBoundsException INSTANCE = new DetachedBufferIndexOutOfBoundsException();
+
+        private DetachedBufferIndexOutOfBoundsException() {
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
     }
 }
