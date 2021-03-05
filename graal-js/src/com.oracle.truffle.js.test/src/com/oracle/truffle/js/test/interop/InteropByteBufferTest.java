@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.test.interop.JavaScriptHostInteropTest.assertThrows;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -262,6 +263,19 @@ public class InteropByteBufferTest {
             context.eval(ID, "dv.setBigInt64(24, 1742123762643437888n, false);");
             assertEquals(4614256656552045848L, dataView.invokeMember("getBigInt64", 24, true).asLong());
             assertEquals(Math.PI, dataView.invokeMember("getFloat64", 24, true).asDouble(), 0.0);
+        }
+    }
+
+    @Test
+    public void testReadOnlyByteBuffer() {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3}).asReadOnlyBuffer();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
+            context.getBindings("js").putMember("buffer", buffer);
+            Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
+            buffer.position(0);
+            assertEquals(jsBuffer.getArraySize(), 3);
+            assertEquals(jsBuffer.getArrayElement(0).asByte(), buffer.get());
+            assertThrows(() -> jsBuffer.setArrayElement(0, 42), e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
         }
     }
 }
