@@ -82,6 +82,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     protected static final void setArrayProperties(DynamicObject object, Object array, long length, int usedLength, long indexOffset, int arrayOffset) {
         arraySetArray(object, array);
+        setArrayProperties(object, length, usedLength, indexOffset, arrayOffset);
+    }
+
+    protected static final void setArrayProperties(DynamicObject object, long length, int usedLength, long indexOffset, int arrayOffset) {
         arraySetLength(object, length);
         arraySetUsedLength(object, usedLength);
         arraySetIndexOffset(object, indexOffset);
@@ -821,6 +825,19 @@ public abstract class AbstractWritableArray extends DynamicArray {
      * Move {@code len} elements from {@code src} to {@code dst}.
      */
     protected abstract void moveRangePrepared(DynamicObject object, int src, int dst, int len);
+
+    @Override
+    public ScriptArray shiftRangeImpl(DynamicObject object, long from) {
+        int usedLength = getUsedLength(object);
+        if (from < usedLength) {
+            int arrayOffset = (int) (getArrayOffset(object) + from);
+            int indexOffset = (int) (getIndexOffset(object) - from);
+            setArrayProperties(object, (int) (usedLength - from), (int) (lengthInt(object) - from), indexOffset, arrayOffset);
+            return this;
+        } else {
+            return removeRangeImpl(object, 0, from);
+        }
+    }
 
     protected interface SetSupportedProfileAccess extends ProfileAccess {
         default boolean ensureCapacityGrow(ProfileHolder profile, boolean condition) {

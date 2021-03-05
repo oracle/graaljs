@@ -371,6 +371,24 @@ public abstract class ScriptArray {
     }
 
     /**
+     * This function shifts all elements in the range from [0..limit[. Depending on the underlying
+     * implementation, the shift operation might be zero-copy. Can be used by e.g.
+     * Array.prototype.shift;
+     */
+    public ScriptArray shiftRangeImpl(DynamicObject object, long limit) {
+        return removeRangeImpl(object, 0, limit);
+    }
+
+    public final ScriptArray shiftRange(DynamicObject object, long from, BranchProfile errorBranch) {
+        assert from >= 0;
+        if (isSealed()) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorCannotDeletePropertyOfSealedArray(from);
+        }
+        return shiftRangeImpl(object, from);
+    }
+
+    /**
      * This method grows the array by adding more elements of a given size. An offset parameter can
      * be used to specify where the new elements have to be added (starting from zero). The
      * operation is equivalent to shifting (right) the whole array or its part as defined by the

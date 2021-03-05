@@ -1011,18 +1011,18 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             int iIndex = (int) index;
-            if (inBoundsFastCondition.profile(intArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(intArray, index))) {
+            if (inBoundsFastCondition.profile(intArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setInBoundsFast(target, iIndex, intValue);
                 return true;
-            } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, index))) {
+            } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setInBounds(target, iIndex, intValue, profile);
                 return true;
-            } else if (supportedNonZeroCondition.profile(intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, index))) {
+            } else if (supportedNonZeroCondition.profile(intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setSupported(target, iIndex, intValue, profile);
                 return true;
             } else {
                 ScriptArray toArrayType;
-                if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, index) && intArray.isSupported(target, index))) {
+                if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, target, index) && intArray.isSupported(target, index))) {
                     toArrayType = intArray.toNonContiguous(target, iIndex, intValue, profile);
                 } else if (supportedContiguousCondition.profile(!(intArray instanceof AbstractContiguousIntArray) && intArray.isSupportedContiguous(target, index))) {
                     toArrayType = intArray.toContiguous(target, index, intValue);
@@ -1036,8 +1036,8 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private static boolean mightTransferToNonContiguous(AbstractIntArray intArray, long index) {
-            return intArray instanceof ContiguousIntArray && index == 0;
+        private static boolean mightTransferToNonContiguous(AbstractIntArray intArray, DynamicObject target, long index) {
+            return intArray instanceof ContiguousIntArray && index == 0 && intArray.firstElementIndex(target) == 1;
         }
     }
 
