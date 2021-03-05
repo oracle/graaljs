@@ -2,7 +2,7 @@
 const common = require('../../common');
 const assert = require('assert');
 const readonlyErrorRE =
-  /^TypeError: Cannot assign to read only property '.*' of |^TypeError: ".*" is not a writable property of|^TypeError: Cannot redefine property .* which has only a getter$|^TypeError: Cannot set property .* of .* which has only a getter$/;
+  /^TypeError: Cannot assign to read only property '.*' of|^TypeError: Cannot redefine property .* which has only a getter$|^TypeError: Cannot set property .* of .* which has only a getter$/;
 const getterOnlyErrorRE =
   /^TypeError: Cannot set property .* of .* which has only a getter$/;
 

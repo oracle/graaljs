@@ -93,9 +93,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-typed-funcref",
                     "--experimental-wasm-type-reflection",
                     "--harmony-import-assertions",
-                    "--no-wasm-trap-handler",
-                    "--wasm-staging",
-                    "--wasm-tier-up"
+                    "--wasm-staging"
     }));
     private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-regexp-match-indices",
@@ -167,8 +165,7 @@ public class TestV8Runnable extends TestRunnable {
         if (supported) {
             testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions, setupFiles)));
         } else {
-            testFile.setStatus(TestFile.Status.SKIP);
-            testFile.setStatusOverrides(null);
+            testFile.setStatus(TestFile.Status.SKIP); // attn: does not force-skip statusOverrides
         }
     }
 

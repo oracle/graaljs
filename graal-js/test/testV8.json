@@ -1923,6 +1923,12 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-11024.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1114005.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2379,6 +2385,12 @@
     },
     "comment" : "Uses Worker"
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-808848.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-812005.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2456,6 +2468,12 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-842501.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-843563.js",
@@ -2944,6 +2962,12 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/wasm/compiled-module-serialization.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/wasm/data-segments.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3146,6 +3170,12 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/wasm/graceful_shutdown_during_tierup.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/wasm/grow-huge-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3300,6 +3330,12 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/wasm/many-memories-no-trap-handler.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
     "filePath" : "mjsunit/wasm/many-memories.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3385,6 +3421,12 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/wasm/print-code.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
     }
   }, {
     "filePath" : "mjsunit/wasm/receiver.js",
