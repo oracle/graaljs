@@ -12,6 +12,7 @@ import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSinceNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSubtractNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToZonedDateTimeNodeGen;
@@ -61,6 +62,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         toZonedDateTime(1),
         getISOFields(0),
         toString(1),
+        toLocaleString(0),
         toJSON(0),
         valueOf(0);
 
@@ -100,8 +102,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             case getISOFields:
                 return JSTemporalPlainTimeGetISOFieldsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toString:
-            case toJSON:
                 return JSTemporalPlainTimeToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case toLocaleString:
+            case toJSON:
+                return JSTemporalPlainTimeToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return JSTemporalPlainTimeValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -671,7 +675,26 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    // 4.3.24
+    // 4.3.21
+    // 4.3.22
+    public abstract static class JSTemporalPlainTimeToLocaleString extends JSBuiltinNode {
+
+        protected JSTemporalPlainTimeToLocaleString(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public String toLocaleString(DynamicObject thisObj) {
+            JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+            return JSTemporalPlainTime.temporalTimeToString(
+                    temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(),
+                    temporalTime.getMilliseconds(), temporalTime.getMicroseconds(), temporalTime.getNanoseconds(),
+                    "auto"
+            );
+        }
+    }
+
+    // 4.3.23
     public abstract static class JSTemporalPlainTimeValueOf extends JSBuiltinNode {
 
         protected JSTemporalPlainTimeValueOf(JSContext context, JSBuiltin builtin) {
