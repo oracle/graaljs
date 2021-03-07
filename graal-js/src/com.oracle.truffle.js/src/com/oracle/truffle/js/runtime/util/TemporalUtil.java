@@ -138,6 +138,29 @@ public final class TemporalUtil {
         return defaultNumberOptions(value, minimum, maximum, fallback, numberNode);
     }
 
+    // 13.5
+    public static Object getStringOrNumberOption(DynamicObject options, String property, Set<String> stringValues,
+                                                 double minimum, double maximum, Object fallback, DynamicObjectLibrary dol,
+                                                 IsObjectNode isObject, JSToNumberNode toNumber, JSToStringNode toString) {
+        assert isObject.executeBoolean(options);
+        Object value = dol.getOrDefault(options, property, null);
+        if (value == null) {
+            return fallback;
+        }
+        if (value instanceof Number) {
+            double numberValue = toNumber.executeNumber(value).doubleValue();
+            if (numberValue == Double.NaN || numberValue < minimum || numberValue > maximum) {
+                throw Errors.createRangeError("Numeric value out of range.");
+            }
+            return Math.floor(numberValue);
+        }
+        value = toString.executeString(value);
+        if (stringValues != null && !stringValues.contains(value)) {
+            throw Errors.createRangeError("Given string value is not in string values");
+        }
+        return value;
+    }
+
     // 13.8
     public static String toTemporalOverflow(DynamicObject normalizedOptions,
                                             DynamicObjectLibrary dol,
@@ -178,6 +201,83 @@ public final class TemporalUtil {
             throw Errors.createRangeError("Increment out of range.");
         }
         return increment;
+    }
+
+    // 13.19
+    public static DynamicObject toSecondsStringPrecision(DynamicObject normalizedOptions, DynamicObjectLibrary dol,
+                                                         IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString,
+                                                         JSToNumberNode toNumberNode, JSRealm realm) {
+        String smallestUnit = (String) getOptions(normalizedOptions, "smallestUnit", "string", toSet(MINUTE, SECOND,
+                MILLISECOND, MICROSECOND, NANOSECOND, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS),
+                null, dol, isObject, toBoolean, toString);
+        if (pluralUnits.contains(smallestUnit)) {
+            smallestUnit = pluralToSingular.get(smallestUnit);
+        }
+        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        if(smallestUnit != null) {
+            if (smallestUnit.equals(MINUTE)) {
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", MINUTE);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MINUTE);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                return record;
+            }
+            if (smallestUnit.equals(SECOND)) {
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 0);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", SECOND);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                return record;
+            }
+            if (smallestUnit.equals(MILLISECOND)) {
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 3);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MILLISECOND);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                return record;
+            }
+            if (smallestUnit.equals(MICROSECOND)) {
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 6);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MICROSECOND);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                return record;
+            }
+            if (smallestUnit.equals(NANOSECOND)) {
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 9);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                return record;
+            }
+        }
+        assert smallestUnit == null;
+        Object digits = getStringOrNumberOption(normalizedOptions, "fractionalSecondDigits",
+                Collections.singleton("auto"), 0, 9, "auto", dol, isObject, toNumberNode, toString);
+        if (digits.equals("auto")) {
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", "auto");
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+            return record;
+        }
+        if (digits.equals(0)) {
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 0);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", SECOND);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+            return record;
+        }
+        if (digits.equals(1) || digits.equals(2) || digits.equals(3)) {
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", digits);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MILLISECOND);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", Math.pow(10, 3 - (long) digits));
+            return record;
+        }
+        if (digits.equals(4) || digits.equals(5) || digits.equals(6)) {
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", digits);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MICROSECOND);
+            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", Math.pow(10, 6 - (long) digits));
+            return record;
+        }
+        assert digits.equals(7) || digits.equals(8) || digits.equals(9);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", digits);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", Math.pow(10, 9 - (long) digits));
+        return record;
     }
 
     // 13.21
@@ -326,7 +426,7 @@ public final class TemporalUtil {
         return NANOSECONDS;
     }
 
-    // 13.30
+    // 13.31
     public static Long maximumTemporalDurationRoundingIncrement(String unit) {
         if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS)) {
             return null;
@@ -342,6 +442,42 @@ public final class TemporalUtil {
     }
 
     // 13.32
+    public static String formatSecondsStringPart(long second, long millisecond, long microsecond, long nanosecond,
+                                                 Object precision) {
+        if (precision.equals(MINUTE)) {
+            return "";
+        }
+        String secondString = String.format("%1$2d", second).replace(" ", "0");
+        long fraction = (millisecond * 1_000_000) + (microsecond * 1_000) + nanosecond;
+        String fractionString = "";
+        if (precision.equals("auto")) {
+            if (fraction == 0) {
+                return secondString;
+            }
+            fractionString = fractionString.concat(String.format("%1$3d", millisecond).replace(" ", "0"));
+            fractionString = fractionString.concat(String.format("%1$3d", microsecond).replace(" ", "0"));
+            fractionString = fractionString.concat(String.format("%1$3d", nanosecond).replace(" ", "0"));
+            fractionString = longestSubstring(fractionString);
+        } else {
+            if (precision.equals(0)) {
+                return secondString;
+            }
+            fractionString = fractionString.concat(String.format("%1$3d", millisecond).replace(" ", "0"));
+            fractionString = fractionString.concat(String.format("%1$3d", microsecond).replace(" ", "0"));
+            fractionString = fractionString.concat(String.format("%1$3d", nanosecond).replace(" ", "0"));
+            fractionString = fractionString.substring(0, (int) precision);
+        }
+        return secondString.concat(".").concat(fractionString);
+    }
+
+    private static String longestSubstring(String s) {
+        while (s.endsWith("0")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s;
+    }
+
+    // 13.33
     public static double nonNegativeModulo(double x, double y) {
         double result = x % y;
         if (result == -0) {
@@ -353,7 +489,7 @@ public final class TemporalUtil {
         return result;
     }
 
-    // 13.33
+    // 13.34
     public static long sign(long n) {
         if (n > 0) {
             return 1;

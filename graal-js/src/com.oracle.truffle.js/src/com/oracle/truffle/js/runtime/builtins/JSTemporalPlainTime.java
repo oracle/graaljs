@@ -406,6 +406,15 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         return result;
     }
 
+    // 4.5.12
+    public static String temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
+                                              long nanosecond, Object precision) {
+        String hourString = String.format("%1$2d", hour).replace(" ", "0");
+        String minuteString = String.format("%1$2d", minute).replace(" ", "0");
+        String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
+        return String.format("%s:%s:%s", hourString, minuteString, secondString);
+    }
+
     // 4.5.13
     public static int compareTemporalTime(int h1, int min1, int s1, int ms1, int mus1, int ns1,
                                           int h2, int min2, int s2, int ms2, int mus2, int ns2) {
