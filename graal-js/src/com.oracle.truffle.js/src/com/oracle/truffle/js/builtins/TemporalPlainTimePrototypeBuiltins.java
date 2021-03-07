@@ -60,7 +60,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         toPlainDateTime(1),
         toZonedDateTime(1),
         getISOFields(0),
-        toString(0),
+        toString(1),
         toJSON(0),
         valueOf(0);
 
@@ -101,7 +101,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSTemporalPlainTimeGetISOFieldsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toString:
             case toJSON:
-                return JSTemporalPlainTimeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalPlainTimeToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case valueOf:
                 return JSTemporalPlainTimeValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -608,7 +608,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    // 4.3.20
+    // 4.3.19
     public abstract static class JSTemporalPlainTimeGetISOFields extends JSBuiltinNode {
 
         protected JSTemporalPlainTimeGetISOFields(JSContext context, JSBuiltin builtin) {
@@ -630,50 +630,44 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    // 4.3.21
+    // 4.3.20
     public abstract static class JSTemporalPlainTimeToString extends JSBuiltinNode {
 
         protected JSTemporalPlainTimeToString(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization
-        protected String toString(DynamicObject thisObj) {
-            JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
-            return temporalTimeToString(temporalTime);
-        }
-
-        private String temporalTimeToString(JSTemporalTimeObject temporalTime) {
-            String hour = String.format("%1$2d", temporalTime.getHours()).replace(" ", "0");
-            String minute = String.format("%1$2d", temporalTime.getMinutes()).replace(" ", "0");
-            String seconds = formatSecondsStringPart(temporalTime);
-            return String.format("%s:%s%s", hour, minute, seconds);
-        }
-
-        private String formatSecondsStringPart(JSTemporalTimeObject temporalTime) {
-            if (temporalTime.getSeconds() + temporalTime.getMilliseconds() + temporalTime.getMicroseconds()
-                    + temporalTime.getNanoseconds() == 0) {
-                return "";
+        @Specialization(limit = "3")
+        protected String toString(DynamicObject thisObj, DynamicObject options,
+                                  @Cached("create()") IsObjectNode isObject,
+                                  @Cached("create()") JSToStringNode toString,
+                                  @Cached("create()") JSToNumberNode toNumber,
+                                  @Cached("create()") JSToBooleanNode toBoolean,
+                                  @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            try {
+                JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) thisObj;
+                options = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                DynamicObject precision = TemporalUtil.toSecondsStringPrecision(options, dol, isObject, toBoolean, toString, toNumber, getContext().getRealm());
+                String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", dol, isObject, toBoolean, toString);
+                DynamicObject roundResult = JSTemporalPlainTime.roundTime(
+                        temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(),
+                        temporalTime.getMilliseconds(), temporalTime.getMicroseconds(), temporalTime.getNanoseconds(),
+                        dol.getIntOrDefault(precision, "increment", 0),
+                        (String) dol.getOrDefault(precision, "unit", ""), roundingMode,
+                        null, getContext().getRealm()
+                );
+                return JSTemporalPlainTime.temporalTimeToString(
+                        dol.getLongOrDefault(roundResult, JSTemporalPlainTime.HOUR, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalPlainTime.MINUTE, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalPlainTime.SECOND, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalPlainTime.MILLISECOND, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalPlainTime.MICROSECOND, 0),
+                        dol.getLongOrDefault(roundResult, JSTemporalPlainTime.NANOSECOND, 0),
+                        dol.getOrDefault(precision, "precision", null)
+                );
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
             }
-            String nanos = "", micros = "", millis = "";
-            if(temporalTime.getNanoseconds() != 0) {
-                nanos = String.format("%1$3d", temporalTime.getNanoseconds()).replace(" ", "0");
-                micros = "000";
-                millis = "000";
-            }
-            if(temporalTime.getMicroseconds() != 0) {
-                micros = String.format("%1$3d", temporalTime.getMicroseconds()).replace(" ", "0");
-                millis = "000";
-            }
-            if (temporalTime.getMilliseconds() != 0) {
-                millis = String.format("%1$3d", temporalTime.getMilliseconds()).replace(" ", "0");
-            }
-            String decimal = String.format("%s%s%s", millis, micros, nanos);
-            String result = String.format("%1$2d", temporalTime.getSeconds()).replace(" ", "0");
-            if(!decimal.isEmpty()) {
-                result = String.format("%s.%s", result, decimal);
-            }
-            return String.format(":%s", result);
         }
     }
 
