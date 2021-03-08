@@ -4,18 +4,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "built-ins/Array/prototype/sort/precise-getter-decreases-length.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "built-ins/Array/prototype/sort/precise-getter-deletes-successor.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "built-ins/Array/prototype/sort/precise-getter-pops-elements.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
     "filePath" : "built-ins/Atomics/add/bigint/non-shared-bufferdata.js",
     "status" : "FAIL",
     "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
