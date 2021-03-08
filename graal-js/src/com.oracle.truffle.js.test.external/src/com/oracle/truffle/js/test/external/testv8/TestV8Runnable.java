@@ -48,6 +48,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -78,10 +79,26 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
 
-    private static final String[] ES2022_FLAGS = new String[]{
+    private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+                    "--experimental-wasm-bulk-memory",
+                    "--experimental-wasm-compilation-hints",
+                    "--experimental-wasm-eh",
+                    "--experimental-wasm-gc",
+                    "--experimental-wasm-memory64",
+                    "--experimental-wasm-mv",
+                    "--experimental-wasm-reftypes",
+                    "--experimental-wasm-return-call",
+                    "--experimental-wasm-simd",
+                    "--experimental-wasm-threads",
+                    "--experimental-wasm-typed-funcref",
+                    "--experimental-wasm-type-reflection",
+                    "--harmony-import-assertions",
+                    "--wasm-staging"
+    }));
+    private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-regexp-match-indices",
                     "--harmony-top-level-await"
-    };
+    }));
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -119,18 +136,21 @@ public class TestV8Runnable extends TestRunnable {
             printScript(TestSuite.toPrintableCode(code));
         }
 
-        // ecma versions
+        boolean supported = true;
         int minESVersion = suite.getConfig().getMinESVersion();
+        int flagVersion = minESVersion;
+        for (String flag : flags) {
+            if (ES2022_FLAGS.contains(flag)) {
+                assert !UNSUPPORTED_FLAGS.contains(flag) : flag;
+                flagVersion = JSConfig.ECMAScript2022;
+            } else if (UNSUPPORTED_FLAGS.contains(flag)) {
+                supported = false;
+            }
+        }
+
         TestFile.EcmaVersion ecmaVersion = testFile.getEcmaVersion();
         if (ecmaVersion == null) {
-            boolean needsES2022 = false;
-            for (String es2022Flag : ES2022_FLAGS) {
-                if (flags.contains(es2022Flag)) {
-                    needsES2022 = true;
-                    break;
-                }
-            }
-            ecmaVersion = TestFile.EcmaVersion.forVersions(needsES2022 ? JSConfig.ECMAScript2022 : minESVersion);
+            ecmaVersion = TestFile.EcmaVersion.forVersions(flagVersion);
         } else {
             ecmaVersion = ecmaVersion.filterByMinVersion(minESVersion);
         }
@@ -142,8 +162,11 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put(JSContextOptions.ASYNC_STACK_TRACES_NAME, "false");
         }
 
-        // now run it
-        testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions, setupFiles)));
+        if (supported) {
+            testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions, setupFiles)));
+        } else {
+            testFile.setStatus(TestFile.Status.SKIP); // attn: does not force-skip statusOverrides
+        }
     }
 
     private TestFile.Result runInternal(int ecmaVersion, File file, boolean negative, boolean shouldThrow, boolean module, Map<String, String> extraOptions, List<String> setupFiles) {

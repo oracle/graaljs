@@ -358,7 +358,13 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj, Node originatingNode) {
-        return Errors.createTypeError(keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj), originatingNode);
+        String message;
+        if (JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode()) {
+            message = keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj);
+        } else {
+            message = "Cannot assign to read only property '" + key.toString() + "' of " + JSRuntime.safeToString(thisObj);
+        }
+        return Errors.createTypeError(message, originatingNode);
     }
 
     @TruffleBoundary
