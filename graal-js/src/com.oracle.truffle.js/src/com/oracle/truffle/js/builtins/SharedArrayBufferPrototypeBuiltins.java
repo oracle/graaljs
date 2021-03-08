@@ -108,14 +108,8 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
-        protected static DynamicObject error(Object thisObj, Object begin0, Object end0) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-        }
-
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected DynamicObject sliceSharedDirect(DynamicObject thisObj, int begin, int end) {
+        protected DynamicObject sliceSharedIntInt(DynamicObject thisObj, int begin, int end) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -130,14 +124,19 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             return resObj;
         }
 
-        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected DynamicObject sliceSharedDirect(DynamicObject thisObj, Object begin0, Object end0) {
+        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)", replaces = "sliceSharedIntInt")
+        protected DynamicObject sliceShared(DynamicObject thisObj, Object begin0, Object end0) {
             int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
-            return sliceSharedDirect(thisObj, begin, end);
+            return sliceSharedIntInt(thisObj, begin, end);
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
+        protected static DynamicObject error(Object thisObj, Object begin0, Object end0) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
     }
 
     public abstract static class ByteLengthGetterNode extends JSBuiltinNode {
