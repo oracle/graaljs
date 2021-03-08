@@ -46,15 +46,28 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetClearNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetDeleteNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetDifferenceNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetForEachNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetHasNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIntersectionNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsDisjointedFromNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSubsetOfNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSupersetOfNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetSymmetricDifferenceNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorStepNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -66,6 +79,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -87,7 +102,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         has(1),
         forEach(1),
         values(0),
-        entries(0);
+        entries(0),
+        union(1),
+        intersection(1),
+        difference(1),
+        symmetricDifference(1),
+        isSubsetOf(1),
+        isSupersetOf(1),
+        isDisjointedFrom(1);
 
         private final int length;
 
@@ -118,6 +140,20 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+            case union:
+                return JSSetUnionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case intersection:
+                return JSSetIntersectionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case difference:
+                return JSSetDifferenceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case symmetricDifference:
+                return JSSetSymmetricDifferenceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case isSubsetOf:
+                return JSSetIsSubsetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case isSupersetOf:
+                return JSSetIsSupersetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case isDisjointedFrom:
+                return JSSetIsDisjointedFromNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -229,6 +265,367 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
     }
 
+    /**
+     * Implementation of the Set.prototype.intersection().
+     */
+    protected abstract static class JSSetNewOperation extends JSSetOperation {
+
+        @Child protected GetIteratorNode getIteratorNode;
+        @Child protected IteratorStepNode iteratorStepNode;
+        @Child protected IteratorValueNode iteratorValueNode;
+        @Child protected IteratorCloseNode iteratorCloseNode;
+        protected final BranchProfile iteratorError = BranchProfile.create();
+        protected final BranchProfile adderError = BranchProfile.create();
+
+        protected JSSetNewOperation(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            getIteratorNode = GetIteratorNode.create(context);
+            iteratorStepNode = IteratorStepNode.create(context);
+            iteratorValueNode = IteratorValueNode.create(context);
+            iteratorCloseNode = IteratorCloseNode.create(context);
+        }
+
+        protected Object addEntryFromIterable(Object target, Object iterable, Object adder) {
+            if (!JSRuntime.isCallable(adder)) {
+                adderError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE)
+                        return target;
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    JSRuntime.call(adder, target, new Object[]{nextValue});
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        protected final void iteratorCloseAbrupt(DynamicObject iterator) {
+            if (iteratorCloseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+            }
+            iteratorCloseNode.executeAbrupt(iterator);
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.union().
+     */
+    public abstract static class JSSetUnionNode extends JSSetNewOperation {
+
+        public JSSetUnionNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected DynamicObject union(DynamicObject set, Object iterable) {
+            Object ctr = getContext().getRealm().getSetConstructor();
+            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
+            Object adder = JSObject.get(newSet, "add");
+            addEntryFromIterable(newSet, iterable, adder);
+            return newSet;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.intersection().
+     */
+    public abstract static class JSSetIntersectionNode extends JSSetNewOperation {
+
+        private final BranchProfile hasError = BranchProfile.create();
+
+        public JSSetIntersectionNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected DynamicObject intersection(DynamicObject set, Object iterable) {
+            Object ctr = getContext().getRealm().getSetConstructor();
+            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[0]);
+            Object hasCheck = JSObject.get(set, "has");
+            if (!JSRuntime.isCallable(hasCheck)) {
+                hasError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            Object adder = JSObject.get(newSet, "add");
+            if (!JSRuntime.isCallable(adder)) {
+                adderError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE)
+                        return newSet;
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object has = JSRuntime.call(hasCheck, set, new Object[]{nextValue});
+                    if (has == Boolean.TRUE) {
+                        JSRuntime.call(adder, newSet, new Object[]{nextValue});
+                    }
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.difference().
+     */
+    public abstract static class JSSetDifferenceNode extends JSSetNewOperation {
+
+        private final BranchProfile removerError = BranchProfile.create();
+
+        public JSSetDifferenceNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected DynamicObject difference(DynamicObject set, Object iterable) {
+            Object ctr = getContext().getRealm().getSetConstructor();
+            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
+            Object remover = JSObject.get(newSet, "delete");
+            if (!JSRuntime.isCallable(remover)) {
+                removerError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE)
+                        return newSet;
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    JSRuntime.call(remover, newSet, new Object[]{nextValue});
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.symmetricDifference().
+     */
+    public abstract static class JSSetSymmetricDifferenceNode extends JSSetNewOperation {
+
+        private final BranchProfile removerError = BranchProfile.create();
+
+        public JSSetSymmetricDifferenceNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected DynamicObject symmetricDifference(DynamicObject set, Object iterable) {
+            Object ctr = getContext().getRealm().getSetConstructor();
+            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
+            Object remover = JSObject.get(newSet, "delete");
+            if (!JSRuntime.isCallable(remover)) {
+                removerError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            Object adder = JSObject.get(newSet, "add");
+            if (!JSRuntime.isCallable(adder)) {
+                adderError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE)
+                        return newSet;
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object removed = JSRuntime.call(remover, newSet, new Object[]{nextValue});
+                    if (removed == Boolean.FALSE) {
+                        JSRuntime.call(adder, newSet, new Object[]{nextValue});
+                    }
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.isSubsetOf().
+     */
+    public abstract static class JSSetIsSubsetOfNode extends JSSetNewOperation {
+
+        private BranchProfile needCreateNewBranch = BranchProfile.create();
+        private BranchProfile isObjectError = BranchProfile.create();
+
+        public JSSetIsSubsetOfNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected Boolean isSubsetOf(DynamicObject set, Object iterable) {
+            IteratorRecord iteratorRecord = getIteratorNode.execute(set);
+            if (!JSRuntime.isObject(iterable)) {
+                isObjectError.enter();
+                throw Errors.createTypeErrorNotIterable(iterable, this);
+            }
+            DynamicObject otherSet = (DynamicObject) iterable;
+            Object hasCheck = JSObject.get(otherSet, "has");
+            if (!JSRuntime.isCallable(hasCheck)) {
+                needCreateNewBranch.enter();
+                otherSet = (DynamicObject) JSRuntime.construct(getContext().getRealm().getSetConstructor(), new Object[0]);
+                addEntryFromIterable(otherSet, iterable, JSObject.get(otherSet, "add"));
+                hasCheck = JSObject.get(otherSet, "has");
+            }
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE)
+                        return Boolean.TRUE;
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object has = JSRuntime.call(hasCheck, otherSet, new Object[]{nextValue});
+                    if (has == Boolean.FALSE) {
+                        return Boolean.FALSE;
+                    }
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.isSubsetOf().
+     */
+    public abstract static class JSSetIsSupersetOfNode extends JSSetNewOperation {
+
+        private BranchProfile hasError = BranchProfile.create();
+
+        public JSSetIsSupersetOfNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected Boolean isSupersetOf(DynamicObject set, Object iterable) {
+            Object hasCheck = JSObject.get(set, "has");
+            if (!JSRuntime.isCallable(hasCheck)) {
+                hasError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE)
+                        return Boolean.TRUE;
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object has = JSRuntime.call(hasCheck, set, new Object[]{nextValue});
+                    if (has == Boolean.FALSE) {
+                        return Boolean.FALSE;
+                    }
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    /**
+     * Implementation of the Set.prototype.isSubsetOf().
+     */
+    public abstract static class JSSetIsDisjointedFromNode extends JSSetNewOperation {
+
+        private BranchProfile hasError = BranchProfile.create();
+
+        public JSSetIsDisjointedFromNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSet(set)")
+        protected Boolean isDisjointedFrom(DynamicObject set, Object iterable) {
+            Object hasCheck = JSObject.get(set, "has");
+            if (!JSRuntime.isCallable(hasCheck)) {
+                hasError.enter();
+                throw Errors.createTypeErrorCallableExpected();
+            }
+            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            try {
+                while (true) {
+                    Object next = iteratorStepNode.execute(iteratorRecord);
+                    if (next == Boolean.FALSE) {
+                        return Boolean.TRUE;
+                    }
+                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object has = JSRuntime.call(hasCheck, set, new Object[]{nextValue});
+                    if (has == Boolean.TRUE) {
+                        return Boolean.FALSE;
+                    }
+                }
+            } catch (Exception ex) {
+                iteratorError.enter();
+                iteratorCloseAbrupt(iteratorRecord.getIterator());
+                throw ex;
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSet(thisObj)")
+        protected boolean notSet(Object thisObj, Object key) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
     public abstract static class JSSetForEachNode extends JSBuiltinNode {
 
         public JSSetForEachNode(JSContext context, JSBuiltin builtin) {
@@ -293,4 +690,5 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             throw Errors.createTypeError("not a Set");
         }
     }
+
 }
