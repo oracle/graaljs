@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,6 +73,13 @@ public class PropertyAccessorOrder {
         testIntl("obj.id === 'isId'", new TestFieldAndChecker());
         testIntl("obj.id === 'getId'", new TestAll());
 
+        // check element access
+        testIntl("obj['id'] === 'field'", new TestField());
+        testIntl("obj['id'] === 'getId'", new TestGetter());
+        testIntl("obj['id'] === 'isId'", new TestChecker());
+        testIntl("obj['id'] === 'isId'", new TestFieldAndChecker());
+        testIntl("obj['id'] === 'getId'", new TestAll());
+
         // check calls
         testIntl("obj.id === 'field';", new TestFieldAndFunction());
         testIntl("obj.id() === 'function';", new TestFieldAndFunction());
@@ -82,9 +89,13 @@ public class PropertyAccessorOrder {
     @Test
     public void testSetter() {
         // expected order in nashorn-compat mode is: `setId`>`id`
-        testIntl("obj.id = 'test'; obj.countSet===0 && obj.id === 'test';", new TestField());
-        testIntl("obj.id = 'test'; obj.countSet===1 && obj.id === undefined;", new TestSetter());
-        testIntl("obj.id = 'test'; obj.countSet===1 && obj.id === 'getId';", new TestAll());
+        testIntl("obj.id = 'test'; obj.countSet === 0 && obj.id === 'test';", new TestField());
+        testIntl("obj.id = 'test'; obj.countSet === 1 && obj.id === undefined;", new TestSetter());
+        testIntl("obj.id = 'test'; obj.countSet === 1 && obj.id === 'getId';", new TestAll());
+
+        testIntl("obj['id'] = 'test'; obj.countSet === 0 && obj['id'] === 'test';", new TestField());
+        testIntl("obj['id'] = 'test'; obj.countSet === 1 && obj['id'] === undefined;", new TestSetter());
+        testIntl("obj['id'] = 'test'; obj.countSet === 1 && obj['id'] === 'getId';", new TestAll());
     }
 
     public static class TestGetSet {

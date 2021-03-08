@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,47 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.foreign;
 
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltinsFactory.EnumerateNextNodeGen;
-import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltinsFactory.IteratorNodeGen;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 /**
- * Prototype of [[Enumerate]]().
+ * The prototype of foreign iterable objects, fulfilling the JS Iterable contract. Provides
+ * an @@iterator method that returns a JS wrapper around the foreign iterator, so that it conforms
+ * to the JS iterator protocol, i.e., has a next method that returns an iterator result object of
+ * the form <code>{value: any, done: boolean}</code>.
  */
-public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<EnumerateIteratorPrototypeBuiltins.EnumerateIteratorPrototype> {
-    public static final JSBuiltinsContainer BUILTINS = new EnumerateIteratorPrototypeBuiltins();
+public final class ForeignIterablePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ForeignIterablePrototypeBuiltins.ForeignIterablePrototype> {
+    public static final JSBuiltinsContainer BUILTINS = new ForeignIterablePrototypeBuiltins();
 
-    protected EnumerateIteratorPrototypeBuiltins() {
-        super(JSFunction.ENUMERATE_ITERATOR_PROTOTYPE_NAME, EnumerateIteratorPrototype.class);
+    protected ForeignIterablePrototypeBuiltins() {
+        super(null, ForeignIterablePrototype.class);
     }
 
-    public enum EnumerateIteratorPrototype implements BuiltinEnum<EnumerateIteratorPrototype> {
-        next(0);
+    public enum ForeignIterablePrototype implements BuiltinEnum<ForeignIterablePrototype> {
+        _iterator(0);
 
         private final int length;
 
-        EnumerateIteratorPrototype(int length) {
+        ForeignIterablePrototype(int length) {
             this.length = length;
         }
 
@@ -86,56 +86,50 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
         public int getLength() {
             return length;
         }
+
+        @Override
+        public Object getKey() {
+            return this == _iterator ? Symbol.SYMBOL_ITERATOR : BuiltinEnum.super.getKey();
+        }
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, EnumerateIteratorPrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ForeignIterablePrototype builtinEnum) {
         switch (builtinEnum) {
-            case next:
-                return EnumerateNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case _iterator:
+                return IteratorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
 
     @ImportStatic({JSConfig.class})
-    public abstract static class EnumerateNextNode extends JSBuiltinNode {
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        @Child private PropertyGetNode getIteratorNode;
-        @Child private ImportValueNode importValueNode;
+    public abstract static class IteratorNode extends JSBuiltinNode {
+        @Child private PropertySetNode setEnumerateIteratorNode;
         private final BranchProfile errorBranch;
 
-        public EnumerateNextNode(JSContext context, JSBuiltin builtin) {
+        public IteratorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-            this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
-            this.importValueNode = ImportValueNode.create();
             this.errorBranch = BranchProfile.create();
+            this.setEnumerateIteratorNode = PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
         }
 
         @Specialization
-        public DynamicObject execute(VirtualFrame frame, Object target,
+        protected DynamicObject execute(Object target,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            Object iterator = getIteratorNode.getValue(target);
-            if (iterator == Undefined.instance) {
+            if (!interop.hasIterator(target)) {
                 errorBranch.enter();
-                throw Errors.createTypeError("Enumerate iterator required");
+                throw Errors.createTypeErrorNotIterable(target, null);
             }
+            Object iterator;
             try {
-                if (interop.hasIteratorNextElement(iterator)) {
-                    try {
-                        Object nextValue = interop.getIteratorNextElement(iterator);
-                        Object importedValue = importValueNode.executeWithTarget(nextValue);
-                        return createIterResultObjectNode.execute(frame, importedValue, false);
-                    } catch (StopIterationException e) {
-                        // fall through
-                    }
-                }
-                return createIterResultObjectNode.execute(frame, Undefined.instance, true);
+                iterator = interop.getIterator(target);
             } catch (UnsupportedMessageException e) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorInteropException(iterator, e, "next", null);
+                throw Errors.createTypeErrorInteropException(target, e, "getIterator", null);
             }
+            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory());
+            setEnumerateIteratorNode.setValue(iteratorObj, iterator);
+            return iteratorObj;
         }
-
     }
 }

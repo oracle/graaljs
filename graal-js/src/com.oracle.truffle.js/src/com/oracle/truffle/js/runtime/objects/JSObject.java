@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.nodes.interop.JSInteropGetIteratorNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInvokeNode;
 import com.oracle.truffle.js.nodes.interop.KeyInfoNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -260,6 +261,26 @@ public abstract class JSObject extends JSDynamicObject {
     public final boolean hasMemberWriteSideEffects(String key,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
+    }
+
+    @ExportMessage
+    public boolean hasIterator(
+                    @CachedLanguage JavaScriptLanguage language,
+                    @Cached @Shared("getIterator") JSInteropGetIteratorNode getIteratorNode) {
+        return getIteratorNode.hasIterator(this, language);
+    }
+
+    @ExportMessage
+    public Object getIterator(
+                    @CachedLanguage JavaScriptLanguage language,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @Cached @Shared("getIterator") JSInteropGetIteratorNode getIteratorNode) throws UnsupportedMessageException {
+        language.interopBoundaryEnter(realm);
+        try {
+            return getIteratorNode.getIterator(this, language);
+        } finally {
+            language.interopBoundaryExit(realm);
+        }
     }
 
     @SuppressWarnings("static-method")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,10 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class JSInteropCallNode extends JavaScriptBaseNode {
     protected JSInteropCallNode() {
@@ -56,5 +59,21 @@ public abstract class JSInteropCallNode extends JavaScriptBaseNode {
 
     protected static JSFunctionCallNode getUncachedCall() {
         return null;
+    }
+
+    protected static PropertyGetNode getUncachedProperty() {
+        return null;
+    }
+
+    protected static Object getProperty(JSObject receiver, PropertyGetNode propertyGetNode, Object key, Object defaultValue) {
+        assert JSRuntime.isPropertyKey(key);
+        Object method;
+        if (propertyGetNode == null) {
+            method = JSObject.getOrDefault(receiver, key, receiver, defaultValue);
+        } else {
+            assert JSRuntime.propertyKeyEquals(propertyGetNode.getKey(), key);
+            method = propertyGetNode.getValueOrDefault(receiver, defaultValue);
+        }
+        return method;
     }
 }

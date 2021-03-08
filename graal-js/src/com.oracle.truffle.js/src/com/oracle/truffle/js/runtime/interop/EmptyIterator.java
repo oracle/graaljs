@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,44 +38,40 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.runtime.interop;
 
-import com.oracle.truffle.api.CompilerDirectives.ValueType;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-@ValueType
-public final class IteratorRecord {
-    private final DynamicObject iterator;
-    private final Object nextMethod;
-    private boolean done;
+@ExportLibrary(InteropLibrary.class)
+public final class EmptyIterator implements TruffleObject {
+    private static final EmptyIterator INSTANCE = new EmptyIterator();
 
-    private IteratorRecord(DynamicObject iterator, Object nextMethod, boolean done) {
-        this.iterator = iterator;
-        this.nextMethod = nextMethod;
-        this.done = done;
+    private EmptyIterator() {
     }
 
-    public static IteratorRecord create(DynamicObject iterator, Object nextMethod, boolean done) {
-        return new IteratorRecord(iterator, nextMethod, done);
+    public static Object create() {
+        return INSTANCE;
     }
 
-    public static IteratorRecord create(DynamicObject iterator, Object nextMethod) {
-        return create(iterator, nextMethod, false);
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isIterator() {
+        return true;
     }
 
-    public DynamicObject getIterator() {
-        return iterator;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean hasIteratorNextElement() {
+        return false;
     }
 
-    public Object getNextMethod() {
-        return nextMethod;
-    }
-
-    public boolean isDone() {
-        return done;
-    }
-
-    public void setDone(boolean done) {
-        this.done = done;
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    Object getIteratorNextElement() throws StopIterationException {
+        throw StopIterationException.create();
     }
 }

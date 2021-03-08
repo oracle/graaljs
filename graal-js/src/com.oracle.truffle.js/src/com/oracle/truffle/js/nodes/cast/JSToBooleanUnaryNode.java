@@ -40,34 +40,65 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.dsl.GenerateUncached;
+import java.util.Set;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBigIntNode;
+import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 /**
- * @see JSToBooleanUnaryNode
+ * @see JSToBooleanNode
  */
-@GenerateUncached
 @ImportStatic({JSConfig.class})
-public abstract class JSToBooleanNode extends JavaScriptBaseNode {
+public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
 
-    protected JSToBooleanNode() {
+    protected JSToBooleanUnaryNode(JavaScriptNode operand) {
+        super(operand);
     }
 
-    public abstract boolean executeBoolean(Object value);
-
-    public static JSToBooleanNode create() {
-        return JSToBooleanNodeGen.create();
+    public static JavaScriptNode create(JavaScriptNode child) {
+        JSConstantNode replacement = null;
+        if (child.isResultAlwaysOfType(boolean.class)) {
+            return child;
+        } else if (child instanceof JSConstantIntegerNode) {
+            int value = ((JSConstantIntegerNode) child).executeInt(null);
+            replacement = JSConstantNode.createBoolean(value != 0);
+        } else if (child instanceof JSConstantBigIntNode) {
+            BigInt value = ((JSConstantBigIntNode) child).executeBigInt(null);
+            replacement = JSConstantNode.createBoolean(value.compareTo(BigInt.ZERO) != 0);
+        } else if (child instanceof JSConstantNode) {
+            Object constantOperand = ((JSConstantNode) child).getValue();
+            if (constantOperand != null && JSRuntime.isJSPrimitive(constantOperand)) {
+                replacement = JSConstantNode.createBoolean(JSRuntime.toBoolean(constantOperand));
+            }
+        }
+        if (replacement == null) {
+            return JSToBooleanUnaryNodeGen.create(child);
+        } else {
+            JavaScriptNode.transferSourceSectionAndTags(child, replacement);
+            return replacement;
+        }
     }
+
+    @Override
+    public final Object execute(VirtualFrame frame) {
+        return executeBoolean(frame);
+    }
+
+    @Override
+    public abstract boolean executeBoolean(VirtualFrame frame);
 
     @Specialization
     protected static boolean doBoolean(boolean value) {
@@ -124,31 +155,24 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return true;
     }
 
-    @Specialization(guards = "isForeignObject(value)", limit = "InteropLibraryLimit")
-    protected final boolean doForeignObject(Object value,
-                    @CachedLibrary("value") InteropLibrary interop) {
-        if (interop.isNull(value)) {
-            return false;
-        }
-        try {
-            if (interop.isBoolean(value)) {
-                return interop.asBoolean(value);
-            } else if (interop.isString(value)) {
-                return !interop.asString(value).isEmpty();
-            } else if (interop.isNumber(value)) {
-                if (interop.fitsInInt(value)) {
-                    return doInt(interop.asInt(value));
-                } else if (interop.fitsInLong(value)) {
-                    return doLong(interop.asLong(value));
-                } else if (interop.fitsInDouble(value)) {
-                    return doDouble(interop.asDouble(value));
-                } else {
-                    return true;
-                }
-            }
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorUnboxException(value, e, this);
-        }
-        return true; // cf. doObject()
+    @Specialization(guards = "isForeignObject(value)")
+    protected static boolean doForeignObject(Object value,
+                    @Cached JSToBooleanNode toBooleanNode) {
+        return toBooleanNode.executeBoolean(value);
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return JSToBooleanUnaryNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == boolean.class;
+    }
+
+    @Override
+    public String expressionToString() {
+        return getOperand().expressionToString();
     }
 }

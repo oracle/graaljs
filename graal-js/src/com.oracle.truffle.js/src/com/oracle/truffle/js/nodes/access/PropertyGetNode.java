@@ -951,37 +951,40 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 assert JSObject.isJSObject(object);
                 return getFromJSObject(object, key);
             }
+            Object foreignResult = getImpl(thisObj, key, root);
+            return importValueNode.executeWithTarget(foreignResult);
+        }
+
+        private Object getImpl(Object thisObj, Object key, PropertyGetNode root) {
             if (!(key instanceof String)) {
-                return Undefined.instance;
+                return maybeGetFromPrototype(thisObj, key);
             }
             String stringKey = (String) key;
             if (context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(thisObj, root);
                 if (result != null) {
-                    return importValueNode.executeWithTarget(result);
+                    return result;
                 }
             }
-            Object foreignResult;
             if (optimistic) {
                 try {
-                    foreignResult = interop.readMember(thisObj, stringKey);
+                    return interop.readMember(thisObj, stringKey);
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
-                    foreignResult = maybeGetFromPrototype(thisObj, key);
+                    return maybeGetFromPrototype(thisObj, key);
                 }
             } else {
                 if (interop.isMemberReadable(thisObj, stringKey)) {
                     try {
-                        foreignResult = interop.readMember(thisObj, stringKey);
+                        return interop.readMember(thisObj, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         return Undefined.instance;
                     }
                 } else {
-                    foreignResult = maybeGetFromPrototype(thisObj, key);
+                    return maybeGetFromPrototype(thisObj, key);
                 }
             }
-            return importValueNode.executeWithTarget(foreignResult);
         }
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
