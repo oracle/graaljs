@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -340,10 +339,6 @@ public final class JSGuards {
 
     public static boolean isValidPrototype(Object prototype) {
         return isJSObject(prototype) || isJSNull(prototype);
-    }
-
-    public static boolean isByteBuffer(Object buffer) {
-        return buffer instanceof ByteBuffer;
     }
 
     public static boolean isList(Object value) {

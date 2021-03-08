@@ -1833,10 +1833,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
 
-        protected boolean isHostByteBuffer(Object buffer) {
-            return getContext().getRealm().getEnv().isHostObject(buffer);
-        }
-
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected DynamicObject constructFromLength(DynamicObject newTarget, Object length,
                         @Cached("create()") JSToIndexNode toIndexNode,

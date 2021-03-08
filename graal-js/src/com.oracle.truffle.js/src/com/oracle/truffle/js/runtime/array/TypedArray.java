@@ -512,10 +512,6 @@ public abstract class TypedArray extends ScriptArray {
             return (int) JSRuntime.mathRint(value);
         }
 
-        protected static boolean isUint8(int value) {
-            return value >= 0 && value <= 0xff;
-        }
-
         @Override
         public final void setBufferElement(Object buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
             setBufferElementIntImpl(buffer, index, littleEndian, toInt(JSRuntime.toDouble((Number) value)), interop);
