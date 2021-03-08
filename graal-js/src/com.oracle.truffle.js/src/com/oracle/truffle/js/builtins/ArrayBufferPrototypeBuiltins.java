@@ -339,8 +339,8 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = "isJSInteropArrayBuffer(thisObj)")
         protected Object sliceInterop(DynamicObject thisObj, Object begin0, Object end0,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary srcBufferLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary dstBufferLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
             Object interopBuffer = JSArrayBuffer.getInteropBuffer(thisObj);
             int length = ConstructorBuiltins.ConstructArrayBufferNode.getBufferSizeSafe(interopBuffer, srcBufferLib, errorBranch);
             int begin = getStart(begin0, length);
@@ -367,9 +367,21 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
         }
 
+        @Specialization(guards = {"!isJSSharedArrayBuffer(thisObj)", "hasBufferElements(thisObj, srcBufferLib)"})
+        protected Object sliceTruffleBuffer(Object thisObj, Object begin0, Object end0,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
+            return sliceInterop(JSArrayBuffer.createInteropArrayBuffer(getContext(), thisObj), begin0, end0, srcBufferLib, dstBufferLib);
+        }
+
         @Fallback
         protected static DynamicObject error(Object thisObj, @SuppressWarnings("unused") Object begin0, @SuppressWarnings("unused") Object end0) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
+
+        // Workaround for GR-29876
+        static boolean hasBufferElements(Object buffer, InteropLibrary interop) {
+            return interop.hasBufferElements(buffer);
         }
     }
 }
