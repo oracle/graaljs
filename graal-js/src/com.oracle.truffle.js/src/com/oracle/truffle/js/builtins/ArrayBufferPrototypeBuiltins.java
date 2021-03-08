@@ -43,10 +43,12 @@ package com.oracle.truffle.js.builtins;
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -229,6 +231,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     }
 
+    @ImportStatic({JSArrayBuffer.class, JSConfig.class})
     public abstract static class JSArrayBufferSliceNode extends JSArrayBufferAbstractSliceNode {
 
         private final BranchProfile errorBranch = BranchProfile.create();
@@ -257,7 +260,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
          * @return sliced ArrayBuffer
          */
         @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
-        protected DynamicObject slice(DynamicObject thisObj, int begin, int end) {
+        protected DynamicObject sliceIntInt(DynamicObject thisObj, int begin, int end) {
             byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteArray.length);
             int clampedEnd = clampIndex(end, clampedBegin, byteArray.length);
@@ -277,7 +280,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return (DynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
 
-        private void checkErrors(DynamicObject resObj, DynamicObject thisObj, int newLen, boolean direct) {
+        private void checkErrors(Object resObj, Object thisObj, int newLen, boolean direct) {
             if ((direct && !JSArrayBuffer.isJSDirectArrayBuffer(resObj)) || (!direct && !JSArrayBuffer.isJSHeapArrayBuffer(resObj))) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferExpected();
@@ -302,16 +305,16 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
         }
 
-        @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
+        @Specialization(guards = "isJSHeapArrayBuffer(thisObj)", replaces = "sliceIntInt")
         protected DynamicObject slice(DynamicObject thisObj, Object begin0, Object end0) {
             int len = JSArrayBuffer.getByteArray(thisObj).length;
             int begin = getStart(begin0, len);
             int finalEnd = getEnd(end0, len);
-            return slice(thisObj, begin, finalEnd);
+            return sliceIntInt(thisObj, begin, finalEnd);
         }
 
         @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
-        protected DynamicObject sliceDirect(DynamicObject thisObj, int begin, int end) {
+        protected DynamicObject sliceDirectIntInt(DynamicObject thisObj, int begin, int end) {
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -326,15 +329,45 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return resObj;
         }
 
-        @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
+        @Specialization(guards = "isJSDirectArrayBuffer(thisObj)", replaces = "sliceDirectIntInt")
         protected DynamicObject sliceDirect(DynamicObject thisObj, Object begin0, Object end0) {
             int len = JSArrayBuffer.getDirectByteLength(thisObj);
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
-            return sliceDirect(thisObj, begin, end);
+            return sliceDirectIntInt(thisObj, begin, end);
         }
 
-        @Specialization(guards = {"!isJSHeapArrayBuffer(thisObj)", "!isJSDirectArrayBuffer(thisObj)"})
+        @Specialization(guards = "isJSInteropArrayBuffer(thisObj)")
+        protected Object sliceInterop(DynamicObject thisObj, Object begin0, Object end0,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary srcBufferLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary dstBufferLib) {
+            Object interopBuffer = JSArrayBuffer.getInteropBuffer(thisObj);
+            int length = ConstructorBuiltins.ConstructArrayBufferNode.getBufferSizeSafe(interopBuffer, srcBufferLib, errorBranch);
+            int begin = getStart(begin0, length);
+            int end = getEnd(end0, length);
+            int clampedBegin = clampIndex(begin, 0, length);
+            int clampedEnd = clampIndex(end, clampedBegin, length);
+            int newLen = Math.max(clampedEnd - clampedBegin, 0);
+
+            Object resObj = constructNewArrayBuffer(thisObj, newLen);
+            checkErrors(resObj, thisObj, newLen, getContext().isOptionDirectByteBuffer());
+
+            copyInteropBufferElements(thisObj, resObj, clampedBegin, newLen, srcBufferLib, dstBufferLib);
+            return resObj;
+        }
+
+        private void copyInteropBufferElements(Object srcBuffer, Object dstBuffer, int srcBufferOffset, int len, InteropLibrary srcBufferLib, InteropLibrary dstBufferLib) {
+            try {
+                for (int i = 0; i < len; i++) {
+                    dstBufferLib.writeBufferByte(dstBuffer, i, srcBufferLib.readBufferByte(srcBuffer, srcBufferOffset + i));
+                }
+            } catch (UnsupportedMessageException | InvalidBufferOffsetException e) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorInteropException(dstBuffer, e, "buffer access", null);
+            }
+        }
+
+        @Fallback
         protected static DynamicObject error(Object thisObj, @SuppressWarnings("unused") Object begin0, @SuppressWarnings("unused") Object end0) {
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
