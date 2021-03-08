@@ -1189,7 +1189,7 @@ public final class GraalJSAccess {
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
-        return JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer);
+        return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {

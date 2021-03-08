@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.object.DynamicObject;
-
 public abstract class JSAbstractBuffer extends JSNonProxy {
 
     protected static final String BYTE_LENGTH = "byteLength";
@@ -49,21 +47,7 @@ public abstract class JSAbstractBuffer extends JSNonProxy {
     protected JSAbstractBuffer() {
     }
 
-    public static byte[] getByteArray(DynamicObject thisObj) {
-        assert isJSAbstractHeapBuffer(thisObj);
-        return JSArrayBufferObject.getByteArray(thisObj);
-    }
-
-    public static int getByteLength(DynamicObject thisObj) {
-        assert isJSAbstractHeapBuffer(thisObj);
-        return getByteArray(thisObj).length;
-    }
-
-    public static boolean isJSAbstractHeapBuffer(Object obj) {
-        return JSArrayBuffer.isJSHeapArrayBuffer(obj);
-    }
-
     public static boolean isJSAbstractBuffer(Object obj) {
-        return JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(obj);
+        return obj instanceof JSArrayBufferObject;
     }
 }

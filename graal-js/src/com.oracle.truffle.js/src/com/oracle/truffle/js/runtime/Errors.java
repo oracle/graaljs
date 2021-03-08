@@ -530,6 +530,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorReadOnlyBuffer() {
+        return Errors.createTypeError("Read-only buffer");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorArrayBufferExpected() {
         return Errors.createTypeError("ArrayBuffer expected");
     }
@@ -622,6 +627,16 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeErrorIndexTooLarge(Node originatingNode) {
         return Errors.createRangeError("index is too large", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidBufferSize() {
+        return Errors.createRangeError("Buffer too large");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidBufferOffset() {
+        return Errors.createRangeError("Invalid buffer offset");
     }
 
     @TruffleBoundary

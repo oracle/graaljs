@@ -82,7 +82,7 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
             length = 0;
         } else {
             boolean direct = context.isOptionDirectByteBuffer();
-            length = direct ? JSArrayBuffer.getDirectByteLength(arrayBuffer) : JSArrayBuffer.getByteLength(arrayBuffer);
+            length = direct ? JSArrayBuffer.getDirectByteLength(arrayBuffer) : JSArrayBuffer.getHeapByteLength(arrayBuffer);
         }
         return exportBuffer(arrayBuffer, 0, length);
     }

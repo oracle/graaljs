@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,34 +72,39 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
     public enum RegExpBuiltin implements BuiltinEnum<RegExpBuiltin> {
 
-        input,
-        setInput("set input", 1),
-        lastMatch,
-        lastParen,
-        leftContext,
-        rightContext,
-        multiline,
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8,
-        $9;
+        input(0),
+        set_input(1, "input"),
+        lastMatch(0),
+        lastParen(0),
+        leftContext(0),
+        rightContext(0),
+        multiline(0),
+        $1(0),
+        $2(0),
+        $3(0),
+        $4(0),
+        $5(0),
+        $6(0),
+        $7(0),
+        $8(0),
+        $9(0);
 
         private final String key;
         private final int length;
 
-        RegExpBuiltin() {
-            this.key = "get " + name();
-            this.length = 0;
+        RegExpBuiltin(int length) {
+            this.key = name();
+            this.length = length;
         }
 
-        RegExpBuiltin(String key, int length) {
+        RegExpBuiltin(int length, String key) {
             this.key = key;
             this.length = length;
+        }
+
+        @Override
+        public String getName() {
+            return prependAccessorPrefix(key);
         }
 
         @Override
@@ -112,6 +117,15 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
             return length;
         }
 
+        @Override
+        public boolean isGetter() {
+            return getLength() == 0;
+        }
+
+        @Override
+        public boolean isSetter() {
+            return getLength() == 1;
+        }
     }
 
     @Override
@@ -119,8 +133,8 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         switch (builtinEnum) {
             case input:
                 return RegExpBuiltinsFactory.JSRegExpStaticResultGetInputNodeGen.create(context, builtin, args().createArgumentNodes(context));
-            case setInput:
-                return RegExpBuiltinsFactory.JSRegExpStaticResultSetInputNodeGen.create(context, builtin, args().fixedArgs(builtinEnum.getLength()).createArgumentNodes(context));
+            case set_input:
+                return RegExpBuiltinsFactory.JSRegExpStaticResultSetInputNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case lastMatch:
                 return RegExpBuiltinsFactory.JSRegExpStaticResultGetGroupNodeGen.create(context, builtin, 0, args().createArgumentNodes(context));
             case lastParen:

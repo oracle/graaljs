@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -93,7 +94,6 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -101,6 +101,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
+import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -338,6 +339,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Child private JSToObjectNode toObjectNode;
         @Child private JSGetLengthNode getLengthNode;
+        @Child private InteropLibrary interopLibrary;
 
         /**
          * void set(TypedArray array, optional unsigned long offset).
@@ -455,36 +457,38 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @SuppressWarnings("unchecked")
         private void copyTypedArrayElementsDistinctBuffers(DynamicObject targetBuffer, DynamicObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
                         int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex) {
-            Object targetBackingBuffer = isDirectProf.profile(targetType.isDirect()) ? JSArrayBuffer.getDirectByteBuffer(targetBuffer) : JSArrayBuffer.getByteArray(targetBuffer);
-            Object sourceBackingBuffer = isDirectProf.profile(sourceType.isDirect()) ? JSArrayBuffer.getDirectByteBuffer(sourceBuffer) : JSArrayBuffer.getByteArray(sourceBuffer);
             int targetElementSize = targetType.bytesPerElement();
             int sourceElementSize = sourceType.bytesPerElement();
             int targetByteIndex = targetByteOffset + targetOffset * targetElementSize;
-            if (sourceType == targetType) {
+            InteropLibrary interop = (sourceType.isInterop() || targetType.isInterop()) ? getInterop() : null;
+            if (sourceType == targetType && !sourceType.isInterop()) {
                 // same element type => bulk copy
                 int sourceByteLength = sourceLength * sourceElementSize;
                 if (isDirectProf.profile(targetType.isDirect())) {
-                    Boundaries.byteBufferPutSlice((ByteBuffer) targetBackingBuffer, targetByteIndex, (ByteBuffer) sourceBackingBuffer, sourceByteIndex, sourceByteIndex + sourceByteLength);
+                    Boundaries.byteBufferPutSlice(
+                                    JSArrayBuffer.getDirectByteBuffer(targetBuffer), targetByteIndex,
+                                    JSArrayBuffer.getDirectByteBuffer(sourceBuffer), sourceByteIndex,
+                                    sourceByteIndex + sourceByteLength);
                 } else {
-                    System.arraycopy(sourceBackingBuffer, sourceByteIndex, targetBackingBuffer, targetByteIndex, sourceByteLength);
+                    System.arraycopy(JSArrayBuffer.getByteArray(sourceBuffer), sourceByteIndex, JSArrayBuffer.getByteArray(targetBuffer), targetByteIndex, sourceByteLength);
                 }
             } else if (sourceType instanceof TypedArray.TypedIntArray && targetType instanceof TypedArray.TypedIntArray) {
                 intToIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    int value = ((TypedArray.TypedIntArray<Object>) sourceType).getIntImpl(sourceBackingBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedIntArray<Object>) targetType).setIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                    int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i, interop);
+                    ((TypedArray.TypedIntArray) targetType).setIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
                 }
             } else if (sourceType instanceof TypedArray.TypedFloatArray && targetType instanceof TypedArray.TypedFloatArray) {
                 floatToFloatBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    double value = ((TypedArray.TypedFloatArray<Object>) sourceType).getDoubleImpl(sourceBackingBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedFloatArray<Object>) targetType).setDoubleImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                    double value = ((TypedArray.TypedFloatArray) sourceType).getDoubleImpl(sourceBuffer, sourceByteIndex, i, interop);
+                    ((TypedArray.TypedFloatArray) targetType).setDoubleImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
                 }
             } else if (sourceType instanceof TypedArray.TypedBigIntArray && targetType instanceof TypedArray.TypedBigIntArray) {
                 bigIntToBigIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
-                    BigInt value = ((TypedArray.TypedBigIntArray<Object>) sourceType).getBigIntImpl(sourceBackingBuffer, sourceByteIndex, i);
-                    ((TypedArray.TypedBigIntArray<Object>) targetType).setBigIntImpl(targetBackingBuffer, targetByteOffset, i + targetOffset, value);
+                    long value = ((TypedArray.TypedBigIntArray) sourceType).getLongImpl(sourceBuffer, sourceByteIndex, i, interop);
+                    ((TypedArray.TypedBigIntArray) targetType).setLongImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
                 }
             } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
@@ -492,15 +496,18 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 objectToObjectBranch.enter();
                 boolean littleEndian = ByteOrder.LITTLE_ENDIAN == ByteOrder.nativeOrder();
                 for (int i = 0; i < sourceLength; i++) {
-                    Object value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian);
-                    targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, value);
+                    Object value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, interop);
+                    targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, value, interop);
                 }
             }
         }
 
         private DynamicObject cloneArrayBuffer(DynamicObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
             DynamicObject clonedArrayBuffer;
-            if (isDirectProf.profile(sourceArray.isDirect())) {
+            if (sourceArray.isInterop()) {
+                InteropLibrary interop = getInterop();
+                clonedArrayBuffer = cloneInteropArrayBuffer(sourceBuffer, srcByteLength, srcByteOffset, interop);
+            } else if (isDirectProf.profile(sourceArray.isDirect())) {
                 clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength);
                 ByteBuffer clonedBackingBuffer = JSArrayBuffer.getDirectByteBuffer(clonedArrayBuffer);
                 ByteBuffer sourceBackingBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);
@@ -510,6 +517,19 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 byte[] clonedBackingBuffer = JSArrayBuffer.getByteArray(clonedArrayBuffer);
                 byte[] sourceBackingBuffer = JSArrayBuffer.getByteArray(sourceBuffer);
                 System.arraycopy(sourceBackingBuffer, srcByteOffset, clonedBackingBuffer, 0, srcByteLength);
+            }
+            return clonedArrayBuffer;
+        }
+
+        private DynamicObject cloneInteropArrayBuffer(DynamicObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
+            assert JSArrayBuffer.isJSInteropArrayBuffer(sourceBuffer);
+            boolean direct = getContext().isOptionDirectByteBuffer();
+            TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
+            TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct, false);
+            DynamicObject clonedArrayBuffer = direct ? JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength) : JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
+            for (int i = 0; i < srcByteLength; i++) {
+                int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, srcByteOffset, i, interop);
+                ((TypedArray.TypedIntArray) clonedType).setIntImpl(clonedArrayBuffer, 0, i, value, interop);
             }
             return clonedArrayBuffer;
         }
@@ -542,6 +562,15 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 needErrorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();
             }
+        }
+
+        private InteropLibrary getInterop() {
+            InteropLibrary lib = interopLibrary;
+            if (lib == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopLibrary = lib = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+            }
+            return lib;
         }
     }
 

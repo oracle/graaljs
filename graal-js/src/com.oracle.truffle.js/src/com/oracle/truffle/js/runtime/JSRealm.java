@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -98,6 +99,7 @@ import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -779,9 +781,26 @@ public class JSRealm {
     }
 
     public final DynamicObject lookupFunction(JSBuiltinsContainer container, String methodName) {
-        Builtin builtin = Objects.requireNonNull(container.lookupByName(methodName));
+        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByName(methodName), methodName);
         JSFunctionData functionData = builtin.createFunctionData(context);
         return JSFunction.create(this, functionData);
+    }
+
+    public final Accessor lookupAccessor(JSBuiltinsContainer container, Object key) {
+        Pair<JSBuiltin, JSBuiltin> pair = container.lookupAccessorByKey(key);
+        JSBuiltin getterBuiltin = pair.getLeft();
+        JSBuiltin setterBulitin = pair.getRight();
+        DynamicObject getterFunction = null;
+        DynamicObject setterFunction = null;
+        if (getterBuiltin != null) {
+            JSFunctionData functionData = getterBuiltin.createFunctionData(context);
+            getterFunction = JSFunction.create(this, functionData);
+        }
+        if (setterBulitin != null) {
+            JSFunctionData functionData = setterBulitin.createFunctionData(context);
+            setterFunction = JSFunction.create(this, functionData);
+        }
+        return new Accessor(getterFunction, setterFunction);
     }
 
     public static DynamicObject createObjectConstructor(JSRealm realm, DynamicObject objectPrototype) {
@@ -1866,16 +1885,15 @@ public class JSRealm {
                 putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, "rightContext");
             } else {
                 putRegExpStaticPropertyAccessor(null, "input");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, "lastParen");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, "leftContext");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, "rightContext");
-
                 putRegExpStaticPropertyAccessor(null, "input", "$_");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$And, "lastMatch", "$&");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$Plus, "lastParen", "$+");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$Apostrophe, "leftContext", "$`");
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$Quote, "rightContext", "$'");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, "lastMatch");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, "lastMatch", "$&");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, "lastParen");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, "lastParen", "$+");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, "leftContext");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, "leftContext", "$`");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, "rightContext");
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, "rightContext", "$'");
             }
             putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$1, "$1");
             putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$2, "$2");
@@ -1894,16 +1912,20 @@ public class JSRealm {
     }
 
     private void putRegExpStaticPropertyAccessor(BuiltinFunctionKey builtinKey, String getterName, String propertyName) {
-        DynamicObject getter = lookupFunction(RegExpBuiltins.BUILTINS, getterName);
+        Pair<JSBuiltin, JSBuiltin> pair = RegExpBuiltins.BUILTINS.lookupAccessorByKey(getterName);
+        JSBuiltin getterBuiltin = pair.getLeft();
+        DynamicObject getter = JSFunction.create(this, getterBuiltin.createFunctionData(context));
 
         DynamicObject setter;
-        if (propertyName.equals("input") || propertyName.equals("$_")) {
-            setter = lookupFunction(RegExpBuiltins.BUILTINS, "setInput");
+        JSBuiltin setterBuiltin = pair.getRight();
+        if (setterBuiltin != null) {
+            assert propertyName.equals("input") || propertyName.equals("$_");
+            setter = JSFunction.create(this, setterBuiltin.createFunctionData(context));
         } else if (context.isOptionV8CompatibilityModeInContextInit()) {
             // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
-            String setterName = "set " + propertyName;
+            String setterName = "set " + getterName;
             JSFunctionData setterData = context.getOrCreateBuiltinFunctionData(builtinKey,
-                            (c) -> JSFunctionData.createCallOnly(c, context.getEmptyFunctionCallTarget(), 0, setterName));
+                            (c) -> JSFunctionData.createCallOnly(c, context.getEmptyFunctionCallTarget(), 1, setterName));
             setter = JSFunction.create(this, setterData);
         } else {
             setter = Undefined.instance;

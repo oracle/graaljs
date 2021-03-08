@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
@@ -317,8 +316,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     private static void putRegExpPropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
-        DynamicObject getter = realm.lookupFunction(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name));
     }
 
     private static Object es5GetEmptyRegexEarly(JSRealm realm) {

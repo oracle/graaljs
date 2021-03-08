@@ -678,7 +678,7 @@ public abstract class JSObject extends JSDynamicObject {
         ((JSArrayBase) obj).setArrayType(array);
     }
 
-    public static boolean hasArray(DynamicObject obj) {
+    public static boolean hasArray(Object obj) {
         return JSArray.isJSArray(obj) || JSArgumentsArray.isJSArgumentsObject(obj) || JSArrayBufferView.isJSArrayBufferView(obj) || JSObjectPrototype.isJSObjectPrototype(obj);
     }
 

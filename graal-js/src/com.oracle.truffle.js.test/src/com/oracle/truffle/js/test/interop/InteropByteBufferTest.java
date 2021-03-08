@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,25 +40,28 @@
  */
 package com.oracle.truffle.js.test.interop;
 
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.test.interop.JavaScriptHostInteropTest.assertThrows;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
-
-import java.nio.ByteBuffer;
-
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class InteropByteBufferTest {
 
     @Test
     public void testJavaBufferToTypedArray() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -73,7 +76,7 @@ public class InteropByteBufferTest {
         ByteBuffer buffer = ByteBuffer.allocateDirect(3);
         buffer.put(new byte[]{1, 2, 3});
         buffer.position(0);
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -86,7 +89,7 @@ public class InteropByteBufferTest {
     @Test
     public void testJavaScriptCanWrite() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "(new Int8Array(new ArrayBuffer(buffer))).map(x => 42);");
             assertEquals(jsBuffer.getArraySize(), 3);
@@ -99,7 +102,7 @@ public class InteropByteBufferTest {
     @Test
     public void testSameBuffer() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings("js").putMember("buffer", buffer);
             Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
             buffer.position(0);
@@ -113,7 +116,7 @@ public class InteropByteBufferTest {
     @Test
     public void testBufferAsArgument() {
         ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             Value fun = context.eval(ID, "(function fun(buff) {return new Int8Array(new ArrayBuffer(buff))})");
             Value jsBuffer = fun.execute(buffer);
             buffer.position(0);
@@ -126,39 +129,153 @@ public class InteropByteBufferTest {
 
     @Test
     public void testJavaInteropDirect() {
-        try (Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
-            Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
-                            "const bb = ByteBuffer.allocateDirect(3);" +
-                            "const ab = new ArrayBuffer(bb);" +
-                            "const ia = new Int8Array(ab);" +
-                            "ia[0] = 41;" +
-                            "ia[1] = 42;" +
-                            "ia[2] = 43;" +
-                            "bb;");
-            ByteBuffer jBuffer = buffer.as(ByteBuffer.class);
-            assertTrue(jBuffer.isDirect());
-            assertEquals(jBuffer.get(0), 41);
-            assertEquals(jBuffer.get(1), 42);
-            assertEquals(jBuffer.get(2), 43);
-        }
+        testJavaInteropCommon(true);
     }
 
     @Test
     public void testJavaInteropHeap() {
+        testJavaInteropCommon(false);
+    }
+
+    private static void testJavaInteropCommon(boolean direct) {
         try (Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowHostClassLookup(className -> true).build()) {
             Value buffer = cx.eval("js", "const ByteBuffer = Java.type('java.nio.ByteBuffer');" +
-                            "const bb = ByteBuffer.allocate(3);" +
+                            "const bb = ByteBuffer.allocate" + (direct ? "Direct" : "") + "(32);" +
                             "const ab = new ArrayBuffer(bb);" +
-                            "const ia = new Int8Array(ab);" +
+                            "let ia = new Int8Array(ab);" +
                             "ia[0] = 41;" +
                             "ia[1] = 42;" +
                             "ia[2] = 43;" +
+                            "const ua = new Uint8Array(32);" +
+                            "ua.set(ia);" +
+                            "ua[3] = 212;" +
+                            "ia.set(ua);" +
+                            "ia = new Int32Array(ab, 4, 2);" +
+                            "ia[0] = 45;" +
+                            "ia[1] = 46;" +
+                            "ia[2] = 47;" +
+                            "ia = new BigInt64Array(ab, 16);" +
+                            "ia[0] = 2n ** 63n - 43n;" +
                             "bb;");
             ByteBuffer jBuffer = buffer.as(ByteBuffer.class);
-            assertTrue(!jBuffer.isDirect());
+            assertEquals(direct, jBuffer.isDirect());
             assertEquals(jBuffer.get(0), 41);
             assertEquals(jBuffer.get(1), 42);
             assertEquals(jBuffer.get(2), 43);
+            assertEquals(jBuffer.get(3), -44);
+            jBuffer.order(ByteOrder.nativeOrder());
+            assertEquals(jBuffer.getInt(4), 45);
+            assertEquals(jBuffer.getInt(8), 46);
+            assertEquals(jBuffer.getInt(12), 0);
+            assertEquals(jBuffer.getLong(16), Long.MAX_VALUE - 42);
+        }
+    }
+
+    @Test
+    public void testArrayBufferInteropDirect() {
+        testArrayBufferInteropCommon(true);
+    }
+
+    @Test
+    public void testArrayBufferInteropHeap() {
+        testArrayBufferInteropCommon(false);
+    }
+
+    private static void testArrayBufferInteropCommon(boolean direct) {
+        try (Context cx = JSTest.newContextBuilder().option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, Boolean.toString(direct)).build()) {
+            Value buffer = cx.eval("js", "" +
+                            "const ab = new ArrayBuffer(25);" +
+                            "let ia = new Int8Array(ab);" +
+                            "ia[0] = 41;" +
+                            "ia[1] = 42;" +
+                            "ia[2] = 43;" +
+                            "ia[3] = 44;" +
+                            "ia = new Int32Array(ab, 4, 2);" +
+                            "ia[0] = 45;" +
+                            "ia[1] = 46;" +
+                            "ia = new BigInt64Array(ab, 16, 1);" +
+                            "ia[0] = 2n ** 63n - 43n;" +
+                            "ab;");
+            assertEquals(25, buffer.getBufferSize());
+            assertEquals(buffer.readBufferByte(0), 41);
+            assertEquals(buffer.readBufferByte(1), 42);
+            assertEquals(buffer.readBufferByte(2), 43);
+            assertEquals(buffer.readBufferByte(3), 44);
+            assertEquals(buffer.readBufferShort(ByteOrder.LITTLE_ENDIAN, 0), 0x2a29);
+            assertEquals(buffer.readBufferShort(ByteOrder.BIG_ENDIAN, 0), 0x292a);
+            assertEquals(buffer.readBufferInt(ByteOrder.LITTLE_ENDIAN, 0), 0x2c2b2a29);
+            assertEquals(buffer.readBufferInt(ByteOrder.BIG_ENDIAN, 0), 0x292a2b2c);
+
+            assertEquals(buffer.readBufferFloat(ByteOrder.LITTLE_ENDIAN, 0), 2.4323965e-12f, 0f);
+            assertEquals(buffer.readBufferFloat(ByteOrder.BIG_ENDIAN, 0), 3.778503e-14f, 0f);
+
+            assertEquals(buffer.readBufferInt(ByteOrder.nativeOrder(), 4), 45);
+            assertEquals(buffer.readBufferInt(ByteOrder.nativeOrder(), 8), 46);
+            assertEquals(buffer.readBufferLong(ByteOrder.nativeOrder(), 16), Long.MAX_VALUE - 42);
+
+            assertTrue(buffer.isBufferWritable());
+            buffer.writeBufferLong(ByteOrder.nativeOrder(), 16, Double.doubleToRawLongBits(Double.NEGATIVE_INFINITY));
+            assertEquals(buffer.readBufferDouble(ByteOrder.nativeOrder(), 16), Double.NEGATIVE_INFINITY, 0.0);
+        }
+    }
+
+    @Test
+    public void testDataViewBackedByHostByteBuffer() {
+        testDataViewBackedByHostByteBuffer(false, true);
+        testDataViewBackedByHostByteBuffer(true, true);
+        testDataViewBackedByHostByteBuffer(false, false);
+        testDataViewBackedByHostByteBuffer(true, false);
+    }
+
+    private static void testDataViewBackedByHostByteBuffer(boolean direct, boolean viaArrayBuffer) {
+        ByteBuffer buffer = direct ? ByteBuffer.allocateDirect(32) : ByteBuffer.allocate(32);
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
+            context.getBindings(ID).putMember("bb", buffer);
+            Value dataView = context.eval(ID, "" +
+                            "const ab = " + (viaArrayBuffer ? "new ArrayBuffer(bb)" : "bb") + ";" +
+                            "let dv = new DataView(ab);" +
+                            "dv;");
+            context.eval(ID, "" +
+                            "dv.setInt8(0, 41);" +
+                            "dv.setInt8(1, dv.getInt8(0) + 1);" +
+                            "dv.setUint8(2, dv.getUint8(1) + 1);" +
+                            "dv.setInt32(3, -44, true);");
+            assertEquals(41, buffer.get(0));
+            assertEquals(42, buffer.get(1));
+            assertEquals(43, buffer.get(2));
+            assertEquals(-44, buffer.get(3));
+            assertEquals(-1, buffer.get(4));
+            buffer.put(3, (byte) 44);
+            assertEquals(0x2a29, dataView.invokeMember("getInt16", 0, true).asInt());
+            assertEquals(0x292a, dataView.invokeMember("getInt16", 0, false).asInt());
+            assertEquals(0x2c2b2a29, dataView.invokeMember("getInt32", 0, true).asInt());
+            assertEquals(0x292a2b2c, dataView.invokeMember("getInt32", 0, false).asInt());
+            assertEquals(2.4323965e-12f, dataView.invokeMember("getFloat32", 0, true).asFloat(), 0f);
+            assertEquals(3.778503e-14f, dataView.invokeMember("getFloat32", 0, false).asFloat(), 0f);
+            assertEquals(0x00ffffff2c2b2a29L, dataView.invokeMember("getBigInt64", 0, true).asLong());
+            assertEquals(0x292a2b2cffffff00L, dataView.invokeMember("getBigInt64", 0, false).asLong());
+            assertEquals(0x00ffffff2c2b2a29L, dataView.invokeMember("getBigUint64", 0, true).asLong());
+
+            context.eval(ID, "new DataView(ab, 8).setFloat64(8, -Infinity, true);");
+            assertEquals(Double.NEGATIVE_INFINITY, dataView.invokeMember("getFloat64", 16, true).asDouble(), 0.0);
+            assertEquals(0xfff0000000000000L, dataView.invokeMember("getBigInt64", 16, true).asLong());
+
+            context.eval(ID, "dv.setBigInt64(24, 1742123762643437888n, false);");
+            assertEquals(4614256656552045848L, dataView.invokeMember("getBigInt64", 24, true).asLong());
+            assertEquals(Math.PI, dataView.invokeMember("getFloat64", 24, true).asDouble(), 0.0);
+        }
+    }
+
+    @Test
+    public void testReadOnlyByteBuffer() {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3}).asReadOnlyBuffer();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
+            context.getBindings("js").putMember("buffer", buffer);
+            Value jsBuffer = context.eval(ID, "new Int8Array(new ArrayBuffer(buffer));");
+            buffer.position(0);
+            assertEquals(jsBuffer.getArraySize(), 3);
+            assertEquals(jsBuffer.getArrayElement(0).asByte(), buffer.get());
+            assertThrows(() -> jsBuffer.setArrayElement(0, 42), e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
         }
     }
 }

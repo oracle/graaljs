@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -485,7 +485,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object arraytype(Object array) {
-            if (!(JSDynamicObject.isJSDynamicObject(array)) || !(JSObject.hasArray((DynamicObject) array))) {
+            if (!(JSDynamicObject.isJSDynamicObject(array)) || !(JSObject.hasArray(array))) {
                 return "NOT_AN_ARRAY";
             }
             return JSObject.getArray((DynamicObject) array).getClass().getSimpleName();
