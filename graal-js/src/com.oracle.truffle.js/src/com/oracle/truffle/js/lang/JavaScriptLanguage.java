@@ -354,7 +354,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
      * Options which can be patched without throwing away the pre-initialized context.
      */
     private static final OptionKey<?>[] PREINIT_CONTEXT_PATCHABLE_OPTIONS = {
-                    JSContextOptions.ARRAY_SORT_INHERITED,
                     JSContextOptions.TIMER_RESOLUTION,
                     JSContextOptions.SHELL,
                     JSContextOptions.V8_COMPATIBILITY_MODE,
