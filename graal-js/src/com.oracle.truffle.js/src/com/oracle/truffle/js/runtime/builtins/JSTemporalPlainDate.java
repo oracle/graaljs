@@ -29,6 +29,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     public static final String PROTOTYPE_NAME = "TemporalPlainDate.prototype";
 
     public static final String YEAR = "year";
+    public static final String MONTH_CODE = "monthCode";
     public static final String MONTH = "month";
     public static final String DAY = "day";
 
