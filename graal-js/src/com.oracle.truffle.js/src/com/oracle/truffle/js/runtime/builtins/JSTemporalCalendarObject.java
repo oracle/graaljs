@@ -17,4 +17,7 @@ public class JSTemporalCalendarObject extends JSNonProxyObject {
         this.id = id;
     }
 
+    public String getId() {
+        return id;
+    }
 }
