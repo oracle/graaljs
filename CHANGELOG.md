@@ -7,6 +7,7 @@ The main focus is on user-observable behavior of the engine.
 * Prototype of WebAssembly JavaScript Interface implemented. It is available behind the `--js.webassembly` flag.
 * Implemented iterator interop support, enabling foreign objects that have an iterator to be used where JS expects iterables, as well as JS iterables to be used in other languages and via the [Value](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getIterator--) API.
 * Adopted new buffer interop support, allowing foreign buffers to be used with typed arrays and `DataView`, without copying. Likewise enables `ArrayBuffer` to be used in other languages.
+* Experimental option `js.array-sort-inherited` was removed. Values visible through holes in array(-like) object are always sorted according to the latest version of ECMAScript specification.
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.

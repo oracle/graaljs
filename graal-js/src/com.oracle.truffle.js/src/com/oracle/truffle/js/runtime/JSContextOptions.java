@@ -147,13 +147,6 @@ public final class JSContextOptions {
     @CompilationFinal private Assumption regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
     @CompilationFinal private boolean regexpStaticResult;
 
-    public static final String ARRAY_SORT_INHERITED_NAME = JS_OPTION_PREFIX + "array-sort-inherited";
-    @Option(name = ARRAY_SORT_INHERITED_NAME, category = OptionCategory.USER, help = "Sort inherited keys in Array.protoype.sort.") //
-    public static final OptionKey<Boolean> ARRAY_SORT_INHERITED = new OptionKey<>(true);
-    private final CyclicAssumption arraySortInheritedCyclicAssumption = new CyclicAssumption("The " + ARRAY_SORT_INHERITED_NAME + " option is stable.");
-    @CompilationFinal private Assumption arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
-    @CompilationFinal private boolean arraySortInherited;
-
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
     @Option(name = SHARED_ARRAY_BUFFER_NAME, category = OptionCategory.USER, help = "Enable ES2017 SharedArrayBuffer.") //
     public static final OptionKey<Boolean> SHARED_ARRAY_BUFFER = new OptionKey<>(true);
@@ -532,10 +525,6 @@ public final class JSContextOptions {
             regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
         });
         this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
-        this.arraySortInherited = patchBooleanOption(ARRAY_SORT_INHERITED, ARRAY_SORT_INHERITED_NAME, arraySortInherited, msg -> {
-            arraySortInheritedCyclicAssumption.invalidate(msg);
-            arraySortInheritedCurrentAssumption = arraySortInheritedCyclicAssumption.getAssumption();
-        });
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
         this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
             v8CompatibilityModeCyclicAssumption.invalidate(msg);
@@ -657,14 +646,6 @@ public final class JSContextOptions {
         } catch (InvalidAssumptionException e) {
         }
         return regexpStaticResult;
-    }
-
-    public boolean isArraySortInherited() {
-        try {
-            arraySortInheritedCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
-        return arraySortInherited;
     }
 
     public boolean isSharedArrayBuffer() {
@@ -954,7 +935,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.intl402 ? 1 : 0);
         hash = 53 * hash + (this.regexpMatchIndices ? 1 : 0);
         hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
-        hash = 53 * hash + (this.arraySortInherited ? 1 : 0);
         hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
         hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
         hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
@@ -1023,9 +1003,6 @@ public final class JSContextOptions {
             return false;
         }
         if (this.regexpStaticResult != other.regexpStaticResult) {
-            return false;
-        }
-        if (this.arraySortInherited != other.arraySortInherited) {
             return false;
         }
         if (this.sharedArrayBuffer != other.sharedArrayBuffer) {

@@ -234,10 +234,6 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
-    "filePath" : "mjsunit/array-sort.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
     "filePath" : "mjsunit/asm/asm-heap.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"

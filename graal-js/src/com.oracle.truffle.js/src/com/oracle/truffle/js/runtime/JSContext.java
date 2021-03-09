@@ -1250,11 +1250,6 @@ public class JSContext {
         return contextOptions.isRegexpStaticResult();
     }
 
-    public boolean isOptionArraySortInherited() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option array-sort-inherited accessed during context pre-initialization.";
-        return contextOptions.isArraySortInherited();
-    }
-
     public boolean isOptionSharedArrayBuffer() {
         return contextOptions.isSharedArrayBuffer();
     }
