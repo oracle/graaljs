@@ -59,6 +59,7 @@ import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
 import org.graalvm.collections.Pair;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
@@ -273,6 +274,8 @@ public class JSRealm {
     private final DynamicObject temporalPlainDatePrototype;
     private final DynamicObject temporalDurationConstructor;
     private final DynamicObject temporalDurationPrototype;
+    private final DynamicObject temporalCalendarConstructor;
+    private final DynamicObject temporalCalendarPrototype;
 
     // ES6:
     private final DynamicObject symbolConstructor;
@@ -895,6 +898,10 @@ public class JSRealm {
         ctor = JSTemporalDuration.createConstructor(this);
         this.temporalDurationConstructor = ctor.getFunctionObject();
         this.temporalDurationPrototype = ctor.getPrototype();
+
+        ctor = JSTemporalCalendar.createConstructor(this);
+        this.temporalCalendarConstructor = ctor.getFunctionObject();
+        this.temporalCalendarPrototype = ctor.getPrototype();
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1356,6 +1363,14 @@ public class JSRealm {
         return temporalDurationPrototype;
     }
 
+    public final DynamicObject getTemporalCalendarConstructor() {
+        return temporalCalendarConstructor;
+    }
+
+    public final DynamicObject getTemporalCalendarPrototype() {
+        return temporalCalendarPrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1764,6 +1779,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor());
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor());
         JSObjectUtil.putDataProperty(context, temporalObject, "Duration", getTemporalDurationConstructor());
+        JSObjectUtil.putDataProperty(context, temporalObject, "Calendar", getTemporalCalendarConstructor());
 
         putGlobalProperty("Temporal", temporalObject);
     }

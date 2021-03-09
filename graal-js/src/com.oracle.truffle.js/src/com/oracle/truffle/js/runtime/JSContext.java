@@ -106,6 +106,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalTime;
@@ -432,6 +433,7 @@ public class JSContext {
     private final JSObjectFactory temporalTimeFactory;
     private final JSObjectFactory temporalPlainDateFactory;
     private final JSObjectFactory temporalDurationFactory;
+    private final JSObjectFactory temporalCalendarFactory;
 
     private final JSObjectFactory globalObjectFactory;
 
@@ -596,6 +598,7 @@ public class JSContext {
         this.temporalTimeFactory = builder.create(JSTemporalPlainTime.INSTANCE);
         this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
         this.temporalDurationFactory = builder.create(JSTemporalDuration.INSTANCE);
+        this.temporalCalendarFactory = builder.create(JSTemporalCalendar.INSTANCE);
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
@@ -1044,6 +1047,10 @@ public class JSContext {
 
     public final JSObjectFactory getTemporalDurationFactory() {
         return temporalDurationFactory;
+    }
+
+    public final JSObjectFactory getTemporalCalendarFactory() {
+        return temporalCalendarFactory;
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {
