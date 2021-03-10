@@ -40,23 +40,17 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Map;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -156,7 +150,6 @@ public abstract class EnumerateNode extends JavaScriptNode {
     protected DynamicObject doEnumerateTruffleObject(Object iteratedObject,
                     @CachedLibrary("iteratedObject") InteropLibrary interop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
-                    @Cached("createBinaryProfile()") ConditionProfile isHostObject,
                     @Cached BranchProfile notIterable) {
         try {
             if (!interop.isNull(iteratedObject)) {
@@ -176,14 +169,8 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     return enumerateString(string);
                 }
 
-                // Handles Map host objects.
-                // TODO: Replace this with Interop messages once Map support is available (GR-8937).
-                TruffleLanguage.Env env = context.getRealm().getEnv();
-                if (isHostObject.profile(env.isHostObject(iteratedObject))) {
-                    Object iterator = getHostObjectIterator(iteratedObject, env);
-                    if (iterator != null) {
-                        return newEnumerateIterator(iterator);
-                    }
+                if (interop.hasHashEntries(iteratedObject)) {
+                    return newEnumerateIterator(interop.getHashEntriesIterator(iteratedObject));
                 }
 
                 if (interop.hasMembers(iteratedObject)) {
@@ -203,23 +190,6 @@ public abstract class EnumerateNode extends JavaScriptNode {
             throw Errors.createTypeErrorNotIterable(iteratedObject, this);
         }
         return newEmptyIterator();
-    }
-
-    @TruffleBoundary
-    private Object getHostObjectIterator(Object iteratedObject, TruffleLanguage.Env env) {
-        Object realHostObject = env.asHostObject(iteratedObject);
-        if (realHostObject != null) {
-            if (realHostObject instanceof Map) {
-                String getIterableMethod = values ? "values" : "keySet";
-                try {
-                    Object iterable = InteropLibrary.getUncached(iteratedObject).invokeMember(iteratedObject, getIterableMethod);
-                    return InteropLibrary.getUncached(iterable).invokeMember(iterable, "iterator");
-                } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
-                    throw Errors.createTypeErrorInteropException(iteratedObject, e, values ? "values().iterator()" : "keySet().iterator()", this);
-                }
-            }
-        }
-        return null;
     }
 
     private DynamicObject enumerateString(String string) {
