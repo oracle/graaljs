@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -244,6 +244,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
+
+                // Workaround for a regression in ICU 68.2/CLDR 38
+                // (missing space in Chinese locale)
+                if (bestPattern.contains("dH") && "zh".equals(selectedLocale.getLanguage())) {
+                    bestPattern = bestPattern.replace("dH", "d H");
+                }
+
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
                 if (containsOneOf(baseSkeleton, "eEc")) {
