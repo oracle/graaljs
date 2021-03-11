@@ -1956,26 +1956,6 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-grandfathered.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-variant.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "intl402/Locale/extensions-grandfathered.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "intl402/Locale/likely-subtags-grandfathered.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
     "filePath" : "intl402/NumberFormat/dft-currency-mnfd-range-check-mxfd.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"

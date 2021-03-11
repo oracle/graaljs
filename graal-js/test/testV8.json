@@ -87,14 +87,6 @@
     "status" : "SKIP",
     "comment" : "Triggers stack-overflow, test fails randomly based on where the overflow occurs."
   }, {
-    "filePath" : "intl/general/grandfathered_tags_without_preferred_value.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/general/language_tags_with_preferred_values.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
@@ -126,25 +118,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "intl/regress-10528.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/regress-10529.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "intl/regress-10613.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "intl/regress-1074578.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
     "filePath" : "intl/regress-10836.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/regress-1130489.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "intl/regress-527926.js",
     "status" : "FAIL",
