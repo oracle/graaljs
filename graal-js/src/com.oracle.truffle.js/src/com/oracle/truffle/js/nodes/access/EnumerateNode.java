@@ -170,7 +170,8 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 }
 
                 if (interop.hasHashEntries(iteratedObject)) {
-                    return newEnumerateIterator(interop.getHashEntriesIterator(iteratedObject));
+                    Object iterator = values ? interop.getHashValuesIterator(iteratedObject) : interop.getHashKeysIterator(iteratedObject);
+                    return newEnumerateIterator(iterator);
                 }
 
                 if (interop.hasMembers(iteratedObject)) {
