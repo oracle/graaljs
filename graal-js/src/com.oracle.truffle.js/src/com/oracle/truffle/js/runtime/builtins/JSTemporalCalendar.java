@@ -182,9 +182,42 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         Object month = resolveISOMonth(fields, dol, stringToNumber, identicalNode);
         DynamicObject result = null;    // TODO: Call JSTemporalPlainYearMonth.regulateISOYearMonth()
         DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.YEAR, dol.getOrDefault(result, JSTemporalPlainDate.YEAR, 0l));
-        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.MONTH, dol.getOrDefault(result, JSTemporalPlainDate.MONTH, 0l));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.YEAR, dol.getOrDefault(result, JSTemporalPlainDate.YEAR, 0L));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.MONTH, dol.getOrDefault(result, JSTemporalPlainDate.MONTH, 0L));
         JSObjectUtil.putDataProperty(realm.getContext(), record, "referenceISODay", 1);
+        return record;
+    }
+
+    // 12.1.41
+    public static DynamicObject isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSRealm realm, IsObjectNode isObject,
+                                                      DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
+                                                      JSToStringNode toString, JSStringToNumberNode stringToNumber,
+                                                      JSIdenticalNode identicalNode) {
+        assert isObject.executeBoolean(fields);
+        String overflow = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
+        fields = fields;    // TODO: Call JSTemporalPlainMonthDay.toTemporalMonthDayFields()
+        Object month = dol.getOrDefault(fields, JSTemporalPlainDate.MONTH, null);
+        Object monthCode = dol.getOrDefault(fields, JSTemporalPlainDate.MONTH_CODE, null);
+        Object year = dol.getOrDefault(fields, JSTemporalPlainDate.YEAR, null);
+        if (month != null && monthCode == null && year == null) {
+            throw Errors.createTypeError("A year or a month code should be present.");
+        }
+        month = resolveISOMonth(fields, dol, stringToNumber, identicalNode);
+        Object day = dol.getOrDefault(fields, JSTemporalPlainDate.DAY, null);
+        if (day == null) {
+            throw Errors.createTypeError("Day not present.");
+        }
+        long referenceISOYear = 1972;
+        DynamicObject result = null;
+        if (monthCode == null) {
+            result = JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow, realm);
+        } else {
+            result = JSTemporalPlainDate.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow, realm);
+        }
+        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.MONTH, dol.getOrDefault(result, JSTemporalPlainDate.MONTH, 0L));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.DAY, dol.getOrDefault(result, JSTemporalPlainDate.DAY, 0L));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, "referenceISOYear", referenceISOYear);
         return record;
     }
 }
