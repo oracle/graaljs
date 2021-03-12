@@ -8,6 +8,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDateFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
@@ -35,6 +36,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public enum TemporalCalendarPrototype implements BuiltinEnum<TemporalCalendarPrototype> {
         dateFromFields(3),
+        yearMonthFromFields(3),
         toString(0),
         toJSON(0);
 
@@ -56,6 +58,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         switch (builtinEnum) {
             case dateFromFields:
                 return JSTemporalCalendarDateFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+            case yearMonthFromFields:
+                return JSTemporalCalendarYearMonthFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalCalendarToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -99,6 +103,36 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (UnexpectedResultException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    // 12.4.5
+    public abstract static class JSTemporalCalendarYearMonthFromFields extends JSBuiltinNode {
+
+        protected JSTemporalCalendarYearMonthFromFields(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        public Object yearMonthFromFields(DynamicObject thisObj, DynamicObject fields, DynamicObject options,
+                                          DynamicObject constructor,
+                                          @Cached("create()") IsObjectNode isObject,
+                                          @Cached("create()") IsConstructorNode isConstructor,
+                                          @Cached("createSameValue()") JSIdenticalNode identicalNode,
+                                          @Cached("create()") JSToBooleanNode toBoolean,
+                                          @Cached("create()") JSToStringNode toString,
+                                          @Cached("create()") JSStringToNumberNode stringToNumber,
+                                          @Cached("createNew()") JSFunctionCallNode callNode,
+                                          @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) thisObj;
+            assert calendar.getId().equals("iso8601");
+            if (!isObject.executeBoolean(fields)) {
+                throw Errors.createTypeError("Given fields is not an object.");
+            }
+            options = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+            DynamicObject result = JSTemporalCalendar.isoYearMonthFromFields(fields, options, getContext().getRealm(),
+                    isObject, dol, toBoolean, toString, stringToNumber, identicalNode);
+            return null;    // TODO: Call JSTemporalYearMonth.createTemporalYearMonthFromStatic()
         }
     }
 
