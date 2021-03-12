@@ -118,6 +118,43 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         return id.equals("iso8601");
     }
 
+    // 12.1.32
+    public static boolean isISOLeapYear(long year) {
+        if (year % 4 != 0) {
+            return false;
+        }
+        if (year % 400 == 0) {
+            return true;
+        }
+        if (year % 100 == 0) {
+            return false;
+        }
+        return true;
+    }
+
+    // 12.1.33
+    public static long isoDayInYear(long year) {
+        if (isISOLeapYear(year)) {
+            return 366;
+        }
+        return 365;
+    }
+
+    // 12.1.34
+    public static long isoDaysInMonth(long year, long month) {
+        assert month >= 1 && month <= 12;
+        if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
+            return 31;
+        }
+        if (month == 4 || month == 6 || month == 9 || month == 11) {
+            return 30;
+        }
+        if (isISOLeapYear(year)) {
+            return 29;
+        }
+        return 28;
+    }
+
     // 12.1.38
     public static Object resolveISOMonth(DynamicObject fields, DynamicObjectLibrary dol,
                                          JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {

@@ -6,6 +6,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDateAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDateFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthDayFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarToStringNodeGen;
@@ -14,6 +15,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -24,7 +26,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendarObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarPrototypeBuiltins.TemporalCalendarPrototype> {
@@ -39,6 +44,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         dateFromFields(3),
         yearMonthFromFields(3),
         monthDayFromFields(3),
+        dateAdd(4),
         toString(0),
         toJSON(0);
 
@@ -64,6 +70,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalCalendarYearMonthFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case monthDayFromFields:
                 return JSTemporalCalendarMonthDayFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+            case dateAdd:
+                return JSTemporalCalendarDateAddNodeGen.create(context, builtin, args().withThis().fixedArgs(4).createArgumentNodes(context));
             case toString:
             case toJSON:
                 return JSTemporalCalendarToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
@@ -167,6 +175,47 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject result = JSTemporalCalendar.isoMonthDayFromFields(fields, options, getContext().getRealm(),
                     isObject, dol, toBoolean, toString, stringToNumber, identicalNode);
             return null;    // TODO: Call JSTemporalPlainMonthDay.createTemporalMonthDayFromStatic()
+        }
+    }
+
+    // 12.4.7
+    public abstract static class JSTemporalCalendarDateAdd extends JSBuiltinNode {
+
+        protected JSTemporalCalendarDateAdd(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        public Object dateAdd(DynamicObject thisObj, DynamicObject dateObj, DynamicObject durationObj, DynamicObject options,
+                              DynamicObject constructor,
+                              @Cached("create()") IsObjectNode isObject,
+                              @Cached("create()") IsConstructorNode isConstructor,
+                              @Cached("create()") JSToBooleanNode toBoolean,
+                              @Cached("create()") JSToStringNode toString,
+                              @Cached("create()") JSToIntegerAsLongNode toInt,
+                              @Cached("createNew()") JSFunctionCallNode callNode,
+                              @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            try {
+                JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) thisObj;
+                assert calendar.getId().equals("iso8601");
+                JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(dateObj,
+                        null, null, getContext().getRealm(), isObject, dol, toBoolean, toString,
+                        isConstructor, callNode);
+                JSTemporalDurationObject duration = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(
+                        durationObj, null, getContext().getRealm(), isObject, toInt, dol, toString, isConstructor, callNode);
+                options = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                String overflow = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
+                DynamicObject result = JSTemporalPlainDate.addISODate(date.getYear(), date.getMonth(), date.getDay(),
+                        duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow,
+                        getContext().getRealm(), dol);
+                return JSTemporalPlainDate.createTemporalDateFromStatic(constructor,
+                        dol.getLongOrDefault(result, JSTemporalPlainDate.YEAR, 0L),
+                        dol.getLongOrDefault(result, JSTemporalPlainDate.MONTH, 0L),
+                        dol.getLongOrDefault(result, JSTemporalPlainDate.DAY, 0L),
+                        calendar, isConstructor, callNode);
+            } catch (UnexpectedResultException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 

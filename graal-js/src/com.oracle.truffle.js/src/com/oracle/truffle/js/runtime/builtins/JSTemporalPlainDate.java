@@ -256,6 +256,69 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         return toRecord(year, month, day, realm);
     }
 
+    // 3.5.11
+    public static DynamicObject balanceISODate(long year, long month, long day, JSRealm realm, DynamicObjectLibrary dol) {
+        try {
+            DynamicObject balancedYearMonth = null; // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+            month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
+            year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
+            long testYear;
+            if (month > 2) {
+                testYear = year;
+            } else {
+                testYear = year - 1;
+            }
+            while (day < -1 * JSTemporalCalendar.isoDayInYear(testYear)) {
+                day = day + JSTemporalCalendar.isoDayInYear(testYear);
+                year = year - 1;
+                testYear = testYear - 1;
+            }
+            testYear = year + 1;
+            while (day > JSTemporalCalendar.isoDayInYear(testYear)) {
+                day = day - JSTemporalCalendar.isoDayInYear(testYear);
+                year = year + 1;
+                testYear = testYear + 1;
+            }
+            while (day < 1) {
+                balancedYearMonth = null;   // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+                year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
+                month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
+                day = day + JSTemporalCalendar.isoDaysInMonth(year, month);
+            }
+            while (day > JSTemporalCalendar.isoDaysInMonth(year, month)) {
+                day = day - JSTemporalCalendar.isoDaysInMonth(year, month);
+                balancedYearMonth = null;   // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+                year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
+                month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
+            }
+            return toRecord(year, month, day, realm);
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // 3.5.14
+    public static DynamicObject addISODate(long year, long month, long day, long years, long months, long weeks,
+                                           long days, String overflow, JSRealm realm, DynamicObjectLibrary dol) {
+        try {
+            assert overflow.equals("constrain") || overflow.equals("reject");
+            long y = year + years;
+            long m = month + months;
+            DynamicObject intermediate = null;  // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+            intermediate = regulateISODate(dol.getLongOrDefault(intermediate, YEAR, 0L),
+                    dol.getLongOrDefault(intermediate, MONTH, 0L), day, overflow, realm);
+            days = days + (7 * weeks);
+            long d = dol.getLongOrDefault(intermediate, DAY, 0L) + days;
+            intermediate = balanceISODate(dol.getLongOrDefault(intermediate, YEAR, 0L),
+                    dol.getLongOrDefault(intermediate, MONTH, 0L), d, realm, dol);
+            return regulateISODate(dol.getLongOrDefault(intermediate, YEAR, 0L),
+                    dol.getLongOrDefault(intermediate, MONTH, 0L),
+                    dol.getLongOrDefault(intermediate, DAY, 0L), overflow, realm);
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private static DynamicObject toRecord(long year, long month, long day, JSRealm realm) {
         DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putDataProperty(realm.getContext(), record, YEAR, year);
