@@ -166,4 +166,25 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         Object day = dol.getOrDefault(fields, JSTemporalPlainDate.DAY, null);
         return JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow, realm);
     }
+
+    // 12.1.40
+    public static DynamicObject isoYearMonthFromFields(DynamicObject fields, DynamicObject options, JSRealm realm, IsObjectNode isObject,
+                                                       DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
+                                                       JSToStringNode toString, JSStringToNumberNode stringToNumber,
+                                                       JSIdenticalNode identicalNode) {
+        assert isObject.executeBoolean(fields);
+        String overflow = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
+        fields = fields;    // TODO: Call JSTemporalPlainYearMonth.toTemporalYearMonthFields()
+        Object year = dol.getOrDefault(fields, JSTemporalPlainDate.YEAR, null);
+        if (year == null) {
+            throw Errors.createTypeError("Year not present.");
+        }
+        Object month = resolveISOMonth(fields, dol, stringToNumber, identicalNode);
+        DynamicObject result = null;    // TODO: Call JSTemporalPlainYearMonth.regulateISOYearMonth()
+        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.YEAR, dol.getOrDefault(result, JSTemporalPlainDate.YEAR, 0l));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.MONTH, dol.getOrDefault(result, JSTemporalPlainDate.MONTH, 0l));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, "referenceISODay", 1);
+        return record;
+    }
 }
