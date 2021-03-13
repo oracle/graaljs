@@ -2191,7 +2191,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-739768.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "regression detected on 2021-02-24"
   }, {
@@ -3157,7 +3157,7 @@
     "filePath" : "mjsunit/wasm/graceful_shutdown_during_tierup.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/grow-huge-memory.js",
@@ -3317,7 +3317,7 @@
     "filePath" : "mjsunit/wasm/many-memories-no-trap-handler.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/many-memories.js",
@@ -3385,7 +3385,7 @@
     "filePath" : "mjsunit/wasm/names.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "regression detected on 2021-02-24"
   }, {
@@ -3530,7 +3530,7 @@
     "filePath" : "mjsunit/wasm/unicode-validation.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "regression detected on 2021-02-24"
   }, {
