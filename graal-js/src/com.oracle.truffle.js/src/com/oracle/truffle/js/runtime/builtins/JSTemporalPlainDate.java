@@ -17,7 +17,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Set;
 
 public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
@@ -342,7 +341,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 );
                 assert years >= 0;
                 while (years > 0) {
-                    days = days + JSTemporalCalendar.isoDayInYear(
+                    days = days + JSTemporalCalendar.isoDaysInYear(
                             dol.getLongOrDefault(smaller, YEAR, 0L) + years - 1
                     );
                     years = years - 1;
@@ -421,14 +420,14 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             } else {
                 testYear = year - 1;
             }
-            while (day < -1 * JSTemporalCalendar.isoDayInYear(testYear)) {
-                day = day + JSTemporalCalendar.isoDayInYear(testYear);
+            while (day < -1 * JSTemporalCalendar.isoDaysInYear(testYear)) {
+                day = day + JSTemporalCalendar.isoDaysInYear(testYear);
                 year = year - 1;
                 testYear = testYear - 1;
             }
             testYear = year + 1;
-            while (day > JSTemporalCalendar.isoDayInYear(testYear)) {
-                day = day - JSTemporalCalendar.isoDayInYear(testYear);
+            while (day > JSTemporalCalendar.isoDaysInYear(testYear)) {
+                day = day - JSTemporalCalendar.isoDaysInYear(testYear);
                 year = year + 1;
                 testYear = testYear + 1;
             }
