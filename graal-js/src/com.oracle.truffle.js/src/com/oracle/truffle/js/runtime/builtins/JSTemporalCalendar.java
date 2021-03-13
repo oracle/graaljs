@@ -155,6 +155,15 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         return 28;
     }
 
+    // 12.1.36
+    public static long toISODayOfYear(long year, long month, long day) {
+        long days = 0;
+        for (int m = 1; m < month; m++) {
+            days += isoDaysInMonth(year, m);
+        }
+        return days + day;
+    }
+
     // 12.1.38
     public static Object resolveISOMonth(DynamicObject fields, DynamicObjectLibrary dol,
                                          JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
