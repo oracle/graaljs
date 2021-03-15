@@ -242,10 +242,6 @@
     "filePath" : "basic/JDK-8022731.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8022903.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
     "filePath" : "basic/JDK-8023551.js",
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
@@ -594,10 +590,6 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/NASHORN-296.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/NASHORN-349.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
