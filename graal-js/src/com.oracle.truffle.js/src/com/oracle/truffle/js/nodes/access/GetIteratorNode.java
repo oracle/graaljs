@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
@@ -61,8 +63,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
-
-import java.util.Set;
 
 /**
  * GetIterator(obj, hint = sync).
@@ -98,7 +98,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         return context;
     }
 
-    @Specialization(guards = {"!isForeignObject(iteratedObject)"})
+    @Specialization
     protected IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached("create()") IsCallableNode isCallableNode,
                     @Cached("createCall()") JSFunctionCallNode methodCallNode,
@@ -123,17 +123,6 @@ public abstract class GetIteratorNode extends JavaScriptNode {
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator, origin);
         }
-    }
-
-    @Specialization(guards = {"isForeignObject(iteratedObject)"})
-    protected IteratorRecord doForeignIterable(Object iteratedObject,
-                    @Cached("createEnumerateValues()") EnumerateNode enumerateNode) {
-        DynamicObject iterator = enumerateNode.execute(iteratedObject);
-        return IteratorRecord.create(iterator, getNextMethodNode.getValue(iterator), false);
-    }
-
-    protected EnumerateNode createEnumerateValues() {
-        return EnumerateNode.create(getContext(), true, true);
     }
 
     @Override
