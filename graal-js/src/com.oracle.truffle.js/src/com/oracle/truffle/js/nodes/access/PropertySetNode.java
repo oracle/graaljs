@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -1062,6 +1063,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private final JSContext context;
         @Child private InteropLibrary interop;
         @Child private InteropLibrary setterInterop;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public ForeignPropertySetNode(JSContext context) {
             super(new ForeignLanguageCheckNode());
@@ -1110,6 +1112,16 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
             String stringKey = (String) root.getKey();
+
+            if (interop.hasHashEntries(truffleObject)) {
+                try {
+                    interop.writeHashEntry(truffleObject, stringKey, value);
+                } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                }
+            }
+
             if (context.isOptionNashornCompatibilityMode()) {
                 if (tryInvokeSetter(truffleObject, value, root)) {
                     return true;
@@ -1122,6 +1134,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                 }
             } else {
@@ -1129,6 +1142,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     try {
                         interop.writeMember(truffleObject, stringKey, value);
                     } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                        errorBranch.enter();
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                     }
                 }

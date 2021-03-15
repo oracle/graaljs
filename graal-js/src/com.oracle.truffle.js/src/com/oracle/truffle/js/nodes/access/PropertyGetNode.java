@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -960,6 +961,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return maybeGetFromPrototype(thisObj, key);
             }
             String stringKey = (String) key;
+
+            if (interop.hasHashEntries(thisObj)) {
+                try {
+                    return interop.readHashValue(thisObj, key);
+                } catch (UnknownKeyException e) {
+                    // fall through: still need to try members
+                } catch (UnsupportedMessageException e) {
+                    return Undefined.instance;
+                }
+            }
+
             if (context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(thisObj, root);
                 if (result != null) {
