@@ -1000,7 +1000,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
-            if (context.getContextOptions().hasForeignObjectPrototype()) {
+            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol) {
                 if (foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());

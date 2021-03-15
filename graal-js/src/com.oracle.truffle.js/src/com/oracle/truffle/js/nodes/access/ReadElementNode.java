@@ -1649,7 +1649,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
             assert JSRuntime.isPropertyKey(key);
-            if (context.getContextOptions().hasForeignObjectPrototype()) {
+            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));
