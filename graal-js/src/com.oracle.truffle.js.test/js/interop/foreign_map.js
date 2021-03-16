@@ -14,14 +14,25 @@ let obj = {};
 let foreignMap = new HashMap();
 foreignMap.put("key", "value");
 foreignMap.put(obj, 42);
-foreignMap.put(13.37, [3.14]);
+foreignMap.put(13.37, 3.14);
 
 assertArrayEquals(["key", obj, 13.37], forIn(foreignMap));
-assertArrayEquals([["key", "value"], [obj, 42], [13.37, [3.14]]], forOf(foreignMap));
+assertArrayEquals([["key", "value"], [obj, 42], [13.37, 3.14]], forOf(foreignMap));
+assertArrayEquals([["key", "value"], [obj, 42], [13.37, 3.14]], Array.from(foreignMap));
 
 // keys() returns member keys (only)!
 let keys = Object.keys(foreignMap);
 assertFalse(keys.includes("key"));
+
+let jsMap = new Map(foreignMap);
+assertSame("value", jsMap.get("key"));
+assertSame(42, jsMap.get(obj));
+assertSame(3.14, jsMap.get(13.37));
+
+let objFromMap = Object.fromEntries(foreignMap);
+assertSame("value", objFromMap.key);
+assertSame(42, objFromMap[obj]); // key is '[object Object]'
+assertSame(3.14, objFromMap[13.37]);
 
 
 function forIn(iterable) {
