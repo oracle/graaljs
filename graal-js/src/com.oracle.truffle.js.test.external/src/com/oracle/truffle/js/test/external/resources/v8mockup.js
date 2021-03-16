@@ -198,6 +198,7 @@ function v8HasFixedUint8ClampedElements(ob) {
     return true;
 }
 
+//watch out: this might be modified by TestV8Runnable, see GR-29754.
 function gc() {
     TestV8.gc();
 }
