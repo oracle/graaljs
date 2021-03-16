@@ -276,7 +276,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         JavaScriptVerifier.foreignOrHasIteratorVerifier(context, null),
                         TypeDescriptor.union(
                                         TypeDescriptor.STRING,
-                                        TypeDescriptor.OBJECT,
                                         TypeDescriptor.ARRAY,
                                         TypeDescriptor.ITERABLE,
                                         TypeDescriptor.HASH)));
