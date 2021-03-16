@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -167,11 +167,11 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     public final boolean isSupportedContiguous(DynamicObject object, long index) {
-        return index >= firstElementIndex(object) - 1 && index <= lastElementIndex(object) + 1;
+        return index >= firstElementIndex(object) - 1 && index <= lastElementIndex(object) + 1 && index < Integer.MAX_VALUE;
     }
 
     public final boolean isSupportedHoles(DynamicObject object, long index) {
-        return index >= firstElementIndex(object) - JSConfig.MaxArrayHoleSize && index <= lastElementIndex(object) + JSConfig.MaxArrayHoleSize;
+        return index >= firstElementIndex(object) - JSConfig.MaxArrayHoleSize && index <= lastElementIndex(object) + JSConfig.MaxArrayHoleSize && index < Integer.MAX_VALUE;
     }
 
     protected abstract int prepareSupported(DynamicObject object, int index, ProfileHolder profile);
