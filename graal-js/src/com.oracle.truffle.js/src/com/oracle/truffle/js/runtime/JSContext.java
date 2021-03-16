@@ -190,6 +190,9 @@ public class JSContext {
 
     private volatile Map<String, Symbol> symbolRegistry;
 
+    // 0 = Number, 1 = BigInt, 2 = String
+    private int operatorCounter = 3;
+
     private final Object nodeFactory;
 
     private final TimeProfiler timeProfiler;
@@ -718,6 +721,10 @@ public class JSContext {
         if (symbolRegistry == null) {
             symbolRegistry = new HashMap<>();
         }
+    }
+
+    public int incOperatorCounter() {
+        return operatorCounter++;
     }
 
     /**

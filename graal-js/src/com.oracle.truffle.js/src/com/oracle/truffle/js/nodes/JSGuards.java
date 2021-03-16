@@ -44,7 +44,10 @@ import java.util.List;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.OperatorsBuiltins;
+import com.oracle.truffle.js.builtins.OperatorsBuiltins.OperatorSet;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -467,5 +470,58 @@ public final class JSGuards {
 
     public static boolean isArrayIndexLengthInRange(String str) {
         return JSRuntime.arrayIndexLengthInRange(str);
+    }
+
+    public static boolean hasOverloadedOperators(Shape shape) {
+        return OperatorsBuiltins.hasOverloadedOperators(shape);
+    }
+
+    public static OperatorSet getOperatorSet(DynamicObject object) {
+        return OperatorsBuiltins.getOperatorSet(object);
+    }
+
+    public static Object getOperatorImplementation(OperatorSet leftOperatorSet, OperatorSet rightOperatorSet, String operatorName) {
+        if (leftOperatorSet == rightOperatorSet) {
+            return leftOperatorSet.selfOperatorDefinition.get(operatorName);
+        } else if (leftOperatorSet.operatorCounter < rightOperatorSet.operatorCounter) {
+            Object[] rightOperatorDefinitions = rightOperatorSet.rightOperatorDefinitions.get(operatorName);
+            if (rightOperatorDefinitions != null) {
+                return rightOperatorDefinitions[leftOperatorSet.operatorCounter];
+            } else {
+                return null;
+            }
+        } else {
+            assert leftOperatorSet.operatorCounter > rightOperatorSet.operatorCounter;
+            Object[] leftOperatorDefinitions = leftOperatorSet.leftOperatorDefinitions.get(operatorName);
+            if (leftOperatorDefinitions != null) {
+                return leftOperatorDefinitions[rightOperatorSet.operatorCounter];
+            } else {
+                return null;
+            }
+        }
+    }
+
+    public static Object getOperatorImplementation(DynamicObject left, OperatorSet rightOperatorSet, String operatorName) {
+        OperatorSet leftOperatorSet = OperatorsBuiltins.getOperatorSet(left);
+        return getOperatorImplementation(leftOperatorSet, rightOperatorSet, operatorName);
+    }
+
+    public static Object getOperatorImplementation(OperatorSet leftOperatorSet, DynamicObject right, String operatorName) {
+        OperatorSet rightOperatorSet = OperatorsBuiltins.getOperatorSet(right);
+        return getOperatorImplementation(leftOperatorSet, rightOperatorSet, operatorName);
+    }
+
+    public static Object getOperatorImplementation(DynamicObject left, DynamicObject right, String operatorName) {
+        OperatorSet leftOperatorSet = OperatorsBuiltins.getOperatorSet(left);
+        OperatorSet rightOperatorSet = OperatorsBuiltins.getOperatorSet(right);
+        return getOperatorImplementation(leftOperatorSet, rightOperatorSet, operatorName);
+    }
+
+    public static OperatorSet getNumberOperatorSet() {
+        return OperatorSet.NUMBER_OPERATOR_SET;
+    }
+
+    public static OperatorSet getBigIntOperatorSet() {
+        return OperatorSet.BIGINT_OPERATOR_SET;
     }
 }
