@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.CreateMapIteratorNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapClearNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapDeleteNodeGen;
@@ -79,6 +80,7 @@ import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Contains builtins for {@linkplain JSMap}.prototype.
@@ -170,15 +172,23 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "mapLib.hasHashEntries(thisObj)"})
         protected static DynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
+                        @Cached BranchProfile growProfile) {
             try {
                 Object hashEntriesIterator = mapLib.getHashKeysIterator(thisObj);
+                // Save keys to temporary array to avoid concurrent modification exceptions.
+                SimpleArrayList<Object> keys = SimpleArrayList.create(mapLib.getHashSize(thisObj));
                 while (true) {
                     try {
                         Object nextKey = iteratorLib.getIteratorNextElement(hashEntriesIterator);
-                        mapLib.removeHashEntry(thisObj, nextKey);
+                        keys.add(nextKey, growProfile);
                     } catch (StopIterationException e) {
                         break;
+                    }
+                }
+                for (Object key : keys.toArray()) {
+                    try {
+                        mapLib.removeHashEntry(thisObj, key);
                     } catch (UnknownKeyException e) {
                         continue;
                     }
