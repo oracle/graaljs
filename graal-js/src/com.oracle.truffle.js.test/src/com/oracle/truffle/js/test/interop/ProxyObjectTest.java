@@ -53,6 +53,7 @@ import java.util.Map;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Before;
@@ -305,6 +306,16 @@ public class ProxyObjectTest {
         context.getBindings(ID).putMember("proxyObj", proxyObject);
         Value value = context.eval(ID, "proxyObj.toString = function() { return 'executed'; }; ''+proxyObj;");
         assertEquals(value.asString(), "executed");
+    }
+
+    @Test
+    public void objectKeysProxyHashWithoutMembers() {
+        Map<Object, Object> map = new HashMap<>();
+        map.put("42", "foo");
+        ProxyHashMap proxyObject = ProxyHashMap.from(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        Value keys = context.eval(ID, "Object.keys(proxyObj);");
+        assertEquals(0, keys.getArraySize());
     }
 
 }
