@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -132,22 +134,42 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
     protected final DynamicObject copyDataPropertiesForeign(DynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrayInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
-                    @Cached ImportValueNode importValue) {
+                    @Cached ImportValueNode importValue,
+                    @Cached JSToStringNode toString) {
         if (objInterop.isNull(from)) {
             return target;
         }
         try {
-            Object members = objInterop.getMembers(from);
-            long length = JSInteropUtil.getArraySize(members, keysInterop, this);
-            for (long i = 0; i < length; i++) {
-                Object key = keysInterop.readArrayElement(members, i);
-                assert InteropLibrary.getFactory().getUncached().isString(key);
-                String stringKey = key instanceof String ? (String) key : stringInterop.asString(key);
-                if (!isExcluded(withExcluded, excludedItems, stringKey)) {
-                    Object value = objInterop.readMember(from, stringKey);
-                    JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
+            if (objInterop.hasHashEntries(from)) {
+                Object entriesIterator = objInterop.getHashEntriesIterator(from);
+                while (true) {
+                    Object entry;
+                    try {
+                        entry = iteratorInterop.getIteratorNextElement(entriesIterator);
+                    } catch (StopIterationException e) {
+                        break;
+                    }
+                    Object key = arrayInterop.readArrayElement(entry, 0);
+                    Object value = arrayInterop.readArrayElement(entry, 1);
+                    String stringKey = toString.executeString(importValue.executeWithTarget(key));
+                    if (!isExcluded(withExcluded, excludedItems, stringKey)) {
+                        JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
+                    }
+                }
+            } else if (objInterop.hasMembers(from)) {
+                Object members = objInterop.getMembers(from);
+                long length = JSInteropUtil.getArraySize(members, arrayInterop, this);
+                for (long i = 0; i < length; i++) {
+                    Object key = arrayInterop.readArrayElement(members, i);
+                    assert InteropLibrary.getFactory().getUncached().isString(key);
+                    String stringKey = stringInterop.asString(key);
+                    if (!isExcluded(withExcluded, excludedItems, stringKey)) {
+                        Object value = objInterop.readMember(from, stringKey);
+                        JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
+                    }
                 }
             }
         } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
