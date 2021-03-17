@@ -11,6 +11,7 @@ The main focus is on user-observable behavior of the engine.
 * Experimental option `js.array-sort-inherited` was removed. Values visible through holes in array(-like) object are always sorted according to the latest version of ECMAScript specification.
 * Updated ICU4J library to version 68.2.
 * Implemented the [Atomics.waitAsync](https://github.com/tc39/proposal-atomics-wait-async) proposal. It is available in ECMAScript 2022 mode (`--js.ecmascript-version=2022`).
+* Implemented hash map interop support. Allows foreign hash maps to be iterated using `for in/of` loops, `new Map(hash)`, `Array.from(hash)`, etc. If the `--js.foreign-hash-properties` option is enabled (default), foreign hash maps can also be accessed using `hash[key]`, `hash.key`, and used in `{...hash}`. If the `--js.foreign-object-prototype` option is enabled, foreign hash maps also have `Map.prototype` methods.
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.
