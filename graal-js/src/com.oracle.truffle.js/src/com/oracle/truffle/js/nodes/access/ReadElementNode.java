@@ -1563,7 +1563,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
-            } else if (interop.hasHashEntries(truffleObject)) {
+            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     return interop.readHashValue(truffleObject, exportedKey);
                 } catch (UnknownKeyException e) {

@@ -1113,7 +1113,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
             String stringKey = (String) root.getKey();
 
-            if (interop.hasHashEntries(truffleObject)) {
+            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, stringKey, value);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {

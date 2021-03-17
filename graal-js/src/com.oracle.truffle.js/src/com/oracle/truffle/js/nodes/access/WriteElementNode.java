@@ -1809,7 +1809,7 @@ public class WriteElementNode extends JSTargetableNode {
                     errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
                 }
-            } else if (interop.hasHashEntries(truffleObject)) {
+            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {

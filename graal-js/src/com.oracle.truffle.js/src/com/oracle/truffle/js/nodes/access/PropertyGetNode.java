@@ -962,7 +962,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
             String stringKey = (String) key;
 
-            if (interop.hasHashEntries(thisObj)) {
+            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(thisObj)) {
                 try {
                     return interop.readHashValue(thisObj, key);
                 } catch (UnknownKeyException e) {
