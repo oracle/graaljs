@@ -56,7 +56,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -1269,6 +1271,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSFunctionCallNode callJoinNode;
         @Child private JSFunctionCallNode callToStringNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
+        @Child private InteropLibrary interopLibrary;
+        @Child private ImportValueNode importValueNode;
 
         private final ConditionProfile isJSObjectProfile = ConditionProfile.createBinaryProfile();
 
@@ -1316,18 +1320,41 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
         }
 
-        private Object toStringForeign(Object arrayObj) {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(arrayObj);
+        private InteropLibrary getInterop() {
+            if (interopLibrary == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopLibrary = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+            }
+            return interopLibrary;
+        }
 
-            if (interop.hasMembers(arrayObj) && interop.isMemberInvocable(arrayObj, JOIN)) {
+        private Object importValue(Object value) {
+            if (importValueNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                importValueNode = insert(ImportValueNode.create());
+            }
+            return importValueNode.executeWithTarget(value);
+        }
+
+        private Object toStringForeign(Object arrayObj) {
+            InteropLibrary interop = getInterop();
+            if (interop.isMemberInvocable(arrayObj, JOIN)) {
                 Object result;
                 try {
-                    result = interop.invokeMember(arrayObj, JOIN);
+                    try {
+                        result = interop.invokeMember(arrayObj, JOIN);
+                    } catch (AbstractTruffleException e) {
+                        if (InteropLibrary.getUncached(e).getExceptionType(e) == ExceptionType.RUNTIME_ERROR) {
+                            result = null;
+                        } else {
+                            throw e;
+                        }
+                    }
                 } catch (InteropException e) {
                     result = null;
                 }
                 if (result != null) {
-                    return JSRuntime.importValue(result);
+                    return importValue(result);
                 }
             }
 
