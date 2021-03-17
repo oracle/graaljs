@@ -54,6 +54,12 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.StopIterationException;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
 
 public class IteratorInteropTest {
@@ -179,6 +185,24 @@ public class IteratorInteropTest {
         assertTrue(iterResult.getMember("done").asBoolean());
         assertNotNull(iterResult.getMember("value"));
         assertTrue(iterResult.getMember("value").isNull());
+    }
+
+    @Test
+    public void testUncachedGetIterator() throws UnsupportedMessageException, UnknownIdentifierException, StopIterationException {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            context.eval(ID, "a = [41, 42, 43]");
+
+            context.enter();
+            DynamicObject globalObject = JavaScriptLanguage.getJSRealm(context).getGlobalObject();
+            Object iterable = InteropLibrary.getUncached(globalObject).readMember(globalObject, "a");
+            Object iterator = InteropLibrary.getUncached(iterable).getIterator(iterable);
+            Object nextElement;
+            nextElement = InteropLibrary.getUncached(iterator).getIteratorNextElement(iterator);
+            assertEquals(41, nextElement);
+            nextElement = InteropLibrary.getUncached(iterator).getIteratorNextElement(iterator);
+            assertEquals(42, nextElement);
+            context.leave();
+        }
     }
 
     private static void assertThrows(Runnable runnable, Class<? extends Throwable> expectedException) {
