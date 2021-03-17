@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
@@ -68,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -274,6 +276,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Child protected IteratorStepNode iteratorStepNode;
         @Child protected IteratorValueNode iteratorValueNode;
         @Child protected IteratorCloseNode iteratorCloseNode;
+        @Child protected JSFunctionCallNode callFunctionNode;
+        @Child protected PropertyGetNode getAddNode;
         protected final BranchProfile iteratorError = BranchProfile.create();
         protected final BranchProfile adderError = BranchProfile.create();
 
@@ -312,6 +316,22 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorCloseNode.executeAbrupt(iterator);
+        }
+
+        protected Object call(Object target, DynamicObject function, Object... userArguments) {
+            if (callFunctionNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callFunctionNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callFunctionNode.executeCall(JSArguments.create(target, function, userArguments));
+        }
+
+        protected final Object get_add_function(Object object, String property_name) {
+            if (getAddNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getAddNode = insert(PropertyGetNode.create(property_name, false, getContext()));
+            }
+            return getAddNode.getValue(object);
         }
     }
 
@@ -455,7 +475,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = JSObject.get(newSet, "add");
+
             if (!JSRuntime.isCallable(adder)) {
+                // unreachable due to constructor add
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
