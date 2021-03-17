@@ -80,7 +80,7 @@ local common_json = (import "common.json");
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
     },
-    capabilities: ['darwin', 'amd64'],
+    capabilities: ['darwin_mojave', 'amd64'],
   },
 
   windows: common + {
