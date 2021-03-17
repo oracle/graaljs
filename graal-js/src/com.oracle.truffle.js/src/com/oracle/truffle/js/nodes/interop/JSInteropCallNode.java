@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -55,10 +54,6 @@ public abstract class JSInteropCallNode extends JavaScriptBaseNode {
             arguments[i] = importValueNode.executeWithTarget(arguments[i]);
         }
         return arguments;
-    }
-
-    protected static JSFunctionCallNode getUncachedCall() {
-        return null;
     }
 
     protected static PropertyGetNode getUncachedProperty() {

@@ -100,6 +100,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSNoSuchMethodAdapter;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptFunctionCallNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -176,6 +177,14 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return new InvokeNNode(targetFunction, arguments, flags);
     }
 
+    public static JSFunctionCallNode getUncachedCall() {
+        return Uncached.CALL;
+    }
+
+    public static JSFunctionCallNode getUncachedNew() {
+        return Uncached.NEW;
+    }
+
     static boolean isNewTarget(byte flags) {
         return (flags & NEW_TARGET) != 0;
     }
@@ -201,7 +210,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return this instanceof InvokeNode;
     }
 
-    protected abstract Object getPropertyKey();
+    protected Object getPropertyKey() {
+        return null;
+    }
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -228,7 +239,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @ExplodeLoop
-    public final Object executeCall(Object[] arguments) {
+    public Object executeCall(Object[] arguments) {
         Object function = JSArguments.getFunctionObject(arguments);
         for (AbstractCacheNode c = cacheNode; c != null; c = c.nextNode) {
             if (c.accept(function)) {
@@ -443,7 +454,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @Override
-    public abstract JavaScriptNode getTarget();
+    public JavaScriptNode getTarget() {
+        return null;
+    }
 
     protected final Object evaluateReceiver(VirtualFrame frame, Object target) {
         JavaScriptNode targetNode = getTarget();
@@ -914,11 +927,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public final JavaScriptNode getTarget() {
-            return null;
-        }
-
-        @Override
         public Object execute(VirtualFrame frame) {
             throw Errors.shouldNotReachHere();
         }
@@ -926,11 +934,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new ExecuteCallNode(flags);
-        }
-
-        @Override
-        protected Object getPropertyKey() {
-            return null;
         }
     }
 
@@ -1727,6 +1730,36 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 }
             }
             return Errors.createTypeErrorNotAFunction(expressionStr != null ? expressionStr : function, this);
+        }
+    }
+
+    private static class Uncached extends JSFunctionCallNode {
+        static final Uncached CALL = new Uncached(createFlags(false, false));
+        static final Uncached NEW = new Uncached(createFlags(true, false));
+
+        protected Uncached(byte flags) {
+            super(flags);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Override
+        public Object executeCall(Object[] arguments) {
+            Object functionObject = JSArguments.getFunctionObject(arguments);
+            Object[] functionArgs = JSArguments.extractUserArguments(arguments);
+            if (isNew()) {
+                return JSRuntime.construct(functionObject, functionArgs);
+            } else {
+                return JSRuntime.call(functionObject, JSArguments.getThisObject(arguments), functionArgs);
+            }
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return this;
         }
     }
 }
