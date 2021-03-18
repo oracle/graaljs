@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
 @GenerateUncached
@@ -61,16 +60,12 @@ public abstract class JSInteropInstantiateNode extends JSInteropCallNode {
     @Specialization
     Object doDefault(DynamicObject function, Object[] arguments,
                     @Cached IsConstructorNode isConstructorNode,
-                    @Cached(value = "createNew()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Cached(value = "createNew()", uncached = "getUncachedNew()") JSFunctionCallNode callNode,
                     @Cached ImportValueNode importValueNode) throws UnsupportedMessageException {
         if (!isConstructorNode.executeBoolean(function)) {
             throw UnsupportedMessageException.create();
         }
         Object[] preparedArgs = prepare(arguments, importValueNode);
-        if (callNode == null) {
-            return JSRuntime.construct(function, preparedArgs);
-        } else {
-            return callNode.executeCall(JSArguments.create(JSFunction.CONSTRUCT, function, preparedArgs));
-        }
+        return callNode.executeCall(JSArguments.create(JSFunction.CONSTRUCT, function, preparedArgs));
     }
 }

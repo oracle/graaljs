@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,8 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyExecutable;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -234,6 +236,24 @@ public class ArrayPrototypeInteropTest {
                         result -> assertTrue(result.asBoolean()));
     }
 
+    @Test
+    public void testToStringWithoutJoin() {
+        List<Object> values = new ArrayList<>(Arrays.asList(10, 20, 30, 40, 50));
+        context.getBindings(ID).putMember("a", new MyProxyArray(values));
+        Value resultValue = context.eval(ID, "Array.prototype.toString.call(a);");
+        assertTrue("toString should return a string", resultValue.isString());
+        assertEquals("10,20,30,40,50", resultValue.asString());
+    }
+
+    @Test
+    public void testToStringWithThrowingJoin() {
+        List<Object> values = new ArrayList<>(Arrays.asList(10, 20, 30, 40, 50));
+        context.getBindings(ID).putMember("a", new MyProxyArrayWithThrowingJoin(values));
+        Value resultValue = context.eval(ID, "Array.prototype.toString.call(a);");
+        assertTrue("toString should return a string", resultValue.isString());
+        assertEquals("10,20,30,40,50", resultValue.asString());
+    }
+
     private void testWithArray(String test, List<Integer> before, List<Integer> afterExpected, List<Integer> expectedResult) {
         testWithArray(test, before, afterExpected, actualResult -> assertEquals("result", expectedResult, actualResult.as(LIST_OF_INTEGER)));
     }
@@ -254,10 +274,10 @@ public class ArrayPrototypeInteropTest {
     private static final TypeLiteral<List<Integer>> LIST_OF_INTEGER = new TypeLiteral<List<Integer>>() {
     };
 
-    private static final class MyProxyArray implements ProxyArray {
+    private static class MyProxyArray implements ProxyArray {
         private final List<Object> values;
 
-        private MyProxyArray(List<Object> values) {
+        protected MyProxyArray(List<Object> values) {
             this.values = values;
         }
 
@@ -312,6 +332,38 @@ public class ArrayPrototypeInteropTest {
         @Override
         public String toString() {
             return values.toString();
+        }
+    }
+
+    private static class MyProxyArrayWithThrowingJoin extends MyProxyArray implements ProxyObject {
+
+        protected MyProxyArrayWithThrowingJoin(List<Object> values) {
+            super(values);
+        }
+
+        @Override
+        public Object getMember(String key) {
+            if (key.equals("join")) {
+                return (ProxyExecutable) arguments -> {
+                    throw new IllegalArgumentException();
+                };
+            }
+            return null;
+        }
+
+        @Override
+        public Object getMemberKeys() {
+            return ProxyArray.fromArray("join");
+        }
+
+        @Override
+        public boolean hasMember(String key) {
+            return key.equals("join");
+        }
+
+        @Override
+        public void putMember(String key, Value value) {
+            throw new UnsupportedOperationException();
         }
     }
 }
