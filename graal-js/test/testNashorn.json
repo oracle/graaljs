@@ -593,12 +593,6 @@
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
-    "filePath" : "basic/NASHORN-377-big-endian.js",
-    "status" : "PASS"
-  }, {
-    "filePath" : "basic/NASHORN-377.js",
-    "status" : "PASS"
-  }, {
     "filePath" : "basic/NASHORN-401.js",
     "status" : "SKIP",
     "comment" : "type conversion for Interop suspicious"
