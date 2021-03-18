@@ -59,8 +59,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -1483,14 +1485,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     try {
                         callReturn = interop.invokeMember(receiver, functionName, callArguments);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                        if (getContext().getContextOptions().hasForeignObjectPrototype()) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            optimistic = false;
-                            callReturn = maybeInvokeFromPrototype(arguments, receiver);
-                        } else {
-                            errorBranch.enter();
-                            throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
-                        }
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        optimistic = false;
+                        callReturn = fallback(receiver, arguments, callArguments, e);
                     } catch (UnsupportedTypeException | ArityException e) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
@@ -1504,7 +1501,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                             throw Errors.createTypeErrorInteropException(receiver, e, "invokeMember", functionName, this);
                         }
                     } else {
-                        callReturn = maybeInvokeFromPrototype(arguments, receiver);
+                        callReturn = fallback(receiver, arguments, callArguments, null);
                     }
                 }
             } else {
@@ -1519,18 +1516,34 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return convertForeignReturn(callReturn);
         }
 
-        private Object maybeInvokeFromPrototype(Object[] arguments, Object receiver) {
+        private Object fallback(Object receiver, Object[] arguments, Object[] callArguments, InteropException caughtException) {
+            InteropException ex = caughtException;
+            if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                Object function = maybeGetFromPrototype(receiver);
+                if (function != Undefined.instance) {
+                    return callJSFunction(receiver, function, arguments);
+                }
+            }
+            if (getContext().getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(receiver) && interop.isHashEntryReadable(receiver, functionName)) {
+                try {
+                    Object function = interop.readHashValue(receiver, functionName);
+                    return InteropLibrary.getUncached().execute(function, callArguments);
+                } catch (UnsupportedMessageException | UnknownKeyException | UnsupportedTypeException | ArityException e) {
+                    ex = e;
+                    // fall through
+                }
+            }
+            errorBranch.enter();
+            throw Errors.createTypeErrorInteropException(receiver, ex != null ? ex : UnknownIdentifierException.create(functionName), "invokeMember", functionName, this);
+        }
+
+        private Object maybeGetFromPrototype(Object receiver) {
             if (foreignObjectPrototypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
             DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(receiver);
-            Object function = getFunction(prototype);
-            if (function == Undefined.instance) {
-                errorBranch.enter();
-                throw Errors.createTypeErrorInteropException(receiver, UnknownIdentifierException.create(functionName), "invokeMember", functionName, this);
-            }
-            return callJSFunction(receiver, function, arguments);
+            return getFunction(prototype);
         }
 
         private Object getFunction(Object object) {
