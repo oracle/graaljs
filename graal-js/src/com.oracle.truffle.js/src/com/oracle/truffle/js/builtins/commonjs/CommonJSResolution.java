@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -315,7 +315,7 @@ final class CommonJSResolution {
                 }
             }
             return null;
-        } catch (SecurityException e) {
+        } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException e) {
             throw Errors.createErrorFromException(e);
         }
     }
@@ -323,7 +323,7 @@ final class CommonJSResolution {
     private static Source sourceFromTruffleFile(TruffleFile file) {
         try {
             return Source.newBuilder(JavaScriptLanguage.ID, file).build();
-        } catch (IOException | SecurityException e) {
+        } catch (IOException | SecurityException | IllegalArgumentException | UnsupportedOperationException e) {
             return null;
         }
     }

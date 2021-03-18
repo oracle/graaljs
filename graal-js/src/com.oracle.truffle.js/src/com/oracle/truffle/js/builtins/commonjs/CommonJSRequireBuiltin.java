@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,7 +170,15 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             }
             // no core module replacement alias was found: continue and search in the FS.
         }
-        TruffleFile maybeModule = CommonJSResolution.resolve(getContext(), moduleIdentifier, entryPath);
+        TruffleFile maybeModule = null;
+        try {
+            maybeModule = CommonJSResolution.resolve(getContext(), moduleIdentifier, entryPath);
+        } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException e) {
+            // Module resolution does not execute JS code. Therefore, an exception at this stage is
+            // either IO-related (e.g., file not found) or was raised in a custom Truffle FS.
+            // We treat any exception as a module loading failure.
+            throw fail(moduleIdentifier, e.getMessage());
+        }
         log("module ", moduleIdentifier, " resolved to ", maybeModule);
         if (maybeModule == null) {
             throw fail(moduleIdentifier);
@@ -263,6 +271,10 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     private static JSException fail(String moduleIdentifier) {
         return JSException.create(JSErrorType.TypeError, "Cannot load CommonJS module: '" + moduleIdentifier + "'");
+    }
+
+    private static JSException fail(String moduleIdentifier, String extraMessage) {
+        return JSException.create(JSErrorType.TypeError, "Cannot load CommonJS module: '" + moduleIdentifier + "': " + extraMessage);
     }
 
     @TruffleBoundary
