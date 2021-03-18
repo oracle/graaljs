@@ -1196,7 +1196,7 @@ public final class GraalJSAccess {
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
-        return JSArrayBuffer.getDirectByteBuffer((DynamicObject) arrayBuffer);
+        return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {
@@ -1781,6 +1781,11 @@ public final class GraalJSAccess {
             if (name instanceof HiddenKey) {
                 JSObjectUtil.putHiddenProperty(proxy, name, value.getValue());
             } // else set on target (in objectTemplateInstantiate) already
+        }
+
+        int internalFieldCount = template.getInternalFieldCount();
+        if (internalFieldCount > 0) {
+            JSObjectUtil.putHiddenProperty(proxy, INTERNAL_FIELD_COUNT_KEY, internalFieldCount);
         }
 
         return proxy;

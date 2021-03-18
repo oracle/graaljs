@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.helper;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
@@ -68,8 +69,8 @@ public final class SharedMemorySync {
     public static int doVolatileGet(DynamicObject target, int intArrayOffset) {
         Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
-        return typedArray.getInt(target, intArrayOffset);
+        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
+        return typedArray.getInt(target, intArrayOffset, InteropLibrary.getUncached());
     }
 
     // ##### Getters and setters with ordering and memory barriers
@@ -77,23 +78,23 @@ public final class SharedMemorySync {
     public static BigInt doVolatileGetBigInt(DynamicObject target, int intArrayOffset) {
         Fences.acquireFence();
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
-        return typedArray.getBigInt(target, intArrayOffset);
+        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
+        return typedArray.getBigInt(target, intArrayOffset, InteropLibrary.getUncached());
     }
 
     @TruffleBoundary
     public static void doVolatilePut(DynamicObject target, int index, int value) {
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) array;
-        typedArray.setInt(target, index, value);
+        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) array;
+        typedArray.setInt(target, index, value, InteropLibrary.getUncached());
         Fences.releaseFence();
     }
 
     @TruffleBoundary
     public static void doVolatilePutBigInt(DynamicObject target, int index, BigInt value) {
         TypedArray array = typedArrayGetArrayType(target);
-        TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) array;
-        typedArray.setBigInt(target, index, value);
+        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) array;
+        typedArray.setBigInt(target, index, value, InteropLibrary.getUncached());
         Fences.releaseFence();
     }
 

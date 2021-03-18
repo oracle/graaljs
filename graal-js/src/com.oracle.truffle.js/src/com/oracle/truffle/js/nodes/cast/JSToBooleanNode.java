@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,135 +40,92 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantBigIntNode;
-import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
-import java.util.Set;
+/**
+ * @see JSToBooleanUnaryNode
+ */
+@GenerateUncached
+@ImportStatic({JSConfig.class})
+public abstract class JSToBooleanNode extends JavaScriptBaseNode {
 
-@ImportStatic({JSRuntime.class, JSConfig.class})
-public abstract class JSToBooleanNode extends JSUnaryNode {
-
-    protected JSToBooleanNode(JavaScriptNode operand) {
-        super(operand);
+    protected JSToBooleanNode() {
     }
-
-    @Override
-    public final Object execute(VirtualFrame frame) {
-        return executeBoolean(frame);
-    }
-
-    @Override
-    public abstract boolean executeBoolean(VirtualFrame frame);
 
     public abstract boolean executeBoolean(Object value);
 
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == boolean.class;
-    }
-
     public static JSToBooleanNode create() {
-        return JSToBooleanNodeGen.create(null);
-    }
-
-    public static JavaScriptNode create(JavaScriptNode child) {
-        JSConstantNode replacement = null;
-        if (child.isResultAlwaysOfType(boolean.class)) {
-            return child;
-        } else if (child instanceof JSConstantIntegerNode) {
-            int value = ((JSConstantIntegerNode) child).executeInt(null);
-            replacement = JSConstantNode.createBoolean(value != 0);
-        } else if (child instanceof JSConstantBigIntNode) {
-            BigInt value = ((JSConstantBigIntNode) child).executeBigInt(null);
-            replacement = JSConstantNode.createBoolean(value.compareTo(BigInt.ZERO) != 0);
-        } else if (child instanceof JSConstantNode) {
-            Object constantOperand = ((JSConstantNode) child).getValue();
-            if (constantOperand != null && JSRuntime.isJSPrimitive(constantOperand)) {
-                replacement = JSConstantNode.createBoolean(JSRuntime.toBoolean(constantOperand));
-            }
-        }
-        if (replacement == null) {
-            return JSToBooleanNodeGen.create(child);
-        } else {
-            transferSourceSectionAndTags(child, replacement);
-            return replacement;
-        }
+        return JSToBooleanNodeGen.create();
     }
 
     @Specialization
-    protected boolean doBoolean(boolean value) {
+    protected static boolean doBoolean(boolean value) {
         return value;
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected boolean doNull(@SuppressWarnings("unused") Object value) {
+    protected static boolean doNull(@SuppressWarnings("unused") Object value) {
         return false;
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected boolean doUndefined(@SuppressWarnings("unused") Object value) {
+    protected static boolean doUndefined(@SuppressWarnings("unused") Object value) {
         return false;
     }
 
     @Specialization
-    protected boolean doInt(int value) {
+    protected static boolean doInt(int value) {
         return value != 0;
     }
 
     @Specialization
-    protected boolean doLong(long value) {
+    protected static boolean doLong(long value) {
         return value != 0L;
     }
 
     @Specialization
-    protected boolean doDouble(double value) {
+    protected static boolean doDouble(double value) {
         return value != 0.0 && !Double.isNaN(value);
     }
 
     @Specialization
-    protected boolean doBigInt(BigInt value) {
+    protected static boolean doBigInt(BigInt value) {
         return value.compareTo(BigInt.ZERO) != 0;
     }
 
     @Specialization
-    protected boolean doLazyString(JSLazyString value) {
+    protected static boolean doLazyString(JSLazyString value) {
         return !value.isEmpty();
     }
 
     @Specialization
-    protected boolean doString(String value) {
+    protected static boolean doString(String value) {
         return value.length() > 0;
     }
 
     @Specialization(guards = "isJSObject(value)")
-    protected boolean doObject(@SuppressWarnings("unused") DynamicObject value) {
+    protected static boolean doObject(@SuppressWarnings("unused") Object value) {
         return true;
     }
 
     @Specialization
-    protected boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
+    protected static boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
         return true;
     }
 
     @Specialization(guards = "isForeignObject(value)", limit = "InteropLibraryLimit")
-    protected boolean doForeignObject(Object value,
+    protected final boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
         if (interop.isNull(value)) {
             return false;
@@ -193,10 +150,5 @@ public abstract class JSToBooleanNode extends JSUnaryNode {
             throw Errors.createTypeErrorUnboxException(value, e, this);
         }
         return true; // cf. doObject()
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSToBooleanNodeGen.create(cloneUninitialized(getOperand(), materializedTags));
     }
 }

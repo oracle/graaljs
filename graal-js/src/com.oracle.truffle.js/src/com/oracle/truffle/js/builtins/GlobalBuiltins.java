@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -254,7 +254,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 case quit:
                     return JSGlobalExitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readline:
-                    return JSGlobalReadLineNodeGen.create(context, builtin, new JavaScriptNode[]{JSConstantNode.createUndefined()});
+                    return JSGlobalReadLineNodeGen.create(context, builtin, false, new JavaScriptNode[]{JSConstantNode.createUndefined()});
                 case read:
                     return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readbuffer:
@@ -374,7 +374,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 case quit:
                     return JSGlobalExitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case readLine:
-                    return JSGlobalReadLineNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                    return JSGlobalReadLineNodeGen.create(context, builtin, true, args().fixedArgs(1).createArgumentNodes(context));
                 case readFully:
                     return JSGlobalReadFullyNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
                 case parseToJSON:
@@ -1509,12 +1509,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public abstract static class JSGlobalReadLineNode extends JSGlobalOperation {
 
-        public JSGlobalReadLineNode(JSContext context, JSBuiltin builtin) {
+        // null for Nashorn, undefined for V8
+        private final boolean returnNullWhenEmpty;
+
+        public JSGlobalReadLineNode(JSContext context, JSBuiltin builtin, boolean returnNullWhenEmpty) {
             super(context, builtin);
+            this.returnNullWhenEmpty = returnNullWhenEmpty;
         }
 
         @Specialization
-        protected String readLine(Object prompt) {
+        protected Object readLine(Object prompt) {
             String promptString = null;
             if (prompt != Undefined.instance) {
                 promptString = toString1(prompt);
@@ -1523,13 +1527,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private String doReadLine(String promptString) {
+        private Object doReadLine(String promptString) {
             if (promptString != null) {
                 getContext().getRealm().getOutputWriter().print(promptString);
             }
             try {
                 final BufferedReader inReader = new BufferedReader(new InputStreamReader(getContext().getRealm().getEnv().in()));
-                return inReader.readLine();
+                String result = inReader.readLine();
+                return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : result;
             } catch (Exception ex) {
                 throw Errors.createError(ex.getMessage());
             }

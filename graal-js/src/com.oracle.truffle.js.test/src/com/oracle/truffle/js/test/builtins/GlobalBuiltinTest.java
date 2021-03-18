@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,9 @@ package com.oracle.truffle.js.test.builtins;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -110,6 +113,22 @@ public class GlobalBuiltinTest extends JSTest {
             Value result = context2.eval(JavaScriptLanguage.ID, "6*7");
             assertTrue(result.isNumber());
             assertEquals(42, result.asInt());
+        }
+    }
+
+    // GR-29654 an empty InputStream should not result in Java `null` being returned.
+    @Test
+    public void testReadlineEmpty() {
+        InputStream instream = new ByteArrayInputStream(new byte[]{});
+
+        // V8 compatible `readline()`, returns `undefined`
+        try (Context ctx = Context.newBuilder("js").allowExperimentalOptions(true).option("js.shell", "true").in(instream).build()) {
+            assertTrue(ctx.eval("js", "var res = readline(); res===undefined;").asBoolean());
+        }
+
+        // Nashorn compatible `readLine()`, returns (JS) `null`
+        try (Context ctx = Context.newBuilder("js").allowExperimentalOptions(true).option("js.scripting", "true").in(instream).build()) {
+            assertTrue(ctx.eval("js", "var res = readLine(); res===null;").asBoolean());
         }
     }
 

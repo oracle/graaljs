@@ -246,10 +246,6 @@ public class JSContext {
         RegExpLastParen,
         RegExpLeftContext,
         RegExpRightContext,
-        RegExp$And,
-        RegExp$Plus,
-        RegExp$Apostrophe,
-        RegExp$Quote,
         RegExp$1,
         RegExp$2,
         RegExp$3,
@@ -262,7 +258,6 @@ public class JSContext {
         SymbolGetDescription,
         MapGetSize,
         SetGetSize,
-        ArrayBufferByteLength,
         ArrayBufferViewLength,
         ArrayBufferViewBuffer,
         ArrayBufferViewByteLength,
@@ -286,7 +281,6 @@ public class JSContext {
         LocaleLanguage,
         LocaleScript,
         LocaleRegion,
-        SharedArrayBufferGetByteLength,
         FunctionAsyncIterator,
         IsGraalRuntime,
         AsyncModuleExecutionFulfilled,
@@ -374,6 +368,7 @@ public class JSContext {
     private final JSObjectFactory arrayBufferFactory;
     private final JSObjectFactory directArrayBufferFactory;
     private final JSObjectFactory sharedArrayBufferFactory;
+    private final JSObjectFactory interopArrayBufferFactory;
     private final JSObjectFactory finalizationRegistryFactory;
     @CompilationFinal(dimensions = 1) private final JSObjectFactory[] typedArrayFactories;
 
@@ -515,6 +510,7 @@ public class JSContext {
         this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
         this.directArrayBufferFactory = builder.create(JSArrayBuffer.DIRECT_INSTANCE);
         this.sharedArrayBufferFactory = isOptionSharedArrayBuffer() ? builder.create(JSSharedArrayBuffer.INSTANCE) : null;
+        this.interopArrayBufferFactory = builder.create(JSArrayBuffer.INTEROP_INSTANCE);
         this.finalizationRegistryFactory = builder.create(JSFinalizationRegistry.INSTANCE);
         this.typedArrayFactories = new JSObjectFactory[TypedArray.factories(this).length];
         for (TypedArrayFactory factory : TypedArray.factories(this)) {
@@ -866,6 +862,10 @@ public class JSContext {
     public final JSObjectFactory getSharedArrayBufferFactory() {
         assert isOptionSharedArrayBuffer();
         return sharedArrayBufferFactory;
+    }
+
+    public JSObjectFactory getInteropArrayBufferFactory() {
+        return interopArrayBufferFactory;
     }
 
     public final JSObjectFactory getNonStrictArgumentsFactory() {
@@ -1248,11 +1248,6 @@ public class JSContext {
 
     public boolean isOptionRegexpStaticResultInContextInit() {
         return contextOptions.isRegexpStaticResult();
-    }
-
-    public boolean isOptionArraySortInherited() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option array-sort-inherited accessed during context pre-initialization.";
-        return contextOptions.isArraySortInherited();
     }
 
     public boolean isOptionSharedArrayBuffer() {

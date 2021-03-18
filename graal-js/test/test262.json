@@ -1881,6 +1881,10 @@
     "status" : "FAIL",
     "comment" : "GR-27663"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/findIndex/BigInt/predicate-may-detach-buffer.js",
+    "status" : "FAIL",
+    "comment" : "new test failures 2021-02-09"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/findIndex/predicate-may-detach-buffer.js",
     "status" : "FAIL",
     "comment" : "GR-27663"
@@ -1951,14 +1955,6 @@
     "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "intl402/Intl/toStringTag/toString.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "intl402/Intl/toStringTag/toStringTag.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
   }, {
     "filePath" : "intl402/NumberFormat/dft-currency-mnfd-range-check-mxfd.js",
     "status" : "FAIL",

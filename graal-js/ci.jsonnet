@@ -46,7 +46,7 @@ local common = import '../common.jsonnet';
   local webassemblyTest = {
     run+: [
       ['mx', '--dynamicimports', '/wasm', 'build'],
-      ['mx', '--dynamicimports', '/wasm', 'testv8', 'polyglot'],
+      ['mx', '--dynamicimports', '/wasm', 'testv8', 'gate', 'polyglot'],
     ],
     timelimit: '30:00',
   },

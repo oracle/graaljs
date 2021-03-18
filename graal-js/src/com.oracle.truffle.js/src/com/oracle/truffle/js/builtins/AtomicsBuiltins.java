@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.nio.ByteBuffer;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
@@ -251,10 +249,6 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 throw createTypeErrorNotSharedArray();
             }
             return (DynamicObject) maybeTarget;
-        }
-
-        public static ByteBuffer getBuffer(DynamicObject thisObj) {
-            return JSArrayBufferView.typedArrayGetByteBuffer(thisObj).duplicate();
         }
 
         protected static boolean inboundFast(DynamicObject target, int index) {

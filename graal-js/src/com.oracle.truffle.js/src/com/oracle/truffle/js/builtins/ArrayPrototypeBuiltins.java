@@ -47,9 +47,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.Iterator;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -2620,7 +2617,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = "isJSFastArray(thisObj)", assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
         protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare,
                         @Cached("create(getContext())") JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
-                        @Cached("create(getContext(), !getContext().isOptionV8CompatibilityMode())") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
+                        @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
             checkCompareFunction(compare);
             long len = getLength(thisObj);
 
@@ -2649,7 +2646,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (deletePropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSContext context = getContext();
-                deletePropertyNode = insert(DeletePropertyNode.create(!context.isOptionV8CompatibilityMode(), context));
+                deletePropertyNode = insert(DeletePropertyNode.create(true, context));
             }
             deletePropertyNode.executeEvaluated(obj, i);
         }
@@ -2669,13 +2666,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private DynamicObject sortJSObject(final Object comparefn, DynamicObject thisJSObj) {
             long len = getLength(thisJSObj);
 
-            if (len < 2) {
+            if (len == 0) {
                 // nothing to do
                 return thisJSObj;
             }
 
-            Iterable<Object> keys = getKeys(thisJSObj);
-            Object[] array = jsobjectToArray(thisJSObj, len, keys);
+            Object[] array = jsobjectToArray(thisJSObj, len);
 
             Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
             if (isTypedArrayImplementation && comparefn == Undefined.instance) {
@@ -2690,7 +2686,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             if (isSparse.profile(array.length < len)) {
-                deleteGenericElements(thisJSObj, array.length, len, keys);
+                deleteGenericElements(thisJSObj, array.length, len);
             }
             return thisJSObj;
         }
@@ -2761,13 +2757,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
          * of non-empty elements) and the "length" (value of the property). I.e., it cleans up
          * garbage remaining after sorting all elements to lower indices (in case there are holes).
          */
-        private void deleteGenericElements(Object obj, long fromIndex, long toIndex, Iterable<Object> keys) {
-            for (Iterator<Object> iterator = Boundaries.iterator(keys); Boundaries.iteratorHasNext(iterator);) {
-                Object key = Boundaries.iteratorNext(iterator);
-                long index = JSRuntime.propertyKeyToArrayIndex(key);
-                if (fromIndex <= index && index < toIndex) {
-                    delete(obj, key);
-                }
+        private void deleteGenericElements(Object obj, long fromIndex, long toIndex) {
+            for (long index = fromIndex; index < toIndex; index++) {
+                delete(obj, index);
             }
         }
 
@@ -2861,12 +2853,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        private Object[] jsobjectToArray(DynamicObject thisObj, long len, Iterable<Object> keys) {
+        private Object[] jsobjectToArray(DynamicObject thisObj, long len) {
             SimpleArrayList<Object> list = SimpleArrayList.create(len);
-            for (Object key : keys) {
-                long index = JSRuntime.propertyKeyToArrayIndex(key);
-                if (0 <= index && index < len) {
-                    list.add(JSObject.get(thisObj, index), growProfile);
+            for (long k = 0; k < len; k++) {
+                if (JSObject.hasProperty(thisObj, k)) {
+                    list.add(JSObject.get(thisObj, k), growProfile);
                 }
             }
             return list.toArray();
@@ -2887,21 +2878,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return array;
         }
 
-        @TruffleBoundary
-        private Iterable<Object> getKeys(DynamicObject thisObj) {
-            if (getContext().isOptionArraySortInherited()) {
-                Set<Object> keys = new LinkedHashSet<>();
-                for (DynamicObject current = thisObj; current != Null.instance; current = JSObject.getPrototype(current)) {
-                    for (Object key : JSObject.ownPropertyKeys(current)) {
-                        if (key instanceof String && JSRuntime.isArrayIndex((String) key)) {
-                            keys.add(key);
-                        }
-                    }
-                }
-                return keys;
-            }
-            return JSObject.ownPropertyKeys(thisObj);
-        }
     }
 
     public abstract static class JSArrayReduceNode extends ArrayForEachIndexCallOperation {

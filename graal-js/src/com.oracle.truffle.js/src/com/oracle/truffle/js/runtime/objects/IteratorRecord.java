@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,10 @@ public final class IteratorRecord {
 
     public static IteratorRecord create(DynamicObject iterator, Object nextMethod, boolean done) {
         return new IteratorRecord(iterator, nextMethod, done);
+    }
+
+    public static IteratorRecord create(DynamicObject iterator, Object nextMethod) {
+        return create(iterator, nextMethod, false);
     }
 
     public DynamicObject getIterator() {

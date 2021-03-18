@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,13 +89,13 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return (double) result;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
         protected static int doIntLength(DynamicObject target,
                         @Cached("getArrayType(target)") ScriptArray arrayType) {
             return arrayType.lengthInt(target);
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "arrayType.isStatelessType()"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
         protected static double doLongLength(DynamicObject target,
                         @Cached("getArrayType(target)") ScriptArray arrayType) {
             return arrayType.length(target);
@@ -144,7 +144,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             this.strict = strict;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(DynamicObject arrayObj, int length,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {
@@ -188,7 +188,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             this.strict = strict;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))", "arrayType.isStatelessType()"}, limit = "MAX_TYPE_COUNT")
+        @Specialization(guards = {"arrayType.isInstance(getArrayType(arrayObj))"}, limit = "MAX_TYPE_COUNT")
         protected void doCached(DynamicObject arrayObj, int length,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
                         @Cached("createSetLengthProfile()") ScriptArray.ProfileHolder setLengthProfile) {

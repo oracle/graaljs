@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,12 +67,12 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     private static final String BUFFER = "buffer";
     private static final String BYTE_OFFSET = "byteOffset";
 
-    public static int typedArrayGetLength(DynamicObject thisObj) {
+    public static int typedArrayGetLength(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getLength(thisObj);
     }
 
-    public static int typedArrayGetOffset(DynamicObject thisObj) {
+    public static int typedArrayGetOffset(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getOffset(thisObj);
     }
@@ -80,19 +80,19 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     private JSDataView() {
     }
 
-    public static DynamicObject getArrayBuffer(DynamicObject thisObj) {
+    public static DynamicObject getArrayBuffer(Object thisObj) {
         assert JSDataView.isJSDataView(thisObj);
         return JSDataViewObject.getArrayBuffer(thisObj);
     }
 
     public static DynamicObject createDataView(JSContext context, DynamicObject arrayBuffer, int offset, int length) {
-        assert offset >= 0 && offset + length <= (JSArrayBuffer.isJSDirectOrSharedArrayBuffer(arrayBuffer) ? JSArrayBuffer.getDirectByteLength(arrayBuffer) : JSArrayBuffer.getByteLength(arrayBuffer));
+        assert offset >= 0 && offset + length <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
 
         // (arrayBuffer, length, offset)
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDataViewFactory();
         DynamicObject dataView = JSDataViewObject.create(realm, factory, (JSArrayBufferObject) arrayBuffer, length, offset);
-        assert JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer) || JSArrayBuffer.isJSDirectOrSharedArrayBuffer(arrayBuffer);
+        assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         assert isJSDataView(dataView);
         return context.trackAllocation(dataView);
     }

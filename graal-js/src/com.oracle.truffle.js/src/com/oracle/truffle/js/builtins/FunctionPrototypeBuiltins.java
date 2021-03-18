@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -221,15 +222,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             Object targetName = getFunctionNameNode.getValue(thisFnObj);
-            if (!(targetName instanceof String)) {
-                if (JSRuntime.isLazyString(targetName)) {
-                    targetName = JSRuntime.toStringIsString(targetName);
-                } else {
-                    targetName = "";
-                }
+            if (!JSRuntime.isString(targetName)) {
+                targetName = "";
             }
             if (setNameProfile.profile(targetName != JSFunction.getName(thisFnObj))) {
-                JSFunction.setBoundFunctionName(boundFunction, (String) targetName);
+                ((JSFunctionObject.Bound) boundFunction).setTargetName((CharSequence) targetName);
             }
 
             return boundFunction;
@@ -301,22 +298,16 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        protected boolean isRootTarget(DynamicObject fnObj) {
-            return JSFunction.getCallTarget(fnObj) instanceof RootCallTarget;
-        }
-
         protected boolean isBoundTarget(DynamicObject fnObj) {
             return JSFunction.isBoundFunction(fnObj);
         }
 
-        @TruffleBoundary
-        @Specialization(guards = {"isJSFunction(fnObj)", "isRootTarget(fnObj)", "!isBoundTarget(fnObj)"})
+        @Specialization(guards = {"isJSFunction(fnObj)", "!isBoundTarget(fnObj)"})
         protected String toStringDefault(DynamicObject fnObj) {
-            RootCallTarget dct = (RootCallTarget) JSFunction.getCallTarget(fnObj);
-            return toStringDefaultTarget(dct, fnObj);
+            return toStringDefaultTarget(fnObj);
         }
 
-        @Specialization(guards = {"isJSFunction(fnObj)", "isRootTarget(fnObj)", "isBoundTarget(fnObj)"})
+        @Specialization(guards = {"isJSFunction(fnObj)", "isBoundTarget(fnObj)"})
         protected String toStringBound(DynamicObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
                 return NATIVE_CODE_STR;
@@ -329,13 +320,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @TruffleBoundary
         private static String getNameIntl(String name) {
             return "function " + name.substring(name.lastIndexOf(' ') + 1) + "() { [native code] }";
-        }
-
-        @TruffleBoundary
-        @Specialization(guards = {"isJSFunction(fnObj)", "!isRootTarget(fnObj)"})
-        protected String toString(DynamicObject fnObj) {
-            CallTarget ct = JSFunction.getCallTarget(fnObj);
-            return ct.toString();
         }
 
         @SuppressWarnings("unused")
@@ -376,7 +360,12 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @TruffleBoundary
-        private static String toStringDefaultTarget(RootCallTarget dct, DynamicObject fnObj) {
+        private static String toStringDefaultTarget(DynamicObject fnObj) {
+            CallTarget ct = JSFunction.getCallTarget(fnObj);
+            if (!(ct instanceof RootCallTarget)) {
+                return ct.toString();
+            }
+            RootCallTarget dct = (RootCallTarget) ct;
             RootNode rn = dct.getRootNode();
             SourceSection ssect = rn.getSourceSection();
             String result;

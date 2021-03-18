@@ -73,6 +73,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
+    "filePath" : "intl/displaynames/languagecanonical.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
   }, {
@@ -83,20 +87,12 @@
     "status" : "SKIP",
     "comment" : "Triggers stack-overflow, test fails randomly based on where the overflow occurs."
   }, {
-    "filePath" : "intl/general/grandfathered_tags_without_preferred_value.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/general/language_tags_with_preferred_values.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/number-format/wont-crash-by-1-or-false.js",
+    "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
@@ -114,13 +110,29 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
+    "filePath" : "intl/regress-10526.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/regress-10527.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "intl/regress-10613.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "intl/regress-1074578.js",
+    "filePath" : "intl/regress-10836.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/regress-1130489.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SVM" : "SKIP"
+    },
+    "runInIsolation" : true,
+    "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
     "filePath" : "intl/regress-527926.js",
     "status" : "FAIL",
@@ -154,6 +166,42 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
+    "filePath" : "intl/segmenter/grapheme-containing.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/grapheme-nested-next.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/grapheme-next-after-containing.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/segment-grapheme.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/segment-iterator-ownPropertyDescriptor.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/segment-sentence.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/segment-word.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/segment.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "intl/segmenter/word-containing.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/allocation-site-info.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
@@ -173,10 +221,6 @@
     "filePath" : "mjsunit/array-literal-feedback.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
-  }, {
-    "filePath" : "mjsunit/array-sort.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "mjsunit/asm/asm-heap.js",
     "runInIsolation" : true,
@@ -216,6 +260,14 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
+    "filePath" : "mjsunit/baseline/cross-realm.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/baseline/test-baseline.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/big-array-literal.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -249,6 +301,10 @@
     "filePath" : "mjsunit/call-intrinsic-fuzzing.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/call-lhs-web-compat-early-errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/code-coverage-ad-hoc.js",
     "status" : "SKIP",
@@ -290,6 +346,14 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
+    "filePath" : "mjsunit/compiler/regress-1104514.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/compiler/regress-1125145.js",
+    "status" : "SKIP",
+    "comment" : "Function.prototype.bind heavy test, too slow on Graal.js"
+  }, {
     "filePath" : "mjsunit/compiler/regress-445907.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -316,6 +380,14 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
+    "filePath" : "mjsunit/compiler/test-dynamic-map-check-deprecated-maps2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/compiler/test-dynamic-map-check-deprecated-maps3.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/console.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -333,6 +405,10 @@
     "filePath" : "mjsunit/d8/d8-arguments.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+  }, {
+    "filePath" : "mjsunit/d8/d8-fuzzable-worker.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/d8/d8-worker-shutdown-empty.js",
     "status" : "FAIL",
@@ -356,6 +432,10 @@
     "filePath" : "mjsunit/debugPrint.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/destruct-array-spread-done.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/disallow-codegen-from-strings.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -370,6 +450,10 @@
     "filePath" : "mjsunit/duplicate-parameters.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/element-accessor.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/elements-kind.js",
     "status" : "SKIP",
@@ -397,9 +481,6 @@
     "filePath" : "mjsunit/es6/block-sloppy-function.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/class-computed-property-names-super.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/classes-constructor.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
@@ -407,14 +488,7 @@
     "filePath" : "mjsunit/es6/classes-subclass-builtins.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/classes.js",
-    "status" : "FAIL",
-    "comment" : "Off spec: anonymous classes do not have 'name' property."
-  }, {
     "filePath" : "mjsunit/es6/computed-property-names-classes.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/computed-property-names-super.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/default-parameters.js",
@@ -436,9 +510,6 @@
       "BIG_ENDIAN" : "SKIP"
     },
     "comment" : "fails due to byte order (LE required)\nfails atm on SPARC GR-1672"
-  }, {
-    "filePath" : "mjsunit/es6/object-literals-super.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/promise-all-overflow-1.js",
     "status" : "SKIP",
@@ -489,20 +560,20 @@
     "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/super-ic-opt-dynamic-map-checks.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/templates.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: assumes that \\8 and \\9 are allowed in (non-tagged) template strings"
-  }, {
-    "filePath" : "mjsunit/es6/throw-type-error-function-restrictions.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: thrower does not have 'name' property"
   }, {
     "filePath" : "mjsunit/es6/typedarray-construct-offset-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-detached.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/es6/typedarray-every.js",
     "status" : "FAIL"
@@ -547,6 +618,10 @@
     "filePath" : "mjsunit/expose-cputracemark.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+  }, {
+    "filePath" : "mjsunit/extinction/array.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/function-caller.js",
     "status" : "FAIL",
@@ -618,6 +693,14 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
+    "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-2-waits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-2-workers.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-no-timeout.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
@@ -646,6 +729,14 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
+    "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/harmony/modules-import-15.mjs",
     "status" : "FAIL",
     "comment" : "test expects exact error message"
@@ -654,45 +745,15 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/optional-chaining-this-private.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
+    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-async-cycle.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/harmony/private-fields-ic.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-fields-special-object.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-fields-static.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/harmony/private-fields.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
+    "filePath" : "mjsunit/harmony/private-brand-checks.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/harmony/private-name-scopes.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
     "status" : "FAIL",
     "comment" : "Uses private fields"
   }, {
@@ -708,19 +769,9 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/harmony/public-instance-class-fields.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses public fields"
-  }, {
-    "filePath" : "mjsunit/harmony/public-static-class-fields.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses public fields"
+    "filePath" : "mjsunit/harmony/regexp-match-indices.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
     "status" : "FAIL",
@@ -750,12 +801,11 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
-    "filePath" : "mjsunit/harmony/regress/regress-952722.js",
+    "filePath" : "mjsunit/harmony/relative-indexing-methods.js",
     "ecmaVersion" : {
-      "minVersion" : 12
+      "minVersion" : 13
     },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
@@ -889,6 +939,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/protector-cell/concat-spreadable.js.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -899,6 +953,14 @@
     "filePath" : "mjsunit/regexp-backtrack-limit.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+  }, {
+    "filePath" : "mjsunit/regexp-fallback.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/regexp-linear-flag.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/regexp-modifiers-autogenerated-i18n.js",
     "status" : "FAIL",
@@ -970,6 +1032,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-25389)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1034322.js",
+    "status" : "SKIP",
+    "comment" : "forces stack overflow"
+  }, {
     "filePath" : "mjsunit/regress/regress-1034394.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -988,6 +1054,18 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1075514.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/regress/regress-10931.js",
+    "status" : "SKIP",
+    "comment" : "takes too long on Graal.js"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1115354.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/regress/regress-1129.js",
     "status" : "SKIP",
     "comment" : "This test checks, among other things, that the implementation compiles regular expressions lazily, which is not mandated by the spec. It also checks whether a specific regular expression triggers a stack overflow during its compilation, which is heavily dependent on the implementation (e.g. TRegex's parser has its own stack). It also calls gc after the test, which is V8-specific."
@@ -997,8 +1075,16 @@
     "runInIsolation" : true,
     "comment" : "these tests expect the stack limit to be reached; spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
+    "filePath" : "mjsunit/regress/regress-1166138.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/regress/regress-1170.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1176504.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/regress/regress-119429.js",
     "runInIsolation" : true,
@@ -1110,6 +1196,10 @@
     "runInIsolation" : true,
     "comment" : "memory intensive test"
   }, {
+    "filePath" : "mjsunit/regress/regress-542823.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/regress/regress-543994.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -1155,10 +1245,6 @@
     "filePath" : "mjsunit/regress/regress-6209.js",
     "status" : "SKIP",
     "comment" : "Explicitly calls v8AllocateHeapNumber."
-  }, {
-    "filePath" : "mjsunit/regress/regress-6248.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test - IsConstructor check moved from GetSuperConstructor to SuperCall evaluation (after the arg evaluation)"
   }, {
     "filePath" : "mjsunit/regress/regress-6288.js",
     "status" : "FAIL"
@@ -1207,6 +1293,10 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/regress/regress-740694.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/regress/regress-740784.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1228,10 +1318,6 @@
       "SVM" : "SKIP"
     },
     "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-7773.js",
-    "status" : "FAIL",
-    "comment" : "Off spec: anonymous classes do not have 'name' property."
   }, {
     "filePath" : "mjsunit/regress/regress-779407.js",
     "runInIsolation" : true,
@@ -1317,13 +1403,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-899537.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses public fields"
-  }, {
     "filePath" : "mjsunit/regress/regress-9022.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -1376,17 +1455,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
-    "filePath" : "mjsunit/regress/regress-982702.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses private fields"
-  }, {
-    "filePath" : "mjsunit/regress/regress-9832.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -1396,14 +1464,12 @@
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1038178.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "status" : "PASS",
+    "statusOverrides" : {
+      "INSTRUMENT" : "FAIL"
+    }
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1041232.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1047368.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
@@ -1425,6 +1491,14 @@
     "filePath" : "mjsunit/regress/regress-crbug-1105383.js",
     "status" : "FAIL",
     "comment" : "Off-spec: expects an error when overriding a global data property defined in the prototype of a global object"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1130213.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1162473.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
@@ -1559,10 +1633,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-696622.js",
-    "status" : "FAIL",
-    "comment" : "Obsolete test - IsConstructor check moved from GetSuperConstructor to SuperCall evaluation (after the arg evaluation)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-714696.js",
     "status" : "FAIL"
   }, {
@@ -1608,11 +1678,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-808192.js",
-    "status" : "FAIL",
-    "statusOverrides" : {
-      "AARCH64" : "PASS"
-    },
-    "comment" : "needs larger stack, at least 6m is needed"
+    "status" : "SKIP",
+    "comment" : "causes stack overflows and excessive execution times"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-816961.js",
     "status" : "SKIP",
@@ -1734,6 +1801,10 @@
     "filePath" : "mjsunit/regress/regress-trap-allocation-memento.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/regress/regress-v8-11360.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
     "filePath" : "mjsunit/regress/regress-v8-5009.js",
     "status" : "SKIP",
     "comment" : "version()"
@@ -1757,10 +1828,6 @@
     "filePath" : "mjsunit/regress/regress-v8-9106.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1010272.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-10126-streaming.js",
     "status" : "SKIP",
@@ -1800,16 +1867,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1029642.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-10309.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1032753.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -1826,41 +1883,11 @@
     "status" : "SKIP",
     "comment" : "WebAssembly shared memory"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1045737.js",
-    "status" : "SKIP",
-    "comment" : "WebAssembly shared memory"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1046472.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1048241.js",
-    "status" : "SKIP",
-    "comment" : "WebAssembly shared memory"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1051912.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1054466.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1065599.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1067621.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1070078.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-10702.js",
     "status" : "SKIP",
@@ -1874,40 +1901,46 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1074586-b.js",
-    "status" : "SKIP",
-    "comment" : "WebAssembly shared memory"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1074586.js",
-    "status" : "SKIP",
-    "comment" : "WebAssembly shared memory"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1075953.js",
-    "status" : "SKIP",
-    "comment" : "WebAssembly shared memory"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1079449.js",
-    "status" : "SKIP",
-    "comment" : "WebAssembly shared memory"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1080902.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1081030.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1084151.js",
+    "filePath" : "mjsunit/regress/wasm/regress-1101304.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1101304.js",
+    "filePath" : "mjsunit/regress/wasm/regress-11024.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1114005.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-11335.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1137582.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1146861.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1152937.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-5800.js",
@@ -2159,7 +2192,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
-    }
+    },
+    "comment" : "regression detected on 2021-02-24"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7422.js",
     "status" : "SKIP",
@@ -2240,10 +2274,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-7785.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-782280.js",
     "status" : "SKIP",
@@ -2343,17 +2373,6 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Uses Worker"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-8094.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-8095.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-812005.js",
@@ -2439,8 +2458,7 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-843563.js",
     "status" : "SKIP",
@@ -2449,16 +2467,6 @@
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8505.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-8533.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-853453.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
@@ -2481,18 +2489,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-875556.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-mv"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-8846.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-8896.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-894307.js",
     "status" : "SKIP",
@@ -2580,12 +2576,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-922432.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-922670.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2628,17 +2618,6 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-9425.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-9447.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-946350.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2671,10 +2650,6 @@
     "status" : "SKIP",
     "comment" : "Uses i32.trunc_sat_f32_s instruction"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-964607.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-968078.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2699,14 +2674,6 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1002388.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-type-reflection"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-crbug-1006631.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-type-reflection"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1057094.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2719,12 +2686,9 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/reindexing-in-classes.js",
-    "ecmaVersion" : {
-      "minVersion" : 12
-    },
-    "status" : "PASS",
-    "comment" : "Uses class fields"
+    "filePath" : "mjsunit/runtime-callstats-helpers.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/serialize-deserialize-now.js",
     "status" : "FAIL",
@@ -2780,8 +2744,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/tools/codemap.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/codemap.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/tools/compiler-trace-flags-wasm.js",
     "status" : "SKIP",
@@ -2789,15 +2754,17 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/tools/consarray.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/consarray.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/tools/csvparser.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/csvparser.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/tools/dumpcpp.js",
-    "status" : "SKIP",
-    "comment" : "UnixCppEntriesProvider"
+    "filePath" : "mjsunit/tools/dumpcpp.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/tools/foozzie.js",
     "status" : "FAIL",
@@ -2811,20 +2778,37 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "mjsunit/tools/profile.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/log.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/tools/profile_view.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/log_two_byte.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/tools/profviz.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/processor.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/tools/splaytree.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/profile.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
-    "filePath" : "mjsunit/tools/tickprocessor.js",
-    "status" : "SKIP"
+    "filePath" : "mjsunit/tools/profile_view.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/tools/splaytree.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/tools/tickprocessor.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/tools/timeline.mjs",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/tzoffset-seoul-noi18n.js",
     "status" : "FAIL",
@@ -2886,10 +2870,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/wasm/anyfunc.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
-  }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2914,22 +2894,6 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/wasm/atomics-non-shared.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/atomics-stress.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/atomics.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/atomics64-stress.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
     "filePath" : "mjsunit/wasm/bigint-i64-to-imported-js-func.js",
     "status" : "SKIP",
     "comment" : "--experimental-wasm-bigint"
@@ -2952,10 +2916,6 @@
     },
     "comment" : "Different error message"
   }, {
-    "filePath" : "mjsunit/wasm/bulk-memory.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-bulk-memory"
-  }, {
     "filePath" : "mjsunit/wasm/calls.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2968,43 +2928,11 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/wasm/compare-exchange-stress.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/compilation-hints-async-compilation.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-compilation-hints"
-  }, {
-    "filePath" : "mjsunit/wasm/compilation-hints-decoder.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-compilation-hints"
-  }, {
     "filePath" : "mjsunit/wasm/compilation-hints-ignored.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
-  }, {
-    "filePath" : "mjsunit/wasm/compilation-hints-lazy-validation.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-compilation-hints"
-  }, {
-    "filePath" : "mjsunit/wasm/compilation-hints-streaming-compilation.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-compilation-hints"
-  }, {
-    "filePath" : "mjsunit/wasm/compilation-hints-streaming-lazy-validation.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-compilation-hints"
-  }, {
-    "filePath" : "mjsunit/wasm/compilation-hints-sync-compilation.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-compilation-hints"
   }, {
     "filePath" : "mjsunit/wasm/compilation-limits.js",
     "status" : "SKIP",
@@ -3044,58 +2972,67 @@
     "comment" : "Different error message"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/box2d.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/copy.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/corrections.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/fannkuch.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/fasta.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/lua_binarytrees.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/memops.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/primes.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/embenchen/zlib.js",
-    "status" : "PASS",
+    "status" : "SKIP",
     "statusOverrides" : {
       "BIG_ENDIAN" : "SKIP"
-    }
+    },
+    "comment" : "run time too high"
   }, {
     "filePath" : "mjsunit/wasm/empirical_max_memory.js",
     "status" : "SKIP",
@@ -3112,38 +3049,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-export.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-externref.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh --experimental-wasm-reftypes"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-global.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-import.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-rethrow.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-shared.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions-simd.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh --experimental-wasm-simd"
-  }, {
-    "filePath" : "mjsunit/wasm/exceptions.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-eh"
   }, {
     "filePath" : "mjsunit/wasm/export-global.js",
     "status" : "SKIP",
@@ -3169,18 +3074,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
-  }, {
-    "filePath" : "mjsunit/wasm/externref-globals.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
-  }, {
-    "filePath" : "mjsunit/wasm/externref-table.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes --experimental-wasm-bulk-memory"
-  }, {
-    "filePath" : "mjsunit/wasm/externref.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
   }, {
     "filePath" : "mjsunit/wasm/ffi-error.js",
     "status" : "SKIP",
@@ -3212,10 +3105,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/wasm/futex.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
     "filePath" : "mjsunit/wasm/gc-buffer.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3239,6 +3128,13 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/generic-wrapper.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "fails with Argument type is i64"
   }, {
     "filePath" : "mjsunit/wasm/globals-import-export-identity.js",
     "status" : "SKIP",
@@ -3303,10 +3199,6 @@
     },
     "comment" : "Different error message"
   }, {
-    "filePath" : "mjsunit/wasm/grow-shared-memory.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3342,10 +3234,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
-  }, {
-    "filePath" : "mjsunit/wasm/indirect-call-non-zero-table.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
   }, {
     "filePath" : "mjsunit/wasm/indirect-calls.js",
     "status" : "SKIP",
@@ -3408,10 +3296,6 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/wasm/liftoff-simd-params.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
-  }, {
     "filePath" : "mjsunit/wasm/liftoff-trap-handler.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3425,6 +3309,18 @@
     }
   }, {
     "filePath" : "mjsunit/wasm/loop-rotation.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/wasm/many-memories-no-trap-handler.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
+  }, {
+    "filePath" : "mjsunit/wasm/many-memories.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
@@ -3457,7 +3353,7 @@
     "filePath" : "mjsunit/wasm/memory-size.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/memory.js",
@@ -3476,14 +3372,6 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/wasm/multi-table-element-section.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
-  }, {
-    "filePath" : "mjsunit/wasm/multi-value.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-mv"
-  }, {
     "filePath" : "mjsunit/wasm/multiple-code-spaces.js",
     "status" : "SKIP",
     "comment" : "Based on v8WasmNumCodeSpaces(), a concept unknown to graal.js"
@@ -3498,7 +3386,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
-    }
+    },
+    "comment" : "regression detected on 2021-02-24"
   }, {
     "filePath" : "mjsunit/wasm/origin-trial-flags.js",
     "status" : "SKIP",
@@ -3530,10 +3419,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/wasm/return-calls.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-return-call"
-  }, {
     "filePath" : "mjsunit/wasm/serialize-lazy-module.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3548,37 +3433,11 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/wasm/shared-memory-worker-explicit-gc-stress.js",
+    "filePath" : "mjsunit/wasm/single-threaded-compilation.js",
     "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-worker-gc-stress.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-worker-gc.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-worker-simple-gc.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory-worker-stress.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/shared-memory.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
-  }, {
-    "filePath" : "mjsunit/wasm/simd-call.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
-  }, {
-    "filePath" : "mjsunit/wasm/simd-errors.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-simd"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/stack.js",
     "status" : "SKIP",
@@ -3622,31 +3481,11 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/wasm/table-access.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
-  }, {
-    "filePath" : "mjsunit/wasm/table-copy-externref.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-bulk-memory --experimental-wasm-reftypes"
-  }, {
-    "filePath" : "mjsunit/wasm/table-copy.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-bulk-memory"
-  }, {
-    "filePath" : "mjsunit/wasm/table-fill.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
-  }, {
     "filePath" : "mjsunit/wasm/table-get.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     }
-  }, {
-    "filePath" : "mjsunit/wasm/table-grow-from-wasm.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-reftypes"
   }, {
     "filePath" : "mjsunit/wasm/table-grow.js",
     "status" : "SKIP",
@@ -3688,33 +3527,12 @@
       "POLYGLOT" : "FAIL"
     }
   }, {
-    "filePath" : "mjsunit/wasm/type-reflection-with-exnref.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-type-reflection --experimental-wasm-eh"
-  }, {
-    "filePath" : "mjsunit/wasm/type-reflection-with-externref.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-type-reflection --experimental-wasm-reftypes"
-  }, {
-    "filePath" : "mjsunit/wasm/type-reflection-with-mv.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-type-reflection --experimental-wasm-mv"
-  }, {
-    "filePath" : "mjsunit/wasm/type-reflection.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-type-reflection"
-  }, {
-    "filePath" : "mjsunit/wasm/typed-funcref.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
-  }, {
     "filePath" : "mjsunit/wasm/unicode-validation.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
-    }
+    },
+    "comment" : "regression detected on 2021-02-24"
   }, {
     "filePath" : "mjsunit/wasm/unicode.js",
     "status" : "SKIP",
@@ -3785,10 +3603,6 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
-  }, {
-    "filePath" : "mjsunit/wasm/worker-memory.js",
-    "status" : "SKIP",
-    "comment" : "--experimental-wasm-threads"
   }, {
     "filePath" : "mjsunit/wasm/worker-module.js",
     "status" : "SKIP",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -539,25 +539,15 @@ public abstract class ScriptArray {
 
     public abstract ScriptArray preventExtensions();
 
-    public abstract boolean isStatelessType();
-
     public final boolean isInstance(ScriptArray other) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (isStatelessType()) {
-            return this == other;
-        } else {
-            return this.getClass().isInstance(other);
-        }
+        return this == other;
     }
 
     public final ScriptArray cast(ScriptArray other) {
         CompilerAsserts.partialEvaluationConstant(this);
-        if (isStatelessType()) {
-            assert this == other;
-            return this;
-        } else {
-            return this.getClass().cast(other);
-        }
+        assert this == other;
+        return this;
     }
 
     public interface ProfileHolder {

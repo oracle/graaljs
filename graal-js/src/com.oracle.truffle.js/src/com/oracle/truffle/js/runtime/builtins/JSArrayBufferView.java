@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -335,9 +335,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     private static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
                     JSRealm realm, DynamicObject prototype) {
         assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
-        assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= (arrayType.isDirect()
-                        ? JSArrayBuffer.getDirectByteBuffer(arrayBuffer).limit()
-                        : JSArrayBuffer.getByteArray(arrayBuffer).length);
+        assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
         assert offset != 0 == arrayType.hasOffset();
 
         DynamicObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);

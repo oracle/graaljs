@@ -171,6 +171,10 @@
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
+    "filePath" : "basic/JDK-8012291.js",
+    "status" : "SKIP",
+    "comment" : "Too long (after normative changes to Array.prototype.sort)"
+  }, {
     "filePath" : "basic/JDK-8013131.js",
     "status" : "SKIP",
     "comment" : "String.prototype.split with different behavior between V8 and Nashorn"

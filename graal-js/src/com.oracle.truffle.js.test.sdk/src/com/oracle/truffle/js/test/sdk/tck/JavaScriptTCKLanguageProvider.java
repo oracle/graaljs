@@ -168,6 +168,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.META_OBJECT,
                         TypeDescriptor.ITERATOR,
                         TypeDescriptor.ITERABLE,
+                        TypeDescriptor.HASH,
                         noType);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
@@ -276,7 +277,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.union(
                                         TypeDescriptor.STRING,
                                         TypeDescriptor.OBJECT,
-                                        TypeDescriptor.ARRAY)));
+                                        TypeDescriptor.ARRAY,
+                                        TypeDescriptor.ITERABLE)));
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,

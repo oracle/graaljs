@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,9 +45,12 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.ArrayBufferPrototype;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
+import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferSliceNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -57,13 +60,23 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 /**
  * Contains builtins for {@linkplain JSSharedArrayBuffer}.prototype.
  */
-public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Lambda {
+public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ArrayBufferPrototypeBuiltins.ArrayBufferPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new SharedArrayBufferPrototypeBuiltins();
 
     protected SharedArrayBufferPrototypeBuiltins() {
-        super(JSSharedArrayBuffer.PROTOTYPE_NAME);
-        defineFunction("slice", 2, (context, builtin) -> JSSharedArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context)));
+        super(JSSharedArrayBuffer.PROTOTYPE_NAME, ArrayBufferPrototype.class);
+    }
+
+    @Override
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayBufferPrototype builtinEnum) {
+        switch (builtinEnum) {
+            case byteLength:
+                return ByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case slice:
+                return JSSharedArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+        }
+        return null;
     }
 
     public abstract static class JSSharedArrayBufferSliceNode extends JSArrayBufferAbstractSliceNode {
@@ -95,14 +108,8 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
-        protected static DynamicObject error(Object thisObj, Object begin0, Object end0) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-        }
-
         @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected DynamicObject sliceSharedDirect(DynamicObject thisObj, int begin, int end) {
+        protected DynamicObject sliceSharedIntInt(DynamicObject thisObj, int begin, int end) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
             int clampedBegin = clampIndex(begin, 0, byteLength);
@@ -117,13 +124,35 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             return resObj;
         }
 
-        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected DynamicObject sliceSharedDirect(DynamicObject thisObj, Object begin0, Object end0) {
+        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)", replaces = "sliceSharedIntInt")
+        protected DynamicObject sliceShared(DynamicObject thisObj, Object begin0, Object end0) {
             int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
-            return sliceSharedDirect(thisObj, begin, end);
+            return sliceSharedIntInt(thisObj, begin, end);
         }
 
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
+        protected static DynamicObject error(Object thisObj, Object begin0, Object end0) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
+    }
+
+    public abstract static class ByteLengthGetterNode extends JSBuiltinNode {
+
+        public ByteLengthGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
+        protected static int sharedArrayBuffer(Object thisObj) {
+            return JSArrayBuffer.getDirectByteLength(thisObj);
+        }
+
+        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
+        protected static int error(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
     }
 }

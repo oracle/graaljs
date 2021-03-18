@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 
 import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
 import com.oracle.truffle.js.nodes.function.BuiltinNodeFactory;
@@ -58,22 +60,41 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
  */
 public class JSBuiltinsContainer {
     private final String name;
-    final EconomicMap<String, JSBuiltin> builtins = EconomicMap.create();
+    private final EconomicMap<String, JSBuiltin> builtins = EconomicMap.create();
+    private final EconomicMap<Object, Pair<JSBuiltin, JSBuiltin>> accessors = EconomicMap.create();
 
     protected JSBuiltinsContainer(String name) {
         this.name = name;
     }
 
-    public final void putAll(JSBuiltinsContainer container) {
-        builtins.putAll(container.builtins);
+    public final JSBuiltin lookupFunctionByName(String methodName) {
+        return builtins.get(methodName);
     }
 
-    public final JSBuiltin lookupByName(String methodName) {
-        return builtins.get(methodName);
+    public final Pair<JSBuiltin, JSBuiltin> lookupAccessorByKey(Object key) {
+        return accessors.get(key);
     }
 
     public final void forEachBuiltin(Consumer<? super JSBuiltin> consumer) {
         builtins.getValues().forEach(consumer);
+    }
+
+    public final void forEachAccessor(BiConsumer<? super JSBuiltin, ? super JSBuiltin> consumer) {
+        accessors.getValues().forEach(pair -> consumer.accept(pair.getLeft(), pair.getRight()));
+    }
+
+    protected final void register(JSBuiltin builtin) {
+        assert !builtins.containsKey(builtin.getName()) : builtin.getName();
+        builtins.put(builtin.getName(), builtin);
+        if (builtin.isGetter()) {
+            Pair<JSBuiltin, JSBuiltin> existing = accessors.get(builtin.getKey(), Pair.empty());
+            assert existing.getLeft() == null : builtin.getKey();
+            accessors.put(builtin.getKey(), Pair.create(builtin, existing.getRight()));
+        } else if (builtin.isSetter()) {
+            Pair<JSBuiltin, JSBuiltin> existing = accessors.get(builtin.getKey(), Pair.empty());
+            assert existing.getRight() == null : builtin.getKey();
+            accessors.put(builtin.getKey(), Pair.create(existing.getLeft(), builtin));
+        }
     }
 
     protected static BuiltinArgumentBuilder args() {
@@ -134,7 +155,7 @@ public class JSBuiltinsContainer {
             BuiltinNodeFactory call = new FactoryImpl(false, false);
             BuiltinNodeFactory construct = isConstructor ? new FactoryImpl(true, false) : null;
             BuiltinNodeFactory constructNewTarget = isNewTargetConstructor ? new FactoryImpl(true, true) : null;
-            builtins.put(name, new JSBuiltin(getName(), name, length, attributeFlags, 5, false, call, construct, constructNewTarget));
+            register(new JSBuiltin(getName(), name, name, length, attributeFlags, 5, false, call, construct, constructNewTarget));
         }
 
         protected abstract Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget);
@@ -179,16 +200,17 @@ public class JSBuiltinsContainer {
             BuiltinNodeFactory call = new FactoryImpl(false, false);
             BuiltinNodeFactory construct = builtinEnum.isConstructor() ? new FactoryImpl(true, false) : null;
             BuiltinNodeFactory constructNewTarget = builtinEnum.isNewTargetConstructor() ? new FactoryImpl(true, true) : null;
-            builtins.put(builtinEnum.getName(), createBuiltin(builtinEnum, call, construct, constructNewTarget));
+            register(createBuiltin(builtinEnum, call, construct, constructNewTarget));
         }
 
         private JSBuiltin createBuiltin(E builtinEnum, BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory) {
             Object key = builtinEnum.getKey();
             assert JSRuntime.isPropertyKey(key);
+            String name = builtinEnum.getName();
             int length = builtinEnum.getLength();
             int attributeFlags = JSAttributes.fromConfigurableEnumerableWritable(builtinEnum.isConfigurable(), builtinEnum.isEnumerable(), builtinEnum.isWritable());
-            return new JSBuiltin(getName(), key, length, attributeFlags, builtinEnum.getECMAScriptVersion(), builtinEnum.isAnnexB(), functionNodeFactory, constructorNodeFactory,
-                            newTargetConstructorFactory);
+            return new JSBuiltin(getName(), name, key, length, attributeFlags, builtinEnum.getECMAScriptVersion(), builtinEnum.isAnnexB(), functionNodeFactory,
+                            constructorNodeFactory, newTargetConstructorFactory);
         }
 
         public Class<E> getEnumType() {
@@ -211,17 +233,17 @@ public class JSBuiltinsContainer {
 
         protected final void defineFunction(String name, int length, BuiltinNodeFactory nodeFactory) {
             assert !name.isEmpty();
-            builtins.put(name, new JSBuiltin(getName(), name, length, JSAttributes.getDefaultNotEnumerable(), nodeFactory));
+            register(new JSBuiltin(getName(), name, length, JSAttributes.getDefaultNotEnumerable(), nodeFactory));
         }
 
         protected final void defineFunction(String name, int length, int attributeFlags, BuiltinNodeFactory nodeFactory) {
             assert !name.isEmpty();
-            builtins.put(name, new JSBuiltin(getName(), name, length, attributeFlags, nodeFactory));
+            register(new JSBuiltin(getName(), name, length, attributeFlags, nodeFactory));
         }
 
         protected final void defineConstructor(String name, int length, BuiltinNodeFactory nodeFactory, BuiltinNodeFactory constructorFactory) {
             assert !name.isEmpty();
-            builtins.put(name, new JSBuiltin(getName(), name, length, JSAttributes.getDefaultNotEnumerable(), 5, false, nodeFactory, constructorFactory, null));
+            register(new JSBuiltin(getName(), name, name, length, JSAttributes.getDefaultNotEnumerable(), 5, false, nodeFactory, constructorFactory, null));
         }
     }
 }

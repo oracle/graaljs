@@ -91,21 +91,18 @@ local common_json = (import "common.json");
 
   windows_jdk16: self.windows + common_json.devkits["windows-jdk16"] + {
     setup+: [
-      ['set-export', 'DEVKIT_ROOT', '$VS2019_16_5_3_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2019'],
     ],
   },
 
  windows_jdk11: self.windows + common_json.devkits["windows-jdk11"] + {
     setup+: [
-      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_9_24_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },
 
   windows_jdk8: self.windows + common_json.devkits["windows-oraclejdk8"] + {
     setup+: [
-      ['set-export', 'DEVKIT_ROOT', '$VS2017_15_9_16_1_0_ROOT'],
       ['set-export', 'DEVKIT_VERSION', '2017'],
     ],
   },

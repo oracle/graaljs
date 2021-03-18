@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.lang.reflect.Array;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -57,10 +52,11 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -74,11 +70,13 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.interop.EmptyIterator;
+import com.oracle.truffle.js.runtime.interop.InteropArrayIndexIterator;
+import com.oracle.truffle.js.runtime.interop.InteropMemberIterator;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.ForInIterator;
-import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 /**
  * Returns an Iterator object iterating over the enumerable properties of an object.
@@ -130,8 +128,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             return newForInIterator(iteratedObject);
         } else {
             // null or undefined
-            Iterator<?> iterator = Collections.emptyIterator();
-            return newEnumerateIterator(iterator);
+            return newEmptyIterator();
         }
     }
 
@@ -148,7 +145,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
                 return enumerateCallbackResultNode.execute(returnValue);
             }
         }
-        return newEnumerateIterator(Collections.emptyIterator());
+        return newEmptyIterator();
     }
 
     EnumerateNode createValues() {
@@ -161,79 +158,79 @@ public abstract class EnumerateNode extends JavaScriptNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary keysInterop,
                     @Cached("createBinaryProfile()") ConditionProfile isHostObject,
                     @Cached BranchProfile notIterable) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
-        if (isHostObject.profile(env.isHostObject(iteratedObject))) {
-            Object hostObject = env.asHostObject(iteratedObject);
-            Iterator<?> iterator = getHostObjectIterator(hostObject, values, env);
-            if (iterator != null) {
-                return newEnumerateIterator(iterator);
-            }
-        }
-
         try {
             if (!interop.isNull(iteratedObject)) {
-                if (interop.hasArrayElements(iteratedObject)) {
-                    return enumerateForeignArrayLike(iteratedObject, interop);
-                } else if (interop.hasMembers(iteratedObject)) {
-                    Object keysObj = interop.getMembers(iteratedObject);
-                    assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
-                    long longSize = keysInterop.getArraySize(keysObj);
-                    return enumerateForeignNonArray(iteratedObject, keysObj, longSize, interop, keysInterop);
-                } else if (interop.isString(iteratedObject)) {
+                if (values) {
+                    if (interop.hasIterator(iteratedObject)) {
+                        Object iterator = interop.getIterator(iteratedObject);
+                        return newEnumerateIterator(iterator);
+                    }
+                } else /* keys */ {
+                    if (interop.hasArrayElements(iteratedObject)) {
+                        return newEnumerateIterator(InteropArrayIndexIterator.create(iteratedObject));
+                    }
+                }
+
+                if (interop.isString(iteratedObject)) {
                     String string = interop.asString(iteratedObject);
                     return enumerateString(string);
                 }
+
+                // Handles Map host objects.
+                // TODO: Replace this with Interop messages once Map support is available (GR-8937).
+                TruffleLanguage.Env env = context.getRealm().getEnv();
+                if (isHostObject.profile(env.isHostObject(iteratedObject))) {
+                    Object iterator = getHostObjectIterator(iteratedObject, env);
+                    if (iterator != null) {
+                        return newEnumerateIterator(iterator);
+                    }
+                }
+
+                if (interop.hasMembers(iteratedObject)) {
+                    Object keysObj = interop.getMembers(iteratedObject);
+                    assert InteropLibrary.getFactory().getUncached().hasArrayElements(keysObj);
+                    long longSize = keysInterop.getArraySize(keysObj);
+                    return newEnumerateIterator(InteropMemberIterator.create(values, iteratedObject, keysObj, longSize));
+                }
             }
-        } catch (UnsupportedMessageException ex) {
-            // swallow and default
+        } catch (UnsupportedMessageException e) {
+            // fall through
         }
+
+        // object is not iterable; throw an error or return an empty iterator.
         notIterable.enter();
         if (requireIterable) {
             throw Errors.createTypeErrorNotIterable(iteratedObject, this);
         }
-        // in case of any errors, return an empty iterator
-        return newEnumerateIterator(Collections.emptyIterator());
+        return newEmptyIterator();
     }
 
     @TruffleBoundary
-    private static Iterator<?> getHostObjectIterator(Object hostObject, boolean values, TruffleLanguage.Env env) {
-        if (hostObject != null) {
-            Iterator<?> iterator;
-            if (hostObject instanceof Map) {
-                Map<?, ?> map = (Map<?, ?>) hostObject;
-                iterator = values ? map.values().iterator() : map.keySet().iterator();
-            } else if (hostObject.getClass().isArray()) {
-                if (values) {
-                    iterator = new ArrayIterator(hostObject);
-                } else {
-                    return IteratorUtil.rangeIterator(Array.getLength(hostObject));
+    private Object getHostObjectIterator(Object iteratedObject, TruffleLanguage.Env env) {
+        Object realHostObject = env.asHostObject(iteratedObject);
+        if (realHostObject != null) {
+            if (realHostObject instanceof Map) {
+                String getIterableMethod = values ? "values" : "keySet";
+                try {
+                    Object iterable = InteropLibrary.getUncached(iteratedObject).invokeMember(iteratedObject, getIterableMethod);
+                    return InteropLibrary.getUncached(iterable).invokeMember(iterable, "iterator");
+                } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                    throw Errors.createTypeErrorInteropException(iteratedObject, e, values ? "values().iterator()" : "keySet().iterator()", this);
                 }
-            } else if (!values && hostObject instanceof List<?>) {
-                return IteratorUtil.rangeIterator(((List<?>) hostObject).size());
-            } else if (values && hostObject instanceof Iterable<?>) {
-                iterator = ((Iterable<?>) hostObject).iterator();
-            } else {
-                return null;
             }
-            // the value is imported in the iterator's next method node
-            return IteratorUtil.convertIterator(iterator, env::asGuestValue);
         }
         return null;
-    }
-
-    private DynamicObject enumerateForeignArrayLike(Object iteratedObject, InteropLibrary interop) {
-        return newEnumerateIterator(new ForeignArrayIterator(iteratedObject, values, interop));
-    }
-
-    private DynamicObject enumerateForeignNonArray(Object iteratedObject, Object keysObject, long keysSize, InteropLibrary objInterop, InteropLibrary keysInterop) {
-        return newEnumerateIterator(new ForeignMembersIterator(iteratedObject, keysObject, keysSize, values, objInterop, keysInterop));
     }
 
     private DynamicObject enumerateString(String string) {
         return newForInIterator(JSString.create(context, string));
     }
 
-    private DynamicObject newEnumerateIterator(Iterator<?> iterator) {
+    private DynamicObject newEmptyIterator() {
+        return newEnumerateIterator(EmptyIterator.create());
+    }
+
+    private DynamicObject newEnumerateIterator(Object iterator) {
         if (setEnumerateIteratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setEnumerateIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context));
@@ -260,117 +257,4 @@ public abstract class EnumerateNode extends JavaScriptNode {
         return enumerateNode.execute(toObjectNode.execute(iteratedObject));
     }
 
-    private static final class ArrayIterator implements Iterator<Object> {
-        private final Object array;
-        private final int length;
-        private int index;
-
-        ArrayIterator(Object array) {
-            this.array = array;
-            this.length = Array.getLength(array);
-        }
-
-        @Override
-        public boolean hasNext() {
-            return index < length;
-        }
-
-        @Override
-        public Object next() {
-            if (hasNext()) {
-                return Array.get(array, index++);
-            }
-            throw new NoSuchElementException();
-        }
-    }
-
-    private static final class ForeignArrayIterator implements Iterator<Object> {
-        private final Object iteratedObject;
-        private final boolean values;
-        private final InteropLibrary interop;
-        private long cursor;
-
-        private ForeignArrayIterator(Object iteratedObject, boolean values, InteropLibrary interop) {
-            this.iteratedObject = iteratedObject;
-            this.values = values;
-            this.interop = interop;
-        }
-
-        @Override
-        public boolean hasNext() {
-            try {
-                long currentSize = interop.getArraySize(iteratedObject);
-                return cursor < currentSize;
-            } catch (UnsupportedMessageException ex) {
-                return false;
-            }
-        }
-
-        @Override
-        public Object next() {
-            if (hasNext()) {
-                long index = cursor++;
-                if (values) {
-                    try {
-                        // the value is imported in the iterator's next method node
-                        return interop.readArrayElement(iteratedObject, index);
-                    } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-                        // swallow and default
-                    }
-                } else {
-                    return index;
-                }
-            }
-            throw new NoSuchElementException();
-        }
-    }
-
-    private static final class ForeignMembersIterator implements Iterator<Object> {
-        private final Object iteratedObject;
-        private final Object keysObject;
-        private final long keysSize;
-        private final boolean values;
-        private final InteropLibrary objInterop;
-        private final InteropLibrary keysInterop;
-        private long cursor;
-
-        private ForeignMembersIterator(Object iteratedObject, Object keysObject, long keysSize, boolean values, InteropLibrary objInterop, InteropLibrary keysInterop) {
-            this.iteratedObject = iteratedObject;
-            this.keysObject = keysObject;
-            this.keysSize = keysSize;
-            this.values = values;
-            this.objInterop = objInterop;
-            this.keysInterop = keysInterop;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return cursor < keysSize;
-        }
-
-        @Override
-        public Object next() {
-            if (hasNext()) {
-                long index = cursor++;
-                try {
-                    Object key = keysInterop.readArrayElement(keysObject, index);
-                    if (values) {
-                        try {
-                            assert InteropLibrary.getFactory().getUncached().isString(key);
-                            String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
-                            // the value is imported in the iterator's next method node
-                            return objInterop.readMember(iteratedObject, stringKey);
-                        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                            // swallow and default
-                        }
-                    } else {
-                        return key;
-                    }
-                } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
-                    // swallow and default
-                }
-            }
-            throw new NoSuchElementException();
-        }
-    }
 }

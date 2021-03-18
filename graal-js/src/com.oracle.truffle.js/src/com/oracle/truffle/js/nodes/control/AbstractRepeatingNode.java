@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
 import com.oracle.truffle.js.runtime.JSCancelledExecutionException;
 
 abstract class AbstractRepeatingNode extends JavaScriptNode implements RepeatingNode, ResumableNode {
@@ -57,7 +57,7 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
     private final LoopConditionProfile conditionProfile = LoopConditionProfile.createCountingProfile();
 
     AbstractRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
-        this.conditionNode = JSToBooleanNode.create(condition);
+        this.conditionNode = JSToBooleanUnaryNode.create(condition);
         this.bodyNode = body;
     }
 

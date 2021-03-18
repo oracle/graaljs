@@ -821,14 +821,18 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new HolesObjectArrayReadElementCacheNode(array, next);
         } else if (array instanceof AbstractWritableArray) {
             return new WritableArrayReadElementCacheNode(array, next);
-        } else if (array instanceof TypedArray.AbstractUint32Array) {
-            return new Uint32ArrayReadElementCacheNode(array, next);
-        } else if (array instanceof TypedArray.TypedIntArray) {
-            return new TypedIntArrayReadElementCacheNode(array, next);
-        } else if (array instanceof TypedArray.TypedFloatArray) {
-            return new TypedFloatArrayReadElementCacheNode(array, next);
-        } else if (array instanceof TypedArray.TypedBigIntArray) {
-            return new TypedBigIntArrayReadElementCacheNode(array, next);
+        } else if (array instanceof TypedArray) {
+            if (array instanceof TypedArray.AbstractUint32Array) {
+                return new Uint32ArrayReadElementCacheNode((TypedArray) array, next);
+            } else if (array instanceof TypedArray.TypedIntArray) {
+                return new TypedIntArrayReadElementCacheNode((TypedArray) array, next);
+            } else if (array instanceof TypedArray.TypedFloatArray) {
+                return new TypedFloatArrayReadElementCacheNode((TypedArray) array, next);
+            } else if (array instanceof TypedArray.TypedBigIntArray) {
+                return new TypedBigIntArrayReadElementCacheNode((TypedArray) array, next);
+            } else {
+                throw Errors.shouldNotReachHere();
+            }
         } else {
             return new ExactArrayReadElementCacheNode(array, next);
         }
@@ -891,12 +895,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         private static boolean needsSlowGet(DynamicObject target, JSContext context) {
             return !context.getArrayPrototypeNoElementsAssumption().isValid() || (!context.getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(target)) ||
                             (!context.getFastArgumentsObjectAssumption().isValid() && JSSlowArgumentsArray.isJSSlowArgumentsObject(target));
-        }
-
-        protected void checkDetachedArrayBuffer(DynamicObject target, JSContext context) {
-            if (JSArrayBufferView.hasDetachedBuffer(target, context)) {
-                throw Errors.createTypeErrorDetachedBuffer();
-            }
         }
     }
 
@@ -1162,18 +1160,33 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
     }
 
-    private static class TypedIntArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+    private abstract static class AbstractTypedArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+        @Child protected InteropLibrary interop;
 
-        TypedIntArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
+        AbstractTypedArrayReadElementCacheNode(TypedArray arrayType, ArrayReadElementCacheNode next) {
+            super(arrayType, next);
+            this.interop = arrayType.isInterop() ? InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit) : InteropLibrary.getUncached();
+        }
+
+        protected void checkDetachedArrayBuffer(DynamicObject target, JSContext context) {
+            if (JSArrayBufferView.hasDetachedBuffer(target, context)) {
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+        }
+    }
+
+    private static class TypedIntArrayReadElementCacheNode extends AbstractTypedArrayReadElementCacheNode {
+
+        TypedIntArrayReadElementCacheNode(TypedArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getInt(target, (int) index);
+                return typedArray.getInt(target, (int) index, interop);
             } else {
                 return defaultValue;
             }
@@ -1183,9 +1196,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getInt(target, (int) index);
+                return typedArray.getInt(target, (int) index, interop);
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
@@ -1195,28 +1208,28 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getInt(target, (int) index);
+                return typedArray.getInt(target, (int) index, interop);
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
         }
     }
 
-    private static class Uint32ArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+    private static class Uint32ArrayReadElementCacheNode extends AbstractTypedArrayReadElementCacheNode {
         private final ConditionProfile isSignedProfile = ConditionProfile.createBinaryProfile();
 
-        Uint32ArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
+        Uint32ArrayReadElementCacheNode(TypedArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                int intValue = typedArray.getInt(target, (int) index);
+                int intValue = typedArray.getInt(target, (int) index, interop);
                 if (isSignedProfile.profile(intValue >= 0)) {
                     return intValue;
                 } else {
@@ -1231,9 +1244,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected int executeArrayGetInt(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                int intValue = typedArray.getInt(target, (int) index);
+                int intValue = typedArray.getInt(target, (int) index, interop);
                 if (isSignedProfile.profile(intValue >= 0)) {
                     return intValue;
                 } else {
@@ -1248,27 +1261,27 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedIntArray<?> typedArray = (TypedArray.TypedIntArray<?>) cast(array);
+            TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getInt(target, (int) index) & 0xffff_ffffL;
+                return typedArray.getInt(target, (int) index, interop) & 0xffff_ffffL;
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
         }
     }
 
-    private static class TypedFloatArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+    private static class TypedFloatArrayReadElementCacheNode extends AbstractTypedArrayReadElementCacheNode {
 
-        TypedFloatArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
+        TypedFloatArrayReadElementCacheNode(TypedArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
+            TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getDouble(target, (int) index);
+                return typedArray.getDouble(target, (int) index, interop);
             } else {
                 return defaultValue;
             }
@@ -1278,27 +1291,27 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double executeArrayGetDouble(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context)
                         throws UnexpectedResultException {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedFloatArray<?> typedArray = (TypedArray.TypedFloatArray<?>) cast(array);
+            TypedArray.TypedFloatArray typedArray = (TypedArray.TypedFloatArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getDouble(target, (int) index);
+                return typedArray.getDouble(target, (int) index, interop);
             } else {
                 throw new UnexpectedResultException(defaultValue);
             }
         }
     }
 
-    private static class TypedBigIntArrayReadElementCacheNode extends ArrayClassGuardCachedArrayReadElementCacheNode {
+    private static class TypedBigIntArrayReadElementCacheNode extends AbstractTypedArrayReadElementCacheNode {
 
-        TypedBigIntArrayReadElementCacheNode(ScriptArray arrayType, ArrayReadElementCacheNode next) {
+        TypedBigIntArrayReadElementCacheNode(TypedArray arrayType, ArrayReadElementCacheNode next) {
             super(arrayType, next);
         }
 
         @Override
         protected Object executeArrayGet(DynamicObject target, ScriptArray array, long index, Object receiver, Object defaultValue, JSContext context) {
             checkDetachedArrayBuffer(target, context);
-            TypedArray.TypedBigIntArray<?> typedArray = (TypedArray.TypedBigIntArray<?>) cast(array);
+            TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) cast(array);
             if (inBounds.profile(typedArray.hasElement(target, index))) {
-                return typedArray.getBigInt(target, (int) index);
+                return typedArray.getBigInt(target, (int) index, interop);
             } else {
                 return defaultValue;
             }
@@ -1534,69 +1547,71 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
             }
             Object exportedKey = exportKeyNode.execute(index);
+            Object foreignResult = getImpl(truffleObject, exportedKey, root);
+            return importValueNode.executeWithTarget(foreignResult);
+        }
+
+        private Object getImpl(Object truffleObject, Object exportedKey, ReadElementNode root) {
             if (exportedKey instanceof Symbol) {
-                return Undefined.instance;
+                return maybeReadFromPrototype(truffleObject, exportedKey, root.context);
             }
-            Object foreignResult;
             boolean hasArrayElements = interop.hasArrayElements(truffleObject);
             if (hasArrayElements && keyInterop.fitsInLong(exportedKey)) {
                 try {
-                    foreignResult = interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
+                    return interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
             } else {
                 String stringKey = toStringNode.executeString(exportedKey);
+                if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
+                    return getSize(truffleObject);
+                }
+                if (root.context.isOptionNashornCompatibilityMode()) {
+                    Object result = tryGetters(truffleObject, stringKey, root.context);
+                    if (result != null) {
+                        return result;
+                    }
+                }
                 if (optimistic) {
                     try {
-                        foreignResult = interop.readMember(truffleObject, stringKey);
+                        return interop.readMember(truffleObject, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                         CompilerDirectives.transferToInterpreterAndInvalidate();
                         optimistic = false;
-                        foreignResult = fallback(truffleObject, stringKey, root, hasArrayElements, e instanceof UnknownIdentifierException);
+                        return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                     }
                 } else {
                     if (interop.isMemberReadable(truffleObject, stringKey)) {
                         try {
-                            foreignResult = interop.readMember(truffleObject, stringKey);
+                            return interop.readMember(truffleObject, stringKey);
                         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                             return Undefined.instance;
                         }
                     } else {
-                        foreignResult = fallback(truffleObject, stringKey, root, hasArrayElements, true);
+                        return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                     }
                 }
             }
-            return importValue(foreignResult);
         }
 
-        private Object fallback(Object truffleObject, String stringKey, ReadElementNode root, boolean hasArrayElements, boolean mayHaveMembers) {
-            if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
-                return getSize(truffleObject);
-            } else if (mayHaveMembers && root.context.isOptionNashornCompatibilityMode()) {
-                return tryInvokeGetter(truffleObject, stringKey, root.context);
-            } else {
-                return maybeReadFromPrototype(truffleObject, stringKey, root.context);
-            }
-        }
-
-        private Object tryInvokeGetter(Object thisObj, String key, JSContext context) {
+        private Object tryGetters(Object thisObj, String key, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
             TruffleLanguage.Env env = context.getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
-                Object result = tryGetResult(thisObj, "get", key);
+                Object result = tryInvokeGetter(thisObj, "get", key);
                 if (result != null) {
                     return result;
                 }
-                result = tryGetResult(thisObj, "is", key);
+                result = tryInvokeGetter(thisObj, "is", key);
                 if (result != null) {
                     return result;
                 }
             }
-            return maybeReadFromPrototype(thisObj, key, context);
+            return null;
         }
 
-        private Object tryGetResult(Object thisObj, String prefix, String key) {
+        private Object tryInvokeGetter(Object thisObj, String prefix, String key) {
             String getterKey = PropertyCacheNode.getAccessorKey(prefix, key);
             if (getterKey == null) {
                 return null;
@@ -1615,14 +1630,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object importValue(Object value) {
-            if (importValueNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                importValueNode = insert(ImportValueNode.create());
-            }
-            return importValueNode.executeWithTarget(value);
-        }
-
         private Object getSize(Object truffleObject) {
             try {
                 return JSRuntime.longToIntOrDouble(interop.getArraySize(truffleObject));
@@ -1632,7 +1639,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             }
         }
 
-        private Object maybeReadFromPrototype(Object truffleObject, String index, JSContext context) {
+        private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
+            assert JSRuntime.isPropertyKey(key);
             if (context.getContextOptions().hasForeignObjectPrototype()) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1640,7 +1648,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
                 DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(truffleObject);
-                return readFromPrototypeNode.executeWithTargetAndIndex(prototype, index);
+                return readFromPrototypeNode.executeWithTargetAndIndex(prototype, key);
             } else {
                 return Undefined.instance;
             }

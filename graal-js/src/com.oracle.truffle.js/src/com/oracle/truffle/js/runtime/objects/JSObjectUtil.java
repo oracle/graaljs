@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -255,6 +255,10 @@ public final class JSObjectUtil {
         DynamicObjectLibrary.getUncached().putWithFlags(thisObj, key, accessor, flags | JSProperty.ACCESSOR);
     }
 
+    public static void putBuiltinAccessorProperty(DynamicObject thisObj, Object key, Accessor accessor) {
+        putBuiltinAccessorProperty(thisObj, key, accessor, JSAttributes.configurableNotEnumerable());
+    }
+
     public static void putProxyProperty(DynamicObject thisObj, Object key, PropertyProxy proxy, int flags) {
         assert JSRuntime.isPropertyKey(key) && !isNoSuchPropertyOrMethod(key);
         assert checkForExistingProperty(thisObj, key);
@@ -433,9 +437,9 @@ public final class JSObjectUtil {
         container.forEachBuiltin(new Consumer<Builtin>() {
             @Override
             public void accept(Builtin builtin) {
-                if (builtin.getECMAScriptVersion() > context.getEcmaScriptVersion()) {
+                if (!builtin.isIncluded(context)) {
                     return;
-                } else if (builtin.isAnnexB() && !context.isOptionAnnexB()) {
+                } else if (builtin.isGetter() || builtin.isSetter()) {
                     return;
                 }
                 JSFunctionData functionData = builtin.createFunctionData(context);

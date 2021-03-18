@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,19 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
+import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
+import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
@@ -63,29 +71,25 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         return CLASS_NAME;
     }
 
+    public abstract int getByteLength();
+
     public abstract void detachArrayBuffer();
 
-    public static byte[] getByteArray(DynamicObject thisObj) {
-        assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
+    public abstract boolean isDetached();
+
+    public static byte[] getByteArray(Object thisObj) {
+        assert JSArrayBuffer.isJSHeapArrayBuffer(thisObj);
         return ((Heap) thisObj).getByteArray();
     }
 
-    public static int getByteLength(DynamicObject thisObj) {
-        assert JSAbstractBuffer.isJSAbstractHeapBuffer(thisObj);
-        return getByteArray(thisObj).length;
-    }
-
-    public static int getDirectByteLength(DynamicObject thisObj) {
-        return getDirectByteBuffer(thisObj).capacity();
-    }
-
-    public static void setDirectByteBuffer(DynamicObject thisObj, ByteBuffer buffer) {
-        ((DirectBase) thisObj).setByteBuffer(buffer);
-    }
-
-    public static ByteBuffer getDirectByteBuffer(DynamicObject thisObj) {
+    public static ByteBuffer getDirectByteBuffer(Object thisObj) {
         assert JSArrayBuffer.isJSDirectArrayBuffer(thisObj) || JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
         return DirectByteBufferHelper.cast(((DirectBase) thisObj).getByteBuffer());
+    }
+
+    public static Object getInteropBuffer(Object thisObj) {
+        assert JSArrayBuffer.isJSInteropArrayBuffer(thisObj);
+        return ((Interop) thisObj).getInteropBuffer();
     }
 
     public static JSAgentWaiterList getWaiterList(DynamicObject thisObj) {
@@ -96,6 +100,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         ((Shared) thisObj).setWaiterList(waiterList);
     }
 
+    @ExportLibrary(InteropLibrary.class)
     public static final class Heap extends JSArrayBufferObject {
         byte[] byteArray;
 
@@ -112,8 +117,161 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         public void detachArrayBuffer() {
             this.byteArray = null;
         }
+
+        @Override
+        public boolean isDetached() {
+            return byteArray == null;
+        }
+
+        @Override
+        public int getByteLength() {
+            return byteArray.length;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasBufferElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getBufferSize() {
+            return isDetached() ? 0 : getByteLength();
+        }
+
+        private void ensureNotDetached() throws IndexOutOfBoundsException {
+            if (isDetached()) {
+                throw DetachedBufferIndexOutOfBoundsException.INSTANCE;
+            }
+        }
+
+        @ExportMessage
+        byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return byteArray[Math.toIntExact(byteOffset)];
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+        }
+
+        @ExportMessage
+        short readBufferShort(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return (short) ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt16(byteArray, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+        }
+
+        @ExportMessage
+        int readBufferInt(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt32(byteArray, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+        }
+
+        @ExportMessage
+        long readBufferLong(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt64(byteArray, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+        }
+
+        @ExportMessage
+        float readBufferFloat(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getFloat(byteArray, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+        }
+
+        @ExportMessage
+        double readBufferDouble(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getDouble(byteArray, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+        }
+
+        @ExportMessage
+        boolean isBufferWritable() {
+            return hasBufferElements();
+        }
+
+        @ExportMessage
+        void writeBufferByte(long byteOffset, byte value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                byteArray[Math.toIntExact(byteOffset)] = value;
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+        }
+
+        @ExportMessage
+        void writeBufferShort(ByteOrder order, long byteOffset, short value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt16(byteArray, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+        }
+
+        @ExportMessage
+        void writeBufferInt(ByteOrder order, long byteOffset, int value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt32(byteArray, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+        }
+
+        @ExportMessage
+        void writeBufferLong(ByteOrder order, long byteOffset, long value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt64(byteArray, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+        }
+
+        @ExportMessage
+        void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putFloat(byteArray, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+        }
+
+        @ExportMessage
+        void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteArrayAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putDouble(byteArray, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+        }
     }
 
+    @ExportLibrary(InteropLibrary.class)
     public abstract static class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
@@ -131,7 +289,154 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @Override
+        public final int getByteLength() {
+            return byteBuffer.limit();
+        }
+
+        @Override
         public abstract void detachArrayBuffer();
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean hasBufferElements() {
+            return true;
+        }
+
+        @ExportMessage
+        final long getBufferSize() {
+            return isDetached() ? 0 : getByteLength();
+        }
+
+        private void ensureNotDetached() {
+            if (isDetached()) {
+                throw DetachedBufferIndexOutOfBoundsException.INSTANCE;
+            }
+        }
+
+        @ExportMessage
+        final byte readBufferByte(long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return byteBuffer.get(Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final short readBufferShort(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return (short) ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt16(byteBuffer, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final int readBufferInt(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt32(byteBuffer, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final long readBufferLong(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getInt64(byteBuffer, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final float readBufferFloat(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getFloat(byteBuffer, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final double readBufferDouble(ByteOrder order, long byteOffset) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                return ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).getDouble(byteBuffer, Math.toIntExact(byteOffset));
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final boolean isBufferWritable() {
+            return hasBufferElements();
+        }
+
+        @ExportMessage
+        final void writeBufferByte(long byteOffset, byte value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                byteBuffer.put(Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final void writeBufferShort(ByteOrder order, long byteOffset, short value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt16(byteBuffer, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final void writeBufferInt(ByteOrder order, long byteOffset, int value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt32(byteBuffer, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final void writeBufferLong(ByteOrder order, long byteOffset, long value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putInt64(byteBuffer, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final void writeBufferFloat(ByteOrder order, long byteOffset, float value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putFloat(byteBuffer, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+        }
+
+        @ExportMessage
+        final void writeBufferDouble(ByteOrder order, long byteOffset, double value) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                ByteBufferAccess.forOrder(order == ByteOrder.LITTLE_ENDIAN).putDouble(byteBuffer, Math.toIntExact(byteOffset), value);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+        }
     }
 
     public static final class Direct extends DirectBase {
@@ -142,6 +447,11 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         @Override
         public void detachArrayBuffer() {
             this.byteBuffer = null;
+        }
+
+        @Override
+        public boolean isDetached() {
+            return byteBuffer == null;
         }
     }
 
@@ -165,6 +475,47 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         public void detachArrayBuffer() {
             throw Errors.unsupported("SharedArrayBuffer cannot be detached");
         }
+
+        @Override
+        public boolean isDetached() {
+            return false;
+        }
+    }
+
+    /**
+     * ArrayBuffer backed by Interop Buffer.
+     */
+    @ExportLibrary(value = InteropLibrary.class, delegateTo = "interopBuffer")
+    public static final class Interop extends JSArrayBufferObject {
+        final Object interopBuffer;
+
+        protected Interop(Shape shape, Object interopBuffer) {
+            super(shape);
+            this.interopBuffer = interopBuffer;
+        }
+
+        @Override
+        public int getByteLength() {
+            try {
+                return Math.toIntExact(InteropLibrary.getUncached(interopBuffer).getBufferSize(interopBuffer));
+            } catch (UnsupportedMessageException | ArithmeticException e) {
+                return 0;
+            }
+        }
+
+        public Object getInteropBuffer() {
+            return interopBuffer;
+        }
+
+        @Override
+        public boolean isDetached() {
+            return false;
+        }
+
+        @Override
+        public void detachArrayBuffer() {
+            throw Errors.unsupported("Foreign ArrayBuffer cannot be detached");
+        }
     }
 
     public static DynamicObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
@@ -177,5 +528,23 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
     public static DynamicObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
         return new Shared(shape, byteBuffer, waiterList);
+    }
+
+    public static DynamicObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
+        return new Interop(shape, interopBuffer);
+    }
+
+    @SuppressWarnings("serial")
+    static final class DetachedBufferIndexOutOfBoundsException extends IndexOutOfBoundsException {
+        private static final IndexOutOfBoundsException INSTANCE = new DetachedBufferIndexOutOfBoundsException();
+
+        private DetachedBufferIndexOutOfBoundsException() {
+        }
+
+        @SuppressWarnings("sync-override")
+        @Override
+        public Throwable fillInStackTrace() {
+            return this;
+        }
     }
 }

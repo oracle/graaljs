@@ -112,4 +112,20 @@ EXPORT_TO_JS(CreateWithAccessor) {
     args.GetReturnValue().Set(objectTemplate->NewInstance(context).ToLocalChecked());
 }
 
+// ObjectTemplate::SetHandler
+
+EXPORT_TO_JS(CheckNamedHandlerWithInternalFields) {
+    Isolate* isolate = args.GetIsolate();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
+    int expectedCount = 3;
+    objectTemplate->SetInternalFieldCount(expectedCount);
+    NamedPropertyHandlerConfiguration handler;
+    objectTemplate->SetHandler(handler);
+
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Object> instance = objectTemplate->NewInstance(context).ToLocalChecked();
+    int actualCount = instance->InternalFieldCount();
+    args.GetReturnValue().Set(expectedCount == actualCount);
+}
+
 #undef SUITE
