@@ -73,6 +73,12 @@ public abstract class ForeignObjectPrototypeNode extends JavaScriptBaseNode {
             return realm.getMapPrototype();
         } else if (interop.hasIterator(truffleObject)) {
             return realm.getForeignIterablePrototype();
+        } else if (interop.isString(truffleObject)) {
+            return realm.getStringPrototype();
+        } else if (interop.isNumber(truffleObject)) {
+            return realm.getNumberPrototype();
+        } else if (interop.isBoolean(truffleObject)) {
+            return realm.getBooleanPrototype();
         } else {
             return realm.getObjectPrototype();
         }
