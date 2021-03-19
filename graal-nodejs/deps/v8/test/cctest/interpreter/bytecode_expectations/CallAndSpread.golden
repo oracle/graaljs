@@ -11,9 +11,8 @@ snippet: "
 "
 frame size: 3
 parameter count: 1
-bytecode array length: 25
+bytecode array length: 24
 bytecodes: [
-  /*   30 E> */ B(StackCheck),
   /*   34 S> */ B(LdaGlobal), U8(0), U8(0),
                 B(Star), R(1),
   /*   39 E> */ B(LdaNamedProperty), R(1), U8(1), U8(2),
@@ -38,9 +37,8 @@ snippet: "
 "
 frame size: 4
 parameter count: 1
-bytecode array length: 28
+bytecode array length: 27
 bytecodes: [
-  /*   30 E> */ B(StackCheck),
   /*   34 S> */ B(LdaGlobal), U8(0), U8(0),
                 B(Star), R(1),
   /*   39 E> */ B(LdaNamedProperty), R(1), U8(1), U8(2),
@@ -65,11 +63,10 @@ handlers: [
 snippet: "
   Math.max(0, ...[1, 2, 3], 4);
 "
-frame size: 9
+frame size: 8
 parameter count: 1
-bytecode array length: 106
+bytecode array length: 100
 bytecodes: [
-  /*   30 E> */ B(StackCheck),
   /*   34 S> */ B(LdaGlobal), U8(0), U8(0),
                 B(Star), R(0),
                 B(LdaNamedProperty), R(0), U8(1), U8(2),
@@ -80,9 +77,7 @@ bytecodes: [
                 B(Star), R(3),
   /*   49 S> */ B(CreateArrayLiteral), U8(4), U8(5), U8(37),
                 B(Star), R(7),
-                B(GetIterator), R(7), U8(6),
-                B(Star), R(8),
-                B(CallProperty0), R(8), R(7), U8(8),
+                B(GetIterator), R(7), U8(6), U8(8),
                 B(Mov), R(0), R(2),
                 B(JumpIfJSReceiver), U8(7),
                 B(CallRuntime), U16(Runtime::kThrowSymbolIteratorInvalid), R(0), U8(0),

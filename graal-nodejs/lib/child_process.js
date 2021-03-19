@@ -128,10 +128,10 @@ function _forkChild(fd, serializationMode) {
   p.unref();
   const control = setupChannel(process, p, serializationMode);
   process.on('newListener', function onNewListener(name) {
-    if (name === 'message' || name === 'disconnect') control.ref();
+    if (name === 'message' || name === 'disconnect') control.refCounted();
   });
   process.on('removeListener', function onRemoveListener(name) {
-    if (name === 'message' || name === 'disconnect') control.unref();
+    if (name === 'message' || name === 'disconnect') control.unrefCounted();
   });
 }
 
@@ -474,15 +474,13 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   // Validate windowsVerbatimArguments, if present.
-  if (options.windowsVerbatimArguments != null &&
-      typeof options.windowsVerbatimArguments !== 'boolean') {
+  let { windowsVerbatimArguments } = options;
+  if (windowsVerbatimArguments != null &&
+      typeof windowsVerbatimArguments !== 'boolean') {
     throw new ERR_INVALID_ARG_TYPE('options.windowsVerbatimArguments',
                                    'boolean',
-                                   options.windowsVerbatimArguments);
+                                   windowsVerbatimArguments);
   }
-
-  // Make a shallow copy so we don't clobber the user's options object.
-  options = { ...options };
 
   if (options.shell) {
     const command = [file].concat(args).join(' ');
@@ -495,7 +493,7 @@ function normalizeSpawnArguments(file, args, options) {
       // '/d /s /c' is used only for cmd.exe.
       if (/^(?:.*\\)?cmd(?:\.exe)?$/i.test(file)) {
         args = ['/d', '/s', '/c', `"${command}"`];
-        options.windowsVerbatimArguments = true;
+        windowsVerbatimArguments = true;
       } else {
         args = ['-c', command];
       }
@@ -545,58 +543,41 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   return {
-    file: file,
-    args: args,
-    options: options,
-    envPairs: envPairs
+    // Make a shallow copy so we don't clobber the user's options object.
+    ...options,
+    args,
+    detached: !!options.detached,
+    envPairs,
+    file,
+    windowsHide: !!options.windowsHide,
+    windowsVerbatimArguments: !!windowsVerbatimArguments
   };
 }
 
 
 function spawn(file, args, options) {
-  const opts = normalizeSpawnArguments(file, args, options);
   const child = new ChildProcess();
 
-  options = opts.options;
-  debug('spawn', opts.args, options);
-
-  child.spawn({
-    file: opts.file,
-    args: opts.args,
-    cwd: options.cwd,
-    windowsHide: !!options.windowsHide,
-    windowsVerbatimArguments: !!options.windowsVerbatimArguments,
-    detached: !!options.detached,
-    envPairs: opts.envPairs,
-    stdio: options.stdio,
-    uid: options.uid,
-    gid: options.gid,
-    serialization: options.serialization,
-  });
+  options = normalizeSpawnArguments(file, args, options);
+  debug('spawn', options);
+  child.spawn(options);
 
   return child;
 }
 
 function spawnSync(file, args, options) {
-  const opts = normalizeSpawnArguments(file, args, options);
-
-  const defaults = {
+  options = {
     maxBuffer: MAX_BUFFER,
-    ...opts.options
+    ...normalizeSpawnArguments(file, args, options)
   };
-  options = opts.options = defaults;
 
-  debug('spawnSync', opts.args, options);
+  debug('spawnSync', options);
 
   // Validate the timeout, if present.
   validateTimeout(options.timeout);
 
   // Validate maxBuffer, if present.
   validateMaxBuffer(options.maxBuffer);
-
-  options.file = opts.file;
-  options.args = opts.args;
-  options.envPairs = opts.envPairs;
 
   // Validate and translate the kill signal, if present.
   options.killSignal = sanitizeKillSignal(options.killSignal);
@@ -628,7 +609,7 @@ function spawnSync(file, args, options) {
     }
   }
 
-  return child_process.spawnSync(opts);
+  return child_process.spawnSync(options);
 }
 
 
@@ -652,15 +633,15 @@ function checkExecSyncError(ret, args, cmd) {
 
 
 function execFileSync(command, args, options) {
-  const opts = normalizeSpawnArguments(command, args, options);
-  const inheritStderr = !opts.options.stdio;
+  options = normalizeSpawnArguments(command, args, options);
 
-  const ret = spawnSync(opts.file, opts.args.slice(1), opts.options);
+  const inheritStderr = !options.stdio;
+  const ret = spawnSync(options.file, options.args.slice(1), options);
 
   if (inheritStderr && ret.stderr)
     process.stderr.write(ret.stderr);
 
-  const err = checkExecSyncError(ret, opts.args, undefined);
+  const err = checkExecSyncError(ret, options.args, undefined);
 
   if (err)
     throw err;

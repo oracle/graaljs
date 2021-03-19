@@ -73,4 +73,3 @@ private:
 };
 
 #endif /* GRAAL_OBJECT_TEMPLATE_H_ */
-

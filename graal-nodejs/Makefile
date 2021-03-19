@@ -58,7 +58,7 @@ NPM ?= ./deps/npm/bin/npm-cli.js
 
 # Flags for packaging.
 BUILD_DOWNLOAD_FLAGS ?= --download=all
-BUILD_INTL_FLAGS ?= --with-intl=small-icu
+BUILD_INTL_FLAGS ?= --with-intl=full-icu
 BUILD_RELEASE_FLAGS ?= $(BUILD_DOWNLOAD_FLAGS) $(BUILD_INTL_FLAGS)
 
 # Default to quiet/pretty builds.
@@ -70,8 +70,8 @@ V ?= 0
 available-node = \
 	if [ -x $(PWD)/$(NODE) ] && [ -e $(PWD)/$(NODE) ]; then \
 		$(PWD)/$(NODE) $(1); \
-	elif [ -x `which node` ] && [ -e `which node` ] && [ `which node` ]; then \
-		`which node` $(1); \
+	elif [ -x `command -v node` ] && [ -e `command -v node` ] && [ `command -v node` ]; then \
+		`command -v node` $(1); \
 	else \
 		echo "No available node, cannot run \"node $(1)\""; \
 		exit 1; \
@@ -128,7 +128,7 @@ $(NODE_G_EXE): config.gypi out/Debug/build.ninja
 	if [ ! -r $@ -o ! -L $@ ]; then ln -fs out/Debug/$(NODE_EXE) $@; fi
 else
 $(NODE_EXE) $(NODE_G_EXE):
-	echo This Makefile currently only supports building with 'make' or 'ninja'
+	$(warning This Makefile currently only supports building with 'make' or 'ninja')
 endif
 endif
 
@@ -138,15 +138,12 @@ CONFIG_FLAGS += --debug
 endif
 
 .PHONY: with-code-cache
-with-code-cache:
-	echo "'with-code-cache' target is a noop"
-
 .PHONY: test-code-cache
-test-code-cache: with-code-cache
-	echo "'test-code-cache' target is a noop"
+with-code-cache test-code-cache:
+	$(warning '$@' target is a noop)
 
 out/Makefile: config.gypi common.gypi node.gyp \
-	deps/uv/uv.gyp deps/http_parser/http_parser.gyp deps/zlib/zlib.gyp \
+	deps/uv/uv.gyp deps/llhttp/llhttp.gyp deps/zlib/zlib.gyp \
 	tools/v8_gypfiles/toolchain.gypi tools/v8_gypfiles/features.gypi \
 	tools/v8_gypfiles/inspector.gypi tools/v8_gypfiles/v8.gyp
 	$(PYTHON) tools/gyp_node.py -f make
@@ -473,7 +470,7 @@ benchmark/napi/.buildstamp: $(ADDONS_PREREQS) \
 
 .PHONY: clear-stalled
 clear-stalled:
-	@echo "Clean up any leftover processes but don't error if found."
+	$(info Clean up any leftover processes but don't error if found.)
 	ps awwx | grep Release/node | grep -v grep | cat
 	@PS_OUT=`ps awwx | grep Release/node | grep -v grep | awk '{print $$1}'`; \
 	if [ "$${PS_OUT}" ]; then \
@@ -524,7 +521,7 @@ test-ci-js: | clear-stalled
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) -p tap --logfile test.tap \
 		--mode=$(BUILDTYPE_LOWER) --flaky-tests=$(FLAKY_TESTS) \
 		$(TEST_CI_ARGS) $(CI_JS_SUITES)
-	@echo "Clean up any leftover processes, error if found."
+	$(info Clean up any leftover processes, error if found.)
 	ps awwx | grep Release/node | grep -v grep | cat
 	@PS_OUT=`ps awwx | grep Release/node | grep -v grep | awk '{print $$1}'`; \
 	if [ "$${PS_OUT}" ]; then \
@@ -540,7 +537,7 @@ test-ci: | clear-stalled bench-addons-build build-addons build-js-native-api-tes
 		--mode=$(BUILDTYPE_LOWER) --flaky-tests=$(FLAKY_TESTS) \
 		$(TEST_CI_ARGS) $(CI_JS_SUITES) $(CI_NATIVE_SUITES) $(CI_DOC)
 	out/Release/embedtest 'require("./test/embedding/test-embedding.js")'
-	@echo "Clean up any leftover processes, error if found."
+	$(info Clean up any leftover processes, error if found.)
 	ps awwx | grep Release/node | grep -v grep | cat
 	@PS_OUT=`ps awwx | grep Release/node | grep -v grep | awk '{print $$1}'`; \
 	if [ "$${PS_OUT}" ]; then \
@@ -604,7 +601,7 @@ test-hash-seed: all
 	$(NODE) test/pummel/test-hash-seed.js
 
 .PHONY: test-doc
-test-doc: doc-only lint ## Builds, lints, and verifies the docs.
+test-doc: doc-only lint-md ## Builds, lints, and verifies the docs.
 	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
 		echo "Skipping test-doc (no crypto)"; \
 	else \
@@ -677,7 +674,7 @@ test-v8: v8  ## Runs the V8 test suite on deps/v8.
 				--mode=$(BUILDTYPE_LOWER) $(V8_TEST_OPTIONS) \
 				mjsunit cctest debugger inspector message preparser \
 				$(TAP_V8)
-	@echo Testing hash seed
+	$(info Testing hash seed)
 	$(MAKE) test-hash-seed
 
 test-v8-intl: v8
@@ -697,9 +694,8 @@ test-v8-all: test-v8 test-v8-intl test-v8-benchmarks test-v8-updates
 # runs all v8 tests
 else
 test-v8 test-v8-intl test-v8-benchmarks test-v8-all:
-	@echo "Testing v8 is not available through the source tarball."
-	@echo "Use the git repo instead:" \
-		"$ git clone https://github.com/nodejs/node.git"
+	$(warning Testing V8 is not available through the source tarball.)
+	$(warning Use the git repo instead: $$ git clone https://github.com/nodejs/node.git)
 endif
 
 apidoc_dirs = out/doc out/doc/api out/doc/api/assets
@@ -924,7 +920,7 @@ BINARYNAME=$(TARNAME)-$(PLATFORM)-$(ARCH)
 endif
 BINARYTAR=$(BINARYNAME).tar
 # OSX doesn't have xz installed by default, http://macpkg.sourceforge.net/
-HAS_XZ ?= $(shell which xz > /dev/null 2>&1; [ $$? -eq 0 ] && echo 1 || echo 0)
+HAS_XZ ?= $(shell command -v xz > /dev/null 2>&1; [ $$? -eq 0 ] && echo 1 || echo 0)
 # Supply SKIP_XZ=1 to explicitly skip .tar.xz creation
 SKIP_XZ ?= 0
 XZ = $(shell [ $(HAS_XZ) -eq 1 -a $(SKIP_XZ) -eq 0 ] && echo 1 || echo 0)
@@ -934,14 +930,13 @@ MACOSOUTDIR=out/macos
 
 ifeq ($(SKIP_XZ), 1)
 check-xz:
-	@echo "SKIP_XZ=1 supplied, skipping .tar.xz creation"
+	$(info SKIP_XZ=1 supplied, skipping .tar.xz creation)
 else
 ifeq ($(HAS_XZ), 1)
 check-xz:
 else
 check-xz:
-	@echo "No xz command, cannot continue"
-	@exit 1
+	$(error No xz command, cannot continue)
 endif
 endif
 
@@ -1042,7 +1037,7 @@ pkg-upload: pkg
 	scp -p $(TARNAME).pkg $(STAGINGSERVER):nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg
 	ssh $(STAGINGSERVER) "touch nodejs/$(DISTTYPEDIR)/$(FULLVERSION)/$(TARNAME).pkg.done"
 
-$(TARBALL): release-only $(NODE_EXE) doc
+$(TARBALL): release-only doc-only
 	git checkout-index -a -f --prefix=$(TARNAME)/
 	mkdir -p $(TARNAME)/doc/api
 	cp doc/node.1 $(TARNAME)/doc/node.1
@@ -1174,12 +1169,9 @@ ifeq ($(XZ), 1)
 endif
 
 .PHONY: bench-all
-bench-all: bench-addons-build
-	@echo "Please use benchmark/run.js or benchmark/compare.js to run the benchmarks."
-
 .PHONY: bench
-bench: bench-addons-build
-	@echo "Please use benchmark/run.js or benchmark/compare.js to run the benchmarks."
+bench bench-all: bench-addons-build
+	$(warning Please use benchmark/run.js or benchmark/compare.js to run the benchmarks.)
 
 # Build required addons for benchmark before running it.
 .PHONY: bench-addons-build
@@ -1203,7 +1195,7 @@ lint-md-clean:
 
 .PHONY: lint-md-build
 lint-md-build:
-	$(warning "Deprecated no-op target 'lint-md-build'")
+	$(warning Deprecated no-op target 'lint-md-build')
 
 ifeq ("$(wildcard tools/.mdlintstamp)","")
 LINT_MD_NEWER =
@@ -1218,19 +1210,19 @@ LINT_MD_FILES = $(shell $(FIND) $(LINT_MD_TARGETS) -type f \
 run-lint-md = tools/lint-md.js -q -f --no-stdout $(LINT_MD_FILES)
 # Lint all changed markdown files maintained by us
 tools/.mdlintstamp: $(LINT_MD_FILES)
-	@echo "Running Markdown linter..."
+	$(info Running Markdown linter...)
 	@$(call available-node,$(run-lint-md))
 	@touch $@
 
 .PHONY: lint-md
 # Lints the markdown documents maintained by us in the codebase.
-lint-md: | tools/.mdlintstamp
+lint-md: lint-js-doc | tools/.mdlintstamp
 
 
 LINT_JS_TARGETS = .eslintrc.js benchmark doc lib test tools
 
 run-lint-js = tools/node_modules/eslint/bin/eslint.js --cache \
-	--report-unused-disable-directives --ext=.js,.mjs,.md $(LINT_JS_TARGETS)
+	--report-unused-disable-directives --ext=$(EXTENSIONS) $(LINT_JS_TARGETS)
 run-lint-js-fix = $(run-lint-js) --fix
 
 .PHONY: lint-js-fix
@@ -1238,9 +1230,12 @@ lint-js-fix:
 	@$(call available-node,$(run-lint-js-fix))
 
 .PHONY: lint-js
+.PHONY: lint-js-doc
 # Note that on the CI `lint-js-ci` is run instead.
 # Lints the JavaScript code with eslint.
-lint-js:
+lint-js lint-js-fix: EXTENSIONS=.js,.mjs,.md
+lint-js-doc: EXTENSIONS=.md
+lint-js lint-js-doc:
 	@if [ "$(shell $(node_use_openssl))" != "true" ]; then \
 		echo "Skipping $@ (no crypto)"; \
 	else \
@@ -1249,7 +1244,7 @@ lint-js:
 	fi
 
 jslint: lint-js
-	@echo "Please use lint-js instead of jslint"
+	$(warning Please use lint-js instead of jslint)
 
 run-lint-js-ci = tools/node_modules/eslint/bin/eslint.js \
   --report-unused-disable-directives --ext=.js,.mjs,.md -f tap \
@@ -1258,11 +1253,11 @@ run-lint-js-ci = tools/node_modules/eslint/bin/eslint.js \
 .PHONY: lint-js-ci
 # On the CI the output is emitted in the TAP format.
 lint-js-ci:
-	@echo "Running JS linter..."
+	$(info Running JS linter...)
 	@$(call available-node,$(run-lint-js-ci))
 
 jslint-ci: lint-js-ci
-	@echo "Please use lint-js-ci instead of jslint-ci"
+	$(warning Please use lint-js-ci instead of jslint-ci)
 
 LINT_CPP_ADDON_DOC_FILES_GLOB = test/addons/??_*/*.cc test/addons/??_*/*.h
 LINT_CPP_ADDON_DOC_FILES = $(wildcard $(LINT_CPP_ADDON_DOC_FILES_GLOB))
@@ -1274,7 +1269,7 @@ LINT_CPP_EXCLUDE += $(wildcard test/js-native-api/??_*/*.cc test/js-native-api/?
 LINT_CPP_EXCLUDE += src/tracing/trace_event.h src/tracing/trace_event_common.h
 
 LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
-	benchmark/napi/function_call/binding.cc \
+	benchmark/napi/*/*.cc \
 	src/*.c \
 	src/*.cc \
 	src/*.h \
@@ -1319,15 +1314,15 @@ CLANG_FORMAT_START ?= HEAD
 #  $ CLANG_FORMAT_START=master make format-cpp
 format-cpp: ## Format C++ diff from $CLANG_FORMAT_START to current changes
 ifneq ("","$(wildcard tools/clang-format/node_modules/)")
-	@echo "Formatting C++ diff from $(CLANG_FORMAT_START).."
+	$(info Formatting C++ diff from $(CLANG_FORMAT_START)..)
 	@$(PYTHON) tools/clang-format/node_modules/.bin/git-clang-format \
 		--binary=tools/clang-format/node_modules/.bin/clang-format \
 		--style=file \
 		$(CLANG_FORMAT_START) -- \
 		$(LINT_CPP_FILES)
 else
-	@echo "clang-format is not installed."
-	@echo "To install (requires internet access) run: $ make format-cpp-build"
+	$(info clang-format is not installed.)
+	$(info To install (requires internet access) run: $$ make format-cpp-build)
 endif
 
 ifeq ($(V),1)
@@ -1340,7 +1335,7 @@ endif
 lint-cpp: tools/.cpplintstamp
 
 tools/.cpplintstamp: $(LINT_CPP_FILES)
-	@echo "Running C++ linter..."
+	$(info Running C++ linter...)
 	@$(PYTHON) tools/cpplint.py $(CPPLINT_QUIET) $?
 	@$(PYTHON) tools/checkimports.py $?
 	@touch $@
@@ -1349,19 +1344,19 @@ tools/.cpplintstamp: $(LINT_CPP_FILES)
 lint-addon-docs: tools/.doclintstamp
 
 tools/.doclintstamp: test/addons/.docbuildstamp
-	@echo "Running C++ linter on addon docs..."
+	$(info Running C++ linter on addon docs...)
 	@$(PYTHON) tools/cpplint.py $(CPPLINT_QUIET) --filter=$(ADDON_DOC_LINT_FLAGS) \
 		$(LINT_CPP_ADDON_DOC_FILES_GLOB)
 	@touch $@
 
 cpplint: lint-cpp
-	@echo "Please use lint-cpp instead of cpplint"
+	$(warning Please use lint-cpp instead of cpplint)
 
 .PHONY: lint-py-build
 # python -m pip install flake8
 # Try with '--system' is to overcome systems that blindly set '--user'
 lint-py-build:
-	@echo "Pip installing flake8 linter on $(shell $(PYTHON) --version)..."
+	$(info Pip installing flake8 linter on $(shell $(PYTHON) --version)...)
 	$(PYTHON) -m pip install --upgrade -t tools/pip/site-packages flake8 || \
 		$(PYTHON) -m pip install --upgrade --system -t tools/pip/site-packages flake8
 
@@ -1373,8 +1368,8 @@ lint-py:
 	PYTHONPATH=tools/pip $(PYTHON) -m flake8 --count --show-source --statistics .
 else
 lint-py:
-	@echo "Python linting with flake8 is not avalible"
-	@echo "Run 'make lint-py-build'"
+	$(warning Python linting with flake8 is not avalible)
+	$(warning Run 'make lint-py-build')
 endif
 
 .PHONY: lint
@@ -1400,12 +1395,9 @@ lint-ci: lint-js-ci lint-cpp lint-py lint-md lint-addon-docs
 		exit 1 ; \
 	fi
 else
-lint:
-	@echo "Linting is not available through the source tarball."
-	@echo "Use the git repo instead:" \
-		"$ git clone https://github.com/nodejs/node.git"
-
-lint-ci: lint
+lint lint-ci:
+	$(info Linting is not available through the source tarball.)
+	$(info Use the git repo instead: $$ git clone https://github.com/nodejs/node.git)
 endif
 
 .PHONY: lint-clean
@@ -1413,7 +1405,7 @@ lint-clean:
 	$(RM) tools/.*lintstamp
 	$(RM) .eslintcache
 
-HAS_DOCKER ?= $(shell which docker > /dev/null 2>&1; [ $$? -eq 0 ] && echo 1 || echo 0)
+HAS_DOCKER ?= $(shell command -v docker > /dev/null 2>&1; [ $$? -eq 0 ] && echo 1 || echo 0)
 
 ifeq ($(HAS_DOCKER), 1)
 DOCKER_COMMAND ?= docker run -it -v $(PWD):/node
@@ -1425,6 +1417,5 @@ gen-openssl: ## Generate platform dependent openssl files (requires docker)
 	$(DOCKER_COMMAND) node-openssl-builder make -C deps/openssl/config
 else
 gen-openssl:
-	@echo "No docker command, cannot continue"
-	@exit 1
+	$(error No docker command, cannot continue)
 endif

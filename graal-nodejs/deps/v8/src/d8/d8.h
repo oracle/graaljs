@@ -23,6 +23,8 @@
 
 namespace v8 {
 
+class D8Console;
+
 // A single counter in a counter collection.
 class Counter {
  public:
@@ -111,70 +113,20 @@ class SourceGroup {
   int end_offset_;
 };
 
-// The backing store of an ArrayBuffer or SharedArrayBuffer, after
-// Externalize() has been called on it.
-class ExternalizedContents {
- public:
-  explicit ExternalizedContents(const ArrayBuffer::Contents& contents)
-      : data_(contents.Data()),
-        length_(contents.ByteLength()),
-        deleter_(contents.Deleter()),
-        deleter_data_(contents.DeleterData()) {}
-  explicit ExternalizedContents(const SharedArrayBuffer::Contents& contents)
-      : data_(contents.Data()),
-        length_(contents.ByteLength()),
-        deleter_(contents.Deleter()),
-        deleter_data_(contents.DeleterData()) {}
-  ExternalizedContents(ExternalizedContents&& other) V8_NOEXCEPT
-      : data_(other.data_),
-        length_(other.length_),
-        deleter_(other.deleter_),
-        deleter_data_(other.deleter_data_) {
-    other.data_ = nullptr;
-    other.length_ = 0;
-    other.deleter_ = nullptr;
-    other.deleter_data_ = nullptr;
-  }
-  ExternalizedContents& operator=(ExternalizedContents&& other) V8_NOEXCEPT {
-    if (this != &other) {
-      data_ = other.data_;
-      length_ = other.length_;
-      deleter_ = other.deleter_;
-      deleter_data_ = other.deleter_data_;
-      other.data_ = nullptr;
-      other.length_ = 0;
-      other.deleter_ = nullptr;
-      other.deleter_data_ = nullptr;
-    }
-    return *this;
-  }
-  ~ExternalizedContents();
-
- private:
-  void* data_;
-  size_t length_;
-  ArrayBuffer::Contents::DeleterCallback deleter_;
-  void* deleter_data_;
-
-  DISALLOW_COPY_AND_ASSIGN(ExternalizedContents);
-};
-
 class SerializationData {
  public:
   SerializationData() : size_(0) {}
 
   uint8_t* data() { return data_.get(); }
   size_t size() { return size_; }
-  const std::vector<ArrayBuffer::Contents>& array_buffer_contents() {
-    return array_buffer_contents_;
+  const std::vector<std::shared_ptr<v8::BackingStore>>& backing_stores() {
+    return backing_stores_;
   }
-  const std::vector<SharedArrayBuffer::Contents>&
-  shared_array_buffer_contents() {
-    return shared_array_buffer_contents_;
+  const std::vector<std::shared_ptr<v8::BackingStore>>& sab_backing_stores() {
+    return sab_backing_stores_;
   }
-  const std::vector<WasmModuleObject::TransferrableModule>&
-  transferrable_modules() {
-    return transferrable_modules_;
+  const std::vector<CompiledWasmModule>& compiled_wasm_modules() {
+    return compiled_wasm_modules_;
   }
 
  private:
@@ -184,9 +136,9 @@ class SerializationData {
 
   std::unique_ptr<uint8_t, DataDeleter> data_;
   size_t size_;
-  std::vector<ArrayBuffer::Contents> array_buffer_contents_;
-  std::vector<SharedArrayBuffer::Contents> shared_array_buffer_contents_;
-  std::vector<WasmModuleObject::TransferrableModule> transferrable_modules_;
+  std::vector<std::shared_ptr<v8::BackingStore>> backing_stores_;
+  std::vector<std::shared_ptr<v8::BackingStore>> sab_backing_stores_;
+  std::vector<CompiledWasmModule> compiled_wasm_modules_;
 
  private:
   friend class Serializer;
@@ -276,8 +228,6 @@ class PerIsolateData {
     PerIsolateData* data_;
   };
 
-  inline void HostCleanupFinalizationGroup(Local<FinalizationGroup> fg);
-  inline MaybeLocal<FinalizationGroup> GetCleanupFinalizationGroup();
   inline void SetTimeout(Local<Function> callback, Local<Context> context);
   inline MaybeLocal<Function> GetTimeoutCallback();
   inline MaybeLocal<Context> GetTimeoutContext();
@@ -295,7 +245,6 @@ class PerIsolateData {
   Global<Value> realm_shared_;
   std::queue<Global<Function>> set_timeout_callbacks_;
   std::queue<Global<Context>> set_timeout_contexts_;
-  std::queue<Global<FinalizationGroup>> cleanup_finalization_groups_;
   AsyncHooks* async_hooks_wrapper_;
 
   int RealmIndexOrThrow(const v8::FunctionCallbackInfo<v8::Value>& args,
@@ -318,23 +267,22 @@ class ShellOptions {
   bool omit_quit = false;
   bool wait_for_wasm = true;
   bool stress_opt = false;
-  bool stress_deopt = false;
   int stress_runs = 1;
+  bool stress_snapshot = false;
   bool interactive_shell = false;
   bool test_shell = false;
   bool expected_to_throw = false;
   bool mock_arraybuffer_allocator = false;
   size_t mock_arraybuffer_allocator_limit = 0;
+  bool multi_mapped_mock_allocator = false;
   bool enable_inspector = false;
   int num_isolates = 1;
   v8::ScriptCompiler::CompileOptions compile_options =
       v8::ScriptCompiler::kNoCompileOptions;
-  bool stress_background_compile = false;
   CodeCacheOptions code_cache_options = CodeCacheOptions::kNoProduceCache;
   SourceGroup* isolate_sources = nullptr;
   const char* icu_data_file = nullptr;
   const char* icu_locale = nullptr;
-  const char* natives_blob = nullptr;
   const char* snapshot_blob = nullptr;
   bool trace_enabled = false;
   const char* trace_path = nullptr;
@@ -348,6 +296,9 @@ class ShellOptions {
   bool stress_delay_tasks = false;
   std::vector<const char*> arguments;
   bool include_arguments = true;
+  bool cpu_profiler = false;
+  bool cpu_profiler_print = false;
+  bool fuzzy_module_file_extensions = true;
 };
 
 class Shell : public i::AllStatic {
@@ -367,10 +318,12 @@ class Shell : public i::AllStatic {
                             ReportExceptions report_exceptions,
                             ProcessMessageQueue process_message_queue);
   static bool ExecuteModule(Isolate* isolate, const char* file_name);
+  static void ReportException(Isolate* isolate, Local<Message> message,
+                              Local<Value> exception);
   static void ReportException(Isolate* isolate, TryCatch* try_catch);
   static Local<String> ReadFile(Isolate* isolate, const char* name);
   static Local<Context> CreateEvaluationContext(Isolate* isolate);
-  static int RunMain(Isolate* isolate, int argc, char* argv[], bool last_run);
+  static int RunMain(Isolate* isolate, bool last_run);
   static int Main(int argc, char* argv[]);
   static void Exit(int exit_code);
   static void OnExit(Isolate* isolate);
@@ -389,6 +342,8 @@ class Shell : public i::AllStatic {
   static void MapCounters(v8::Isolate* isolate, const char* name);
 
   static void PerformanceNow(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void PerformanceMeasureMemory(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static void RealmCurrent(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void RealmOwner(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -468,11 +423,13 @@ class Shell : public i::AllStatic {
   static void SetUMask(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void MakeDirectory(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void RemoveDirectory(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void HostCleanupFinalizationGroup(Local<Context> context,
-                                           Local<FinalizationGroup> fg);
   static MaybeLocal<Promise> HostImportModuleDynamically(
       Local<Context> context, Local<ScriptOrModule> referrer,
       Local<String> specifier);
+  static void ModuleResolutionSuccessCallback(
+      const v8::FunctionCallbackInfo<v8::Value>& info);
+  static void ModuleResolutionFailureCallback(
+      const v8::FunctionCallbackInfo<v8::Value>& info);
   static void HostInitializeImportMetaObject(Local<Context> context,
                                              Local<Module> module,
                                              Local<Object> meta);
@@ -502,6 +459,9 @@ class Shell : public i::AllStatic {
   static void AddRunningWorker(std::shared_ptr<Worker> worker);
   static void RemoveRunningWorker(const std::shared_ptr<Worker>& worker);
 
+  static void Initialize(Isolate* isolate, D8Console* console,
+                         bool isOnMainThread = true);
+
  private:
   static Global<Context> evaluation_context_;
   static base::OnceType quit_once_;
@@ -519,7 +479,6 @@ class Shell : public i::AllStatic {
   static base::LazyMutex workers_mutex_;  // Guards the following members.
   static bool allow_new_workers_;
   static std::unordered_set<std::shared_ptr<Worker>> running_workers_;
-  static std::vector<ExternalizedContents> externalized_contents_;
 
   // Multiple isolates may update this flag concurrently.
   static std::atomic<bool> script_executed_;
@@ -529,7 +488,6 @@ class Shell : public i::AllStatic {
   static void WriteLcovData(v8::Isolate* isolate, const char* file);
   static Counter* GetCounter(const char* name, bool is_histogram);
   static Local<String> Stringify(Isolate* isolate, Local<Value> value);
-  static void Initialize(Isolate* isolate);
   static void RunShell(Isolate* isolate);
   static bool SetOptions(int argc, char* argv[]);
   static Local<ObjectTemplate> CreateGlobalTemplate(Isolate* isolate);

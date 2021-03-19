@@ -163,14 +163,14 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         if _is_windows:
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
-            extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
+            extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw']
         else:
             extra_flags = []
 
         _mxrun(python_cmd() + [join(_suite.dir, 'configure'),
                 '--partly-static',
                 '--without-dtrace',
-                '--without-snapshot',
+                '--without-inspector',
                 '--without-node-snapshot',
                 '--without-node-code-cache',
                 '--java-home', _java_home(forBuild=True)
@@ -308,6 +308,8 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             join('internal', 'readline', 'utils.js'),            # yield
             join('internal', 'streams', 'buffer_list.js'),       # yield
             join('internal', 'streams', 'from.js'),              # await
+            join('internal', 'streams', 'pipeline.js'),          # await
+            join('internal', 'streams', 'readable.js'),          # await
             join('internal', 'vm', 'module.js'),                 # await
         ]
 

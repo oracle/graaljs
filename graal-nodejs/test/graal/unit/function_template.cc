@@ -141,21 +141,6 @@ EXPORT_TO_JS(CheckPrototypeTemplate) {
     args.GetReturnValue().Set(count == 0);
 }
 
-// FunctionTemplate::SetHiddenPrototype
-
-EXPORT_TO_JS(CheckSetHiddenPrototype) {
-    Isolate* isolate = args.GetIsolate();
-    Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
-
-    functionTemplate->SetHiddenPrototype(true);
-    //TODO check behaviour
-
-    functionTemplate->SetHiddenPrototype(false);
-    //TODO check behaviour
-
-    args.GetReturnValue().Set(true);
-}
-
 // Template::Set
 
 EXPORT_TO_JS(SetOnInstanceTemplate) {

@@ -38,9 +38,6 @@ class Interpreter {
   explicit Interpreter(Isolate* isolate);
   virtual ~Interpreter() = default;
 
-  // Returns the interrupt budget which should be used for the profiler counter.
-  V8_EXPORT_PRIVATE static int InterruptBudget();
-
   // Creates a compilation job which will generate bytecode for |literal|.
   // Additionally, if |eager_inner_literals| is not null, adds any eagerly
   // compilable inner FunctionLiterals to this list.
@@ -65,9 +62,6 @@ class Interpreter {
   // Set the bytecode handler for |bytecode| and |operand_scale|.
   void SetBytecodeHandler(Bytecode bytecode, OperandScale operand_scale,
                           Code handler);
-
-  // GC support.
-  void IterateDispatchTable(RootVisitor* v);
 
   // Disassembler support.
   V8_EXPORT_PRIVATE const char* LookupNameOfBytecodeHandler(const Code code);

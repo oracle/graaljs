@@ -24,11 +24,8 @@ class V8_EXPORT_PRIVATE AccessBuilder final
   // ===========================================================================
   // Access to external values (based on external references).
 
-  // Provides access to a tagged field identified by an external reference.
-  static FieldAccess ForExternalTaggedValue();
-
-  // Provides access to an uint8 field identified by an external reference.
-  static FieldAccess ForExternalUint8Value();
+  // Provides access to an IntPtr field identified by an external reference.
+  static FieldAccess ForExternalIntPtr();
 
   // ===========================================================================
   // Access to heap object fields and elements (based on tagged pointer).
@@ -270,6 +267,9 @@ class V8_EXPORT_PRIVATE AccessBuilder final
   // Provides access to FixedArray slots.
   static FieldAccess ForFixedArraySlot(
       size_t index, WriteBarrierKind write_barrier_kind = kFullWriteBarrier);
+
+  // Provides access to ScopeInfo flags.
+  static FieldAccess ForScopeInfoFlags();
 
   // Provides access to Context slots.
   static FieldAccess ForContextSlot(size_t index);

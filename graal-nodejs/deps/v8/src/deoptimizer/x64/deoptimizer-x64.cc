@@ -13,8 +13,9 @@
 namespace v8 {
 namespace internal {
 
-const bool Deoptimizer::kSupportsFixedDeoptExitSize = false;
-const int Deoptimizer::kDeoptExitSize = 0;
+const bool Deoptimizer::kSupportsFixedDeoptExitSizes = false;
+const int Deoptimizer::kNonLazyDeoptExitSize = 0;
+const int Deoptimizer::kLazyDeoptExitSize = 0;
 
 #define __ masm->
 
@@ -73,7 +74,7 @@ void Deoptimizer::GenerateDeoptimizationEntries(MacroAssembler* masm,
   Label context_check;
   __ movq(rdi, Operand(rbp, CommonFrameConstants::kContextOrFrameTypeOffset));
   __ JumpIfSmi(rdi, &context_check);
-  __ movq(rax, Operand(rbp, JavaScriptFrameConstants::kFunctionOffset));
+  __ movq(rax, Operand(rbp, StandardFrameConstants::kFunctionOffset));
   __ bind(&context_check);
   __ movq(arg_reg_1, rax);
   __ Set(arg_reg_2, static_cast<int>(deopt_kind));
@@ -81,7 +82,7 @@ void Deoptimizer::GenerateDeoptimizationEntries(MacroAssembler* masm,
 
   // On windows put the arguments on the stack (PrepareCallCFunction
   // has created space for this). On linux pass the arguments in r8 and r9.
-#ifdef _WIN64
+#ifdef V8_TARGET_OS_WIN
   __ movq(Operand(rsp, 4 * kSystemPointerSize), arg5);
   __ LoadAddress(arg5, ExternalReference::isolate_address(isolate));
   __ movq(Operand(rsp, 5 * kSystemPointerSize), arg5);
@@ -221,18 +222,10 @@ Float32 RegisterValues::GetFloatRegister(unsigned n) const {
 }
 
 void FrameDescription::SetCallerPc(unsigned offset, intptr_t value) {
-  if (kPCOnStackSize == 2 * kSystemPointerSize) {
-    // Zero out the high-32 bit of PC for x32 port.
-    SetFrameSlot(offset + kSystemPointerSize, 0);
-  }
   SetFrameSlot(offset, value);
 }
 
 void FrameDescription::SetCallerFp(unsigned offset, intptr_t value) {
-  if (kFPOnStackSize == 2 * kSystemPointerSize) {
-    // Zero out the high-32 bit of FP for x32 port.
-    SetFrameSlot(offset + kSystemPointerSize, 0);
-  }
   SetFrameSlot(offset, value);
 }
 
@@ -240,6 +233,8 @@ void FrameDescription::SetCallerConstantPool(unsigned offset, intptr_t value) {
   // No embedded constant pool support.
   UNREACHABLE();
 }
+
+void FrameDescription::SetPc(intptr_t pc) { pc_ = pc; }
 
 #undef __
 

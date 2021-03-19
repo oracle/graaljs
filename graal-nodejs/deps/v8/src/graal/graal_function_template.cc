@@ -119,7 +119,7 @@ void GraalFunctionTemplate::SetCallHandler(v8::FunctionCallback callback, v8::Lo
     jlong callback_ptr = (jlong) callback;
     GraalValue* graal_data = reinterpret_cast<GraalValue*> (*data);
     if (graal_data == nullptr) {
-        graal_data = Isolate()->GetUndefined();        
+        graal_data = Isolate()->GetUndefined();
     } else {
         graal_data = reinterpret_cast<GraalValue*>(graal_data->Copy(true));
         graal_data->MakeWeak();

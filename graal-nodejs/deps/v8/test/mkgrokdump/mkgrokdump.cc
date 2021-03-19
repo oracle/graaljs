@@ -26,10 +26,8 @@ static const char* kHeader =
     "\n"
     "# List of known V8 instance types.\n";
 
-// Non-snapshot builds allocate objects to different places.
 // Debug builds emit debug code, affecting code object sizes.
-// Embedded builtins cause objects to be allocated in different locations.
-#if defined(V8_EMBEDDED_BUILTINS) && defined(V8_USE_SNAPSHOT) && !defined(DEBUG)
+#ifndef DEBUG
 static const char* kBuild = "shipping";
 #else
 static const char* kBuild = "non-shipping";
@@ -97,6 +95,14 @@ static void DumpKnownObject(FILE* out, i::Heap* heap, const char* space_name,
 #undef RO_ROOT_LIST_CASE
 }
 
+static void DumpSpaceFirstPageAddress(FILE* out, i::PagedSpace* space) {
+  const char* name = space->name();
+  i::Address first_page = reinterpret_cast<i::Address>(space->first_page());
+  i::Tagged_t compressed = i::CompressTagged(first_page);
+  uintptr_t unsigned_compressed = static_cast<uint32_t>(compressed);
+  i::PrintF(out, "  0x%08" V8PRIxPTR ": \"%s\",\n", unsigned_compressed, name);
+}
+
 static int DumpHeapConstants(FILE* out, const char* argv0) {
   // Start up V8.
   std::unique_ptr<v8::Platform> platform = v8::platform::NewDefaultPlatform();
@@ -129,7 +135,7 @@ static int DumpHeapConstants(FILE* out, const char* argv0) {
         if (!object.IsMap()) continue;
         DumpKnownMap(out, heap, i::Heap::GetSpaceName(i::RO_SPACE), object);
       }
-      i::PagedSpaceObjectIterator iterator(heap->map_space());
+      i::PagedSpaceObjectIterator iterator(heap, heap->map_space());
       for (i::HeapObject object = iterator.Next(); !object.is_null();
            object = iterator.Next()) {
         if (!object.IsMap()) continue;
@@ -152,7 +158,7 @@ static int DumpHeapConstants(FILE* out, const char* argv0) {
 
       i::PagedSpaceIterator spit(heap);
       for (i::PagedSpace* s = spit.Next(); s != nullptr; s = spit.Next()) {
-        i::PagedSpaceObjectIterator it(s);
+        i::PagedSpaceObjectIterator it(heap, s);
         // Code objects are generally platform-dependent.
         if (s->identity() == i::CODE_SPACE || s->identity() == i::MAP_SPACE)
           continue;
@@ -161,6 +167,29 @@ static int DumpHeapConstants(FILE* out, const char* argv0) {
           DumpKnownObject(out, heap, sname, o);
         }
       }
+      i::PrintF(out, "}\n");
+    }
+
+    if (COMPRESS_POINTERS_BOOL) {
+      // Dump a list of addresses for the first page of each space that contains
+      // objects in the other tables above. This is only useful if two
+      // assumptions hold:
+      // 1. Those pages are positioned deterministically within the heap
+      //    reservation block during snapshot deserialization.
+      // 2. Those pages cannot ever be moved (such as by compaction).
+      i::PrintF(out,
+                "\n# Lower 32 bits of first page addresses for various heap "
+                "spaces.\n");
+      i::PrintF(out, "HEAP_FIRST_PAGES = {\n");
+      i::PagedSpaceIterator it(heap);
+      for (i::PagedSpace* s = it.Next(); s != nullptr; s = it.Next()) {
+        // Code page is different on Windows vs Linux (bug v8:9844), so skip it.
+        if (s->identity() == i::CODE_SPACE) {
+          continue;
+        }
+        DumpSpaceFirstPageAddress(out, s);
+      }
+      DumpSpaceFirstPageAddress(out, read_only_heap->read_only_space());
       i::PrintF(out, "}\n");
     }
 

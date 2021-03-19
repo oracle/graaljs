@@ -76,8 +76,7 @@ try {
 
 // Copies asynchronously.
 tmpdir.refresh(); // Don't use unlinkSync() since the last test may fail.
-fs.copyFile(src, dest, common.mustCall((err) => {
-  assert.ifError(err);
+fs.copyFile(src, dest, common.mustSucceed(() => {
   verify(src, dest);
 
   // Copy asynchronously with flags.
@@ -114,28 +113,57 @@ assert.throws(() => {
     () => fs.copyFile(i, dest, common.mustNotCall()),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      name: 'TypeError'
+      name: 'TypeError',
+      message: /src/
     }
   );
   assert.throws(
     () => fs.copyFile(src, i, common.mustNotCall()),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      name: 'TypeError'
+      name: 'TypeError',
+      message: /dest/
     }
   );
   assert.throws(
     () => fs.copyFileSync(i, dest),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      name: 'TypeError'
+      name: 'TypeError',
+      message: /src/
     }
   );
   assert.throws(
     () => fs.copyFileSync(src, i),
     {
       code: 'ERR_INVALID_ARG_TYPE',
-      name: 'TypeError'
+      name: 'TypeError',
+      message: /dest/
     }
   );
+});
+
+assert.throws(() => {
+  fs.copyFileSync(src, dest, 'r');
+}, {
+  code: 'ERR_INVALID_ARG_TYPE',
+  name: 'TypeError',
+  message: /mode/
+});
+
+assert.throws(() => {
+  fs.copyFileSync(src, dest, 8);
+}, {
+  code: 'ERR_OUT_OF_RANGE',
+  name: 'RangeError',
+  message: 'The value of "mode" is out of range. It must be an integer ' +
+           '>= 0 && <= 7. Received 8'
+});
+
+assert.throws(() => {
+  fs.copyFile(src, dest, 'r', common.mustNotCall());
+}, {
+  code: 'ERR_INVALID_ARG_TYPE',
+  name: 'TypeError',
+  message: /mode/
 });

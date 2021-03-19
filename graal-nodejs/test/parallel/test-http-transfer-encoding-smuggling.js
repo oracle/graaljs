@@ -2,7 +2,6 @@
 
 const common = require('../common');
 
-const assert = require('assert');
 const http = require('http');
 const net = require('net');
 
@@ -38,8 +37,7 @@ function send(next) {
   client.resume();
 }
 
-server.listen(0, common.mustCall((err) => {
-  assert.ifError(err);
+server.listen(0, common.mustSucceed(() => {
   send(common.mustCall(() => {
     server.close();
   }));

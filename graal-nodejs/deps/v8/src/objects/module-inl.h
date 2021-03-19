@@ -36,19 +36,18 @@ ACCESSORS(Module, exception, Object, kExceptionOffset)
 SMI_ACCESSORS(Module, status, kStatusOffset)
 SMI_ACCESSORS(Module, hash, kHashOffset)
 
-TQ_SMI_ACCESSORS(SourceTextModule, dfs_index)
-TQ_SMI_ACCESSORS(SourceTextModule, dfs_ancestor_index)
+BOOL_ACCESSORS(SourceTextModule, flags, async, kAsyncBit)
+BOOL_ACCESSORS(SourceTextModule, flags, async_evaluating, kAsyncEvaluatingBit)
+ACCESSORS(SourceTextModule, async_parent_modules, ArrayList,
+          kAsyncParentModulesOffset)
+ACCESSORS(SourceTextModule, top_level_capability, HeapObject,
+          kTopLevelCapabilityOffset)
 
 SourceTextModuleInfo SourceTextModule::info() const {
-  return (status() >= kEvaluating)
+  return status() == kErrored
              ? SourceTextModuleInfo::cast(code())
              : GetSharedFunctionInfo().scope_info().ModuleDescriptorInfo();
 }
-
-TQ_SMI_ACCESSORS(SourceTextModuleInfoEntry, module_request)
-TQ_SMI_ACCESSORS(SourceTextModuleInfoEntry, cell_index)
-TQ_SMI_ACCESSORS(SourceTextModuleInfoEntry, beg_pos)
-TQ_SMI_ACCESSORS(SourceTextModuleInfoEntry, end_pos)
 
 OBJECT_CONSTRUCTORS_IMPL(SourceTextModuleInfo, FixedArray)
 CAST_ACCESSOR(SourceTextModuleInfo)
@@ -111,6 +110,40 @@ class UnorderedModuleSet
             2 /* bucket count */, ModuleHandleHash(), ModuleHandleEqual(),
             ZoneAllocator<Handle<Module>>(zone)) {}
 };
+
+void SourceTextModule::AddAsyncParentModule(Isolate* isolate,
+                                            Handle<SourceTextModule> module,
+                                            Handle<SourceTextModule> parent) {
+  Handle<ArrayList> async_parent_modules(module->async_parent_modules(),
+                                         isolate);
+  Handle<ArrayList> new_array_list =
+      ArrayList::Add(isolate, async_parent_modules, parent);
+  module->set_async_parent_modules(*new_array_list);
+}
+
+Handle<SourceTextModule> SourceTextModule::GetAsyncParentModule(
+    Isolate* isolate, int index) {
+  Handle<SourceTextModule> module(
+      SourceTextModule::cast(async_parent_modules().Get(index)), isolate);
+  return module;
+}
+
+int SourceTextModule::AsyncParentModuleCount() {
+  return async_parent_modules().Length();
+}
+
+bool SourceTextModule::HasPendingAsyncDependencies() {
+  DCHECK_GE(pending_async_dependencies(), 0);
+  return pending_async_dependencies() > 0;
+}
+
+void SourceTextModule::IncrementPendingAsyncDependencies() {
+  set_pending_async_dependencies(pending_async_dependencies() + 1);
+}
+
+void SourceTextModule::DecrementPendingAsyncDependencies() {
+  set_pending_async_dependencies(pending_async_dependencies() - 1);
+}
 
 }  // namespace internal
 }  // namespace v8

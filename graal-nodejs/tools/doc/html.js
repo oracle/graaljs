@@ -27,6 +27,7 @@ const unified = require('unified');
 const find = require('unist-util-find');
 const visit = require('unist-util-visit');
 const markdown = require('remark-parse');
+const gfm = require('remark-gfm');
 const remark2rehype = require('remark-rehype');
 const raw = require('rehype-raw');
 const htmlStringify = require('rehype-stringify');
@@ -51,9 +52,12 @@ function navClasses() {
 }
 
 const gtocPath = path.join(docPath, 'api', 'index.md');
-const gtocMD = fs.readFileSync(gtocPath, 'utf8').replace(/^<!--.*?-->/gms, '');
+const gtocMD = fs.readFileSync(gtocPath, 'utf8')
+  .replace(/\(([^#?]+?)\.md\)/ig, (_, filename) => `(${filename}.html)`)
+  .replace(/^<!--.*?-->/gms, '');
 const gtocHTML = unified()
   .use(markdown)
+  .use(gfm)
   .use(remark2rehype, { allowDangerousHtml: true })
   .use(raw)
   .use(navClasses)
@@ -281,6 +285,7 @@ function parseYAML(text) {
     meta.changes.forEach((change) => {
       const description = unified()
         .use(markdown)
+        .use(gfm)
         .use(remark2rehype, { allowDangerousHtml: true })
         .use(raw)
         .use(htmlStringify)
@@ -323,6 +328,7 @@ function versionSort(a, b) {
   return +b.match(numberRe)[0] - +a.match(numberRe)[0];
 }
 
+const DEPRECATION_HEADING_PATTERN = /^DEP\d+:/;
 function buildToc({ filename, apilinks }) {
   return (tree, file) => {
     const idCounters = Object.create(null);
@@ -345,10 +351,20 @@ function buildToc({ filename, apilinks }) {
         node.position.end.offset).trim();
       const id = getId(`${realFilename}_${headingText}`, idCounters);
 
+      const isDeprecationHeading =
+        DEPRECATION_HEADING_PATTERN.test(headingText);
+      if (isDeprecationHeading) {
+        if (!node.data) node.data = {};
+        if (!node.data.hProperties) node.data.hProperties = {};
+        node.data.hProperties.id =
+          headingText.substring(0, headingText.indexOf(':'));
+      }
+
       const hasStability = node.stability !== undefined;
       toc += ' '.repeat((depth - 1) * 2) +
         (hasStability ? `* <span class="stability_${node.stability}">` : '* ') +
-        `<a href="#${id}">${headingText}</a>${hasStability ? '</span>' : ''}\n`;
+        `<a href="#${isDeprecationHeading ? node.data.hProperties.id : id}">` +
+        `${headingText}</a>${hasStability ? '</span>' : ''}\n`;
 
       let anchor =
          `<span><a class="mark" href="#${id}" id="${id}">#</a></span>`;
@@ -368,6 +384,7 @@ function buildToc({ filename, apilinks }) {
 
     file.toc = unified()
       .use(markdown)
+      .use(gfm)
       .use(remark2rehype, { allowDangerousHtml: true })
       .use(raw)
       .use(htmlStringify)

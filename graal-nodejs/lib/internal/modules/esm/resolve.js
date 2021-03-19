@@ -30,6 +30,10 @@ const {
   Stats,
 } = require('fs');
 const { getOptionValue } = require('internal/options');
+// Do not eagerly grab .manifest, it may be in TDZ
+const policy = getOptionValue('--experimental-policy') ?
+  require('internal/process/policy') :
+  null;
 const { sep, relative } = require('path');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
@@ -41,6 +45,7 @@ const {
   ERR_INVALID_MODULE_SPECIFIER,
   ERR_INVALID_PACKAGE_CONFIG,
   ERR_INVALID_PACKAGE_TARGET,
+  ERR_MANIFEST_DEPENDENCY_MISSING,
   ERR_MODULE_NOT_FOUND,
   ERR_PACKAGE_IMPORT_NOT_DEFINED,
   ERR_PACKAGE_PATH_NOT_EXPORTED,
@@ -741,6 +746,27 @@ function resolveAsCommonJS(specifier, parentURL) {
 
 function defaultResolve(specifier, context = {}, defaultResolveUnused) {
   let { parentURL, conditions } = context;
+  if (parentURL && policy?.manifest) {
+    const redirects = policy.manifest.getDependencyMapper(parentURL);
+    if (redirects) {
+      const { resolve, reaction } = redirects;
+      const destination = resolve(specifier, new SafeSet(conditions));
+      let missing = true;
+      if (destination === true) {
+        missing = false;
+      } else if (destination) {
+        const href = destination.href;
+        return { url: href };
+      }
+      if (missing) {
+        reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
+          parentURL,
+          specifier,
+          ArrayPrototypeJoin([...conditions], ', '))
+        );
+      }
+    }
+  }
   let parsed;
   try {
     parsed = new URL(specifier);
@@ -811,7 +837,8 @@ function defaultResolve(specifier, context = {}, defaultResolveUnused) {
       [internalFS.realpathCacheKey]: realpathCache
     });
     const old = url;
-    url = pathToFileURL(real + (urlPath.endsWith(sep) ? '/' : ''));
+    url = pathToFileURL(
+      real + (StringPrototypeEndsWith(urlPath, sep) ? '/' : ''));
     url.search = old.search;
     url.hash = old.hash;
   }

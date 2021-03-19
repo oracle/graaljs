@@ -735,7 +735,6 @@ WASM_EXEC_TEST(I64SConvertF32) {
 }
 
 WASM_EXEC_TEST(I64SConvertSatF32) {
-  EXPERIMENTAL_FLAG_SCOPE(sat_f2i_conversions);
   WasmRunner<int64_t, float> r(execution_tier);
   BUILD(r, WASM_I64_SCONVERT_SAT_F32(WASM_GET_LOCAL(0)));
   FOR_FLOAT32_INPUTS(i) {
@@ -770,7 +769,6 @@ WASM_EXEC_TEST(I64SConvertF64) {
 }
 
 WASM_EXEC_TEST(I64SConvertSatF64) {
-  EXPERIMENTAL_FLAG_SCOPE(sat_f2i_conversions);
   WasmRunner<int64_t, double> r(execution_tier);
   BUILD(r, WASM_I64_SCONVERT_SAT_F64(WASM_GET_LOCAL(0)));
   FOR_FLOAT64_INPUTS(i) {
@@ -805,7 +803,6 @@ WASM_EXEC_TEST(I64UConvertF32) {
 }
 
 WASM_EXEC_TEST(I64UConvertSatF32) {
-  EXPERIMENTAL_FLAG_SCOPE(sat_f2i_conversions);
   WasmRunner<int64_t, float> r(execution_tier);
   BUILD(r, WASM_I64_UCONVERT_SAT_F32(WASM_GET_LOCAL(0)));
   FOR_FLOAT32_INPUTS(i) {
@@ -840,7 +837,6 @@ WASM_EXEC_TEST(I64UConvertF64) {
 }
 
 WASM_EXEC_TEST(I64UConvertSatF64) {
-  EXPERIMENTAL_FLAG_SCOPE(sat_f2i_conversions);
   WasmRunner<int64_t, double> r(execution_tier);
   BUILD(r, WASM_I64_UCONVERT_SAT_F64(WASM_GET_LOCAL(0)));
   FOR_FLOAT64_INPUTS(i) {
@@ -1423,7 +1419,7 @@ WASM_EXEC_TEST(StoreMem_offset_oob_i64) {
                                    WASM_LOAD_MEM(machineTypes[m], WASM_ZERO)),
           WASM_ZERO);
 
-    byte memsize = ValueTypes::MemSize(machineTypes[m]);
+    byte memsize = machineTypes[m].MemSize();
     uint32_t boundary = num_bytes - 8 - memsize;
     CHECK_EQ(0, r.Call(boundary));  // in bounds.
     CHECK_EQ(0, memcmp(&memory[0], &memory[8 + boundary], memsize));
@@ -1502,7 +1498,7 @@ static void CompileCallIndirectMany(ExecutionTier tier, ValueType param) {
 
     std::vector<byte> code;
     for (byte p = 0; p < num_params; p++) {
-      ADD_CODE(code, kExprGetLocal, p);
+      ADD_CODE(code, kExprLocalGet, p);
     }
     ADD_CODE(code, kExprI32Const, 0);
     ADD_CODE(code, kExprCallIndirect, 1, TABLE_ZERO);
@@ -1540,9 +1536,9 @@ static void Run_WasmMixedCall_N(ExecutionTier execution_tier, int start) {
     // Build the selector function.
     // =========================================================================
     FunctionSig::Builder b(&zone, 1, num_params);
-    b.AddReturn(ValueTypes::ValueTypeFor(result));
+    b.AddReturn(ValueType::For(result));
     for (int i = 0; i < num_params; i++) {
-      b.AddParam(ValueTypes::ValueTypeFor(memtypes[i]));
+      b.AddParam(ValueType::For(memtypes[i]));
     }
     WasmFunctionCompiler& t = r.NewFunction(b.Build());
     BUILD(t, WASM_GET_LOCAL(which));
@@ -1562,8 +1558,8 @@ static void Run_WasmMixedCall_N(ExecutionTier execution_tier, int start) {
     ADD_CODE(code, WASM_CALL_FUNCTION0(t.function_index()));
 
     // Store the result in a local.
-    byte local_index = r.AllocateLocal(ValueTypes::ValueTypeFor(result));
-    ADD_CODE(code, kExprSetLocal, local_index);
+    byte local_index = r.AllocateLocal(ValueType::For(result));
+    ADD_CODE(code, kExprLocalSet, local_index);
 
     // Store the result in memory.
     ADD_CODE(code,
@@ -1579,7 +1575,7 @@ static void Run_WasmMixedCall_N(ExecutionTier execution_tier, int start) {
       r.builder().RandomizeMemory();
       CHECK_EQ(kExpected, r.Call());
 
-      int size = ValueTypes::MemSize(result);
+      int size = result.MemSize();
       for (int i = 0; i < size; i++) {
         int base = (which + 1) * kElemSize;
         byte expected = r.builder().raw_mem_at<byte>(base + i);

@@ -110,7 +110,7 @@ bool SimulatorHelper::FillRegisters(Isolate* isolate,
   }
   state->sp = reinterpret_cast<void*>(simulator->get_register(Simulator::sp));
   state->fp = reinterpret_cast<void*>(simulator->get_register(Simulator::fp));
-#elif V8_TARGET_ARCH_PPC
+#elif V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64
   if (!simulator->has_bad_pc()) {
     state->pc = reinterpret_cast<void*>(simulator->get_pc());
   }
@@ -143,40 +143,20 @@ bool SimulatorHelper::FillRegisters(Isolate* isolate,
 }
 #endif  // USE_SIMULATOR
 
-// Attempts to safely dereference the address of a native context at a given
-// context's address. Returns kNullAddress on failure, in the event that the
-// context is in an inconsistent state.
+// Returns the native context for a JavaScript frame. If the frame wasn't a
+// JavaScript frame, it'll return kNullAddress.
 Address ScrapeNativeContextAddress(Heap* heap, Address context_address) {
+#if !defined(V8_TARGET_ARCH_IA32) && !defined(V8_TARGET_ARCH_X64)
+  return kNullAddress;
+#else
   DCHECK_EQ(heap->gc_state(), Heap::NOT_IN_GC);
 
+  // If the value is tagged, we're looking at a JavaScript frame.
   if (!HAS_STRONG_HEAP_OBJECT_TAG(context_address)) return kNullAddress;
 
-  if (heap->memory_allocator()->IsOutsideAllocatedSpace(context_address))
-    return kNullAddress;
-
-  // Note that once a native context has been assigned to a context, the slot
-  // is no longer mutated except during pointer updates / evictions. Since
-  // pointer updates exclusively occur on the main thread, and we don't record
-  // TickSamples when the main thread's VM state is GC, the only other
-  // situation where the address here would be invalid is if it's being
-  // reassigned -- which isn't possible.
-  int native_context_offset =
-      i::Context::SlotOffset(i::Context::NATIVE_CONTEXT_INDEX);
-  i::Address native_context_slot_address =
-      context_address + native_context_offset;
-
-  // By the prior hypothesis, the indirect native context address should always
-  // be valid.
-  if (heap->memory_allocator()->IsOutsideAllocatedSpace(
-          native_context_slot_address)) {
-    DCHECK(false);
-    return kNullAddress;
-  }
-
-  i::ObjectSlot native_context_slot(native_context_slot_address);
-  i::Object native_context = native_context_slot.Relaxed_Load();
-
-  return native_context.ptr();
+  i::Object object(context_address);
+  return i::Context::cast(object).map().native_context().ptr();
+#endif
 }
 
 }  // namespace
@@ -188,7 +168,7 @@ DISABLE_ASAN void TickSample::Init(Isolate* v8_isolate,
                                    bool use_simulator_reg_state,
                                    base::TimeDelta sampling_interval) {
   this->update_stats = update_stats;
-  SampleInfoWithContext info;
+  SampleInfo info;
   RegisterState regs = reg_state;
   if (!GetStackSample(v8_isolate, &regs, record_c_entry_frame, stack,
                       kMaxFramesCount, &info, use_simulator_reg_state,
@@ -229,26 +209,7 @@ DISABLE_ASAN void TickSample::Init(Isolate* v8_isolate,
 bool TickSample::GetStackSample(Isolate* v8_isolate, RegisterState* regs,
                                 RecordCEntryFrame record_c_entry_frame,
                                 void** frames, size_t frames_limit,
-                                v8::SampleInfo* sample_info_out,
-                                bool use_simulator_reg_state, void** contexts) {
-  SampleInfoWithContext sample_info_local;
-
-  bool ret = GetStackSample(
-      v8_isolate, regs, record_c_entry_frame, frames, frames_limit,
-      &sample_info_local, use_simulator_reg_state, contexts);
-
-  sample_info_out->frames_count = sample_info_local.frames_count;
-  sample_info_out->vm_state = sample_info_local.vm_state;
-  sample_info_out->external_callback_entry =
-    sample_info_local.external_callback_entry;
-
-  return ret;
-}
-
-bool TickSample::GetStackSample(Isolate* v8_isolate, RegisterState* regs,
-                                RecordCEntryFrame record_c_entry_frame,
-                                void** frames, size_t frames_limit,
-                                SampleInfoWithContext* sample_info,
+                                v8::SampleInfo* sample_info,
                                 bool use_simulator_reg_state, void** contexts) {
   i::Isolate* isolate = reinterpret_cast<i::Isolate*>(v8_isolate);
   sample_info->frames_count = 0;

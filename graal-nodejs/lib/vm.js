@@ -22,18 +22,23 @@
 'use strict';
 
 const {
-  ArrayIsArray,
   ArrayPrototypeForEach,
   Symbol,
+  PromiseReject,
+  ReflectApply,
 } = primordials;
 
 const {
   ContextifyScript,
+  MicrotaskQueue,
   makeContext,
   isContext: _isContext,
-  compileFunction: _compileFunction
+  constants,
+  compileFunction: _compileFunction,
+  measureMemory: _measureMemory,
 } = internalBinding('contextify');
 const {
+  ERR_CONTEXT_NOT_INITIALIZED,
   ERR_INVALID_ARG_TYPE,
 } = require('internal/errors').codes;
 const {
@@ -42,9 +47,17 @@ const {
 const {
   validateInt32,
   validateUint32,
-  validateString
+  validateString,
+  validateArray,
+  validateBoolean,
+  validateBuffer,
+  validateObject,
+  validateOneOf,
 } = require('internal/validators');
-const { kVmBreakFirstLineSymbol } = require('internal/util');
+const {
+  kVmBreakFirstLineSymbol,
+  emitExperimentalWarning,
+} = require('internal/util');
 const kParsingContext = Symbol('script parsing context');
 
 class Script extends ContextifyScript {
@@ -137,30 +150,14 @@ class Script extends ContextifyScript {
 }
 
 function validateContext(contextifiedObject) {
-  if (typeof contextifiedObject !== 'object' || contextifiedObject === null) {
-    throw new ERR_INVALID_ARG_TYPE('contextifiedObject', 'Object',
-                                   contextifiedObject);
-  }
-  if (!_isContext(contextifiedObject)) {
+  if (!isContext(contextifiedObject)) {
     throw new ERR_INVALID_ARG_TYPE('contextifiedObject', 'vm.Context',
                                    contextifiedObject);
   }
 }
 
-function validateBool(prop, propName) {
-  if (prop !== undefined && typeof prop !== 'boolean')
-    throw new ERR_INVALID_ARG_TYPE(propName, 'boolean', prop);
-}
-
-function validateObject(prop, propName) {
-  if (prop !== undefined && (typeof prop !== 'object' || prop === null))
-    throw new ERR_INVALID_ARG_TYPE(propName, 'Object', prop);
-}
-
 function getRunInContextArgs(options = {}) {
-  if (typeof options !== 'object' || options === null) {
-    throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-  }
+  validateObject(options, 'options');
 
   let timeout = options.timeout;
   if (timeout === undefined) {
@@ -175,14 +172,8 @@ function getRunInContextArgs(options = {}) {
     [kVmBreakFirstLineSymbol]: breakFirstLine = false,
   } = options;
 
-  if (typeof displayErrors !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE('options.displayErrors', 'boolean',
-                                   displayErrors);
-  }
-  if (typeof breakOnSigint !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE('options.breakOnSigint', 'boolean',
-                                   breakOnSigint);
-  }
+  validateBoolean(displayErrors, 'options.displayErrors');
+  validateBoolean(breakOnSigint, 'options.breakOnSigint');
 
   return {
     breakOnSigint,
@@ -191,30 +182,31 @@ function getRunInContextArgs(options = {}) {
 }
 
 function getContextOptions(options) {
-  if (options) {
+  if (!options)
+    return {};
+  const contextOptions = {
+    name: options.contextName,
+    origin: options.contextOrigin,
+    codeGeneration: undefined,
+    microtaskMode: options.microtaskMode,
+  };
+  if (contextOptions.name !== undefined)
+    validateString(contextOptions.name, 'options.contextName');
+  if (contextOptions.origin !== undefined)
+    validateString(contextOptions.origin, 'options.contextOrigin');
+  if (options.contextCodeGeneration !== undefined) {
     validateObject(options.contextCodeGeneration,
                    'options.contextCodeGeneration');
-    const contextOptions = {
-      name: options.contextName,
-      origin: options.contextOrigin,
-      codeGeneration: typeof options.contextCodeGeneration === 'object' ? {
-        strings: options.contextCodeGeneration.strings,
-        wasm: options.contextCodeGeneration.wasm,
-      } : undefined,
-    };
-    if (contextOptions.name !== undefined)
-      validateString(contextOptions.name, 'options.contextName');
-    if (contextOptions.origin !== undefined)
-      validateString(contextOptions.origin, 'options.contextOrigin');
-    if (contextOptions.codeGeneration) {
-      validateBool(contextOptions.codeGeneration.strings,
-                   'options.contextCodeGeneration.strings');
-      validateBool(contextOptions.codeGeneration.wasm,
-                   'options.contextCodeGeneration.wasm');
-    }
-    return contextOptions;
+    const { strings, wasm } = options.contextCodeGeneration;
+    if (strings !== undefined)
+      validateBoolean(strings, 'options.contextCodeGeneration.strings');
+    if (wasm !== undefined)
+      validateBoolean(wasm, 'options.contextCodeGeneration.wasm');
+    contextOptions.codeGeneration = { strings, wasm };
   }
-  return {};
+  if (options.microtaskMode !== undefined)
+    validateString(options.microtaskMode, 'options.microtaskMode');
+  return contextOptions;
 }
 
 function isContext(object) {
@@ -230,30 +222,39 @@ function createContext(contextObject = {}, options = {}) {
     return contextObject;
   }
 
-  if (typeof options !== 'object' || options === null) {
-    throw new ERR_INVALID_ARG_TYPE('options', 'Object', options);
-  }
+  validateObject(options, 'options');
 
   const {
     name = `VM Context ${defaultContextNameIndex++}`,
     origin,
-    codeGeneration
+    codeGeneration,
+    microtaskMode
   } = options;
 
   validateString(name, 'options.name');
   if (origin !== undefined)
     validateString(origin, 'options.origin');
-  validateObject(codeGeneration, 'options.codeGeneration');
+  if (codeGeneration !== undefined)
+    validateObject(codeGeneration, 'options.codeGeneration');
 
   let strings = true;
   let wasm = true;
   if (codeGeneration !== undefined) {
     ({ strings = true, wasm = true } = codeGeneration);
-    validateBool(strings, 'options.codeGeneration.strings');
-    validateBool(wasm, 'options.codeGeneration.wasm');
+    validateBoolean(strings, 'options.codeGeneration.strings');
+    validateBoolean(wasm, 'options.codeGeneration.wasm');
   }
 
-  makeContext(contextObject, name, origin, strings, wasm);
+  let microtaskQueue = null;
+  if (microtaskMode !== undefined) {
+    validateOneOf(microtaskMode, 'options.microtaskMode',
+                  ['afterEvaluate', undefined]);
+
+    if (microtaskMode === 'afterEvaluate')
+      microtaskQueue = new MicrotaskQueue();
+  }
+
+  makeContext(contextObject, name, origin, strings, wasm, microtaskQueue);
   return contextObject;
 }
 
@@ -269,7 +270,7 @@ function sigintHandlersWrap(fn, thisArg, argsArray) {
   process.removeAllListeners('SIGINT');
 
   try {
-    return fn.apply(thisArg, argsArray);
+    return ReflectApply(fn, thisArg, argsArray);
   } finally {
     // Add using the public methods so that the `newListener` handler of
     // process can re-attach the listeners.
@@ -312,9 +313,7 @@ function runInThisContext(code, options) {
 function compileFunction(code, params, options = {}) {
   validateString(code, 'code');
   if (params !== undefined) {
-    if (!ArrayIsArray(params)) {
-      throw new ERR_INVALID_ARG_TYPE('params', 'Array', params);
-    }
+    validateArray(params, 'params');
     ArrayPrototypeForEach(params,
                           (param, i) => validateString(param, `params[${i}]`));
   }
@@ -332,20 +331,9 @@ function compileFunction(code, params, options = {}) {
   validateString(filename, 'options.filename');
   validateUint32(columnOffset, 'options.columnOffset');
   validateUint32(lineOffset, 'options.lineOffset');
-  if (cachedData !== undefined && !isArrayBufferView(cachedData)) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.cachedData',
-      ['Buffer', 'TypedArray', 'DataView'],
-      cachedData
-    );
-  }
-  if (typeof produceCachedData !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.produceCachedData',
-      'boolean',
-      produceCachedData
-    );
-  }
+  if (cachedData !== undefined)
+    validateBuffer(cachedData, 'options.cachedData');
+  validateBoolean(produceCachedData, 'options.produceCachedData');
   if (parsingContext !== undefined) {
     if (
       typeof parsingContext !== 'object' ||
@@ -359,21 +347,10 @@ function compileFunction(code, params, options = {}) {
       );
     }
   }
-  if (!ArrayIsArray(contextExtensions)) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.contextExtensions',
-      'Array',
-      contextExtensions
-    );
-  }
+  validateArray(contextExtensions, 'options.contextExtensions');
   ArrayPrototypeForEach(contextExtensions, (extension, i) => {
-    if (typeof extension !== 'object') {
-      throw new ERR_INVALID_ARG_TYPE(
-        `options.contextExtensions[${i}]`,
-        'object',
-        extension
-      );
-    }
+    const name = `options.contextExtensions[${i}]`;
+    validateObject(extension, name, { nullable: true });
   });
 
   const result = _compileFunction(
@@ -399,6 +376,29 @@ function compileFunction(code, params, options = {}) {
   return result.function;
 }
 
+const measureMemoryModes = {
+  summary: constants.measureMemory.mode.SUMMARY,
+  detailed: constants.measureMemory.mode.DETAILED,
+};
+
+const measureMemoryExecutions = {
+  default: constants.measureMemory.execution.DEFAULT,
+  eager: constants.measureMemory.execution.EAGER,
+};
+
+function measureMemory(options = {}) {
+  emitExperimentalWarning('vm.measureMemory');
+  validateObject(options, 'options');
+  const { mode = 'summary', execution = 'default' } = options;
+  validateOneOf(mode, 'options.mode', ['summary', 'detailed']);
+  validateOneOf(execution, 'options.execution', ['default', 'eager']);
+  const result = _measureMemory(measureMemoryModes[mode],
+                                measureMemoryExecutions[execution]);
+  if (result === undefined) {
+    return PromiseReject(new ERR_CONTEXT_NOT_INITIALIZED());
+  }
+  return result;
+}
 
 module.exports = {
   Script,
@@ -409,6 +409,7 @@ module.exports = {
   runInThisContext,
   isContext,
   compileFunction,
+  measureMemory,
 };
 
 if (require('internal/options').getOptionValue('--experimental-vm-modules')) {

@@ -27,6 +27,7 @@ const {
   Error,
   Number,
   NumberIsNaN,
+  NumberParseInt,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   Symbol,
@@ -288,14 +289,13 @@ function Socket(options) {
   else
     options = { ...options };
 
-  options.readable = options.readable || false;
-  options.writable = options.writable || false;
   const { allowHalfOpen } = options;
 
   // Prevent the "no-half-open enforcer" from being inherited from `Duplex`.
   options.allowHalfOpen = true;
   // For backwards compat do not emit close on destroy.
   options.emitClose = false;
+  options.autoDestroy = false;
   // Handle strings directly.
   options.decodeStrings = false;
   stream.Duplex.call(this, options);
@@ -654,8 +654,6 @@ Socket.prototype._destroy = function(exception, cb) {
   debug('destroy');
 
   this.connecting = false;
-
-  this.readable = this.writable = false;
 
   for (let s = this; s !== null; s = s._parent) {
     clearTimeout(s[kTimeout]);
@@ -1122,9 +1120,13 @@ function afterConnect(status, handle, req, readable, writable) {
   self._sockname = null;
 
   if (status === 0) {
-    self.readable = readable;
-    if (!self._writableState.ended)
-      self.writable = writable;
+    if (self.readable && !readable) {
+      self.push(null);
+      self.read();
+    }
+    if (self.writable && !writable) {
+      self.end();
+    }
     self._unrefTimer();
 
     self.emit('connect');
@@ -1231,7 +1233,7 @@ function createServerHandle(address, port, addressType, fd, flags) {
   } else if (port === -1 && addressType === -1) {
     handle = new Pipe(PipeConstants.SERVER);
     if (isWindows) {
-      const instances = parseInt(process.env.NODE_PENDING_PIPE_INSTANCES);
+      const instances = NumberParseInt(process.env.NODE_PENDING_PIPE_INSTANCES);
       if (!NumberIsNaN(instances)) {
         handle.setPendingInstances(instances);
       }

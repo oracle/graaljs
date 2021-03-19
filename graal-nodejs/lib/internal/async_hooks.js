@@ -1,10 +1,14 @@
 'use strict';
 
 const {
+  ArrayPrototypePop,
+  ArrayPrototypeSlice,
   ArrayPrototypeUnshift,
-  Error,
+  ErrorCaptureStackTrace,
   FunctionPrototypeBind,
+  ObjectPrototypeHasOwnProperty,
   ObjectDefineProperty,
+  Promise,
   ReflectApply,
   Symbol,
 } = primordials;
@@ -92,9 +96,10 @@ const { kInit, kBefore, kAfter, kDestroy, kTotals, kPromiseResolve,
         kDefaultTriggerAsyncId, kStackLength, kUsesExecutionAsyncResource
 } = async_wrap.constants;
 
+const { async_id_symbol,
+        trigger_async_id_symbol } = internalBinding('symbols');
+
 // Used in AsyncHook and AsyncResource.
-const async_id_symbol = Symbol('asyncId');
-const trigger_async_id_symbol = Symbol('triggerAsyncId');
 const init_symbol = Symbol('init');
 const before_symbol = Symbol('before');
 const after_symbol = Symbol('after');
@@ -129,7 +134,7 @@ function callbackTrampoline(asyncId, resource, cb, ...args) {
   if (asyncId !== 0 && hasHooks(kAfter))
     emitAfterNative(asyncId);
 
-  execution_async_resources.pop();
+  ArrayPrototypePop(execution_async_resources);
   return result;
 }
 
@@ -156,8 +161,7 @@ function fatalError(e) {
     process._rawDebug(e.stack);
   } else {
     const o = { message: e };
-    // eslint-disable-next-line no-restricted-syntax
-    Error.captureStackTrace(o, fatalError);
+    ErrorCaptureStackTrace(o, fatalError);
     process._rawDebug(o.stack);
   }
 
@@ -268,7 +272,7 @@ function getHookArrays() {
 
 
 function storeActiveHooks() {
-  active_hooks.tmp_array = active_hooks.array.slice();
+  active_hooks.tmp_array = ArrayPrototypeSlice(active_hooks.array);
   // Don't want to make the assumption that kInit to kDestroy are indexes 0 to
   // 4. So do this the long way.
   active_hooks.tmp_fields = [];
@@ -294,27 +298,89 @@ function restoreActiveHooks() {
   active_hooks.tmp_fields = null;
 }
 
+function trackPromise(promise, parent, silent) {
+  const asyncId = getOrSetAsyncId(promise);
+
+  promise[trigger_async_id_symbol] = parent ? getOrSetAsyncId(parent) :
+    getDefaultTriggerAsyncId();
+
+  if (!silent && initHooksExist()) {
+    const triggerId = promise[trigger_async_id_symbol];
+    emitInitScript(asyncId, 'PROMISE', triggerId, promise);
+  }
+}
+
+function fastPromiseHook(type, promise, parent) {
+  if (type === kInit || !promise[async_id_symbol]) {
+    const silent = type !== kInit;
+    if (parent instanceof Promise) {
+      trackPromise(promise, parent, silent);
+    } else {
+      trackPromise(promise, null, silent);
+    }
+
+    if (!silent) return;
+  }
+
+  const asyncId = promise[async_id_symbol];
+  switch (type) {
+    case kBefore:
+      const triggerId = promise[trigger_async_id_symbol];
+      emitBeforeScript(asyncId, triggerId, promise);
+      break;
+    case kAfter:
+      if (hasHooks(kAfter)) {
+        emitAfterNative(asyncId);
+      }
+      if (asyncId === executionAsyncId()) {
+        // This condition might not be true if async_hooks was enabled during
+        // the promise callback execution.
+        // Popping it off the stack can be skipped in that case, because it is
+        // known that it would correspond to exactly one call with
+        // PromiseHookType::kBefore that was not witnessed by the PromiseHook.
+        popAsyncContext(asyncId);
+      }
+      break;
+    case kPromiseResolve:
+      emitPromiseResolveNative(asyncId);
+      break;
+  }
+}
 
 let wantPromiseHook = false;
 function enableHooks() {
   async_hook_fields[kCheck] += 1;
+}
 
+let promiseHookMode = -1;
+function updatePromiseHookMode() {
   wantPromiseHook = true;
-  enablePromiseHook();
+  if (destroyHooksExist()) {
+    if (promiseHookMode !== 1) {
+      promiseHookMode = 1;
+      enablePromiseHook();
+    }
+  } else if (promiseHookMode !== 0) {
+    promiseHookMode = 0;
+    enablePromiseHook(fastPromiseHook);
+  }
 }
 
 function disableHooks() {
   async_hook_fields[kCheck] -= 1;
 
   wantPromiseHook = false;
+
   // Delay the call to `disablePromiseHook()` because we might currently be
   // between the `before` and `after` calls of a Promise.
   enqueueMicrotask(disablePromiseHookIfNecessary);
 }
 
 function disablePromiseHookIfNecessary() {
-  if (!wantPromiseHook)
+  if (!wantPromiseHook) {
+    promiseHookMode = -1;
     disablePromiseHook();
+  }
 }
 
 // Internal Embedder API //
@@ -327,7 +393,7 @@ function newAsyncId() {
 }
 
 function getOrSetAsyncId(object) {
-  if (object.hasOwnProperty(async_id_symbol)) {
+  if (ObjectPrototypeHasOwnProperty(object, async_id_symbol)) {
     return object[async_id_symbol];
   }
 
@@ -458,7 +524,7 @@ function popAsyncContext(asyncId) {
   const offset = stackLength - 1;
   async_id_fields[kExecutionAsyncId] = async_wrap.async_ids_stack[2 * offset];
   async_id_fields[kTriggerAsyncId] = async_wrap.async_ids_stack[2 * offset + 1];
-  execution_async_resources.pop();
+  ArrayPrototypePop(execution_async_resources);
   async_hook_fields[kStackLength] = offset;
   return offset > 0;
 }
@@ -488,6 +554,7 @@ module.exports = {
   },
   enableHooks,
   disableHooks,
+  updatePromiseHookMode,
   clearDefaultTriggerAsyncId,
   clearAsyncIdStack,
   hasAsyncIdStack,

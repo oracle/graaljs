@@ -13,9 +13,9 @@ let {session, contextGroup, Protocol} =
 
     let builder = new WasmModuleBuilder();
     builder.addImportedGlobal('m', 'global', kWasmAnyRef, false);
-    builder.addFunction('func', kSig_v_v)
+    let func = builder.addFunction('func', kSig_v_v)
         .addBody([
-          kExprGetGlobal, 0,  //
+          kExprGlobalGet, 0,  //
           kExprDrop,          //
         ])
         .exportAs('main');
@@ -47,7 +47,7 @@ let {session, contextGroup, Protocol} =
 
     InspectorTest.log('Setting breakpoint in wasm.');
     await Protocol.Debugger.setBreakpoint(
-        {location: {scriptId, lineNumber: 2}});
+        {location: {scriptId, lineNumber: 0, columnNumber: func.body_offset}});
 
     InspectorTest.log('Running main.');
     Protocol.Runtime.evaluate({expression: 'instance.exports.main()'});
@@ -57,16 +57,17 @@ let {session, contextGroup, Protocol} =
     InspectorTest.log('Paused in debugger.');
     let scopeChain = callFrames[0].scopeChain;
     for (let scope of scopeChain) {
-      if (scope.type != 'global') continue;
+      if (scope.type != 'module') continue;
 
-      let globalObjectProps = (await Protocol.Runtime.getProperties({
+      let moduleObjectProps = (await Protocol.Runtime.getProperties({
                               'objectId': scope.object.objectId
                             })).result.result;
 
-      for (let prop of globalObjectProps) {
+      for (let prop of moduleObjectProps) {
+        if (prop.name != 'globals') continue;
         let subProps = (await Protocol.Runtime.getProperties({
-                              objectId: prop.value.objectId
-                            })).result.result;
+                            objectId: prop.value.objectId
+                          })).result.result;
         let values =
             subProps.map((value) => `"${value.name}": ${value.value.value}`)
                 .join(', ');

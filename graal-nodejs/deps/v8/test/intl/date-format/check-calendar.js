@@ -2,11 +2,18 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-intl-add-calendar-numbering-system
-
 let invalidCalendar = [
   "invalid",
   "abce",
+  "abc-defghi",
+];
+
+let illFormedCalendar = [
+  "",
+  "i",
+  "ij",
+  "abcdefghi",
+  "abc-ab",
 ];
 
 // https://www.unicode.org/repos/cldr/tags/latest/common/bcp47/calendar.xml
@@ -36,8 +43,17 @@ let locales = [
   "ar",
 ];
 
-
 invalidCalendar.forEach(function(calendar) {
+  locales.forEach(function(base) {
+     var df;
+     assertDoesNotThrow(() => df = new Intl.DateTimeFormat([base], {calendar}));
+     assertEquals(
+         (new Intl.DateTimeFormat([base])).resolvedOptions().calendar,
+         df.resolvedOptions().calendar);
+  });
+});
+
+illFormedCalendar.forEach(function(calendar) {
   assertThrows(
       () => new Intl.DateTimeFormat(["en"], {calendar}),
       RangeError);
@@ -49,7 +65,7 @@ validCalendar.forEach(function(calendar) {
   locales.forEach(function(base) {
     let l = base + "-u-ca-" + calendar;
     let dtf = new Intl.DateTimeFormat([base], {calendar});
-    assertEquals(l, dtf.resolvedOptions().locale);
+    assertEquals(base, dtf.resolvedOptions().locale);
 
     // Test the formatting result is the same as passing in via u-ca-
     // in the locale.

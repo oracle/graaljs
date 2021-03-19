@@ -106,7 +106,9 @@ console.log(Certificate.verifySpkac(Buffer.from(spkac)));
 
 ### Legacy API
 
-As a still supported legacy interface, it is possible to create new instances of
+> Stability: 0 - Deprecated
+
+As a legacy interface, it is possible to create new instances of
 the `crypto.Certificate` class as illustrated in the examples below.
 
 #### `new crypto.Certificate()`
@@ -838,13 +840,13 @@ console.log(uncompressedKey === ecdh.getPublicKey('hex'));
 <!-- YAML
 added: v0.11.14
 changes:
-  - version: v6.0.0
-    pr-url: https://github.com/nodejs/node/pull/5522
-    description: The default `inputEncoding` changed from `binary` to `utf8`
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/16849
     description: Changed error format to better support invalid public key
-                 error
+                 error.
+  - version: v6.0.0
+    pr-url: https://github.com/nodejs/node/pull/5522
+    description: The default `inputEncoding` changed from `binary` to `utf8`.
 -->
 
 * `otherPublicKey` {string | Buffer | TypedArray | DataView}
@@ -1028,7 +1030,7 @@ const fs = require('fs');
 const hash = crypto.createHash('sha256');
 
 const input = fs.createReadStream('test.js');
-input.pipe(hash).pipe(process.stdout);
+input.pipe(hash).setEncoding('hex').pipe(process.stdout);
 ```
 
 Example: Using the [`hash.update()`][] and [`hash.digest()`][] methods:
@@ -1045,7 +1047,7 @@ console.log(hash.digest('hex'));
 
 ### `hash.copy([options])`
 <!-- YAML
-added: v12.16.0
+added: v13.1.0
 -->
 
 * `options` {Object} [`stream.transform` options][]
@@ -1215,7 +1217,7 @@ This can be called many times with new data as it is streamed.
 <!-- YAML
 added: v11.6.0
 changes:
-  - version: v12.19.0
+  - version: v14.5.0
     pr-url: https://github.com/nodejs/node/pull/33360
     description: Instances of this class can now be passed to worker threads
                  using `postMessage`.
@@ -1242,19 +1244,19 @@ be listed in the `transferList` argument.
 <!-- YAML
 added: v11.6.0
 changes:
-  - version: v12.17.0
+  - version: v13.9.0
     pr-url: https://github.com/nodejs/node/pull/31178
     description: Added support for `'dh'`.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26960
-    description: Added support for `'rsa-pss'`
+    description: Added support for `'rsa-pss'`.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26786
     description: This property now returns `undefined` for KeyObject
                  instances of unrecognized type instead of aborting.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26774
-    description: Added support for `'x25519'` and `'x448'`
+    description: Added support for `'x25519'` and `'x448'`.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26319
     description: Added support for `'ed25519'` and `'ed448'`.
@@ -1407,6 +1409,11 @@ console.log(verify.verify(publicKey, signature));
 <!-- YAML
 added: v0.1.92
 changes:
+  - version:
+     - v13.2.0
+     - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/29292
+    description: This function now supports IEEE-P1363 DSA and ECDSA signatures.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26960
     description: This function now supports RSA-PSS keys.
@@ -1520,6 +1527,11 @@ This can be called many times with new data as it is streamed.
 <!-- YAML
 added: v0.1.92
 changes:
+  - version:
+     - v13.2.0
+     - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/29292
+    description: This function now supports IEEE-P1363 DSA and ECDSA signatures.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26960
     description: This function now supports RSA-PSS keys.
@@ -1684,7 +1696,9 @@ changes:
   - version: v11.6.0
     pr-url: https://github.com/nodejs/node/pull/24234
     description: The `key` argument can now be a `KeyObject`.
-  - version: v11.2.0
+  - version:
+     - v11.2.0
+     - v10.17.0
     pr-url: https://github.com/nodejs/node/pull/24081
     description: The cipher `chacha20-poly1305` is now supported.
   - version: v10.10.0
@@ -1778,7 +1792,9 @@ changes:
   - version: v11.6.0
     pr-url: https://github.com/nodejs/node/pull/24234
     description: The `key` argument can now be a `KeyObject`.
-  - version: v11.2.0
+  - version:
+     - v11.2.0
+     - v10.17.0
     pr-url: https://github.com/nodejs/node/pull/24081
     description: The cipher `chacha20-poly1305` is now supported.
   - version: v10.10.0
@@ -2054,7 +2070,7 @@ and it will be impossible to extract the private key from the returned object.
 added: v11.6.0
 -->
 
-* `key` {Buffer}
+* `key` {Buffer | TypedArray | DataView}
 * Returns: {KeyObject}
 
 Creates and returns a new key object containing a secret key for symmetric
@@ -2101,7 +2117,7 @@ algorithm names.
 
 ### `crypto.diffieHellman(options)`
 <!-- YAML
-added: v12.17.0
+added: v13.9.0
 -->
 
 * `options`: {Object}
@@ -2117,7 +2133,7 @@ Both keys must have the same `asymmetricKeyType`, which must be one of `'dh'`
 <!-- YAML
 added: v10.12.0
 changes:
-  - version: v12.17.0
+  - version: v13.9.0
     pr-url: https://github.com/nodejs/node/pull/31178
     description: Add support for Diffie-Hellman.
   - version: v12.0.0
@@ -2190,7 +2206,7 @@ a `Promise` for an `Object` with `publicKey` and `privateKey` properties.
 <!-- YAML
 added: v10.12.0
 changes:
-  - version: v12.17.0
+  - version: v13.9.0
     pr-url: https://github.com/nodejs/node/pull/31178
     description: Add support for Diffie-Hellman.
   - version: v12.0.0
@@ -2339,6 +2355,10 @@ console.log(hashes); // ['DSA', 'DSA-SHA', 'DSA-SHA1', ...]
 <!-- YAML
 added: v0.5.5
 changes:
+  - version: v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/30578
+    description: The `iterations` parameter is now restricted to positive
+                 values. Earlier releases treated other values as one.
   - version: v8.0.0
     pr-url: https://github.com/nodejs/node/pull/11305
     description: The `digest` parameter is always required now.
@@ -2414,6 +2434,10 @@ negative performance implications for some applications; see the
 <!-- YAML
 added: v0.9.3
 changes:
+  - version: v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/30578
+    description: The `iterations` parameter is now restricted to positive
+                 values. Earlier releases treated other values as one.
   - version: v6.0.0
     pr-url: https://github.com/nodejs/node/pull/4047
     description: Calling this function without passing the `digest` parameter
@@ -2781,7 +2805,7 @@ request.
 
 ### `crypto.randomInt([min, ]max[, callback])`
 <!-- YAML
-added: v12.19.0
+added: v14.10.0
 -->
 
 * `min` {integer} Start of random range (inclusive). **Default**: `0`.
@@ -2821,7 +2845,9 @@ console.log(`The dice rolled: ${n}`);
 <!-- YAML
 added: v10.5.0
 changes:
-  - version: v12.8.0
+  - version:
+     - v12.8.0
+     - v10.17.0
     pr-url: https://github.com/nodejs/node/pull/28799
     description: The `maxmem` value can now be any safe integer.
   - version: v10.9.0
@@ -2864,12 +2890,12 @@ or types.
 ```js
 const crypto = require('crypto');
 // Using the factory defaults.
-crypto.scrypt('secret', 'salt', 64, (err, derivedKey) => {
+crypto.scrypt('password', 'salt', 64, (err, derivedKey) => {
   if (err) throw err;
   console.log(derivedKey.toString('hex'));  // '3745e48...08d59ae'
 });
 // Using a custom N parameter. Must be a power of two.
-crypto.scrypt('secret', 'salt', 64, { N: 1024 }, (err, derivedKey) => {
+crypto.scrypt('password', 'salt', 64, { N: 1024 }, (err, derivedKey) => {
   if (err) throw err;
   console.log(derivedKey.toString('hex'));  // '3745e48...aa39b34'
 });
@@ -2879,7 +2905,9 @@ crypto.scrypt('secret', 'salt', 64, { N: 1024 }, (err, derivedKey) => {
 <!-- YAML
 added: v10.5.0
 changes:
-  - version: v12.8.0
+  - version:
+     - v12.8.0
+     - v10.17.0
     pr-url: https://github.com/nodejs/node/pull/28799
     description: The `maxmem` value can now be any safe integer.
   - version: v10.9.0
@@ -2919,10 +2947,10 @@ or types.
 ```js
 const crypto = require('crypto');
 // Using the factory defaults.
-const key1 = crypto.scryptSync('secret', 'salt', 64);
+const key1 = crypto.scryptSync('password', 'salt', 64);
 console.log(key1.toString('hex'));  // '3745e48...08d59ae'
 // Using a custom N parameter. Must be a power of two.
-const key2 = crypto.scryptSync('secret', 'salt', 64, { N: 1024 });
+const key2 = crypto.scryptSync('password', 'salt', 64, { N: 1024 });
 console.log(key2.toString('hex'));  // '3745e48...aa39b34'
 ```
 
@@ -2973,6 +3001,12 @@ Throws an error if FIPS mode is not available.
 ### `crypto.sign(algorithm, data, key)`
 <!-- YAML
 added: v12.0.0
+changes:
+  - version:
+     - v13.2.0
+     - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/29292
+    description: This function now supports IEEE-P1363 DSA and ECDSA signatures.
 -->
 
 * `algorithm` {string | null | undefined}
@@ -3029,6 +3063,12 @@ not introduce timing vulnerabilities.
 ### `crypto.verify(algorithm, data, key, signature)`
 <!-- YAML
 added: v12.0.0
+changes:
+  - version:
+     - v13.2.0
+     - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/29292
+    description: This function now supports IEEE-P1363 DSA and ECDSA signatures.
 -->
 
 * `algorithm` {string | null | undefined}
@@ -3068,7 +3108,7 @@ key may be passed for `key`.
 
 ## Notes
 
-### Legacy Streams API (prior to Node.js 0.10)
+### Legacy streams API (prior to Node.js 0.10)
 
 The Crypto module was added to Node.js before there was the concept of a
 unified Stream API, and before there were [`Buffer`][] objects for handling
@@ -3526,11 +3566,28 @@ See the [list of SSL OP Flags][] for details.
   </tr>
 </table>
 
-[`Buffer`]: buffer.html
+[AEAD algorithms]: https://en.wikipedia.org/wiki/Authenticated_encryption
+[CCM mode]: #crypto_ccm_mode
+[Caveats]: #crypto_support_for_weak_or_compromised_algorithms
+[Crypto constants]: #crypto_crypto_constants_1
+[HTML 5.2]: https://www.w3.org/TR/html52/changes.html#features-removed
+[HTML5's `keygen` element]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/keygen
+[NIST SP 800-131A]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar1.pdf
+[NIST SP 800-132]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
+[NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
+[Nonce-Disrespecting Adversaries]: https://github.com/nonce-disrespect/nonce-disrespect
+[OpenSSL's SPKAC implementation]: https://www.openssl.org/docs/man1.1.0/apps/openssl-spkac.html
+[RFC 1421]: https://www.rfc-editor.org/rfc/rfc1421.txt
+[RFC 2412]: https://www.rfc-editor.org/rfc/rfc2412.txt
+[RFC 3526]: https://www.rfc-editor.org/rfc/rfc3526.txt
+[RFC 3610]: https://www.rfc-editor.org/rfc/rfc3610.txt
+[RFC 4055]: https://www.rfc-editor.org/rfc/rfc4055.txt
+[RFC 5208]: https://www.rfc-editor.org/rfc/rfc5208.txt
+[`Buffer`]: buffer.md
 [`EVP_BytesToKey`]: https://www.openssl.org/docs/man1.1.0/crypto/EVP_BytesToKey.html
 [`KeyObject`]: #crypto_class_keyobject
 [`Sign`]: #crypto_class_sign
-[`UV_THREADPOOL_SIZE`]: cli.html#cli_uv_threadpool_size_size
+[`UV_THREADPOOL_SIZE`]: cli.md#cli_uv_threadpool_size_size
 [`Verify`]: #crypto_class_verify
 [`cipher.final()`]: #crypto_cipher_final_outputencoding
 [`cipher.update()`]: #crypto_cipher_update_data_inputencoding_outputencoding
@@ -3568,36 +3625,19 @@ See the [list of SSL OP Flags][] for details.
 [`hmac.digest()`]: #crypto_hmac_digest_encoding
 [`hmac.update()`]: #crypto_hmac_update_data_inputencoding
 [`keyObject.export()`]: #crypto_keyobject_export_options
-[`postMessage()`]: worker_threads.html#worker_threads_port_postmessage_value_transferlist
+[`postMessage()`]: worker_threads.md#worker_threads_port_postmessage_value_transferlist
 [`sign.sign()`]: #crypto_sign_sign_privatekey_outputencoding
 [`sign.update()`]: #crypto_sign_update_data_inputencoding
-[`stream.Writable` options]: stream.html#stream_new_stream_writable_options
-[`stream.transform` options]: stream.html#stream_new_stream_transform_options
-[`util.promisify()`]: util.html#util_util_promisify_original
+[`stream.Writable` options]: stream.md#stream_new_stream_writable_options
+[`stream.transform` options]: stream.md#stream_new_stream_transform_options
+[`util.promisify()`]: util.md#util_util_promisify_original
 [`verify.update()`]: #crypto_verify_update_data_inputencoding
 [`verify.verify()`]: #crypto_verify_verify_object_signature_signatureencoding
-[AEAD algorithms]: https://en.wikipedia.org/wiki/Authenticated_encryption
-[CCM mode]: #crypto_ccm_mode
-[Caveats]: #crypto_support_for_weak_or_compromised_algorithms
-[Crypto constants]: #crypto_crypto_constants_1
-[HTML 5.2]: https://www.w3.org/TR/html52/changes.html#features-removed
-[HTML5's `keygen` element]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/keygen
-[NIST SP 800-131A]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar1.pdf
-[NIST SP 800-132]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
-[NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
-[modulo bias]: https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Modulo_bias
-[Nonce-Disrespecting Adversaries]: https://github.com/nonce-disrespect/nonce-disrespect
-[OpenSSL's SPKAC implementation]: https://www.openssl.org/docs/man1.1.0/apps/openssl-spkac.html
-[RFC 1421]: https://www.rfc-editor.org/rfc/rfc1421.txt
-[RFC 2412]: https://www.rfc-editor.org/rfc/rfc2412.txt
-[RFC 3526]: https://www.rfc-editor.org/rfc/rfc3526.txt
-[RFC 3610]: https://www.rfc-editor.org/rfc/rfc3610.txt
-[RFC 4055]: https://www.rfc-editor.org/rfc/rfc4055.txt
-[RFC 5208]: https://www.rfc-editor.org/rfc/rfc5208.txt
-[encoding]: buffer.html#buffer_buffers_and_character_encodings
+[encoding]: buffer.md#buffer_buffers_and_character_encodings
 [initialization vector]: https://en.wikipedia.org/wiki/Initialization_vector
 [list of SSL OP Flags]: https://wiki.openssl.org/index.php/List_of_SSL_OP_Flags#Table_of_Options
+[modulo bias]: https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Modulo_bias
 [safe integers]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isSafeInteger
 [scrypt]: https://en.wikipedia.org/wiki/Scrypt
-[stream]: stream.html
-[stream-writable-write]: stream.html#stream_writable_write_chunk_encoding_callback
+[stream]: stream.md
+[stream-writable-write]: stream.md#stream_writable_write_chunk_encoding_callback

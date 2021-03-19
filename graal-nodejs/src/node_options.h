@@ -116,8 +116,7 @@ class EnvironmentOptions : public Options {
   bool expose_internals = false;
   bool frozen_intrinsics = false;
   std::string heap_snapshot_signal;
-  std::string http_parser = "llhttp";
-  uint64_t http_server_default_timeout = 120000;
+  uint64_t max_http_header_size = 16 * 1024;
   bool no_deprecation = false;
   bool no_force_async_hooks_checks = false;
   bool no_warnings = false;
@@ -142,6 +141,7 @@ class EnvironmentOptions : public Options {
   std::string diagnostic_dir;
   bool test_udp_no_try_send = false;
   bool throw_deprecation = false;
+  bool trace_atomics_wait = false;
   bool trace_deprecation = false;
   bool trace_exit = false;
   bool trace_sync_io = false;
@@ -188,6 +188,7 @@ class PerIsolateOptions : public Options {
   bool no_node_snapshot = false;
   bool report_uncaught_exception = false;
   bool report_on_signal = false;
+  bool experimental_top_level_await = true;
   std::string report_signal = "SIGUSR2";
   inline EnvironmentOptions* get_per_env_options();
   void CheckOptions(std::vector<std::string>* errors) override;
@@ -208,7 +209,6 @@ class PerProcessOptions : public Options {
   std::string title;
   std::string trace_event_categories;
   std::string trace_event_file_pattern = "node_trace.${rotation}.log";
-  uint64_t max_http_header_size = 8 * 1024;
   int64_t v8_thread_pool_size = 4;
   bool zero_fill_all_buffers = false;
   bool debug_arraybuffer_allocations = false;
@@ -421,6 +421,8 @@ class OptionsParser {
   // An implied option is composed of the information on where to store a
   // specific boolean value (if another specific option is encountered).
   struct Implication {
+    OptionType type;
+    std::string name;
     std::shared_ptr<BaseOptionField> target_field;
     bool target_value;
   };

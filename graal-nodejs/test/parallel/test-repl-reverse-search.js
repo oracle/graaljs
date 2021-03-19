@@ -252,7 +252,7 @@ const tests = [
       '\x1B[1G', '\x1B[0J',
       `${prompt}ab = "aaaa"`, '\x1B[14G',
       '\x1B[1G', '\x1B[0J',
-      `${prompt}repl.repl.historyIndex`, '\x1B[25G', '\n// -1',
+      `${prompt}repl.repl.historyIndex`, '\x1B[25G', '\n// 8',
       '\x1B[25G', '\x1B[1A',
       '\x1B[1B', '\x1B[2K', '\x1B[1A',
       '\nfwd-i-search: _', '\x1B[1A', '\x1B[25G',

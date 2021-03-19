@@ -58,9 +58,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
-
-    private static final int V8MaxStringLength = (1 << 30) - 1 - 24;
-
     protected final BranchProfile nativePath = BranchProfile.create();
     protected final BranchProfile errorBranch = BranchProfile.create();
 
@@ -123,7 +120,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
             outOfBoundsFail();
         }
         int length = actualEnd - start;
-        if (length > V8MaxStringLength) {
+        if (length > getContext().getStringLengthLimit()) {
             return doNativeFallback(target, start, end);
         }
         int bufferLen = getLength(target);

@@ -32,6 +32,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // We reduce the maximum memory size and table size of WebAssembly instances
   // to avoid OOMs in the fuzzer.
   i::FlagScope<uint32_t> max_mem_flag_scope(&i::FLAG_wasm_max_mem_pages, 32);
+  i::FlagScope<uint32_t> max_mem_growth_flag_scope(
+      &i::FLAG_wasm_max_mem_pages_growth, 32);
   i::FlagScope<uint32_t> max_table_size_scope(&i::FLAG_wasm_max_table_size,
                                               100);
   v8_fuzzer::FuzzerSupport* support = v8_fuzzer::FuzzerSupport::Get();
@@ -53,7 +55,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   i::HandleScope scope(i_isolate);
   i::wasm::ErrorThrower thrower(i_isolate, "wasm fuzzer");
   i::Handle<i::WasmModuleObject> module_object;
-  auto enabled_features = i::wasm::WasmFeaturesFromIsolate(i_isolate);
+  auto enabled_features = i::wasm::WasmFeatures::FromIsolate(i_isolate);
   bool compiles =
       i_isolate->wasm_engine()
           ->SyncCompile(i_isolate, enabled_features, &thrower, wire_bytes)
@@ -69,6 +71,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
 
   // Pump the message loop and run micro tasks, e.g. GC finalization tasks.
   support->PumpMessageLoop(v8::platform::MessageLoopBehavior::kDoNotWait);
-  isolate->RunMicrotasks();
+  isolate->PerformMicrotaskCheckpoint();
   return 0;
 }

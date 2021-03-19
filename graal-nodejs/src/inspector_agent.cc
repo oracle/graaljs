@@ -45,8 +45,8 @@ using v8::Isolate;
 using v8::Local;
 using v8::Message;
 using v8::Object;
-using v8::Task;
 using v8::Value;
+
 using v8_inspector::StringBuffer;
 using v8_inspector::StringView;
 using v8_inspector::V8Inspector;
@@ -73,7 +73,7 @@ void StartIoThreadAsyncCallback(uv_async_t* handle) {
 
 
 #ifdef __POSIX__
-static void StartIoThreadWakeup(int signo) {
+static void StartIoThreadWakeup(int signo, siginfo_t* info, void* ucontext) {
   uv_sem_post(&start_io_thread_semaphore);
 }
 

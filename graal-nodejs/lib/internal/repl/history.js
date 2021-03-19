@@ -99,6 +99,7 @@ function setupHistory(repl, historyPath, ready) {
     fs.ftruncate(hnd, 0, (err) => {
       repl._historyHandle = hnd;
       repl.on('line', online);
+      repl.once('exit', onexit);
 
       // Reading the file data out erases it
       repl.once('flushHistory', function() {
@@ -142,6 +143,15 @@ function setupHistory(repl, historyPath, ready) {
         repl.emit('flushHistory');
       }
     }
+  }
+
+  function onexit() {
+    if (repl._flushing) {
+      repl.once('flushHistory', onexit);
+      return;
+    }
+    repl.off('line', online);
+    fs.close(repl._historyHandle, () => {});
   }
 }
 

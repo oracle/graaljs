@@ -27,11 +27,17 @@
 // unless they address existing, critical bugs.
 
 const {
-  Array,
+  ArrayPrototypeEvery,
+  ArrayPrototypeIndexOf,
+  ArrayPrototypeLastIndexOf,
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSplice,
   Error,
-  Map,
+  FunctionPrototypeCall,
   ObjectDefineProperty,
   ReflectApply,
+  SafeMap,
   Symbol,
 } = primordials;
 
@@ -61,7 +67,7 @@ ObjectDefineProperty(process, 'domain', {
   }
 });
 
-const pairing = new Map();
+const pairing = new SafeMap();
 const asyncHook = createHook({
   init(asyncId, type, triggerAsyncId, resource) {
     if (process.domain !== null && process.domain !== undefined) {
@@ -144,12 +150,13 @@ function topLevelDomainCallback(cb, ...args) {
 
 // It's possible to enter one domain while already inside
 // another one. The stack is each entered domain.
-const stack = [];
+let stack = [];
 exports._stack = stack;
 useDomainTrampoline(topLevelDomainCallback);
 
 function updateExceptionCapture() {
-  if (stack.every((domain) => domain.listenerCount('error') === 0)) {
+  if (ArrayPrototypeEvery(stack,
+                          (domain) => domain.listenerCount('error') === 0)) {
     setUncaughtExceptionCaptureCallback(null);
   } else {
     setUncaughtExceptionCaptureCallback(null);
@@ -223,6 +230,13 @@ Domain.prototype._errorHandler = function(er) {
     });
     er.domainThrown = true;
   }
+  // Pop all adjacent duplicates of the currently active domain from the stack.
+  // This is done to prevent a domain's error handler to run within the context
+  // of itself, and re-entering itself recursively handler as a result of an
+  // exception thrown in its context.
+  while (exports.active === this) {
+    this.exit();
+  }
 
   // The top-level domain-handler is handled separately.
   //
@@ -233,15 +247,15 @@ Domain.prototype._errorHandler = function(er) {
   // process abort. Using try/catch here would always make V8 think
   // that these exceptions are caught, and thus would prevent it from
   // aborting in these cases.
-  if (stack.length === 1) {
+  if (stack.length === 0) {
     // If there's no error handler, do not emit an 'error' event
     // as this would throw an error, make the process exit, and thus
     // prevent the process 'uncaughtException' event from being emitted
     // if a listener is set.
     if (EventEmitter.listenerCount(this, 'error') > 0) {
-      // Clear the uncaughtExceptionCaptureCallback so that we know that, even
-      // if technically the top-level domain is still active, it would
-      // be ok to abort on an uncaught exception at this point
+      // Clear the uncaughtExceptionCaptureCallback so that we know that, since
+      // the top-level domain is not active anymore, it would be ok to abort on
+      // an uncaught exception at this point
       setUncaughtExceptionCaptureCallback(null);
       try {
         caught = this.emit('error', er);
@@ -265,10 +279,6 @@ Domain.prototype._errorHandler = function(er) {
       // The domain error handler threw!  oh no!
       // See if another domain can catch THIS error,
       // or else crash on the original one.
-      // If the user already exited it, then don't double-exit.
-      if (this === exports.active) {
-        stack.pop();
-      }
       updateExceptionCapture();
       if (stack.length) {
         exports.active = process.domain = stack[stack.length - 1];
@@ -293,18 +303,18 @@ Domain.prototype.enter = function() {
   // Note that this might be a no-op, but we still need
   // to push it onto the stack so that we can pop it later.
   exports.active = process.domain = this;
-  stack.push(this);
+  ArrayPrototypePush(stack, this);
   updateExceptionCapture();
 };
 
 
 Domain.prototype.exit = function() {
   // Don't do anything if this domain is not on the stack.
-  const index = stack.lastIndexOf(this);
+  const index = ArrayPrototypeLastIndexOf(stack, this);
   if (index === -1) return;
 
   // Exit all domains until this one.
-  stack.splice(index);
+  ArrayPrototypeSplice(stack, index);
 
   exports.active = stack[stack.length - 1];
   process.domain = exports.active;
@@ -343,33 +353,21 @@ Domain.prototype.add = function(ee) {
     value: this,
     writable: true
   });
-  this.members.push(ee);
+  ArrayPrototypePush(this.members, ee);
 };
 
 
 Domain.prototype.remove = function(ee) {
   ee.domain = null;
-  const index = this.members.indexOf(ee);
+  const index = ArrayPrototypeIndexOf(this.members, ee);
   if (index !== -1)
-    this.members.splice(index, 1);
+    ArrayPrototypeSplice(this.members, index, 1);
 };
 
 
 Domain.prototype.run = function(fn) {
-  let ret;
-
   this.enter();
-  if (arguments.length >= 2) {
-    const len = arguments.length;
-    const args = new Array(len - 1);
-
-    for (let i = 1; i < len; i++)
-      args[i - 1] = arguments[i];
-
-    ret = fn.apply(this, args);
-  } else {
-    ret = fn.call(this);
-  }
+  const ret = ReflectApply(fn, this, ArrayPrototypeSlice(arguments, 1));
   this.exit();
 
   return ret;
@@ -391,17 +389,8 @@ function intercepted(_this, self, cb, fnargs) {
     return;
   }
 
-  const args = [];
-  let ret;
-
   self.enter();
-  if (fnargs.length > 1) {
-    for (let i = 1; i < fnargs.length; i++)
-      args.push(fnargs[i]);
-    ret = cb.apply(_this, args);
-  } else {
-    ret = cb.call(_this);
-  }
+  const ret = ReflectApply(cb, _this, ArrayPrototypeSlice(fnargs, 1));
   self.exit();
 
   return ret;
@@ -420,13 +409,8 @@ Domain.prototype.intercept = function(cb) {
 
 
 function bound(_this, self, cb, fnargs) {
-  let ret;
-
   self.enter();
-  if (fnargs.length > 0)
-    ret = cb.apply(_this, fnargs);
-  else
-    ret = cb.call(_this);
+  const ret = ReflectApply(cb, _this, fnargs);
   self.exit();
 
   return ret;
@@ -465,7 +449,7 @@ EventEmitter.init = function() {
     this.domain = exports.active;
   }
 
-  return eventInit.call(this);
+  return FunctionPrototypeCall(eventInit, this);
 };
 
 const eventEmit = EventEmitter.prototype.emit;
@@ -498,7 +482,46 @@ EventEmitter.prototype.emit = function(...args) {
       er.domainThrown = false;
     }
 
+    // Remove the current domain (and its duplicates) from the domains stack and
+    // set the active domain to its parent (if any) so that the domain's error
+    // handler doesn't run in its own context. This prevents any event emitter
+    // created or any exception thrown in that error handler from recursively
+    // executing that error handler.
+    const origDomainsStack = ArrayPrototypeSlice(stack);
+    const origActiveDomain = process.domain;
+
+    // Travel the domains stack from top to bottom to find the first domain
+    // instance that is not a duplicate of the current active domain.
+    let idx = stack.length - 1;
+    while (idx > -1 && process.domain === stack[idx]) {
+      --idx;
+    }
+
+    // Change the stack to not contain the current active domain, and only the
+    // domains above it on the stack.
+    if (idx < 0) {
+      stack.length = 0;
+    } else {
+      ArrayPrototypeSplice(stack, idx + 1);
+    }
+
+    // Change the current active domain
+    if (stack.length > 0) {
+      exports.active = process.domain = stack[stack.length - 1];
+    } else {
+      exports.active = process.domain = null;
+    }
+
+    updateExceptionCapture();
+
     domain.emit('error', er);
+
+    // Now that the domain's error handler has completed, restore the domains
+    // stack and the active domain to their original values.
+    exports._stack = stack = origDomainsStack;
+    exports.active = process.domain = origActiveDomain;
+    updateExceptionCapture();
+
     return false;
   }
 

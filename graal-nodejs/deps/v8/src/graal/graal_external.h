@@ -65,4 +65,3 @@ private:
 };
 
 #endif /* GRAAL_EXTERNAL_H_ */
-

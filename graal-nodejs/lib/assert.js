@@ -22,12 +22,15 @@
 
 const {
   Error,
+  ErrorCaptureStackTrace,
   ObjectAssign,
   ObjectIs,
   ObjectKeys,
   ObjectPrototypeIsPrototypeOf,
   Map,
+  NumberIsNaN,
   RegExpPrototypeTest,
+  String,
 } = primordials;
 
 const { Buffer } = require('buffer');
@@ -47,6 +50,7 @@ const { inspect } = require('internal/util/inspect');
 const { isPromise, isRegExp } = require('internal/util/types');
 const { EOL } = require('internal/constants');
 const { NativeModule } = require('internal/bootstrap/loaders');
+const { isError } = require('internal/util');
 
 const errorCache = new Map();
 const CallTracker = require('internal/assert/calltracker');
@@ -218,8 +222,6 @@ function parseCode(code, offset) {
       require('internal/deps/acorn-plugins/acorn-private-methods/index');
     const classFields =
       require('internal/deps/acorn-plugins/acorn-class-fields/index');
-    const numericSeparator =
-      require('internal/deps/acorn-plugins/acorn-numeric-separator/index');
     const staticClassFeatures =
       require('internal/deps/acorn-plugins/acorn-static-class-features/index');
 
@@ -228,7 +230,6 @@ function parseCode(code, offset) {
     const Parser = acorn.Parser.extend(
       privateMethods,
       classFields,
-      numericSeparator,
       staticClassFeatures
     );
     parseExpressionAt = Parser.parseExpressionAt.bind(Parser);
@@ -238,7 +239,7 @@ function parseCode(code, offset) {
   // Parse the read code until the correct expression is found.
   do {
     try {
-      node = parseExpressionAt(code, start, { ecmaVersion: 11 });
+      node = parseExpressionAt(code, start, { ecmaVersion: 'latest' });
       start = node.end + 1 || start;
       // Find the CallExpression in the tree.
       node = findNodeAround(node, offset, 'CallExpression');
@@ -269,15 +270,14 @@ function getErrMessage(message, fn) {
   // We only need the stack trace. To minimize the overhead use an object
   // instead of an error.
   const err = {};
-  // eslint-disable-next-line no-restricted-syntax
-  Error.captureStackTrace(err, fn);
+  ErrorCaptureStackTrace(err, fn);
   Error.stackTraceLimit = tmpLimit;
 
   overrideStackTrace.set(err, (_, stack) => stack);
   const call = err.stack[0];
 
   const filename = call.getFileName();
-  let line = call.getLineNumber() - 1;
+  const line = call.getLineNumber() - 1;
   let column = call.getColumnNumber() - 1;
   let identifier;
   let code;
@@ -297,9 +297,6 @@ function getErrMessage(message, fn) {
       return message;
     }
     code = String(fn);
-    // For functions created with the Function constructor, V8 does not count
-    // the lines containing the function header.
-    line += 2;
     identifier = `${code}${line}${column}`;
   }
 
@@ -401,7 +398,7 @@ assert.equal = function equal(actual, expected, message) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
   }
   // eslint-disable-next-line eqeqeq
-  if (actual != expected) {
+  if (actual != expected && (!NumberIsNaN(actual) || !NumberIsNaN(expected))) {
     innerFail({
       actual,
       expected,
@@ -419,7 +416,7 @@ assert.notEqual = function notEqual(actual, expected, message) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
   }
   // eslint-disable-next-line eqeqeq
-  if (actual == expected) {
+  if (actual == expected || (NumberIsNaN(actual) && NumberIsNaN(expected))) {
     innerFail({
       actual,
       expected,
@@ -628,12 +625,41 @@ function expectedException(actual, expected, message, fn) {
   } else if (expected.prototype !== undefined && actual instanceof expected) {
     return;
   } else if (ObjectPrototypeIsPrototypeOf(Error, expected)) {
-    throw actual;
+    if (!message) {
+      generatedMessage = true;
+      message = 'The error is expected to be an instance of ' +
+        `"${expected.name}". Received `;
+      if (isError(actual)) {
+        const name = (actual.constructor && actual.constructor.name) ||
+                     actual.name;
+        if (expected.name === name) {
+          message += 'an error with identical name but a different prototype.';
+        } else {
+          message += `"${name}"`;
+        }
+        if (actual.message) {
+          message += `\n\nError message:\n\n${actual.message}`;
+        }
+      } else {
+        message += `"${inspect(actual, { depth: -1 })}"`;
+      }
+    }
+    throwError = true;
   } else {
     // Check validation functions return value.
     const res = expected.call({}, actual);
     if (res !== true) {
-      throw actual;
+      if (!message) {
+        generatedMessage = true;
+        const name = expected.name ? `"${expected.name}" ` : '';
+        message = `The ${name}validation function is expected to return` +
+          ` "true". Received ${inspect(res)}`;
+
+        if (isError(actual)) {
+          message += `\n\nCaught error:\n\n${actual}`;
+        }
+      }
+      throwError = true;
     }
   }
 
@@ -763,7 +789,7 @@ function hasMatchingError(actual, expected) {
   if (expected.prototype !== undefined && actual instanceof expected) {
     return true;
   }
-  if (Error.isPrototypeOf(expected)) {
+  if (ObjectPrototypeIsPrototypeOf(Error, expected)) {
     return false;
   }
   return expected.call({}, actual) === true;

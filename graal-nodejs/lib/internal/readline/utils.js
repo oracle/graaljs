@@ -1,6 +1,7 @@
 'use strict';
 
 const {
+  String,
   Symbol,
 } = primordials;
 
@@ -199,7 +200,13 @@ function* emitKeys(stream) {
 
       // Parse the key itself
       switch (code) {
-        /* xterm/gnome ESC O letter */
+        /* xterm/gnome ESC [ letter (with modifier) */
+        case '[P': key.name = 'f1'; break;
+        case '[Q': key.name = 'f2'; break;
+        case '[R': key.name = 'f3'; break;
+        case '[S': key.name = 'f4'; break;
+
+        /* xterm/gnome ESC O letter (without modifier) */
         case 'OP': key.name = 'f1'; break;
         case 'OQ': key.name = 'f2'; break;
         case 'OR': key.name = 'f3'; break;
@@ -296,12 +303,15 @@ function* emitKeys(stream) {
     } else if (ch === '\r') {
       // carriage return
       key.name = 'return';
+      key.meta = escaped;
     } else if (ch === '\n') {
       // Enter, should have been called linefeed
       key.name = 'enter';
+      key.meta = escaped;
     } else if (ch === '\t') {
       // tab
       key.name = 'tab';
+      key.meta = escaped;
     } else if (ch === '\b' || ch === '\x7f') {
       // backspace or ctrl+h
       key.name = 'backspace';

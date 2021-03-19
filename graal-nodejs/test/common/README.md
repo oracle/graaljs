@@ -81,7 +81,8 @@ least 1 GHz.
 
 Indicates if there is more than 1gb of total memory.
 
-### expectsError(validator\[, exact\])
+### `expectsError(validator[, exact])`
+
 * `validator` [&lt;Object>][] | [&lt;RegExp>][] | [&lt;Function>][] |
   [&lt;Error>][] The validator behaves identical to
   `assert.throws(fn, validator)`.
@@ -312,6 +313,15 @@ If `fn` is not provided, an empty function will be used.
 Returns a function that triggers an `AssertionError` if it is invoked. `msg` is
 used as the error message for the `AssertionError`.
 
+### `mustSucceed([fn])`
+
+* `fn` [&lt;Function>][] default = () => {}
+* return [&lt;Function>][]
+
+Returns a function that accepts arguments `(err, ...args)`. If `err` is not
+`undefined` or `null`, it triggers an `AssertionError`. Otherwise, it calls
+`fn(...args)`.
+
 ### `nodeProcessAborted(exitCode, signal)`
 
 * `exitCode` [&lt;number>][]
@@ -366,6 +376,11 @@ const { spawn } = require('child_process');
 
 spawn(...common.pwdCommand, { stdio: ['pipe'] });
 ```
+
+### `requireNoPackageJSONAbove()`
+
+Throws an `AssertionError` if a `package.json` file is in any ancestor
+directory. Such files may interfere with proper test functionality.
 
 ### `runWithInvalidFD(func)`
 
@@ -928,6 +943,13 @@ The realpath of the testing temporary directory.
 ### `refresh()`
 
 Deletes and recreates the testing temporary directory.
+
+The first time `refresh()` runs,  it adds a listener to process `'exit'` that
+cleans the temporary directory. Thus, every file under `tmpdir.path` needs to
+be closed before the test completes. A good way to do this is to add a
+listener to process `'beforeExit'`. If a file needs to be left open until
+Node.js completes, use a child process and call `refresh()` only in the
+parent.
 
 ## UDP pair helper
 

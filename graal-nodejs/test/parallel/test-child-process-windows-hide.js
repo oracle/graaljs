@@ -19,7 +19,7 @@ internalCp.ChildProcess.prototype.spawn = common.mustCall(function(options) {
 }, 2);
 
 internalCp.spawnSync = common.mustCall(function(options) {
-  assert.strictEqual(options.options.windowsHide, true);
+  assert.strictEqual(options.windowsHide, true);
   return originalSpawnSync.apply(this, arguments);
 });
 
@@ -42,8 +42,7 @@ internalCp.spawnSync = common.mustCall(function(options) {
 }
 
 {
-  const callback = common.mustCall((err, stdout, stderr) => {
-    assert.ifError(err);
+  const callback = common.mustSucceed((stdout, stderr) => {
     assert.strictEqual(stdout.trim(), '42');
     assert.strictEqual(stderr.trim(), '');
   });

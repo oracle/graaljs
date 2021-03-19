@@ -13,7 +13,7 @@ load("test/mjsunit/wasm/user-properties-common.js");
   var builder = new WasmModuleBuilder();
   builder.addFunction("exp", kSig_i_i)
     .addBody([
-      kExprGetLocal, 0,
+      kExprLocalGet, 0,
       kExprCallFunction, 0])
     .exportAs("exp");
   let module1 = builder.toModule();
@@ -22,7 +22,7 @@ load("test/mjsunit/wasm/user-properties-common.js");
 
   testProperties(g);
 
-  // The WASM-internal fields of {g} are only inspected when {g} is
+  // The Wasm-internal fields of {g} are only inspected when {g} is
   // used as an import into another instance.
   print("  instance 2, importing");
   var builder = new WasmModuleBuilder();

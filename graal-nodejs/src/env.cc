@@ -1,18 +1,19 @@
 #include "env.h"
-
+#include "allocated_buffer-inl.h"
 #include "async_wrap.h"
+#include "base_object-inl.h"
 #include "debug_utils-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_buffer.h"
 #include "node_context_data.h"
 #include "node_errors.h"
-#include "node_file.h"
 #include "node_internals.h"
 #include "node_options-inl.h"
 #include "node_process.h"
 #include "node_v8_platform-inl.h"
 #include "node_worker.h"
 #include "req_wrap-inl.h"
+#include "stream_base.h"
 #include "tracing/agent.h"
 #include "tracing/traced_value.h"
 #include "util-inl.h"
@@ -29,7 +30,6 @@ using errors::TryCatchScope;
 using v8::Boolean;
 using v8::Context;
 using v8::EmbedderGraph;
-using v8::FinalizationGroup;
 using v8::Function;
 using v8::FunctionTemplate;
 using v8::HandleScope;
@@ -188,13 +188,9 @@ IsolateData::IsolateData(Isolate* isolate,
                          const std::vector<size_t>* indexes)
     : isolate_(isolate),
       event_loop_(event_loop),
-      allocator_(isolate->GetArrayBufferAllocator()),
       node_allocator_(node_allocator == nullptr ? nullptr
                                                 : node_allocator->GetImpl()),
-      uses_node_allocator_(allocator_ == node_allocator_),
       platform_(platform) {
-  CHECK_NOT_NULL(allocator_);
-
   options_.reset(
       new PerIsolateOptions(*(per_process::cli_options->per_isolate)));
 
@@ -221,9 +217,6 @@ void IsolateData::MemoryInfo(MemoryTracker* tracker) const {
   if (node_allocator_ != nullptr) {
     tracker->TrackFieldWithSize(
         "node_allocator", sizeof(*node_allocator_), "NodeArrayBufferAllocator");
-  } else {
-    tracker->TrackFieldWithSize(
-        "allocator", sizeof(*allocator_), "v8::ArrayBuffer::Allocator");
   }
   tracker->TrackFieldWithSize(
       "platform", sizeof(*platform_), "MultiIsolatePlatform");
@@ -262,16 +255,16 @@ void TrackingTraceStateObserver::UpdateTraceCategoryState() {
 void Environment::CreateProperties() {
   HandleScope handle_scope(isolate_);
   Local<Context> ctx = context();
-  Local<FunctionTemplate> templ = FunctionTemplate::New(isolate());
-  templ->InstanceTemplate()->SetInternalFieldCount(1);
-  templ->Inherit(BaseObject::GetConstructorTemplate(this));
-  Local<Object> obj = templ->GetFunction(ctx)
-                          .ToLocalChecked()
-                          ->NewInstance(ctx)
-                          .ToLocalChecked();
-  obj->SetAlignedPointerInInternalField(0, this);
-  set_as_callback_data(obj);
-  set_as_callback_data_template(templ);
+
+  {
+    Context::Scope context_scope(ctx);
+    Local<FunctionTemplate> templ = FunctionTemplate::New(isolate());
+    templ->InstanceTemplate()->SetInternalFieldCount(
+        BaseObject::kInternalFieldCount);
+    templ->Inherit(BaseObject::GetConstructorTemplate(this));
+
+    set_binding_data_ctor_template(templ);
+  }
 
   // Store primordials setup by the per-context script in the environment.
   Local<Object> per_context_bindings =
@@ -331,8 +324,6 @@ Environment::Environment(IsolateData* isolate_data,
       flags_(flags),
       thread_id_(thread_id.id == static_cast<uint64_t>(-1) ?
           AllocateEnvironmentThreadId().id : thread_id.id),
-      fs_stats_field_array_(isolate_, kFsStatsBufferLength),
-      fs_stats_field_bigint_array_(isolate_, kFsStatsBufferLength),
       context_(context->GetIsolate(), context) {
   // We'll be creating new objects so make sure we've entered the context.
   HandleScope handle_scope(isolate());
@@ -416,6 +407,10 @@ Environment::Environment(IsolateData* isolate_data,
   // TODO(joyeecheung): deserialize when the snapshot covers the environment
   // properties.
   CreateProperties();
+
+  // This adjusts the return value of base_object_count() so that tests that
+  // check the count do not have to account for internally created BaseObjects.
+  initial_base_object_count_ = base_object_count();
 }
 
 Environment::~Environment() {
@@ -444,12 +439,11 @@ Environment::~Environment() {
     DCHECK(consistency_check);
   }
 
+  // FreeEnvironment() should have set this.
+  CHECK(is_stopping());
+
   isolate()->GetHeapProfiler()->RemoveBuildEmbedderGraphCallback(
       BuildEmbedderGraph, this);
-
-  // Make sure there are no re-used libuv wrapper objects.
-  // CleanupHandles() should have removed all of them.
-  CHECK(file_handle_read_wrap_freelist_.empty());
 
   HandleScope handle_scope(isolate());
 
@@ -469,11 +463,6 @@ Environment::~Environment() {
       tracing_controller->RemoveTraceStateObserver(trace_state_observer_.get());
   }
 
-  delete[] heap_statistics_buffer_;
-  delete[] heap_space_statistics_buffer_;
-  delete[] http_parser_buffer_;
-  delete[] heap_code_statistics_buffer_;
-
   TRACE_EVENT_NESTABLE_ASYNC_END0(
     TRACING_CATEGORY_NODE1(environment), "Environment", this);
 
@@ -489,10 +478,10 @@ Environment::~Environment() {
     }
   }
 
-  CHECK_EQ(base_object_count(), 0);
+  CHECK_EQ(base_object_count_, 0);
 }
 
-void Environment::InitializeLibuv(bool start_profiler_idle_notifier) {
+void Environment::InitializeLibuv() {
   HandleScope handle_scope(isolate());
   Context::Scope context_scope(context());
 
@@ -506,28 +495,14 @@ void Environment::InitializeLibuv(bool start_profiler_idle_notifier) {
 
   uv_check_start(immediate_check_handle(), CheckImmediate);
 
-  // Inform V8's CPU profiler when we're idle.  The profiler is sampling-based
-  // but not all samples are created equal; mark the wall clock time spent in
-  // epoll_wait() and friends so profiling tools can filter it out.  The samples
-  // still end up in v8.log but with state=IDLE rather than state=EXTERNAL.
-  // TODO(bnoordhuis) Depends on a libuv implementation detail that we should
-  // probably fortify in the API contract, namely that the last started prepare
-  // or check watcher runs first.  It's not 100% foolproof; if an add-on starts
-  // a prepare or check watcher after us, any samples attributed to its callback
-  // will be recorded with state=IDLE.
-  uv_prepare_init(event_loop(), &idle_prepare_handle_);
-  uv_check_init(event_loop(), &idle_check_handle_);
   uv_async_init(
       event_loop(),
       &task_queues_async_,
       [](uv_async_t* async) {
         Environment* env = ContainerOf(
             &Environment::task_queues_async_, async);
-        env->CleanupFinalizationGroups();
         env->RunAndClearNativeImmediates();
       });
-  uv_unref(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
-  uv_unref(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
   uv_unref(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 
   {
@@ -544,16 +519,11 @@ void Environment::InitializeLibuv(bool start_profiler_idle_notifier) {
   // the one environment per process setup, but will be called in
   // FreeEnvironment.
   RegisterHandleCleanups();
-
-  if (start_profiler_idle_notifier) {
-    StartProfilerIdleNotifier();
-  }
 }
 
-void Environment::Stop() {
+void Environment::ExitEnv() {
   set_can_call_into_js(false);
   set_stopping(true);
-  stop_sub_worker_contexts();
   isolate_->TerminateExecution();
   SetImmediateThreadsafe([](Environment* env) { uv_stop(env->event_loop()); });
 }
@@ -576,8 +546,6 @@ void Environment::RegisterHandleCleanups() {
   register_handle(reinterpret_cast<uv_handle_t*>(timer_handle()));
   register_handle(reinterpret_cast<uv_handle_t*>(immediate_check_handle()));
   register_handle(reinterpret_cast<uv_handle_t*>(immediate_idle_handle()));
-  register_handle(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
-  register_handle(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
   register_handle(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 }
 
@@ -607,31 +575,6 @@ void Environment::CleanupHandles() {
          !handle_wrap_queue_.IsEmpty()) {
     uv_run(event_loop(), UV_RUN_ONCE);
   }
-
-  file_handle_read_wrap_freelist_.clear();
-}
-
-void Environment::StartProfilerIdleNotifier() {
-  if (profiler_idle_notifier_started_)
-    return;
-
-  profiler_idle_notifier_started_ = true;
-
-  uv_prepare_start(&idle_prepare_handle_, [](uv_prepare_t* handle) {
-    Environment* env = ContainerOf(&Environment::idle_prepare_handle_, handle);
-    env->isolate()->SetIdle(true);
-  });
-
-  uv_check_start(&idle_check_handle_, [](uv_check_t* handle) {
-    Environment* env = ContainerOf(&Environment::idle_check_handle_, handle);
-    env->isolate()->SetIdle(false);
-  });
-}
-
-void Environment::StopProfilerIdleNotifier() {
-  profiler_idle_notifier_started_ = false;
-  uv_prepare_stop(&idle_prepare_handle_);
-  uv_check_stop(&idle_check_handle_);
 }
 
 void Environment::PrintSyncTrace() const {
@@ -650,6 +593,8 @@ void Environment::RunCleanup() {
   started_cleanup_ = true;
   TraceEventScope trace_scope(TRACING_CATEGORY_NODE1(environment),
                               "RunCleanup", this);
+  bindings_.clear();
+  initial_base_object_count_ = 0;
   CleanupHandles();
 
   while (!cleanup_hooks_.empty() ||
@@ -1039,6 +984,8 @@ void Environment::Exit(int exit_code) {
 }
 
 void Environment::stop_sub_worker_contexts() {
+  DCHECK_EQ(Isolate::GetCurrent(), isolate());
+
   while (!sub_worker_contexts_.empty()) {
     Worker* w = *sub_worker_contexts_.begin();
     remove_sub_worker_context(w);
@@ -1106,9 +1053,6 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("should_abort_on_uncaught_toggle",
                       should_abort_on_uncaught_toggle_);
   tracker->TrackField("stream_base_state", stream_base_state_);
-  tracker->TrackField("fs_stats_field_array", fs_stats_field_array_);
-  tracker->TrackField("fs_stats_field_bigint_array",
-                      fs_stats_field_bigint_array_);
   tracker->TrackFieldWithSize(
       "cleanup_hooks", cleanup_hooks_.size() * sizeof(CleanupHookCallback));
   tracker->TrackField("async_hooks", async_hooks_);
@@ -1131,62 +1075,8 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
   // node, we shift its sizeof() size out of the Environment node.
 }
 
-char* Environment::Reallocate(char* data, size_t old_size, size_t size) {
-  if (old_size == size) return data;
-  // If we know that the allocator is our ArrayBufferAllocator, we can let
-  // if reallocate directly.
-  if (isolate_data()->uses_node_allocator()) {
-    return static_cast<char*>(
-        isolate_data()->node_allocator()->Reallocate(data, old_size, size));
-  }
-  // Generic allocators do not provide a reallocation method; we need to
-  // allocate a new chunk of memory and copy the data over.
-  char* new_data = AllocateUnchecked(size);
-  if (new_data == nullptr) return nullptr;
-  memcpy(new_data, data, std::min(size, old_size));
-  if (size > old_size)
-    memset(new_data + old_size, 0, size - old_size);
-  Free(data, old_size);
-  return new_data;
-}
-
-void Environment::AddArrayBufferAllocatorToKeepAliveUntilIsolateDispose(
-    std::shared_ptr<v8::ArrayBuffer::Allocator> allocator) {
-  if (keep_alive_allocators_ == nullptr) {
-    MultiIsolatePlatform* platform = isolate_data()->platform();
-    CHECK_NOT_NULL(platform);
-
-    keep_alive_allocators_ = new ArrayBufferAllocatorList();
-    platform->AddIsolateFinishedCallback(isolate(), [](void* data) {
-      delete static_cast<ArrayBufferAllocatorList*>(data);
-    }, static_cast<void*>(keep_alive_allocators_));
-  }
-
-  keep_alive_allocators_->insert(allocator);
-}
-
 void Environment::RunWeakRefCleanup() {
   isolate()->ClearKeptObjects();
-}
-
-void Environment::CleanupFinalizationGroups() {
-  HandleScope handle_scope(isolate());
-  Context::Scope context_scope(context());
-  TryCatchScope try_catch(this);
-
-  while (!cleanup_finalization_groups_.empty() && can_call_into_js()) {
-    Local<FinalizationGroup> fg =
-        cleanup_finalization_groups_.front().Get(isolate());
-    cleanup_finalization_groups_.pop_front();
-    if (!FinalizationGroup::Cleanup(fg).FromMaybe(false)) {
-      if (try_catch.HasCaught() && !try_catch.HasTerminated())
-        errors::TriggerUncaughtException(isolate(), try_catch);
-      // Re-schedule the execution of the remainder of the queue.
-      CHECK(task_queues_async_initialized_);
-      uv_async_send(&task_queues_async_);
-      return;
-    }
-  }
 }
 
 // Not really any better place than env.cc at this moment.

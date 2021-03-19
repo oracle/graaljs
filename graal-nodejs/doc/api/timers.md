@@ -127,7 +127,7 @@ of the Node.js application.
 
 ### `timeout[Symbol.toPrimitive]()`
 <!-- YAML
-added: v12.19.0
+added: v14.9.0
 -->
 
 * Returns: {integer} a number that can be used to reference this `timeout`
@@ -188,14 +188,14 @@ async function timerExample() {
 timerExample();
 ```
 
-### `setInterval(callback, delay[, ...args])`
+### `setInterval(callback[, delay[, ...args]])`
 <!-- YAML
 added: v0.0.1
 -->
 
 * `callback` {Function} The function to call when the timer elapses.
 * `delay` {number} The number of milliseconds to wait before calling the
-  `callback`.
+  `callback`. **Default**: `1`.
 * `...args` {any} Optional arguments to pass when the `callback` is called.
 * Returns: {Timeout} for use with [`clearInterval()`][]
 
@@ -206,14 +206,14 @@ set to `1`. Non-integer delays are truncated to an integer.
 
 If `callback` is not a function, a [`TypeError`][] will be thrown.
 
-### `setTimeout(callback, delay[, ...args])`
+### `setTimeout(callback[, delay[, ...args]])`
 <!-- YAML
 added: v0.0.1
 -->
 
 * `callback` {Function} The function to call when the timer elapses.
 * `delay` {number} The number of milliseconds to wait before calling the
-  `callback`.
+  `callback`. **Default**: `1`.
 * `...args` {any} Optional arguments to pass when the `callback` is called.
 * Returns: {Timeout} for use with [`clearTimeout()`][]
 
@@ -280,12 +280,12 @@ added: v0.0.1
 Cancels a `Timeout` object created by [`setTimeout()`][].
 
 [Event Loop]: https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#setimmediate-vs-settimeout
-[`TypeError`]: errors.html#errors_class_typeerror
-[`clearImmediate()`]: timers.html#timers_clearimmediate_immediate
-[`clearInterval()`]: timers.html#timers_clearinterval_timeout
-[`clearTimeout()`]: timers.html#timers_cleartimeout_timeout
-[`setImmediate()`]: timers.html#timers_setimmediate_callback_args
-[`setInterval()`]: timers.html#timers_setinterval_callback_delay_args
-[`setTimeout()`]: timers.html#timers_settimeout_callback_delay_args
-[`util.promisify()`]: util.html#util_util_promisify_original
-[`worker_threads`]: worker_threads.html
+[`TypeError`]: errors.md#errors_class_typeerror
+[`clearImmediate()`]: timers.md#timers_clearimmediate_immediate
+[`clearInterval()`]: timers.md#timers_clearinterval_timeout
+[`clearTimeout()`]: timers.md#timers_cleartimeout_timeout
+[`setImmediate()`]: timers.md#timers_setimmediate_callback_args
+[`setInterval()`]: timers.md#timers_setinterval_callback_delay_args
+[`setTimeout()`]: timers.md#timers_settimeout_callback_delay_args
+[`util.promisify()`]: util.md#util_util_promisify_original
+[`worker_threads`]: worker_threads.md

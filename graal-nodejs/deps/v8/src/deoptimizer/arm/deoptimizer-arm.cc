@@ -12,8 +12,9 @@
 namespace v8 {
 namespace internal {
 
-const bool Deoptimizer::kSupportsFixedDeoptExitSize = false;
-const int Deoptimizer::kDeoptExitSize = 0;
+const bool Deoptimizer::kSupportsFixedDeoptExitSizes = false;
+const int Deoptimizer::kNonLazyDeoptExitSize = 0;
+const int Deoptimizer::kLazyDeoptExitSize = 0;
 
 #define __ masm->
 
@@ -85,7 +86,7 @@ void Deoptimizer::GenerateDeoptimizationEntries(MacroAssembler* masm,
   Label context_check;
   __ ldr(r1, MemOperand(fp, CommonFrameConstants::kContextOrFrameTypeOffset));
   __ JumpIfSmi(r1, &context_check);
-  __ ldr(r0, MemOperand(fp, JavaScriptFrameConstants::kFunctionOffset));
+  __ ldr(r0, MemOperand(fp, StandardFrameConstants::kFunctionOffset));
   __ bind(&context_check);
   __ mov(r1, Operand(static_cast<int>(deopt_kind)));
   // r2: bailout id already loaded.
@@ -121,6 +122,17 @@ void Deoptimizer::GenerateDeoptimizationEntries(MacroAssembler* masm,
     int src_offset = code * kDoubleSize + kNumberOfRegisters * kPointerSize;
     __ vldr(d0, sp, src_offset);
     __ vstr(d0, r1, dst_offset);
+  }
+
+  // Mark the stack as not iterable for the CPU profiler which won't be able to
+  // walk the stack without the return address.
+  {
+    UseScratchRegisterScope temps(masm);
+    Register is_iterable = temps.Acquire();
+    Register zero = r4;
+    __ Move(is_iterable, ExternalReference::stack_is_iterable_address(isolate));
+    __ mov(zero, Operand(0));
+    __ strb(zero, MemOperand(is_iterable));
   }
 
   // Remove the saved registers from the stack.
@@ -209,6 +221,15 @@ void Deoptimizer::GenerateDeoptimizationEntries(MacroAssembler* masm,
   // Restore the registers from the stack.
   __ ldm(ia_w, sp, restored_regs);  // all but pc registers.
 
+  {
+    UseScratchRegisterScope temps(masm);
+    Register is_iterable = temps.Acquire();
+    Register one = r4;
+    __ Move(is_iterable, ExternalReference::stack_is_iterable_address(isolate));
+    __ mov(one, Operand(1));
+    __ strb(one, MemOperand(is_iterable));
+  }
+
   // Remove sp, lr and pc.
   __ Drop(3);
   {
@@ -218,6 +239,7 @@ void Deoptimizer::GenerateDeoptimizationEntries(MacroAssembler* masm,
     __ pop(lr);
     __ Jump(scratch);
   }
+
   __ stop();
 }
 
@@ -240,6 +262,8 @@ void FrameDescription::SetCallerConstantPool(unsigned offset, intptr_t value) {
   // No embedded constant pool support.
   UNREACHABLE();
 }
+
+void FrameDescription::SetPc(intptr_t pc) { pc_ = pc; }
 
 #undef __
 

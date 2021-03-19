@@ -10,15 +10,12 @@ const privateMethods =
   require('internal/deps/acorn-plugins/acorn-private-methods/index');
 const classFields =
   require('internal/deps/acorn-plugins/acorn-class-fields/index');
-const numericSeparator =
-  require('internal/deps/acorn-plugins/acorn-numeric-separator/index');
 const staticClassFeatures =
   require('internal/deps/acorn-plugins/acorn-static-class-features/index');
 
 const parser = acorn.Parser.extend(
   privateMethods,
   classFields,
-  numericSeparator,
   staticClassFeatures
 );
 
@@ -93,7 +90,7 @@ function processTopLevelAwait(src) {
   const wrappedArray = wrapped.split('');
   let root;
   try {
-    root = parser.parse(wrapped, { ecmaVersion: 11 });
+    root = parser.parse(wrapped, { ecmaVersion: 'latest' });
   } catch {
     return null;
   }

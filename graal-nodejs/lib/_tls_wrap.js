@@ -27,6 +27,7 @@ const {
   ObjectSetPrototypeOf,
   RegExp,
   Symbol,
+  SymbolFor,
 } = primordials;
 
 const {
@@ -499,9 +500,8 @@ function TLSSocket(socket, opts) {
     handle: this._wrapHandle(wrap),
     allowHalfOpen: socket ? socket.allowHalfOpen : tlsOptions.allowHalfOpen,
     pauseOnCreate: tlsOptions.pauseOnConnect,
-    // The readable flag is only needed if pauseOnCreate will be handled.
-    readable: tlsOptions.pauseOnConnect,
-    writable: false
+    manualStart: true,
+    highWaterMark: tlsOptions.highWaterMark,
   });
 
   // Proxy for API compatibility
@@ -510,11 +510,6 @@ function TLSSocket(socket, opts) {
   this.on('error', this._tlsError);
 
   this._init(socket, wrap);
-
-  // Make sure to setup all required properties like: `connecting` before
-  // starting the flow of the data
-  this.readable = true;
-  this.writable = true;
 
   if (enableTrace && this._handle)
     this._handle.enableTrace();
@@ -1433,7 +1428,7 @@ Server.prototype[EE.captureRejectionSymbol] = function(
       sock.destroy(err);
       break;
     default:
-      net.Server.prototype[Symbol.for('nodejs.rejection')]
+      net.Server.prototype[SymbolFor('nodejs.rejection')]
         .call(this, err, event, sock);
   }
 };
@@ -1596,6 +1591,7 @@ exports.connect = function connect(...args) {
     requestOCSP: options.requestOCSP,
     enableTrace: options.enableTrace,
     pskCallback: options.pskCallback,
+    highWaterMark: options.highWaterMark,
   });
 
   tlssock[kConnectOptions] = options;
@@ -1635,7 +1631,7 @@ exports.connect = function connect(...args) {
     tlssock._start();
 
   tlssock.on('secure', onConnectSecure);
-  tlssock.once('end', onConnectEnd);
+  tlssock.prependListener('end', onConnectEnd);
 
   return tlssock;
 };

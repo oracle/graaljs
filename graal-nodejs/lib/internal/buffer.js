@@ -3,6 +3,7 @@
 const {
   BigInt,
   Float32Array,
+  Float64Array,
   MathFloor,
   Number,
   Uint8Array,

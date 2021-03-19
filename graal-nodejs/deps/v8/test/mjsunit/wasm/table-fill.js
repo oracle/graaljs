@@ -32,13 +32,13 @@ const internal_func = builder.addTable(kWasmAnyFunc, size, maximum).index;
 for (index of [import_ref, internal_ref]) {
   builder.addFunction(`fill${index}`, kSig_v_iri)
       .addBody([
-        kExprGetLocal, 0, kExprGetLocal, 1, kExprGetLocal, 2, kNumericPrefix,
+        kExprLocalGet, 0, kExprLocalGet, 1, kExprLocalGet, 2, kNumericPrefix,
         kExprTableFill, index
       ])
       .exportFunc();
 
   builder.addFunction(`get${index}`, kSig_r_i)
-      .addBody([kExprGetLocal, 0, kExprTableGet, index])
+      .addBody([kExprLocalGet, 0, kExprTableGet, index])
       .exportFunc();
 }
 
@@ -47,13 +47,13 @@ const sig_index = builder.addType(kSig_i_v);
 for (index of [import_func, internal_func]) {
   builder.addFunction(`fill${index}`, kSig_v_iai)
       .addBody([
-        kExprGetLocal, 0, kExprGetLocal, 1, kExprGetLocal, 2, kNumericPrefix,
+        kExprLocalGet, 0, kExprLocalGet, 1, kExprLocalGet, 2, kNumericPrefix,
         kExprTableFill, index
       ])
       .exportFunc();
 
   builder.addFunction(`call${index}`, kSig_i_i)
-      .addBody([kExprGetLocal, 0, kExprCallIndirect, sig_index, index])
+      .addBody([kExprLocalGet, 0, kExprCallIndirect, sig_index, index])
       .exportFunc();
 }
 
@@ -93,8 +93,7 @@ function checkAnyRefTable(getter, start, count, value) {
 
 (function testAnyRefTableFillOOB() {
   print(arguments.callee.name);
-  // Fill table out-of-bounds, check if the table got filled as much as
-  // possible.
+  // Fill table out-of-bounds, check if the table wasn't altered.
   let start = 7;
   let value = {foo: 27};
   // {maximum + 4} elements definitely don't fit into the table.
@@ -103,14 +102,14 @@ function checkAnyRefTable(getter, start, count, value) {
       kTrapTableOutOfBounds,
       () => instance.exports[`fill${import_ref}`](start, value, count));
   checkAnyRefTable(
-      instance.exports[`get${import_ref}`], start, size - start, value);
+      instance.exports[`get${import_ref}`], start, size - start, null);
 
   value = 45;
   assertTraps(
       kTrapTableOutOfBounds,
       () => instance.exports[`fill${internal_ref}`](start, value, count));
   checkAnyRefTable(
-      instance.exports[`get${internal_ref}`], start, size - start, value);
+      instance.exports[`get${internal_ref}`], start, size - start, null);
 })();
 
 (function testAnyRefTableFillOOBCountZero() {
@@ -160,8 +159,7 @@ function checkAnyFuncTable(call, start, count, value) {
 
 (function testAnyFuncTableFillOOB() {
   print(arguments.callee.name);
-  // Fill table out-of-bounds, check if the table got filled as much as
-  // possible.
+  // Fill table out-of-bounds, check if the table wasn't altered.
   let start = 7;
   let value = 38;
   // {maximum + 4} elements definitely don't fit into the table.
@@ -171,7 +169,7 @@ function checkAnyFuncTable(call, start, count, value) {
       () => instance.exports[`fill${import_func}`](
           start, dummy_func(value), count));
   checkAnyFuncTable(
-      instance.exports[`call${import_func}`], start, size - start, value);
+      instance.exports[`call${import_func}`], start, size - start, null);
 
   value = 46;
   assertTraps(
@@ -179,7 +177,7 @@ function checkAnyFuncTable(call, start, count, value) {
       () => instance.exports[`fill${internal_func}`](
           start, dummy_func(value), count));
   checkAnyFuncTable(
-      instance.exports[`call${internal_func}`], start, size - start, value);
+      instance.exports[`call${internal_func}`], start, size - start, null);
 })();
 
 (function testAnyFuncTableFillOOBCountZero() {

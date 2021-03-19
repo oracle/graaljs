@@ -157,6 +157,8 @@ class JSSpeculativeBinopBuilder final {
     switch (op_->opcode()) {
       case IrOpcode::kJSAdd:
         return simplified()->SpeculativeBigIntAdd(hint);
+      case IrOpcode::kJSSubtract:
+        return simplified()->SpeculativeBigIntSubtract(hint);
       default:
         break;
     }
@@ -397,7 +399,8 @@ JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceBinaryOperation(
       if (Node* node = b.TryBuildNumberBinop()) {
         return LoweringResult::SideEffectFree(node, node, control);
       }
-      if (op->opcode() == IrOpcode::kJSAdd) {
+      if (op->opcode() == IrOpcode::kJSAdd ||
+          op->opcode() == IrOpcode::kJSSubtract) {
         if (Node* node = b.TryBuildBigIntBinop()) {
           return LoweringResult::SideEffectFree(node, node, control);
         }
@@ -482,12 +485,32 @@ JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceConstructOperation(
   return LoweringResult::NoChange();
 }
 
+JSTypeHintLowering::LoweringResult
+JSTypeHintLowering::ReduceGetIteratorOperation(const Operator* op,
+                                               Node* receiver, Node* effect,
+                                               Node* control,
+                                               FeedbackSlot load_slot,
+                                               FeedbackSlot call_slot) const {
+  DCHECK_EQ(IrOpcode::kJSGetIterator, op->opcode());
+  // Insert soft deopt if the load feedback is invalid.
+  if (Node* node = TryBuildSoftDeopt(
+          load_slot, effect, control,
+          DeoptimizeReason::kInsufficientTypeFeedbackForGenericNamedAccess)) {
+    return LoweringResult::Exit(node);
+  }
+  // Insert soft deopt if the call feedback is invalid.
+  if (Node* node = TryBuildSoftDeopt(
+          call_slot, effect, control,
+          DeoptimizeReason::kInsufficientTypeFeedbackForCall)) {
+    return LoweringResult::Exit(node);
+  }
+  return LoweringResult::NoChange();
+}
+
 JSTypeHintLowering::LoweringResult JSTypeHintLowering::ReduceLoadNamedOperation(
     const Operator* op, Node* receiver, Node* effect, Node* control,
     FeedbackSlot slot) const {
-  // JSGetIterator involves a named load of the Symbol.iterator property.
-  DCHECK(op->opcode() == IrOpcode::kJSLoadNamed ||
-         op->opcode() == IrOpcode::kJSGetIterator);
+  DCHECK_EQ(IrOpcode::kJSLoadNamed, op->opcode());
   if (Node* node = TryBuildSoftDeopt(
           slot, effect, control,
           DeoptimizeReason::kInsufficientTypeFeedbackForGenericNamedAccess)) {
@@ -545,6 +568,13 @@ Node* JSTypeHintLowering::TryBuildSoftDeopt(FeedbackSlot slot, Node* effect,
   if (!(flags() & kBailoutOnUninitialized)) return nullptr;
 
   FeedbackSource source(feedback_vector(), slot);
+  // TODO(mythria): Think of adding flags to specify if we need a soft deopt for
+  // calls instead of using FLAG_turboprop here.
+  if (FLAG_turboprop &&
+      broker()->GetFeedbackSlotKind(source) == FeedbackSlotKind::kCall) {
+    return nullptr;
+  }
+
   if (!broker()->FeedbackIsInsufficient(source)) return nullptr;
 
   Node* deoptimize = jsgraph()->graph()->NewNode(

@@ -115,6 +115,7 @@ void MicrotaskQueue::PerformCheckpoint(v8::Isolate* v8_isolate) {
       !HasMicrotasksSuppressions()) {
     Isolate* isolate = reinterpret_cast<Isolate*>(v8_isolate);
     RunMicrotasks(isolate);
+    isolate->ClearKeptObjects();
   }
 }
 
@@ -177,6 +178,7 @@ int MicrotaskQueue::RunMicrotasks(Isolate* isolate) {
     capacity_ = 0;
     size_ = 0;
     start_ = 0;
+    DCHECK(isolate->has_scheduled_exception());
     isolate->SetTerminationOnExternalTryCatch();
     OnCompleted(isolate);
     return -1;
@@ -212,6 +214,10 @@ void MicrotaskQueue::IterateMicrotasks(RootVisitor* visitor) {
   if (new_capacity < capacity_) {
     ResizeBuffer(new_capacity);
   }
+}
+
+int MicrotaskQueue::GetMicrotasksScopeDepth() const {
+  return microtasks_depth_;
 }
 
 void MicrotaskQueue::AddMicrotasksCompletedCallback(

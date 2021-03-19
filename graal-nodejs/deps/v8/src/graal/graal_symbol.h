@@ -59,4 +59,3 @@ protected:
 };
 
 #endif /* GRAAL_SYMBOL_H_ */
-

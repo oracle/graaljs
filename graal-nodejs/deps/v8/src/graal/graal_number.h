@@ -67,4 +67,3 @@ private:
 };
 
 #endif /* GRAAL_NUMBER_H_ */
-

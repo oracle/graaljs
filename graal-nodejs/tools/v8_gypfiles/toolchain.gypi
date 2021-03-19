@@ -270,6 +270,11 @@
         'defines': [
           'V8_TARGET_ARCH_ARM64',
         ],
+        'conditions': [
+          ['v8_control_flow_integrity==1', {
+            'cflags': [ '-mbranch-protection=standard' ],
+          }],
+        ],
       }],
       ['v8_target_arch=="sparcv9"', {
         'defines': [
@@ -280,6 +285,7 @@
         'defines': [
           'V8_TARGET_ARCH_S390',
         ],
+        'cflags': [ '-ffp-contract=off' ],
         'conditions': [
           ['v8_target_arch=="s390x"', {
             'defines': [
@@ -296,10 +302,12 @@
           ],
       }],  # s390x
       ['v8_target_arch=="ppc" or v8_target_arch=="ppc64"', {
-        'defines': [
-          'V8_TARGET_ARCH_PPC',
-        ],
         'conditions': [
+          ['v8_target_arch=="ppc"', {
+            'defines': [
+              'V8_TARGET_ARCH_PPC',
+            ],
+          }],
           ['v8_target_arch=="ppc64"', {
             'defines': [
               'V8_TARGET_ARCH_PPC64',

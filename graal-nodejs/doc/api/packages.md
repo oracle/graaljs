@@ -3,17 +3,20 @@
 <!-- type=misc -->
 <!-- YAML
 changes:
-  - version: v12.20.0
+  - version:
+    - v14.13.0
     pr-url: https://github.com/nodejs/node/pull/34718
     description: Add support for `"exports"` patterns.
-  - version: v12.19.0
+  - version: v14.6.0
     pr-url: https://github.com/nodejs/node/pull/34117
     description: Add package `"imports"` field.
   - version:
+    - v13.7.0
     - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/31001
     description: Unflag conditional exports.
   - version:
+    - v13.6.0
     - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/31002
     description: Unflag self-referencing a package using its name.
@@ -831,21 +834,23 @@ The following fields in `package.json` files are used in Node.js:
 
 * [`"name"`][] - Relevant when using named imports within a package. Also used
   by package managers as the name of the package.
+* [`"main"`][] - The default module when loading the package, if exports is not
+  specified, and in versions of Node.js prior to the introduction of exports.
 * [`"type"`][] - The package type determining whether to load `.js` files as
   CommonJS or ES modules.
 * [`"exports"`][] - Package exports and conditional exports. When present,
   limits which submodules can be loaded from within the package.
-* [`"main"`][] - The default module when loading the package, if exports is not
-  specified, and in versions of Node.js prior to the introduction of exports.
 * [`"imports"`][] - Package imports, for use by modules within the package
   itself.
 
 ### `"name"`
 <!-- YAML
 added:
+  - v13.1.0
   - v12.16.0
 changes:
   - version:
+    - v13.6.0
     - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/31002
     description: Remove the `--experimental-resolve-self` option.
@@ -866,15 +871,42 @@ _npm_ registry requires a name that satisfies
 The `"name"` field can be used in addition to the [`"exports"`][] field to
 [self-reference][] a package using its name.
 
+### `"main"`
+<!-- YAML
+added: v0.4.0
+-->
+
+* Type: {string}
+
+```json
+{
+  "main": "./main.js"
+}
+```
+
+The `"main"` field defines the script that is used when the [package directory
+is loaded via `require()`](modules.md#modules_folders_as_modules). Its value
+is a path.
+
+```js
+require('./path/to/directory'); // This resolves to ./path/to/directory/main.js.
+```
+
+When a package has an [`"exports"`][] field, this will take precedence over the
+`"main"` field when importing the package by name.
+
 ### `"type"`
 <!-- YAML
 added: v12.0.0
 changes:
   - version:
+    - v13.2.0
     - v12.17.0
     pr-url: https://github.com/nodejs/node/pull/29866
     description: Unflag `--experimental-modules`.
 -->
+
+> Stability: 1 - Experimental
 
 * Type: {string}
 
@@ -922,22 +954,27 @@ as ES modules and `.cjs` files are always treated as CommonJS.
 added: v12.7.0
 changes:
   - version:
-    - v12.16.0
-    pr-url: https://github.com/nodejs/node/pull/29978
-    description: Implement conditional exports.
+    - v14.13.0
+    pr-url: https://github.com/nodejs/node/pull/34718
+    description: Add support for `"exports"` patterns.
   - version:
-    - v12.16.0
-    pr-url: https://github.com/nodejs/node/pull/31001
-    description: Remove the `--experimental-conditional-exports` option.
-  - version:
+    - v13.7.0
     - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/31008
     description: Implement logical conditional exports ordering.
   - version:
-    - v12.20.0
-    pr-url: https://github.com/nodejs/node/pull/34718
-    description: Add support for `"exports"` patterns.
+    - v13.7.0
+    - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/31001
+    description: Remove the `--experimental-conditional-exports` option.
+  - version:
+    - v13.2.0
+    - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/29978
+    description: Implement conditional exports.
 -->
+
+> Stability: 1 - Experimental
 
 * Type: {Object} | {string} | {string[]}
 
@@ -960,33 +997,9 @@ referenced via `require` or via `import`.
 All paths defined in the `"exports"` must be relative file URLs starting with
 `./`.
 
-### `"main"`
-<!-- YAML
-added: v0.4.0
--->
-
-* Type: {string}
-
-```json
-{
-  "main": "./main.js"
-}
-```
-
-The `"main"` field defines the script that is used when the [package directory
-is loaded via `require()`](modules.html#modules_folders_as_modules). Its value
-is interpreted as a path.
-
-```js
-require('./path/to/directory'); // This resolves to ./path/to/directory/main.js.
-```
-
-When a package has an [`"exports"`][] field, this will take precedence over the
-`"main"` field when importing the package by name.
-
 ### `"imports"`
 <!-- YAML
-added: v12.19.0
+added: v14.6.0
 -->
 
 > Stability: 1 - Experimental
@@ -1016,18 +1029,18 @@ This field defines [subpath imports][] for the current package.
 
 [Babel]: https://babeljs.io/
 [Conditional exports]: #packages_conditional_exports
-[CommonJS]: modules.html
-[`ERR_PACKAGE_PATH_NOT_EXPORTED`]: errors.html#errors_err_package_path_not_exported
-[ES modules]: esm.html
-[ES module]: esm.html
+[CommonJS]: modules.md
+[ES module]: esm.md
+[ES modules]: esm.md
+[`ERR_PACKAGE_PATH_NOT_EXPORTED`]: errors.md#errors_err_package_path_not_exported
 [`esm`]: https://github.com/standard-things/esm#readme
 [`"exports"`]: #packages_exports
 [`"main"`]: #packages_main
 [`"name"`]: #packages_name
 [`"imports"`]: #packages_imports
 [`"type"`]: #packages_type
-[entry points]: #packages_package_entry_points
 [`package.json`]: #packages_node_js_package_json_field_definitions
+[entry points]: #packages_package_entry_points
 [self-reference]: #packages_self_referencing_a_package_using_its_name
 [subpath exports]: #packages_subpath_exports
 [subpath imports]: #packages_subpath_imports

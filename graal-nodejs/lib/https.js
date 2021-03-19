@@ -43,10 +43,6 @@ let debug = require('internal/util/debuglog').debuglog('https', (fn) => {
 const { URL, urlToOptions, searchParamsSymbol } = require('internal/url');
 const { IncomingMessage, ServerResponse } = require('http');
 const { kIncomingMessage } = require('_http_common');
-const { getOptionValue } = require('internal/options');
-
-const kDefaultHttpServerTimeout =
-  getOptionValue('--http-server-default-timeout');
 
 function Server(opts, requestListener) {
   if (!(this instanceof Server)) return new Server(opts, requestListener);
@@ -80,10 +76,11 @@ function Server(opts, requestListener) {
       conn.destroy(err);
   });
 
-  this.timeout = kDefaultHttpServerTimeout;
+  this.timeout = 0;
   this.keepAliveTimeout = 5000;
   this.maxHeadersCount = null;
   this.headersTimeout = 60 * 1000; // 60 seconds
+  this.requestTimeout = 0;
 }
 ObjectSetPrototypeOf(Server.prototype, tls.Server.prototype);
 ObjectSetPrototypeOf(Server, tls.Server);

@@ -28,13 +28,14 @@ struct DisjunctDecisionRow {
 class RegExpMacroAssembler {
  public:
   // The implementation must be able to handle at least:
-  static const int kMaxRegister = (1 << 16) - 1;
-  static const int kMaxCPOffset = (1 << 15) - 1;
-  static const int kMinCPOffset = -(1 << 15);
+  static constexpr int kMaxRegisterCount = (1 << 16);
+  static constexpr int kMaxRegister = kMaxRegisterCount - 1;
+  static constexpr int kMaxCPOffset = (1 << 15) - 1;
+  static constexpr int kMinCPOffset = -(1 << 15);
 
-  static const int kTableSizeBits = 7;
-  static const int kTableSize = 1 << kTableSizeBits;
-  static const int kTableMask = kTableSize - 1;
+  static constexpr int kTableSizeBits = 7;
+  static constexpr int kTableSize = 1 << kTableSizeBits;
+  static constexpr int kTableMask = kTableSize - 1;
 
   static constexpr int kUseCharactersValue = -1;
 
@@ -87,7 +88,7 @@ class RegExpMacroAssembler {
   virtual void CheckNotBackReference(int start_reg, bool read_backward,
                                      Label* on_no_match) = 0;
   virtual void CheckNotBackReferenceIgnoreCase(int start_reg,
-                                               bool read_backward, bool unicode,
+                                               bool read_backward,
                                                Label* on_no_match) = 0;
   // Check the current character for a match with a literal character.  If we
   // fail to match then goto the on_failure label.  End of input always
@@ -122,6 +123,11 @@ class RegExpMacroAssembler {
   // not have custom support.
   // May clobber the current loaded character.
   virtual bool CheckSpecialCharacterClass(uc16 type, Label* on_no_match);
+
+  // Control-flow integrity:
+  // Define a jump target and bind a label.
+  virtual void BindJumpTarget(Label* label) { Bind(label); }
+
   virtual void Fail() = 0;
   virtual Handle<HeapObject> GetCode(Handle<String> source) = 0;
   virtual void GoTo(Label* label) = 0;
@@ -172,6 +178,10 @@ class RegExpMacroAssembler {
   void set_slow_safe(bool ssc) { slow_safe_compiler_ = ssc; }
   bool slow_safe() { return slow_safe_compiler_; }
 
+  void set_backtrack_limit(uint32_t backtrack_limit) {
+    backtrack_limit_ = backtrack_limit;
+  }
+
   enum GlobalMode {
     NOT_GLOBAL,
     GLOBAL_NO_ZERO_LENGTH_CHECK,
@@ -190,8 +200,15 @@ class RegExpMacroAssembler {
   Isolate* isolate() const { return isolate_; }
   Zone* zone() const { return zone_; }
 
+ protected:
+  bool has_backtrack_limit() const {
+    return backtrack_limit_ != JSRegExp::kNoBacktrackLimit;
+  }
+  uint32_t backtrack_limit() const { return backtrack_limit_; }
+
  private:
   bool slow_safe_compiler_;
+  uint32_t backtrack_limit_ = JSRegExp::kNoBacktrackLimit;
   GlobalMode global_mode_;
   Isolate* isolate_;
   Zone* zone_;
@@ -235,9 +252,6 @@ class NativeRegExpMacroAssembler: public RegExpMacroAssembler {
   static Address GrowStack(Address stack_pointer, Address* stack_top,
                            Isolate* isolate);
 
-  static const byte* StringCharacterPosition(
-      String subject, int start_index, const DisallowHeapAllocation& no_gc);
-
   static int CheckStackGuardState(Isolate* isolate, int start_index,
                                   RegExp::CallOrigin call_origin,
                                   Address* return_address, Code re_code,
@@ -259,6 +273,13 @@ class NativeRegExpMacroAssembler: public RegExpMacroAssembler {
                                        const byte* input_end, int* output,
                                        int output_size, Isolate* isolate,
                                        JSRegExp regexp);
+  void LoadCurrentCharacterImpl(int cp_offset, Label* on_end_of_input,
+                                bool check_bounds, int characters,
+                                int eats_at_least) override;
+  // Load a number of characters at the given offset from the
+  // current position, into the current-character register.
+  virtual void LoadCurrentCharacterUnchecked(int cp_offset,
+                                             int character_count) = 0;
 };
 
 }  // namespace internal

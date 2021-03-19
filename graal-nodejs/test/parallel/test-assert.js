@@ -25,6 +25,7 @@
 const common = require('../common');
 const assert = require('assert');
 const { inspect } = require('util');
+const vm = require('vm');
 const { internalBinding } = require('internal/test/binding');
 const a = assert;
 
@@ -123,16 +124,19 @@ assert.throws(() => thrower(a.AssertionError));
 assert.throws(() => thrower(TypeError));
 
 // When passing a type, only catch errors of the appropriate type.
-{
-  let threw = false;
-  try {
-    a.throws(() => thrower(TypeError), a.AssertionError);
-  } catch (e) {
-    threw = true;
-    assert.ok(e instanceof TypeError, 'type');
+assert.throws(
+  () => a.throws(() => thrower(TypeError), a.AssertionError),
+  {
+    generatedMessage: true,
+    actual: new TypeError({}),
+    expected: a.AssertionError,
+    code: 'ERR_ASSERTION',
+    name: 'AssertionError',
+    operator: 'throws',
+    message: 'The error is expected to be an instance of "AssertionError". ' +
+             'Received "TypeError"\n\nError message:\n\n[object Object]'
   }
-  assert.ok(threw, 'a.throws with an explicit error is eating extra errors');
-}
+);
 
 // doesNotThrow should pass through all errors.
 {
@@ -237,20 +241,27 @@ a.throws(() => thrower(TypeError), (err) => {
 
 // https://github.com/nodejs/node/issues/3188
 {
-  let threw = false;
-  let AnotherErrorType;
-  try {
-    const ES6Error = class extends Error {};
-    AnotherErrorType = class extends Error {};
+  let actual;
+  assert.throws(
+    () => {
+      const ES6Error = class extends Error {};
+      const AnotherErrorType = class extends Error {};
 
-    assert.throws(() => { throw new AnotherErrorType('foo'); }, ES6Error);
-  } catch (e) {
-    threw = true;
-    assert(e instanceof AnotherErrorType,
-           `expected AnotherErrorType, received ${e}`);
-  }
-
-  assert.ok(threw);
+      assert.throws(() => {
+        actual = new AnotherErrorType('foo');
+        throw actual;
+      }, ES6Error);
+    },
+    (err) => {
+      assert.strictEqual(
+        err.message,
+        'The error is expected to be an instance of "ES6Error". ' +
+          'Received "AnotherErrorType"\n\nError message:\n\nfoo'
+      );
+      assert.strictEqual(err.actual, actual);
+      return true;
+    }
+  );
 }
 
 // Check messages from assert.throws().
@@ -335,15 +346,15 @@ testShortAssertionMessage(0, '0');
 testShortAssertionMessage(Symbol(), 'Symbol()');
 testShortAssertionMessage(undefined, 'undefined');
 testShortAssertionMessage(-Infinity, '-Infinity');
-testShortAssertionMessage(function() {}, '[Function]');
 testAssertionMessage([], '[]');
 testAssertionMessage(/a/, '/a/');
 testAssertionMessage(/abc/gim, '/abc/gim');
 testAssertionMessage({}, '{}');
 testAssertionMessage([1, 2, 3], '[\n+   1,\n+   2,\n+   3\n+ ]');
 testAssertionMessage(function f() {}, '[Function: f]');
+testAssertionMessage(function() {}, '[Function (anonymous)]');
 testAssertionMessage(circular,
-                     '{\n+   x: [Circular],\n+   y: 1\n+ }');
+                     '<ref *1> {\n+   x: [Circular *1],\n+   y: 1\n+ }');
 testAssertionMessage({ a: undefined, b: null },
                      '{\n+   a: undefined,\n+   b: null\n+ }');
 testAssertionMessage({ a: NaN, b: Infinity, c: -Infinity },
@@ -488,6 +499,12 @@ assert.throws(
              '+ actual - expected\n\n' +
              '+ [Error: foo]\n- [Error: foobar]'
   }
+);
+
+a.equal(NaN, NaN);
+a.throws(
+  () => a.notEqual(NaN, NaN),
+  a.AssertionError
 );
 
 // Test strict assert.
@@ -676,7 +693,7 @@ assert.throws(
     '\n' +
     '+ {}\n' +
     '- {\n' +
-    '-   [Symbol(nodejs.util.inspect.custom)]: [Function],\n' +
+    '-   [Symbol(nodejs.util.inspect.custom)]: [Function (anonymous)],\n' +
     "-   loop: 'forever'\n" +
     '- }'
   });
@@ -1301,6 +1318,55 @@ assert.throws(
     assert(!err2.stack.includes('hidden'));
   })();
 }
+
+assert.throws(
+  () => assert.throws(() => { throw Symbol('foo'); }, RangeError),
+  {
+    message: 'The error is expected to be an instance of "RangeError". ' +
+             'Received "Symbol(foo)"'
+  }
+);
+
+assert.throws(
+  // eslint-disable-next-line no-throw-literal
+  () => assert.throws(() => { throw [1, 2]; }, RangeError),
+  {
+    message: 'The error is expected to be an instance of "RangeError". ' +
+             'Received "[Array]"'
+  }
+);
+
+{
+  const err = new TypeError('foo');
+  const validate = (() => () => ({ a: true, b: [ 1, 2, 3 ] }))();
+  assert.throws(
+    () => assert.throws(() => { throw err; }, validate),
+    {
+      message: 'The validation function is expected to ' +
+              `return "true". Received ${inspect(validate())}\n\nCaught ` +
+              `error:\n\n${err}`,
+      code: 'ERR_ASSERTION',
+      actual: err,
+      expected: validate,
+      name: 'AssertionError',
+      operator: 'throws',
+    }
+  );
+}
+
+assert.throws(
+  () => {
+    const script = new vm.Script('new RangeError("foobar");');
+    const context = vm.createContext();
+    const err = script.runInContext(context);
+    assert.throws(() => { throw err; }, RangeError);
+  },
+  {
+    message: 'The error is expected to be an instance of "RangeError". ' +
+             'Received an error with identical name but a different ' +
+             'prototype.\n\nError message:\n\nfoobar'
+  }
+);
 
 // Multiple assert.match() tests.
 {

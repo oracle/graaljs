@@ -8,10 +8,11 @@
 #include "src/diagnostics/code-tracer.h"
 #include "src/heap/heap-inl.h"
 #include "src/wasm/graph-builder-interface.h"
+#include "src/wasm/leb-helper.h"
 #include "src/wasm/module-compiler.h"
 #include "src/wasm/wasm-import-wrapper-cache.h"
-#include "src/wasm/wasm-memory.h"
 #include "src/wasm/wasm-objects-inl.h"
+#include "src/wasm/wasm-opcodes.h"
 
 namespace v8 {
 namespace internal {
@@ -23,7 +24,7 @@ TestingModuleBuilder::TestingModuleBuilder(
     : test_module_(std::make_shared<WasmModule>()),
       test_module_ptr_(test_module_.get()),
       isolate_(CcTest::InitIsolateOnce()),
-      enabled_features_(WasmFeaturesFromIsolate(isolate_)),
+      enabled_features_(WasmFeatures::FromIsolate(isolate_)),
       execution_tier_(tier),
       runtime_exception_support_(exception_support),
       lower_simd_(lower_simd) {
@@ -70,34 +71,34 @@ TestingModuleBuilder::TestingModuleBuilder(
   }
 }
 
+TestingModuleBuilder::~TestingModuleBuilder() {
+  // When the native module dies and is erased from the cache, it is expected to
+  // have either valid bytes or no bytes at all.
+  native_module_->SetWireBytes({});
+}
+
 byte* TestingModuleBuilder::AddMemory(uint32_t size, SharedFlag shared) {
   CHECK(!test_module_->has_memory);
   CHECK_NULL(mem_start_);
   CHECK_EQ(0, mem_size_);
   DCHECK(!instance_object_->has_memory_object());
-  DCHECK_IMPLIES(test_module_->origin == kWasmOrigin,
-                 size % kWasmPageSize == 0);
+  uint32_t initial_pages = RoundUp(size, kWasmPageSize) / kWasmPageSize;
+  uint32_t maximum_pages = (test_module_->maximum_pages != 0)
+                               ? test_module_->maximum_pages
+                               : initial_pages;
   test_module_->has_memory = true;
-  uint32_t max_size =
-      (test_module_->maximum_pages != 0) ? test_module_->maximum_pages : size;
-  uint32_t alloc_size = RoundUp(size, kWasmPageSize);
-  Handle<JSArrayBuffer> new_buffer;
-  if (shared == SharedFlag::kShared) {
-    CHECK(NewSharedArrayBuffer(isolate_, alloc_size, max_size)
-              .ToHandle(&new_buffer));
-  } else {
-    CHECK(NewArrayBuffer(isolate_, alloc_size).ToHandle(&new_buffer));
-  }
-  CHECK(!new_buffer.is_null());
-  mem_start_ = reinterpret_cast<byte*>(new_buffer->backing_store());
-  mem_size_ = size;
-  CHECK(size == 0 || mem_start_);
-  memset(mem_start_, 0, size);
 
   // Create the WasmMemoryObject.
   Handle<WasmMemoryObject> memory_object =
-      WasmMemoryObject::New(isolate_, new_buffer, max_size);
+      WasmMemoryObject::New(isolate_, initial_pages, maximum_pages, shared)
+          .ToHandleChecked();
   instance_object_->set_memory_object(*memory_object);
+
+  mem_start_ =
+      reinterpret_cast<byte*>(memory_object->array_buffer().backing_store());
+  mem_size_ = size;
+  CHECK(size == 0 || mem_start_);
+
   WasmMemoryObject::AddInstance(isolate_, memory_object, instance_object_);
   // TODO(wasm): Delete the following two lines when test-run-wasm will use a
   // multiple of kPageSize as memory size. At the moment, the effect of these
@@ -106,7 +107,8 @@ byte* TestingModuleBuilder::AddMemory(uint32_t size, SharedFlag shared) {
   return mem_start_;
 }
 
-uint32_t TestingModuleBuilder::AddFunction(FunctionSig* sig, const char* name,
+uint32_t TestingModuleBuilder::AddFunction(const FunctionSig* sig,
+                                           const char* name,
                                            FunctionType type) {
   if (test_module_->functions.size() == 0) {
     // TODO(titzer): Reserving space here to avoid the underlying WasmFunction
@@ -114,7 +116,13 @@ uint32_t TestingModuleBuilder::AddFunction(FunctionSig* sig, const char* name,
     test_module_->functions.reserve(kMaxFunctions);
   }
   uint32_t index = static_cast<uint32_t>(test_module_->functions.size());
-  test_module_->functions.push_back({sig, index, 0, {0, 0}, false, false});
+  test_module_->functions.push_back({sig,      // sig
+                                     index,    // func_index
+                                     0,        // sig_index
+                                     {0, 0},   // code
+                                     false,    // imported
+                                     false,    // exported
+                                     false});  // declared
   if (type == kImport) {
     DCHECK_EQ(0, test_module_->num_declared_functions);
     ++test_module_->num_imported_functions;
@@ -127,21 +135,11 @@ uint32_t TestingModuleBuilder::AddFunction(FunctionSig* sig, const char* name,
                 test_module_->num_declared_functions);
   if (name) {
     Vector<const byte> name_vec = Vector<const byte>::cast(CStrVector(name));
-    test_module_->AddFunctionNameForTesting(
+    test_module_->lazily_generated_names.AddForTesting(
         index, {AddBytes(name_vec), static_cast<uint32_t>(name_vec.length())});
   }
   if (interpreter_) {
     interpreter_->AddFunctionForTesting(&test_module_->functions.back());
-    // Patch the jump table to call the interpreter for this function.
-    wasm::WasmCompilationResult result = compiler::CompileWasmInterpreterEntry(
-        isolate_->wasm_engine(), native_module_->enabled_features(), index,
-        sig);
-    std::unique_ptr<wasm::WasmCode> code = native_module_->AddCode(
-        index, result.code_desc, result.frame_slot_count,
-        result.tagged_parameter_slots, std::move(result.protected_instructions),
-        std::move(result.source_positions), wasm::WasmCode::kInterpreterEntry,
-        wasm::ExecutionTier::kInterpreter);
-    native_module_->PublishCode(std::move(code));
   }
   DCHECK_LT(index, kMaxFunctions);  // limited for testing.
   return index;
@@ -157,6 +155,7 @@ void TestingModuleBuilder::FreezeSignatureMapAndInitializeWrapperCache() {
 }
 
 Handle<JSFunction> TestingModuleBuilder::WrapCode(uint32_t index) {
+  CHECK(!interpreter_);
   FreezeSignatureMapAndInitializeWrapperCache();
   SetExecutable();
   return WasmInstanceObject::GetOrCreateWasmExternalFunction(
@@ -225,13 +224,17 @@ uint32_t TestingModuleBuilder::AddBytes(Vector<const byte> bytes) {
   OwnedVector<uint8_t> new_bytes = OwnedVector<uint8_t>::New(new_size);
   if (old_size > 0) {
     memcpy(new_bytes.start(), old_bytes.begin(), old_size);
+  } else {
+    // Set the unused byte. It is never decoded, but the bytes are used as the
+    // key in the native module cache.
+    new_bytes[0] = 0;
   }
   memcpy(new_bytes.start() + bytes_offset, bytes.begin(), bytes.length());
   native_module_->SetWireBytes(std::move(new_bytes));
   return bytes_offset;
 }
 
-uint32_t TestingModuleBuilder::AddException(FunctionSig* sig) {
+uint32_t TestingModuleBuilder::AddException(const FunctionSig* sig) {
   DCHECK_EQ(0, sig->return_count());
   uint32_t index = static_cast<uint32_t>(test_module_->exceptions.size());
   test_module_->exceptions.push_back(WasmException{sig});
@@ -248,7 +251,6 @@ uint32_t TestingModuleBuilder::AddPassiveDataSegment(Vector<const byte> bytes) {
   DCHECK_EQ(index, test_module_->data_segments.size());
   DCHECK_EQ(index, data_segment_starts_.size());
   DCHECK_EQ(index, data_segment_sizes_.size());
-  DCHECK_EQ(index, dropped_data_segments_.size());
 
   // Add a passive data segment. This isn't used by function compilation, but
   // but it keeps the index in sync. The data segment's source will not be
@@ -275,12 +277,10 @@ uint32_t TestingModuleBuilder::AddPassiveDataSegment(Vector<const byte> bytes) {
   }
   data_segment_starts_.push_back(new_data_address + old_data_size);
   data_segment_sizes_.push_back(bytes.length());
-  dropped_data_segments_.push_back(0);
 
   // The vector pointers may have moved, so update the instance object.
   instance_object_->set_data_segment_starts(data_segment_starts_.data());
   instance_object_->set_data_segment_sizes(data_segment_sizes_.data());
-  instance_object_->set_dropped_data_segments(dropped_data_segments_.data());
   return index;
 }
 
@@ -289,7 +289,7 @@ uint32_t TestingModuleBuilder::AddPassiveElementSegment(
   uint32_t index = static_cast<uint32_t>(test_module_->elem_segments.size());
   DCHECK_EQ(index, dropped_elem_segments_.size());
 
-  test_module_->elem_segments.emplace_back();
+  test_module_->elem_segments.emplace_back(false);
   auto& elem_segment = test_module_->elem_segments.back();
   elem_segment.entries = entries;
 
@@ -310,7 +310,7 @@ CompilationEnv TestingModuleBuilder::CreateCompilationEnv() {
 }
 
 const WasmGlobal* TestingModuleBuilder::AddGlobal(ValueType type) {
-  byte size = ValueTypes::MemSize(ValueTypes::MachineTypeFor(type));
+  byte size = type.element_size_bytes();
   global_offset = (global_offset + size - 1) & ~(size - 1);  // align
   test_module_->globals.push_back(
       {type, true, WasmInitExpr(), {global_offset}, false, false});
@@ -321,14 +321,15 @@ const WasmGlobal* TestingModuleBuilder::AddGlobal(ValueType type) {
 }
 
 Handle<WasmInstanceObject> TestingModuleBuilder::InitInstanceObject() {
-  Handle<Script> script =
-      isolate_->factory()->NewScript(isolate_->factory()->empty_string());
-  script->set_type(Script::TYPE_WASM);
-
+  const bool kUsesLiftoff = true;
+  size_t code_size_estimate =
+      wasm::WasmCodeManager::EstimateNativeModuleCodeSize(test_module_.get(),
+                                                          kUsesLiftoff);
   auto native_module = isolate_->wasm_engine()->NewNativeModule(
-      isolate_, enabled_features_, test_module_);
+      isolate_, enabled_features_, test_module_, code_size_estimate);
   native_module->SetWireBytes(OwnedVector<const uint8_t>());
-  native_module->SetRuntimeStubs(isolate_);
+  Handle<Script> script =
+      isolate_->wasm_engine()->GetOrCreateScript(isolate_, native_module);
 
   Handle<WasmModuleObject> module_object =
       WasmModuleObject::New(isolate_, std::move(native_module), script);
@@ -345,19 +346,19 @@ Handle<WasmInstanceObject> TestingModuleBuilder::InitInstanceObject() {
 }
 
 void TestBuildingGraphWithBuilder(compiler::WasmGraphBuilder* builder,
-                                  Zone* zone, FunctionSig* sig,
+                                  Zone* zone, const FunctionSig* sig,
                                   const byte* start, const byte* end) {
   WasmFeatures unused_detected_features;
   FunctionBody body(sig, 0, start, end);
   DecodeResult result =
-      BuildTFGraph(zone->allocator(), kAllWasmFeatures, nullptr, builder,
+      BuildTFGraph(zone->allocator(), WasmFeatures::All(), nullptr, builder,
                    &unused_detected_features, body, nullptr);
   if (result.failed()) {
 #ifdef DEBUG
     if (!FLAG_trace_wasm_decoder) {
       // Retry the compilation with the tracing flag on, to help in debugging.
       FLAG_trace_wasm_decoder = true;
-      result = BuildTFGraph(zone->allocator(), kAllWasmFeatures, nullptr,
+      result = BuildTFGraph(zone->allocator(), WasmFeatures::All(), nullptr,
                             builder, &unused_detected_features, body, nullptr);
     }
 #endif
@@ -372,7 +373,7 @@ void TestBuildingGraphWithBuilder(compiler::WasmGraphBuilder* builder,
 }
 
 void TestBuildingGraph(Zone* zone, compiler::JSGraph* jsgraph,
-                       CompilationEnv* module, FunctionSig* sig,
+                       CompilationEnv* module, const FunctionSig* sig,
                        compiler::SourcePositionTable* source_position_table,
                        const byte* start, const byte* end) {
   compiler::WasmGraphBuilder builder(module, zone, jsgraph, sig,
@@ -487,7 +488,7 @@ Handle<Code> WasmFunctionWrapper::GetWrapperCode() {
       CodeTracer::Scope tracing_scope(isolate->GetCodeTracer());
       OFStream os(tracing_scope.file());
 
-      code->Disassemble("wasm wrapper", os);
+      code->Disassemble("wasm wrapper", os, isolate);
     }
 #endif
   }
@@ -534,18 +535,22 @@ void WasmFunctionCompiler::Build(const byte* start, const byte* end) {
                          func_wire_bytes.begin(), func_wire_bytes.end()};
   NativeModule* native_module =
       builder_->instance_object()->module_object().native_module();
-  WasmCompilationUnit unit(function_->func_index, builder_->execution_tier());
+  ForDebugging for_debugging =
+      native_module->IsTieredDown() ? kForDebugging : kNoDebugging;
+  WasmCompilationUnit unit(function_->func_index, builder_->execution_tier(),
+                           for_debugging);
   WasmFeatures unused_detected_features;
   WasmCompilationResult result = unit.ExecuteCompilation(
       isolate()->wasm_engine(), &env,
       native_module->compilation_state()->GetWireBytesStorage(),
       isolate()->counters(), &unused_detected_features);
-  WasmCode* code = native_module->AddCompiledCode(std::move(result));
+  WasmCode* code = native_module->PublishCode(
+      native_module->AddCompiledCode(std::move(result)));
   DCHECK_NOT_NULL(code);
   if (WasmCode::ShouldBeLogged(isolate())) code->LogCode(isolate());
 }
 
-WasmFunctionCompiler::WasmFunctionCompiler(Zone* zone, FunctionSig* sig,
+WasmFunctionCompiler::WasmFunctionCompiler(Zone* zone, const FunctionSig* sig,
                                            TestingModuleBuilder* builder,
                                            const char* name)
     : GraphAndBuilders(zone),
@@ -564,23 +569,24 @@ WasmFunctionCompiler::WasmFunctionCompiler(Zone* zone, FunctionSig* sig,
 
 WasmFunctionCompiler::~WasmFunctionCompiler() = default;
 
-FunctionSig* WasmRunnerBase::CreateSig(MachineType return_type,
+/* static */
+FunctionSig* WasmRunnerBase::CreateSig(Zone* zone, MachineType return_type,
                                        Vector<MachineType> param_types) {
   int return_count = return_type.IsNone() ? 0 : 1;
   int param_count = param_types.length();
 
   // Allocate storage array in zone.
-  ValueType* sig_types = zone_.NewArray<ValueType>(return_count + param_count);
+  ValueType* sig_types = zone->NewArray<ValueType>(return_count + param_count);
 
   // Convert machine types to local types, and check that there are no
   // MachineType::None()'s in the parameters.
   int idx = 0;
-  if (return_count) sig_types[idx++] = ValueTypes::ValueTypeFor(return_type);
+  if (return_count) sig_types[idx++] = ValueType::For(return_type);
   for (MachineType param : param_types) {
     CHECK_NE(MachineType::None(), param);
-    sig_types[idx++] = ValueTypes::ValueTypeFor(param);
+    sig_types[idx++] = ValueType::For(param);
   }
-  return new (&zone_) FunctionSig(return_count, param_count, sig_types);
+  return new (zone) FunctionSig(return_count, param_count, sig_types);
 }
 
 // static

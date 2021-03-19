@@ -250,31 +250,31 @@ static void AnalyzeStackInNativeCode(
     v8::Local<v8::StackTrace> stackTrace = v8::StackTrace::CurrentStackTrace(
         args.GetIsolate(), 5, v8::StackTrace::kOverview);
     CHECK_EQ(3, stackTrace->GetFrameCount());
-    checkStackFrame(nullptr, "function.name", 1, 1, true, false,
+    checkStackFrame(nullptr, "function.name", 3, 1, true, false,
                     stackTrace->GetFrame(isolate, 0));
   } else if (testGroup == kDisplayName) {
     v8::Local<v8::StackTrace> stackTrace = v8::StackTrace::CurrentStackTrace(
         args.GetIsolate(), 5, v8::StackTrace::kOverview);
     CHECK_EQ(3, stackTrace->GetFrameCount());
-    checkStackFrame(nullptr, "function.displayName", 1, 1, true, false,
+    checkStackFrame(nullptr, "function.displayName", 3, 1, true, false,
                     stackTrace->GetFrame(isolate, 0));
   } else if (testGroup == kFunctionNameAndDisplayName) {
     v8::Local<v8::StackTrace> stackTrace = v8::StackTrace::CurrentStackTrace(
         args.GetIsolate(), 5, v8::StackTrace::kOverview);
     CHECK_EQ(3, stackTrace->GetFrameCount());
-    checkStackFrame(nullptr, "function.displayName", 1, 1, true, false,
+    checkStackFrame(nullptr, "function.displayName", 3, 1, true, false,
                     stackTrace->GetFrame(isolate, 0));
   } else if (testGroup == kDisplayNameIsNotString) {
     v8::Local<v8::StackTrace> stackTrace = v8::StackTrace::CurrentStackTrace(
         args.GetIsolate(), 5, v8::StackTrace::kOverview);
     CHECK_EQ(3, stackTrace->GetFrameCount());
-    checkStackFrame(nullptr, "function.name", 1, 1, true, false,
+    checkStackFrame(nullptr, "function.name", 3, 1, true, false,
                     stackTrace->GetFrame(isolate, 0));
   } else if (testGroup == kFunctionNameIsNotString) {
     v8::Local<v8::StackTrace> stackTrace = v8::StackTrace::CurrentStackTrace(
         args.GetIsolate(), 5, v8::StackTrace::kOverview);
     CHECK_EQ(3, stackTrace->GetFrameCount());
-    checkStackFrame(nullptr, "", 1, 1, true, false,
+    checkStackFrame(nullptr, "", 3, 1, true, false,
                     stackTrace->GetFrame(isolate, 0));
   }
 }
@@ -339,7 +339,7 @@ TEST(CaptureStackTrace) {
   CHECK(detailed_result->IsObject());
 
   // Test using function.name and function.displayName in stack trace
-  const char* function_name_source =
+  const char function_name_source[] =
       "function bar(function_name, display_name, testGroup) {\n"
       "  var f = new Function(`AnalyzeStackInNativeCode(${testGroup});`);\n"
       "  if (function_name) {\n"
@@ -356,9 +356,7 @@ TEST(CaptureStackTrace) {
       "bar('function.name', 239, 6);\n"
       "bar(239, undefined, 7);\n";
   v8::Local<v8::String> function_name_src =
-      v8::String::NewFromUtf8(isolate, function_name_source,
-                              v8::NewStringType::kNormal)
-          .ToLocalChecked();
+      v8::String::NewFromUtf8Literal(isolate, function_name_source);
   v8::ScriptCompiler::Source script_source3(function_name_src,
                                             v8::ScriptOrigin(origin));
   v8::Local<Value> function_name_result(

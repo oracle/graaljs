@@ -54,8 +54,10 @@ public:
     bool IsArrayBuffer() const;
     bool IsExternal() const;
     void Detach();
+    std::shared_ptr<v8::BackingStore> GetBackingStore();
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, size_t byte_length);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode);
+    static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
 protected:
     inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
@@ -65,4 +67,3 @@ protected:
 };
 
 #endif /* GRAAL_ARRAY_BUFFER_H_ */
-

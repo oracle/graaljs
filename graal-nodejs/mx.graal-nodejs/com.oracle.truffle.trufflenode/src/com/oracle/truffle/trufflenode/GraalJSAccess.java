@@ -120,10 +120,12 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -211,6 +213,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -555,7 +558,7 @@ public final class GraalJSAccess {
     public Object valueToInteger(Object value) {
         if (value instanceof Double) {
             double doubleValue = (Double) value;
-            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue || doubleValue == 0) {
+            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue) {
                 return value; // Integer already
             }
         }
@@ -1153,7 +1156,7 @@ public final class GraalJSAccess {
             // Callable Proxy: get the creation context from the target function.
             return objectCreationContext(JSProxy.getTarget(object));
         }
-        throw new IllegalArgumentException("Cannot get creation context for this object");
+        return mainJSRealm;
     }
 
     public void objectSetIntegrityLevel(Object object, boolean freeze) {
@@ -1186,6 +1189,10 @@ public final class GraalJSAccess {
 
     public Object arrayBufferNew(Object context, int byteLength) {
         return JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteLength);
+    }
+
+    public Object arrayBufferNewBackingStore(int byteLength) {
+        return DirectByteBufferHelper.allocateDirect(byteLength);
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
@@ -1314,7 +1321,15 @@ public final class GraalJSAccess {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        return JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        boolean detached = JSArrayBuffer.isDetachedBuffer(dynamicObject);
+        if (detached) {
+            dynamicObject = JSArrayBuffer.createDirectArrayBuffer(context, 0);
+        }
+        DynamicObject result = JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        if (detached) {
+            JSArrayBuffer.detachArrayBuffer(dynamicObject);
+        }
+        return result;
     }
 
     public Object uint8ArrayNew(Object arrayBuffer, int offset, int length) {
@@ -2492,7 +2507,12 @@ public final class GraalJSAccess {
     private void processWeakCallback(WeakCallback callback) {
         weakCallbacks.remove(callback);
         if (callback.callback != 0) {
-            NativeAccess.weakCallback(callback.callback, callback.data, callback.type);
+            if (callback.type == -1) {
+                DeleterCallback deleter = (DeleterCallback) callback;
+                NativeAccess.deleterCallback(deleter.callback, deleter.data, deleter.length, deleter.deleterData);
+            } else {
+                NativeAccess.weakCallback(callback.callback, callback.data, callback.type);
+            }
         }
     }
 
@@ -2527,12 +2547,14 @@ public final class GraalJSAccess {
     }
 
     private boolean createChildContext;
+    private Set<JSRealm> childContextSet = Collections.newSetFromMap(new WeakHashMap<JSRealm, Boolean>());
 
     public Object contextNew(Object templateObj) {
         JSRealm realm;
         JSContext context;
         if (createChildContext) {
             realm = mainJSRealm.createChildRealm();
+            childContextSet.add(realm);
             context = realm.getContext();
             assert realm.getAgent() == agent;
         } else {
@@ -2668,7 +2690,20 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            agent.processAllPromises(true);
+            try {
+                agent.processAllPromises(true);
+            } catch (AbstractTruffleException atex) {
+                InteropLibrary interop = InteropLibrary.getUncached(atex);
+                if (interop.isException(atex)) {
+                    ExceptionType type = interop.getExceptionType(atex);
+                    if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
+                        throw atex;
+                    }
+                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
+                } else {
+                    throw atex;
+                }
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);
@@ -3020,6 +3055,37 @@ public final class GraalJSAccess {
         debugger.install(breakpoint);
     }
 
+    public void isolateMeasureMemory(Object resolver, boolean detailed) {
+        Runtime runtime = Runtime.getRuntime();
+        double total = runtime.totalMemory();
+        double used = total - runtime.freeMemory();
+
+        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+        JSObject.set(result, "total", createMemoryInfoObject(used, total));
+
+        if (detailed) {
+            JSObject.set(result, "current", createMemoryInfoObject(used, total));
+
+            int contexts = childContextSet.size();
+            Object[] array = new Object[contexts];
+            for (int i = 0; i < contexts; i++) {
+                array[i] = createMemoryInfoObject(0, total);
+            }
+
+            JSObject.set(result, "other", JSArray.createConstantObjectArray(mainJSContext, array));
+        }
+
+        promiseResolverResolve(resolver, result);
+    }
+
+    private Object createMemoryInfoObject(double used, double total) {
+        Object range = JSArray.createConstantDoubleArray(mainJSContext, new double[]{used, total});
+        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+        JSObject.set(result, "jsMemoryEstimate", used);
+        JSObject.set(result, "jsMemoryRange", range);
+        return result;
+    }
+
     public Object correctReturnValue(Object value) {
         if (value == INT_PLACEHOLDER) {
             resetSharedBuffer();
@@ -3269,16 +3335,22 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
-            return Undefined.instance;
-        }
-        jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
 
-        Throwable evaluationError = moduleRecord.getEvaluationError();
-        if (evaluationError == null) {
+        if (!moduleRecord.isEvaluated()) {
+            jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        }
+
+        if (!moduleRecord.isTopLevelAsync()) {
+            Throwable evaluationError = moduleRecord.getEvaluationError();
+            if (evaluationError != null) {
+                throw JSRuntime.rethrow(evaluationError);
+            }
+        }
+        PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
+        if (promiseCapability == null) {
             return moduleRecord.getExecutionResult();
         } else {
-            throw JSRuntime.rethrow(evaluationError);
+            return promiseCapability.getPromise();
         }
     }
 
@@ -3569,6 +3641,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
+        weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
+    }
+
     private static class WeakCallback extends WeakReference<Object> {
 
         long data;
@@ -3582,6 +3658,18 @@ public final class GraalJSAccess {
             this.type = type;
         }
 
+    }
+
+    // v8:BackingStore::DeleterCallback
+    private static class DeleterCallback extends WeakCallback {
+        int length;
+        long deleterData;
+
+        DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
+            super(backingStore, data, callback, -1, queue);
+            this.length = length;
+            this.deleterData = deleterData;
+        }
     }
 
     static class PropertyHandlerPrototypeNode extends JavaScriptRootNode {

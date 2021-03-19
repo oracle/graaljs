@@ -5,7 +5,7 @@
 #ifndef V8_OBJECTS_HEAP_NUMBER_H_
 #define V8_OBJECTS_HEAP_NUMBER_H_
 
-#include "src/objects/heap-object.h"
+#include "src/objects/primitive-heap-object.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -15,12 +15,9 @@ namespace internal {
 
 // The HeapNumber class describes heap allocated numbers that cannot be
 // represented in a Smi (small integer).
-class HeapNumber : public HeapObject {
+class HeapNumber
+    : public TorqueGeneratedHeapNumber<HeapNumber, PrimitiveHeapObject> {
  public:
-  // [value]: number value.
-  inline double value() const;
-  inline void set_value(double value);
-
   inline uint64_t value_as_bits() const;
   inline void set_value_as_bits(uint64_t bits);
 
@@ -28,7 +25,6 @@ class HeapNumber : public HeapObject {
   inline int get_sign();
 
   // Layout description.
-  static const int kValueOffset = HeapObject::kHeaderSize;
   // IEEE doubles are two 32 bit words.  The first is just mantissa, the second
   // is a mixture of sign, exponent and mantissa. The offsets of two 32 bit
   // words within double numbers are endian dependent and they are set
@@ -43,7 +39,6 @@ class HeapNumber : public HeapObject {
 #error Unknown byte ordering
 #endif
 
-  static const int kSize = kValueOffset + kDoubleSize;
   static const uint32_t kSignMask = 0x80000000u;
   static const uint32_t kExponentMask = 0x7ff00000u;
   static const uint32_t kMantissaMask = 0xfffffu;
@@ -56,10 +51,10 @@ class HeapNumber : public HeapObject {
   static const int kMantissaBitsInTopWord = 20;
   static const int kNonMantissaBitsInTopWord = 12;
 
-  DECL_CAST(HeapNumber)
-  V8_EXPORT_PRIVATE void HeapNumberPrint(std::ostream& os);
+  DECL_PRINTER(HeapNumber)
+  V8_EXPORT_PRIVATE void HeapNumberShortPrint(std::ostream& os);
 
-  OBJECT_CONSTRUCTORS(HeapNumber, HeapObject);
+  TQ_OBJECT_CONSTRUCTORS(HeapNumber)
 };
 
 }  // namespace internal

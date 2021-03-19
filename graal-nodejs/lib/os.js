@@ -22,13 +22,14 @@
 'use strict';
 
 const {
+  Float64Array,
+  NumberParseInt,
   ObjectDefineProperties,
   SymbolToPrimitive,
 } = primordials;
 
 const { safeGetenv } = internalBinding('credentials');
 const constants = internalBinding('constants').os;
-const { deprecate } = require('internal/util');
 const isWindows = process.platform === 'win32';
 
 const {
@@ -46,8 +47,8 @@ const {
   getHostname: _getHostname,
   getInterfaceAddresses: _getInterfaceAddresses,
   getLoadAvg,
-  getOSInformation: _getOSInformation,
   getPriority: _getPriority,
+  getOSInformation: _getOSInformation,
   getTotalMem,
   getUserInfo,
   getUptime,
@@ -81,17 +82,14 @@ const getOSVersion = () => version;
 
 getFreeMem[SymbolToPrimitive] = () => getFreeMem();
 getHostname[SymbolToPrimitive] = () => getHostname();
-getHomeDirectory[SymbolToPrimitive] = () => getHomeDirectory();
-getOSRelease[SymbolToPrimitive] = () => getOSRelease();
-getOSType[SymbolToPrimitive] = () => getOSType();
 getOSVersion[SymbolToPrimitive] = () => getOSVersion();
+getOSType[SymbolToPrimitive] = () => getOSType();
+getOSRelease[SymbolToPrimitive] = () => getOSRelease();
+getHomeDirectory[SymbolToPrimitive] = () => getHomeDirectory();
 getTotalMem[SymbolToPrimitive] = () => getTotalMem();
 getUptime[SymbolToPrimitive] = () => getUptime();
 
 const kEndianness = isBigEndian ? 'BE' : 'LE';
-
-const tmpDirDeprecationMsg =
-  'os.tmpDir() is deprecated. Use os.tmpdir() instead.';
 
 const avgValues = new Float64Array(3);
 
@@ -182,7 +180,7 @@ function getCIDR(address, netmask, family) {
   const parts = netmask.split(split);
   for (var i = 0; i < parts.length; i++) {
     if (parts[i] !== '') {
-      const binary = parseInt(parts[i], range);
+      const binary = NumberParseInt(parts[i], range);
       const tmp = countBinaryOnes(binary);
       ones += tmp;
       if (hasZeros) {
@@ -290,12 +288,9 @@ module.exports = {
   tmpdir,
   totalmem: getTotalMem,
   type: getOSType,
-  version: getOSVersion,
   userInfo,
   uptime: getUptime,
-
-  // Deprecated APIs
-  tmpDir: deprecate(tmpdir, tmpDirDeprecationMsg, 'DEP0022')
+  version: getOSVersion
 };
 
 ObjectDefineProperties(module.exports, {

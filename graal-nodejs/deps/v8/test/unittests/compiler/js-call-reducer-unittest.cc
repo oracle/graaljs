@@ -11,6 +11,7 @@
 #include "src/compiler/js-graph.h"
 #include "src/compiler/simplified-operator.h"
 #include "src/execution/isolate.h"
+#include "src/execution/protectors.h"
 #include "src/heap/factory.h"
 #include "src/objects/feedback-vector.h"
 #include "test/unittests/compiler/graph-unittest.h"
@@ -36,7 +37,7 @@ class JSCallReducerTest : public TypedGraphTest {
     // TODO(titzer): mock the GraphReducer here for better unit testing.
     GraphReducer graph_reducer(zone(), graph(), tick_counter());
 
-    JSCallReducer reducer(&graph_reducer, &jsgraph, broker(),
+    JSCallReducer reducer(&graph_reducer, &jsgraph, broker(), zone(),
                           JSCallReducer::kNoFlags, &deps_);
     return reducer.Reduce(node);
   }
@@ -114,9 +115,9 @@ class JSCallReducerTest : public TypedGraphTest {
     Handle<FeedbackVector> vector =
         FeedbackVector::New(isolate(), shared, closure_feedback_cell_array);
     FeedbackSource feedback(vector, FeedbackSlot(0));
-    return javascript()->Call(arity, CallFrequency(), feedback,
-                              ConvertReceiverMode::kAny,
-                              SpeculationMode::kAllowSpeculation);
+    return javascript()->Call(
+        arity, CallFrequency(), feedback, ConvertReceiverMode::kAny,
+        SpeculationMode::kAllowSpeculation, CallFeedbackRelation::kRelated);
   }
 
  private:
@@ -175,12 +176,7 @@ TEST_F(JSCallReducerTest, PromiseConstructorBasic) {
                        context, frame_state, effect, control);
 
   Reduction r = Reduce(construct);
-
-  if (FLAG_experimental_inline_promise_constructor) {
-    ASSERT_TRUE(r.Changed());
-  } else {
-    ASSERT_FALSE(r.Changed());
-  }
+  ASSERT_TRUE(r.Changed());
 }
 
 // Exactly the same as PromiseConstructorBasic which expects a reduction,
@@ -198,7 +194,7 @@ TEST_F(JSCallReducerTest, PromiseConstructorWithHook) {
       graph()->NewNode(javascript()->Construct(3), promise, executor, promise,
                        context, frame_state, effect, control);
 
-  isolate()->InvalidatePromiseHookProtector();
+  Protectors::InvalidatePromiseHook(isolate());
 
   Reduction r = Reduce(construct);
 

@@ -62,4 +62,3 @@ protected:
 };
 
 #endif /* GRAAL_ARRAY_H_ */
-

@@ -194,6 +194,7 @@ an [IPC][] server depending on what it listens to.
 
 Possible signatures:
 
+<!--lint disable no-undefined-references-->
 * [`server.listen(handle[, backlog][, callback])`][`server.listen(handle)`]
 * [`server.listen(options[, callback])`][`server.listen(options)`]
 * [`server.listen(path[, backlog][, callback])`][`server.listen(path)`]
@@ -201,6 +202,7 @@ Possible signatures:
 * <a href="#net_server_listen_port_host_backlog_callback">
   <code>server.listen([port[, host[, backlog]]][, callback])</code></a>
   for TCP servers
+<!--lint enable no-undefined-references-->
 
 This function is asynchronous. When the server starts listening, the
 [`'listening'`][] event will be emitted. The last parameter `callback`
@@ -282,12 +284,14 @@ changes:
   functions.
 * Returns: {net.Server}
 
+<!--lint disable no-undefined-references-->
 If `port` is specified, it behaves the same as
 <a href="#net_server_listen_port_host_backlog_callback">
 <code>server.listen([port[, host[, backlog]]][, callback])</code></a>.
 Otherwise, if `path` is specified, it behaves the same as
 [`server.listen(path[, backlog][, callback])`][`server.listen(path)`].
 If none of them is specified, an error will be thrown.
+<!--lint enable no-undefined-references-->
 
 If `exclusive` is `false` (default), then cluster workers will use the same
 underlying handle, allowing connection handling duties to be shared. When
@@ -545,7 +549,11 @@ socket as reported by the operating system:
 ### `socket.bufferSize`
 <!-- YAML
 added: v0.3.8
+deprecated:
+  - v14.6.0
 -->
+
+> Stability: 0 - Deprecated: Use [`writable.writableLength`][] instead.
 
 * {integer}
 
@@ -793,7 +801,9 @@ Useful to throttle back an upload.
 
 ### `socket.pending`
 <!-- YAML
-added: v11.2.0
+added:
+ - v11.2.0
+ - v10.16.0
 -->
 
 * {boolean}
@@ -924,6 +934,16 @@ If `timeout` is 0, then the existing idle timeout is disabled.
 The optional `callback` parameter will be added as a one-time listener for the
 [`'timeout'`][] event.
 
+### `socket.timeout`
+<!-- YAML
+added: v10.7.0
+-->
+
+* {number|undefined}
+
+The socket timeout in milliseconds as set by [`socket.setTimeout()`][].
+It is `undefined` if a timeout has not been set.
+
 ### `socket.unref()`
 <!-- YAML
 added: v0.9.1
@@ -957,6 +977,20 @@ written out, which may not be immediately.
 
 See `Writable` stream [`write()`][stream_writable_write] method for more
 information.
+
+### `socket.readyState`
+<!-- YAML
+added: v0.5.0
+-->
+
+* {string}
+
+This property represents the state of the connection as a string.
+
+* If the stream is connecting `socket.readyState` is `opening`.
+* If the stream is readable and writable, it is `open`.
+* If the stream is readable and not writable, it is `readOnly`.
+* If the stream is not readable and writable, it is `writeOnly`.
 
 ## `net.connect()`
 
@@ -1228,7 +1262,7 @@ Returns `true` if input is a version 6 IP address, otherwise returns `false`.
 
 [IPC]: #net_ipc_support
 [Identifying paths for IPC connections]: #net_identifying_paths_for_ipc_connections
-[Readable Stream]: stream.html#stream_class_stream_readable
+[Readable Stream]: stream.md#stream_class_stream_readable
 [`'close'`]: #net_event_close
 [`'connect'`]: #net_event_connect
 [`'connection'`]: #net_event_connection
@@ -1238,10 +1272,10 @@ Returns `true` if input is a version 6 IP address, otherwise returns `false`.
 [`'error'`]: #net_event_error_1
 [`'listening'`]: #net_event_listening
 [`'timeout'`]: #net_event_timeout
-[`EventEmitter`]: events.html#events_class_eventemitter
-[`child_process.fork()`]: child_process.html#child_process_child_process_fork_modulepath_args_options
-[`dns.lookup()` hints]: dns.html#dns_supported_getaddrinfo_flags
-[`dns.lookup()`]: dns.html#dns_dns_lookup_hostname_options_callback
+[`EventEmitter`]: events.md#events_class_eventemitter
+[`child_process.fork()`]: child_process.md#child_process_child_process_fork_modulepath_args_options
+[`dns.lookup()`]: dns.md#dns_dns_lookup_hostname_options_callback
+[`dns.lookup()` hints]: dns.md#dns_supported_getaddrinfo_flags
 [`net.Server`]: #net_class_net_server
 [`net.Socket`]: #net_class_net_socket
 [`net.connect()`]: #net_net_connect
@@ -1254,7 +1288,7 @@ Returns `true` if input is a version 6 IP address, otherwise returns `false`.
 [`net.createConnection(port, host)`]: #net_net_createconnection_port_host_connectlistener
 [`net.createServer()`]: #net_net_createserver_options_connectionlistener
 [`new net.Socket(options)`]: #net_new_net_socket_options
-[`readable.setEncoding()`]: stream.html#stream_readable_setencoding_encoding
+[`readable.setEncoding()`]: stream.md#stream_readable_setencoding_encoding
 [`server.close()`]: #net_server_close_callback
 [`server.getConnections()`]: #net_server_getconnections_callback
 [`server.listen()`]: #net_server_listen
@@ -1274,10 +1308,11 @@ Returns `true` if input is a version 6 IP address, otherwise returns `false`.
 [`socket.setEncoding()`]: #net_socket_setencoding_encoding
 [`socket.setTimeout()`]: #net_socket_settimeout_timeout_callback
 [`socket.setTimeout(timeout)`]: #net_socket_settimeout_timeout_callback
-[`writable.destroyed`]: stream.html#stream_writable_destroyed
-[`writable.destroy()`]: stream.html#stream_writable_destroy_error
-[`writable.end()`]: stream.html#stream_writable_end_chunk_encoding_callback
+[`writable.destroy()`]: stream.md#stream_writable_destroy_error
+[`writable.destroyed`]: stream.md#stream_writable_destroyed
+[`writable.end()`]: stream.md#stream_writable_end_chunk_encoding_callback
+[`writable.writableLength`]: stream.md#stream_writable_writablelength
 [half-closed]: https://tools.ietf.org/html/rfc1122
-[stream_writable_write]: stream.html#stream_writable_write_chunk_encoding_callback
+[stream_writable_write]: stream.md#stream_writable_write_chunk_encoding_callback
 [unspecified IPv4 address]: https://en.wikipedia.org/wiki/0.0.0.0
 [unspecified IPv6 address]: https://en.wikipedia.org/wiki/IPv6_address#Unspecified_address

@@ -303,7 +303,7 @@ const errorTests = [
   // Functions should not evaluate twice (#2773)
   {
     send: 'var I = [1,2,3,function() {}]; I.pop()',
-    expect: '[Function]'
+    expect: '[Function (anonymous)]'
   },
   // Multiline object
   {
@@ -372,8 +372,8 @@ const errorTests = [
   {
     send: 'npm install foobar',
     expect: [
-      'npm should be run outside of the node repl, in your normal shell.',
-      '(Press Control-D to exit.)'
+      'npm should be run outside of the Node.js REPL, in your normal shell.',
+      '(Press Ctrl+D to exit.)'
     ]
   },
   {
@@ -453,7 +453,7 @@ const errorTests = [
       /\.load/,
       /\.save/,
       '',
-      'Press ^C to abort current expression, ^D to exit the repl',
+      'Press Ctrl+C to abort current expression, Ctrl+D to exit the REPL',
       /'thefourtheye'/
     ]
   },

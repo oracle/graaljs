@@ -72,25 +72,34 @@ TEST(Object, InstanceTypeListOrder) {
                            << " vs. current = " << current_type;           \
   last = current;
 
-  INSTANCE_TYPE_LIST(TEST_INSTANCE_TYPE)
+  // Only test hand-written portion of instance type list. The generated portion
+  // doesn't run the same risk of getting out of order, and it does emit type
+  // names out of numerical order in one case: JS_OBJECT_TYPE is emitted before
+  // its subclass types, because types are emitted in depth-first pre-order
+  // traversal order, and some of its subclass types are numerically earlier.
+  INSTANCE_TYPE_LIST_BASE(TEST_INSTANCE_TYPE)
 #undef TEST_INSTANCE_TYPE
 }
 
 TEST(Object, StructListOrder) {
-  int current = static_cast<int>(InstanceType::ACCESS_CHECK_INFO_TYPE);
+  int current = static_cast<int>(InstanceType::FIRST_STRUCT_TYPE);
   int last = current - 1;
   ASSERT_LT(0, last);
   InstanceType current_type = static_cast<InstanceType>(current);
 #define TEST_STRUCT(TYPE, class, name)                 \
   current_type = InstanceType::TYPE;                   \
   current = static_cast<int>(current_type);            \
-  EXPECT_EQ(last + 1, current)                         \
+  EXPECT_LE(last + 1, current)                         \
       << " STRUCT_LIST is not ordered: "               \
       << " last = " << static_cast<InstanceType>(last) \
       << " vs. current = " << current_type;            \
   last = current;
 
-  STRUCT_LIST(TEST_STRUCT)
+  // Only test the _BASE portion (the hand-coded part). Note that the values are
+  // not necessarily consecutive because some Structs that need special
+  // handling, such as those that have multiple Map instances associated, are
+  // omitted from this list.
+  STRUCT_LIST_GENERATOR_BASE(STRUCT_LIST_ADAPTER, TEST_STRUCT)
 #undef TEST_STRUCT
 }
 
@@ -168,6 +177,44 @@ TEST_F(TestWithNativeContext, EmptyFunctionScopeInfo) {
             empty_function_scope_info->ParameterCount());
   EXPECT_EQ(scope_info->ContextLocalCount(),
             empty_function_scope_info->ContextLocalCount());
+}
+
+TEST_F(TestWithNativeContext, RecreateScopeInfoWithLocalsBlacklistWorks) {
+  // Create a JSFunction to get a {ScopeInfo} we can use for the test.
+  Handle<JSFunction> function = RunJS<JSFunction>("(function foo() {})");
+  Handle<ScopeInfo> original_scope_info(function->shared().scope_info(),
+                                        isolate());
+  ASSERT_FALSE(original_scope_info->HasLocalsBlackList());
+
+  Handle<String> foo_string =
+      isolate()->factory()->NewStringFromStaticChars("foo");
+  Handle<String> bar_string =
+      isolate()->factory()->NewStringFromStaticChars("bar");
+
+  Handle<StringSet> blacklist = StringSet::New(isolate());
+  StringSet::Add(isolate(), blacklist, foo_string);
+
+  Handle<ScopeInfo> scope_info = ScopeInfo::RecreateWithBlackList(
+      isolate(), original_scope_info, blacklist);
+
+  DisallowHeapAllocation no_gc;
+  EXPECT_TRUE(scope_info->HasLocalsBlackList());
+  EXPECT_TRUE(scope_info->LocalsBlackList().Has(isolate(), foo_string));
+  EXPECT_FALSE(scope_info->LocalsBlackList().Has(isolate(), bar_string));
+
+  EXPECT_EQ(original_scope_info->length() + 1, scope_info->length());
+
+  // Check that all variable fields *before* the blacklist stayed the same.
+  for (int i = ScopeInfo::kVariablePartIndex;
+       i < scope_info->LocalsBlackListIndex(); ++i) {
+    EXPECT_EQ(original_scope_info->get(i), scope_info->get(i));
+  }
+
+  // Check that all variable fields *after* the blacklist stayed the same.
+  for (int i = scope_info->LocalsBlackListIndex() + 1; i < scope_info->length();
+       ++i) {
+    EXPECT_EQ(original_scope_info->get(i - 1), scope_info->get(i));
+  }
 }
 
 }  // namespace internal

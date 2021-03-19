@@ -75,6 +75,7 @@ inline void Debug(WASI* wasi, Args&&... args) {
 
 using v8::Array;
 using v8::ArrayBuffer;
+using v8::BackingStore;
 using v8::BigInt;
 using v8::Context;
 using v8::Exception;
@@ -1660,9 +1661,9 @@ uvwasi_errno_t WASI::backingStore(char** store, size_t* byte_length) {
     return UVWASI_EINVAL;
 
   Local<ArrayBuffer> ab = prop.As<ArrayBuffer>();
-  ArrayBuffer::Contents contents = ab->GetContents();
-  *byte_length = ab->ByteLength();
-  *store = static_cast<char*>(contents.Data());
+  std::shared_ptr<BackingStore> backing_store = ab->GetBackingStore();
+  *byte_length = backing_store->ByteLength();
+  *store = static_cast<char*>(backing_store->Data());
   CHECK_NOT_NULL(*store);
   return UVWASI_ESUCCESS;
 }

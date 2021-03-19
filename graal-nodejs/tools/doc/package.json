@@ -11,15 +11,17 @@
     "js-yaml": "3.14.0",
     "rehype-raw": "4.0.2",
     "rehype-stringify": "8.0.0",
+    "remark-gfm": "^1.0.0",
     "remark-html": "12.0.0",
-    "remark-parse": "8.0.3",
+    "remark-parse": "^9.0.0",
     "remark-rehype": "7.0.0",
     "to-vfile": "6.1.0",
     "unified": "9.2.0",
-    "unist-util-find": "1.0.1",
+    "unist-util-find": "^1.0.2",
     "unist-util-select": "3.0.1",
     "unist-util-visit": "2.0.3"
   },
-  "optionalDependencies": {},
-  "bin": "./generate.js"
+  "bin": {
+    "node-doc-generator": "generate.js"
+  }
 }

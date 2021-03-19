@@ -11,8 +11,6 @@ const { pathToFileURL } = require('internal/url');
 const {
   getModuleFromWrap,
 } = require('internal/vm/module');
-const { getOptionValue } = require('internal/options');
-const userLoader = getOptionValue('--experimental-loader');
 
 exports.initializeImportMetaObject = function(wrap, meta) {
   const { callbackMap } = internalBinding('module_wrap');
@@ -40,6 +38,8 @@ let ESMLoader = new Loader();
 exports.ESMLoader = ESMLoader;
 
 async function initializeLoader() {
+  const { getOptionValue } = require('internal/options');
+  const userLoader = getOptionValue('--experimental-loader');
   if (!userLoader)
     return;
   let cwd;

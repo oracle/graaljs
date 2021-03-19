@@ -4,6 +4,7 @@
 
 #include "src/api/api-inl.h"
 #include "src/codegen/assembler-inl.h"
+#include "src/objects/stack-frame-info-inl.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/value-helper.h"
 #include "test/cctest/wasm/wasm-run-utils.h"
@@ -103,7 +104,7 @@ void CheckComputeLocation(v8::internal::Isolate* i_isolate, Handle<Object> exc,
 }  // namespace
 
 // Call from JS to wasm to JS and throw an Error from JS.
-WASM_EXEC_TEST(CollectDetailedWasmStack_ExplicitThrowFromJs) {
+WASM_COMPILED_EXEC_TEST(CollectDetailedWasmStack_ExplicitThrowFromJs) {
   TestSignatures sigs;
   HandleScope scope(CcTest::InitIsolateOnce());
   const char* source =
@@ -140,20 +141,76 @@ WASM_EXEC_TEST(CollectDetailedWasmStack_ExplicitThrowFromJs) {
                          Execution::MessageHandling::kReport, &maybe_exc);
   CHECK(returnObjMaybe.is_null());
 
-  // Line and column are 1-based, so add 1 for the expected wasm output.
   ExceptionInfo expected_exceptions[] = {
-      {"a", 3, 8},                                            // -
-      {"js", 4, 2},                                           // -
-      {"main", static_cast<int>(wasm_index_1) + 1, 8},        // -
-      {"call_main", static_cast<int>(wasm_index_2) + 1, 21},  // -
-      {"callFn", 1, 24}                                       // -
+      {"a", 3, 8},           // -
+      {"js", 4, 2},          // -
+      {"main", 1, 8},        // -
+      {"call_main", 1, 21},  // -
+      {"callFn", 1, 24}      // -
   };
   CheckExceptionInfos(isolate, maybe_exc.ToHandleChecked(),
                       expected_exceptions);
 }
 
+// Trigger a trap in wasm, stack should contain a source url.
+WASM_COMPILED_EXEC_TEST(CollectDetailedWasmStack_WasmUrl) {
+  // Create a WasmRunner with stack checks and traps enabled.
+  WasmRunner<int> r(execution_tier, nullptr, "main", kRuntimeExceptionSupport);
+
+  std::vector<byte> code(1, kExprUnreachable);
+  r.Build(code.data(), code.data() + code.size());
+
+  WasmFunctionCompiler& f = r.NewFunction<int>("call_main");
+  BUILD(f, WASM_CALL_FUNCTION0(0));
+  uint32_t wasm_index = f.function_index();
+
+  Handle<JSFunction> js_wasm_wrapper = r.builder().WrapCode(wasm_index);
+
+  Handle<JSFunction> js_trampoline = Handle<JSFunction>::cast(
+      v8::Utils::OpenHandle(*v8::Local<v8::Function>::Cast(
+          CompileRun("(function callFn(fn) { fn(); })"))));
+
+  Isolate* isolate = js_wasm_wrapper->GetIsolate();
+  isolate->SetCaptureStackTraceForUncaughtExceptions(true, 10,
+                                                     v8::StackTrace::kOverview);
+
+  // Set the wasm script source url.
+  const char* url = "http://example.com/example.wasm";
+  const Handle<String> source_url =
+      isolate->factory()->InternalizeUtf8String(url);
+  r.builder().instance_object()->module_object().script().set_source_url(
+      *source_url);
+
+  // Run the js wrapper.
+  Handle<Object> global(isolate->context().global_object(), isolate);
+  MaybeHandle<Object> maybe_exc;
+  Handle<Object> args[] = {js_wasm_wrapper};
+  MaybeHandle<Object> maybe_return_obj =
+      Execution::TryCall(isolate, js_trampoline, global, 1, args,
+                         Execution::MessageHandling::kReport, &maybe_exc);
+
+  CHECK(maybe_return_obj.is_null());
+  Handle<Object> exception = maybe_exc.ToHandleChecked();
+
+  // Extract stack trace from the exception.
+  Handle<FixedArray> stack_trace_object =
+      isolate->GetDetailedStackTrace(Handle<JSObject>::cast(exception));
+  CHECK(!stack_trace_object.is_null());
+  Handle<StackTraceFrame> stack_frame = Handle<StackTraceFrame>::cast(
+      handle(stack_trace_object->get(0), isolate));
+
+  MaybeHandle<String> maybe_stack_trace_str =
+      SerializeStackTraceFrame(isolate, stack_frame);
+  CHECK(!maybe_stack_trace_str.is_null());
+  Handle<String> stack_trace_str = maybe_stack_trace_str.ToHandleChecked();
+
+  // Check if the source_url is part of the stack trace.
+  CHECK_NE(std::string(stack_trace_str->ToCString().get()).find(url),
+           std::string::npos);
+}
+
 // Trigger a trap in wasm, stack should be JS -> wasm -> wasm.
-WASM_EXEC_TEST(CollectDetailedWasmStack_WasmError) {
+WASM_COMPILED_EXEC_TEST(CollectDetailedWasmStack_WasmError) {
   for (int pos_shift = 0; pos_shift < 3; ++pos_shift) {
     // Test a position with 1, 2 or 3 bytes needed to represent it.
     int unreachable_pos = 1 << (8 * pos_shift);
@@ -196,15 +253,15 @@ WASM_EXEC_TEST(CollectDetailedWasmStack_WasmError) {
     const int call_main_offset =
         r.builder().GetFunctionAt(wasm_index_2)->code.offset();
 
-    // Line and column are 1-based, so add 1 for the expected wasm output.
+    // Column is 1-based, so add 1 for the expected wasm output. Line number
+    // is always 1.
     const int expected_main_pos =
         unreachable_pos + main_offset + kMainLocalsLength + 1;
     const int expected_call_main_pos = call_main_offset + kMainLocalsLength + 1;
     ExceptionInfo expected_exceptions[] = {
-        {"main", static_cast<int>(wasm_index_1) + 1, expected_main_pos},  // -
-        {"call_main", static_cast<int>(wasm_index_2) + 1,
-         expected_call_main_pos},  // -
-        {"callFn", 1, 24}          //-
+        {"main", 1, expected_main_pos},            // -
+        {"call_main", 1, expected_call_main_pos},  // -
+        {"callFn", 1, 24}                          //-
     };
     CheckExceptionInfos(isolate, exception, expected_exceptions);
   }

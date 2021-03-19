@@ -2,6 +2,7 @@
 
 const {
   Array,
+  Int8Array,
   Number,
   ObjectCreate,
   ObjectDefineProperties,
@@ -11,6 +12,7 @@ const {
   ObjectKeys,
   ReflectGetOwnPropertyDescriptor,
   ReflectOwnKeys,
+  String,
   Symbol,
   SymbolIterator,
   SymbolToStringTag,
@@ -359,11 +361,8 @@ class URL {
     if (typeof depth === 'number' && depth < 0)
       return this;
 
-    const ctor = getConstructorOf(this);
-
-    const obj = ObjectCreate({
-      constructor: ctor === null ? URL : ctor
-    });
+    const constructor = getConstructorOf(this) || URL;
+    const obj = ObjectCreate({ constructor });
 
     obj.href = this.href;
     obj.origin = this.origin;
@@ -384,7 +383,7 @@ class URL {
       obj[context] = this[context];
     }
 
-    return inspect(obj, opts);
+    return `${constructor.name} ${inspect(obj, opts)}`;
   }
 }
 
@@ -819,7 +818,7 @@ function parseParams(qs) {
 
 // Adapted from querystring's implementation.
 // Ref: https://url.spec.whatwg.org/#concept-urlencoded-byte-serializer
-const noEscape = [
+const noEscape = new Int8Array([
 /*
   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, A, B, C, D, E, F
 */
@@ -831,7 +830,7 @@ const noEscape = [
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, // 0x50 - 0x5F
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x60 - 0x6F
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0  // 0x70 - 0x7F
-];
+]);
 
 // Special version of hexTable that uses `+` for U+0020 SPACE.
 const paramHexTable = hexTable.slice();

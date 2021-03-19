@@ -50,9 +50,9 @@ public:
     inline static GraalString* Allocate(GraalIsolate* isolate, jstring java_string);
     inline static GraalString* Allocate(GraalIsolate* isolate, jstring java_string, void* placement);
     inline void ReInitialize(jobject java_object);
-    static v8::Local<v8::String> NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length);
-    static v8::Local<v8::String> NewFromUtf8(v8::Isolate* isolate, char const* str, v8::String::NewStringType type, int length);
-    static v8::Local<v8::String> NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::String::NewStringType type, int length);
+    static v8::Local<v8::String> NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::NewStringType type, int length);
+    static v8::Local<v8::String> NewFromUtf8(v8::Isolate* isolate, char const* str, v8::NewStringType type, int length);
+    static v8::Local<v8::String> NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::NewStringType type, int length);
     static v8::Local<v8::String> NewFromModifiedUtf8(v8::Isolate* isolate, char const* data);
     static v8::Local<v8::String> NewExternal(v8::Isolate* isolate, v8::String::ExternalOneByteStringResource* resource);
     static v8::Local<v8::String> NewExternal(v8::Isolate* isolate, v8::String::ExternalStringResource* resource);
@@ -81,4 +81,3 @@ protected:
 };
 
 #endif /* GRAAL_STRING_H_ */
-

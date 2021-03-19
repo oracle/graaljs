@@ -41,6 +41,7 @@ bool OperatorProperties::NeedsExactContext(const Operator* op) {
     case IrOpcode::kJSCreateEmptyLiteralObject:
     case IrOpcode::kJSCreateArrayFromIterable:
     case IrOpcode::kJSCreateLiteralRegExp:
+    case IrOpcode::kJSGetTemplateObject:
     case IrOpcode::kJSForInEnumerate:
     case IrOpcode::kJSForInNext:
     case IrOpcode::kJSForInPrepare:
@@ -52,7 +53,6 @@ bool OperatorProperties::NeedsExactContext(const Operator* op) {
     case IrOpcode::kJSLoadGlobal:
     case IrOpcode::kJSLoadMessage:
     case IrOpcode::kJSStackCheck:
-    case IrOpcode::kJSStoreGlobal:
     case IrOpcode::kJSStoreMessage:
     case IrOpcode::kJSGetIterator:
       return false;
@@ -75,12 +75,14 @@ bool OperatorProperties::NeedsExactContext(const Operator* op) {
     case IrOpcode::kJSDeleteProperty:
     case IrOpcode::kJSGeneratorStore:
     case IrOpcode::kJSHasProperty:
+    case IrOpcode::kJSHasContextExtension:
     case IrOpcode::kJSLoadContext:
     case IrOpcode::kJSLoadModule:
     case IrOpcode::kJSLoadNamed:
     case IrOpcode::kJSLoadProperty:
     case IrOpcode::kJSStoreContext:
     case IrOpcode::kJSStoreDataPropertyInLiteral:
+    case IrOpcode::kJSStoreGlobal:
     case IrOpcode::kJSStoreInArrayLiteral:
     case IrOpcode::kJSStoreModule:
     case IrOpcode::kJSStoreNamed:

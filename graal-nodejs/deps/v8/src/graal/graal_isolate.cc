@@ -506,7 +506,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         if (!RegisterCallbacks(env, callback_class)) {
             exit(1);
         }
-        uv_key_create(&current_isolate_key);
+        InitThreadLocals();
     } else {
         if (jvm->GetEnv(reinterpret_cast<void**> (&env), JNI_VERSION_1_8) == JNI_EDETACHED) {
             jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
@@ -533,7 +533,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 #undef access
 
 GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(),
-    message_listener_(nullptr), function_template_count_(0), promise_hook_(nullptr), promise_reject_callback_(nullptr), import_meta_initializer(nullptr), import_module_dynamically(nullptr) {
+    message_listener_(nullptr), function_template_count_(0), promise_hook_(nullptr), promise_reject_callback_(nullptr), import_meta_initializer(nullptr), import_module_dynamically(nullptr),
+    fatal_error_handler_(nullptr), prepare_stack_trace_callback_(nullptr) {
 
 #ifdef __POSIX__
     lock_ = PTHREAD_MUTEX_INITIALIZER;
@@ -676,6 +677,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::array_length, "arrayLength", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new, "arrayBufferNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new_buffer, "arrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_new_backing_store, "arrayBufferNewBackingStore", "(I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_get_contents, "arrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_buffer, "arrayBufferViewBuffer", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
@@ -729,6 +731,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_exit, "isolateExit", "(J)J")
     ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_schedule_pause_on_next_statement, "isolateSchedulePauseOnNextStatement", "()V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
@@ -872,6 +875,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
     ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/String;Ljava/lang/String;[Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::backing_store_register_callback, "backingStoreRegisterCallback", "(Ljava/lang/Object;JIJJ)V")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize;
     slot[v8::internal::Internals::kExternalMemoryOffset / v8::internal::kApiSystemPointerSize] = (void*) 0;
@@ -932,7 +936,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
 
     sending_message_ = false;
     abort_on_uncaught_exception_callback_ = nullptr;
-    array_buffer_allocator_ = params.array_buffer_allocator;
+    array_buffer_allocator_ = params.array_buffer_allocator_shared;
     try_catch_count_ = 0;
     stack_check_enabled_ = false;
     error_to_ignore_ = nullptr;
@@ -1038,12 +1042,16 @@ void GraalIsolate::Dispose(bool exit, int status) {
     env->functions->CallVoidMethod(env, access_, method_id, exit, status);
 
     // Release global references
+    env->DeleteGlobalRef(object_class_);
+    env->DeleteGlobalRef(access_class_);
     env->DeleteGlobalRef(access_);
     env->DeleteGlobalRef(boolean_true_);
     env->DeleteGlobalRef(boolean_false_);
     env->DeleteGlobalRef(int32_placeholder_);
     env->DeleteGlobalRef(uint32_placeholder_);
     env->DeleteGlobalRef(double_placeholder_);
+    object_class_ = nullptr;
+    access_class_ = nullptr;
     access_ = nullptr;
     boolean_true_ = nullptr;
     boolean_false_ = nullptr;
@@ -1071,6 +1079,11 @@ void GraalIsolate::Dispose(bool exit, int status) {
     delete number_pool_;
     delete object_pool_;
     delete string_pool_;
+
+    // GraalIsolate is allocated using malloc and placement new,
+    // see Isolate::Allocate() and Isolate::Initialize()
+    this->~GraalIsolate();
+    free(this);
 }
 
 jobject GraalIsolate::JNIGetObjectFieldOrCall(jobject java_object, GraalAccessField graal_field_id, GraalAccessMethod graal_method_id) {
@@ -1438,7 +1451,7 @@ void GraalIsolate::EnqueueMicrotask(v8::Local<v8::Function> microtask) {
 }
 
 v8::ArrayBuffer::Allocator* GraalIsolate::GetArrayBufferAllocator() {
-    return array_buffer_allocator_;
+    return array_buffer_allocator_.get();
 }
 
 void GraalIsolate::SchedulePauseOnNextStatement() {

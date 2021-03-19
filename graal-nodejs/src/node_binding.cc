@@ -49,7 +49,6 @@
   V(heap_utils)                                                                \
   V(http2)                                                                     \
   V(http_parser)                                                               \
-  V(http_parser_llhttp)                                                        \
   V(inspector)                                                                 \
   V(js_stream)                                                                 \
   V(js_udp_wrap)                                                               \
@@ -231,9 +230,9 @@ namespace node {
 
 using v8::Context;
 using v8::Exception;
+using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::Local;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -568,8 +567,11 @@ inline struct node_module* FindModule(struct node_module* list,
 static Local<Object> InitModule(Environment* env,
                                 node_module* mod,
                                 Local<String> module) {
-  Local<Object> exports = Object::New(env->isolate());
   // Internal bindings don't have a "module" object, only exports.
+  Local<Function> ctor = env->binding_data_ctor_template()
+                             ->GetFunction(env->context())
+                             .ToLocalChecked();
+  Local<Object> exports = ctor->NewInstance(env->context()).ToLocalChecked();
   CHECK_NULL(mod->nm_register_func);
   CHECK_NOT_NULL(mod->nm_context_register_func);
   Local<Value> unused = Undefined(env->isolate());
@@ -652,8 +654,7 @@ void GetLinkedBinding(const FunctionCallbackInfo<Value>& args) {
   Local<Object> module = Object::New(env->isolate());
   Local<Object> exports = Object::New(env->isolate());
   Local<String> exports_prop =
-      String::NewFromUtf8(env->isolate(), "exports", NewStringType::kNormal)
-          .ToLocalChecked();
+      String::NewFromUtf8Literal(env->isolate(), "exports");
   module->Set(env->context(), exports_prop, exports).Check();
 
   if (mod->nm_context_register_func != nullptr) {

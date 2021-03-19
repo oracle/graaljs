@@ -14,6 +14,9 @@ on:
   schedule:
     - cron: "*/5 * * * *"
 
+env:
+  NODE_VERSION: 14.x
+
 jobs:
   commitQueue:
     if: github.repository == 'nodejs/node'
@@ -21,6 +24,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
+          # Needs the whole git history for ncu to work
+          # See https://github.com/nodejs/node-core-utils/pull/486
+          fetch-depth: 0
           # A personal token is required because pushing with GITHUB_TOKEN will
           # prevent commits from running CI after they land on master. It needs
           # to be set here because `checkout` configures GitHub authentication
@@ -31,16 +37,14 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v2-beta
         with:
-          node-version: '12'
-      - name: Install dependencies
-        run: |
-          sudo apt-get install jq -y
-          npm install -g node-core-utils@latest
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Install node-core-utils
+        run: npm install -g node-core-utils@latest
 
       - name: Set variables
         run: |
-          echo "::set-env name=REPOSITORY::$(echo ${{ github.repository }} | cut -d/ -f2)"
-          echo "::set-env name=OWNER::${{ github.repository_owner }}"
+          echo "REPOSITORY=$(echo ${{ github.repository }} | cut -d/ -f2)" >> $GITHUB_ENV
+          echo "OWNER=${{ github.repository_owner }}" >> $GITHUB_ENV
 
       - name: Get Pull Requests
         uses: octokit/graphql-action@v2.x

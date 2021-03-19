@@ -1,6 +1,11 @@
 'use strict';
 
 const {
+  ArrayPrototypeIncludes,
+  ArrayPrototypeIndexOf,
+  ArrayPrototypePush,
+  ArrayPrototypeSplice,
+  FunctionPrototypeBind,
   NumberIsSafeInteger,
   ObjectDefineProperties,
   ObjectIs,
@@ -29,6 +34,7 @@ const {
   getHookArrays,
   enableHooks,
   disableHooks,
+  updatePromiseHookMode,
   executionAsyncResource,
   // Internal Embedder API
   newAsyncId,
@@ -84,7 +90,7 @@ class AsyncHook {
     const [hooks_array, hook_fields] = getHookArrays();
 
     // Each hook is only allowed to be added once.
-    if (hooks_array.includes(this))
+    if (ArrayPrototypeIncludes(hooks_array, this))
       return this;
 
     const prev_kTotals = hook_fields[kTotals];
@@ -98,11 +104,13 @@ class AsyncHook {
     hook_fields[kTotals] += hook_fields[kDestroy] += +!!this[destroy_symbol];
     hook_fields[kTotals] +=
         hook_fields[kPromiseResolve] += +!!this[promise_resolve_symbol];
-    hooks_array.push(this);
+    ArrayPrototypePush(hooks_array, this);
 
     if (prev_kTotals === 0 && hook_fields[kTotals] > 0) {
       enableHooks();
     }
+
+    updatePromiseHookMode();
 
     return this;
   }
@@ -110,7 +118,7 @@ class AsyncHook {
   disable() {
     const [hooks_array, hook_fields] = getHookArrays();
 
-    const index = hooks_array.indexOf(this);
+    const index = ArrayPrototypeIndexOf(hooks_array, this);
     if (index === -1)
       return this;
 
@@ -122,7 +130,7 @@ class AsyncHook {
     hook_fields[kTotals] += hook_fields[kDestroy] -= +!!this[destroy_symbol];
     hook_fields[kTotals] +=
         hook_fields[kPromiseResolve] -= +!!this[promise_resolve_symbol];
-    hooks_array.splice(index, 1);
+    ArrayPrototypeSplice(hooks_array, index, 1);
 
     if (prev_kTotals > 0 && hook_fields[kTotals] === 0) {
       disableHooks();
@@ -215,7 +223,7 @@ class AsyncResource {
   bind(fn) {
     if (typeof fn !== 'function')
       throw new ERR_INVALID_ARG_TYPE('fn', 'Function', fn);
-    const ret = this.runInAsyncScope.bind(this, fn);
+    const ret = FunctionPrototypeBind(this.runInAsyncScope, this, fn);
     ObjectDefineProperties(ret, {
       'length': {
         configurable: true,
@@ -261,10 +269,19 @@ class AsyncLocalStorage {
     if (this.enabled) {
       this.enabled = false;
       // If this.enabled, the instance must be in storageList
-      storageList.splice(storageList.indexOf(this), 1);
+      ArrayPrototypeSplice(storageList,
+                           ArrayPrototypeIndexOf(storageList, this), 1);
       if (storageList.length === 0) {
         storageHook.disable();
       }
+    }
+  }
+
+  _enable() {
+    if (!this.enabled) {
+      this.enabled = true;
+      ArrayPrototypePush(storageList, this);
+      storageHook.enable();
     }
   }
 
@@ -277,11 +294,7 @@ class AsyncLocalStorage {
   }
 
   enterWith(store) {
-    if (!this.enabled) {
-      this.enabled = true;
-      storageList.push(this);
-      storageHook.enable();
-    }
+    this._enable();
     const resource = executionAsyncResource();
     resource[this.kResourceStore] = store;
   }
@@ -305,11 +318,11 @@ class AsyncLocalStorage {
     if (!this.enabled) {
       return callback(...args);
     }
-    this.enabled = false;
+    this.disable();
     try {
       return callback(...args);
     } finally {
-      this.enabled = true;
+      this._enable();
     }
   }
 

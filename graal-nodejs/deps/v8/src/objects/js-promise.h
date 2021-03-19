@@ -7,6 +7,7 @@
 
 #include "src/objects/js-objects.h"
 #include "src/objects/promise.h"
+#include "torque-generated/bit-fields-tq.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -31,8 +32,6 @@ class JSPromise : public TorqueGeneratedJSPromise<JSPromise, JSObject> {
 
   // [reactions]: Checks that the promise is pending and returns the reactions.
   inline Object reactions() const;
-
-  DECL_INT_ACCESSORS(flags)
 
   // [has_handler]: Whether this promise has a reject handler or not.
   DECL_BOOLEAN_ACCESSORS(has_handler)
@@ -63,17 +62,11 @@ class JSPromise : public TorqueGeneratedJSPromise<JSPromise, JSObject> {
   DECL_VERIFIER(JSPromise)
 
   static const int kSizeWithEmbedderFields =
-      kSize + v8::Promise::kEmbedderFieldCount * kEmbedderDataSlotSize;
+      kHeaderSize + v8::Promise::kEmbedderFieldCount * kEmbedderDataSlotSize;
 
   // Flags layout.
-  // The first two bits store the v8::Promise::PromiseState.
-  static const int kStatusBits = 2;
-  static const int kHasHandlerBit = 2;
-  static const int kHandledHintBit = 3;
-  using AsyncTaskIdField = BitField<int, kHandledHintBit + 1, 22>;
+  DEFINE_TORQUE_GENERATED_JS_PROMISE_FLAGS()
 
-  static const int kStatusShift = 0;
-  static const int kStatusMask = 0x3;
   STATIC_ASSERT(v8::Promise::kPending == 0);
   STATIC_ASSERT(v8::Promise::kFulfilled == 1);
   STATIC_ASSERT(v8::Promise::kRejected == 2);

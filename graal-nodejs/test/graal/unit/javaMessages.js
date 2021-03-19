@@ -322,7 +322,7 @@ describe('Java interop messages', function() {
                                     while (true) {
                                         // block the worker waiting for the next notification from Java
                                         var data = workerData.queue.take();
-                                        // notify the main event loop that we got new data 
+                                        // notify the main event loop that we got new data
                                         parentPort.postMessage(data);
                                     }`,
                 {eval: true, workerData: { queue: this.queue }});

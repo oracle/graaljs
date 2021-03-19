@@ -27,11 +27,12 @@ SMI_ACCESSORS(ObjectBoilerplateDescription, flags,
               FixedArray::OffsetOfElementAt(kLiteralTypeOffset))
 
 Object ObjectBoilerplateDescription::name(int index) const {
-  Isolate* isolate = GetIsolateForPtrCompr(*this);
+  const Isolate* isolate = GetIsolateForPtrCompr(*this);
   return name(isolate, index);
 }
 
-Object ObjectBoilerplateDescription::name(Isolate* isolate, int index) const {
+Object ObjectBoilerplateDescription::name(const Isolate* isolate,
+                                          int index) const {
   // get() already checks for out of bounds access, but we do not want to allow
   // access to the last element, if it is the number of properties.
   DCHECK_NE(size(), index);
@@ -39,11 +40,12 @@ Object ObjectBoilerplateDescription::name(Isolate* isolate, int index) const {
 }
 
 Object ObjectBoilerplateDescription::value(int index) const {
-  Isolate* isolate = GetIsolateForPtrCompr(*this);
+  const Isolate* isolate = GetIsolateForPtrCompr(*this);
   return value(isolate, index);
 }
 
-Object ObjectBoilerplateDescription::value(Isolate* isolate, int index) const {
+Object ObjectBoilerplateDescription::value(const Isolate* isolate,
+                                           int index) const {
   return get(isolate, 2 * index + 1 + kDescriptionStartIndex);
 }
 
@@ -125,8 +127,6 @@ ACCESSORS(ClassBoilerplate, instance_computed_properties, FixedArray,
 //
 
 TQ_OBJECT_CONSTRUCTORS_IMPL(ArrayBoilerplateDescription)
-
-TQ_SMI_ACCESSORS(ArrayBoilerplateDescription, flags)
 
 ElementsKind ArrayBoilerplateDescription::elements_kind() const {
   return static_cast<ElementsKind>(flags());

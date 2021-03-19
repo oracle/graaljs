@@ -59,12 +59,12 @@ if (process.argv.length === 2 &&
     !process.env.NODE_SKIP_FLAG_CHECK &&
     isMainThread &&
     hasCrypto &&
-    module.parent &&
+    require.main &&
     require('cluster').isMaster) {
   // The copyright notice is relatively big and the flags could come afterwards.
   const bytesToRead = 1500;
   const buffer = Buffer.allocUnsafe(bytesToRead);
-  const fd = fs.openSync(module.parent.filename, 'r');
+  const fd = fs.openSync(require.main.filename, 'r');
   const bytesRead = fs.readSync(fd, buffer, 0, bytesToRead);
   fs.closeSync(fd);
   const source = buffer.toString('utf8', 0, bytesRead);
@@ -194,11 +194,9 @@ const PIPE = (() => {
   return path.join(pipePrefix, pipeName);
 })();
 
-/*
- * Check that when running a test with
- * `$node --abort-on-uncaught-exception $file child`
- * the process aborts.
- */
+// Check that when running a test with
+// `$node --abort-on-uncaught-exception $file child`
+// the process aborts.
 function childShouldThrowAndAbort() {
   let testCmd = '';
   if (!isWindows) {
@@ -264,6 +262,15 @@ let knownGlobals = [
   queueMicrotask,
 ];
 
+// TODO(@jasnell): This check can be temporary. AbortController is
+// not currently supported in either Node.js 12 or 10, making it
+// difficult to run tests comparitively on those versions. Once
+// all supported versions have AbortController as a global, this
+// check can be removed and AbortController can be added to the
+// knownGlobals list above.
+if (global.AbortController)
+  knownGlobals.push(global.AbortController);
+
 if (global.gc) {
   knownGlobals.push(global.gc);
 }
@@ -325,6 +332,14 @@ function runCallChecks(exitCode) {
 
 function mustCall(fn, exact) {
   return _mustCallInner(fn, exact, 'exact');
+}
+
+function mustSucceed(fn, exact) {
+  return mustCall(function(err, ...args) {
+    assert.ifError(err);
+    if (typeof fn === 'function')
+      return fn.apply(this, args);
+  }, exact);
 }
 
 function mustCallAtLeast(fn, minimum) {
@@ -548,19 +563,6 @@ function expectsError(validator, exact) {
   }, exact);
 }
 
-const suffix = 'This is caused by either a bug in Node.js ' +
-  'or incorrect usage of Node.js internals.\n' +
-  'Please open an issue with this stack trace at ' +
-  'https://github.com/nodejs/node/issues\n';
-
-function expectsInternalAssertion(fn, message) {
-  assert.throws(fn, {
-    message: `${message}\n${suffix}`,
-    name: 'Error',
-    code: 'ERR_INTERNAL_ASSERTION'
-  });
-}
-
 function skipIfInspectorDisabled() {
   if (!process.features.inspector) {
     skip('V8 inspector is disabled');
@@ -697,6 +699,20 @@ function gcUntil(name, condition) {
   });
 }
 
+function requireNoPackageJSONAbove() {
+  let possiblePackage = path.join(__dirname, '..', 'package.json');
+  let lastPackage = null;
+  while (possiblePackage !== lastPackage) {
+    if (fs.existsSync(possiblePackage)) {
+      assert.fail(
+        'This test shouldn\'t load properties from a package.json above ' +
+        `its file location. Found package.json at ${possiblePackage}.`);
+    }
+    lastPackage = possiblePackage;
+    possiblePackage = path.join(possiblePackage, '..', '..', 'package.json');
+  }
+}
+
 const common = {
   allowGlobals,
   buildType,
@@ -705,7 +721,6 @@ const common = {
   createZeroFilledFile,
   disableCrashOnUnhandledRejection,
   expectsError,
-  expectsInternalAssertion,
   expectWarning,
   gcUntil,
   getArrayBufferViews,
@@ -730,11 +745,13 @@ const common = {
   mustCall,
   mustCallAtLeast,
   mustNotCall,
+  mustSucceed,
   nodeProcessAborted,
   PIPE,
   platformTimeout,
   printSkipMessage,
   pwdCommand,
+  requireNoPackageJSONAbove,
   runWithInvalidFD,
   skip,
   skipIf32Bits,

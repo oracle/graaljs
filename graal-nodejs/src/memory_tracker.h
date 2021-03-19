@@ -145,6 +145,11 @@ class MemoryTracker {
                          const std::unique_ptr<T, D>& value,
                          const char* node_name = nullptr);
 
+  template <typename T>
+  inline void TrackField(const char* edge_name,
+                         const std::shared_ptr<T>& value,
+                         const char* node_name = nullptr);
+
   template <typename T, bool kIsWeak>
   void TrackField(const char* edge_name,
                   const BaseObjectPtrImpl<T, kIsWeak>& value,
@@ -207,6 +212,9 @@ class MemoryTracker {
   template <typename T>
   inline void TrackField(const char* edge_name,
                          const MallocedBuffer<T>& value,
+                         const char* node_name = nullptr);
+  inline void TrackField(const char* edge_name,
+                         const v8::BackingStore* value,
                          const char* node_name = nullptr);
   inline void TrackField(const char* edge_name,
                          const uv_buf_t& value,

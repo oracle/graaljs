@@ -74,7 +74,7 @@ Allows configuration of `tty.ReadStream` so that it operates as a raw device.
 When in raw mode, input is always available character-by-character, not
 including modifiers. Additionally, all special processing of characters by the
 terminal is disabled, including echoing input characters.
-`CTRL`+`C` will no longer cause a `SIGINT` when in this mode.
+<kbd>Ctrl</kbd>+<kbd>C</kbd> will no longer cause a `SIGINT` when in this mode.
 
 ## Class: `tty.WriteStream`
 <!-- YAML
@@ -211,14 +211,16 @@ added: v0.7.7
 
 * Returns: {number[]}
 
-`writeStream.getWindowSize()` returns the size of the [TTY](tty.html)
+`writeStream.getWindowSize()` returns the size of the [TTY](tty.md)
 corresponding to this `WriteStream`. The array is of the type
 `[numColumns, numRows]` where `numColumns` and `numRows` represent the number
-of columns and rows in the corresponding [TTY](tty.html).
+of columns and rows in the corresponding [TTY](tty.md).
 
 ### `writeStream.hasColors([count][, env])`
 <!-- YAML
-added: v11.13.0
+added:
+ - v11.13.0
+ - v10.16.0
 -->
 
 * `count` {integer} The number of colors that are requested (minimum 2).
@@ -291,7 +293,7 @@ The `tty.isatty()` method returns `true` if the given `fd` is associated with
 a TTY and `false` if it is not, including whenever `fd` is not a non-negative
 integer.
 
-[`process.stderr`]: process.html#process_process_stderr
-[`process.stdin`]: process.html#process_process_stdin
-[`process.stdout`]: process.html#process_process_stdout
+[`process.stderr`]: process.md#process_process_stderr
+[`process.stdin`]: process.md#process_process_stdin
+[`process.stdout`]: process.md#process_process_stdout
 [`writeStream.getColorDepth()`]: #tty_writestream_getcolordepth_env

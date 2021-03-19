@@ -114,8 +114,8 @@ TEST_F(EnvironmentTest, PreExecutionPreparation) {
   v8::Local<v8::Script> script = v8::Script::Compile(
       context,
       v8::String::NewFromOneByte(isolate_,
-                                 reinterpret_cast<const uint8_t*>(run_script),
-                                 v8::NewStringType::kNormal).ToLocalChecked())
+                                 reinterpret_cast<const uint8_t*>(run_script))
+                                 .ToLocalChecked())
       .ToLocalChecked();
   v8::Local<v8::Value> result = script->Run(context).ToLocalChecked();
   CHECK(result->IsString());
@@ -140,8 +140,8 @@ TEST_F(EnvironmentTest, LoadEnvironmentWithCallback) {
         context,
         v8::String::NewFromOneByte(
             isolate_,
-            reinterpret_cast<const uint8_t*>("argv0"),
-            v8::NewStringType::kNormal).ToLocalChecked()).ToLocalChecked();
+            reinterpret_cast<const uint8_t*>("argv0"))
+            .ToLocalChecked()).ToLocalChecked();
     CHECK(argv0->IsString());
 
     return info.process_object;
@@ -165,15 +165,15 @@ TEST_F(EnvironmentTest, LoadEnvironmentWithSource) {
       context,
       v8::String::NewFromOneByte(
           isolate_,
-          reinterpret_cast<const uint8_t*>("process"),
-          v8::NewStringType::kNormal).ToLocalChecked())
+          reinterpret_cast<const uint8_t*>("process"))
+          .ToLocalChecked())
           .ToLocalChecked()->IsObject());
   CHECK(main_ret.As<v8::Object>()->Get(
       context,
       v8::String::NewFromOneByte(
           isolate_,
-          reinterpret_cast<const uint8_t*>("require"),
-          v8::NewStringType::kNormal).ToLocalChecked())
+          reinterpret_cast<const uint8_t*>("require"))
+          .ToLocalChecked())
           .ToLocalChecked()->IsFunction());
 }
 
@@ -333,7 +333,7 @@ TEST_F(EnvironmentTest, SetImmediateCleanup) {
     (*env)->SetImmediate([&](node::Environment* env_arg) {
       EXPECT_EQ(env_arg, *env);
       called++;
-    });
+    }, node::CallbackFlags::kRefed);
     (*env)->SetImmediate([&](node::Environment* env_arg) {
       EXPECT_EQ(env_arg, *env);
       called_unref++;
@@ -447,7 +447,7 @@ TEST_F(EnvironmentTest, InspectorMultipleEmbeddedEnvironments) {
         node::ArrayBufferAllocator::Create();
     uv_loop_t loop;
     uv_loop_init(&loop);
-    v8::Isolate* isolate = NewIsolate(aba.get(), &loop, data->platform);
+    v8::Isolate* isolate = NewIsolate(aba, &loop, data->platform);
     CHECK_NOT_NULL(isolate);
 
     {
@@ -509,8 +509,8 @@ TEST_F(EnvironmentTest, InspectorMultipleEmbeddedEnvironments) {
           context,
           v8::String::NewFromOneByte(
               isolate_,
-              reinterpret_cast<const uint8_t*>("messageFromWorker"),
-              v8::NewStringType::kNormal).ToLocalChecked())
+              reinterpret_cast<const uint8_t*>("messageFromWorker"))
+              .ToLocalChecked())
               .ToLocalChecked();
   CHECK_EQ(data.extracted_value, 42);
   CHECK_EQ(from_inspector->IntegerValue(context).FromJust(), 42);
@@ -553,7 +553,7 @@ TEST_F(EnvironmentTest, SetImmediateMicrotasks) {
       isolate_->EnqueueMicrotask([](void* arg) {
         ++*static_cast<int*>(arg);
       }, &called);
-    });
+    }, node::CallbackFlags::kRefed);
     uv_run(&current_loop, UV_RUN_DEFAULT);
   }
 

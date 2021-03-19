@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-intl-numberformat-unified
-
 // Test notation: "engineering" with formatToParts.
 
 const nf = Intl.NumberFormat("en", {notation: "engineering"});
@@ -140,36 +138,21 @@ assertEquals("0", parts[3].value);
 assertEquals(4, parts.length);
 
 parts = nf.formatToParts(Infinity);
-// [{type: "infinity", value: "∞"}, {type: "exponentSeparator", value: "E"},
-//  {type: "exponentInteger", value: "0"}]
+// [{type: "infinity", value: "∞"}]
 assertEquals("infinity", parts[0].type);
 assertEquals("∞", parts[0].value);
-assertEquals("exponentSeparator", parts[1].type);
-assertEquals("E", parts[1].value);
-assertEquals("exponentInteger", parts[2].type);
-assertEquals("0", parts[2].value);
-assertEquals(3, parts.length);
+assertEquals(1, parts.length);
 
 parts = nf.formatToParts(-Infinity);
-// [{type: "minusSign", value: "-"}, {type: "infinity", value: "∞"},
-//  {type: "exponentSeparator", value: "E"}, {type: "exponentInteger", value: "0"}]
+// [{type: "minusSign", value: "-"}, {type: "infinity", value: "∞"}]
 assertEquals("minusSign", parts[0].type);
 assertEquals("-", parts[0].value);
 assertEquals("infinity", parts[1].type);
 assertEquals("∞", parts[1].value);
-assertEquals("exponentSeparator", parts[2].type);
-assertEquals("E", parts[2].value);
-assertEquals("exponentInteger", parts[3].type);
-assertEquals("0", parts[3].value);
-assertEquals(4, parts.length);
+assertEquals(2, parts.length);
 
 parts = nf.formatToParts(NaN);
-// [{type: "nan", value: "NaN"}, {type: "exponentSeparator", value: "E"},
-//  {type: "exponentInteger", value: "0"}]
+// [{type: "nan", value: "NaN"}]
 assertEquals("nan", parts[0].type);
 assertEquals("NaN", parts[0].value);
-assertEquals("exponentSeparator", parts[1].type);
-assertEquals("E", parts[1].value);
-assertEquals("exponentInteger", parts[2].type);
-assertEquals("0", parts[2].value);
-assertEquals(3, parts.length);
+assertEquals(1, parts.length);

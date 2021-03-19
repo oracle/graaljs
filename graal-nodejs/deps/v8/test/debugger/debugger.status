@@ -36,12 +36,16 @@
 
 ##############################################################################
 ['variant == stress', {
-  # TODO(jarin/mstarzinger): Functions with eval or debugger now get optimized
+  # TODO(turbofan): Functions with eval or debugger now get optimized
   # with Turbofan, which has issues with the debugger issues.
   'debug/debug-evaluate-locals': [FAIL],
 
   # Very slow in stress mode.
   'regress/regress-2318': [SKIP],
+
+  # Currently fails because breakpoint information is inconsistent after
+  # disabling and re-enabling the debugger (https://crbug.com/v8/10403).
+  'debug/wasm/debug-step-into-wasm': [SKIP],
 }],  # variant == stress
 
 ##############################################################################
@@ -49,12 +53,6 @@
   # Slow tests: https://crbug.com/v8/7783
   'debug/debug-stepout-scope-part*': [SKIP],
 }],  # variant == stress and (arch == arm or arch == arm64) and simulator_run
-
-##############################################################################
-['variant == stress_incremental_marking', {
-  # BUG(chromium:772010).
-  'debug/debug-*': [PASS, ['system == windows', SKIP]],
-}],  # variant == stress_incremental_marking
 
 ##############################################################################
 ['gc_stress == True', {
@@ -88,6 +86,11 @@
   # https://crbug.com/v8/8147
   'debug/debug-liveedit-*': [SKIP],
   'debug/debug-set-variable-value': [SKIP],
+
+  # Rely on (blocking) concurrent compilation.
+  'debug/regress/regress-opt-after-debug-deopt': [SKIP],
+  'debug/regress/regress-prepare-break-while-recompile': [SKIP],
+  'regress/regress-7421': [SKIP],
 }],  # 'predictable == True'
 
 ##############################################################################
@@ -128,12 +131,30 @@
   # TODO(v8:7777): Re-enable once wasm is supported in jitless mode.
   'debug/wasm/*': [SKIP],
   'regress/regress-crbug-840288': [SKIP],
+  'regress/regress-crbug-1032042': [SKIP],
   'wasm-*': [SKIP],
 }], # lite_mode or variant == jitless
 
 ##############################################################################
-['variant == jitless and not embedded_builtins', {
-  '*': [SKIP],
-}], # variant == jitless and not embedded_builtins
+['variant == turboprop', {
+  # Deopts differently than TurboFan.
+  'debug/debug-optimize': [SKIP],
+}],  # variant == turboprop
+
+##############################################################################
+# Liftoff needs to be enabled before running these tests.
+['arch in (s390, s390x, ppc, ppc64)', {
+  'regress/regress-crbug-1032042': [SKIP],
+  'regress/regress-crbug-840288': [SKIP],
+  'debug/wasm/asm-debug': [SKIP],
+  'debug/wasm/debug-enabled-tier-down-wasm': [SKIP],
+  'debug/wasm/debug-step-into-wasm': [SKIP],
+  'debug/wasm/frame-inspection': [SKIP],
+}],
+
+################################################################################
+['variant == stress_snapshot', {
+  '*': [SKIP],  # only relevant for mjsunit tests.
+}],
 
 ]

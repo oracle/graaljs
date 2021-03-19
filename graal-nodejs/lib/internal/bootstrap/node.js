@@ -39,8 +39,8 @@
 setupPrepareStackTrace();
 
 const {
+  FunctionPrototypeCall,
   JSONParse,
-  ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
@@ -286,7 +286,7 @@ function setupProcessObject() {
   const EventEmitter = require('events');
   const origProcProto = ObjectGetPrototypeOf(process);
   ObjectSetPrototypeOf(origProcProto, EventEmitter.prototype);
-  EventEmitter.call(process);
+  FunctionPrototypeCall(EventEmitter, process);
   ObjectDefineProperty(process, SymbolToStringTag, {
     enumerable: false,
     writable: true,
@@ -308,36 +308,6 @@ function setupGlobalProxy() {
     writable: false,
     enumerable: false,
     configurable: true
-  });
-
-  function makeGetter(name) {
-    return deprecate(function() {
-      return this;
-    }, `'${name}' is deprecated, use 'global'`, 'DEP0016');
-  }
-
-  function makeSetter(name) {
-    return deprecate(function(value) {
-      ObjectDefineProperty(this, name, {
-        configurable: true,
-        writable: true,
-        enumerable: true,
-        value: value
-      });
-    }, `'${name}' is deprecated, use 'global'`, 'DEP0016');
-  }
-
-  ObjectDefineProperties(global, {
-    GLOBAL: {
-      configurable: true,
-      get: makeGetter('GLOBAL'),
-      set: makeSetter('GLOBAL')
-    },
-    root: {
-      configurable: true,
-      get: makeGetter('root'),
-      set: makeSetter('root')
-    }
   });
 }
 

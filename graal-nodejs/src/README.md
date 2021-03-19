@@ -38,6 +38,30 @@ the [event loop][] and other operation system abstractions to Node.js.
 
 There is a [reference documentation for the libuv API][].
 
+## File structure
+
+The Node.js C++ files follow this structure:
+
+The `.h` header files contain declarations, and sometimes definitions that don’t
+require including other headers (e.g. getters, setters, etc.). They should only
+include other `.h` header files and nothing else.
+
+The `-inl.h` header files contain definitions of inline functions from the
+corresponding `.h` header file (e.g. functions marked `inline` in the
+declaration or `template` functions).  They always include the corresponding
+`.h` header file, and can include other `.h` and `-inl.h` header files as
+needed.  It is not mandatory to split out the definitions from the `.h` file
+into an `-inl.h` file, but it becomes necessary when there are multiple
+definitions and contents of other `-inl.h` files start being used. Therefore, it
+is recommended to split a `-inl.h` file when inline functions become longer than
+a few lines to keep the corresponding `.h` file readable and clean. All visible
+definitions from the `-inl.h` file should be declared in the corresponding `.h`
+header file.
+
+The `.cc` files contain definitions of non-inline functions from the
+corresponding `.h` header file. They always include the corresponding `.h`
+header file, and can include other `.h` and `-inl.h` header files as needed.
+
 ## Helpful concepts
 
 A number of concepts are involved in putting together Node.js on top of V8 and
@@ -146,9 +170,7 @@ v8::Local<v8::Value> GetFoo(v8::Local<v8::Context> context,
   // The 'foo_string' handle cannot be returned from this function because
   // it is not “escaped” with `.Escape()`.
   v8::Local<v8::String> foo_string =
-      v8::String::NewFromUtf8(isolate,
-                              "foo",
-                              v8::NewStringType::kNormal).ToLocalChecked();
+      v8::String::NewFromUtf8(isolate, "foo").ToLocalChecked();
 
   v8::Local<v8::Value> return_value;
   if (obj->Get(context, foo_string).ToLocal(&return_value)) {
@@ -395,6 +417,56 @@ void Initialize(Local<Object> target,
 NODE_MODULE_CONTEXT_AWARE_INTERNAL(cares_wrap, Initialize)
 ```
 
+<a id="per-binding-state"></a>
+#### Per-binding state
+
+Some internal bindings, such as the HTTP parser, maintain internal state that
+only affects that particular binding. In that case, one common way to store
+that state is through the use of `Environment::AddBindingData`, which gives
+binding functions access to an object for storing such state.
+That object is always a [`BaseObject`][].
+
+Its class needs to have a static `binding_data_name` field based on a
+constant string, in order to disambiguate it from other classes of this type,
+and which could e.g. match the binding’s name (in the example above, that would
+be `cares_wrap`).
+
+```cpp
+// In the HTTP parser source code file:
+class BindingData : public BaseObject {
+ public:
+  BindingData(Environment* env, Local<Object> obj) : BaseObject(env, obj) {}
+
+  static constexpr FastStringKey binding_data_name { "http_parser" };
+
+  std::vector<char> parser_buffer;
+  bool parser_buffer_in_use = false;
+
+  // ...
+};
+
+// Available for binding functions, e.g. the HTTP Parser constructor:
+static void New(const FunctionCallbackInfo<Value>& args) {
+  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  new Parser(binding_data, args.This());
+}
+
+// ... because the initialization function told the Environment to store the
+// BindingData object:
+void InitializeHttpParser(Local<Object> target,
+                          Local<Value> unused,
+                          Local<Context> context,
+                          void* priv) {
+  Environment* env = Environment::GetCurrent(context);
+  BindingData* const binding_data =
+      env->AddBindingData<BindingData>(context, target);
+  if (binding_data == nullptr) return;
+
+  Local<FunctionTemplate> t = env->NewFunctionTemplate(Parser::New);
+  ...
+}
+```
+
 <a id="exception-handling"></a>
 ### Exception handling
 
@@ -447,16 +519,16 @@ The most common reasons for this are:
 holds a value of type `Local<T>`. It has methods that perform the same
 operations as the methods of `v8::Maybe`, but with different names:
 
-| `Maybe`                | `MaybeLocal`                    |
-| ---------------------- | ------------------------------- |
-| `maybe.IsNothing()`    | `maybe_local.IsEmpty()`         |
-| `maybe.IsJust()`       | `!maybe_local.IsEmpty()`        |
-| `maybe.To(&value)`     | `maybe_local.ToLocal(&local)`   |
-| `maybe.ToChecked()`    | `maybe_local.ToLocalChecked()`  |
-| `maybe.FromJust()`     | `maybe_local.ToLocalChecked()`  |
-| `maybe.Check()`        | –                               |
-| `v8::Nothing<T>()`     | `v8::MaybeLocal<T>()`           |
-| `v8::Just<T>(value)`   | `v8::MaybeLocal<T>(value)`      |
+| `Maybe`              | `MaybeLocal`                   |
+| -------------------- | ------------------------------ |
+| `maybe.IsNothing()`  | `maybe_local.IsEmpty()`        |
+| `maybe.IsJust()`     | `!maybe_local.IsEmpty()`       |
+| `maybe.To(&value)`   | `maybe_local.ToLocal(&local)`  |
+| `maybe.ToChecked()`  | `maybe_local.ToLocalChecked()` |
+| `maybe.FromJust()`   | `maybe_local.ToLocalChecked()` |
+| `maybe.Check()`      | –                              |
+| `v8::Nothing<T>()`   | `v8::MaybeLocal<T>()`          |
+| `v8::Just<T>(value)` | `v8::MaybeLocal<T>(value)`     |
 
 ##### Handling empty `Maybe`s
 

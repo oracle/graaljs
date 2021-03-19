@@ -104,11 +104,9 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors) {
     errors->push_back("either --check or --eval can be used, not both");
   }
 
-  if (http_parser != "legacy" && http_parser != "llhttp") {
-    errors->push_back("invalid value for --http-parser");
-  }
-
   if (!unhandled_rejections.empty() &&
+      unhandled_rejections != "warn-with-error-code" &&
+      unhandled_rejections != "throw" &&
       unhandled_rejections != "strict" &&
       unhandled_rejections != "warn" &&
       unhandled_rejections != "none") {
@@ -342,18 +340,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "Generate heap snapshot on specified signal",
             &EnvironmentOptions::heap_snapshot_signal,
             kAllowedInEnvironment);
-  AddOption("--http-parser",
-            "Select which HTTP parser to use; either 'legacy' or 'llhttp' "
-            "(default: llhttp).",
-            &EnvironmentOptions::http_parser,
-            kAllowedInEnvironment);
-  AddOption("--http-server-default-timeout",
-            "Default http server socket timeout in ms "
-            "(default: 120000)",
-            &EnvironmentOptions::http_server_default_timeout,
-            kAllowedInEnvironment);
+  AddOption("--http-parser", "", NoOp{}, kAllowedInEnvironment);
   AddOption("--insecure-http-parser",
-            "Use an insecure HTTP parser that accepts invalid HTTP headers",
+            "use an insecure HTTP parser that accepts invalid HTTP headers",
             &EnvironmentOptions::insecure_http_parser,
             kAllowedInEnvironment);
   AddOption("--input-type",
@@ -395,6 +384,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "preserve symbolic links when resolving the main module",
             &EnvironmentOptions::preserve_symlinks_main,
             kAllowedInEnvironment);
+  AddOption("--prof",
+            "Generate V8 profiler output.",
+            V8Option{});
   AddOption("--prof-process",
             "process V8 profiler output generated using --prof",
             &EnvironmentOptions::prof_process);
@@ -437,6 +429,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "profile generated with --heap-prof. (default: 512 * 1024)",
             &EnvironmentOptions::heap_prof_interval);
 #endif  // HAVE_INSPECTOR
+  AddOption("--max-http-header-size",
+            "set the maximum size of HTTP headers (default: 16384 (16KB))",
+            &EnvironmentOptions::max_http_header_size,
+            kAllowedInEnvironment);
   AddOption("--redirect-warnings",
             "write warnings to file instead of stderr",
             &EnvironmentOptions::redirect_warnings,
@@ -446,6 +442,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--throw-deprecation",
             "throw an exception on deprecations",
             &EnvironmentOptions::throw_deprecation,
+            kAllowedInEnvironment);
+  AddOption("--trace-atomics-wait",
+            "trace Atomics.wait() operations",
+            &EnvironmentOptions::trace_atomics_wait,
             kAllowedInEnvironment);
   AddOption("--trace-deprecation",
             "show stack traces on deprecations",
@@ -605,6 +605,15 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             kAllowedInEnvironment);
   Implies("--report-signal", "--report-on-signal");
 
+  AddOption("--experimental-top-level-await",
+            "",
+            &PerIsolateOptions::experimental_top_level_await,
+            kAllowedInEnvironment);
+  AddOption("--harmony-top-level-await", "", V8Option{});
+  Implies("--experimental-top-level-await", "--harmony-top-level-await");
+  Implies("--harmony-top-level-await", "--experimental-top-level-await");
+  ImpliesNot("--no-harmony-top-level-await", "--experimental-top-level-await");
+
   Insert(eop, &PerIsolateOptions::get_per_env_options);
 }
 
@@ -625,10 +634,6 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             kAllowedInEnvironment);
   AddAlias("--trace-events-enabled", {
     "--trace-event-categories", "v8,node,node.async_hooks" });
-  AddOption("--max-http-header-size",
-            "set the maximum size of HTTP headers (default: 8KB)",
-            &PerProcessOptions::max_http_header_size,
-            kAllowedInEnvironment);
   AddOption("--v8-pool-size",
             "set V8's thread pool size",
             &PerProcessOptions::v8_thread_pool_size,
@@ -748,10 +753,6 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "or 'silent' (map and silently ignore failure)",
             &PerProcessOptions::use_largepages,
             kAllowedInEnvironment);
-
-  // v12.x backwards compat flags removed in V8 7.9.
-  AddOption("--fast_calls_with_arguments_mismatches", "", NoOp{});
-  AddOption("--harmony_numeric_separator", "", NoOp{});
 
   AddOption("--trace-sigint",
             "enable printing JavaScript stacktrace on SIGINT",

@@ -6,6 +6,7 @@
 // parts, the implementation is in platform-posix.cc.
 
 #include <pthread.h>
+#include <pthread_np.h>
 #include <semaphore.h>
 #include <signal.h>
 #include <stdlib.h>
@@ -95,6 +96,24 @@ std::vector<OS::SharedLibraryAddress> OS::GetSharedLibraryAddresses() {
 void OS::SignalCodeMovingGC() {}
 
 void OS::AdjustSchedulingParams() {}
+
+// static
+void* Stack::GetStackStart() {
+  pthread_attr_t attr;
+  int error;
+  pthread_attr_init(&attr);
+  error = pthread_attr_get_np(pthread_self(), &attr);
+  if (!error) {
+    void* base;
+    size_t size;
+    error = pthread_attr_getstack(&attr, &base, &size);
+    CHECK(!error);
+    pthread_attr_destroy(&attr);
+    return reinterpret_cast<uint8_t*>(base) + size;
+  }
+  pthread_attr_destroy(&attr);
+  return nullptr;
+}
 
 }  // namespace base
 }  // namespace v8

@@ -206,8 +206,7 @@ void SerializerContext::ReleaseBuffer(const FunctionCallbackInfo<Value>& args) {
   std::pair<uint8_t*, size_t> ret = ctx->serializer_.Release();
   auto buf = Buffer::New(ctx->env(),
                          reinterpret_cast<char*>(ret.first),
-                         ret.second,
-                         true /* uses_malloc */);
+                         ret.second);
 
   if (!buf.IsEmpty()) {
     args.GetReturnValue().Set(buf.ToLocalChecked());
@@ -286,7 +285,6 @@ DeserializerContext::DeserializerContext(Environment* env,
     length_(Buffer::Length(buffer)),
     deserializer_(env->isolate(), data_, length_, this) {
   object()->Set(env->context(), env->buffer_string(), buffer).Check();
-  deserializer_.SetExpectInlineWasm(true);
 
   MakeWeak();
 }

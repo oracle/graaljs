@@ -52,11 +52,9 @@ local common_json = (import "common.json");
   linux: common + {
     packages+: common_json.sulong.deps.linux.packages + {
       'apache/ab': '==2.3',
-      binutils: '==2.23.2',
-      gcc: '==8.3.0',
+      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
       git: '>=1.8.3',
       maven: '==3.3.9',
-      valgrind: '>=3.9.0',
     },
     capabilities+: ['linux', 'amd64'],
   },
@@ -72,7 +70,7 @@ local common_json = (import "common.json");
   linux_aarch64: common + {
     capabilities+: ['linux', 'aarch64'],
     packages+: {
-      gcc: '==8.3.0',
+      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
     }
   },
 
@@ -82,7 +80,7 @@ local common_json = (import "common.json");
       // for compatibility with macOS El Capitan
       MACOSX_DEPLOYMENT_TARGET: '10.11',
     },
-    capabilities: ['darwin', 'amd64'],
+    capabilities: ['darwin_mojave', 'amd64'],
   },
 
   windows: common + {

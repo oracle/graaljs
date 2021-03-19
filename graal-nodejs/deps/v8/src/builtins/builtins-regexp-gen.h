@@ -17,16 +17,6 @@ class RegExpBuiltinsAssembler : public CodeStubAssembler {
   explicit RegExpBuiltinsAssembler(compiler::CodeAssemblerState* state)
       : CodeStubAssembler(state) {}
 
-  // Create and initialize a RegExp object.
-  TNode<Object> RegExpCreate(TNode<Context> context,
-                             TNode<Context> native_context,
-                             TNode<Object> regexp_string, TNode<String> flags);
-
-  TNode<Object> RegExpCreate(TNode<Context> context, TNode<Map> initial_map,
-                             TNode<Object> regexp_string, TNode<String> flags);
-
-  TNode<BoolT> IsRegExp(TNode<Context> context, TNode<Object> maybe_receiver);
-
   TNode<Smi> SmiZero();
   TNode<IntPtrT> IntPtrZero();
 
@@ -37,29 +27,27 @@ class RegExpBuiltinsAssembler : public CodeStubAssembler {
   // and input string.
   TNode<JSRegExpResult> AllocateRegExpResult(
       TNode<Context> context, TNode<Smi> length, TNode<Smi> index,
-      TNode<String> input, TNode<FixedArray>* elements_out = nullptr);
+      TNode<String> input, TNode<JSRegExp> regexp, TNode<Number> last_index,
+      TNode<FixedArray>* elements_out = nullptr);
 
   TNode<Object> FastLoadLastIndexBeforeSmiCheck(TNode<JSRegExp> regexp);
   TNode<Smi> FastLoadLastIndex(TNode<JSRegExp> regexp) {
     return CAST(FastLoadLastIndexBeforeSmiCheck(regexp));
   }
   TNode<Object> SlowLoadLastIndex(TNode<Context> context, TNode<Object> regexp);
-  TNode<Object> LoadLastIndex(TNode<Context> context, TNode<Object> regexp,
-                              bool is_fastpath);
 
   void FastStoreLastIndex(TNode<JSRegExp> regexp, TNode<Smi> value);
-  void SlowStoreLastIndex(SloppyTNode<Context> context,
-                          SloppyTNode<Object> regexp,
-                          SloppyTNode<Object> value);
-  void StoreLastIndex(TNode<Context> context, TNode<Object> regexp,
-                      TNode<Number> value, bool is_fastpath);
+  void SlowStoreLastIndex(TNode<Context> context, TNode<Object> regexp,
+                          TNode<Object> value);
 
   // Loads {var_string_start} and {var_string_end} with the corresponding
   // offsets into the given {string_data}.
-  void GetStringPointers(Node* const string_data, Node* const offset,
-                         Node* const last_index, Node* const string_length,
-                         String::Encoding encoding, Variable* var_string_start,
-                         Variable* var_string_end);
+  void GetStringPointers(TNode<RawPtrT> string_data, TNode<IntPtrT> offset,
+                         TNode<IntPtrT> last_index,
+                         TNode<IntPtrT> string_length,
+                         String::Encoding encoding,
+                         TVariable<RawPtrT>* var_string_start,
+                         TVariable<RawPtrT>* var_string_end);
 
   // Low level logic around the actual call into pattern matching code.
   TNode<HeapObject> RegExpExecInternal(TNode<Context> context,
@@ -69,23 +57,9 @@ class RegExpBuiltinsAssembler : public CodeStubAssembler {
                                        TNode<RegExpMatchInfo> match_info);
 
   TNode<JSRegExpResult> ConstructNewResultFromMatchInfo(
-      TNode<Context> context, TNode<JSReceiver> maybe_regexp,
-      TNode<RegExpMatchInfo> match_info, TNode<String> string);
-
-  TNode<RegExpMatchInfo> RegExpPrototypeExecBodyWithoutResult(
-      TNode<Context> context, TNode<JSReceiver> maybe_regexp,
-      TNode<String> string, Label* if_didnotmatch, const bool is_fastpath);
-  TNode<RegExpMatchInfo> RegExpPrototypeExecBodyWithoutResultFast(
-      TNode<Context> context, TNode<JSRegExp> maybe_regexp,
-      TNode<String> string, Label* if_didnotmatch);
-
-  TNode<HeapObject> RegExpPrototypeExecBody(TNode<Context> context,
-                                            TNode<JSReceiver> maybe_regexp,
-                                            TNode<String> string,
-                                            const bool is_fastpath);
-
-  TNode<BoolT> IsReceiverInitialRegExpPrototype(SloppyTNode<Context> context,
-                                                SloppyTNode<Object> receiver);
+      TNode<Context> context, TNode<JSRegExp> regexp,
+      TNode<RegExpMatchInfo> match_info, TNode<String> string,
+      TNode<Number> last_index);
 
   // Fast path check logic.
   //
@@ -136,18 +110,14 @@ class RegExpBuiltinsAssembler : public CodeStubAssembler {
 
   // Performs fast path checks on the given object itself, but omits prototype
   // checks.
-  Node* IsFastRegExpNoPrototype(SloppyTNode<Context> context,
-                                SloppyTNode<Object> object);
-  Node* IsFastRegExpNoPrototype(SloppyTNode<Context> context,
-                                SloppyTNode<Object> object,
-                                SloppyTNode<Map> map);
+  TNode<BoolT> IsFastRegExpNoPrototype(TNode<Context> context,
+                                       TNode<Object> object);
+  TNode<BoolT> IsFastRegExpNoPrototype(TNode<Context> context,
+                                       TNode<Object> object, TNode<Map> map);
 
-  // For debugging only. Uses a slow GetProperty call to fetch object.exec.
-  TNode<BoolT> IsFastRegExpWithOriginalExec(TNode<Context> context,
-                                            TNode<JSRegExp> object);
-
-  void BranchIfFastRegExpResult(Node* const context, Node* const object,
-                                Label* if_isunmodified, Label* if_ismodified);
+  void BranchIfRegExpResult(const TNode<Context> context,
+                            const TNode<Object> object, Label* if_isunmodified,
+                            Label* if_ismodified);
 
   TNode<String> FlagsGetter(TNode<Context> context, TNode<Object> regexp,
                             const bool is_fastpath);
@@ -164,35 +134,28 @@ class RegExpBuiltinsAssembler : public CodeStubAssembler {
   TNode<BoolT> FlagGetter(TNode<Context> context, TNode<Object> regexp,
                           JSRegExp::Flag flag, bool is_fastpath);
 
-  Node* RegExpInitialize(Node* const context, Node* const regexp,
-                         Node* const maybe_pattern, Node* const maybe_flags);
+  TNode<Object> RegExpInitialize(const TNode<Context> context,
+                                 const TNode<JSRegExp> regexp,
+                                 const TNode<Object> maybe_pattern,
+                                 const TNode<Object> maybe_flags);
 
-  TNode<Object> RegExpExec(TNode<Context> context, Node* regexp, Node* string);
-
-  TNode<Number> AdvanceStringIndex(SloppyTNode<String> string,
-                                   SloppyTNode<Number> index,
-                                   SloppyTNode<BoolT> is_unicode,
-                                   bool is_fastpath);
+  TNode<Number> AdvanceStringIndex(TNode<String> string, TNode<Number> index,
+                                   TNode<BoolT> is_unicode, bool is_fastpath);
 
   TNode<Smi> AdvanceStringIndexFast(TNode<String> string, TNode<Smi> index,
                                     TNode<BoolT> is_unicode) {
     return CAST(AdvanceStringIndex(string, index, is_unicode, true));
   }
 
-  TNode<Object> RegExpPrototypeMatchBody(TNode<Context> context,
-                                         TNode<Object> regexp,
-                                         TNode<String> const string,
-                                         const bool is_fastpath);
+  TNode<Smi> AdvanceStringIndexSlow(TNode<String> string, TNode<Number> index,
+                                    TNode<BoolT> is_unicode) {
+    return CAST(AdvanceStringIndex(string, index, is_unicode, false));
+  }
 
-  void RegExpPrototypeSearchBodyFast(TNode<Context> context,
-                                     TNode<JSRegExp> regexp,
-                                     TNode<String> string);
-  void RegExpPrototypeSearchBodySlow(TNode<Context> context, Node* const regexp,
-                                     Node* const string);
-
-  void RegExpPrototypeSplitBody(TNode<Context> context, TNode<JSRegExp> regexp,
-                                TNode<String> const string,
-                                TNode<Smi> const limit);
+  TNode<JSArray> RegExpPrototypeSplitBody(TNode<Context> context,
+                                          TNode<JSRegExp> regexp,
+                                          const TNode<String> string,
+                                          const TNode<Smi> limit);
 };
 
 class RegExpMatchAllAssembler : public RegExpBuiltinsAssembler {
@@ -200,13 +163,11 @@ class RegExpMatchAllAssembler : public RegExpBuiltinsAssembler {
   explicit RegExpMatchAllAssembler(compiler::CodeAssemblerState* state)
       : RegExpBuiltinsAssembler(state) {}
 
-  TNode<Object> CreateRegExpStringIterator(TNode<Context> native_context,
+  TNode<Object> CreateRegExpStringIterator(TNode<NativeContext> native_context,
                                            TNode<Object> regexp,
                                            TNode<String> string,
                                            TNode<BoolT> global,
                                            TNode<BoolT> full_unicode);
-  void Generate(TNode<Context> context, TNode<Context> native_context,
-                TNode<Object> receiver, TNode<Object> maybe_string);
 };
 
 }  // namespace internal

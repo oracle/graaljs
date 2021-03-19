@@ -79,4 +79,3 @@ extern template class GraalPropertyCallbackInfo<v8::Array>;
 extern template class GraalPropertyCallbackInfo<void>;
 
 #endif /* GRAAL_PROPERTY_CALLBACK_INFO_H_ */
-

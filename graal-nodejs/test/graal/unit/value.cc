@@ -356,16 +356,6 @@ EXPORT_TO_JS(BooleanValue) {
     args.GetReturnValue().Set(args[0]->BooleanValue(isolate));
 }
 
-EXPORT_TO_JS(BooleanValueContext) {
-    Isolate* isolate = args.GetIsolate();
-    Local<Context> context = isolate->GetCurrentContext();
-    TryCatch tryCatch(isolate);
-    Maybe<bool> result = args[0]->BooleanValue(context);
-    if (result.IsJust()) {
-        args.GetReturnValue().Set(result.FromJust());
-    }
-}
-
 EXPORT_TO_JS(NumberValue) {
     Isolate* isolate = args.GetIsolate();
     Local<Context> context = isolate->GetCurrentContext();

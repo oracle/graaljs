@@ -59,14 +59,13 @@ namespace interpreter {
 #define REPEAT_64_UNIQUE_VARS() REPEAT_32_UNIQUE_VARS() REPEAT_32_UNIQUE_VARS()
 #define REPEAT_128_UNIQUE_VARS() REPEAT_64_UNIQUE_VARS() REPEAT_64_UNIQUE_VARS()
 
-#define REPEAT_250_UNIQUE_VARS() \
+#define REPEAT_252_UNIQUE_VARS() \
   REPEAT_128_UNIQUE_VARS()       \
   REPEAT_64_UNIQUE_VARS()        \
   REPEAT_32_UNIQUE_VARS()        \
   REPEAT_16_UNIQUE_VARS()        \
   REPEAT_8_UNIQUE_VARS()         \
-  UNIQUE_VAR()                   \
-  UNIQUE_VAR()
+  REPEAT_4_UNIQUE_VARS()
 
 #define REPEAT_2_LOAD_UNIQUE_PROPERTY() \
   LOAD_UNIQUE_PROPERTY() LOAD_UNIQUE_PROPERTY()
@@ -95,10 +94,10 @@ class InitializedIgnitionHandleScope : public InitializedHandleScope {
   }
 };
 
-void SkipGoldenFileHeader(std::istream& stream) {  // NOLINT
+void SkipGoldenFileHeader(std::istream* stream) {
   std::string line;
   int separators_seen = 0;
-  while (std::getline(stream, line)) {
+  while (std::getline(*stream, line)) {
     if (line == "---") separators_seen += 1;
     if (separators_seen == 2) return;
   }
@@ -107,7 +106,7 @@ void SkipGoldenFileHeader(std::istream& stream) {  // NOLINT
 std::string LoadGolden(const std::string& golden_filename) {
   std::ifstream expected_file((kGoldenFileDirectory + golden_filename).c_str());
   CHECK(expected_file.is_open());
-  SkipGoldenFileHeader(expected_file);
+  SkipGoldenFileHeader(&expected_file);
   std::ostringstream expected_stream;
   // Restore the first separator, which was consumed by SkipGoldenFileHeader
   expected_stream << "---\n" << expected_file.rdbuf();
@@ -125,31 +124,30 @@ std::string BuildActual(const BytecodeExpectationsPrinter& printer,
     if (prologue) source_code += prologue;
     source_code += snippet;
     if (epilogue) source_code += epilogue;
-    printer.PrintExpectation(actual_stream, source_code);
+    printer.PrintExpectation(&actual_stream, source_code);
   }
   return actual_stream.str();
 }
 
 // inplace left trim
-static inline void ltrim(std::string& str) {  // NOLINT(runtime/references)
-  str.erase(str.begin(),
-            std::find_if(str.begin(), str.end(),
-                         [](unsigned char ch) { return !std::isspace(ch); }));
+static inline void ltrim(std::string* str) {
+  str->erase(str->begin(),
+             std::find_if(str->begin(), str->end(),
+                          [](unsigned char ch) { return !std::isspace(ch); }));
 }
 
 // inplace right trim
-static inline void rtrim(std::string& str) {  // NOLINT(runtime/references)
-  str.erase(std::find_if(str.rbegin(), str.rend(),
-                         [](unsigned char ch) { return !std::isspace(ch); })
-                .base(),
-            str.end());
+static inline void rtrim(std::string* str) {
+  str->erase(std::find_if(str->rbegin(), str->rend(),
+                          [](unsigned char ch) { return !std::isspace(ch); })
+                 .base(),
+             str->end());
 }
 
-static inline std::string trim(
-    std::string& str) {  // NOLINT(runtime/references)
+static inline std::string trim(std::string* str) {
   ltrim(str);
   rtrim(str);
-  return str;
+  return *str;
 }
 
 bool CompareTexts(const std::string& generated, const std::string& expected) {
@@ -181,7 +179,7 @@ bool CompareTexts(const std::string& generated, const std::string& expected) {
       return false;
     }
 
-    if (trim(generated_line) != trim(expected_line)) {
+    if (trim(&generated_line) != trim(&expected_line)) {
       std::cerr << "Inputs differ at line " << line_number << "\n";
       std::cerr << "  Generated: '" << generated_line << "'\n";
       std::cerr << "  Expected:  '" << expected_line << "'\n";
@@ -1737,10 +1735,10 @@ TEST(CallNew) {
 }
 
 TEST(ContextVariables) {
-  // The wide check below relies on MIN_CONTEXT_SLOTS + 3 + 249 == 256, if this
+  // The wide check below relies on MIN_CONTEXT_SLOTS + 3 + 250 == 256, if this
   // ever changes, the REPEAT_XXX should be changed to output the correct number
   // of unique variables to trigger the wide slot load / store.
-  STATIC_ASSERT(Context::MIN_CONTEXT_SLOTS + 3 + 249 == 256);
+  STATIC_ASSERT(Context::MIN_CONTEXT_EXTENDED_SLOTS + 3 + 250 == 256);
 
   InitializedIgnitionHandleScope scope;
   BytecodeExpectationsPrinter printer(CcTest::isolate());
@@ -1758,7 +1756,7 @@ TEST(ContextVariables) {
     "{ let b = 2; return function() { a + b; }; }\n",
 
     "'use strict';\n"
-    REPEAT_250_UNIQUE_VARS()
+    REPEAT_252_UNIQUE_VARS()
     "eval();\n"
     "var b = 100;\n"
     "return b\n",
@@ -2758,6 +2756,42 @@ TEST(PrivateClassFields) {
                      LoadGolden("PrivateClassFields.golden")));
 }
 
+TEST(PrivateClassFieldAccess) {
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+  printer.set_wrap(false);
+  printer.set_test_function_name("test");
+
+  const char* snippets[] = {
+      "class A {\n"
+      "  #a;\n"
+      "  #b;\n"
+      "  constructor() {\n"
+      "    this.#a = this.#b;\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "var test = A;\n"
+      "new test;\n",
+
+      "class B {\n"
+      "  #a;\n"
+      "  #b;\n"
+      "  constructor() {\n"
+      "    this.#a = this.#b;\n"
+      "  }\n"
+      "  force(str) {\n"
+      "    eval(str);\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "var test = B;\n"
+      "new test;\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("PrivateClassFieldAccess.golden")));
+}
+
 TEST(PrivateMethodDeclaration) {
   bool old_methods_flag = i::FLAG_harmony_private_methods;
   i::FLAG_harmony_private_methods = true;
@@ -2823,6 +2857,14 @@ TEST(PrivateMethodAccess) {
       "}\n"
       "\n"
       "var test = C;\n"
+      "new test;\n",
+
+      "class D {\n"
+      "  #d() { return 1; }\n"
+      "  constructor() { (() => this)().#d(); }\n"
+      "}\n"
+      "\n"
+      "var test = D;\n"
       "new test;\n"};
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
@@ -2882,6 +2924,130 @@ TEST(PrivateAccessorAccess) {
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("PrivateAccessorAccess.golden")));
+  i::FLAG_harmony_private_methods = old_methods_flag;
+}
+
+TEST(StaticPrivateMethodDeclaration) {
+  bool old_methods_flag = i::FLAG_harmony_private_methods;
+  i::FLAG_harmony_private_methods = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+
+  const char* snippets[] = {
+      "{\n"
+      "  class A {\n"
+      "    static #a() { return 1; }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class A {\n"
+      "    static get #a() { return 1; }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class A {\n"
+      "    static set #a(val) { }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class A {\n"
+      "    static get #a() { return 1; }\n"
+      "    static set #a(val) { }\n"
+      "  }\n"
+      "}\n",
+
+      "{\n"
+      "  class A {\n"
+      "    static #a() { }\n"
+      "    #b() { }\n"
+      "  }\n"
+      "}\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("StaticPrivateMethodDeclaration.golden")));
+  i::FLAG_harmony_private_methods = old_methods_flag;
+}
+
+TEST(StaticPrivateMethodAccess) {
+  bool old_methods_flag = i::FLAG_harmony_private_methods;
+  i::FLAG_harmony_private_methods = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+  printer.set_wrap(false);
+  printer.set_test_function_name("test");
+
+  const char* snippets[] = {
+      "class A {\n"
+      "  static #a() { return 1; }\n"
+      "  static test() { return this.#a(); }\n"
+      "}\n"
+      "\n"
+      "var test = A.test;\n"
+      "test();\n",
+
+      "class B {\n"
+      "  static #b() { return 1; }\n"
+      "  static test() { this.#b = 1; }\n"
+      "}\n"
+      "\n"
+      "var test = B.test;\n"
+      "test();\n",
+
+      "class C {\n"
+      "  static #c() { return 1; }\n"
+      "  static test() { this.#c++; }\n"
+      "}\n"
+      "\n"
+      "var test = C.test;\n"
+      "test();\n",
+
+      "class D {\n"
+      "  static get #d() { return 1; }\n"
+      "  static set #d(val) { }\n"
+      "\n"
+      "  static test() {\n"
+      "    this.#d++;\n"
+      "    this.#d = 1;\n"
+      "    return this.#d;\n"
+      "  }\n"
+      "}\n"
+      "\n"
+      "var test = D.test;\n"
+      "test();\n",
+
+      "class E {\n"
+      "  static get #e() { return 1; }\n"
+      "  static test() { this.#e++; }\n"
+      "}\n"
+      "var test = E.test;\n"
+      "test();\n",
+
+      "class F {\n"
+      "  static set #f(val) { }\n"
+      "  static test() { this.#f++; }\n"
+      "}\n"
+      "var test = F.test;\n"
+      "test();\n",
+
+      "class G {\n"
+      "  static get #d() { return 1; }\n"
+      "  static test() { this.#d = 1; }\n"
+      "}\n"
+      "var test = G.test;\n"
+      "test();\n",
+
+      "class H {\n"
+      "  set #h(val) { }\n"
+      "  static test() { this.#h; }\n"
+      "}\n"
+      "var test = H.test;\n"
+      "test();\n"};
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("StaticPrivateMethodAccess.golden")));
   i::FLAG_harmony_private_methods = old_methods_flag;
 }
 
@@ -3097,6 +3263,35 @@ TEST(Modules) {
 
   CHECK(CompareTexts(BuildActual(printer, snippets),
                      LoadGolden("Modules.golden")));
+}
+
+TEST(AsyncModules) {
+  bool previous_top_level_await_flag = i::FLAG_harmony_top_level_await;
+  i::FLAG_harmony_top_level_await = true;
+  InitializedIgnitionHandleScope scope;
+  BytecodeExpectationsPrinter printer(CcTest::isolate());
+  printer.set_wrap(false);
+  printer.set_module(true);
+  printer.set_top_level(true);
+
+  const char* snippets[] = {
+      "await 42;\n",
+
+      "await import(\"foo\");\n",
+
+      "await 42;\n"
+      "async function foo() {\n"
+      "  await 42;\n"
+      "}\n"
+      "foo();\n",
+
+      "import * as foo from \"bar\";\n"
+      "await import(\"goo\");\n",
+  };
+
+  CHECK(CompareTexts(BuildActual(printer, snippets),
+                     LoadGolden("AsyncModules.golden")));
+  i::FLAG_harmony_top_level_await = previous_top_level_await_flag;
 }
 
 TEST(SuperCallAndSpread) {
@@ -3396,7 +3591,7 @@ TEST(TemplateLiterals) {
 #undef REPEAT_32_UNIQUE_VARS
 #undef REPEAT_64_UNIQUE_VARS
 #undef REPEAT_128_UNIQUE_VARS
-#undef REPEAT_250_UNIQUE_VARS
+#undef REPEAT_252_UNIQUE_VARS
 #undef LOAD_UNIQUE_PROPERTY
 #undef REPEAT_2_LOAD_UNIQUE_PROPERTY
 #undef REPEAT_4_LOAD_UNIQUE_PROPERTY

@@ -60,4 +60,13 @@ EXPORT_TO_JS(GetContentsDataPointerIsNull) {
     args.GetReturnValue().Set(data == nullptr);
 }
 
+// Uint8Array::New
+
+EXPORT_TO_JS(NewUint8Array) {
+    Local<ArrayBuffer> buffer = args[0].As<ArrayBuffer>();
+    size_t byte_length = buffer->ByteLength();
+    Local<Uint8Array> array = Uint8Array::New(buffer, 0, byte_length);
+    args.GetReturnValue().Set(array);
+}
+
 #undef SUITE

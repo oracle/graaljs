@@ -6,11 +6,6 @@ if (!common.hasCrypto)
 const assert = require('assert');
 const crypto = require('crypto');
 
-common.expectWarning(
-  'DeprecationWarning',
-  'Calling pbkdf2 or pbkdf2Sync with "digest" set to null is deprecated.',
-  'DEP0009');
-
 //
 // Test PBKDF2 with RFC 6070 test vectors (except #4)
 //
@@ -19,9 +14,10 @@ function testPBKDF2(password, salt, iterations, keylen, expected) {
     crypto.pbkdf2Sync(password, salt, iterations, keylen, 'sha256');
   assert.strictEqual(actual.toString('latin1'), expected);
 
-  crypto.pbkdf2(password, salt, iterations, keylen, 'sha256', (err, actual) => {
-    assert.strictEqual(actual.toString('latin1'), expected);
-  });
+  crypto.pbkdf2(password, salt, iterations, keylen, 'sha256',
+                (err, actual) => {
+                  assert.strictEqual(actual.toString('latin1'), expected);
+                });
 }
 
 
@@ -53,30 +49,33 @@ const expected =
 const key = crypto.pbkdf2Sync('password', 'salt', 32, 32, 'sha256');
 assert.strictEqual(key.toString('hex'), expected);
 
-crypto.pbkdf2('password', 'salt', 32, 32, 'sha256', common.mustCall(ondone));
-function ondone(err, key) {
-  assert.ifError(err);
+crypto.pbkdf2('password', 'salt', 32, 32, 'sha256',
+              common.mustSucceed(ondone));
+
+function ondone(key) {
   assert.strictEqual(key.toString('hex'), expected);
 }
 
 // Error path should not leak memory (check with valgrind).
 assert.throws(
-  () => crypto.pbkdf2('password', 'salt', 1, 20, null),
+  () => crypto.pbkdf2('password', 'salt', 1, 20, 'sha1'),
   {
     code: 'ERR_INVALID_CALLBACK',
     name: 'TypeError'
   }
 );
 
-assert.throws(
-  () => crypto.pbkdf2Sync('password', 'salt', -1, 20, 'sha1'),
-  {
-    code: 'ERR_OUT_OF_RANGE',
-    name: 'RangeError',
-    message: 'The value of "iterations" is out of range. ' +
-             'It must be >= 0 && < 4294967296. Received -1'
-  }
-);
+for (const iterations of [-1, 0]) {
+  assert.throws(
+    () => crypto.pbkdf2Sync('password', 'salt', iterations, 20, 'sha1'),
+    {
+      code: 'ERR_OUT_OF_RANGE',
+      name: 'RangeError',
+      message: 'The value of "iterations" is out of range. ' +
+               `It must be >= 1 && < 4294967296. Received ${iterations}`
+    }
+  );
+}
 
 ['str', null, undefined, [], {}].forEach((notNumber) => {
   assert.throws(
@@ -118,14 +117,14 @@ assert.throws(
 
 // Should not get FATAL ERROR with empty password and salt
 // https://github.com/nodejs/node/issues/8571
-crypto.pbkdf2('', '', 1, 32, 'sha256', common.mustCall(assert.ifError));
+crypto.pbkdf2('', '', 1, 32, 'sha256', common.mustSucceed());
 
 assert.throws(
   () => crypto.pbkdf2('password', 'salt', 8, 8, common.mustNotCall()),
   {
     code: 'ERR_INVALID_ARG_TYPE',
     name: 'TypeError',
-    message: 'The "digest" argument must be of type string or null. ' +
+    message: 'The "digest" argument must be of type string. ' +
              'Received undefined'
   });
 
@@ -134,10 +133,18 @@ assert.throws(
   {
     code: 'ERR_INVALID_ARG_TYPE',
     name: 'TypeError',
-    message: 'The "digest" argument must be of type string or null. ' +
+    message: 'The "digest" argument must be of type string. ' +
              'Received undefined'
   });
 
+assert.throws(
+  () => crypto.pbkdf2Sync('password', 'salt', 8, 8, null),
+  {
+    code: 'ERR_INVALID_ARG_TYPE',
+    name: 'TypeError',
+    message: 'The "digest" argument must be of type string. ' +
+             'Received null'
+  });
 [1, {}, [], true, undefined, null].forEach((input) => {
   const msgPart2 = 'an instance of Buffer, TypedArray, or DataView.' +
                    common.invalidArgTypeHelper(input);
@@ -200,16 +207,26 @@ assert.throws(
 });
 
 // Any TypedArray should work for password and salt
-crypto.pbkdf2(new Uint8Array(10), 'salt', 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2('pass', new Uint8Array(10), 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2(new Uint16Array(10), 'salt', 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2('pass', new Uint16Array(10), 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2(new Uint32Array(10), 'salt', 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2('pass', new Uint32Array(10), 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2(new Float32Array(10), 'salt', 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2('pass', new Float32Array(10), 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2(new Float64Array(10), 'salt', 8, 8, 'sha256', common.mustCall());
-crypto.pbkdf2('pass', new Float64Array(10), 8, 8, 'sha256', common.mustCall());
+crypto.pbkdf2(new Uint8Array(10), 'salt', 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2('pass', new Uint8Array(10), 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2(new Uint16Array(10), 'salt', 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2('pass', new Uint16Array(10), 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2(new Uint32Array(10), 'salt', 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2('pass', new Uint32Array(10), 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2(new Float32Array(10), 'salt', 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2('pass', new Float32Array(10), 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2(new Float64Array(10), 'salt', 8, 8, 'sha256',
+              common.mustSucceed());
+crypto.pbkdf2('pass', new Float64Array(10), 8, 8, 'sha256',
+              common.mustSucceed());
 
 crypto.pbkdf2Sync(new Uint8Array(10), 'salt', 8, 8, 'sha256');
 crypto.pbkdf2Sync('pass', new Uint8Array(10), 8, 8, 'sha256');

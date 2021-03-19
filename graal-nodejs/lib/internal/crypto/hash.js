@@ -27,10 +27,8 @@ const {
   ERR_CRYPTO_HASH_UPDATE_FAILED,
   ERR_INVALID_ARG_TYPE
 } = require('internal/errors').codes;
-const {
-  validateString,
-  validateUint32
-} = require('internal/validators');
+const { validateEncoding, validateString, validateUint32 } =
+  require('internal/validators');
 const { isArrayBufferView } = require('internal/util/types');
 const LazyTransform = require('internal/streams/lazy_transform');
 const kState = Symbol('kState');
@@ -74,20 +72,20 @@ Hash.prototype._flush = function _flush(callback) {
 };
 
 Hash.prototype.update = function update(data, encoding) {
+  encoding = encoding || getDefaultEncoding();
+
   const state = this[kState];
   if (state[kFinalized])
     throw new ERR_CRYPTO_HASH_FINALIZED();
 
-  if (typeof data !== 'string' && !isArrayBufferView(data)) {
-    throw new ERR_INVALID_ARG_TYPE('data',
-                                   ['string',
-                                    'Buffer',
-                                    'TypedArray',
-                                    'DataView'],
-                                   data);
+  if (typeof data === 'string') {
+    validateEncoding(data, encoding);
+  } else if (!isArrayBufferView(data)) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'data', ['string', 'Buffer', 'TypedArray', 'DataView'], data);
   }
 
-  if (!this[kHandle].update(data, encoding || getDefaultEncoding()))
+  if (!this[kHandle].update(data, encoding))
     throw new ERR_CRYPTO_HASH_UPDATE_FAILED();
   return this;
 };

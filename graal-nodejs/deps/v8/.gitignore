@@ -24,6 +24,7 @@
 .#*
 .*.sw?
 .ccls-cache
+.clangd
 .cpplint-cache
 .cproject
 .gclient_entries
@@ -60,6 +61,8 @@
 !/third_party/antlr4
 !/third_party/binutils
 !/third_party/inspector_protocol
+!/third_party/jsoncpp
+/third_party/jsoncpp/source
 !/third_party/colorama
 /third_party/colorama/src
 !/third_party/googletest
@@ -79,8 +82,6 @@
 /tools/jsfunfuzz/jsfunfuzz
 /tools/jsfunfuzz/jsfunfuzz.tar.gz
 /tools/luci-go
-/tools/mips_toolchain
-/tools/mips_toolchain.tar.gz
 /tools/oom_dump/oom_dump
 /tools/oom_dump/oom_dump.o
 /tools/swarming_client
@@ -101,6 +102,7 @@ compile_commands.json
 gccauses
 gcsuspects
 gtags.files
+jit-*.dump
 node_modules
 tags
 turbo*.cfg
@@ -110,3 +112,7 @@ v8.ignition_dispatches_table.json
 
 !/third_party/jinja2
 !/third_party/markupsafe
+!/third_party/zlib
+/third_party/zlib/contrib/bench
+/third_party/zlib/contrib/tests
+/third_party/zlib/google/test

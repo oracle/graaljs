@@ -6,9 +6,11 @@
 #define V8_V8_PROFILER_H_
 
 #include <limits.h>
+#include <memory>
 #include <unordered_set>
 #include <vector>
-#include "v8.h"  // NOLINT(build/include)
+
+#include "v8.h"  // NOLINT(build/include_directory)
 
 /**
  * Profiler support for the V8 JavaScript engine.
@@ -18,8 +20,8 @@ namespace v8 {
 class HeapGraphNode;
 struct HeapStatsUpdate;
 
-typedef uint32_t SnapshotObjectId;
-
+using NativeObject = void*;
+using SnapshotObjectId = uint32_t;
 
 struct CpuProfileDeoptFrame {
   int script_id;
@@ -141,11 +143,6 @@ class V8_EXPORT CpuProfileNode {
     * Returns the count of samples where the function was currently executing.
     */
   unsigned GetHitCount() const;
-
-  /** Returns function entry UID. */
-  V8_DEPRECATE_SOON(
-      "Use GetScriptId, GetLineNumber, and GetColumnNumber instead.",
-      unsigned GetCallUid() const);
 
   /** Returns id of the node. The id is unique within the tree */
   unsigned GetNodeId() const;
@@ -272,12 +269,10 @@ class V8_EXPORT CpuProfilingOptions {
    *                             zero, the sampling interval will be equal to
    *                             the profiler's sampling interval.
    */
-  CpuProfilingOptions(CpuProfilingMode mode = kLeafNodeLineNumbers,
-                      unsigned max_samples = kNoSampleLimit,
-                      int sampling_interval_us = 0)
-      : mode_(mode),
-        max_samples_(max_samples),
-        sampling_interval_us_(sampling_interval_us) {}
+  CpuProfilingOptions(
+      CpuProfilingMode mode = kLeafNodeLineNumbers,
+      unsigned max_samples = kNoSampleLimit, int sampling_interval_us = 0,
+      MaybeLocal<Context> filter_context = MaybeLocal<Context>());
 
   CpuProfilingMode mode() const { return mode_; }
   unsigned max_samples() const { return max_samples_; }
@@ -286,12 +281,13 @@ class V8_EXPORT CpuProfilingOptions {
  private:
   friend class internal::CpuProfile;
 
-  bool has_filter_context() const;
+  bool has_filter_context() const { return !filter_context_.IsEmpty(); }
   void* raw_filter_context() const;
 
   CpuProfilingMode mode_;
   unsigned max_samples_;
   int sampling_interval_us_;
+  CopyablePersistentTraits<Context>::CopyablePersistent filter_context_;
 };
 
 /**
@@ -305,12 +301,9 @@ class V8_EXPORT CpuProfiler {
    * initialized. The profiler object must be disposed after use by calling
    * |Dispose| method.
    */
-  static CpuProfiler* New(Isolate* isolate);
   static CpuProfiler* New(Isolate* isolate,
-                          CpuProfilingNamingMode mode);
-  static CpuProfiler* New(Isolate* isolate,
-                          CpuProfilingNamingMode namingMode,
-                          CpuProfilingLoggingMode loggingMode);
+                          CpuProfilingNamingMode = kDebugNaming,
+                          CpuProfilingLoggingMode = kLazyLogging);
 
   /**
    * Synchronously collect current stack sample in all profilers attached to
@@ -359,10 +352,8 @@ class V8_EXPORT CpuProfiler {
    * discarded.
    */
   void StartProfiling(
-      Local<String> title, CpuProfilingMode mode, bool record_samples = false);
-  void StartProfiling(
-      Local<String> title, CpuProfilingMode mode, bool record_samples,
-      unsigned max_samples);
+      Local<String> title, CpuProfilingMode mode, bool record_samples = false,
+      unsigned max_samples = CpuProfilingOptions::kNoSampleLimit);
   /**
    * The same as StartProfiling above, but the CpuProfilingMode defaults to
    * kLeafNodeLineNumbers mode, which was the previous default behavior of the
@@ -375,20 +366,6 @@ class V8_EXPORT CpuProfiler {
    * If the title given is empty, finishes the last profile started.
    */
   CpuProfile* StopProfiling(Local<String> title);
-
-  /**
-   * Force collection of a sample. Must be called on the VM thread.
-   * Recording the forced sample does not contribute to the aggregated
-   * profile statistics.
-   */
-  V8_DEPRECATED("Use static CollectSample(Isolate*) instead.",
-                void CollectSample());
-
-  /**
-   * Tells the profiler whether the embedder is idle.
-   */
-  V8_DEPRECATED("Use Isolate::SetIdle(bool) instead.",
-                void SetIdle(bool is_idle));
 
   /**
    * Generate more detailed source positions to code objects. This results in
@@ -753,6 +730,12 @@ class V8_EXPORT EmbedderGraph {
      */
     virtual const char* NamePrefix() { return nullptr; }
 
+    /**
+     * Returns the NativeObject that can be used for querying the
+     * |HeapSnapshot|.
+     */
+    virtual NativeObject GetNativeObject() { return nullptr; }
+
     Node(const Node&) = delete;
     Node& operator=(const Node&) = delete;
   };
@@ -816,6 +799,12 @@ class V8_EXPORT HeapProfiler {
   SnapshotObjectId GetObjectId(Local<Value> value);
 
   /**
+   * Returns SnapshotObjectId for a native object referenced by |value| if it
+   * has been seen by the heap profiler, kUnknownObjectId otherwise.
+   */
+  SnapshotObjectId GetObjectId(NativeObject value);
+
+  /**
    * Returns heap object with given SnapshotObjectId if the object is alive,
    * otherwise empty handle is returned.
    */
@@ -855,7 +844,8 @@ class V8_EXPORT HeapProfiler {
    */
   const HeapSnapshot* TakeHeapSnapshot(
       ActivityControl* control = nullptr,
-      ObjectNameResolver* global_object_name_resolver = nullptr);
+      ObjectNameResolver* global_object_name_resolver = nullptr,
+      bool treat_global_objects_as_roots = true);
 
   /**
    * Starts tracking of heap objects population statistics. After calling
@@ -983,7 +973,8 @@ struct HeapStatsUpdate {
   V(LazyCompile)            \
   V(RegExp)                 \
   V(Script)                 \
-  V(Stub)
+  V(Stub)                   \
+  V(Relocation)
 
 /**
  * Note that this enum may be extended in the future. Please include a default
@@ -1016,10 +1007,12 @@ class V8_EXPORT CodeEvent {
   const char* GetComment();
 
   static const char* GetCodeEventTypeName(CodeEventType code_event_type);
+
+  uintptr_t GetPreviousCodeStartAddress();
 };
 
 /**
- * Interface to listen to code creation events.
+ * Interface to listen to code creation and code relocation events.
  */
 class V8_EXPORT CodeEventHandler {
  public:
@@ -1031,9 +1024,26 @@ class V8_EXPORT CodeEventHandler {
   explicit CodeEventHandler(Isolate* isolate);
   virtual ~CodeEventHandler();
 
+  /**
+   * Handle is called every time a code object is created or moved. Information
+   * about each code event will be available through the `code_event`
+   * parameter.
+   *
+   * When the CodeEventType is kRelocationType, the code for this CodeEvent has
+   * moved from `GetPreviousCodeStartAddress()` to `GetCodeStartAddress()`.
+   */
   virtual void Handle(CodeEvent* code_event) = 0;
 
+  /**
+   * Call `Enable()` to starts listening to code creation and code relocation
+   * events. These events will be handled by `Handle()`.
+   */
   void Enable();
+
+  /**
+   * Call `Disable()` to stop listening to code creation and code relocation
+   * events.
+   */
   void Disable();
 
  private:

@@ -1,9 +1,11 @@
 'use strict';
 
 const {
-  Map,
+  NumberParseInt,
   ObjectDefineProperty,
+  SafeMap,
   SafeWeakMap,
+  StringPrototypeStartsWith,
 } = primordials;
 
 const {
@@ -89,7 +91,8 @@ function patchProcessObject(expandArgv1) {
   });
   process.argv[0] = process.execPath;
 
-  if (expandArgv1 && process.argv[1] && !process.argv[1].startsWith('-')) {
+  if (expandArgv1 && process.argv[1] &&
+      !StringPrototypeStartsWith(process.argv[1], '-')) {
     // Expand process.argv[1] into a full path.
     const path = require('path');
     try {
@@ -328,7 +331,7 @@ function setupChildProcessIpcChannel() {
   if (process.env.NODE_CHANNEL_FD) {
     const assert = require('internal/assert');
 
-    const fd = parseInt(process.env.NODE_CHANNEL_FD, 10);
+    const fd = NumberParseInt(process.env.NODE_CHANNEL_FD, 10);
     assert(fd >= 0);
 
     // Make sure it's not accidentally inherited by child processes.
@@ -357,7 +360,7 @@ function initializePolicy() {
   if (experimentalPolicy) {
     process.emitWarning('Policies are experimental.',
                         'ExperimentalWarning');
-    const { pathToFileURL, URL } = require('url');
+    const { pathToFileURL, URL } = require('internal/url');
     // URL here as it is slightly different parsing
     // no bare specifiers for now
     let manifestURL;
@@ -374,7 +377,7 @@ function initializePolicy() {
     if (experimentalPolicyIntegrity) {
       const SRI = require('internal/policy/sri');
       const { createHash, timingSafeEqual } = require('crypto');
-      const realIntegrities = new Map();
+      const realIntegrities = new SafeMap();
       const integrityEntries = SRI.parse(experimentalPolicyIntegrity);
       let foundMatch = false;
       for (let i = 0; i < integrityEntries.length; i++) {
