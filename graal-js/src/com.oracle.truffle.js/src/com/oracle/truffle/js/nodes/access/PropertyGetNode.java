@@ -916,7 +916,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private ImportValueNode importValueNode;
-        @Child private JSToObjectNode toObjectNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private PropertyGetNode getFromJSObjectNode;
         private final boolean isLength;
@@ -933,7 +932,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.importValueNode = ImportValueNode.create();
-            this.toObjectNode = JSToObjectNode.createToObject(context);
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
@@ -945,12 +943,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (interop.isNull(thisObj)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(context, key, thisObj, isMethod, this);
-            }
-            Object object = toObjectNode.execute(thisObj);
-            if (thisObj != object) {
-                // thisObj is foreign boxed primitive => object is JS object
-                assert JSObject.isJSObject(object);
-                return getFromJSObject(object, key);
             }
             Object foreignResult = getImpl(thisObj, key, root);
             return importValueNode.executeWithTarget(foreignResult);
