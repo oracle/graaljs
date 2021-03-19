@@ -81,8 +81,14 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             length = 0;
         } else {
-            boolean direct = context.isOptionDirectByteBuffer();
-            length = direct ? JSArrayBuffer.getDirectByteLength(arrayBuffer) : JSArrayBuffer.getHeapByteLength(arrayBuffer);
+            if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
+                length = JSArrayBuffer.getDirectByteLength(arrayBuffer);
+            } else if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+                length = ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+            } else {
+                assert JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer);
+                length = JSArrayBuffer.getHeapByteLength(arrayBuffer);
+            }
         }
         return exportBuffer(arrayBuffer, 0, length);
     }
@@ -115,8 +121,9 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
             buffer = JSArrayBuffer.createArrayBuffer(context, 0);
         }
         // Wrap ArrayBuffer into Uint8Array - to allow reading its bytes on WASM side
-        boolean direct = context.isOptionDirectByteBuffer();
-        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(direct, (offset != 0));
+        boolean interop = JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
+        boolean direct = JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
+        TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(direct, (offset != 0), interop);
         return JSArrayBufferView.createArrayBufferView(context, buffer, arrayType, offset, length);
     }
 
