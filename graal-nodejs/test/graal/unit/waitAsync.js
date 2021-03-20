@@ -41,32 +41,37 @@
 
 const assert = require('assert');
 
-var child_process = require('child_process');
-var spawnSync = child_process.spawnSync;
+describe('waitAsync', function () {
+    it('should work', function() {
+        this.timeout(20000);
+        var child_process = require('child_process');
+        var spawnSync = child_process.spawnSync;
 
-const workerCode = `
-  const assert = require('assert');
-  const { parentPort } = require('worker_threads');
+        const workerCode = `
+          const assert = require('assert');
+          const { parentPort } = require('worker_threads');
 
-  const sab = new SharedArrayBuffer(16);
-  const i32a = new Int32Array(sab);
+          const sab = new SharedArrayBuffer(16);
+          const i32a = new Int32Array(sab);
 
-  Atomics.waitAsync(i32a, 0, 0, 10000);
+          Atomics.waitAsync(i32a, 0, 0, 10000);
 
-  parentPort.postMessage(sab);`;
+          parentPort.postMessage(sab);`;
 
-const code = `
-  const assert = require('assert');
-  const { Worker } = require('worker_threads');
+        const code = `
+          const assert = require('assert');
+          const { Worker } = require('worker_threads');
 
-  const w = new Worker(\`${workerCode}\`, { eval: true });
+          const w = new Worker(\`${workerCode}\`, { eval: true });
 
-  w.on('message', (sab) => {
-    var i32a = new Int32Array(sab);
-    const count = Atomics.notify(i32a, 0, 1);
-    assert(count === 1);
-  });`;
+          w.on('message', (sab) => {
+            var i32a = new Int32Array(sab);
+            const count = Atomics.notify(i32a, 0, 1);
+            assert(count === 1);
+          });`;
 
-const result = spawnSync(process.execPath, ['--js.ecmascript-version=2022', '-e', code]);
-assert.strictEqual(result.status, 0);
-assert.strictEqual(result.stderr.toString(), '');
+        const result = spawnSync(process.execPath, ['--js.ecmascript-version=2022', '-e', code]);
+        assert.strictEqual(result.status, 0);
+        assert.strictEqual(result.stderr.toString(), '');
+    });
+});
