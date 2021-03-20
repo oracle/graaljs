@@ -3256,13 +3256,13 @@
     "filePath" : "mjsunit/wasm/instance-gc.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/instance-memory-gc-stress.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/instantiate-module-basic.js",
@@ -3293,7 +3293,7 @@
     "filePath" : "mjsunit/wasm/lazy-compilation.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/liftoff-trap-handler.js",
@@ -3347,7 +3347,7 @@
     "filePath" : "mjsunit/wasm/memory-instance-validation.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/memory-size.js",

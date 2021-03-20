@@ -846,11 +846,11 @@ function v8FreezeWasmLazyCompilation() {
 }
 
 function v8GetWasmRecoveredTrapCount() {
-    throw new Error("v8 internal method not implemented");
+    return v8IgnoreResult;
 }
 
 function v8IsWasmTrapHandlerEnabled() {
-    return v8IgnoreResult;
+    return false;
 }
 
 function v8WasmMemoryHasFullGuardRegion() {

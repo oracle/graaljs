@@ -144,15 +144,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         try {
             Object bufferFn = InteropLibrary.getUncached(wasmMemory).readMember(wasmMemory, BUFFER);
             Object wasmBuffer = InteropLibrary.getUncached(bufferFn).execute(bufferFn);
-
-            InteropLibrary interop = InteropLibrary.getUncached();
-            int size = (int) interop.getArraySize(wasmBuffer);
-            byte[] bytes = new byte[size];
-            for (int i = 0; i < size; i++) {
-                bytes[i] = (byte) interop.asInt(interop.readArrayElement(wasmBuffer, i));
-            }
-
-            return JSArrayBuffer.createArrayBuffer(context, bytes);
+            return JSArrayBuffer.createInteropArrayBuffer(context, wasmBuffer);
         } catch (InteropException ex) {
             throw Errors.shouldNotReachHere(ex);
         }
