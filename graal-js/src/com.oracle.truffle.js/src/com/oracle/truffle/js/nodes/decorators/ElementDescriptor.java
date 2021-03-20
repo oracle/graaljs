@@ -1,7 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
