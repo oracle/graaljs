@@ -42,13 +42,20 @@ package com.oracle.truffle.js.builtins.helper;
 
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetArrayType;
 
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
@@ -220,7 +227,9 @@ public final class SharedMemorySync {
     public static JSAgentWaiterListEntry getWaiterList(JSContext cx, DynamicObject target, int indexPos) {
         DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        return waiterList.getListForIndex(indexPos);
+        int offset = JSArrayBufferView.getByteOffset(target, cx);
+        int bytesPerElement = JSArrayBufferView.typedArrayGetArrayType(target).bytesPerElement();
+        return waiterList.getListForIndex(indexPos * bytesPerElement + offset);
     }
 
     @TruffleBoundary
@@ -239,30 +248,36 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void addWaiter(JSContext cx, JSAgentWaiterListEntry wl, int id) {
-        assert cx.getJSAgent().inCriticalSection();
-        assert !wl.contains(id);
-        wl.add(id);
+    public static void addWaiter(JSContext cx, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord, boolean isAsync) {
+        JSAgent agent = cx.getJSAgent();
+        assert agent.inCriticalSection();
+        assert !wl.contains(waiterRecord);
+        wl.add(waiterRecord);
+        if (isAsync && Double.isFinite(waiterRecord.getTimeout())) {
+            waiterRecord.setCreationTime(System.nanoTime() / JSRealm.NANOSECONDS_PER_MILLISECOND);
+            agent.enqueueWaitAsyncPromiseJob(waiterRecord);
+        }
     }
 
     @TruffleBoundary
-    public static void removeWaiter(JSContext cx, JSAgentWaiterListEntry wl, int w) {
+    public static void removeWaiter(JSContext cx, JSAgentWaiterListEntry wl, WaiterRecord w) {
         assert cx.getJSAgent().inCriticalSection();
         assert wl.contains(w);
         wl.remove(w);
     }
 
-    /* ECMA2017 24.4.1.9 - Suspend returns true if agent was woken by another agent */
+    /* ECMA2022 25.4.1.9 - Suspend returns true if agent was woken by another agent */
     @TruffleBoundary
-    public static boolean suspendAgent(JSContext cx, JSAgentWaiterListEntry wl, int w, int timeout) {
-        assert cx.getJSAgent().inCriticalSection();
-        assert wl.contains(w);
-        assert cx.getJSAgent().getSignifier() == w;
-        assert cx.getJSAgent().canBlock();
-        cx.getJSAgent().criticalSectionLeave(wl);
+    public static boolean suspendAgent(JSContext cx, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord) {
+        JSAgent agent = cx.getJSAgent();
+        assert agent.inCriticalSection();
+        assert agent.getSignifier() == waiterRecord.getAgentSignifier();
+        assert wl.contains(waiterRecord);
+        assert agent.canBlock();
+        agent.criticalSectionLeave(wl);
         boolean interrupt = false;
         try {
-            Thread.sleep(timeout);
+            Thread.sleep((long) waiterRecord.getTimeout());
         } catch (InterruptedException e) {
             interrupt = true;
         }
@@ -270,21 +285,28 @@ public final class SharedMemorySync {
         return interrupt;
     }
 
-    /* ECMA2017 24.4.1.10 - Wake up another agent */
+    /* ECMA2022 25.4.1.10 - Wake up another agent */
     @TruffleBoundary
-    public static void wakeWaiter(JSContext cx, int w) {
+    public static void notifyWaiter(JSContext cx, WaiterRecord waiterRecord) {
         assert cx.getJSAgent().inCriticalSection();
-        cx.getJSAgent().wakeAgent(w);
+        assert waiterRecord.getPromiseCapability() == null;
+        cx.getJSAgent().wakeAgent(waiterRecord.getAgentSignifier());
     }
 
     @TruffleBoundary
-    public static int[] removeWaiters(JSContext cx, JSAgentWaiterListEntry wl, int count) {
+    public static WaiterRecord[] removeWaiters(JSContext cx, JSAgentWaiterListEntry wl, int count) {
         assert cx.getJSAgent().inCriticalSection();
-        int c = Integer.min(wl.size(), count);
-        int[] removed = new int[c];
-        while (c-- > 0) {
-            removed[c] = wl.poll();
+        int c = 0;
+        Iterator<WaiterRecord> iter = wl.iterator();
+        List<WaiterRecord> list = new LinkedList<>();
+        while (iter.hasNext() && c < count) {
+            WaiterRecord wr = iter.next();
+            if (wr.getPromiseCapability() == null || !wr.isReadyToResolve()) {
+                list.add(wr);
+                iter.remove();
+                ++c;
+            }
         }
-        return removed;
+        return list.toArray(new WaiterRecord[c]);
     }
 }

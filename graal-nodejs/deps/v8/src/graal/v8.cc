@@ -3328,6 +3328,10 @@ namespace v8 {
         jobject java_array_buffer = graal_array_buffer->GetJavaObject();
         JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::shared_array_buffer_get_contents, Object, java_array_buffer);
         JNIEnv* env = graal_isolate->GetJNIEnv();
+        if (java_buffer != nullptr) {
+            void* pointer = env->GetDirectBufferAddress(java_buffer);
+            JNI_CALL_VOID(graal_isolate, GraalAccessMethod::shared_array_buffer_externalize, java_array_buffer, (jlong) pointer);
+        }
         jobject java_store = env->NewGlobalRef(java_buffer);
         env->DeleteLocalRef(java_buffer);
         return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store)));

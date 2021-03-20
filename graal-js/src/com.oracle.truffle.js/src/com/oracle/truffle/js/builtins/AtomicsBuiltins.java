@@ -46,24 +46,32 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsCompareExchangeNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsComputeNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsIsLockFreeNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsLoadNodeGen;
+import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsNotifyNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsStoreNodeGen;
+import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWaitAsyncNodeGen;
 import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWaitNodeGen;
-import com.oracle.truffle.js.builtins.AtomicsBuiltinsFactory.AtomicsWakeNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -75,6 +83,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -83,6 +92,11 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<AtomicsBuiltins.Atomics> {
 
     public static final JSBuiltinsContainer BUILTINS = new AtomicsBuiltins();
+    public static final JSBuiltinsContainer WAIT_ASYNC_BUILTIN = new AtomicsWaitAsyncBuiltin();
+
+    public static final String OK = "ok";
+    public static final String NOT_EQUAL = "not-equal";
+    public static final String TIMED_OUT = "timed-out";
 
     protected AtomicsBuiltins() {
         super(JSRealm.ATOMICS_CLASS_NAME, Atomics.class);
@@ -149,13 +163,43 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return AtomicsComputeNodeGen.create(context, builtin, (a, b) -> b, (a, b) -> b, args().fixedArgs(3).createArgumentNodes(context));
             case wake:
             case notify:
-                return AtomicsWakeNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+                return AtomicsNotifyNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
             case wait:
                 return AtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
             case isLockFree:
                 return AtomicsIsLockFreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public static final class AtomicsWaitAsyncBuiltin extends JSBuiltinsContainer.SwitchEnum<AtomicsWaitAsyncBuiltin.AtomicsWaitAsync> {
+        protected AtomicsWaitAsyncBuiltin() {
+            super(JSRealm.ATOMICS_CLASS_NAME, AtomicsWaitAsync.class);
+        }
+
+        public enum AtomicsWaitAsync implements BuiltinEnum<AtomicsWaitAsync> {
+            waitAsync(4);
+
+            private final int length;
+
+            AtomicsWaitAsync(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AtomicsWaitAsync builtinEnum) {
+            switch (builtinEnum) {
+                case waitAsync:
+                    return AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     public abstract static class AtomicsOperationNode extends JSBuiltinNode {
@@ -774,12 +818,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
     }
 
-    /**
-     * Thread Wake-up.
-     */
-    public abstract static class AtomicsWakeNode extends AtomicsOperationNode {
+    public abstract static class AtomicsNotifyNode extends AtomicsOperationNode {
 
-        public AtomicsWakeNode(JSContext context, JSBuiltin builtin) {
+        public AtomicsNotifyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -802,10 +843,17 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             SharedMemorySync.enterCriticalSection(getContext(), wl);
             try {
-                int[] waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
+                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
                 int n;
                 for (n = 0; n < waiters.length; n++) {
-                    SharedMemorySync.wakeWaiter(getContext(), waiters[n]);
+                    if (waiters[n].getPromiseCapability() == null) {
+                        SharedMemorySync.notifyWaiter(getContext(), waiters[n]);
+                    } else {
+                        waiters[n].setNotified();
+                        if (Double.isInfinite(waiters[n].getTimeout())) {
+                            waiters[n].enqueueInAgent();
+                        }
+                    }
                 }
                 return n;
             } finally {
@@ -814,32 +862,38 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
     }
 
-    /**
-     * Thread Sleep.
-     */
-    public abstract static class AtomicsWaitNode extends AtomicsOperationNode {
+    public abstract static class AtomicsWaitBaseNode extends AtomicsOperationNode {
+        private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile timeoutNaNProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile valuesNotEqualBranch = BranchProfile.create();
+        private final BranchProfile asyncImmediateTimeoutBranch = BranchProfile.create();
+        private final ConditionProfile awokenProfile = ConditionProfile.createBinaryProfile();
+        private final BranchProfile errorBranch = BranchProfile.create();
 
-        private static final String OK = "ok";
-        private static final String NOT_EQUAL = "not-equal";
-        private static final String TIMED_OUT = "timed-out";
-
+        @Child private JSToIndexNode toIndexNode;
+        @Child private JSToDoubleNode toDoubleNode;
+        @Child private AtomicsLoadNode loadNode;
         @Child private JSToBigIntNode toBigIntNode;
         @Child private JSToInt32Node toInt32Node;
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private CreateObjectNode objectCreateNode;
+        @Child private CreateDataPropertyNode createAsyncPropertyNode;
+        @Child private CreateDataPropertyNode createValuePropertyNode;
 
-        public AtomicsWaitNode(JSContext context, JSBuiltin builtin) {
+        public AtomicsWaitBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            toIndexNode = JSToIndexNode.create();
+            toDoubleNode = JSToDoubleNode.create();
+            loadNode = createHelperNode();
+            createAsyncPropertyNode = CreateDataPropertyNode.create(context, "async");
+            createValuePropertyNode = CreateDataPropertyNode.create(context, "value");
         }
 
         protected AtomicsLoadNode createHelperNode() {
             return AtomicsLoadNodeGen.create(getContext(), getBuiltin(), args().fixedArgs(4).createArgumentNodes(getContext()));
         }
 
-        @Specialization
-        protected Object doGeneric(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("create()") JSToNumberNode timeToInt32Node,
-                        @Cached("createHelperNode()") AtomicsLoadNode loadNode) {
-
+        protected Object doWait(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout, boolean isAsync) {
             DynamicObject target = ensureDynamicObject(maybeTarget);
             validateSharedIntegerTypedArray(target, true);
 
@@ -847,37 +901,68 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             boolean isInt32 = isInt32SharedBufferView(maybeTarget);
             long v = isInt32 ? toInt32(value) : toBigInt(value).longValue();
-            int t = Integer.MAX_VALUE;
-            Number tmp = timeToInt32Node.executeNumber(timeout);
-            if (!JSRuntime.isNaN(tmp)) {
-                t = Integer.max(tmp.intValue(), 0);
+            double t;
+            double q = toDoubleNode.executeDouble(timeout);
+            if (timeoutNaNProfile.profile(JSRuntime.isNaN(q))) {
+                t = Double.POSITIVE_INFINITY;
+            } else {
+                t = Math.max(q, 0);
             }
 
-            if (!SharedMemorySync.agentCanSuspend(getContext())) {
+            if (!isAsync && !SharedMemorySync.agentCanSuspend(getContext())) {
+                errorBranch.enter();
                 throw createTypeErrorUnsupported();
             }
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+
+            PromiseCapabilityRecord promiseCapability = null;
+            DynamicObject resultObject = null;
+
+            if (isAsyncProfile.profile(isAsync)) {
+                getContext().signalAsyncWaiterRecordUsage();
+                promiseCapability = newPromiseCapability();
+                resultObject = ordinaryObjectCreate(frame);
+            }
+
             SharedMemorySync.enterCriticalSection(getContext(), wl);
             try {
                 Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
                 boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
                                 : !(w instanceof BigInt) || ((BigInt) w).longValue() != v;
                 if (isNotEqual) {
-                    return NOT_EQUAL;
+                    valuesNotEqualBranch.enter();
+                    if (!isAsyncProfile.profile(isAsync)) {
+                        return NOT_EQUAL;
+                    }
+                    createAsyncPropertyNode.executeVoid(resultObject, false);
+                    createValuePropertyNode.executeVoid(resultObject, NOT_EQUAL);
+                    return resultObject;
                 }
-                int id = getContext().getJSAgent().getSignifier();
-                SharedMemorySync.addWaiter(getContext(), wl, id);
-                if (t < 0) {
-                    return TIMED_OUT;
+
+                if (isAsync && t == 0) {
+                    asyncImmediateTimeoutBranch.enter();
+                    createAsyncPropertyNode.executeVoid(resultObject, false);
+                    createValuePropertyNode.executeVoid(resultObject, TIMED_OUT);
+                    return resultObject;
                 }
-                boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, id, t);
-                if (awoken) {
-                    assert !wl.contains(id);
-                    return OK;
-                } else {
-                    SharedMemorySync.removeWaiter(getContext(), wl, id);
-                    return TIMED_OUT;
+                JSAgent agent = getContext().getJSAgent();
+                int id = agent.getSignifier();
+                WaiterRecord waiterRecord = WaiterRecord.create(id, promiseCapability, t, OK, wl, agent);
+                SharedMemorySync.addWaiter(getContext(), wl, waiterRecord, isAsync);
+
+                if (!isAsyncProfile.profile(isAsync)) {
+                    boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, waiterRecord);
+                    if (awokenProfile.profile(awoken)) {
+                        assert !wl.contains(waiterRecord);
+                        return OK;
+                    } else {
+                        SharedMemorySync.removeWaiter(getContext(), wl, waiterRecord);
+                        return TIMED_OUT;
+                    }
                 }
+                createAsyncPropertyNode.executeVoid(resultObject, true);
+                createValuePropertyNode.executeVoid(resultObject, waiterRecord.getPromiseCapability().getPromise());
+                return resultObject;
             } finally {
                 SharedMemorySync.leaveCriticalSection(getContext(), wl);
             }
@@ -897,6 +982,46 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 toBigIntNode = insert(JSToBigIntNode.create());
             }
             return toBigIntNode.executeBigInteger(v);
+        }
+
+        private PromiseCapabilityRecord newPromiseCapability() {
+            if (newPromiseCapabilityNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                newPromiseCapabilityNode = insert(NewPromiseCapabilityNode.create(getContext()));
+            }
+            return newPromiseCapabilityNode.executeDefault();
+        }
+
+        private DynamicObject ordinaryObjectCreate(VirtualFrame frame) {
+            if (objectCreateNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                objectCreateNode = insert(CreateObjectNode.create(getContext()));
+            }
+            return objectCreateNode.execute(frame);
+        }
+    }
+
+    public abstract static class AtomicsWaitNode extends AtomicsWaitBaseNode {
+
+        public AtomicsWaitNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doGeneric(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout) {
+            return doWait(frame, maybeTarget, index, value, timeout, false);
+        }
+    }
+
+    public abstract static class AtomicsWaitAsyncNode extends AtomicsWaitBaseNode {
+
+        public AtomicsWaitAsyncNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doGeneric(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout) {
+            return doWait(frame, maybeTarget, index, value, timeout, true);
         }
     }
 

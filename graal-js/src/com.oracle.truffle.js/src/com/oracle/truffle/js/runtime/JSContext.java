@@ -709,6 +709,10 @@ public class JSContext {
         realm.getAgent().enqueuePromiseJob(job);
     }
 
+    public final void signalAsyncWaiterRecordUsage() {
+        invalidatePromiseQueueNotUsedAssumption();
+    }
+
     private void invalidatePromiseQueueNotUsedAssumption() {
         Assumption promiseJobsQueueEmptyAssumption = language.getPromiseJobsQueueEmptyAssumption();
         if (promiseJobsQueueEmptyAssumption.isValid()) {
@@ -1684,5 +1688,9 @@ public class JSContext {
 
     public boolean isOptionTopLevelAwait() {
         return getContextOptions().isTopLevelAwait();
+    }
+
+    public boolean isWaitAsyncEnabled() {
+        return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
     }
 }

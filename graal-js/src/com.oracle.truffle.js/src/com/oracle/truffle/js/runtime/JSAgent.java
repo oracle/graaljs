@@ -44,6 +44,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.collections.EconomicSet;
@@ -51,7 +52,9 @@ import org.graalvm.collections.Equivalence;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList.WaiterRecord;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
@@ -95,10 +98,13 @@ public abstract class JSAgent implements EcmaAgent {
 
     private final Deque<WeakReference<JSFinalizationRegistryObject>> finalizationRegistryQueue;
 
+    private final Deque<WaiterRecord> waitAsyncJobsQueue;
+
     public JSAgent(boolean canBlock) {
         this.signifier = signifierGenerator.incrementAndGet();
         this.canBlock = canBlock;
-        this.promiseJobsQueue = new ArrayDeque<>(4);
+        this.promiseJobsQueue = new ArrayDeque<>();
+        this.waitAsyncJobsQueue = new ConcurrentLinkedDeque<>();
         this.finalizationRegistryQueue = new ArrayDeque<>(4);
     }
 
@@ -152,26 +158,64 @@ public abstract class JSAgent implements EcmaAgent {
     }
 
     @TruffleBoundary
+    public void enqueueWaitAsyncPromiseJob(WaiterRecord waiter) {
+        waitAsyncJobsQueue.push(waiter);
+    }
+
+    @TruffleBoundary
     public final void processAllPromises(boolean processWeakRefs) {
         try {
+            boolean checkWaiterRecords = !waitAsyncJobsQueue.isEmpty();
             interopBoundaryEnter();
-            while (!promiseJobsQueue.isEmpty()) {
-                DynamicObject nextJob = promiseJobsQueue.pollLast();
-                if (JSFunction.isJSFunction(nextJob)) {
-                    JSRealm functionRealm = JSFunction.getRealm(nextJob);
-                    Object prev = functionRealm.getTruffleContext().enter(null);
+            while (!promiseJobsQueue.isEmpty() || checkWaiterRecords) {
+                checkWaiterRecords = false;
+                Iterator<WaiterRecord> iter = waitAsyncJobsQueue.descendingIterator();
+                while (iter.hasNext()) {
+                    WaiterRecord wr = iter.next();
+                    JSAgentWaiterListEntry wl = wr.getWaiterListEntry();
+                    criticalSectionEnter(wl);
+                    boolean isReadyToResolve = wr.isReadyToResolve();
                     try {
-                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                        if (isReadyToResolve) {
+                            iter.remove();
+                            checkWaiterRecords = true;
+                            if (wl.contains(wr)) {
+                                wr.setResult(AtomicsBuiltins.TIMED_OUT);
+                                wl.remove(wr);
+                            }
+                        }
                     } finally {
-                        functionRealm.getTruffleContext().leave(null, prev);
+                        criticalSectionLeave(wl);
+                    }
+                    if (isReadyToResolve) {
+                        DynamicObject resolve = (DynamicObject) wr.getPromiseCapability().getResolve();
+                        assert JSFunction.isJSFunction(resolve);
+                        Object result = wr.getResult();
+                        JSFunction.call(JSArguments.createOneArg(Undefined.instance, resolve, result));
+                    }
+                }
+                if (!promiseJobsQueue.isEmpty()) {
+                    DynamicObject nextJob = promiseJobsQueue.pollLast();
+                    if (JSFunction.isJSFunction(nextJob)) {
+                        checkWaiterRecords = true;
+                        JSRealm functionRealm = JSFunction.getRealm(nextJob);
+                        Object prev = functionRealm.getTruffleContext().enter(null);
+                        try {
+                            JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
+                        } finally {
+                            functionRealm.getTruffleContext().leave(null, prev);
+                        }
                     }
                 }
             }
-        } finally {
-            interopBoundaryExit();
+        } catch (Throwable t) {
             // Ensure that there are no leftovers when the processing
             // is terminated by an exception (like ExitException).
             promiseJobsQueue.clear();
+            waitAsyncJobsQueue.clear();
+            throw t;
+        } finally {
+            interopBoundaryExit();
             if (processWeakRefs) {
                 if (weakRefTargets != null) {
                     weakRefTargets.clear();
@@ -216,5 +260,23 @@ public abstract class JSAgent implements EcmaAgent {
     @TruffleBoundary
     public void registerFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry) {
         finalizationRegistryQueue.add(new WeakReference<>(finalizationRegistry));
+    }
+
+    @TruffleBoundary
+    public int getAsyncWaitersToBeResolved(JSAgentWaiterListEntry wl) {
+        int result = 0;
+        for (WaiterRecord wr : waitAsyncJobsQueue) {
+            if (wr.getWaiterListEntry() == wl) {
+                criticalSectionEnter(wl);
+                try {
+                    if (wr.isReadyToResolve()) {
+                        result++;
+                    }
+                } finally {
+                    criticalSectionLeave(wl);
+                }
+            }
+        }
+        return result;
     }
 }

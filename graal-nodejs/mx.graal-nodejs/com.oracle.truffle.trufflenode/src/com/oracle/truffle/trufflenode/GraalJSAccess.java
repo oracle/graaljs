@@ -1308,9 +1308,11 @@ public final class GraalJSAccess {
     }
 
     public void sharedArrayBufferExternalize(Object sharedArrayBuffer, long pointer) {
-        DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
-        JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
-        updateWaiterList(dynamicObject, pointer);
+        if (!sharedArrayBufferIsExternal(sharedArrayBuffer)) {
+            DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
+            JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
+            updateWaiterList(dynamicObject, pointer);
+        }
     }
 
     public int typedArrayLength(Object typedArray) {
