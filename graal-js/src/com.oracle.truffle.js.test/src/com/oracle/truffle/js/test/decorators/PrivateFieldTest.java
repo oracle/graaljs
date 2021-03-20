@@ -23,7 +23,7 @@ public class PrivateFieldTest extends DecoratorTest{
     public void writeReadonlyField() {
         String source = "" +
                 "function readonly(d) {" +
-                "d.writeable = false;" +
+                "d.writable = false;" +
                 "return d;" +
                 "}" +
                 "class C {" +
