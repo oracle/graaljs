@@ -109,7 +109,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             super(key, initialize, isStatic, isPrivate, isAnonymousFunctionDefinition, decorators);
             //ClassFieldDefinitionEvaluation
             if(isPrivate) {
-                attributes = JSAttributes.fromConfigurableEnumerableWritable(false, false, false);
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(false, false, true);
             } else {
                 attributes = JSAttributes.fromConfigurableEnumerableWritable(true, true, true);
             }
