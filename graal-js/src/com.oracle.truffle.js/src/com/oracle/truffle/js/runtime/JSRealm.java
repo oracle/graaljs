@@ -134,6 +134,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -376,6 +377,10 @@ public class JSRealm {
 
     /** Foreign object prototypes. */
     private final DynamicObject foreignIterablePrototype;
+
+    /** Record and Tuple support. */
+    private final DynamicObject tupleConstructor;
+    private final DynamicObject tuplePrototype;
 
     /**
      * Local time zone ID. Initialized lazily.
@@ -754,6 +759,17 @@ public class JSRealm {
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
+
+        // TODO: Associate with the correct ECMAScript Version
+        boolean es13 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        if (es13) {
+            ctor = JSTuple.createConstructor(this);
+            this.tupleConstructor = ctor.getFunctionObject();
+            this.tuplePrototype = ctor.getPrototype();
+        } else {
+            this.tupleConstructor = null;
+            this.tuplePrototype= null;
+        }
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1404,6 +1420,9 @@ public class JSRealm {
         }
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
+        }
+        if (context.getEcmaScriptVersion() >= 13) { // TODO: Associate with the correct ECMAScript Version
+            putGlobalProperty(JSTuple.CLASS_NAME, getTupleConstructor());
         }
     }
 
@@ -2439,4 +2458,11 @@ public class JSRealm {
         return foreignIterablePrototype;
     }
 
+    public DynamicObject getTupleConstructor() {
+        return tupleConstructor;
+    }
+
+    public DynamicObject getTuplePrototype() {
+        return tuplePrototype;
+    }
 }

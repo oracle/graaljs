@@ -103,6 +103,7 @@ import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObje
 import com.oracle.truffle.js.nodes.access.RestObjectNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
+import com.oracle.truffle.js.nodes.tuples.TupleLiteralNode;
 import com.oracle.truffle.js.nodes.access.WithTargetNode;
 import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -783,6 +784,14 @@ public class NodeFactory {
         return ArrayLiteralNode.createWithSpread(context, elements);
     }
 
+    public JavaScriptNode createTupleLiteral(JSContext context, JavaScriptNode[] elements) {
+        return TupleLiteralNode.create(context, elements);
+    }
+
+    public JavaScriptNode createTupleLiteralWithSpread(JSContext context, JavaScriptNode[] elements) {
+        return TupleLiteralNode.createWithSpread(context, elements);
+    }
+
     public ObjectLiteralMemberNode createAccessorMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
         return ObjectLiteralNode.newAccessorMember(keyName, isStatic, enumerable, getter, setter);
     }
@@ -822,6 +831,10 @@ public class NodeFactory {
 
     public JavaScriptNode createSpreadArray(JSContext context, JavaScriptNode argument) {
         return ArrayLiteralNode.SpreadArrayNode.create(context, argument);
+    }
+
+    public JavaScriptNode createSpreadTuple(JSContext context, JavaScriptNode argument) {
+        return TupleLiteralNode.SpreadTupleNode.create(context, argument);
     }
 
     public ReturnNode createReturn(JavaScriptNode expression) {

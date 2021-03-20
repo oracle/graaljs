@@ -108,6 +108,8 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmen
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTupleNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTupleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
@@ -186,6 +188,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
@@ -325,7 +328,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),
-        JavaImporter(1);
+        JavaImporter(1),
+
+        // Record and Tuple proposal
+        Tuple(0);
 
         private final int length;
 
@@ -624,6 +630,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                 : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
+            case Tuple:
+                return construct ? ConstructTupleNodeGen.create(context, builtin, args().createArgumentNodes(context))
+                        : CallTupleNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
 
@@ -2748,4 +2757,57 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    public abstract static class CallTupleNode extends JSBuiltinNode {
+
+        public CallTupleNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"args.length == 0"})
+        protected Object constructEmptyTuple(@SuppressWarnings("unused") Object[] args) {
+            return Tuple.create();
+        }
+
+        // TODO: maybe use @Fallback here
+        @Specialization(guards = {"args.length != 0"})
+        protected Object constructTuple(Object[] args,
+                                               @Cached("create()") BranchProfile isByteCase,
+                                               @Cached("create()") BranchProfile isIntegerCase,
+                                               @Cached("create()") BranchProfile isDoubleCase,
+                                               @Cached("create()") BranchProfile isObjectCase) {
+            for (Object element : args) {
+                if (!JSRuntime.isJSPrimitive(element)) {
+                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                }
+            }
+            // TODO: maybe use JSToPrimitiveNode as CallBigIntNode does
+            // TODO: Tuples cannot contain holes, thus ArrayLiteralNode.identifyPrimitiveContentType might not be the best method for classifying the array content
+            ArrayContentType type = ArrayLiteralNode.identifyPrimitiveContentType(args, true);
+            if (type == ArrayContentType.Byte) {
+                isByteCase.enter();
+                return Tuple.create(ArrayLiteralNode.createByteArray(args));
+            } else if (type == ArrayContentType.Integer) {
+                isIntegerCase.enter();
+                return Tuple.create(ArrayLiteralNode.createIntArray(args));
+            } else if (type == ArrayContentType.Double) {
+                isDoubleCase.enter();
+                return Tuple.create(ArrayLiteralNode.createDoubleArray(args));
+            } else {
+                isObjectCase.enter();
+                return Tuple.create(args);
+            }
+        }
+    }
+
+    public abstract static class ConstructTupleNode extends JSBuiltinNode {
+
+        public ConstructTupleNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static final DynamicObject construct() {
+            throw Errors.createTypeError("Tuple is not a constructor");
+        }
+    }
 }

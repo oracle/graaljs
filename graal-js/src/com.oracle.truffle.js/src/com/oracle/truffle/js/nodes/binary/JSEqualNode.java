@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 
@@ -335,6 +336,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     @Specialization(guards = {"isJavaNumber(b)"})
     protected boolean doStringNumber(String a, Object b) {
         return doStringDouble(a, JSRuntime.doubleValue((Number) b));
+    }
+
+    @Specialization
+    protected static boolean doTuple(Tuple a, Tuple b) {
+        // TODO: maybe compare tuples using a node tree
+        return a.equals(b);
     }
 
     @Fallback

@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -159,6 +160,11 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         } else {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value", this);
         }
+    }
+
+    @Specialization
+    protected String doTuple(Tuple value) {
+        return value.toString();
     }
 
     @Specialization(guards = {"isForeignObject(object)"})

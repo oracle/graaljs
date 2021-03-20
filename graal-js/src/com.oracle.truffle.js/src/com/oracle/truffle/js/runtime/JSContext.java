@@ -100,6 +100,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -402,6 +403,8 @@ public class JSContext {
     private final JSObjectFactory webAssemblyTableFactory;
     private final JSObjectFactory webAssemblyGlobalFactory;
 
+    private final JSObjectFactory tupleFactory;
+
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
@@ -557,6 +560,8 @@ public class JSContext {
         this.webAssemblyMemoryFactory = builder.create(JSWebAssemblyMemory.INSTANCE);
         this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
+
+        this.tupleFactory = builder.create(JSTuple.INSTANCE);
 
         this.factoryCount = builder.finish();
 
@@ -982,6 +987,10 @@ public class JSContext {
 
     public JSObjectFactory getWebAssemblyGlobalFactory() {
         return webAssemblyGlobalFactory;
+    }
+
+    public final JSObjectFactory getTupleFactory() {
+        return tupleFactory;
     }
 
     private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";

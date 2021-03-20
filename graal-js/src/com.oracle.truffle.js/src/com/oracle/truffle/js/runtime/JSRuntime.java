@@ -77,6 +77,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
@@ -225,6 +226,8 @@ public final class JSRuntime {
             return JSBoolean.TYPE_NAME;
         } else if (value instanceof Symbol) {
             return JSSymbol.TYPE_NAME;
+        } else if (value instanceof Tuple) {
+            return JSTuple.TYPE_NAME;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             DynamicObject object = (DynamicObject) value;
             if (JSProxy.isJSProxy(object)) {
@@ -525,6 +528,10 @@ public final class JSRuntime {
 
     public static boolean isBigInt(Object value) {
         return value instanceof BigInt;
+    }
+
+    public static boolean isTuple(Object value) {
+        return value instanceof Tuple;
     }
 
     public static boolean isJavaNumber(Object value) {
@@ -1512,6 +1519,8 @@ public final class JSRuntime {
             return JSNumber.create(ctx, (Number) value);
         } else if (value instanceof Symbol) {
             return JSSymbol.create(ctx, (Symbol) value);
+        } else if (value instanceof Tuple) {
+            return JSTuple.create(ctx, (Tuple) value);
         } else {
             assert !isJSNative(value) && isJavaPrimitive(value) : value;
             if (useJavaWrapper) {
@@ -1579,6 +1588,8 @@ public final class JSRuntime {
             return equalBigIntAndNumber((BigInt) b, (Number) a);
         } else if (isBigInt(a) && isJavaNumber(b)) {
             return equalBigIntAndNumber((BigInt) a, (Number) b);
+        } else if (isTuple(a) && isTuple(b)) {
+            return a.equals(b);
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
@@ -1602,7 +1613,7 @@ public final class JSRuntime {
 
     public static boolean isForeignObject(TruffleObject value) {
         return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
-                        !(value instanceof BigInt);
+                        !(value instanceof BigInt) && !(value instanceof Tuple);
     }
 
     private static boolean equalInterop(Object a, Object b) {
@@ -1665,6 +1676,9 @@ public final class JSRuntime {
             return InteropLibrary.getUncached(a).isNull(a);
         }
         if (isBigInt(a) && isBigInt(b)) {
+            return a.equals(b);
+        }
+        if (isTuple(a) && isTuple(b)) {
             return a.equals(b);
         }
         if (isJavaNumber(a) && isJavaNumber(b)) {
@@ -1990,7 +2004,7 @@ public final class JSRuntime {
     }
 
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
+        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol || value instanceof Tuple;
     }
 
     /**

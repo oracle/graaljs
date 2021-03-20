@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -139,6 +140,10 @@ public final class JSGuards {
 
     public static boolean isJSFunction(Object value) {
         return JSFunction.isJSFunction(value);
+    }
+
+    public static boolean isJSTuple(Object value) {
+        return JSTuple.isJSTuple(value);
     }
 
     public static boolean isJSFunctionShape(Shape shape) {

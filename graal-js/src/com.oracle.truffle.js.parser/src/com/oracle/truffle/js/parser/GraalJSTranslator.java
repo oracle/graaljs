@@ -1424,6 +1424,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public JavaScriptNode enterLiteralNode(LiteralNode<?> literalNode) {
         if (literalNode instanceof LiteralNode.ArrayLiteralNode) {
             return tagExpression(enterLiteralArrayNode((LiteralNode.ArrayLiteralNode) literalNode), literalNode);
+        } else if (literalNode instanceof LiteralNode.TupleLiteralNode) {
+            return tagExpression(enterLiteralTupleNode((LiteralNode.TupleLiteralNode) literalNode), literalNode);
         } else {
             return tagExpression(enterLiteralDefaultNode(literalNode), literalNode);
         }
@@ -1457,6 +1459,18 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             elements[i] = elementExpression != null ? transform(elementExpression) : factory.createEmpty();
         }
         return hasSpread ? factory.createArrayLiteralWithSpread(context, elements) : factory.createArrayLiteral(context, elements);
+    }
+
+    private JavaScriptNode enterLiteralTupleNode(LiteralNode.TupleLiteralNode tupleLiteralNode) {
+        List<Expression> elementExpressions = tupleLiteralNode.getElementExpressions();
+        JavaScriptNode[] elements = javaScriptNodeArray(elementExpressions.size());
+        boolean hasSpread = false;
+        for (int i = 0; i < elementExpressions.size(); i++) {
+            Expression elementExpression = elementExpressions.get(i);
+            hasSpread = hasSpread || elementExpression.isTokenType(TokenType.SPREAD_TUPLE);
+            elements[i] = transform(elementExpression);
+        }
+        return hasSpread ? factory.createTupleLiteralWithSpread(context, elements) : factory.createTupleLiteral(context, elements);
     }
 
     @Override
@@ -1964,6 +1978,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return enterDelete(unaryNode);
             case SPREAD_ARGUMENT:
                 return tagExpression(factory.createSpreadArgument(context, transform(unaryNode.getExpression())), unaryNode);
+            case SPREAD_TUPLE:
+                return tagExpression(factory.createSpreadTuple(context, transform(unaryNode.getExpression())), unaryNode);
             case SPREAD_ARRAY:
                 return tagExpression(factory.createSpreadArray(context, transform(unaryNode.getExpression())), unaryNode);
             case YIELD:
