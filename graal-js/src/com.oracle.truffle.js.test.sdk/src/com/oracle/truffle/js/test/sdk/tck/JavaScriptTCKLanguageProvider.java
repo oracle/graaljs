@@ -552,11 +552,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
                         final boolean jsObject = context.eval(ID, "Object").isMetaInstance(param);
-                        boolean hasIterator = false;
-                        try {
-                            hasIterator = !context.eval(ID, "(function(a) {return a[Symbol.iterator];})").execute(param).isNull();
-                        } catch (Exception e) {
-                        }
+                        boolean hasIterator = param.hasIterator();
                         if (jsObject && !hasIterator) {
                             // Expected for not iterable
                             return;
