@@ -31,10 +31,12 @@ public class DecorateClassNode extends JavaScriptBaseNode {
     public ClassElementList executeElementDecoration(ElementDescriptor[] elements) {
         ClassElementList list = ClassElementList.create();
         for (ElementDescriptor element: elements) {
-            if(element.hasDecorators()) {
-                decorateElementNode.decorateElement(element, list);
-            } else {
-                list.enqueue(element);
+            if(element != null) {
+                if (element.hasDecorators()) {
+                    decorateElementNode.decorateElement(element, list);
+                } else {
+                    list.enqueue(element);
+                }
             }
         }
         return list;

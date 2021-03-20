@@ -36,7 +36,6 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
         return evaluateClassElementsNode.copyUninitialized(materializedTags);
     }
 
-    @ExplodeLoop
     public ElementDescriptor[] execute(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
         ElementDescriptor[] elements = new ElementDescriptor[classElementNodes.length];
         int elementsIndex = 0;

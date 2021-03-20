@@ -148,7 +148,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             if(isPrivate) {
                 attributes = JSAttributes.fromConfigurableEnumerableWritable(false, false, false);
             } else {
-                attributes = JSAttributes.fromConfigurableEnumerableWritable(true, true, true);
+                attributes = JSAttributes.fromConfigurableEnumerableWritable(true, false, true);
             }
             if(isStatic) {
                 placement = JSPlacement.getStatic();
@@ -191,7 +191,7 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             if(isPrivate) {
                 attributes = JSAttributes.fromConfigurableEnumerable(false, false);
             } else {
-                attributes = JSAttributes.fromConfigurableEnumerable(true, true);
+                attributes = JSAttributes.fromConfigurableEnumerable(true, false);
             }
             if(isStatic) {
                 placement = JSPlacement.getStatic();
