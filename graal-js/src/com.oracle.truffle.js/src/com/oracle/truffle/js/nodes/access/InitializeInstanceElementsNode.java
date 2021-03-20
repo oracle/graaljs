@@ -145,7 +145,9 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     protected static Object withOwnFields(Object target, Object constructor, Object fields, Object brand, ClassElementList elements,
                    @Cached("createBrandAddNode(brand, context)") @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
                    @Cached("createOwnFieldNodes(elements, context)") DefineFieldNode[] fieldNodes, @Cached("createStartHookNodes(elements)") ExecuteStartHookNode[] startHookNodes) {
-        privateBrandAdd(target, constructor, fields, brand, elements, privateBrandAddNode);
+        if(elements.setInstanceBand()) {
+            privateBrandAdd(target, constructor, fields, brand, elements, privateBrandAddNode);
+        }
 
         int fieldIndex = 0;
         int startHookIndex = 0;

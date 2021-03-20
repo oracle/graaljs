@@ -297,10 +297,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         }
 
         //Only elements with kind "own" get pushed to the initialization.
-        if(Boundaries.listSize(classElements.getOwnElements()) != 0) {
-            classElements.removeStaticAndPrototypeElements();
-            setElementsNode.setValue(constructor, classElements);
-        }
+        classElements.removeStaticAndPrototypeElements();
+        setElementsNode.setValue(constructor, classElements);
         return constructor;
     }
 
