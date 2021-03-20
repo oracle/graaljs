@@ -117,8 +117,8 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
         this.constructor = constructor;
         this.classElements = classElements;
         this.scope = classNode.scope;
-        this.instanceFieldCount = fieldCount(classElements, false);
-        this.staticFieldCount = fieldCount(classElements, true);
+        this.instanceFieldCount = classElements != null ? fieldCount(classElements, false) : 1;
+        this.staticFieldCount = classElements != null ? fieldCount(classElements, true) : 0;
         this.hasPrivateMethods = classNode.hasPrivateMethods;
         this.hasPrivateInstanceMethods = classNode.hasPrivateInstanceMethods;
         this.decoratorConstructor = decoratorConstructor;
@@ -236,9 +236,9 @@ public class ClassNode extends LexicalContextExpression implements LexicalContex
             Expression newClassHeritage = classHeritage == null ? null : (Expression) classHeritage.accept(visitor);
             PropertyNode newConstructor = constructor == null ? null : (PropertyNode) constructor.accept(visitor);
             ClassElement newDecoratorConstructor = decoratorConstructor == null ? null : (ClassElement) decoratorConstructor.accept(visitor);
-            List<PropertyNode> newClassElements = Node.accept(visitor, classElements);
-            List<ClassElement> newDecoratorClassElements = Node.accept(visitor, decoratorClassElements);
-            List<Expression> newDecorators = Node.accept(visitor, decorators);
+            List<PropertyNode> newClassElements = classElements == null ? null : Node.accept(visitor, classElements);
+            List<ClassElement> newDecoratorClassElements = decoratorClassElements == null ? null : Node.accept(visitor, decoratorClassElements);
+            List<Expression> newDecorators = decorators == null ? null : Node.accept(visitor, decorators);
             return visitor.leaveClassNode(setIdent(newIdent)
                     .setClassHeritage(newClassHeritage)
                     .setConstructor(newConstructor)

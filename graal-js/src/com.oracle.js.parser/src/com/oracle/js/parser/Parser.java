@@ -4289,8 +4289,13 @@ public class Parser extends AbstractParser {
             return ((FunctionNode) expression).setName(null, functionName);
         } else if (expression instanceof ClassNode && ((ClassNode) expression).isAnonymous()) {
             ClassNode classNode = (ClassNode) expression;
-            FunctionNode constructorFunction = (FunctionNode) classNode.getConstructor().getValue();
-            return classNode.setConstructor(classNode.getConstructor().setValue(constructorFunction.setName(null, functionName)));
+            if(isES2022()) {
+                FunctionNode constructorFunction = (FunctionNode) classNode.getDecoratorConstructor().getValue();
+                return classNode.setDecoratorConstructor(classNode.getDecoratorConstructor().setValue(constructorFunction.setName(null, functionName)));
+            } else {
+                FunctionNode constructorFunction = (FunctionNode) classNode.getConstructor().getValue();
+                return classNode.setConstructor(classNode.getConstructor().setValue(constructorFunction.setName(null, functionName)));
+            }
         }
         return expression;
     }
