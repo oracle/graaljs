@@ -528,6 +528,11 @@ public final class TemporalUtil {
         return rounded * increment;
     }
 
+    // 13.43
+    public static String parseTemporalCalendarString(String isoString) {
+        return "iso8601";   // TODO: parseTemporalCalendarString
+    }
+
     // 13.51
     public static long toPositiveIntegerOrInfinity(Object argument) {
         double integer = JSToDoubleNode.create().executeDouble(argument);
