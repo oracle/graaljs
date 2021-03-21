@@ -1671,17 +1671,51 @@ public class Parser extends AbstractParser {
                 } else {
                     classElement = methodDefinition(classElementName, classElementDecorators, isStatic, classHeritage != null, generator, async, classElementToken, classElementLine, yield, await, nameTokenType, hasComputedKey, isPrivate);
 
-                    if(!classElement.hasComputedKey() && classElement.isAccessor()) {
-                        if(classElement.isPrivate()) {
+                    if(!isES2022()) {
+                        if (!classElement.hasComputedKey() && classElement.isAccessor()) {
+                            if (classElement.isPrivate()) {
+                                // merge private accessor methods
+                                String privateName = classElement.getPrivateName();
+                                Integer existing = privateNameToAccessorIndexMap.get(privateName);
+                                if (existing == null) {
+                                    privateNameToAccessorIndexMap.put(privateName, classElements.size());
+                                } else {
+                                    PropertyNode otherAccessor = classElements.get(existing);
+                                    if (isStatic == otherAccessor.isStatic()) {
+                                        if (otherAccessor.getGetter() == null && classElement.getGetter() != null) {
+                                            classElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
+                                            continue;
+                                        } else if (otherAccessor.getSetter() == null && classElement.getSetter() != null) {
+                                            classElements.set(existing, otherAccessor.setSetter(classElement.getSetter()));
+                                            continue;
+                                        }
+                                    }
+                                    // else: more than one getter or setter with the same private name
+                                    // fall through: a syntax error will be thrown below
+                                }
+                            } else if (!decoratorClassElements.isEmpty()) {
+                                // Coalescing elements is done at runtime in the decorator proposal
+                                // try to merge consecutive getter and setter pairs
+                                ClassElement lastElement = decoratorClassElements.get(decoratorClassElements.size() - 1);
+                                if (!lastElement.hasComputedKey() && lastElement.isAccessor() && isStatic == lastElement.isStatic() &&
+                                        !lastElement.isPrivate() && classElement.getKeyName().equals(lastElement.getKeyName())) {
+                                    ClassElement merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
+                                    decoratorClassElements.set(decoratorClassElements.size() - 1, merged);
+                                    continue;
+                                }
+                            }
+                        }
+                    } else if (!classElement.hasComputedKey() && classElement.isAccessor()) {
+                        if (classElement.isPrivate()) {
                             // merge private accessor methods
                             String privateName = classElement.getPrivateName();
                             Integer existing = privateNameToAccessorIndexMap.get(privateName);
-                            if(existing == null) {
+                            if (existing == null) {
                                 privateNameToAccessorIndexMap.put(privateName, decoratorClassElements.size());
                             } else {
                                 ClassElement otherAccessor = decoratorClassElements.get(existing);
-                                if(isStatic == otherAccessor.isStatic()) {
-                                    if(otherAccessor.getGetter() == null && classElement.getGetter() != null) {
+                                if (isStatic == otherAccessor.isStatic()) {
+                                    if (otherAccessor.getGetter() == null && classElement.getGetter() != null) {
                                         decoratorClassElements.set(existing, otherAccessor.setGetter(classElement.getGetter()));
                                         continue;
                                     } else if (otherAccessor.getSetter() == null && classElement.getSetter() != null) {
@@ -1691,16 +1725,6 @@ public class Parser extends AbstractParser {
                                 }
                                 // else: more than one getter or setter with the same private name
                                 // fall through: a syntax error will be thrown below
-                            }
-                        } else if (!isES2022() && !decoratorClassElements.isEmpty()) {
-                            // Coalescing elements is done at runtime in the decorator proposal
-                            // try to merge consecutive getter and setter pairs
-                            ClassElement lastElement = decoratorClassElements.get(decoratorClassElements.size() - 1);
-                            if(!lastElement.hasComputedKey() && lastElement.isAccessor() && isStatic == lastElement.isStatic() &&
-                                    !lastElement.isPrivate() && classElement.getKeyName().equals(lastElement.getKeyName())) {
-                                ClassElement merged = classElement.getGetter() != null ? lastElement.setGetter(classElement.getGetter()) : lastElement.setSetter(classElement.getSetter());
-                                decoratorClassElements.set(decoratorClassElements.size() - 1, merged);
-                                continue;
                             }
                         }
                     }

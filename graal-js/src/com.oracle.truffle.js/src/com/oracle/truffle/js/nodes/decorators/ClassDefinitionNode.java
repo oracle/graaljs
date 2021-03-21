@@ -282,6 +282,10 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         //CoalesceClassElements
         ElementDescriptor[] elements = evaluateClassElementsNode.execute(frame, proto, constructor);
 
+        if(writeClassBindingNode != null) {
+            writeClassBindingNode.executeWrite(frame, constructor);
+        }
+
         //DecorateClass
         ClassElementList classElements = decorateClassNode.executeElementDecoration(elements);
         classElements = decorateClassNode.executeClassDecoration(frame, classElements);
@@ -291,10 +295,6 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
         //InitializeClassElements
         constructor = initializeClassElementsNode.execute(proto, constructor, classElements);
-
-        if(writeClassBindingNode != null) {
-            writeClassBindingNode.executeWrite(frame, constructor);
-        }
 
         //Only elements with kind "own" get pushed to the initialization.
         classElements.removeStaticAndPrototypeElements();
