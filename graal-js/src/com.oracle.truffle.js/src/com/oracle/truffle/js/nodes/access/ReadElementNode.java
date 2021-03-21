@@ -110,6 +110,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -1649,7 +1650,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
             assert JSRuntime.isPropertyKey(key);
-            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol) {
+            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));
