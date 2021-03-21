@@ -189,6 +189,29 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         return days + day;
     }
 
+    // 12.1.37
+    public static long toISOWeekOfYear(long year, long month, long day) {
+        long doy = toISODayOfYear(year, month, day);
+        long dow = toISODayOfWeek(year, month, day);
+        long doj = toISODayOfWeek(year, 1, 1);
+
+        long week = Math.floorDiv(doy - dow + 10, 7);
+        if (week < 1) {
+            if (doj == 5 || (doj == 6 && isISOLeapYear(year - 1))) {
+                return 53;
+            } else {
+                return 52;
+            }
+        }
+        if (week == 53) {
+            if (isoDaysInYear(year) - doy < 4 - dow) {
+                return 1;
+            }
+        }
+
+        return week;
+    }
+
     // 12.1.38
     public static Object resolveISOMonth(DynamicObject fields, DynamicObjectLibrary dol,
                                          JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {

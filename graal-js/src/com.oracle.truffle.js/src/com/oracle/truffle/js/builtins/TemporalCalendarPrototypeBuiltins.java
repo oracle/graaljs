@@ -21,6 +21,7 @@ import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.J
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthsInYearNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarWeekOfYearNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -64,6 +65,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         day(1),
         dayOfWeek(1),
         dayOfYear(1),
+        weekOfYear(1),
         daysInWeek(1),
         daysInMonth(1),
         daysInYear(1),
@@ -112,6 +114,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalCalendarDayOfYearNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case daysInWeek:
                 return JSTemporalCalendarDaysInWeekNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case weekOfYear:
+                return JSTemporalCalendarWeekOfYearNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case daysInMonth:
                 return JSTemporalCalendarDaysInMonthNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case daysInYear:
@@ -460,6 +464,30 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                     dateOrDateTime, null, null, getContext().getRealm(), isObject, dol, toBoolean,
                     toString, isConstructor, callNode);
             return JSTemporalCalendar.toISODayOfYear(date.getYear(), date.getMonth(), date.getDay());
+        }
+    }
+
+    // 12.4.15
+    public abstract static class JSTemporalCalendarWeekOfYear extends JSBuiltinNode {
+
+        protected JSTemporalCalendarWeekOfYear(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "3")
+        public long weekOfYear(DynamicObject thisObj, DynamicObject dateOrDateTime,
+                              @Cached("create()") IsObjectNode isObject,
+                              @Cached("create()") IsConstructorNode isConstructor,
+                              @Cached("create()") JSToBooleanNode toBoolean,
+                              @Cached("create()") JSToStringNode toString,
+                              @Cached("createNew()") JSFunctionCallNode callNode,
+                              @CachedLibrary("thisObj") DynamicObjectLibrary dol) {
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) thisObj;
+            assert calendar.getId().equals("iso8601");
+            JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
+                    dateOrDateTime, null, null, getContext().getRealm(), isObject, dol, toBoolean,
+                    toString, isConstructor, callNode);
+            return JSTemporalCalendar.toISOWeekOfYear(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
