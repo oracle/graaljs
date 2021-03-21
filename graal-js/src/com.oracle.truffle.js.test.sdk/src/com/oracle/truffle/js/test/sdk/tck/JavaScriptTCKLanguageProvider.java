@@ -273,12 +273,10 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // for of
         res.add(createStatement(context, "for-of", "for (let v of {1});",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.foreignOrHasIteratorVerifier(context, null),
-                        TypeDescriptor.union(
-                                        TypeDescriptor.STRING,
-                                        TypeDescriptor.ARRAY,
-                                        TypeDescriptor.ITERABLE,
-                                        TypeDescriptor.HASH)));
+                        JavaScriptVerifier.hasIteratorVerifier(null),
+                        TypeDescriptor.ANY));
+        // Using ANY because of GR-30278. Should be: union(STRING, ARRAY, ITERABLE, HASH).
+
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
@@ -538,22 +536,21 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         }
 
         /**
-         * Creates a {@link ResultVerifier} ignoring errors caused by missing iterator method. Use
-         * this verifier in case the operator accepts arbitrary foreign Objects for iteration but
-         * requires iterator for JSObject.
+         * Creates a {@link ResultVerifier} ignoring errors caused by non-iterable objects. Use this
+         * verifier in case the operator formally accepts arbitrary types but requires objects to
+         * provide an {@link Value#hasIterator() iterator}.
          *
          * @param next the next {@link ResultVerifier} to be called, null for last one
+         *
          * @return the {@link ResultVerifier}
          */
-        static ResultVerifier foreignOrHasIteratorVerifier(final Context context, ResultVerifier next) {
+        static ResultVerifier hasIteratorVerifier(ResultVerifier next) {
             return new JavaScriptVerifier(next) {
                 @Override
                 public void accept(SnippetRun snippetRun) throws PolyglotException {
                     if (snippetRun.getException() != null) {
                         final Value param = snippetRun.getParameters().get(0);
-                        final boolean jsObject = context.eval(ID, "Object").isMetaInstance(param);
-                        boolean hasIterator = param.hasIterator();
-                        if (jsObject && !hasIterator) {
+                        if (!param.hasIterator() && !param.hasArrayElements() && !param.hasHashEntries() && !param.isString()) {
                             // Expected for not iterable
                             return;
                         }
