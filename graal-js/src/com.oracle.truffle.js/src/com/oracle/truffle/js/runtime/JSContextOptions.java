@@ -372,6 +372,11 @@ public final class JSContextOptions {
     @Option(name = EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE_NAME, category = OptionCategory.EXPERT, deprecated = true, help = "Non-JS objects have prototype (Object/Function/Array.prototype) set; deprecated old name.") //
     protected static final OptionKey<Boolean> EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE = new OptionKey<>(false);
 
+    public static final String FOREIGN_HASH_PROPERTIES_NAME = JS_OPTION_PREFIX + "foreign-hash-properties";
+    @Option(name = FOREIGN_HASH_PROPERTIES_NAME, category = OptionCategory.EXPERT, help = "Allow getting/setting non-JS hash entries using the `[]` and `.` operators.") //
+    public static final OptionKey<Boolean> FOREIGN_HASH_PROPERTIES = new OptionKey<>(true);
+    @CompilationFinal private boolean hasForeignHashProperties;
+
     // limit originally from TestV8 regress-1122.js, regress-605470.js
     public static final String FUNCTION_ARGUMENTS_LIMIT_NAME = JS_OPTION_PREFIX + "function-arguments-limit";
     @Option(name = FUNCTION_ARGUMENTS_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum number of arguments for functions.") //
@@ -552,6 +557,7 @@ public final class JSContextOptions {
         this.regexAlwaysEager = readBooleanOption(REGEX_ALWAYS_EAGER);
         this.scriptEngineGlobalScopeImport = readBooleanOption(SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT);
         this.hasForeignObjectPrototype = readBooleanOption(FOREIGN_OBJECT_PROTOTYPE) || readBooleanOption(EXPERIMENTAL_FOREIGN_OBJECT_PROTOTYPE);
+        this.hasForeignHashProperties = readBooleanOption(FOREIGN_HASH_PROPERTIES);
         this.functionArgumentsLimit = readLongOption(FUNCTION_ARGUMENTS_LIMIT);
         this.test262Mode = readBooleanOption(TEST262_MODE);
         this.testV8Mode = readBooleanOption(TESTV8_MODE);
@@ -744,6 +750,10 @@ public final class JSContextOptions {
 
     public boolean hasForeignObjectPrototype() {
         return hasForeignObjectPrototype;
+    }
+
+    public boolean hasForeignHashProperties() {
+        return hasForeignHashProperties;
     }
 
     public boolean isGlobalProperty() {
@@ -953,6 +963,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
         hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
         hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
+        hash = 53 * hash + (this.hasForeignHashProperties ? 1 : 0);
         hash = 53 * hash + (int) this.functionArgumentsLimit;
         hash = 53 * hash + (this.test262Mode ? 1 : 0);
         hash = 53 * hash + (this.testV8Mode ? 1 : 0);
@@ -1057,6 +1068,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.hasForeignObjectPrototype != other.hasForeignObjectPrototype) {
+            return false;
+        }
+        if (this.hasForeignHashProperties != other.hasForeignHashProperties) {
             return false;
         }
         if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
