@@ -211,10 +211,18 @@ public abstract class ClassElementNode extends JavaScriptBaseNode {
             Object getter = null;
             Object setter = null;
             if(getterNode != null) {
-                getter = getterNode.execute(frame);
+                if (getterNode instanceof ObjectLiteralNode.MakeMethodNode) {
+                    getter = ((ObjectLiteralNode.MakeMethodNode) getterNode).executeWithObject(frame, homeObject);
+                } else {
+                    getter = getterNode.execute(frame);
+                }
             }
             if(setterNode != null) {
-                setter = setterNode.execute(frame);
+                if (setterNode instanceof ObjectLiteralNode.MakeMethodNode) {
+                    setter = ((ObjectLiteralNode.MakeMethodNode) setterNode).executeWithObject(frame, homeObject);
+                } else {
+                    setter = setterNode.execute(frame);
+                }
             }
 
             PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getter, (DynamicObject) setter, attributes);
