@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -149,7 +149,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         if (interop.isNull(obj)) {
             stringBuilderProfile.append(builder, Null.NAME);
-        } else if (interop.isBoolean(obj) || interop.isString(obj) || interop.isNumber(obj)) {
+        } else if (JSInteropUtil.isBoxedPrimitive(obj, interop)) {
             Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, Null.instance, interop, this);
             assert !JSGuards.isForeignObject(unboxed);
             jsonStrExecute(builder, data, unboxed);
@@ -204,7 +204,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             tryToJSON = true;
         } else if (JSRuntime.isForeignObject(value)) {
             InteropLibrary interop = InteropLibrary.getUncached(value);
-            tryToJSON = interop.hasMembers(value) && !interop.isNull(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value);
+            tryToJSON = interop.hasMembers(value) && !interop.isNull(value) && !JSInteropUtil.isBoxedPrimitive(value, interop);
         }
         if (tryToJSON) {
             value = jsonStrPrepareObject(key, value);
