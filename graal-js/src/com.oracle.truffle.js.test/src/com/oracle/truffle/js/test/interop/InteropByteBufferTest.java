@@ -293,4 +293,38 @@ public class InteropByteBufferTest {
         }
     }
 
+    @Test
+    public void testAtomics() {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5});
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
+            context.getBindings("js").putMember("buffer", buffer);
+            context.eval(ID, "const buff = new Int8Array(buffer);");
+            Value loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(3, loaded.asInt());
+            Value stored = context.eval(ID, "Atomics.store(buff, 2, 42);");
+            assertEquals(42, stored.asInt());
+            Value added = context.eval(ID, "Atomics.add(buff, 2, 2);");
+            assertEquals(42, added.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(44, loaded.asInt());
+            Value subbed = context.eval(ID, "Atomics.sub(buff, 2, 2);");
+            assertEquals(44, subbed.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(42, loaded.asInt());
+            Value compexed = context.eval(ID, "Atomics.compareExchange(buff, 2, 42, 24);");
+            assertEquals(42, compexed.asInt());
+            Value exed = context.eval(ID, "Atomics.exchange(buff, 2, 42);");
+            assertEquals(24, exed.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(42, loaded.asInt());
+            Value ored = context.eval(ID, "Atomics.or(buff, 4, 2);");
+            assertEquals(5, ored.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 4);");
+            assertEquals(7, loaded.asInt());
+            Value xored = context.eval(ID, "Atomics.xor(buff, 4, 2);");
+            assertEquals(7, xored.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 4);");
+            assertEquals(5, loaded.asInt());
+        }
+    }
 }

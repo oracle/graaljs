@@ -701,10 +701,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/harmony/futex.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
     "filePath" : "mjsunit/harmony/generators.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
