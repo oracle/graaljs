@@ -1066,7 +1066,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 Object firstElement = read(thisObj, 0);
                 if (lengthLargerOne.profile(len > 1)) {
                     ScriptArray array = arrayTypeProfile.profile(arrayGetArrayType(thisObj));
-                    arraySetArrayType(thisObj, array.removeRange(thisObj, 0, 1, errorBranch));
+                    arraySetArrayType(thisObj, array.shiftRange(thisObj, 1, errorBranch));
                 }
                 setLength(thisObj, len - 1);
                 return firstElement;

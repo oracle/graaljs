@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,7 +73,8 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
 
     public abstract Object[] executeObjectArray(DynamicObject array, ScriptArray arrayType, long length);
 
-    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()", "!cachedArrayType.hasHoles(array)"}, limit = "5")
+    @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()", "!cachedArrayType.hasHoles(array)",
+                    "cachedArrayType.firstElementIndex(array)==0"}, limit = "5")
     protected Object[] fromDenseArray(DynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Cached("create(context)") ReadElementNode readNode) {
@@ -108,7 +109,7 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
                     @Cached("create(context)") JSArrayNextElementIndexNode nextElementIndexNode,
                     @Cached("create(context)") ReadElementNode readNode,
                     @Cached BranchProfile growProfile) {
-        if (arrayType.isHolesType() || arrayType.hasHoles(array)) {
+        if (arrayType.isHolesType() || arrayType.hasHoles(array) || arrayType.firstElementIndex(array) != 0) {
             return fromSparseArray(array, arrayType, length, arrayType, nextElementIndexNode, growProfile);
         } else {
             return fromDenseArray(array, arrayType, length, arrayType, readNode);
