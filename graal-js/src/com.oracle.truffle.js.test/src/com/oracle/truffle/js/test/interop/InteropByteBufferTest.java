@@ -278,4 +278,19 @@ public class InteropByteBufferTest {
             assertThrows(() -> jsBuffer.setArrayElement(0, 42), e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
         }
     }
+
+    @Test
+    public void testDetachedInteropArrayBuffer() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).allowExperimentalOptions(true).option("js.debug-builtin", "true").option("js.v8-compat", "true").build()) {
+            ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
+            context.getBindings("js").putMember("buffer", buffer);
+            Value byteLength = context.eval(ID, "" +
+                            "var arrayBuffer = new ArrayBuffer(buffer);\n" +
+                            "Debug.typedArrayDetachBuffer(arrayBuffer);\n" +
+                            "arrayBuffer.byteLength;");
+            assertEquals(0, byteLength.asInt());
+        }
+    }
+
 }
