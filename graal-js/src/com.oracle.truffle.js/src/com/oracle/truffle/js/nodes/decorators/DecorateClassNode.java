@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -45,6 +46,7 @@ public class DecorateClassNode extends JavaScriptBaseNode {
     //DecorateClass
     @ExplodeLoop
     public ClassElementList executeClassDecoration(VirtualFrame frame, ClassElementList elements) {
+        CompilerAsserts.partialEvaluationConstant(classDecorators);
         if(classDecorators.length > 0) {
             Object[] d = new Object[classDecorators.length];
             for(int i = 0; i < classDecorators.length; i++) {

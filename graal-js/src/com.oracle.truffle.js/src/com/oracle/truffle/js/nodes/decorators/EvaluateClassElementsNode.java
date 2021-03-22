@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.decorators;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -36,11 +37,13 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
         return evaluateClassElementsNode.copyUninitialized(materializedTags);
     }
 
+    @ExplodeLoop
     public ElementDescriptor[] execute(VirtualFrame frame, DynamicObject proto, DynamicObject constructor) {
+        CompilerAsserts.partialEvaluationConstant(classElementNodes);
         ElementDescriptor[] elements = new ElementDescriptor[classElementNodes.length];
-        int elementsIndex = 0;
         Map<Object, ElementDescriptor> elementMap = Boundaries.hashMapCreate();
-        for(ClassElementNode classElement: classElementNodes) {
+        for(int i = 0; i < classElementNodes.length; i++) {
+            ClassElementNode classElement = classElementNodes[i];
             DynamicObject homeObject = classElement.isStatic() ? constructor: proto;
             ElementDescriptor element = classElement.execute(frame, homeObject, context);
             //CoalesceClassElements
@@ -80,7 +83,7 @@ public class EvaluateClassElementsNode extends JavaScriptBaseNode {
                     }
                 }
             }
-            elements[elementsIndex++] = element;
+            elements[i] = element;
         }
         return  elements;
     }
