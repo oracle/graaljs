@@ -143,6 +143,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                                         "    apply: function(target, thisArg, argumentsList) {}\n" +
                                         "});",
                         TypeDescriptor.intersection(
+                                        TypeDescriptor.ITERABLE,
                                         TypeDescriptor.EXECUTABLE,
                                         TypeDescriptor.OBJECT)));
         return Collections.unmodifiableList(vals);
