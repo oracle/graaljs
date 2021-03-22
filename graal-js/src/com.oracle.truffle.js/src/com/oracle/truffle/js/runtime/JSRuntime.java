@@ -347,7 +347,7 @@ public final class JSRuntime {
             } else {
                 return JSRuntime.toJSNull(javaObject.toString());
             }
-        } else if (interop.isBoolean(tObj) || interop.isString(tObj) || interop.isNumber(tObj)) {
+        } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
         } else {
             return foreignOrdinaryToPrimitive(tObj, hint);
@@ -424,7 +424,7 @@ public final class JSRuntime {
             InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
             if (interop.isNull(value)) {
                 return false;
-            } else if (interop.isBoolean(value) || interop.isString(value) || interop.isNumber(value)) {
+            } else if (JSInteropUtil.isBoxedPrimitive(value, interop)) {
                 return toBoolean(JSInteropUtil.toPrimitiveOrDefault(value, Null.instance, interop, null));
             } else {
                 return true;

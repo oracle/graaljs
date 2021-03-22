@@ -51,6 +51,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -102,6 +103,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpGroupsObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -915,7 +917,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     public static final class ForeignPropertyGetNode extends LinkedPropertyGetNode {
 
         @Child private ImportValueNode importValueNode;
-        @Child private JSToObjectNode toObjectNode;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private PropertyGetNode getFromJSObjectNode;
         private final boolean isLength;
@@ -932,7 +933,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.importValueNode = ImportValueNode.create();
-            this.toObjectNode = JSToObjectNode.createToObject(context);
             this.isLength = key.equals(JSAbstractArray.LENGTH);
             this.isMethod = isMethod;
             this.isGlobal = isGlobal;
@@ -945,12 +945,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(context, key, thisObj, isMethod, this);
             }
-            Object object = toObjectNode.execute(thisObj);
-            if (thisObj != object) {
-                // thisObj is foreign boxed primitive => object is JS object
-                assert JSObject.isJSObject(object);
-                return getFromJSObject(object, key);
-            }
             Object foreignResult = getImpl(thisObj, key, root);
             return importValueNode.executeWithTarget(foreignResult);
         }
@@ -960,6 +954,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return maybeGetFromPrototype(thisObj, key);
             }
             String stringKey = (String) key;
+
+            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(thisObj)) {
+                try {
+                    return interop.readHashValue(thisObj, key);
+                } catch (UnknownKeyException e) {
+                    // fall through: still need to try members
+                } catch (UnsupportedMessageException e) {
+                    return Undefined.instance;
+                }
+            }
+
             if (context.isOptionNashornCompatibilityMode()) {
                 Object result = tryGetters(thisObj, root);
                 if (result != null) {
@@ -988,7 +993,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object maybeGetFromPrototype(Object thisObj, Object key) {
-            if (context.getContextOptions().hasForeignObjectPrototype()) {
+            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(thisObj, interop)) {
                 if (foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
