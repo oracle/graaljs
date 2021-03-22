@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,28 +40,119 @@
  */
 package com.oracle.truffle.js.nodes.array;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsArrayNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthReadNode;
+import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
+import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
-public final class JSGetLengthNode extends JavaScriptBaseNode {
-    @Child private GetLengthHelperNode getLengthHelperNode;
-    @Child private IsArrayNode isArrayNode;
+public abstract class JSGetLengthNode extends JavaScriptBaseNode {
 
-    private JSGetLengthNode(JSContext context) {
-        this.getLengthHelperNode = GetLengthHelperNode.create(context);
-        this.isArrayNode = IsArrayNode.createIsArray();
+    private final JSContext context;
+    /** Apply ES6 ToLength. */
+    private final boolean toLength;
+    @Child private JSToUInt32Node toUInt32Node;
+    @Child private JSToLengthNode toLengthNode;
+
+    protected JSGetLengthNode(JSContext context) {
+        this.context = context;
+        this.toLength = context.getEcmaScriptVersion() >= 6;
     }
 
     public static JSGetLengthNode create(JSContext context) {
-        return new JSGetLengthNode(context);
+        return JSGetLengthNodeGen.create(context);
     }
 
-    public Object execute(Object value) {
-        return getLengthHelperNode.execute(value, isArrayNode.execute(value));
+    public abstract Object execute(Object value);
+
+    public final long executeLong(Object value) {
+        return toLengthLong(execute(value));
     }
 
-    public long executeLong(Object value) {
-        return getLengthHelperNode.executeLong(value, isArrayNode.execute(value));
+    @Specialization(rewriteOn = UnexpectedResultException.class)
+    public int getArrayLengthInt(JSArrayObject target,
+                    @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
+        return arrayLengthReadNode.executeInt(target);
+    }
+
+    @Specialization(replaces = "getArrayLengthInt")
+    public double getArrayLength(JSArrayObject target,
+                    @Cached("create()") ArrayLengthReadNode arrayLengthReadNode) {
+        return arrayLengthReadNode.executeDouble(target);
+    }
+
+    @Specialization(guards = "!isJSArray(target)")
+    public double getNonArrayLength(JSDynamicObject target,
+                    @Cached("createLengthProperty()") PropertyGetNode getLengthPropertyNode) {
+        return toLengthDouble(getLengthPropertyNode.getValue(target));
+    }
+
+    @Specialization(guards = "!isJSDynamicObject(target)", limit = "3")
+    public double getLengthForeign(Object target,
+                    @CachedLibrary("target") InteropLibrary interop,
+                    @Cached("create()") ImportValueNode importValueNode) {
+        if (interop.hasArrayElements(target)) {
+            return JSInteropUtil.getArraySize(target, interop, this);
+        } else {
+            return toLengthDouble(JSInteropUtil.readMemberOrDefault(target, JSAbstractArray.LENGTH, 0, interop, importValueNode, this));
+        }
+    }
+
+    protected PropertyGetNode createLengthProperty() {
+        return PropertyGetNode.create(JSArray.LENGTH, context);
+    }
+
+    private double toUInt32Double(Object target) {
+        return JSRuntime.doubleValue((Number) getUInt32Node().execute(target));
+    }
+
+    private long toUInt32Long(Object target) {
+        return JSRuntime.longValue((Number) getUInt32Node().execute(target));
+    }
+
+    private double toLengthDouble(Object target) {
+        if (toLength) {
+            return getToLengthNode().executeLong(target);
+        } else {
+            return toUInt32Double(target);
+        }
+    }
+
+    private long toLengthLong(Object target) {
+        if (toLength) {
+            return getToLengthNode().executeLong(target);
+        } else {
+            return toUInt32Long(target);
+        }
+    }
+
+    private JSToLengthNode getToLengthNode() {
+        if (toLengthNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toLengthNode = insert(JSToLengthNode.create());
+        }
+        return toLengthNode;
+    }
+
+    private JSToUInt32Node getUInt32Node() {
+        if (toUInt32Node == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toUInt32Node = insert(JSToUInt32Node.create());
+        }
+        return toUInt32Node;
     }
 }
