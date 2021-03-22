@@ -40,18 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.IsArrayNodeGen.IsArrayWrappedNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
-import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -170,33 +164,5 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
 
     public static IsArrayNode createIsFastOrTypedArray() {
         return IsArrayNodeGen.create(Kind.FastOrTypedArray);
-    }
-
-    /**
-     * Wrapper of @link{IsArrayNode} when you really need a JavaScriptNode. IsArrayNode is a
-     * JavaScriptBaseNode for footprint reasons.
-     */
-    public abstract static class IsArrayWrappedNode extends JSUnaryNode {
-
-        @Child private IsArrayNode isArrayNode;
-
-        protected IsArrayWrappedNode(JavaScriptNode operandNode, IsArrayNode isArrayNode) {
-            super(operandNode);
-            this.isArrayNode = isArrayNode;
-        }
-
-        @Specialization
-        protected boolean doObject(Object operand) {
-            return isArrayNode.execute(operand);
-        }
-
-        public static JavaScriptNode createIsArray(JavaScriptNode operand) {
-            return IsArrayWrappedNodeGen.create(operand, IsArrayNode.createIsArray());
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return createIsArray(cloneUninitialized(getOperand(), materializedTags));
-        }
     }
 }
