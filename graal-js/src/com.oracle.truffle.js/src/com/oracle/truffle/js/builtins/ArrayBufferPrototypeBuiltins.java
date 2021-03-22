@@ -140,6 +140,9 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected int interopArrayBuffer(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object buffer = JSArrayBuffer.getInteropBuffer(thisObj);
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && buffer == null) {
+                return handleDetachedBuffer();
+            }
             try {
                 long bufferSize = interop.getBufferSize(buffer);
                 // Buffer size was already checked in the ArrayBuffer constructor.
