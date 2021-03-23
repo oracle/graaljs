@@ -429,6 +429,10 @@ public class WriteElementNode extends JSTargetableNode {
         executeWithTargetAndIndexAndValue(target, index, value, target);
     }
 
+    public final void executeWithTargetAndIndexAndValue(Object target, long index, Object value) {
+        executeWithTargetAndIndexAndValue(target, index, value, target);
+    }
+
     @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
         for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
@@ -445,6 +449,20 @@ public class WriteElementNode extends JSTargetableNode {
 
     @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
+        for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
+            boolean guard = c.guard(target);
+            if (guard) {
+                c.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+                return;
+            }
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        WriteElementTypeCacheNode specialization = specialize(target);
+        specialization.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+    }
+
+    @ExplodeLoop
+    public final void executeWithTargetAndIndexAndValue(Object target, long index, Object value, Object receiver) {
         for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
             if (guard) {
@@ -515,6 +533,8 @@ public class WriteElementNode extends JSTargetableNode {
 
         protected abstract void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root);
 
+        protected abstract void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root);
+
         public abstract boolean guard(Object target);
     }
 
@@ -568,7 +588,25 @@ public class WriteElementNode extends JSTargetableNode {
             if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
 
-                if (intOrStringIndexProfile.profile(index >= 0)) {
+                if (intOrStringIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
+                    if (!executeSetArray(targetObject, array, index, value, root)) {
+                        setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
+                    }
+                } else {
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Boundaries.stringValueOf(index), value, receiver, root);
+                }
+            } else {
+                setPropertyGeneric(targetObject, index, value, receiver, root);
+            }
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+            JSDynamicObject targetObject = ((JSDynamicObject) target);
+            if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
+                ScriptArray array = JSObject.getArray(targetObject);
+
+                if (intOrStringIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
                     if (!executeSetArray(targetObject, array, index, value, root)) {
                         setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
                     }
@@ -690,6 +728,10 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
         }
 
         @Override
@@ -1617,6 +1659,11 @@ public class WriteElementNode extends JSTargetableNode {
             }
             return indexToPropertyKeyNode.execute(index);
         }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+            executeWithTargetAndIndexUnguarded(target, (long) index, value, receiver, root);
+        }
     }
 
     private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
@@ -1649,7 +1696,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (isImmutable.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 // cannot set characters of immutable strings
@@ -1683,7 +1730,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) target;
             JSObject.setWithReceiver(JSNumber.create(root.context, number), index, value, target, root.isStrict, classProfile, root);
         }
@@ -1706,7 +1753,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
             JSObject.setWithReceiver(JSBoolean.create(root.context, bool), index, value, target, root.isStrict, classProfile, root);
         }
@@ -1732,7 +1779,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             if (root.isStrict) {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
@@ -1758,7 +1805,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
             JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), index, value, target, root.isStrict, classProfile, root);
         }
@@ -1837,6 +1884,11 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
             executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver, root);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+            executeWithTargetAndIndexUnguarded(target, JSRuntime.longToIntOrDouble(index), value, receiver, root);
         }
 
         @Override
