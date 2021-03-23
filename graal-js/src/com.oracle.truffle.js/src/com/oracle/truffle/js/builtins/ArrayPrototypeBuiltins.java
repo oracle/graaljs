@@ -168,6 +168,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -3103,7 +3104,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayReverseNode extends JSArrayOperation {
         @Child private TestArrayNode hasHolesNode;
-        @Child private IsArrayNode isArrayNode;
         @Child private DeletePropertyNode deletePropertyNode;
         private final ConditionProfile bothExistProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.createBinaryProfile();
@@ -3112,7 +3112,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         public JSArrayReverseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.hasHolesNode = TestArrayNode.createHasHoles();
-            this.isArrayNode = IsArrayNode.createIsArray();
         }
 
         private boolean deleteProperty(Object array, long index) {
@@ -3124,12 +3123,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object reverse(Object thisObj) {
+        protected Object reverseJSArray(JSArrayObject thisObj) {
+            return reverse(thisObj, true);
+        }
+
+        @Specialization(replaces = "reverseJSArray")
+        protected Object reverseGeneric(Object thisObj) {
             final Object array = toObject(thisObj);
+            return reverse(array, JSArray.isJSArray(array));
+        }
+
+        private Object reverse(Object array, boolean isArray) {
             final long length = getLength(array);
             long lower = 0;
             long upper = length - 1;
-            boolean isArray = isArrayNode.execute(array);
             boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array);
 
             while (lower < upper) {
