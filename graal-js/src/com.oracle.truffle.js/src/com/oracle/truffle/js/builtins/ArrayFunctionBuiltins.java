@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -208,7 +208,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
         private final ConditionProfile isIterable = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isHostObject = ConditionProfile.createBinaryProfile();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
@@ -293,12 +292,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             Object usingIterator = getIteratorMethodNode.executeWithTarget(items);
             if (isIterable.profile(usingIterator != Undefined.instance)) {
                 return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping);
-            } else if (isHostObject.profile(getContext().getRealm().getEnv().isHostObject(items))) {
-                // Handle host objects as iterables. There are no useful
-                // non-iterable array-like host objects and GetIteratorNode
-                // can handle more cases than the array-like branch
-                // (for example, non-indexed collections).
-                return arrayFromIterable(thisObj, items, mapFn, thisArg, mapping);
             } else {
                 // NOTE: source is not an Iterable so assume it is already an array-like object.
                 Object itemsObject = toObject(items);

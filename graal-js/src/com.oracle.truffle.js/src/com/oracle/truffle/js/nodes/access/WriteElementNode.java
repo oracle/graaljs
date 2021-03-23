@@ -58,6 +58,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -1776,6 +1777,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private ExportValueNode exportKey;
         @Child private ExportValueNode exportValue;
         @Child private JSToStringNode toStringNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
@@ -1804,7 +1806,15 @@ public class WriteElementNode extends JSTargetableNode {
                 } catch (InvalidArrayIndexException e) {
                     // do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                }
+            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+                try {
+                    interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
+                } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);
@@ -1818,6 +1828,7 @@ public class WriteElementNode extends JSTargetableNode {
                 } catch (UnknownIdentifierException e) {
                     // do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                 }
             }

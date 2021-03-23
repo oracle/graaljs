@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins.helper;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  * algorithm, we normalize the key (e.g., transform the double value 1.0 to an integer value of 1).
  */
 @ImportStatic({JSConfig.class})
+@GenerateUncached
 public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);

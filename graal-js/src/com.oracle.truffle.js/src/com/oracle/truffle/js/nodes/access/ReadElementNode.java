@@ -56,6 +56,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -109,6 +110,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -1562,35 +1564,42 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
+            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+                try {
+                    return interop.readHashValue(truffleObject, exportedKey);
+                } catch (UnknownKeyException e) {
+                    // fall through: still need to try members
+                } catch (UnsupportedMessageException e) {
+                    return Undefined.instance;
+                }
+            }
+            String stringKey = toStringNode.executeString(exportedKey);
+            if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
+                return getSize(truffleObject);
+            }
+            if (root.context.isOptionNashornCompatibilityMode()) {
+                Object result = tryGetters(truffleObject, stringKey, root.context);
+                if (result != null) {
+                    return result;
+                }
+            }
+            if (optimistic) {
+                try {
+                    return interop.readMember(truffleObject, stringKey);
+                } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    optimistic = false;
+                    return maybeReadFromPrototype(truffleObject, stringKey, root.context);
+                }
             } else {
-                String stringKey = toStringNode.executeString(exportedKey);
-                if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
-                    return getSize(truffleObject);
-                }
-                if (root.context.isOptionNashornCompatibilityMode()) {
-                    Object result = tryGetters(truffleObject, stringKey, root.context);
-                    if (result != null) {
-                        return result;
-                    }
-                }
-                if (optimistic) {
+                if (interop.isMemberReadable(truffleObject, stringKey)) {
                     try {
                         return interop.readMember(truffleObject, stringKey);
                     } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        optimistic = false;
-                        return maybeReadFromPrototype(truffleObject, stringKey, root.context);
+                        return Undefined.instance;
                     }
                 } else {
-                    if (interop.isMemberReadable(truffleObject, stringKey)) {
-                        try {
-                            return interop.readMember(truffleObject, stringKey);
-                        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                            return Undefined.instance;
-                        }
-                    } else {
-                        return maybeReadFromPrototype(truffleObject, stringKey, root.context);
-                    }
+                    return maybeReadFromPrototype(truffleObject, stringKey, root.context);
                 }
             }
         }
@@ -1641,7 +1650,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
             assert JSRuntime.isPropertyKey(key);
-            if (context.getContextOptions().hasForeignObjectPrototype()) {
+            if (context.getContextOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     this.readFromPrototypeNode = insert(ReadElementNode.create(context));

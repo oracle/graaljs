@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,8 +71,10 @@ public class ForeignBoxedObjectTest {
             context.getBindings("js").putMember("obj", ForeignBoxedObject.createNew("foo"));
             assertTrue(context.eval(ID, "typeof Object(obj) === 'object'").asBoolean());
             assertTrue(context.eval(ID, "typeof obj.includes === 'function'").asBoolean());
+            assertTrue(context.eval(ID, "typeof obj['includes'] === 'function'").asBoolean());
             assertEquals("foo", context.eval(ID, "obj.toString()").asString());
             assertEquals("foo", context.eval(ID, "obj.valueOf()").asString());
+            assertEquals("foo", context.eval(ID, "obj['valueOf']()").asString());
             assertTrue(context.eval(ID, "obj.includes('o')").asBoolean());
         }
     }
@@ -83,6 +85,7 @@ public class ForeignBoxedObjectTest {
             context.getBindings("js").putMember("obj", ForeignBoxedObject.createNew(42));
             assertTrue(context.eval(ID, "typeof Object(obj) === 'object'").asBoolean());
             assertTrue(context.eval(ID, "typeof obj.valueOf === 'function'").asBoolean());
+            assertTrue(context.eval(ID, "typeof obj['valueOf'] === 'function'").asBoolean());
             assertEquals("4.2e+1", context.eval(ID, "obj.toExponential()").asString());
             assertEquals("4e+1", context.eval(ID, "obj.toExponential(0)").asString());
             assertEquals("42.00", context.eval(ID, "obj.toFixed(2)").asString());
@@ -91,6 +94,7 @@ public class ForeignBoxedObjectTest {
             assertEquals("42.0", context.eval(ID, "obj.toPrecision(3)").asString());
             assertEquals("42", context.eval(ID, "obj.toString()").asString());
             assertEquals(42, context.eval(ID, "obj.valueOf()").asInt());
+            assertEquals(42, context.eval(ID, "obj['valueOf']()").asInt());
         }
     }
 
@@ -100,7 +104,9 @@ public class ForeignBoxedObjectTest {
             context.getBindings("js").putMember("obj", ForeignBoxedObject.createNew(true));
             assertTrue(context.eval(ID, "typeof Object(obj) === 'object'").asBoolean());
             assertTrue(context.eval(ID, "typeof obj.valueOf === 'function'").asBoolean());
+            assertTrue(context.eval(ID, "typeof obj['valueOf'] === 'function'").asBoolean());
             assertTrue(context.eval(ID, "obj.valueOf()").asBoolean());
+            assertTrue(context.eval(ID, "obj['valueOf']()").asBoolean());
             assertEquals("true", context.eval(ID, "obj.toString()").asString());
         }
     }
