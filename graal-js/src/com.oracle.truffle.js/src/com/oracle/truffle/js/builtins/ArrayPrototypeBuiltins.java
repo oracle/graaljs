@@ -49,7 +49,6 @@ import java.util.Comparator;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
@@ -634,19 +633,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSHasPropertyNode hasPropertyNode;
         @Child private JSArrayNextElementIndexNode nextElementIndexNode;
         @Child private JSArrayPreviousElementIndexNode previousElementIndexNode;
-        @CompilationFinal boolean seenIndexLargerThanInt;
-
-        private boolean indexFitsInInt(long index) {
-            if (seenIndexLargerThanInt) {
-                return false;
-            } else if (JSRuntime.longIsRepresentableAsInt(index)) {
-                return true;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                seenIndexLargerThanInt = true;
-                return false;
-            }
-        }
 
         protected void setLength(Object thisObject, int length) {
             setLengthIntl(thisObject, length);
@@ -683,11 +669,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected Object read(Object target, long index) {
             ReadElementNode read = getOrCreateReadNode();
-            if (indexFitsInInt(index)) {
-                return read.executeWithTargetAndIndex(target, (int) index);
-            } else {
-                return read.executeWithTargetAndIndex(target, (double) index);
-            }
+            return read.executeWithTargetAndIndex(target, index);
         }
 
         private WriteElementNode getOrCreateWriteNode() {
@@ -704,11 +686,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected void write(Object target, long index, Object value) {
             WriteElementNode write = getOrCreateWriteNode();
-            if (indexFitsInInt(index)) {
-                write.executeWithTargetAndIndexAndValue(target, (int) index, value);
-            } else {
-                write.executeWithTargetAndIndexAndValue(target, (double) index, value);
-            }
+            write.executeWithTargetAndIndexAndValue(target, index, value);
         }
 
         // represent the 7.3.6 CreateDataPropertyOrThrow(O, P, V)
@@ -726,11 +704,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected void writeOwn(Object target, long index, Object value) {
             WriteElementNode write = getOrCreateWriteOwnNode();
-            if (indexFitsInInt(index)) {
-                write.executeWithTargetAndIndexAndValue(target, (int) index, value);
-            } else {
-                write.executeWithTargetAndIndexAndValue(target, (double) index, value);
-            }
+            write.executeWithTargetAndIndexAndValue(target, index, value);
         }
 
         private JSHasPropertyNode getOrCreateHasPropertyNode() {
