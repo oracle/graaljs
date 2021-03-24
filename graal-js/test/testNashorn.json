@@ -393,9 +393,6 @@
     },
     "comment" : "Fails on JDK 15 due to Nashorn removal."
   }, {
-    "filePath" : "basic/JDK-8060101.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "basic/JDK-8062141.js",
     "status" : "FAIL"
   }, {
