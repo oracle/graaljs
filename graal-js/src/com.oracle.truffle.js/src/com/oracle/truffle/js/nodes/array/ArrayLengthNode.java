@@ -103,13 +103,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return arrayType.lengthInt(target);
         }
 
-        @Specialization(guards = {"arrayType.isInstance(target.getArrayType())"}, replaces = "doIntLength", limit = "1")
-        protected static double doLongLength(JSArrayBase target,
-                        @Cached("getArrayType(target)") ScriptArray arrayType) {
-            return arrayType.length(target);
-        }
-
-        @Specialization(replaces = {"doIntLength", "doLongLength"}, rewriteOn = UnexpectedResultException.class)
+        @Specialization(replaces = {"doIntLength"}, rewriteOn = UnexpectedResultException.class)
         protected static int doUncachedIntLength(JSArrayBase target) throws UnexpectedResultException {
             long uint32Len = JSAbstractArray.arrayGetLength(target);
             assert uint32Len == getArrayType(target).length(target);
