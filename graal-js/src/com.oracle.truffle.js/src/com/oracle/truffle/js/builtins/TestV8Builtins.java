@@ -62,6 +62,7 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNode
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetAllowAtomicsWaitNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
@@ -73,6 +74,7 @@ import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -132,7 +134,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         toPrimitiveNumber(1),
 
         atomicsNumWaitersForTesting(2),
-        atomicsNumUnresolvedAsyncPromisesForTesting(2);
+        atomicsNumUnresolvedAsyncPromisesForTesting(2),
+        setAllowAtomicsWait(1);
 
         private final int length;
 
@@ -196,6 +199,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8AtomicsNumWaitersForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case atomicsNumUnresolvedAsyncPromisesForTesting:
                 return TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+            case setAllowAtomicsWait:
+                return TestV8SetAllowAtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -498,6 +503,22 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
             return getContext().getJSAgent().getAsyncWaitersToBeResolved(wl);
         }
+    }
+
+    public abstract static class TestV8SetAllowAtomicsWait extends JSBuiltinNode {
+        @Child JSToBooleanNode toBooleanNode;
+
+        public TestV8SetAllowAtomicsWait(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.toBooleanNode = JSToBooleanNode.create();
+        }
+
+        @Specialization
+        protected Object setAllowAtomicsWait(Object allow) {
+            getContext().getJSAgent().setCanBlock(toBooleanNode.executeBoolean(allow));
+            return Undefined.instance;
+        }
+
     }
 
 }
