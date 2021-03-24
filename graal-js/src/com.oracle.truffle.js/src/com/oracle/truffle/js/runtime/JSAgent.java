@@ -71,7 +71,7 @@ public abstract class JSAgent implements EcmaAgent {
 
     /* ECMA2017 Agent Record */
     private final int signifier;
-    private final boolean canBlock;
+    private boolean canBlock;
 
     private boolean inAtomicSection;
     private boolean inCriticalSection;
@@ -279,4 +279,10 @@ public abstract class JSAgent implements EcmaAgent {
         }
         return result;
     }
+
+    // Used by TestV8 only
+    public void setCanBlock(boolean canBlock) {
+        this.canBlock = canBlock;
+    }
+
 }
