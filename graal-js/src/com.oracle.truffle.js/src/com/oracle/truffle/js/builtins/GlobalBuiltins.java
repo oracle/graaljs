@@ -78,6 +78,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -1224,7 +1225,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object indirectEvalImpl(JSRealm realm, String source) {
+        private Object indirectEvalImpl(JSRealm realm, String sourceCode) {
             String sourceName = null;
             if (isCallerSensitive()) {
                 sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode(), realm.getContext());
@@ -1232,7 +1233,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(JavaScriptLanguage.ID, source, sourceName).build());
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).build();
+            ScriptNode script = getContext().getEvaluator().parseEval(getContext(), this, source);
+            return script.runEval(IndirectCallNode.getUncached(), realm);
         }
 
         @Specialization

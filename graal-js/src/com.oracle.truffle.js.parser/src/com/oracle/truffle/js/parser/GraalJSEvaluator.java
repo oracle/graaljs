@@ -61,6 +61,7 @@ import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -128,14 +129,14 @@ public final class GraalJSEvaluator implements JSParser {
      * Evaluate indirect eval.
      */
     @Override
-    public Object evaluate(JSRealm realm, Node lastNode, Source source) {
-        Object thisObj = realm.getGlobalObject();
-        return doEvaluate(realm, lastNode, thisObj, JSFrameUtil.NULL_MATERIALIZED_FRAME, source, false, null);
+    public ScriptNode parseEval(JSContext context, Node lastNode, Source source) {
+        return parseEval(context, lastNode, source, false, null);
     }
 
     /**
      * Evaluate Function(parameterList, body).
      */
+    @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
     public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
         String wrappedBody = JSRuntime.LINE_SEPARATOR + body + JSRuntime.LINE_SEPARATOR;
@@ -176,10 +177,9 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
-    public Object evaluate(JSRealm realm, Node lastNode, Source source, MaterializedFrame frame, Object thisObj, Object evalEnv) {
-        assert frame != null;
+    public ScriptNode parseDirectEval(JSContext context, Node lastNode, Source source, Object evalEnv) {
         DirectEvalContext directEval = (DirectEvalContext) evalEnv;
-        return doEvaluate(realm, lastNode, thisObj, frame, source, directEval.env.isStrictMode(), directEval);
+        return parseEval(context, lastNode, source, directEval.env.isStrictMode(), directEval);
     }
 
     private static JavaScriptNode parseInlineScript(JSContext context, Source source, Environment env, boolean isStrict) {
@@ -197,18 +197,7 @@ public final class GraalJSEvaluator implements JSParser {
         };
     }
 
-    @TruffleBoundary
-    private static Object doEvaluate(JSRealm realm, Node lastNode, Object thisObj, MaterializedFrame materializedFrame, Source source, boolean isStrict, DirectEvalContext directEval) {
-        JSContext context = realm.getContext();
-        ScriptNode scriptNode = parseEval(context, lastNode, source, isStrict, directEval);
-        return runParsed(scriptNode, realm, thisObj, materializedFrame);
-    }
-
-    private static Object runParsed(ScriptNode scriptNode, JSRealm realm, Object thisObj, MaterializedFrame materializedFrame) {
-        DynamicObject functionObj = JSFunction.create(realm, scriptNode.getFunctionData(), materializedFrame);
-        return scriptNode.run(JSArguments.createZeroArg(thisObj, functionObj));
-    }
-
+    @TruffleBoundary(transferToInterpreterOnException = false)
     private static ScriptNode parseEval(JSContext context, Node lastNode, Source source, boolean isStrict, DirectEvalContext directEval) {
         context.checkEvalAllowed();
         NodeFactory nodeFactory = NodeFactory.getInstance(context);
@@ -219,8 +208,8 @@ public final class GraalJSEvaluator implements JSParser {
         }
     }
 
-    @TruffleBoundary
     private static JSException parserToJSError(Node lastNode, com.oracle.js.parser.ParserException e, JSContext context) {
+        CompilerAsserts.neverPartOfCompilation();
         String message = e.getMessage().replace("\r\n", "\n");
         if (e.getErrorType() == com.oracle.js.parser.JSErrorType.ReferenceError) {
             return Errors.createReferenceError(message, e, lastNode);
@@ -249,6 +238,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     // JSParser methods below
 
+    @TruffleBoundary
     @Override
     public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames) {
         String mimeType = source.getMimeType();
