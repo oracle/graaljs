@@ -164,6 +164,7 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
 
     @Specialization
     protected String doTuple(Tuple value) {
+        // TODO: abstract operation "TupleToString" ?
         return value.toString();
     }
 

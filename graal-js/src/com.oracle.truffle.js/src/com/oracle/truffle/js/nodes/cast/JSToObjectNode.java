@@ -62,11 +62,13 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -171,6 +173,11 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     @Specialization
     protected DynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(getContext(), value);
+    }
+
+    @Specialization
+    protected DynamicObject doTuple(Tuple value) {
+        return JSTuple.create(getContext(), value);
     }
 
     @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")

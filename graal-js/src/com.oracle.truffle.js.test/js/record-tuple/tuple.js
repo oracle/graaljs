@@ -13,6 +13,8 @@
 
 load('../assert.js');
 
+let a, b, c, d, e, f;
+
 /*
  * Test 1:
  * valid tuple literals
@@ -123,3 +125,46 @@ assertTrue(Tuple.isTuple(Tuple(1)));
 assertFalse(Tuple.isTuple(1));
 assertFalse(Tuple.isTuple("1"));
 assertFalse(Tuple.isTuple(BigInt(1)));
+
+/*
+ * Test 11:
+ * Type Conversion
+ */
+a = #[42];
+// 3.1.1 ToBoolean
+assertSame(true, !!a); // JSToBigIntNode
+if (a) { // JSToBooleanUnaryNode
+    // ok
+} else {
+    fail("#[42] should be true")
+}
+// 3.1.2 ToNumber
+assertThrows(function() {
+    eval("a + 1"); // JSToNumberNode
+}, TypeError);
+assertThrows(function() {
+    eval("Math.abs(a)"); // JSToDoubleNode
+}, TypeError);
+assertThrows(function() {
+    eval("parseInt(\"1\", a)"); // JSToInt32Node
+}, TypeError);
+assertThrows(function() {
+    eval("'ABC'.codePointAt(a)"); // JSToIntegerAsIntNode
+}, TypeError);
+assertThrows(function() {
+    eval("[1].at(a)"); // JSToIntegerAsLongNode
+}, TypeError);
+assertThrows(function() {
+    eval("'ABC'.split('', a);"); // JSToUInt32Node
+}, TypeError);
+// 3.1.3 ToBigInt
+assertThrows(function() {
+    eval("BigInt.asIntN(64, a)");
+}, TypeError);
+// 3.1.4 ToString
+assertSame("42", a + ""); // JSToStringNode
+assertSame([10] < [2], #[10] < #[2]); // JSToStringOrNumberNode
+assertSame([1] < [1], #[1] < #[1]);
+assertSame([1] <= 1, #[1] <= 1);
+// 3.1.5 ToObject
+// haven't found a test case yet

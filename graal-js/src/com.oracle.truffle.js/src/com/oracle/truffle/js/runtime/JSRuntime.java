@@ -490,6 +490,8 @@ public final class JSRuntime {
             return stringToNumber(value.toString());
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
+        } else if (value instanceof Tuple) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value");
         } else if (value instanceof BigInt) {
             throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
         } else if (value instanceof Number) {
@@ -926,6 +928,8 @@ public final class JSRuntime {
             return numberToString((Number) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
+        } else if (value instanceof Tuple) {
+            return value.toString();
         } else if (value instanceof BigInt) {
             return value.toString();
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
@@ -978,6 +982,8 @@ public final class JSRuntime {
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             return JSObject.toDisplayString((DynamicObject) value, depth, allowSideEffects);
         } else if (value instanceof Symbol) {
+            return value.toString();
+        } else if (value instanceof Tuple) {
             return value.toString();
         } else if (value instanceof BigInt) {
             return value.toString() + 'n';

@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 import java.util.Set;
 
@@ -147,6 +148,11 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected final Number doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+    }
+
+    @Specialization
+    protected final Number doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     @Specialization

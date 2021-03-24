@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 import java.util.Set;
 
@@ -127,6 +128,11 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
+    }
+
+    @Specialization
+    protected final Number doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     @Specialization(guards = "isForeignObject(value)")

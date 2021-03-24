@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 /**
  * This node is intended to be used only by comparison operators.
@@ -109,6 +110,11 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected Object doSymbol(@SuppressWarnings("unused") Symbol value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
+    }
+
+    @Specialization
+    protected String doTuple(Tuple value, @Cached("create()") JSToStringNode toStringNode) {
+        return toStringNode.executeString(value);
     }
 
     @Specialization(guards = "isUndefined(value)")

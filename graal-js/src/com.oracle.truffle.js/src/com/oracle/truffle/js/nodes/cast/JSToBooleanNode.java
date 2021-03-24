@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 /**
@@ -121,6 +122,11 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doTuple(@SuppressWarnings("unused") Tuple value) {
         return true;
     }
 
