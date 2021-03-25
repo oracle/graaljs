@@ -156,21 +156,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.NUMBER,
                         TypeDescriptor.BOOLEAN,
                         TypeDescriptor.NULL);
-        final TypeDescriptor noType = TypeDescriptor.intersection();
-        final TypeDescriptor nonNumeric = TypeDescriptor.union(
-                        TypeDescriptor.STRING,
-                        TypeDescriptor.OBJECT,
-                        TypeDescriptor.ARRAY,
-                        TypeDescriptor.EXECUTABLE_ANY,
-                        TypeDescriptor.TIME,
-                        TypeDescriptor.DATE,
-                        TypeDescriptor.DURATION,
-                        TypeDescriptor.TIME_ZONE,
-                        TypeDescriptor.META_OBJECT,
-                        TypeDescriptor.ITERATOR,
-                        TypeDescriptor.ITERABLE,
-                        TypeDescriptor.HASH,
-                        noType);
+        final TypeDescriptor nonNumeric = ANY.subtract(numericAndNull);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(null)));
