@@ -47,21 +47,17 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import org.graalvm.collections.EconomicMap;
@@ -95,12 +91,11 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             DynamicObject prototype = createPrototypeNode.execute(frame);
             OperatorSet operatorSet = new OperatorSet(getContext().incOperatorCounter(), table);
             JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
-                @Child private CreateObjectNode createObjectNode = CreateObjectNode.create(getContext());
                 private DynamicObjectLibrary dynamicObjectLibrary = DynamicObjectLibrary.getFactory().createDispatched(1);
 
                 @Override
-                public Object execute(VirtualFrame frame) {
-                    DynamicObject object = createObjectNode.execute(frame);
+                public Object execute(VirtualFrame innerFrame) {
+                    DynamicObject object = JSOrdinary.create(getContext());
                     dynamicObjectLibrary.putConstant(object, OPERATOR_SET_ID, operatorSet, 0);
                     return object;
                 }

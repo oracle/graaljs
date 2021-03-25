@@ -43,24 +43,15 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNumericUnitNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 
 import java.util.Set;
 
@@ -106,70 +97,22 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
         return a.subtract(b);
     }
 
-    @Specialization(guards = {"hasOverloadedOperators(leftShape)", "hasOverloadedOperators(rightShape)", "leftShape.check(left)", "rightShape.check(right)"})
-    protected Object doOverloaded(DynamicObject left,
-                                  DynamicObject right,
-                                  @Cached("left.getShape()") Shape leftShape,
-                                  @Cached("right.getShape()") Shape rightShape,
-                                  @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                  @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
-    }
-
-    @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)", "isNumber(right) || isJSNumber(right)"})
-    protected Object doOverloadedNumber(DynamicObject left,
-                                        Object right,
-                                        @Cached("left.getShape()") Shape leftShape,
-                                        @Cached("getOperatorImplementation(left, getNumberOperatorSet(), getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
-
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
-    }
-
-    @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)"})
-    protected Object doOverloadedBigInt(DynamicObject left,
-                                        BigInt right,
-                                        @Cached("left.getShape()") Shape leftShape,
-                                        @Cached("getOperatorImplementation(left, getBigIntOperatorSet(), getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
-    }
-
-    @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)", "isNumber(left) || isJSNumber(left)"})
-    protected Object doNumberOverloaded(Object left,
-                                        DynamicObject right,
-                                        @Cached("right.getShape()") Shape rightShape,
-                                        @Cached("getOperatorImplementation(getNumberOperatorSet(), right, getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
-    }
-
-    @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)"})
-    protected Object doBigIntOverloaded(BigInt left,
-                                        DynamicObject right,
-                                        @Cached("right.getShape()") Shape rightShape,
-                                        @Cached("getOperatorImplementation(getBigIntOperatorSet(), right, getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
-    }
-
-    private Object performOverloaded(InteropLibrary operatorImplementationLib, Object operatorImplementation, Object left, Object right) {
-        if (operatorImplementation == null) {
-            throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName());
-        }
-        try {
-            return operatorImplementationLib.execute(operatorImplementation, left, right);
-        } catch (ArityException | UnsupportedMessageException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(operatorImplementation, e, getOverloadedOperatorName() + " operator overload", this);
-        }
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                                  @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                                  @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                                  @Cached("create(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
     }
 
     protected String getOverloadedOperatorName() {
         return "-";
     }
 
-    @Specialization(replaces = {"doDouble", "doBigInt"})
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumericA,
                     @Cached("create()") JSToNumericNode toNumericB,
                     @Cached("copyRecursive()") JavaScriptNode subtract,
