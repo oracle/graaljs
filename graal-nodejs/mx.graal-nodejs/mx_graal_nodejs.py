@@ -612,6 +612,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             home_finder=True,
         ),
     ],
+    has_polyglot_lib_entrypoints=True,
     installable=True,
     supported=True,
 ))
