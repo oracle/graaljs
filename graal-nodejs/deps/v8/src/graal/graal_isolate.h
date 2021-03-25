@@ -675,8 +675,9 @@ public:
         }
     }
 
-    static void SetMode(int mode) {
+    static void SetMode(int mode, bool polyglot) {
         GraalIsolate::mode = mode;
+        GraalIsolate::polyglot = polyglot;
     }
 
     static void InitThreadLocals();
@@ -767,6 +768,7 @@ private:
     static int argc;
     static char** argv;
     static int mode;
+    static bool polyglot;
     static bool use_classpath_env_var;
     friend v8::V8;
 
