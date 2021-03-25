@@ -1199,6 +1199,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      * {@link EvalNode}.
      */
     public abstract static class JSGlobalIndirectEvalNode extends JSBuiltinNode {
+        @Child private IndirectCallNode callNode = IndirectCallNode.create();
 
         public JSGlobalIndirectEvalNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1207,7 +1208,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object indirectEvalString(String source) {
             JSRealm realm = getContext().getRealm();
-            return indirectEvalImpl(realm, source);
+            return parseIndirectEval(realm, source).runEval(callNode, realm);
         }
 
         @Specialization(guards = "isForeignObject(source)", limit = "3")
@@ -1225,7 +1226,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object indirectEvalImpl(JSRealm realm, String sourceCode) {
+        private ScriptNode parseIndirectEval(JSRealm realm, String sourceCode) {
             String sourceName = null;
             if (isCallerSensitive()) {
                 sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode(), realm.getContext());
@@ -1234,8 +1235,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).build();
-            ScriptNode script = getContext().getEvaluator().parseEval(getContext(), this, source);
-            return script.runEval(IndirectCallNode.getUncached(), realm);
+            return getContext().getEvaluator().parseEval(getContext(), this, source);
         }
 
         @Specialization
