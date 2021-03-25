@@ -74,35 +74,25 @@ public final class ScriptNode {
     }
 
     public Object run(JSRealm realm) {
-        return runWithThisObject(realm, realm.getGlobalObject());
+        return run(argumentsToRunWithThisObject(realm, realm.getGlobalObject()));
     }
 
     public Object[] argumentsToRun(JSRealm realm) {
         return argumentsToRunWithThisObject(realm, realm.getGlobalObject());
     }
 
-    public Object runWithThisObject(JSRealm realm, Object thisObj) {
-        return run(argumentsToRunWithThisObject(realm, thisObj));
-    }
-
     public Object[] argumentsToRunWithThisObject(JSRealm realm, Object thisObj) {
-        return JSArguments.createZeroArg(thisObj, JSFunction.create(realm, functionData));
-    }
-
-    public Object runWithArguments(JSRealm realm, Object[] args) {
-        return run(argumentsToRunWithArguments(realm, args));
+        DynamicObject functionObj = JSFunction.create(realm, functionData);
+        return JSArguments.createZeroArg(thisObj, functionObj);
     }
 
     public Object[] argumentsToRunWithArguments(JSRealm realm, Object[] args) {
         return argumentsToRunWithThisObjectWithArguments(realm, realm.getGlobalObject(), args);
     }
 
-    public Object runWithThisObjectWithArguments(JSRealm realm, Object thisObj, Object[] args) {
-        return run(argumentsToRunWithThisObjectWithArguments(realm, thisObj, args));
-    }
-
     public Object[] argumentsToRunWithThisObjectWithArguments(JSRealm realm, Object thisObj, Object[] args) {
-        return JSArguments.create(thisObj, JSFunction.create(realm, functionData), args);
+        DynamicObject functionObj = JSFunction.create(realm, functionData);
+        return JSArguments.create(thisObj, functionObj, args);
     }
 
     public Object runEval(IndirectCallNode callNode, JSRealm realm, Object thisObj, MaterializedFrame materializedFrame) {
