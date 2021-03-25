@@ -45,10 +45,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.Node.Child;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetClearNodeGen;
@@ -82,7 +80,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -278,6 +275,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Child protected IteratorCloseNode iteratorCloseNode;
         @Child protected JSFunctionCallNode callFunctionNode;
         @Child protected PropertyGetNode getAddNode;
+        @Child protected PropertyGetNode getRemoveNode;
+        @Child protected PropertyGetNode getHasNode;
         protected final BranchProfile iteratorError = BranchProfile.create();
         protected final BranchProfile adderError = BranchProfile.create();
 
@@ -301,7 +300,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE)
                         return target;
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    JSRuntime.call(adder, target, new Object[]{nextValue});
+                    call(adder, target, nextValue);
                 }
             } catch (Exception ex) {
                 iteratorError.enter();
@@ -318,7 +317,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
-        protected Object call(Object target, DynamicObject function, Object... userArguments) {
+        protected Object call(Object function, Object target, Object... userArguments) {
             if (callFunctionNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callFunctionNode = insert(JSFunctionCallNode.createCall());
@@ -326,12 +325,28 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             return callFunctionNode.executeCall(JSArguments.create(target, function, userArguments));
         }
 
-        protected final Object get_add_function(Object object, String property_name) {
+        protected final Object getAddFunction(Object object) {
             if (getAddNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getAddNode = insert(PropertyGetNode.create(property_name, false, getContext()));
+                getAddNode = insert(PropertyGetNode.create("add", false, getContext()));
             }
             return getAddNode.getValue(object);
+        }
+
+        protected final Object getRemoveFunction(Object object) {
+            if (getRemoveNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getRemoveNode = insert(PropertyGetNode.create("delete", false, getContext()));
+            }
+            return getRemoveNode.getValue(object);
+        }
+
+        protected final Object getHasFunction(Object object) {
+            if (getHasNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getHasNode = insert(PropertyGetNode.create("has", false, getContext()));
+            }
+            return getHasNode.getValue(object);
         }
     }
 
@@ -348,7 +363,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject union(DynamicObject set, Object iterable) {
             Object ctr = getContext().getRealm().getSetConstructor();
             DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
-            Object adder = JSObject.get(newSet, "add");
+            Object adder = getAddFunction(newSet);
             addEntryFromIterable(newSet, iterable, adder);
             return newSet;
         }
@@ -375,12 +390,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject intersection(DynamicObject set, Object iterable) {
             Object ctr = getContext().getRealm().getSetConstructor();
             DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[0]);
-            Object hasCheck = JSObject.get(set, "has");
+            Object hasCheck = getHasFunction(set);
             if (!JSRuntime.isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
-            Object adder = JSObject.get(newSet, "add");
+            Object adder = getAddFunction(newSet);
             if (!JSRuntime.isCallable(adder)) {
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
@@ -392,9 +407,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE)
                         return newSet;
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    Object has = JSRuntime.call(hasCheck, set, new Object[]{nextValue});
+                    Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.TRUE) {
-                        JSRuntime.call(adder, newSet, new Object[]{nextValue});
+                        call(adder, newSet, nextValue);
                     }
                 }
             } catch (Exception ex) {
@@ -426,7 +441,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject difference(DynamicObject set, Object iterable) {
             Object ctr = getContext().getRealm().getSetConstructor();
             DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
-            Object remover = JSObject.get(newSet, "delete");
+            Object remover = getRemoveFunction(newSet);
             if (!JSRuntime.isCallable(remover)) {
                 removerError.enter();
                 throw Errors.createTypeErrorCallableExpected();
@@ -438,7 +453,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE)
                         return newSet;
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    JSRuntime.call(remover, newSet, new Object[]{nextValue});
+                    call(remover, newSet, nextValue);
                 }
             } catch (Exception ex) {
                 iteratorError.enter();
@@ -469,12 +484,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject symmetricDifference(DynamicObject set, Object iterable) {
             Object ctr = getContext().getRealm().getSetConstructor();
             DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
-            Object remover = JSObject.get(newSet, "delete");
+            Object remover = getRemoveFunction(newSet);
             if (!JSRuntime.isCallable(remover)) {
                 removerError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
-            Object adder = JSObject.get(newSet, "add");
+            Object adder = getAddFunction(newSet);
 
             if (!JSRuntime.isCallable(adder)) {
                 // unreachable due to constructor add
@@ -488,9 +503,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE)
                         return newSet;
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    Object removed = JSRuntime.call(remover, newSet, new Object[]{nextValue});
+                    Object removed = call(remover, newSet, nextValue);
                     if (removed == Boolean.FALSE) {
-                        JSRuntime.call(adder, newSet, new Object[]{nextValue});
+                        call(adder, newSet, nextValue);
                     }
                 }
             } catch (Exception ex) {
@@ -527,12 +542,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 throw Errors.createTypeErrorNotIterable(iterable, this);
             }
             DynamicObject otherSet = (DynamicObject) iterable;
-            Object hasCheck = JSObject.get(otherSet, "has");
+            Object hasCheck = getHasFunction(otherSet);
             if (!JSRuntime.isCallable(hasCheck)) {
                 needCreateNewBranch.enter();
                 otherSet = (DynamicObject) JSRuntime.construct(getContext().getRealm().getSetConstructor(), new Object[0]);
-                addEntryFromIterable(otherSet, iterable, JSObject.get(otherSet, "add"));
-                hasCheck = JSObject.get(otherSet, "has");
+                addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
+                hasCheck = getHasFunction(otherSet);
             }
             try {
                 while (true) {
@@ -540,7 +555,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE)
                         return Boolean.TRUE;
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    Object has = JSRuntime.call(hasCheck, otherSet, new Object[]{nextValue});
+                    Object has = call(hasCheck, otherSet, nextValue);
                     if (has == Boolean.FALSE) {
                         return Boolean.FALSE;
                     }
@@ -572,7 +587,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected Boolean isSupersetOf(DynamicObject set, Object iterable) {
-            Object hasCheck = JSObject.get(set, "has");
+            Object hasCheck = getHasFunction(set);
             if (!JSRuntime.isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
@@ -584,7 +599,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE)
                         return Boolean.TRUE;
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    Object has = JSRuntime.call(hasCheck, set, new Object[]{nextValue});
+                    Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.FALSE) {
                         return Boolean.FALSE;
                     }
@@ -616,7 +631,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected Boolean isDisjointedFrom(DynamicObject set, Object iterable) {
-            Object hasCheck = JSObject.get(set, "has");
+            Object hasCheck = getHasFunction(set);
             if (!JSRuntime.isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
@@ -629,7 +644,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                         return Boolean.TRUE;
                     }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
-                    Object has = JSRuntime.call(hasCheck, set, new Object[]{nextValue});
+                    Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.TRUE) {
                         return Boolean.FALSE;
                     }
