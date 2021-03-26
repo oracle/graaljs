@@ -77,7 +77,8 @@
 #endif
 
 #ifdef __APPLE__
-#define LIBNODESVM_RELPATH "/lib/polyglot/libpolyglot.dylib"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.dylib"
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.dylib"
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
 #define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
@@ -87,10 +88,12 @@
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
 #elif defined(_WIN32)
-#define LIBNODESVM_RELPATH "\\lib\\polyglot\\polyglot.dll"
+#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\graal-nodejs.dll"
+#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\polyglot.dll"
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
-#define LIBNODESVM_RELPATH "/lib/polyglot/libpolyglot.so"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.so"
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.so"
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
 #define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
@@ -237,8 +240,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     std::string node = nodeExe();
 
     std::string node_path = up(node);
-    bool graalvm8 = ends_with(node_path, file_separator + "jre" + file_separator + "languages" + file_separator + "js" + file_separator + "bin");
-    bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "js" + file_separator + "bin");
+    bool graalvm8 = ends_with(node_path, file_separator + "jre" + file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
+    bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
     if (graalvm8 || graalvm11plus) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
@@ -248,7 +251,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
 #       ifdef LIBNODESVM_RELPATH
             bool force_native = false;
-            std::string node_jvm_lib = graalvm_home + (graalvm8 ? file_separator + "jre" : "") + LIBNODESVM_RELPATH;
+            std::string node_jvm_lib = graalvm_home + (graalvm8 ? file_separator + "jre" : "") + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
             if (mode == kModeJVM) {
                  // will be set to appropriate libjvm path below
                 UnsetEnv("NODE_JVM_LIB");
@@ -290,7 +293,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
     }
     if (access(jvmlib_path.c_str(), F_OK) == -1) {
-        fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        fprintf(stderr, "Cannot find %s. Rebuild the polyglot library with `gu rebuild-images libpolyglot`, specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
         exit(1);
     }
 
@@ -1262,6 +1265,7 @@ jobject GraalIsolate::CorrectReturnValue(GraalValue* value, jobject null_replace
 int GraalIsolate::argc = 0;
 char** GraalIsolate::argv = nullptr;
 int GraalIsolate::mode = GraalIsolate::kModeDefault;
+bool GraalIsolate::polyglot = false;
 bool GraalIsolate::use_classpath_env_var = false;
 
 void GraalIsolate::SetPromiseHook(v8::PromiseHook promise_hook) {

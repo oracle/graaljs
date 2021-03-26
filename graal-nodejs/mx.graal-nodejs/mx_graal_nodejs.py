@@ -588,7 +588,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
     short_name='njs',
-    dir_name='js',
+    dir_name='nodejs',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal.js'],
@@ -599,16 +599,22 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'bin/<cmd:npm>',
         'bin/<cmd:npx>',
     ],
-    polyglot_lib_build_args=[
-        "-H:+ReportExceptionStackTraces",
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig,svmnodejs_jdkspecific.jniconfig",
-        "-H:ReflectionConfigurationResources=svmnodejs.reflectconfig",
-    ],
-    polyglot_lib_jar_dependencies=[
-        "graal-nodejs:TRUFFLENODE"
+    polyglot_lib_build_args=['--language:nodejs'],
+    polyglot_lib_jar_dependencies=['graal-nodejs:TRUFFLENODE'],
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination='lib/<lib:graal-nodejs>',
+            jar_distributions=['graal-nodejs:TRUFFLENODE'],
+            build_args=[
+                '--tool:all',
+                '--language:nodejs',
+                '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+            ],
+            home_finder=True,
+        ),
     ],
     has_polyglot_lib_entrypoints=True,
-    installable=False,
+    installable=True,
     supported=True,
 ))
 
