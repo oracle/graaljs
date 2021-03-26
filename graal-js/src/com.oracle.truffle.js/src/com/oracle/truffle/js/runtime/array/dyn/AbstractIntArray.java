@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.api.CompilerDirectives.FASTPATH_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
 import static com.oracle.truffle.api.CompilerDirectives.injectBranchProbability;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
+import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayOffset;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -175,8 +176,9 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     protected static Object[] convertToObject(DynamicObject object) {
         int[] array = getArray(object);
         int usedLength = getUsedLength(object);
+        int arrayOffset = arrayGetArrayOffset(object);
         Object[] obj = new Object[array.length];
-        for (int i = 0; i < usedLength; i++) {
+        for (int i = arrayOffset; i < arrayOffset + usedLength; i++) {
             obj[i] = array[i];
         }
         return obj;
