@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -90,7 +89,7 @@ public abstract class FloorNode extends MathOperation {
             long result = smaller.profile(d < i) ? i - 1 : i;
             return SafeInteger.valueOf(result);
         } else {
-            return mathFloor(d);
+            return Math.floor(d);
         }
     }
 
@@ -102,10 +101,5 @@ public abstract class FloorNode extends MathOperation {
                     @Cached("createBinaryProfile()") @Shared("smaller") ConditionProfile smaller) {
         double d = toDouble(a);
         return floorDouble(d, isZero, fitsInt, fitsSafeLong, smaller);
-    }
-
-    @TruffleBoundary
-    private static double mathFloor(double d) {
-        return Math.floor(d);
     }
 }
