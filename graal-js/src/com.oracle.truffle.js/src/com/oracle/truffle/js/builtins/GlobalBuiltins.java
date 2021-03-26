@@ -921,7 +921,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = {"hasRegularToString(value)", "isUndefined(radix0)"})
         protected double parseIntDoubleNoRadix(double value, @SuppressWarnings("unused") Object radix0) {
-            return JSRuntime.truncateDouble2(value);
+            return JSRuntime.truncateDouble(value);
         }
 
         // double specializations should not be used for numbers
@@ -945,7 +945,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 needsNaN.enter();
                 return Double.NaN;
             }
-            double truncated = JSRuntime.truncateDouble2(value);
+            double truncated = JSRuntime.truncateDouble(value);
             if (radix == 10) {
                 return truncated;
             } else {

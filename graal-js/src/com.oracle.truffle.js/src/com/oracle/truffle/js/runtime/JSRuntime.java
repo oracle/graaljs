@@ -47,6 +47,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -830,11 +831,7 @@ public final class JSRuntime {
     }
 
     public static double truncateDouble(double value) {
-        return Math.signum(value) * JSRuntime.mathFloor(Math.abs(value));
-    }
-
-    public static double truncateDouble2(double thing) {
-        return (thing < 0) ? JSRuntime.mathCeil(thing) : JSRuntime.mathFloor(thing);
+        return ExactMath.truncate(value);
     }
 
     /**
