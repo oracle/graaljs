@@ -2564,13 +2564,10 @@ public final class JSRuntime {
         return Math.floor(Math.abs(d)) == Math.abs(d);
     }
 
-    @TruffleBoundary
     public static double mathFloor(double d) {
-        if (Double.isNaN(d)) {
-            return Double.NaN;
-        }
-        if (JSRuntime.isNegativeZero(d)) {
-            return -0.0;
+        if (d == 0.0) {
+            // +/-0.0
+            return d;
         }
         if (JSRuntime.isSafeInteger(d)) {
             long i = (long) d;
@@ -2580,13 +2577,10 @@ public final class JSRuntime {
         }
     }
 
-    @TruffleBoundary
     public static double mathCeil(double d) {
-        if (Double.isNaN(d)) {
-            return Double.NaN;
-        }
-        if (JSRuntime.isNegativeZero(d)) {
-            return -0.0;
+        if (d == 0.0) {
+            // +/-0.0
+            return d;
         }
         if (JSRuntime.isSafeInteger(d)) {
             long i = (long) d;
