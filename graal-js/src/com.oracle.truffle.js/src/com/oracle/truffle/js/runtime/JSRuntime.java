@@ -877,7 +877,7 @@ public final class JSRuntime {
     }
 
     private static double doubleModuloTwo32(double value) {
-        return value - JSRuntime.mathFloor(value / TWO32) * TWO32;
+        return value - Math.floor(value / TWO32) * TWO32;
     }
 
     /**
