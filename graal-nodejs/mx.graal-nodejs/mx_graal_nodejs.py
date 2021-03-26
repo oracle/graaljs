@@ -607,7 +607,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             jar_distributions=['graal-nodejs:TRUFFLENODE'],
             build_args=[
                 '--tool:all',
-                '--language:nodejs'
+                '--language:nodejs',
+                '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
             ],
             home_finder=True,
         ),
