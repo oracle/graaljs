@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -2184,13 +2185,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructJavaImporter(Object[] args) {
-            SimpleArrayList<Object> pkgs = new SimpleArrayList<>(args.length);
-            for (Object pkg : args) {
-                if (JavaPackage.isJavaPackage(pkg)) {
-                    pkgs.addUnchecked(pkg);
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            SimpleArrayList<Object> imports = new SimpleArrayList<>(args.length);
+            for (Object anImport : args) {
+                if (JavaPackage.isJavaPackage(anImport)) {
+                    imports.addUnchecked(anImport);
+                } else if (env.isHostObject(anImport)) {
+                    Object hostObject = env.asHostObject(anImport);
+                    if (hostObject instanceof Class) {
+                        imports.addUnchecked(anImport);
+                    }
                 }
             }
-            return JavaImporter.create(getContext(), pkgs.toArray());
+            return JavaImporter.create(getContext(), imports.toArray());
         }
     }
 
