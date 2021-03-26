@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
@@ -50,6 +52,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
@@ -57,18 +60,18 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.EvalCallTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 public abstract class EvalNode extends JavaScriptNode {
     private final JSContext context;
@@ -159,12 +162,14 @@ public abstract class EvalNode extends JavaScriptNode {
         private final JSContext context;
         private final Object currEnv;
         @Child private JavaScriptNode thisNode;
+        @Child private IndirectCallNode callNode;
 
         protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currEnv) {
             assert currEnv != null;
             this.context = context;
             this.currEnv = currEnv;
             this.thisNode = thisNode;
+            this.callNode = IndirectCallNode.create();
         }
 
         protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currEnv) {
@@ -220,7 +225,10 @@ public abstract class EvalNode extends JavaScriptNode {
 
         private Object directEvalImpl(VirtualFrame frame, CharSequence sourceCode) {
             final Source source = sourceFromString(sourceCode);
-            return context.getEvaluator().evaluate(context.getRealm(), getParent(), source, frame.materialize(), thisNode.execute(frame), currEnv);
+            JSRealm realm = context.getRealm();
+            Object evalThis = thisNode.execute(frame);
+            ScriptNode script = context.getEvaluator().parseDirectEval(context, getParent(), source, currEnv);
+            return script.runEval(callNode, realm, evalThis, frame.materialize());
         }
 
         @Specialization(guards = {"isForeignObject(sourceCode)"}, limit = "3")

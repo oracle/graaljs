@@ -78,6 +78,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -1198,6 +1199,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      * {@link EvalNode}.
      */
     public abstract static class JSGlobalIndirectEvalNode extends JSBuiltinNode {
+        @Child private IndirectCallNode callNode = IndirectCallNode.create();
 
         public JSGlobalIndirectEvalNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1206,7 +1208,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         protected Object indirectEvalString(String source) {
             JSRealm realm = getContext().getRealm();
-            return indirectEvalImpl(realm, source);
+            return parseIndirectEval(realm, source).runEval(callNode, realm);
         }
 
         @Specialization(guards = "isForeignObject(source)", limit = "3")
@@ -1224,7 +1226,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
-        private Object indirectEvalImpl(JSRealm realm, String source) {
+        private ScriptNode parseIndirectEval(JSRealm realm, String sourceCode) {
             String sourceName = null;
             if (isCallerSensitive()) {
                 sourceName = EvalNode.findAndFormatEvalOrigin(realm.getCallNode(), realm.getContext());
@@ -1232,7 +1234,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             if (sourceName == null) {
                 sourceName = Evaluator.EVAL_SOURCE_NAME;
             }
-            return getContext().getEvaluator().evaluate(realm, this, Source.newBuilder(JavaScriptLanguage.ID, source, sourceName).build());
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, sourceName).build();
+            return getContext().getEvaluator().parseEval(getContext(), this, source);
         }
 
         @Specialization

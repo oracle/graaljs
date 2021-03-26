@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCreateNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCurrentNodeGen;
@@ -49,6 +50,7 @@ import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDisposeN
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -206,7 +208,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             JSRealm currentV8Realm = topLevelRealm.getCurrentV8Realm();
             try {
                 topLevelRealm.setCurrentV8Realm(jsrealm);
-                return jsrealm.getContext().getEvaluator().evaluate(jsrealm, this, source);
+                ScriptNode script = getContext().getEvaluator().parseEval(getContext(), this, source);
+                return script.runEval(IndirectCallNode.getUncached(), jsrealm);
             } finally {
                 topLevelRealm.setCurrentV8Realm(currentV8Realm);
             }
