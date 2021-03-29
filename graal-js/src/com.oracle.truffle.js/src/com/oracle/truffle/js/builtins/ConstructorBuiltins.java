@@ -114,6 +114,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTempor
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainTimeNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainYearMonthNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
@@ -177,6 +178,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
@@ -217,9 +219,11 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -336,6 +340,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         TemporalPlainDate(4),
         TemporalDuration(10),
         TemporalCalendar(1),
+        TemporalPlainYearMonth(4),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -639,6 +644,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return newTarget ? ConstructTemporalCalendarNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                             : ConstructTemporalCalendarNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
 
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case TemporalPlainYearMonth:
+                if (construct) {
+                    return newTarget ? ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
+                            : ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1307,6 +1319,39 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getTemporalCalendarPrototype();
+        }
+    }
+
+    public abstract static class ConstructTemporalPlainYearMonth extends ConstructWithNewTargetNode {
+
+        protected ConstructTemporalPlainYearMonth(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization(limit = "3")
+        protected DynamicObject constructTemporalPlainYearMonth(DynamicObject newTarget, Object isoYear,
+                                                                Object isoMonth, DynamicObject calendarLike,
+                                                                Object referenceISODay,
+                                                                @Cached("create()") JSToIntegerAsLongNode toInt,
+                                                                @Cached("create()") JSToStringNode toString,
+                                                                @Cached("create()") IsObjectNode isObject,
+                                                                @Cached("create()") IsConstructorNode isConstructor,
+                                                                @Cached("createNew()") JSFunctionCallNode callNode,
+                                                                @CachedLibrary("calendarLike") DynamicObjectLibrary dol) {
+            if (Undefined.instance.equals(referenceISODay) || referenceISODay == null) {
+                referenceISODay = 1;
+            }
+            long y = toInt.executeLong(isoYear);
+            long m = toInt.executeLong(isoMonth);
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike,
+                    getContext().getRealm(), dol, toString, isObject, isConstructor, callNode);
+            long ref = toInt.executeLong(referenceISODay);
+            return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getTemporalPlainYearMonthPrototype();
         }
     }
 
