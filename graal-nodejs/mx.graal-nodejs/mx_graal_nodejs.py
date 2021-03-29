@@ -591,7 +591,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='nodejs',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal.js'],
+    dependencies=[],  # 'Graal.js' is part of the base image
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
