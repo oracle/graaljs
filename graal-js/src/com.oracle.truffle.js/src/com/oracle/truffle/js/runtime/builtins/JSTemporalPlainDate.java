@@ -387,7 +387,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         if (month < 1 || month > 12) {
             return false;
         }
-        long daysInMonth = 31;   // TODO: Call JSTemporalCalendar.isoDaysInMonth();
+        long daysInMonth = JSTemporalCalendar.isoDaysInMonth(year, month);
         if (day < 1 || day > daysInMonth) {
             return false;
         }

@@ -138,8 +138,45 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         return id.equals("iso8601");
     }
 
+    // 12.1.3
+    public static JSTemporalCalendarObject getBuiltinCalendar(String id, DynamicObject constructor, IsConstructorNode isConstructorNode,
+                                            JSFunctionCallNode callNode) {
+        if (!isBuiltinCalendar(id)) {
+            throw Errors.createRangeError("Given calender identifier is not a builtin.");
+        }
+        return (JSTemporalCalendarObject) createTemporalCalendarFromStatic(constructor, id, isConstructorNode, callNode);
+    }
+
+    // 12.1.4
+    public static JSTemporalCalendarObject getISO8601Calender(JSRealm realm, IsConstructorNode isConstructorNode,
+                                                   JSFunctionCallNode callNode) {
+        return getBuiltinCalendar("iso8601", realm.getTemporalCalendarConstructor(), isConstructorNode, callNode);
+    }
+
+    // 12.1.21
+    public static Object toTemporalCalendar(DynamicObject temporalCalendarLike, JSRealm realm, DynamicObjectLibrary dol,
+                                            IsObjectNode isObjectNode, JSToStringNode toStringNode,
+                                            IsConstructorNode isConstructorNode, JSFunctionCallNode callNode) {
+        if (isObjectNode.executeBoolean(temporalCalendarLike)) {
+            return temporalCalendarLike;
+        }
+        return calendarFrom(temporalCalendarLike, realm.getTemporalCalendarConstructor(), dol, isObjectNode, toStringNode,
+                isConstructorNode, callNode);
+    }
+
+    // 12.1.22
+    public static Object toOptionalTemporalCalendar(DynamicObject temporalCalendarLike, JSRealm realm,
+                                                    DynamicObjectLibrary dol, JSToStringNode toString,
+                                                    IsObjectNode isObject, IsConstructorNode isConstructor,
+                                                    JSFunctionCallNode callNode) {
+        if (Undefined.instance.equals(temporalCalendarLike) || temporalCalendarLike == null) {
+            return getISO8601Calender(realm, isConstructor, callNode);
+        }
+        return toTemporalCalendar(temporalCalendarLike, realm, dol, isObject, toString, isConstructor, callNode);
+    }
+
     // 12.1.24
-    public static Object calendarFrom(DynamicObject item, DynamicObject constructor, JSRealm realm,
+    public static Object calendarFrom(DynamicObject item, DynamicObject constructor,
                                       DynamicObjectLibrary dol, IsObjectNode isObject, JSToStringNode toString,
                                       IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
         if (isObject.executeBoolean(item)) {

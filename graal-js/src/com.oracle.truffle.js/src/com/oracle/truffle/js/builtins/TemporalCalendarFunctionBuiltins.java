@@ -68,7 +68,7 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
                               @Cached("create()") JSToStringNode toString,
                               @Cached("createNew()") JSFunctionCallNode callNode) {
             DynamicObject constructor = getContext().getRealm().getTemporalCalendarConstructor();
-            return JSTemporalCalendar.calendarFrom(item, constructor, getContext().getRealm(), dol, isObject, toString,
+            return JSTemporalCalendar.calendarFrom(item, constructor, dol, isObject, toString,
                     isConstructor, callNode);
         }
 
