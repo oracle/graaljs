@@ -133,7 +133,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSURLDecoder;
@@ -1436,10 +1436,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
-            DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
-            // TODO: should be a child realm array
-            JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
-            return loadStringImpl(getContext(), fileName, source).run(childRealm);
+            TruffleContext childContext = childRealm.getTruffleContext();
+            Object prev = childContext.enter(this);
+            try {
+                DynamicObject argumentsArray = JSArray.createConstant(getContext(), args);
+                assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
+                JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
+                return loadStringImpl(getContext(), fileName, source).run(childRealm);
+            } finally {
+                childContext.leave(this, prev);
+            }
         }
 
         @Override
@@ -1449,9 +1455,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             TruffleContext childContext = childRealm.getTruffleContext();
             Object prev = childContext.enter(this);
             try {
-                DynamicObject argObj = JSArgumentsArray.createStrictSlow(childRealm, args);
-                // TODO: should be a child realm array
-                JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argObj);
+                DynamicObject argumentsArray = JSArray.createConstant(getContext(), args);
+                assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
+                JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
                 Source source = sourceFromPath(path, childRealm);
                 return runImpl(childRealm, source);
             } finally {
