@@ -48,6 +48,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putToStringTag(prototype, "Temporal.PlainYearMonth");
 
