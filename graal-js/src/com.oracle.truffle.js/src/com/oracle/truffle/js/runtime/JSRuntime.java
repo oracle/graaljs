@@ -2558,10 +2558,7 @@ public final class JSRuntime {
             return false;
         }
         double d = doubleValue((Number) obj);
-        if (Double.isInfinite(d) || Double.isNaN(d)) {
-            return false;
-        }
-        return Math.floor(Math.abs(d)) == Math.abs(d);
+        return d - JSRuntime.truncateDouble(d) == 0.0;
     }
 
     /**

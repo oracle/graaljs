@@ -165,13 +165,14 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected static boolean isInteger(double arg) {
-            if (JSRuntime.doubleIsRepresentableAsLong(arg)) {
-                return true;
-            }
-            if (Double.isNaN(arg) || !Double.isFinite(arg)) {
-                return false;
-            }
-            return Math.floor(arg) == arg;
+            // IsIntegralNumber is defined as:
+            // If arg is NaN or +/-Infinity, return false.
+            // Return floor(abs(arg)) == abs(arg).
+
+            // floor(abs(arg)) == abs(arg) is equivalent to trunc(arg) == arg;
+            // because (Infinity - Infinity) is NaN, IsIntegralNumber can be simplified to:
+            // arg - trunc(arg) == 0.
+            return arg - JSRuntime.truncateDouble(arg) == 0.0;
         }
 
         @SuppressWarnings("unused")
