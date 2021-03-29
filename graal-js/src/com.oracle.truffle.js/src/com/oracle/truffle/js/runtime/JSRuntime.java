@@ -47,6 +47,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -830,11 +831,7 @@ public final class JSRuntime {
     }
 
     public static double truncateDouble(double value) {
-        return Math.signum(value) * JSRuntime.mathFloor(Math.abs(value));
-    }
-
-    public static double truncateDouble2(double thing) {
-        return (thing < 0) ? JSRuntime.mathCeil(thing) : JSRuntime.mathFloor(thing);
+        return ExactMath.truncate(value);
     }
 
     /**
@@ -880,7 +877,7 @@ public final class JSRuntime {
     }
 
     private static double doubleModuloTwo32(double value) {
-        return value - JSRuntime.mathFloor(value / TWO32) * TWO32;
+        return value - Math.floor(value / TWO32) * TWO32;
     }
 
     /**
@@ -2561,51 +2558,7 @@ public final class JSRuntime {
             return false;
         }
         double d = doubleValue((Number) obj);
-        if (Double.isInfinite(d) || Double.isNaN(d)) {
-            return false;
-        }
-        return Math.floor(Math.abs(d)) == Math.abs(d);
-    }
-
-    @TruffleBoundary
-    public static double mathFloor(double d) {
-        if (Double.isNaN(d)) {
-            return Double.NaN;
-        }
-        if (JSRuntime.isNegativeZero(d)) {
-            return -0.0;
-        }
-        if (JSRuntime.isSafeInteger(d)) {
-            long i = (long) d;
-            return d < i ? i - 1 : i;
-        } else {
-            return Math.floor(d);
-        }
-    }
-
-    @TruffleBoundary
-    public static double mathCeil(double d) {
-        if (Double.isNaN(d)) {
-            return Double.NaN;
-        }
-        if (JSRuntime.isNegativeZero(d)) {
-            return -0.0;
-        }
-        if (JSRuntime.isSafeInteger(d)) {
-            long i = (long) d;
-            long result = d > i ? i + 1 : i;
-            if (result == 0 && d < 0) {
-                return -0.0;
-            }
-            return result;
-        } else {
-            return Math.ceil(d);
-        }
-    }
-
-    @TruffleBoundary
-    public static double mathRint(double d) {
-        return Math.rint(d);
+        return d - JSRuntime.truncateDouble(d) == 0.0;
     }
 
     /**

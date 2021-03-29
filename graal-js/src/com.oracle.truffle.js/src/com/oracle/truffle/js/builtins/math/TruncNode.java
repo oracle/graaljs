@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,13 @@ public abstract class TruncNode extends MathOperation {
     }
 
     @Specialization
-    protected double sign(Object a) {
-        double b = toDouble(a);
-        return JSRuntime.truncateDouble2(b);
+    protected static double truncDouble(double value) {
+        return JSRuntime.truncateDouble(value);
+    }
+
+    @Specialization(replaces = "truncDouble")
+    protected double trunc(Object a) {
+        double d = toDouble(a);
+        return truncDouble(d);
     }
 }

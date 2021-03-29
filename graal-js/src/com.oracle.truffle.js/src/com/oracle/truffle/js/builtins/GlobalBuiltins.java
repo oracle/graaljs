@@ -896,33 +896,33 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization(guards = "isUndefined(radix0)")
-        protected int parseIntNoRadix(int thing, @SuppressWarnings("unused") Object radix0) {
-            return thing;
+        protected int parseIntNoRadix(int value, @SuppressWarnings("unused") Object radix0) {
+            return value;
         }
 
         @Specialization(guards = "!isUndefined(radix0)")
-        protected Object parseIntInt(int thing, Object radix0,
+        protected Object parseIntInt(int value, Object radix0,
                         @Cached("create()") BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 10 || radix == 0) {
-                return thing;
+                return value;
             }
             if (radix < 2 || radix > 36) {
                 needsNaN.enter();
                 return Double.NaN;
             }
             needsRadixConversion.enter();
-            return convertToRadix(thing, radix);
+            return convertToRadix(value, radix);
         }
 
-        @Specialization(guards = {"hasRegularToStringInInt32Range(thing)", "isUndefined(radix0)"})
-        protected int parseIntDoubleToInt(double thing, @SuppressWarnings("unused") Object radix0) {
-            return (int) thing;
+        @Specialization(guards = {"hasRegularToStringInInt32Range(value)", "isUndefined(radix0)"})
+        protected int parseIntDoubleToInt(double value, @SuppressWarnings("unused") Object radix0) {
+            return (int) value;
         }
 
-        @Specialization(guards = {"hasRegularToString(thing)", "isUndefined(radix0)"})
-        protected double parseIntDoubleNoRadix(double thing, @SuppressWarnings("unused") Object radix0) {
-            return JSRuntime.truncateDouble2(thing);
+        @Specialization(guards = {"hasRegularToString(value)", "isUndefined(radix0)"})
+        protected double parseIntDoubleNoRadix(double value, @SuppressWarnings("unused") Object radix0) {
+            return JSRuntime.truncateDouble(value);
         }
 
         // double specializations should not be used for numbers
@@ -936,8 +936,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return (Integer.MIN_VALUE - 1.0 < value && value <= -1) || (value == 0) || (1e-6 <= value && value < Integer.MAX_VALUE + 1.0);
         }
 
-        @Specialization(guards = "hasRegularToString(thing)")
-        protected double parseIntDouble(double thing, Object radix0,
+        @Specialization(guards = "hasRegularToString(value)")
+        protected double parseIntDouble(double value, Object radix0,
                         @Cached("create()") BranchProfile needsRadixConversion) {
             int radix = toInt32(radix0);
             if (radix == 0) {
@@ -946,7 +946,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 needsNaN.enter();
                 return Double.NaN;
             }
-            double truncated = JSRuntime.truncateDouble2(thing);
+            double truncated = JSRuntime.truncateDouble(value);
             if (radix == 10) {
                 return truncated;
             } else {
@@ -1019,16 +1019,16 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
-        protected static boolean isShortStringInt10(Object thing, Object radix) {
-            return JSRuntime.isString(thing) && JSRuntime.toStringIsString(thing).length() < 15 && radix instanceof Integer && ((Integer) radix) == 10;
+        protected static boolean isShortStringInt10(Object input, Object radix) {
+            return JSRuntime.isString(input) && JSRuntime.toStringIsString(input).length() < 15 && radix instanceof Integer && ((Integer) radix) == 10;
         }
 
-        @Specialization(guards = "!isShortStringInt10(thing, radix0)")
-        protected Object parseIntGeneric(Object thing, Object radix0,
+        @Specialization(guards = "!isShortStringInt10(input, radix0)")
+        protected Object parseIntGeneric(Object input, Object radix0,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") BranchProfile needsRadix16,
                         @Cached("create()") BranchProfile needsDontFitLong) {
-            String inputStr = toStringNode.executeString(thing);
+            String inputStr = toStringNode.executeString(input);
 
             int firstIdx = JSRuntime.firstNonWhitespaceIndex(inputStr, false);
             int lastIdx = JSRuntime.lastNonWhitespaceIndex(inputStr, false) + 1;
@@ -1087,10 +1087,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return negate ? -value : value;
         }
 
-        private static Object convertToRadix(int thing, int radix) {
+        private static Object convertToRadix(int inputValue, int radix) {
             assert radix >= 2 && radix <= 36;
-            boolean negative = thing < 0;
-            long value = thing;
+            boolean negative = inputValue < 0;
+            long value = inputValue;
             if (negative) {
                 value = -value;
             }
@@ -1111,10 +1111,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             return JSRuntime.longToIntOrDouble(result);
         }
 
-        private static double convertToRadix(double thing, int radix) {
+        private static double convertToRadix(double inputValue, int radix) {
             assert (radix >= 2 && radix <= 36);
-            boolean negative = thing < 0;
-            double value = negative ? -thing : thing;
+            boolean negative = inputValue < 0;
+            double value = negative ? -inputValue : inputValue;
             double result = 0;
             double radixVal = 1;
             while (value != 0) {
@@ -1141,10 +1141,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @TruffleBoundary
-        private static int validStringLastIdx(String thing, int radix, int firstIdx, int lastIdx) {
+        private static int validStringLastIdx(String inputString, int radix, int firstIdx, int lastIdx) {
             int pos = firstIdx;
             while (pos < lastIdx) {
-                char c = thing.charAt(pos);
+                char c = inputString.charAt(pos);
                 if (JSRuntime.valueInRadix(c, radix) == -1) {
                     break;
                 }

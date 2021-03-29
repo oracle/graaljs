@@ -509,7 +509,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         public static int toInt(double value) {
-            return (int) JSRuntime.mathRint(value);
+            return (int) Math.rint(value);
         }
 
         @Override
