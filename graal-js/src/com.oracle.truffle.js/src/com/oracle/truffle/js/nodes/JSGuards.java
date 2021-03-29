@@ -409,13 +409,6 @@ public final class JSGuards {
         return null;
     }
 
-    public static Class<?> getNonTruffleObjectClass(Object value) {
-        if (value != null && !(value instanceof TruffleObject)) {
-            return value.getClass();
-        }
-        return null;
-    }
-
     public static JSClass getJSClassChecked(DynamicObject object) {
         if (JSDynamicObject.isJSDynamicObject(object)) {
             return JSObject.getJSClass(object);
