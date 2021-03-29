@@ -1735,7 +1735,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
-            return executeWithTargetAndIndexUnchecked(target, JSRuntime.longToIntOrDouble(index), receiver, defaultValue, root);
+            return executeWithTargetAndIndexUnchecked(target, (Object) index, receiver, defaultValue, root);
         }
 
         @Override

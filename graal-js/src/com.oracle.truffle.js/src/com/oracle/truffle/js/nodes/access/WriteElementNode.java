@@ -1888,7 +1888,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
-            executeWithTargetAndIndexUnguarded(target, JSRuntime.longToIntOrDouble(index), value, receiver, root);
+            executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver, root);
         }
 
         @Override
