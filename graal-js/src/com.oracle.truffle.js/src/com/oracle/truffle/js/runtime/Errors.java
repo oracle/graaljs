@@ -586,6 +586,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorTemporalPlainMonthYearExpected() {
+        return Errors.createTypeError("Temporal.PlainMonthYear expected");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCallableExpected() {
         return Errors.createTypeError("Callable expected");
     }

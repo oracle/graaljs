@@ -329,7 +329,15 @@ public class JSContext {
         TemporalDurationNanoseconds,
         TemporalDurationSign,
         TemporalDurationBlank,
-        TemporalCalendarId
+        TemporalCalendarId,
+        TemporalPlainYearMonthCalendar,
+        TemporalPlainYearMonthYear,
+        TemporalPlainYearMonthMonth,
+        TemporalPlainYearMonthMonthCode,
+        TemporalPlainYearMonthDaysInYear,
+        TemporalPlainYearMonthDaysInMonth,
+        TemporalPlainYearMonthMonthsInYear,
+        TemporalPlainYearMonthInLeapYear
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
