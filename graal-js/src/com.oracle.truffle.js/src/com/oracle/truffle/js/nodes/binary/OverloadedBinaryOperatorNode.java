@@ -43,18 +43,16 @@ package com.oracle.truffle.js.nodes.binary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.ArityException;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.interop.UnsupportedTypeException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.cast.JSToNumericOperandNode;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ImportStatic(JSGuards.class)
 public abstract class OverloadedBinaryOperatorNode extends Node {
@@ -77,10 +75,10 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
                                             @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
                                             @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
                                             @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
+                                            @Cached("createCall()") JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(left);
         checkOverloadedOperatorsAllowed(right);
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
+        return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
     @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)", "isNumber(right) || isJSNumber(right)"})
@@ -88,9 +86,9 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
                                         Object right,
                                         @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
                                         @Cached("getOperatorImplementation(left, getNumberOperatorSet(), getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
+                                        @Cached("createCall()") JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(left);
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
+        return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
     @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)"})
@@ -98,9 +96,9 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
                                         BigInt right,
                                         @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
                                         @Cached("getOperatorImplementation(left, getBigIntOperatorSet(), getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
-        checkOverloadedOperatorsAllowed(left);
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
+                                        @Cached("createCall()") JSFunctionCallNode callNode) {
+            checkOverloadedOperatorsAllowed(left);
+        return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
     @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)", "isNumber(left) || isJSNumber(left)"})
@@ -108,9 +106,9 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
                                         DynamicObject right,
                                         @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
                                         @Cached("getOperatorImplementation(getNumberOperatorSet(), right, getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
+                                        @Cached("createCall()") JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(right);
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
+        return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
     @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)"})
@@ -118,9 +116,9 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
                                         DynamicObject right,
                                         @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
                                         @Cached("getOperatorImplementation(getBigIntOperatorSet(), right, getOverloadedOperatorName())") Object operatorImplementation,
-                                        @CachedLibrary("operatorImplementation") InteropLibrary operatorImplementationLib) {
+                                        @Cached("createCall()") JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(right);
-        return performOverloaded(operatorImplementationLib, operatorImplementation, left, right);
+        return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
     @Specialization(replaces = {"doOverloadedOverloaded", "doOverloadedNumber", "doOverloadedBigInt", "doNumberOverloaded", "doBigIntOverloaded"})
@@ -135,15 +133,11 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
         return overloadedOperatorNode.execute(leftOperand, rightOperand);
     }
 
-    private Object performOverloaded(InteropLibrary operatorImplementationLib, Object operatorImplementation, Object left, Object right) {
+    private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object left, Object right) {
         if (operatorImplementation == null) {
             throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName());
         }
-        try {
-            return operatorImplementationLib.execute(operatorImplementation, left, right);
-        } catch (ArityException | UnsupportedMessageException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(operatorImplementation, e, getOverloadedOperatorName() + " operator overload", this);
-        }
+        return callNode.executeCall(JSArguments.create(Undefined.instance, operatorImplementation, left, right));
     }
 
     protected String getOverloadedOperatorName() {
