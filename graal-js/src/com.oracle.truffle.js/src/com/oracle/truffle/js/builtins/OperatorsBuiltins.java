@@ -53,16 +53,20 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
+import java.util.Arrays;
 import java.util.List;
 
 public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
@@ -70,6 +74,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
     public static final JSBuiltinsContainer BUILTINS = new OperatorsBuiltins();
 
     protected static final HiddenKey OPERATOR_SET_ID = new HiddenKey("OperatorSet");
+    protected static final HiddenKey OPERATOR_DEFINITIONS_ID = new HiddenKey("OperatorDefinitions");
 
     protected OperatorsBuiltins() {
         super(null);
@@ -87,9 +92,9 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         @Specialization
-        protected DynamicObject operators(VirtualFrame frame, DynamicObject table) {
+        protected DynamicObject doOperators(VirtualFrame frame, DynamicObject table, Object... extraTables) {
             DynamicObject prototype = createPrototypeNode.execute(frame);
-            OperatorSet operatorSet = new OperatorSet(getContext().incOperatorCounter(), table);
+            OperatorSet operatorSet = new OperatorSet(getContext().getRealm(), getContext().incOperatorCounter(), table, extraTables);
             JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
                 private DynamicObjectLibrary dynamicObjectLibrary = DynamicObjectLibrary.getFactory().createDispatched(1);
 
@@ -103,7 +108,13 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             DynamicObject constructor = JSFunction.create(getContext().getRealm(), constructorFunctionData);
             JSFunction.setClassPrototype(constructor, prototype);
             setConstructorNode.executeVoid(prototype, constructor);
+            JSObject.set(constructor, OPERATOR_DEFINITIONS_ID, operatorSet);
             return constructor;
+        }
+
+        @Specialization(guards = "!isJSObject(arg)")
+        protected DynamicObject doTypeError(Object arg, @SuppressWarnings("unused") Object... extraArgs) {
+            throw Errors.createTypeErrorNotAnObject(arg, this);
         }
     }
 
@@ -131,43 +142,48 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
     public static class OperatorSet {
 
-        public static final OperatorSet NUMBER_OPERATOR_SET = new OperatorSet(0);
-        public static final OperatorSet BIGINT_OPERATOR_SET = new OperatorSet(1);
-
         public static final EconomicSet<String> BINARY_OPERATORS;
         public static final EconomicSet<String> UNARY_OPERATORS;
         public static final EconomicSet<String> ALL_OPERATORS;
 
+        private static final EconomicSet<String> STRING_OPEN_OPERATORS;
+
         static {
-            String[] binaryOperators = new String[] {"-", "*", "/", "%", "**", "&", "^", "|", "<<", ">>", ">>>", "==", "+", "<" };
-            BINARY_OPERATORS = EconomicSet.create(binaryOperators.length);
-            for (String binaryOperator : binaryOperators) {
-                BINARY_OPERATORS.add(binaryOperator);
-            }
-            String[] unaryOperators = new String[] { "pos", "neg", "++", "--", "~" };
-            UNARY_OPERATORS = EconomicSet.create(unaryOperators.length);
-            for (String unaryOperator : unaryOperators) {
-                UNARY_OPERATORS.add(unaryOperator);
-            }
+            List<String> binaryOperators = Arrays.asList("-", "*", "/", "%", "**", "&", "^", "|", "<<", ">>", ">>>", "==", "+", "<" );
+            BINARY_OPERATORS = EconomicSet.create(binaryOperators.size());
+            BINARY_OPERATORS.addAll(binaryOperators);
+
+            List<String> unaryOperators = Arrays.asList("pos", "neg", "++", "--", "~");
+            UNARY_OPERATORS = EconomicSet.create(unaryOperators.size());
+            UNARY_OPERATORS.addAll(unaryOperators);
+
             ALL_OPERATORS = EconomicSet.create(BINARY_OPERATORS.size() + UNARY_OPERATORS.size());
             ALL_OPERATORS.addAll(BINARY_OPERATORS);
             ALL_OPERATORS.addAll(UNARY_OPERATORS);
+
+            STRING_OPEN_OPERATORS = EconomicSet.create(3);
+            STRING_OPEN_OPERATORS.addAll(Arrays.asList("+" ,"==", "<"));
         }
+
+        public static final OperatorSet NUMBER_OPERATOR_SET = new OperatorSet(0, BINARY_OPERATORS);
+        public static final OperatorSet BIGINT_OPERATOR_SET = new OperatorSet(1, BINARY_OPERATORS);
+        public static final OperatorSet STRING_OPERATOR_SET = new OperatorSet(2, STRING_OPEN_OPERATORS);
 
         public final int operatorCounter;
         public final EconomicMap<String, Object> selfOperatorDefinition;
-        public EconomicMap<String, DynamicObject[]> leftOperatorDefinitions;
-        public EconomicMap<String, DynamicObject[]> rightOperatorDefinitions;
-        public EconomicSet<String> openOperators;
+        public final EconomicMap<String, Object[]> leftOperatorDefinitions;
+        public final EconomicMap<String, Object[]> rightOperatorDefinitions;
+        public final EconomicSet<String> openOperators;
 
-        public OperatorSet(int operatorCounter) {
+        public OperatorSet(int operatorCounter, EconomicSet<String> openOperators) {
             this.operatorCounter = operatorCounter;
             this.selfOperatorDefinition = null;
             this.leftOperatorDefinitions = null;
             this.rightOperatorDefinitions = null;
+            this.openOperators = openOperators;
         }
 
-        public OperatorSet(int operatorCounter, DynamicObject table) {
+        public OperatorSet(JSRealm realm, int operatorCounter, DynamicObject table, Object[] extraTables) {
             this.operatorCounter = operatorCounter;
 
             List<String> keys = JSObject.enumerableOwnNames(table);
@@ -180,6 +196,95 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     }
                     this.selfOperatorDefinition.put(key, value);
                 }
+            }
+
+            Object openSet = JSObject.get(table, "open");
+            if (openSet != Undefined.instance) {
+                this.openOperators = EconomicSet.create();
+                for (Object element : JSArray.toArray((DynamicObject) openSet)) {
+                    if (!(element instanceof String) || !ALL_OPERATORS.contains((String) element)) {
+                        throw Errors.createTypeError("unrecognized operator " + JSRuntime.toString(element));
+                    }
+                    openOperators.add((String) element);
+                }
+            } else {
+                this.openOperators = ALL_OPERATORS;
+            }
+
+            this.leftOperatorDefinitions = EconomicMap.create();
+            this.rightOperatorDefinitions = EconomicMap.create();
+            for (Object extraTable : extraTables) {
+                if (!(extraTable instanceof DynamicObject)) {
+                    throw Errors.createTypeErrorNotAnObject(extraTable);
+                }
+                DynamicObject extraTableDynObj = (DynamicObject) extraTable;
+                if (JSObject.hasProperty(extraTableDynObj, "left")) {
+                    if (JSObject.hasProperty(extraTableDynObj, "right")) {
+                        throw Errors.createTypeError("overload table must not be both left and right");
+                    }
+                    Object leftType = JSObject.get(extraTableDynObj, "left");
+                    OperatorSet leftSet = getOperatorSetOfClass(realm, (DynamicObject) leftType, "the left: value must be a class with operators overloaded");
+                    for (String operator : JSObject.enumerableOwnNames(extraTableDynObj)) {
+                        if (ALL_OPERATORS.contains(operator)) {
+                            Object operatorImplementation = JSObject.get(extraTableDynObj, operator);
+                            if (!JSRuntime.isCallable(operatorImplementation)) {
+                                throw Errors.createTypeError("Operators must be functions");
+                            }
+                            if (!leftSet.openOperators.contains(operator)) {
+                                throw Errors.createTypeError("the operator " + operator + " may not be overloaded on the provided type");
+                            }
+                            addRightOperator(operator, leftSet, operatorImplementation);
+                        }
+                    }
+                } else {
+                    if (!JSObject.hasProperty(extraTableDynObj, "right")) {
+                        throw Errors.createTypeError("Either left: or right: must be provided");
+                    }
+                    Object rightType = JSObject.get(extraTableDynObj, "right");
+                    OperatorSet rightSet = getOperatorSetOfClass(realm, (DynamicObject) rightType, "the right: value must be a class with operators overloaded");
+                    for (String operator : JSObject.enumerableOwnNames(extraTableDynObj)) {
+                        if (ALL_OPERATORS.contains(operator)) {
+                            Object operatorImplementation = JSObject.get(extraTableDynObj, operator);
+                            if (!JSRuntime.isCallable(operatorImplementation)) {
+                                throw Errors.createTypeError("Operators must be functions");
+                            }
+                            if (!rightSet.openOperators.contains(operator)) {
+                                throw Errors.createTypeError("the operator " + operator + " may not be overloaded on the provided type");
+                            }
+                            addLeftOperation(operator, rightSet, operatorImplementation);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void addLeftOperation(String operator, OperatorSet rightSet, Object operatorImplementation) {
+            if (!leftOperatorDefinitions.containsKey(operator)) {
+                leftOperatorDefinitions.put(operator, new DynamicObject[this.operatorCounter]);
+            }
+            leftOperatorDefinitions.get(operator)[rightSet.operatorCounter] = operatorImplementation;
+        }
+
+        private void addRightOperator(String operator, OperatorSet leftSet, Object operatorImplementation) {
+            if (!rightOperatorDefinitions.containsKey(operator)) {
+                rightOperatorDefinitions.put(operator, new DynamicObject[this.operatorCounter]);
+            }
+            rightOperatorDefinitions.get(operator)[leftSet.operatorCounter] = operatorImplementation;
+        }
+
+        private static OperatorSet getOperatorSetOfClass(JSRealm realm, DynamicObject constructor, String errorMessage) {
+            if (constructor == realm.getNumberConstructor()) {
+                return NUMBER_OPERATOR_SET;
+            } else if (constructor == realm.getBigIntConstructor()) {
+                return BIGINT_OPERATOR_SET;
+            } else if (constructor == realm.getStringConstructor()) {
+                return STRING_OPERATOR_SET;
+            } else {
+                Object operatorSetObj = JSObject.get(constructor, OPERATOR_DEFINITIONS_ID);
+                if (!JSObject.hasProperty(constructor, OPERATOR_DEFINITIONS_ID)) {
+                    throw Errors.createTypeError(errorMessage);
+                }
+                return (OperatorSet) operatorSetObj;
             }
         }
     }
