@@ -119,6 +119,16 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         return (OperatorSet) JSObject.get(object, OperatorsBuiltins.OPERATOR_SET_ID);
     }
 
+    public static boolean overloadedOperatorsAllowed(DynamicObject arg) {
+        return true;
+    }
+
+    public static void checkOverloadedOperatorsAllowed(DynamicObject arg) {
+        if (!overloadedOperatorsAllowed(arg)) {
+            throw Errors.createTypeError("use of overloaded operators is not enabled by a `with operators from` clause");
+        }
+    }
+
     public static class OperatorSet {
 
         public static final OperatorSet NUMBER_OPERATOR_SET = new OperatorSet(0);

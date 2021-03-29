@@ -54,6 +54,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
+
 @ImportStatic(JSGuards.class)
 public abstract class OverloadedBinaryOperatorNode extends Node {
 
@@ -97,7 +99,7 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
                                         @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
                                         @Cached("getOperatorImplementation(left, getBigIntOperatorSet(), getOverloadedOperatorName())") Object operatorImplementation,
                                         @Cached("createCall()") JSFunctionCallNode callNode) {
-            checkOverloadedOperatorsAllowed(left);
+        checkOverloadedOperatorsAllowed(left);
         return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
@@ -142,15 +144,5 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
 
     protected String getOverloadedOperatorName() {
         return overloadedOperatorName;
-    }
-
-    private static boolean overloadedOperatorsAllowed(DynamicObject arg) {
-        return true;
-    }
-
-    private static void checkOverloadedOperatorsAllowed(DynamicObject arg) {
-        if (!overloadedOperatorsAllowed(arg)) {
-            throw Errors.createTypeError("use of overloaded operators is not enabled by a `with operators from` clause");
-        }
     }
 }

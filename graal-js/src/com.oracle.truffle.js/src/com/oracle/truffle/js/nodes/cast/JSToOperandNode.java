@@ -47,7 +47,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
-import com.oracle.truffle.js.runtime.Errors;
+
+import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
 public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
@@ -78,16 +79,6 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
     public static JSToOperandNode create(Hint hint) {
         return JSToOperandNodeGen.create(hint);
-    }
-
-    private static boolean overloadedOperatorsAllowed(DynamicObject arg) {
-        return true;
-    }
-
-    private static void checkOverloadedOperatorsAllowed(DynamicObject arg) {
-        if (!overloadedOperatorsAllowed(arg)) {
-            throw Errors.createTypeError("use of overloaded operators is not enabled by a `with operators from` clause");
-        }
     }
 
     @Specialization(guards = {"hasOverloadedOperatorsNode.execute(arg)"})
