@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -304,6 +305,10 @@ public final class JSGuards {
 
     public static boolean isJSTemporalTime(Object value) {
         return JSTemporalPlainTime.isJSTemporalTime(value);
+    }
+
+    public static boolean isJSTemporalPlainYearMonth(Object value) {
+        return JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(value);
     }
 
     public static boolean isJSMap(Object value) {
