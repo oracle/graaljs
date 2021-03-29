@@ -2564,41 +2564,6 @@ public final class JSRuntime {
         return Math.floor(Math.abs(d)) == Math.abs(d);
     }
 
-    public static double mathFloor(double d) {
-        if (d == 0.0) {
-            // +/-0.0
-            return d;
-        }
-        if (JSRuntime.isSafeInteger(d)) {
-            long i = (long) d;
-            return d < i ? i - 1 : i;
-        } else {
-            return Math.floor(d);
-        }
-    }
-
-    public static double mathCeil(double d) {
-        if (d == 0.0) {
-            // +/-0.0
-            return d;
-        }
-        if (JSRuntime.isSafeInteger(d)) {
-            long i = (long) d;
-            long result = d > i ? i + 1 : i;
-            if (result == 0 && d < 0) {
-                return -0.0;
-            }
-            return result;
-        } else {
-            return Math.ceil(d);
-        }
-    }
-
-    @TruffleBoundary
-    public static double mathRint(double d) {
-        return Math.rint(d);
-    }
-
     /**
      * Compare property keys such that a stable sort using it would maintain the following order.
      * <ol>
