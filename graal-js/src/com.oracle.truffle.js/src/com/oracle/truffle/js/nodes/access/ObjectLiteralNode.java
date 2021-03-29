@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Arrays;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -54,12 +52,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Property;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -221,8 +216,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     private abstract static class CachingObjectLiteralMemberNode extends ObjectLiteralMemberNode {
         protected final Object name;
-        @CompilationFinal protected CacheEntry cache;
-        protected static final CacheEntry GENERIC = new CacheEntry(null, null, null, null, null);
+        @CompilationFinal private DynamicObjectLibrary dynamicObjectLibrary;
 
         CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isField) {
             super(isStatic, attributes, isField, false);
@@ -230,90 +224,19 @@ public class ObjectLiteralNode extends JavaScriptNode {
             this.name = name;
         }
 
-        protected static final class CacheEntry {
-            protected final Shape oldShape;
-            protected final Shape newShape;
-            protected final Property property;
-            protected final Assumption newShapeNotObsoleteAssumption;
-            protected final CacheEntry next;
-
-            protected CacheEntry(Shape oldShape, Shape newShape, Property property, Assumption newShapeNotObsoleteAssumption, CacheEntry next) {
-                this.oldShape = oldShape;
-                this.newShape = newShape;
-                this.property = property;
-                this.newShapeNotObsoleteAssumption = newShapeNotObsoleteAssumption;
-                this.next = next;
-            }
-
-            protected boolean isValid() {
-                return newShapeNotObsoleteAssumption.isValid();
-            }
-
-            @Override
-            public String toString() {
-                CompilerAsserts.neverPartOfCompilation();
-                StringBuilder sb = new StringBuilder();
-                int count = 0;
-                for (CacheEntry current = this; current != null; current = current.next) {
-                    sb.append(++count + " [property=" + current.property + ", oldShape=" + current.oldShape + ", newShape=" + current.newShape + "]\n");
-                }
-                return sb.toString();
-            }
-        }
-
-        protected final void insertIntoCache(Shape oldShape, Shape newShape, Property property, Assumption newShapeNotObsoleteAssumption, JSContext context) {
-            CompilerAsserts.neverPartOfCompilation();
-            Lock lock = getLock();
-            lock.lock();
-            try {
-                CacheEntry curr = cache;
-                if (curr == GENERIC) {
-                    return;
-                }
-                curr = filterValid(curr);
-                int count = 0;
-                for (CacheEntry c = curr; c != null; c = c.next) {
-                    ++count;
-                    if (c == GENERIC) {
-                        return;
-                    } else if (c.oldShape.equals(oldShape) && c.newShape.equals(newShape) && c.property.equals(property)) {
-                        // already in the cache
-                        return;
-                    } else if (count >= context.getPropertyCacheLimit()) {
-                        setGeneric();
-                        return;
-                    }
-                }
-                this.cache = new CacheEntry(oldShape, newShape, property, newShapeNotObsoleteAssumption, curr);
-            } finally {
-                lock.unlock();
-            }
-        }
-
-        private static CacheEntry filterValid(CacheEntry cache) {
-            if (cache == null) {
-                return null;
-            }
-            CacheEntry filteredNext = filterValid(cache.next);
-            if (cache.isValid()) {
-                if (filteredNext == cache.next) {
-                    return cache;
-                } else {
-                    return new CacheEntry(cache.oldShape, cache.newShape, cache.property, cache.newShapeNotObsoleteAssumption, filteredNext);
-                }
-            } else {
-                return filteredNext;
-            }
-        }
-
-        protected final void setGeneric() {
-            CompilerAsserts.neverPartOfCompilation();
-            this.cache = GENERIC;
-        }
-
         @Override
         public final Object evaluateKey(VirtualFrame frame) {
             return name;
+        }
+
+        protected final DynamicObjectLibrary dynamicObjectLibrary(JSContext context) {
+            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary;
+            if (dynamicObjectLib == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                dynamicObjectLibrary = dynamicObjectLib = insert(JSObjectUtil.createDispatched(name, context.getPropertyCacheLimit()));
+                JSObjectUtil.checkForNoSuchPropertyOrMethod(context, name);
+            }
+            return dynamicObjectLib;
         }
     }
 
@@ -336,58 +259,12 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return evaluateWithHomeObject(valueNode, frame, homeObject);
         }
 
-        @ExplodeLoop
         private void execute(DynamicObject obj, Object value, JSContext context) {
             if (isField) {
                 return;
             }
-            for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
-                if (resolved == GENERIC) {
-                    executeGeneric(obj, value);
-                    return;
-                }
-                if (resolved.oldShape.check(obj)) {
-                    try {
-                        resolved.newShapeNotObsoleteAssumption.check();
-                    } catch (InvalidAssumptionException e) {
-                        break;
-                    }
-                    if (resolved.property.getLocation().canStore(value)) {
-                        resolved.property.setSafe(obj, value, resolved.oldShape, resolved.newShape);
-                        return;
-                    }
-                }
-            }
-
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            rewrite(obj, value, context);
-        }
-
-        private void executeGeneric(DynamicObject obj, Object value) {
-            PropertyDescriptor propDesc = PropertyDescriptor.createData(value, attributes);
-            JSRuntime.definePropertyOrThrow(obj, name, propDesc);
-        }
-
-        private void rewrite(DynamicObject obj, Object value, JSContext context) {
-            CompilerAsserts.neverPartOfCompilation();
-            Shape oldShape = obj.getShape();
-            Property property = oldShape.getProperty(name);
-            Shape newShape;
-            Property newProperty;
-            if (property != null) {
-                if (JSProperty.isData(property) && !JSProperty.isProxy(property) && (property.getFlags() & JSAttributes.ATTRIBUTES_MASK) == attributes) {
-                    property.setGeneric(obj, value, null);
-                } else {
-                    JSObjectUtil.defineDataProperty(obj, name, value, attributes);
-                }
-                newShape = obj.getShape();
-                newProperty = newShape.getProperty(name);
-            } else {
-                JSObjectUtil.putDataProperty(context, obj, name, value, attributes);
-                newShape = obj.getShape();
-                newProperty = newShape.getLastProperty();
-            }
-            insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption(), context);
+            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary(context);
+            dynamicObjectLib.putWithFlags(obj, name, value, attributes);
         }
 
         @Override
@@ -420,76 +297,28 @@ public class ObjectLiteralNode extends JavaScriptNode {
             execute(receiver, getterV, setterV, context);
         }
 
-        @ExplodeLoop
         private void execute(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
-            for (CacheEntry resolved = cache; resolved != null; resolved = resolved.next) {
-                if (resolved == GENERIC) {
-                    executeGeneric(obj, getterV, setterV);
-                    return;
-                }
-                if (resolved.oldShape.check(obj)) {
-                    try {
-                        resolved.newShapeNotObsoleteAssumption.check();
-                    } catch (InvalidAssumptionException e) {
-                        break;
-                    }
-                    Accessor accessor;
-                    if ((getterNode == null || setterNode == null) && resolved.oldShape == resolved.newShape) {
-                        // No full accessor information and there is an accessor property already
-                        // => merge the new and existing accessor functions
-                        accessor = mergedAccessor(obj, resolved.property, getterV, setterV);
-                    } else {
-                        accessor = new Accessor((DynamicObject) getterV, (DynamicObject) setterV);
-                    }
-                    if (resolved.property.getLocation().canStore(accessor)) {
-                        resolved.property.setSafe(obj, accessor, resolved.oldShape, resolved.newShape);
-                        return;
-                    }
-                }
+            DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary(context);
+
+            DynamicObject getter = (DynamicObject) getterV;
+            DynamicObject setter = (DynamicObject) setterV;
+
+            if ((getterNode == null || setterNode == null) && JSProperty.isAccessor(dynamicObjectLib.getPropertyFlagsOrDefault(obj, name, 0))) {
+                // No full accessor information and there is an accessor property already
+                // => merge the new and existing accessor functions
+                Accessor existing = (Accessor) dynamicObjectLib.getOrDefault(obj, name, null);
+                getter = (getter == null) ? existing.getGetter() : getter;
+                setter = (setter == null) ? existing.getSetter() : setter;
             }
+            Accessor accessor = new Accessor(getter, setter);
 
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            rewrite(obj, getterV, setterV, context);
-        }
-
-        private void executeGeneric(DynamicObject obj, Object getterV, Object setterV) {
-            PropertyDescriptor propDesc = PropertyDescriptor.createAccessor((DynamicObject) getterV, (DynamicObject) setterV, attributes);
-            JSRuntime.definePropertyOrThrow(obj, name, propDesc);
-        }
-
-        private void rewrite(DynamicObject obj, Object getterV, Object setterV, JSContext context) {
-            CompilerAsserts.neverPartOfCompilation();
-            Shape oldShape = obj.getShape();
-            Property property = oldShape.getProperty(name);
-            Accessor value = new Accessor((DynamicObject) getterV, (DynamicObject) setterV);
-            Property newProperty;
-            Shape newShape;
-            if (property != null) {
-                if (JSProperty.isAccessor(property)) {
-                    property.setGeneric(obj, mergedAccessor(obj, property, getterV, setterV), null);
-                } else {
-                    JSObjectUtil.defineAccessorProperty(obj, name, value, attributes);
-                }
-                newShape = obj.getShape();
-                newProperty = newShape.getProperty(name);
-            } else {
-                JSObjectUtil.putAccessorProperty(context, obj, name, value, attributes);
-                newShape = obj.getShape();
-                newProperty = newShape.getLastProperty();
-            }
-            insertIntoCache(oldShape, newShape, newProperty, newShape.getValidAssumption(), context);
-        }
-
-        private static Accessor mergedAccessor(DynamicObject obj, Property property, Object getterV, Object setterV) {
-            Accessor oldAccessor = (Accessor) property.get(obj, null);
-            DynamicObject mergedGetter = (getterV == null) ? oldAccessor.getGetter() : (DynamicObject) getterV;
-            DynamicObject mergedSetter = (setterV == null) ? oldAccessor.getSetter() : (DynamicObject) setterV;
-            return new Accessor(mergedGetter, mergedSetter);
+            dynamicObjectLib.putWithFlags(obj, name, accessor, attributes | JSProperty.ACCESSOR);
         }
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(getterNode, materializedTags),
+            return new ObjectLiteralAccessorMemberNode(name, isStatic, attributes,
+                            JavaScriptNode.cloneUninitialized(getterNode, materializedTags),
                             JavaScriptNode.cloneUninitialized(setterNode, materializedTags));
         }
     }
