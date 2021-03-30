@@ -83,7 +83,7 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
         return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
-    @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)", "isNumber(right) || isJSNumber(right)"})
+    @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)", "isNumber(right)"})
     protected Object doOverloadedNumber(DynamicObject left,
                                         Object right,
                                         @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
@@ -103,7 +103,7 @@ public abstract class OverloadedBinaryOperatorNode extends Node {
         return performOverloaded(callNode, operatorImplementation, left, right);
     }
 
-    @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)", "isNumber(left) || isJSNumber(left)"})
+    @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)", "isNumber(left)"})
     protected Object doNumberOverloaded(Object left,
                                         DynamicObject right,
                                         @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
