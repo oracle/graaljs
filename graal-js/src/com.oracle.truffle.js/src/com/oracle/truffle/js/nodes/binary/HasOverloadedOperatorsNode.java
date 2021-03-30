@@ -66,7 +66,7 @@ public abstract class HasOverloadedOperatorsNode extends Node {
     @SuppressWarnings("unused")
     @Specialization(guards = {"hasOverloadedOperators(operandShape)", "operandShape.check(operand)"})
     protected boolean doCached(DynamicObject operand,
-                               @Cached("operand.getShape()") Shape operandShape) {
+                    @Cached("operand.getShape()") Shape operandShape) {
         return true;
     }
 

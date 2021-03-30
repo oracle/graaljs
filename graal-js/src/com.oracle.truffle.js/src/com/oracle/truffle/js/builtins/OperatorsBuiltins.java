@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -78,7 +80,8 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
     protected OperatorsBuiltins() {
         super(null);
-        defineFunction("Operators", 1, JSAttributes.getDefault(), (context, builtin) -> OperatorsBuiltinsFactory.OperatorsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context)));
+        defineFunction("Operators", 1, JSAttributes.getDefault(),
+                        (context, builtin) -> OperatorsBuiltinsFactory.OperatorsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context)));
     }
 
     public abstract static class OperatorsNode extends JSBuiltinNode {
@@ -95,6 +98,15 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         protected DynamicObject doOperators(VirtualFrame frame, DynamicObject table, Object... extraTables) {
             DynamicObject prototype = createPrototypeNode.execute(frame);
             OperatorSet operatorSet = new OperatorSet(getContext().getRealm(), getContext().incOperatorCounter(), table, extraTables);
+            DynamicObject constructor = createConstructor(operatorSet);
+            JSFunction.setClassPrototype(constructor, prototype);
+            setConstructorNode.executeVoid(prototype, constructor);
+            JSObject.set(constructor, OPERATOR_DEFINITIONS_ID, operatorSet);
+            return constructor;
+        }
+
+        @TruffleBoundary
+        private DynamicObject createConstructor(OperatorSet operatorSet) {
             JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
                 private DynamicObjectLibrary dynamicObjectLibrary = DynamicObjectLibrary.getFactory().createDispatched(1);
 
@@ -105,11 +117,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     return object;
                 }
             }), 0, "");
-            DynamicObject constructor = JSFunction.create(getContext().getRealm(), constructorFunctionData);
-            JSFunction.setClassPrototype(constructor, prototype);
-            setConstructorNode.executeVoid(prototype, constructor);
-            JSObject.set(constructor, OPERATOR_DEFINITIONS_ID, operatorSet);
-            return constructor;
+            return JSFunction.create(getContext().getRealm(), constructorFunctionData);
         }
 
         @Specialization(guards = "!isJSObject(arg)")
@@ -149,7 +157,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         private static final EconomicSet<String> STRING_OPEN_OPERATORS;
 
         static {
-            List<String> binaryOperators = Arrays.asList("-", "*", "/", "%", "**", "&", "^", "|", "<<", ">>", ">>>", "==", "+", "<" );
+            List<String> binaryOperators = Arrays.asList("-", "*", "/", "%", "**", "&", "^", "|", "<<", ">>", ">>>", "==", "+", "<");
             BINARY_OPERATORS = EconomicSet.create(binaryOperators.size());
             BINARY_OPERATORS.addAll(binaryOperators);
 
@@ -162,7 +170,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             ALL_OPERATORS.addAll(UNARY_OPERATORS);
 
             STRING_OPEN_OPERATORS = EconomicSet.create(3);
-            STRING_OPEN_OPERATORS.addAll(Arrays.asList("+" ,"==", "<"));
+            STRING_OPEN_OPERATORS.addAll(Arrays.asList("+", "==", "<"));
         }
 
         public static final OperatorSet NUMBER_OPERATOR_SET = new OperatorSet(0, BINARY_OPERATORS);
@@ -183,6 +191,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             this.openOperators = openOperators;
         }
 
+        @TruffleBoundary
         public OperatorSet(JSRealm realm, int operatorCounter, DynamicObject table, Object[] extraTables) {
             this.operatorCounter = operatorCounter;
 

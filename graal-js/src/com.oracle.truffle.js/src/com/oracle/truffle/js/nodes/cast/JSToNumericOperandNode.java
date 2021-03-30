@@ -72,14 +72,14 @@ public abstract class JSToNumericOperandNode extends JavaScriptBaseNode {
 
     @Fallback
     protected Object doOther(Object arg) {
-        return getToNumericNode().execute(arg);
+        return toNumeric(arg);
     }
 
-    protected JSToNumericNode getToNumericNode() {
+    protected Object toNumeric(Object arg) {
         if (toNumericNode == null) {
-            toNumericNode = insert(JSToNumericNode.create());
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            toNumericNode = insert(JSToNumericNode.create());
         }
-        return toNumericNode;
+        return toNumericNode.execute(arg);
     }
 }
