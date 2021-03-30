@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -83,7 +84,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
         int shiftValue = rightValue & 0x1F;
         if (shiftValue == 0) {
-            return JSToUInt32WrapperNode.create(left);
+            return JSToUInt32WrapperNode.create(left, true, rightValue);
         }
         if (left instanceof JSConstantIntegerNode) {
             int leftValue = ((JSConstantIntegerNode) left).executeInt(null);
@@ -137,8 +138,20 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(guards = "!isHandled(lval)")
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
+    protected Object doOverloaded(DynamicObject a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, rightValue);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return ">>>";
+    }
+
+    @Specialization(guards = {"!lvalHasOverloadedOperatorsNode.execute(lval)", "!isHandled(lval)"})
     protected int doGeneric(Object lval,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode lvalHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("createInner()") JSUnsignedRightShiftConstantNode innerShiftNode) {
         Object leftOperand = leftToNumeric.execute(lval);
@@ -147,11 +160,6 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     protected static boolean isHandled(Object lval) {
         return lval instanceof Integer || lval instanceof Double || lval instanceof SafeInteger || lval instanceof BigInt;
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     protected JSUnsignedRightShiftConstantNode createInner() {

@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -143,7 +144,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     }
 
     @Specialization(guards = {"rightHasOverloadedOperatorsNode.execute(right)"})
-    protected Object doOverloaded(Object right,
+    protected Object doOverloaded(DynamicObject right,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rightHasOverloadedOperatorsNode,
                     @Cached("createHintNone(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(getLeftValue(), right);

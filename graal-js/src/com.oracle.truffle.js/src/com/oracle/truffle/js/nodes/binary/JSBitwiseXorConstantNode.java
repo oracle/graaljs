@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -144,8 +145,20 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
         return a.xor(rightBigIntValue);
     }
 
-    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"}, guards = "isInt")
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
+    protected Object doOverloaded(DynamicObject a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, isInt ? rightIntValue : rightBigIntValue);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "^";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGeneric(Object a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt,
                     @Cached("makeCopy()") JavaScriptNode innerXorNode) {
@@ -166,8 +179,9 @@ public abstract class JSBitwiseXorConstantNode extends JSUnaryNode {
         return isInt;
     }
 
-    @Specialization(replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"}, guards = "!isInt()")
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt) {
         Object numericA = toNumeric.execute(a);

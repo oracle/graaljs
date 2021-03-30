@@ -110,8 +110,22 @@ public abstract class JSExponentiateNode extends JSBinaryNode {
         }
     }
 
-    @Specialization(replaces = "doDouble")
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "**";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = "doDouble")
     protected Object doGeneric(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSExponentiateNode nestedExponentiateNode,
                     @Cached("create()") JSToNumericNode toNumeric1Node,
                     @Cached("create()") JSToNumericNode toNumeric2Node,
@@ -120,11 +134,6 @@ public abstract class JSExponentiateNode extends JSBinaryNode {
         Object operandB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
         return nestedExponentiateNode.execute(operandA, operandB);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 
     @Override

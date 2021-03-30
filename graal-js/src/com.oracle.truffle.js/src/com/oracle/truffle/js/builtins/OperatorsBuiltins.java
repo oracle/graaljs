@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -126,6 +125,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
     }
 
+    @TruffleBoundary
     public static boolean hasOverloadedOperators(DynamicObject object) {
         return object.getShape().hasProperty(OPERATOR_SET_ID);
     }

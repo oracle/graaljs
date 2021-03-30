@@ -49,6 +49,8 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
+import com.oracle.truffle.js.nodes.binary.OverloadedBinaryOperatorNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -66,8 +68,12 @@ import java.util.Set;
  */
 public abstract class JSToInt32Node extends JSUnaryNode {
 
-    protected JSToInt32Node(JavaScriptNode operand) {
+    // Whether this node is used to implement x | 0.
+    protected final boolean bitwiseOr;
+
+    protected JSToInt32Node(JavaScriptNode operand, boolean bitwiseOr) {
         super(operand);
+        this.bitwiseOr = bitwiseOr;
     }
 
     @Override
@@ -95,6 +101,10 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     public abstract int executeInt(Object operand);
 
     public static JavaScriptNode create(JavaScriptNode child) {
+        return create(child, false);
+    }
+
+    public static JavaScriptNode create(JavaScriptNode child, boolean bitwiseOr) {
         if (child != null) {
             if (child.isResultAlwaysOfType(int.class)) {
                 return child;
@@ -107,16 +117,16 @@ public abstract class JSToInt32Node extends JSUnaryNode {
                 }
             }
         }
-        return JSToInt32NodeGen.create(child);
+        return JSToInt32NodeGen.create(child, bitwiseOr);
     }
 
     public static JSToInt32Node create() {
-        return JSToInt32NodeGen.create(null);
+        return JSToInt32NodeGen.create(null, false);
     }
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
+        return !bitwiseOr && clazz == int.class;
     }
 
     @Specialization
@@ -191,8 +201,24 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
-    @Specialization(guards = "isJSObject(value)")
+    public boolean isBitwiseOr() {
+        return bitwiseOr;
+    }
+
+    @Specialization(guards = {"isBitwiseOr()", "hasOverloadedOperatorsNode.execute(value)"})
+    protected Object doOverloadedOperator(DynamicObject value,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(value, 0);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "|";
+    }
+
+    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperatorsNode.execute(value)"})
     protected int doJSObject(DynamicObject value,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToDoubleNode toDoubleNode) {
         return doubleToInt32(toDoubleNode.executeDouble(value));
     }
@@ -213,6 +239,6 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSToInt32NodeGen.create(cloneUninitialized(getOperand(), materializedTags));
+        return JSToInt32NodeGen.create(cloneUninitialized(getOperand(), materializedTags), bitwiseOr);
     }
 }

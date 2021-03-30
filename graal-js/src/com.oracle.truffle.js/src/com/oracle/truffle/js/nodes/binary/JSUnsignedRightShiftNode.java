@@ -149,8 +149,22 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         throw Errors.createTypeError("BigInts have no unsigned right shift, use >> instead");
     }
 
-    @Specialization(guards = "!isHandled(lval, rval)")
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return ">>>";
+    }
+
+    @Specialization(guards = {"!lvalHasOverloadedOperatorsNode.execute(lval)", "!rvalHasOverloadedOperatorsNode.execute(rval)", "!isHandled(lval, rval)"})
     protected Number doGeneric(Object lval, Object rval,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode lvalHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rvalHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode lvalToNumericNode,
                     @Cached("create()") JSToNumericNode rvalToNumericNode,
                     @Cached("create()") JSUnsignedRightShiftNode innerShiftNode,
@@ -171,11 +185,6 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     protected static boolean isHandled(Object lval, Object rval) {
         return (lval instanceof Integer || lval instanceof Double || lval instanceof SafeInteger) && (rval instanceof Integer || rval instanceof Double || rval instanceof SafeInteger);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 
     @Override

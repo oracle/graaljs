@@ -129,11 +129,6 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
     }
 
     @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
-    }
-
-    @Override
     public void setTruncate() {
         CompilerAsserts.neverPartOfCompilation();
         if (truncate == false) {

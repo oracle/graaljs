@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -256,6 +257,7 @@ public abstract class OverloadedBinaryOperatorNode extends JavaScriptBaseNode {
         return getOperatorImplementation(leftOperatorSet, rightOperatorSet, operatorName);
     }
 
+    @TruffleBoundary
     protected static Object getOperatorImplementation(OperatorSet leftOperatorSet, OperatorSet rightOperatorSet, String operatorName) {
         if (leftOperatorSet == rightOperatorSet) {
             return leftOperatorSet.selfOperatorDefinition.get(operatorName);

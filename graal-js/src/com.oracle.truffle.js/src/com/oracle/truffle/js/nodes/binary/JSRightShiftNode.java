@@ -102,8 +102,22 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
         return rightShift.execute(leftInt32.executeInt(a), rightUInt32.execute(b));
     }
 
-    @Specialization(replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return ">>";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSRightShiftNode rightShift,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("create()") JSToNumericNode rightToNumeric,
@@ -116,11 +130,6 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     public static JSRightShiftNode create() {
         return JSRightShiftNodeGen.create(null, null);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     @Override

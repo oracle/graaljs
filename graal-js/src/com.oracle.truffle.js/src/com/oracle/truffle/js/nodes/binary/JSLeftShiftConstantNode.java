@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -130,17 +131,24 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
+    protected Object doOverloaded(DynamicObject a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, shiftValue);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "<<";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode leftToNumericNode,
                     @Cached("makeCopy()") JSLeftShiftConstantNode innerShiftNode) {
         Object numericLeft = leftToNumericNode.execute(a);
         return innerShiftNode.executeInt(numericLeft);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     protected JSLeftShiftConstantNode makeCopy() {
