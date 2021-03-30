@@ -41,12 +41,10 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericOperandNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -56,8 +54,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
-@ImportStatic(JSGuards.class)
-public abstract class OverloadedBinaryOperatorNode extends Node {
+public abstract class OverloadedBinaryOperatorNode extends JavaScriptBaseNode {
 
     private final String overloadedOperatorName;
 

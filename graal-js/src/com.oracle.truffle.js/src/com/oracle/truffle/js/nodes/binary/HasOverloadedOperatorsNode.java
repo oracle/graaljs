@@ -41,17 +41,17 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
-import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
-@ImportStatic(JSGuards.class)
-public abstract class HasOverloadedOperatorsNode extends Node {
+public abstract class HasOverloadedOperatorsNode extends JavaScriptBaseNode {
 
     protected HasOverloadedOperatorsNode() {
         super();
@@ -62,6 +62,13 @@ public abstract class HasOverloadedOperatorsNode extends Node {
     }
 
     public abstract boolean execute(Object operand);
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"!realm.getContext().getContextOptions().isOperatorOverloading()"})
+    protected boolean doDisabled(Object operand,
+                    @CachedContext(JavaScriptLanguage.class) JSRealm realm) {
+        return false;
+    }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"hasOverloadedOperators(operandShape)", "operandShape.check(operand)"})
