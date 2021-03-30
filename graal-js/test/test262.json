@@ -1977,10 +1977,6 @@
     },
     "comment" : "GR-27672"
   }, {
-    "filePath" : "language/expressions/assignment/assignment-operator-calls-putvalue-lref--rval-.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
@@ -2008,133 +2004,9 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--1.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--10.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--11.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--12.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--13.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--14.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--15.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--16.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--17.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--18.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--19.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--2.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--20.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--21.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--3.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--4.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--5.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--6.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--7.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--8.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v--9.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/compound-assignment/compound-assignment-operator-calls-putvalue-lref--v-.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
-  }, {
-    "filePath" : "language/expressions/postfix-decrement/operator-x-postfix-decrement-calls-putvalue-lhs-newvalue--1.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/postfix-decrement/operator-x-postfix-decrement-calls-putvalue-lhs-newvalue-.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/postfix-increment/operator-x-postfix-increment-calls-putvalue-lhs-newvalue--1.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/postfix-increment/operator-x-postfix-increment-calls-putvalue-lhs-newvalue-.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/prefix-decrement/operator-prefix-decrement-x-calls-putvalue-lhs-newvalue--1.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/prefix-decrement/operator-prefix-decrement-x-calls-putvalue-lhs-newvalue-.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/prefix-increment/operator-prefix-increment-x-calls-putvalue-lhs-newvalue--1.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/expressions/prefix-increment/operator-prefix-increment-x-calls-putvalue-lhs-newvalue-.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
-  }, {
-    "filePath" : "language/identifier-resolution/assign-to-global-undefined.js",
-    "status" : "FAIL",
-    "comment" : "GR-27666"
   }, {
     "filePath" : "language/statements/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
