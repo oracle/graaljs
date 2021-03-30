@@ -23,7 +23,7 @@ const t1a = #[];
 const t1b = #[1, 2];
 const t1c = #[1, 2, #[3]];
 // TODO: const t1d = #[1, 2, #{ a: 3 }];
-// TODO: const t1e = #[...t1b, 3];
+const t1e = #[...t1b, 3];
 
 /*
  * Test 2:
@@ -168,3 +168,41 @@ assertSame([1] < [1], #[1] < #[1]);
 assertSame([1] <= 1, #[1] <= 1);
 // 3.1.5 ToObject
 // haven't found a test case yet
+
+/*
+ * Test 12:
+ * Destructuring
+ */
+[a, ...b] = #[1, 2, 3];
+assertSame(1, a);
+assertSame(true, Array.isArray(b));
+assertSame("2,3", b.toString());
+assertSame(#[2, 3], #[...b]);
+
+/*
+ * Test 13:
+ * Spreading
+ */
+a = #[1, 2];
+b = [1, 2];
+assertSame(#[1, 2, 3], #[...a, 3]);
+assertSame(#[1, 2, 3], #[...b, 3]);
+
+/*
+ * Test 14:
+ * Spreading
+ */
+a = #[1, 2];
+b = [1, 2];
+assertSame(#[1, 2, 3], #[...a, 3]);
+assertSame(#[1, 2, 3], #[...b, 3]);
+
+/*
+ * Test 15:
+ * Access (using index)
+ */
+a = #[1, "2", BigInt(42)];
+b = [1, "2", BigInt(42)];
+for (let i = -1; i < 5; i++) {
+    assertSame(b[i], a[i]);
+}

@@ -4,6 +4,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
@@ -37,7 +38,7 @@ public final class Tuple implements TruffleObject {
     public static Tuple create(byte[] v) {
         // TODO: create a tuple sub-class for byte arrays
         return new Tuple(
-                IntStream.range(0, v.length).mapToObj(i -> v[i]).toArray()
+                IntStream.range(0, v.length).mapToObj(i -> (int) v[i]).toArray()
         );
     }
 
@@ -122,5 +123,43 @@ public final class Tuple implements TruffleObject {
     @ExportMessage
     Object getMetaObject() {
         return JSMetaType.JS_TUPLE;
+    }
+
+    @ExportMessage
+    public long getArraySize() {
+        return value.length;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean hasArrayElements() {
+        return true;
+    }
+
+    @ExportMessage
+    public Object readArrayElement(long index) throws InvalidArrayIndexException {
+        if (index < 0 || index >= value.length) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        return value[(int) index];
+    }
+
+    @ExportMessage
+    public boolean isArrayElementReadable(long index) {
+        return index >= 0 && index < value.length;
+    }
+
+    /**
+     * @return true if the index isn't out of range.
+     */
+    public boolean hasElement(long index) {
+        return index >= 0 && index < value.length;
+    }
+
+    /**
+     * @return value at the given index.
+     */
+    public Object getElement(long index) {
+        return value[(int) index];
     }
 }

@@ -1,12 +1,16 @@
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTuple;
@@ -23,7 +27,8 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public enum TuplePrototype implements BuiltinEnum<TuplePrototype> {
-        toString(0);
+        toString(0),
+        values(0);
 
         private final int length;
 
@@ -42,6 +47,8 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         switch (builtinEnum) {
             case toString:
                 return TuplePrototypeBuiltinsFactory.JSTupleToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case values:
+                return TuplePrototypeBuiltinsFactory.TupleIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -65,6 +72,29 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Fallback
         protected void toStringNoTuple(Object thisObj) {
             throw Errors.createTypeError("Tuple.prototype.toString requires that 'this' be a Tuple");
+        }
+    }
+
+    public abstract static class TupleIteratorNode extends JSBuiltinNode {
+        @Child private ArrayPrototypeBuiltins.CreateArrayIteratorNode createArrayIteratorNode;
+
+        public TupleIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.createArrayIteratorNode = ArrayPrototypeBuiltins.CreateArrayIteratorNode.create(context, iterationKind);
+        }
+
+        @Specialization(guards = "isJSObject(thisObj)")
+        protected DynamicObject doJSObject(VirtualFrame frame, DynamicObject thisObj) {
+            return createArrayIteratorNode.execute(frame, thisObj);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected DynamicObject doNotJSObject(
+                VirtualFrame frame,
+                Object thisObj,
+                @Cached("createToObject(getContext())") JSToObjectNode toObjectNode
+        ) {
+            return createArrayIteratorNode.execute(frame, toObjectNode.execute(thisObj));
         }
     }
 }
