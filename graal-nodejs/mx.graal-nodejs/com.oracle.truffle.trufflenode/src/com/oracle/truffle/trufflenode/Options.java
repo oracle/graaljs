@@ -85,7 +85,7 @@ public final class Options {
         String javaHome = System.getProperty("java.home");
         String truffleNodePath = System.getenv("TRUFFLENODE_JAR_PATH");
         if (truffleNodePath == null) {
-            truffleNodePath = javaHome + "/languages/js/trufflenode.jar";
+            truffleNodePath = javaHome + "/languages/nodejs/trufflenode.jar";
         }
         String launcherCommonPath = System.getenv("LAUNCHER_COMMON_JAR_PATH");
         if (launcherCommonPath == null) {

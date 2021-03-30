@@ -588,10 +588,18 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
     short_name='njs',
-    dir_name='js',
+    dir_name='nodejs',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal.js'],
+    # TODO (GR-30451): generate gu metadata for installable components that are included in the base image and make the
+    #                  Graal.nodejs component depend on Graal.js.
+    # To generate the Graal.js standalone, the Graal.js component must have `installable=True`. However:
+    # 1. Graal.js is part of all base GraalVM images that we publish;
+    # 2. We do not generate gu metadata for installable components that are part of the base image (GR-30451);
+    # 3. We do not publish a Graal.js installable.
+    # As a consequence, if the Graal.nodejs component depended on Graal.js, gu would not be able to resolve the
+    # dependency at component-installation time.
+    dependencies=[],
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
@@ -599,17 +607,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'bin/<cmd:npm>',
         'bin/<cmd:npx>',
     ],
-    polyglot_lib_build_args=[
-        "-H:+ReportExceptionStackTraces",
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig,svmnodejs_jdkspecific.jniconfig",
-        "-H:ReflectionConfigurationResources=svmnodejs.reflectconfig",
-    ],
-    polyglot_lib_jar_dependencies=[
-        "graal-nodejs:TRUFFLENODE"
+    polyglot_lib_build_args=['--language:nodejs'],
+    polyglot_lib_jar_dependencies=['graal-nodejs:TRUFFLENODE'],
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination='lib/<lib:graal-nodejs>',
+            jar_distributions=['graal-nodejs:TRUFFLENODE'],
+            build_args=[
+                '--tool:all',
+                '--language:nodejs',
+                '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+            ],
+            home_finder=True,
+        ),
     ],
     has_polyglot_lib_entrypoints=True,
-    installable=False,
-    supported=True,
+    installable=True,
+    stability="supported",
 ))
 
 # pylint: disable=line-too-long
