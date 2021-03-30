@@ -591,7 +591,15 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     dir_name='nodejs',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal.js'],
+    # TODO (GR-30451): generate gu metadata for installable components that are included in the base image and make the
+    #                  Graal.nodejs component depend on Graal.js.
+    # To generate the Graal.js standalone, the Graal.js component must have `installable=True`. However:
+    # 1. Graal.js is part of all base GraalVM images that we publish;
+    # 2. We do not generate gu metadata for installable components that are part of the base image (GR-30451);
+    # 3. We do not publish a Graal.js installable.
+    # As a consequence, if the Graal.nodejs component depended on Graal.js, gu would not be able to resolve the
+    # dependency at component-installation time.
+    dependencies=[],
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
     support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
     provided_executables=[
@@ -615,7 +623,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     has_polyglot_lib_entrypoints=True,
     installable=True,
-    supported=True,
+    stability="supported",
 ))
 
 # pylint: disable=line-too-long
