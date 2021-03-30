@@ -111,6 +111,10 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return JSAddNodeGen.create(truncate, left, right);
     }
 
+    public static JSAddNode createUnoptimized() {
+        return JSAddNodeGen.create(false, null, null);
+    }
+
     public abstract Object execute(Object a, Object b);
 
     @Specialization(guards = "truncate")
@@ -194,9 +198,23 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
     }
 
-    @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger", "doIntSafeInteger", "doSafeIntegerInt",
-                    "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createHintNone(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "+";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger",
+                    "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected Object doPrimitiveConversion(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,
                     @Cached("create()") JSToNumericNode toNumericA,

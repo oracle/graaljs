@@ -101,7 +101,7 @@ public abstract class JSSubtractNode extends JSBinaryNode implements Truncatable
     protected Object doOverloaded(Object a, Object b,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
-                    @Cached("create(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
 

@@ -151,8 +151,20 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         return createLazyString.executeCharSequence(a, rightString);
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doStringNumber"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
+    protected Object doOverloaded(Object a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("createHintNone(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, getRightValue());
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "+";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)"}, replaces = {"doInt", "doDouble", "doStringNumber"})
     protected Object doPrimitiveConversion(Object a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("create()") JSToNumberNode toNumberA,
                     @Cached("rightValueToString()") String rightString,

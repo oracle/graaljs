@@ -94,8 +94,8 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
     protected JSToPrimitiveNode getToPrimitiveNode() {
         if (toPrimitiveNode == null) {
-            toPrimitiveNode = insert(JSToPrimitiveNode.create(hint));
             CompilerDirectives.transferToInterpreterAndInvalidate();
+            toPrimitiveNode = insert(JSToPrimitiveNode.create(hint));
         }
         return toPrimitiveNode;
     }
