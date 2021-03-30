@@ -982,8 +982,8 @@ public class NodeFactory {
         return WithNode.create(expression, statement);
     }
 
-    public JavaScriptNode createWithVarWrapper(String propertyName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
-        return WithVarWrapperNode.create(propertyName, withTarget, withAccessNode, globalDelegate);
+    public JavaScriptNode createWithVarWrapper(JSContext context, String propertyName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        return WithVarWrapperNode.create(context, propertyName, withTarget, withAccessNode, globalDelegate);
     }
 
     public JavaScriptNode createWithTarget(JSContext context, String propertyName, JavaScriptNode withVariable) {

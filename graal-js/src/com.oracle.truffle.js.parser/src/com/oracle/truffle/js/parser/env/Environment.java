@@ -331,6 +331,7 @@ public abstract class Environment {
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
+                VarRef withVarNameRef = Objects.requireNonNull(findInternalSlot(withVarName));
                 JSTargetableNode withAccessNode;
                 if (access == WrapAccess.Delete) {
                     withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
@@ -343,27 +344,25 @@ public abstract class Environment {
                 } else {
                     throw new IllegalArgumentException();
                 }
-                VarRef withVarNameRef = findInternalSlot(withVarName);
-                Objects.requireNonNull(withVarNameRef);
                 JavaScriptNode withTarget = factory.createWithTarget(context, name, withVarNameRef.createReadNode());
-                return factory.createWithVarWrapper(name, withTarget, withAccessNode, delegateNode);
+                return factory.createWithVarWrapper(context, name, withTarget, withAccessNode, delegateNode);
             }
 
             @Override
             public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
                 // Use temp var to ensure unscopables check is evaluated only once.
                 VarRef withTargetTempVar = Environment.this.createTempVar();
-                VarRef withObjVar = findInternalSlot(withVarName);
+                VarRef withObjVar = Objects.requireNonNull(findInternalSlot(withVarName));
                 Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
                 UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
                 Supplier<JavaScriptNode> readSupplier = () -> {
                     JSTargetableNode readWithProperty = factory.createReadProperty(context, null, name);
-                    return factory.createWithVarWrapper(name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
+                    return factory.createWithVarWrapper(context, name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
                 };
                 UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
                     JavaScriptNode withTarget = factory.createWithTarget(context, name, withObjVar.createReadNode());
                     WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode());
-                    return factory.createWithVarWrapper(name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
+                    return factory.createWithVarWrapper(context, name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
                 };
                 return new Pair<>(readSupplier, writeSupplier);
             }
@@ -648,7 +647,7 @@ public abstract class Environment {
         public abstract JavaScriptNode createDeleteNode();
 
         public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
-            return new Pair<>(this::createReadNode, rhs -> withRequired(false).createWriteNode(rhs));
+            return new Pair<>(this::createReadNode, this::createWriteNode);
         }
 
         public VarRef withTDZCheck() {

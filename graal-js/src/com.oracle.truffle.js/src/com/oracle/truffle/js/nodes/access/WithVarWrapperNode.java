@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,31 +40,34 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
+public class WithVarWrapperNode extends JSTargetableNode implements ReadNode {
 
-public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, WriteNode {
+    @Child protected JSTargetableNode withAccessNode;
+    @Child protected JavaScriptNode globalDelegate;
+    @Child protected JavaScriptNode withTarget;
 
-    @Child private JSTargetableNode withAccessNode;
-    @Child private JavaScriptNode globalDelegate;
-    @Child private JavaScriptNode withTarget;
-    private final String varName;
-
-    protected WithVarWrapperNode(String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+    protected WithVarWrapperNode(JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
         this.withAccessNode = withAccessNode;
         this.globalDelegate = globalDelegate;
         this.withTarget = withTarget;
-        this.varName = varName;
     }
 
-    public static JavaScriptNode create(String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
-        return new WithVarWrapperNode(varName, withTarget, withAccessNode, globalDelegate);
+    public static JavaScriptNode create(JSContext context, String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        if (withAccessNode instanceof WritePropertyNode) {
+            return new WriteWithVarWrapperNode(context, varName, withTarget, withAccessNode, globalDelegate);
+        } else {
+            return new WithVarWrapperNode(withTarget, withAccessNode, globalDelegate);
+        }
     }
 
     @Override
@@ -87,10 +90,41 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
     public Object executeWithTarget(VirtualFrame frame, Object target) {
         if (target != Undefined.instance) {
             // the property was found in the with object
-            if (withAccessNode instanceof WritePropertyNode) {
-                return ((WritePropertyNode) withAccessNode).executeWithValue(target, ((WriteNode) globalDelegate).getRhs().execute(frame));
-            }
             return withAccessNode.executeWithTarget(frame, target);
+        } else {
+            // property not found or blocked
+            return globalDelegate.execute(frame);
+        }
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new WithVarWrapperNode(cloneUninitialized(withTarget, materializedTags), cloneUninitialized(withAccessNode, materializedTags), cloneUninitialized(globalDelegate, materializedTags));
+    }
+}
+
+class WriteWithVarWrapperNode extends WithVarWrapperNode implements WriteNode {
+
+    @Child private HasPropertyCacheNode withObjectHasProperty;
+
+    protected WriteWithVarWrapperNode(JSContext context, String varName, JavaScriptNode withTarget, JSTargetableNode withAccessNode, JavaScriptNode globalDelegate) {
+        super(withTarget, withAccessNode, globalDelegate);
+        this.withObjectHasProperty = HasPropertyCacheNode.create(varName, context);
+    }
+
+    @Override
+    public Object executeWithTarget(VirtualFrame frame, Object target) {
+        if (target != Undefined.instance) {
+            // the property was found in the with object
+            WritePropertyNode writePropertyNode = (WritePropertyNode) withAccessNode;
+            Object rhsValue = ((WriteNode) globalDelegate).getRhs().execute(frame);
+
+            boolean stillExists = withObjectHasProperty.hasProperty(target);
+            if (!stillExists && writePropertyNode.isStrict()) {
+                throw Errors.createReferenceErrorNotDefined(withObjectHasProperty.getContext(), withObjectHasProperty.getKey(), this);
+            }
+
+            return writePropertyNode.executeWithValue(target, rhsValue);
         } else {
             // property not found or blocked
             return globalDelegate.execute(frame);
@@ -103,12 +137,15 @@ public class WithVarWrapperNode extends JSTargetableNode implements ReadNode, Wr
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(varName, cloneUninitialized(withTarget, materializedTags), cloneUninitialized(withAccessNode, materializedTags), cloneUninitialized(globalDelegate, materializedTags));
+    public JavaScriptNode getRhs() {
+        return ((WriteNode) globalDelegate).getRhs();
     }
 
     @Override
-    public JavaScriptNode getRhs() {
-        return ((WriteNode) globalDelegate).getRhs();
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new WriteWithVarWrapperNode(withObjectHasProperty.getContext(), (String) withObjectHasProperty.getKey(),
+                        cloneUninitialized(withTarget, materializedTags),
+                        cloneUninitialized(withAccessNode, materializedTags),
+                        cloneUninitialized(globalDelegate, materializedTags));
     }
 }
