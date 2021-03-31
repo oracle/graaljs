@@ -3317,7 +3317,7 @@
     "filePath" : "mjsunit/wasm/memory-external-call.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/memory-instance-validation.js",
