@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.test.sdk.tck;
 
+import static org.graalvm.polyglot.tck.TypeDescriptor.ANY;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -49,19 +51,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
-import org.graalvm.polyglot.tck.Snippet;
-import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.ResultVerifier;
+import org.graalvm.polyglot.tck.Snippet;
+import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
-
-import static org.graalvm.polyglot.tck.TypeDescriptor.ANY;
 
 public class JavaScriptTCKLanguageProvider implements LanguageProvider {
     private static final String ID = "js";
@@ -265,9 +266,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // for of
         res.add(createStatement(context, "for-of", "for (let v of {1});",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.hasIteratorVerifier(null),
-                        TypeDescriptor.ANY));
-        // Using ANY because of GR-30278. Should be: union(STRING, ARRAY, ITERABLE, HASH).
+                        TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.ARRAY, TypeDescriptor.ITERABLE, TypeDescriptor.HASH)));
 
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
@@ -525,31 +524,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         @Override
         public void accept(SnippetRun snippetRun) throws PolyglotException {
             next.accept(snippetRun);
-        }
-
-        /**
-         * Creates a {@link ResultVerifier} ignoring errors caused by non-iterable objects. Use this
-         * verifier in case the operator formally accepts arbitrary types but requires objects to
-         * provide an {@link Value#hasIterator() iterator}.
-         *
-         * @param next the next {@link ResultVerifier} to be called, null for last one
-         *
-         * @return the {@link ResultVerifier}
-         */
-        static ResultVerifier hasIteratorVerifier(ResultVerifier next) {
-            return new JavaScriptVerifier(next) {
-                @Override
-                public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    if (snippetRun.getException() != null) {
-                        final Value param = snippetRun.getParameters().get(0);
-                        if (!param.hasIterator() && !param.hasArrayElements() && !param.hasHashEntries() && !param.isString()) {
-                            // Expected for not iterable
-                            return;
-                        }
-                    }
-                    super.accept(snippetRun);
-                }
-            };
         }
 
         /**
