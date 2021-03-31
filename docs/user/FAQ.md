@@ -20,6 +20,9 @@ Still, several sources of differences have to be considered:
 - **Setup:**
 GraalVM mostly mimicks the original setup of Node, including the `node` executable, `npm`, and similar. However, not all command-line options are supported (or behave exactly identically). You need to (re-)compile native modules against the v8.h file, etc.
 
+Since GraalVM 21.1, Node.js and all related executables (e.g., `node`, `npm`, etc.) are not included by default in the GraalVM binary.
+Node.js support is now packaged in a separate component that can be installed with the _GraalVM Updater_ using `$GRAALVM/bin/gu install nodejs`.
+
 - **Internals:**
 GraalVM is implemented on top of a JVM, and thus has a different internal architecture than Node.js based on V8. This implies that some internal mechanisms behave differently and cannot exactly replicate V8 behaviour. This will hardly ever affect user code, but might affect modules implemented natively, depending on V8 internals.
 

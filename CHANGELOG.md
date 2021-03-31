@@ -12,6 +12,7 @@ The main focus is on user-observable behavior of the engine.
 * Updated ICU4J library to version 68.2.
 * Implemented the [Atomics.waitAsync](https://github.com/tc39/proposal-atomics-wait-async) proposal. It is available in ECMAScript 2022 mode (`--js.ecmascript-version=2022`).
 * Implemented hash map interop support. Allows foreign hash maps to be iterated using `for in/of` loops, `new Map(hash)`, `Array.from(hash)`, etc. If the `--js.foreign-hash-properties` option is enabled (default), foreign hash maps can also be accessed using `hash[key]`, `hash.key`, and used in `{...hash}`. If the `--js.foreign-object-prototype` option is enabled, foreign hash maps also have `Map.prototype` methods.
+* Moved GraalVM-Node.js to a separate installable component. In a GraalVM distribution it needs to be manually installed with `$GRAALVM/bin/gu install nodejs`.
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.
