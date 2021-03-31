@@ -55,7 +55,7 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
 import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
-import com.oracle.truffle.js.nodes.binary.OverloadedBinaryOperatorNode;
+import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32NodeGen.JSToUInt32WrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -175,7 +175,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     @Specialization(guards = {"isUnsignedRightShift()", "hasOverloadedOperatorsNode.execute(value)"})
     protected Object doOverloadedOperator(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
-                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(value, shiftValue);
     }
 

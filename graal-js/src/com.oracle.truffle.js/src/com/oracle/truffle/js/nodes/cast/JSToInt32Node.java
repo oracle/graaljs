@@ -50,7 +50,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
-import com.oracle.truffle.js.nodes.binary.OverloadedBinaryOperatorNode;
+import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -208,7 +208,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     @Specialization(guards = {"isBitwiseOr()", "hasOverloadedOperatorsNode.execute(value)"})
     protected Object doOverloadedOperator(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
-                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(value, 0);
     }
 

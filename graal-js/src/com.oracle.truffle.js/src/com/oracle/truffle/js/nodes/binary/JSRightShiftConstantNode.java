@@ -135,7 +135,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
     @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("createNumeric(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, shiftValue);
     }
 

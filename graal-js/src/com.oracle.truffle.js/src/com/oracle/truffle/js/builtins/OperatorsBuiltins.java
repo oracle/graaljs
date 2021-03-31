@@ -74,7 +74,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
     public static final JSBuiltinsContainer BUILTINS = new OperatorsBuiltins();
 
-    protected static final HiddenKey OPERATOR_SET_ID = new HiddenKey("OperatorSet");
+    public static final HiddenKey OPERATOR_SET_ID = new HiddenKey("OperatorSet");
     protected static final HiddenKey OPERATOR_DEFINITIONS_ID = new HiddenKey("OperatorDefinitions");
 
     protected OperatorsBuiltins() {
@@ -134,8 +134,21 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         return shape.hasProperty(OPERATOR_SET_ID);
     }
 
+    public static OperatorSet getOperatorSet(Object object) {
+        if (JSRuntime.isNumber(object)) {
+            return OperatorSet.NUMBER_OPERATOR_SET;
+        } else if (JSRuntime.isBigInt(object)) {
+            return OperatorSet.BIGINT_OPERATOR_SET;
+        } else if (JSRuntime.isString(object)) {
+            return OperatorSet.STRING_OPERATOR_SET;
+        } else {
+            assert JSRuntime.isObject(object) && hasOverloadedOperators((DynamicObject) object);
+            return getOperatorSet((DynamicObject) object);
+        }
+    }
+
     public static OperatorSet getOperatorSet(DynamicObject object) {
-        return (OperatorSet) JSObject.get(object, OperatorsBuiltins.OPERATOR_SET_ID);
+        return (OperatorSet) DynamicObjectLibrary.getUncached().getOrDefault(object, OperatorsBuiltins.OPERATOR_SET_ID, null);
     }
 
     public static boolean overloadedOperatorsAllowed(DynamicObject arg) {

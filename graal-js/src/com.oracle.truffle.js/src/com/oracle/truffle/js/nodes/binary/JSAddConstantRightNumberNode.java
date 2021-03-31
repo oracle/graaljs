@@ -155,7 +155,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("createHintNone(getOverloadedOperatorName())") OverloadedBinaryOperatorNode overloadedOperatorNode) {
+                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, getRightValue());
     }
 
