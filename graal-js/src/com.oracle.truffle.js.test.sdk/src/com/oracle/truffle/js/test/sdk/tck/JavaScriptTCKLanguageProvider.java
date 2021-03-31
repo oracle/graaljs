@@ -146,6 +146,11 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                                         TypeDescriptor.ITERABLE,
                                         TypeDescriptor.EXECUTABLE,
                                         TypeDescriptor.OBJECT)));
+        // Map
+        vals.add(createValueConstructor(context, "new Map([['name', 'test']])", TypeDescriptor.intersection(
+                        TypeDescriptor.OBJECT,
+                        TypeDescriptor.HASH,
+                        TypeDescriptor.ITERABLE)));
         return Collections.unmodifiableList(vals);
     }
 
