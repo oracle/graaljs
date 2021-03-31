@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.array.dyn;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -76,14 +75,6 @@ public abstract class AbstractConstantEmptyArray extends AbstractConstantArray {
     @Override
     public int lengthInt(DynamicObject object) {
         return (int) getCapacity(object);
-    }
-
-    @Override
-    public Object[] toArray(DynamicObject object) {
-        int cap = (int) getCapacity(object);
-        Object[] arr = new Object[cap];
-        Arrays.fill(arr, Undefined.instance);
-        return arr;
     }
 
     @Override

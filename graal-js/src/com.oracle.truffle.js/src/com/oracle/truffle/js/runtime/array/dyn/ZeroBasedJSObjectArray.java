@@ -147,11 +147,6 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     }
 
     @Override
-    public Object[] toArray(DynamicObject object) {
-        return toArrayZeroBased(object);
-    }
-
-    @Override
     public long firstElementIndex(DynamicObject object) {
         return 0;
     }

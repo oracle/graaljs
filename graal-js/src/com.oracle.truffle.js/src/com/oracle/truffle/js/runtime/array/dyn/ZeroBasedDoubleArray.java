@@ -109,11 +109,6 @@ public final class ZeroBasedDoubleArray extends AbstractDoubleArray {
     }
 
     @Override
-    public Object[] toArray(DynamicObject object) {
-        return toArrayZeroBased(object);
-    }
-
-    @Override
     public ZeroBasedObjectArray toObject(DynamicObject object, long index, Object value) {
         double[] array = getArray(object);
         int length = lengthInt(object);

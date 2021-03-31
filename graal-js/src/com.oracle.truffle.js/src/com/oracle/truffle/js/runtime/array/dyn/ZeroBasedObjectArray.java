@@ -135,11 +135,6 @@ public final class ZeroBasedObjectArray extends AbstractObjectArray {
     }
 
     @Override
-    public Object[] toArray(DynamicObject object) {
-        return toArrayZeroBased(object);
-    }
-
-    @Override
     public long firstElementIndex(DynamicObject object) {
         return 0;
     }

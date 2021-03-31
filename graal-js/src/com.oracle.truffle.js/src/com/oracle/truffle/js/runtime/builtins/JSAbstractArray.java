@@ -392,6 +392,12 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
     }
 
+    /**
+     * Creates an Object[] from this array, of size array.length. Does not check the prototype
+     * chain, i.e. result can be wrong. Use JSToObjectArrayNode for more correct results.
+     *
+     * This is mostly used in tests, but also in a few places in Node.js.
+     */
     @TruffleBoundary
     public static Object[] toArray(DynamicObject thisObj) {
         return arrayGetArrayType(thisObj).toArray(thisObj);

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.array;
 
 import java.util.AbstractList;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
@@ -269,8 +270,21 @@ public abstract class ScriptArray {
     /**
      * Creates an Object[] from this array, of size array.length. Does not check the prototype
      * chain, i.e. result can be wrong. Use JSToObjectArrayNode for more correct results.
+     *
+     * This is mostly used in tests, but also in a few places in Node.js.
      */
-    public abstract Object[] toArray(DynamicObject object);
+    @TruffleBoundary
+    public final Object[] toArray(DynamicObject thisObj) {
+        int len = lengthInt(thisObj);
+        Object[] newArray = new Object[len];
+        Arrays.fill(newArray, Undefined.instance);
+        for (long i = firstElementIndex(thisObj); i <= lastElementIndex(thisObj); i = nextElementIndex(thisObj, i)) {
+            if (i >= 0) {
+                newArray[(int) i] = getElement(thisObj, i);
+            }
+        }
+        return newArray;
+    }
 
     public static AbstractConstantArray createConstantEmptyArray() {
         return ConstantEmptyArray.createConstantEmptyArray();
