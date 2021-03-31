@@ -4,94 +4,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "built-ins/Atomics/add/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/add/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/and/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/and/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/compareExchange/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/compareExchange/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/exchange/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/exchange/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/load/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/load/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/notify/bigint/non-shared-bufferdata-count-evaluation-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/notify/bigint/non-shared-bufferdata-index-evaluation-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/notify/bigint/non-shared-bufferdata-returns-0.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/notify/non-shared-bufferdata-count-evaluation-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/notify/non-shared-bufferdata-index-evaluation-throws.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/notify/non-shared-bufferdata-returns-0.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/or/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/or/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/store/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/store/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/sub/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/sub/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -217,14 +129,6 @@
       "WINDOWS" : "SKIP"
     },
     "comment" : "GR-22846"
-  }, {
-    "filePath" : "built-ins/Atomics/xor/bigint/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
-  }, {
-    "filePath" : "built-ins/Atomics/xor/non-shared-bufferdata.js",
-    "status" : "FAIL",
-    "comment" : "GR-25372: Atomics methods should work with (non-shared) ArrayBuffers"
   }, {
     "filePath" : "built-ins/Date/UTC/fp-evaluation-order.js",
     "status" : "FAIL",
