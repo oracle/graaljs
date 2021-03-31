@@ -57,25 +57,33 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode rhsNode;
     @Child protected PropertySetNode cache;
+    @Child protected HasPropertyCacheNode globalHasProperty;
 
     @CompilationFinal private byte valueState;
     private static final byte VALUE_INT = 1;
     private static final byte VALUE_DOUBLE = 2;
     private static final byte VALUE_OBJECT = 3;
 
+    @CompilationFinal private boolean referenceErrorThrown;
+
     protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict) {
         this.targetNode = target;
         this.rhsNode = rhs;
         boolean superProperty = target instanceof SuperPropertyReferenceNode;
         this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
+        if (isGlobal && !isScopeAccess()) {
+            this.globalHasProperty = HasPropertyCacheNode.create(propertyKey, context);
+        }
     }
 
     public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext ctx, boolean isStrict) {
@@ -181,16 +189,19 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     private Object executeEvaluated(Object obj, Object value, Object receiver) {
+        verifyGlobalPropertyResolvable(obj); // SetMutableBinding
         cache.setValue(obj, value, receiver);
         return value;
     }
 
     private int executeIntEvaluated(Object obj, int value, Object receiver) {
+        verifyGlobalPropertyResolvable(obj); // SetMutableBinding
         cache.setValueInt(obj, value, receiver);
         return value;
     }
 
     private double executeDoubleEvaluated(Object obj, double value, Object receiver) {
+        verifyGlobalPropertyResolvable(obj); // SetMutableBinding
         cache.setValueDouble(obj, value, receiver);
         return value;
     }
@@ -292,7 +303,25 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
-        return targetNode.execute(frame);
+        Object target = targetNode.execute(frame);
+        verifyGlobalPropertyResolvable(target); // HasBinding
+        return target;
+    }
+
+    private void verifyGlobalPropertyResolvable(Object target) {
+        // HasProperty is needed even in non-strict mode due to potential observable side effects
+        if (globalHasProperty != null && !globalHasProperty.hasProperty(target) && cache.isStrict()) {
+            unresolvableGlobalPropertyInStrictMode(target);
+        }
+    }
+
+    private void unresolvableGlobalPropertyInStrictMode(Object thisObj) {
+        if (!referenceErrorThrown) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            referenceErrorThrown = true;
+        }
+        assert JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == cache.getContext().getRealm().getGlobalObject();
+        throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
     }
 
     @Override
