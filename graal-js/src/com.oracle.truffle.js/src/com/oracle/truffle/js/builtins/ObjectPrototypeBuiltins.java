@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -250,6 +251,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return toJSObject(thisObj);
         }
 
+        @Specialization
+        protected DynamicObject valueOfTuple(Tuple thisObj) {
+            return toJSObject(thisObj);
+        }
+
         @Specialization(guards = "!isTruffleObject(thisObj)")
         protected DynamicObject valueOfOther(Object thisObj) {
             return toJSObject(thisObj);
@@ -362,6 +368,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected String doBigInt(BigInt thisObj) {
+            return JSObject.defaultToString(toJSObject(thisObj));
+        }
+
+        @Specialization
+        protected String doTuple(Tuple thisObj) {
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 

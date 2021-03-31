@@ -206,3 +206,199 @@ b = [1, "2", BigInt(42)];
 for (let i = -1; i < 5; i++) {
     assertSame(b[i], a[i]);
 }
+
+/*
+ * Test 16:
+ * Tuple.prototype
+ */
+assertTrue(Tuple.prototype !== undefined);
+a = Object.getOwnPropertyDescriptor(Tuple, "prototype");
+assertSame(false, a.writable);
+assertSame(false, a.enumerable);
+assertSame(false, a.configurable);
+
+/*
+ * Test 17:
+ * Tuple.prototype.valueOf()
+ */
+a = #[42];
+b = Object(a);
+assertSame("object", typeof b);
+assertSame("tuple", typeof b.valueOf());
+assertSame(a, b.valueOf());
+
+/*
+ * Test 18:
+ * Tuple.prototype[@@toStringTag]
+ */
+assertSame("[object Tuple]", Object.prototype.toString.call(#[]));
+a = Object.getOwnPropertyDescriptor(BigInt.prototype, Symbol.toStringTag);
+assertSame(false, a.writable);
+assertSame(false, a.enumerable);
+assertSame(true, a.configurable);
+
+/*
+ * Test 19:
+ * Tuple.prototype.popped()
+ */
+a = #[1, 2, 3];
+assertSame(#[1, 2], a.popped());
+
+/*
+ * Test 20:
+ * Tuple.prototype.pushed(...args)
+ */
+a = #[1];
+assertSame(a, a.pushed())
+assertSame(#[1, 2, 3], a.pushed(2, 3))
+assertThrows(function() {
+    eval("a.pushed({})");
+}, TypeError);
+
+/*
+ * Test 21:
+ * Tuple.prototype.reversed()
+ */
+a = #[1, 2, 3];
+assertSame(#[3, 2, 1], a.reversed())
+
+/*
+ * Test 22:
+ * Tuple.prototype.shifted()
+ */
+a = #[1, 2, 3];
+assertSame(#[2, 3], a.shifted())
+
+/*
+ * Test 22:
+ * Tuple.prototype.slice(start, end)
+ */
+a = #[1, 2, 3];
+assertSame(#[2], a.slice(1, 2))
+assertSame(#[2, 3], a.slice(1, 10))
+assertSame(#[1, 2], a.slice(-3, -1))
+assertSame(#[], a.slice(1, 1))
+
+/*
+ * Test 23:
+ * Tuple.prototype.sorted(comparefn)
+ */
+a = #[2, 1, 3];
+assertSame(#[1, 2, 3], a.sorted());
+assertSame(#[3, 2, 1], a.sorted((a, b) => b - a));
+
+/*
+ * Test 24:
+ * Tuple.prototype.spliced(start, deleteCount, ...items)
+ */
+a = #[1, 2, 3];
+assertSame(a, a.spliced());
+assertSame(#[1], a.spliced(1));
+assertSame(#[1, 3], a.spliced(1, 1));
+assertSame(#[1, 1.5, 2, 3], a.spliced(1, 0, 1.5));
+
+/*
+ * Test 25:
+ * Tuple.prototype.concat(...args)
+ */
+a = #['a', 'b', 'c'];
+b = ['d', 'e', 'f'];
+assertSame(#[...a, ...b], a.concat(b));
+
+/*
+ * Test 26:
+ * Tuple.prototype.includes(...args)
+ */
+a = #['a', 'b', 'c'];
+assertSame(true, a.includes('b'));
+assertSame(false, a.includes('b', 2));
+
+/*
+ * Test 28:
+ * Tuple.prototype.indexOf(searchElement [ , fromIndex ])
+ */
+a = #['a', 'b', 'c'];
+b = ['a', 'b', 'c'];
+assertSame(b.indexOf('b'), a.indexOf('b'));
+assertSame(b.indexOf('b', 2), a.indexOf('b', 2));
+
+/*
+ * Test 29:
+ * Tuple.prototype.join(separator)
+ */
+a = #['a', 'b', 'c'];
+assertSame('a,b,c', a.join());
+assertSame('abc', a.join(''));
+
+/*
+ * Test 30:
+ * Tuple.prototype.lastIndexOf(searchElement [ , fromIndex ])
+ */
+a = #['a', 'b', 'c', 'b'];
+assertSame(3, a.lastIndexOf('b'));
+assertSame(1, a.lastIndexOf('b', -2));
+
+/*
+ * Test 31:
+ * Tuple.prototype.every(callbackfn [ , thisArg ] )
+ */
+a = #[1, 2, 3];
+assertSame(true, a.every(it => it > 0));
+assertSame(false, a.every(it => false));
+
+/*
+ * Test 32:
+ * Tuple.prototype.find(predicate [ , thisArg ])
+ */
+a = #[1, 2, 3];
+assertSame(2, a.find(it => it > 1));
+assertSame(undefined, a.find(it => it < 0));
+
+/*
+ * Test 33:
+ * Tuple.prototype.findIndex(predicate [ , thisArg ])
+ */
+a = #[1, 2, 3];
+assertSame(1, a.findIndex(it => it > 1));
+assertSame(-1, a.findIndex(it => it < 0));
+
+/*
+ * Test 34:
+ * Tuple.prototype.forEach(callbackfn [ , thisArg ])
+ */
+a = #[1, 2, 3];
+b = 0
+assertSame(undefined, a.forEach(() => b++));
+if (b !== 3) {
+    fail("Tuple.prototype.forEach(...) did not visit every entry")
+}
+
+/*
+ * Test 35:
+ * Tuple.prototype.reduce(callbackfn [ , thisArg ])
+ */
+a = #[1, 2, 3];
+assertSame('123', a.reduce((acc, it) => acc + it, ''));
+
+/*
+ * Test 36:
+ * Tuple.prototype.reduceRight(callbackfn [ , thisArg ])
+ */
+a = #[1, 2, 3];
+assertSame('321', a.reduceRight((acc, it) => acc + it, ''));
+
+/*
+ * Test 37:
+ * Tuple.prototype.some(callbackfn [ , thisArg ])
+ */
+a = #[1, 2, 3];
+assertSame(true, a.some(it => it > 2));
+assertSame(false, a.some(it => it < 0));
+
+/*
+ * Test 38:
+ * Tuple.prototype.toLocaleString([ reserved1 [ , reserved2 ] ])
+ */
+a = #[1.1];
+assertSame('1.1', a.toLocaleString('en'));
+assertSame('1,1', a.toLocaleString('de'));

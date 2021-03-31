@@ -162,4 +162,15 @@ public final class Tuple implements TruffleObject {
     public Object getElement(long index) {
         return value[(int) index];
     }
+
+    /**
+     * @return all values in a List.
+     */
+    public Object[] getElements() {
+        return value.clone();
+    }
+
+    public int getArraySizeInt() {
+        return value.length;
+    }
 }

@@ -110,4 +110,12 @@ public final class JSTuple extends JSNonProxy implements JSConstructorFactory.De
         }
         return super.getOwnHelper(store, thisObj, Boundaries.stringValueOf(index), encapsulatingNode);
     }
+
+    @TruffleBoundary
+    @Override
+    public boolean hasProperty(DynamicObject thisObj, long index) {
+        assert isJSTuple(thisObj);
+        Tuple tuple = ((JSTupleObject) thisObj).getTupleValue();
+        return tuple.hasElement(index);
+    }
 }
