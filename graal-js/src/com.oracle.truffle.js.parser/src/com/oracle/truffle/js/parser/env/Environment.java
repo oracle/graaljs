@@ -337,7 +337,7 @@ public abstract class Environment {
                     withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
-                    withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
+                    withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
                     withAccessNode = factory.createReadProperty(context, null, name);
@@ -345,7 +345,7 @@ public abstract class Environment {
                     throw new IllegalArgumentException();
                 }
                 JavaScriptNode withTarget = factory.createWithTarget(context, name, withVarNameRef.createReadNode());
-                return factory.createWithVarWrapper(context, name, withTarget, withAccessNode, delegateNode);
+                return factory.createWithVarWrapper(name, withTarget, withAccessNode, delegateNode);
             }
 
             @Override
@@ -357,12 +357,12 @@ public abstract class Environment {
                 UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
                 Supplier<JavaScriptNode> readSupplier = () -> {
                     JSTargetableNode readWithProperty = factory.createReadProperty(context, null, name);
-                    return factory.createWithVarWrapper(context, name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
+                    return factory.createWithVarWrapper(name, withTargetTempVar.createReadNode(), readWithProperty, innerReadSupplier.get());
                 };
                 UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
                     JavaScriptNode withTarget = factory.createWithTarget(context, name, withObjVar.createReadNode());
-                    WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode());
-                    return factory.createWithVarWrapper(context, name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
+                    WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
+                    return factory.createWithVarWrapper(name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
                 };
                 return new Pair<>(readSupplier, writeSupplier);
             }
@@ -852,7 +852,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createWriteProperty(factory.createGlobalObject(context), name, rhs, required, context, isStrictMode());
+            return factory.createWriteProperty(factory.createGlobalObject(context), name, rhs, context, isStrictMode(), isGlobal(), required);
         }
 
         @Override
@@ -915,7 +915,7 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, checkTDZ);
-            return factory.createWriteProperty(globalScope, name, rhs, required, context, true);
+            return factory.createWriteProperty(globalScope, name, rhs, context, true, required, false);
         }
 
         @Override
