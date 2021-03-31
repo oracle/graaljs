@@ -44,9 +44,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
+import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
@@ -113,17 +115,24 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return a.negate();
     }
 
-    @Specialization
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"})
+    protected Object doOverloaded(DynamicObject a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "neg";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(a)"})
     protected static Object doGeneric(Object a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumericNode,
                     @Cached("create()") JSUnaryMinusNode recursiveUnaryMinus) {
         Object value = toNumericNode.execute(a);
         return recursiveUnaryMinus.execute(value);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 
     @Override

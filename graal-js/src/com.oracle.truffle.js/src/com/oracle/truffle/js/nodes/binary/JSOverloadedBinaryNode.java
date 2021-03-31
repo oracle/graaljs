@@ -169,79 +169,79 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         }
 
         public static DispatchBinaryOperatorNode create(String overloadedOperatorName) {
-            return DispatchBinaryOperatorNodeGen.create(overloadedOperatorName );
+            return DispatchBinaryOperatorNodeGen.create(overloadedOperatorName);
         }
 
         protected abstract Object execute(Object left, Object right);
 
         @Specialization(guards = {"hasOverloadedOperators(leftShape)", "hasOverloadedOperators(rightShape)", "leftShape.check(left)", "rightShape.check(right)"})
         protected Object doOverloadedOverloaded(DynamicObject left,
-                                                DynamicObject right,
-                                                @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
-                                                @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
-                                                @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                                @Cached("createCall()") JSFunctionCallNode callNode) {
+                        DynamicObject right,
+                        @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
+                        @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)", "isNumber(right)"})
         protected Object doOverloadedNumber(DynamicObject left,
-                                            Object right,
-                                            @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
-                                            @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @Cached("createCall()") JSFunctionCallNode callNode) {
+                        Object right,
+                        @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)"})
         protected Object doOverloadedBigInt(DynamicObject left,
-                                            BigInt right,
-                                            @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
-                                            @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @Cached("createCall()") JSFunctionCallNode callNode) {
+                        BigInt right,
+                        @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(guards = {"hasOverloadedOperators(leftShape)", "leftShape.check(left)", "isString(right)", "!isAddition()"})
         protected Object doOverloadedString(DynamicObject left,
-                                            Object right,
-                                            @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
-                                            @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @Cached("createCall()") JSFunctionCallNode callNode) {
+                        Object right,
+                        @Cached("left.getShape()") @SuppressWarnings("unused") Shape leftShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)", "isNumber(left)"})
         protected Object doNumberOverloaded(Object left,
-                                            DynamicObject right,
-                                            @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
-                                            @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @Cached("createCall()") JSFunctionCallNode callNode) {
+                        DynamicObject right,
+                        @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)"})
         protected Object doBigIntOverloaded(BigInt left,
-                                            DynamicObject right,
-                                            @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
-                                            @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @Cached("createCall()") JSFunctionCallNode callNode) {
+                        DynamicObject right,
+                        @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(guards = {"hasOverloadedOperators(rightShape)", "rightShape.check(right)", "isString(left)", "!isAddition()"})
         protected Object doStringOverloaded(Object left,
-                                            DynamicObject right,
-                                            @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
-                                            @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
-                                            @Cached("createCall()") JSFunctionCallNode callNode) {
+                        DynamicObject right,
+                        @Cached("right.getShape()") @SuppressWarnings("unused") Shape rightShape,
+                        @Cached("getOperatorImplementation(left, right, getOverloadedOperatorName())") Object operatorImplementation,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
         @Specialization(replaces = {"doOverloadedOverloaded", "doOverloadedNumber", "doOverloadedBigInt", "doOverloadedString", "doNumberOverloaded", "doBigIntOverloaded", "doStringOverloaded"})
         protected Object doGeneric(Object left,
-                                   Object right,
-                                   @Cached("createCall()") JSFunctionCallNode callNode) {
+                        Object right,
+                        @Cached("createCall()") JSFunctionCallNode callNode) {
             Object operatorImplementation = getOperatorImplementation(left, right, getOverloadedOperatorName());
             return performOverloaded(callNode, operatorImplementation, left, right);
         }

@@ -47,8 +47,10 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
+import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
@@ -97,8 +99,20 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return a.not();
     }
 
-    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"})
+    protected Object doOverloaded(DynamicObject a,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "~";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(VirtualFrame frame, Object value,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached JSToNumericNode toNumericNode,
                     @Cached("createInner()") JSComplementNode recursive) {
         Object number = toNumericNode.execute(value);

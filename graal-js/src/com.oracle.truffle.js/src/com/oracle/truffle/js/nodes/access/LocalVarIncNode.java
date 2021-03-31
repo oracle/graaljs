@@ -55,11 +55,13 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
+import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -86,6 +88,8 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         public abstract BigInt doBigInt(BigInt value);
 
         public abstract SafeInteger doSafeInteger(SafeInteger value);
+
+        public abstract String getOverloadedOperatorName();
     }
 
     protected static class IncOp extends LocalVarOp {
@@ -123,6 +127,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         public SafeInteger doSafeInteger(SafeInteger value) {
             return value.incrementExact();
         }
+
+        @Override
+        public String getOverloadedOperatorName() {
+            return "++";
+        }
     }
 
     protected static class DecOp extends LocalVarOp {
@@ -159,6 +168,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         @Override
         public SafeInteger doSafeInteger(SafeInteger value) {
             return value.decrementExact();
+        }
+
+        @Override
+        public String getOverloadedOperatorName() {
+            return "--";
         }
     }
 
@@ -362,11 +376,18 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return doubleValue;
     }
 
+    protected String getOverloadedOperatorName() {
+        return op.getOverloadedOperatorName();
+    }
+
     @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile isOverloadedProfile,
+                    @Cached("create()") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
         ensureObjectKind(frame);
@@ -374,13 +395,18 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Object number = toNumeric.execute(value);
-        if (isBigIntProfile.profile(number instanceof BigInt)) {
-            frame.setObject(frameSlot, op.doBigInt((BigInt) number));
+        if (isOverloadedProfile.profile(hasOverloadedOperatorsNode.execute(value))) {
+            frame.setObject(frameSlot, overloadedOperatorNode.execute(value));
+            return value;
         } else {
-            frame.setObject(frameSlot, op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile));
+            Object number = toNumeric.execute(value);
+            if (isBigIntProfile.profile(number instanceof BigInt)) {
+                frame.setObject(frameSlot, op.doBigInt((BigInt) number));
+            } else {
+                frame.setObject(frameSlot, op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile));
+            }
+            return number;
         }
-        return number;
     }
 
     @Specialization(guards = {"isLong(frame)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
@@ -499,11 +525,18 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
+    protected String getOverloadedOperatorName() {
+        return op.getOverloadedOperatorName();
+    }
+
     @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
+                    @Cached("createBinaryProfile()") ConditionProfile isOverloadedProfile,
+                    @Cached("create()") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("create()") BranchProfile deadBranch) {
         ensureObjectKind(frame);
@@ -511,12 +544,16 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Object number = toNumeric.execute(value);
         Object newValue;
-        if (isBigIntProfile.profile(number instanceof BigInt)) {
-            newValue = op.doBigInt((BigInt) number);
+        if (isOverloadedProfile.profile(hasOverloadedOperatorsNode.execute(value))) {
+            newValue = overloadedOperatorNode.execute(value);
         } else {
-            newValue = op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile);
+            Object number = toNumeric.execute(value);
+            if (isBigIntProfile.profile(number instanceof BigInt)) {
+                newValue = op.doBigInt((BigInt) number);
+            } else {
+                newValue = op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile);
+            }
         }
         frame.setObject(frameSlot, newValue);
         return newValue;

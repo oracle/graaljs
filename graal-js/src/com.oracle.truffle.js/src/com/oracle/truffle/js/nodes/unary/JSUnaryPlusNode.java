@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
@@ -51,7 +55,9 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import java.util.Set;
 
 @NodeInfo(shortName = "+")
-public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode {
+public abstract class JSUnaryPlusNode extends JSUnaryNode {
+
+    @Child private JSToNumberNode toNumberNode;
 
     protected JSUnaryPlusNode(JavaScriptNode operand) {
         super(operand);
@@ -61,10 +67,25 @@ public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode
         return JSUnaryPlusNodeGen.create(operand);
     }
 
-    @Specialization
-    @Override
-    protected Object doDefault(Object value) {
-        return super.doDefault(value);
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(value)"})
+    protected Object doOverloaded(DynamicObject value,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(value);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "pos";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"})
+    protected Object doDefault(Object value,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode) {
+        if (toNumberNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toNumberNode = insert(JSToNumberNode.create());
+        }
+        return toNumberNode.executeNumber(value);
     }
 
     @Override
