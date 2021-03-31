@@ -68,4 +68,9 @@ public final class JSWebAssembly {
         return JSDynamicObject.isJSDynamicObject(function) && JSObjectUtil.hasHiddenProperty((JSDynamicObject) function, FUNCTION_ADDRESS);
     }
 
+    public static Object getExportedFunction(DynamicObject function) {
+        assert isExportedFunction(function);
+        return JSObjectUtil.getHiddenProperty(function, JSWebAssembly.FUNCTION_ADDRESS);
+    }
+
 }
