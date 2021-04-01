@@ -50,6 +50,7 @@ import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltinsFactory.J
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -59,7 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalTimeObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimeFunctionBuiltins.TemporalPlainTimeFunction>{
@@ -110,14 +111,14 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                                      @CachedLibrary("options") DynamicObjectLibrary dol,
                                      @Cached("create()") JSToBooleanNode toBoolean,
                                      @Cached("create()") JSToStringNode toString,
-                                     @Cached("create()") JSToIntegerAsIntNode toInt,
+                                     @Cached("create()") JSToIntegerAsLongNode toInt,
                                      @Cached("createNew()") JSFunctionCallNode callNode) {
             DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
             DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options,
                     getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, dol, isObject, toBoolean, toString);
             if(isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalTime(item)) {
-                JSTemporalTimeObject timeItem = (JSTemporalTimeObject) item;
+                JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.createTemporalTimeFromStatic(constructor,
                         timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
                         timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
@@ -136,8 +137,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization(guards = {"isJSTemporalTime(obj1)", "isJSTemporalTime(obj2)"})
         protected int compare(DynamicObject obj1, DynamicObject obj2) {
-            JSTemporalTimeObject time1 = (JSTemporalTimeObject) obj1;
-            JSTemporalTimeObject time2 = (JSTemporalTimeObject) obj2;
+            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) obj1;
+            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) obj2;
             return JSTemporalPlainTime.compareTemporalTime(
                     time1.getHours(), time1.getMinutes(), time1.getSeconds(),
                     time1.getMilliseconds(), time1.getMicroseconds(), time1.getNanoseconds(),

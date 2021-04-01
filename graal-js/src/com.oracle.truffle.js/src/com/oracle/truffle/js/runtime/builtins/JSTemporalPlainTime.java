@@ -51,7 +51,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TemporalPlainTimePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
@@ -91,8 +91,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         }
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalTimeFactory();
-        DynamicObject obj = factory.initProto(new JSTemporalTimeObject(factory.getShape(realm),
-                (int) hours, (int) minutes, (int) seconds, (int) milliseconds, (int) microseconds, (int) nanoseconds
+        DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
+                hours, minutes, seconds, milliseconds, microseconds, nanoseconds
         ), realm);
         return context.trackAllocation(obj);
     }
@@ -139,7 +139,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
                     if (JSTemporalPlainTime.isJSTemporalTime(obj)) {
-                        JSTemporalTimeObject temporalTime = (JSTemporalTimeObject) obj;
+                        JSTemporalPlainTimeObject temporalTime = (JSTemporalPlainTimeObject) obj;
                         switch (property) {
                             case HOUR:
                                 return temporalTime.getHours();
@@ -214,7 +214,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     public static boolean isJSTemporalTime(Object obj) {
-        return obj instanceof JSTemporalTimeObject;
+        return obj instanceof JSTemporalPlainTimeObject;
     }
 
     //region Abstract methods
@@ -249,62 +249,64 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     // 4.5.2
     public static Object toTemporalTime(DynamicObject item, DynamicObject varConstructor, String varOverflow,
                                         JSRealm realm, IsObjectNode isObject, DynamicObjectLibrary dol,
-                                        JSToIntegerAsIntNode toInt, JSToStringNode toString,
+                                        JSToIntegerAsLongNode toInt, JSToStringNode toString,
                                         IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
-
-        DynamicObject constructor = varConstructor == null ? realm.getTemporalPlainTimeConstructor() : varConstructor;
-        String overflow = varOverflow == null ? "constraint" : varOverflow;
-        assert overflow.equals("constraint") || overflow.equals("reject");
-        DynamicObject result;
-        if (isObject.executeBoolean(item)) {
-            if (isJSTemporalTime(item)) {
-                return item;
+        try {
+            DynamicObject constructor = varConstructor == null ? realm.getTemporalPlainTimeConstructor() : varConstructor;
+            String overflow = varOverflow == null ? "constraint" : varOverflow;
+            assert overflow.equals("constraint") || overflow.equals("reject");
+            DynamicObject result;
+            if (isObject.executeBoolean(item)) {
+                if (isJSTemporalTime(item)) {
+                    return item;
+                }
+                // TODO: 4.c Calendar
+                result = toTemporalTimeRecord(item, realm, isObject, dol, toInt);
+                result = regulateTime(
+                        dol.getLongOrDefault(result, HOUR, 0),
+                        dol.getLongOrDefault(result, MINUTE, 0),
+                        dol.getLongOrDefault(result, SECOND, 0),
+                        dol.getLongOrDefault(result, MILLISECOND, 0),
+                        dol.getLongOrDefault(result, MICROSECOND, 0),
+                        dol.getLongOrDefault(result, NANOSECOND, 0),
+                        overflow, realm
+                );
+            } else {
+                String string = toString.executeString(item);
+                result = null;  // TODO: ParseTemporalTimeString
+                if (validateTime(
+                        dol.getLongOrDefault(result, HOUR, 0),
+                        dol.getLongOrDefault(result, MINUTE, 0),
+                        dol.getLongOrDefault(result, SECOND, 0),
+                        dol.getLongOrDefault(result, MILLISECOND, 0),
+                        dol.getLongOrDefault(result, MICROSECOND, 0),
+                        dol.getLongOrDefault(result, NANOSECOND, 0)
+                )) {
+                    throw Errors.createRangeError("Given time outside the range.");
+                }
+                Object calendar = dol.getOrDefault(result, "calendar", null);
+                if(calendar != null && !calendar.equals("iso8601")) {
+                    throw Errors.createRangeError("Wrong calendar.");
+                }
             }
-            // TODO: 4.c Calendar
-            result = toTemporalTimeRecord(item, realm, isObject, dol, toInt);
-            result = regulateTime(
-                    toInt.executeInt(dol.getOrDefault(result, HOUR, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, MINUTE, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, SECOND, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, MILLISECOND, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, MICROSECOND, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, NANOSECOND, 0)),
-                    overflow, realm
+            return createTemporalTimeFromStatic(
+                    constructor,
+                    dol.getLongOrDefault(result, HOUR, 0),
+                    dol.getLongOrDefault(result, MINUTE, 0),
+                    dol.getLongOrDefault(result, SECOND, 0),
+                    dol.getLongOrDefault(result, MILLISECOND, 0),
+                    dol.getLongOrDefault(result, MICROSECOND, 0),
+                    dol.getLongOrDefault(result, NANOSECOND, 0),
+                    isConstructor, callNode
             );
-        } else {
-            String string = toString.executeString(item);
-            result = null;  // TODO: ParseTemporalTimeString
-            if (validateTime(
-                    toInt.executeInt(dol.getOrDefault(result, HOUR, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, MINUTE, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, SECOND, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, MILLISECOND, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, MICROSECOND, 0)),
-                    toInt.executeInt(dol.getOrDefault(result, NANOSECOND, 0))
-            )) {
-                throw Errors.createRangeError("Given time outside the range.");
-            }
-            Object calendar = dol.getOrDefault(result, "calendar", null);
-            if(calendar != null && !calendar.equals("iso8601")) {
-                throw Errors.createRangeError("Wrong calendar.");
-            }
+        } catch (UnexpectedResultException e) {
+            throw new RuntimeException(e);
         }
-        return createTemporalTimeFromStatic(
-                constructor,
-                toInt.executeInt(dol.getOrDefault(result, HOUR, 0)),
-                toInt.executeInt(dol.getOrDefault(result, MINUTE, 0)),
-                toInt.executeInt(dol.getOrDefault(result, SECOND, 0)),
-                toInt.executeInt(dol.getOrDefault(result, MILLISECOND, 0)),
-                toInt.executeInt(dol.getOrDefault(result, MICROSECOND, 0)),
-                toInt.executeInt(dol.getOrDefault(result, NANOSECOND, 0)),
-                isConstructor, callNode
-        );
-
     }
 
     // 4.5.3
     public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, JSRealm realm, IsObjectNode isObject,
-                                              DynamicObjectLibrary dol, JSToIntegerAsIntNode toInt) {
+                                              DynamicObjectLibrary dol, JSToIntegerAsLongNode toInt) {
         if (!isObject.executeBoolean(temporalTimeLike)) {
             throw Errors.createTypeError("Temporal.Time like object expected.");
         }
@@ -314,7 +316,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
             Object value = dol.getOrDefault(temporalTimeLike, property, null);
             if(value != null) {
                 any = true;
-                value = toInt.executeInt(value);
+                value = toInt.executeLong(value);
                 JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
             }
         }
@@ -398,18 +400,18 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     // 4.5.9
-    public static JSTemporalTimeObject createTemporalTimeFromInstance(JSTemporalTimeObject temporalTime,
-                                                                      long hour, long minute, long second,
-                                                                      long millisecond, long microsecond,
-                                                                      long nanosecond, JSRealm realm,
-                                                                      JSFunctionCallNode callNode) {
+    public static JSTemporalPlainTimeObject createTemporalTimeFromInstance(JSTemporalPlainTimeObject temporalTime,
+                                                                           long hour, long minute, long second,
+                                                                           long millisecond, long microsecond,
+                                                                           long nanosecond, JSRealm realm,
+                                                                           JSFunctionCallNode callNode) {
         assert validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
         DynamicObject constructor = realm.getTemporalPlainTimeConstructor();
         Object[] ctorArgs = new Object[] {hour, minute, second, millisecond, microsecond, nanosecond};
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
         System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
         Object result = callNode.executeCall(args);
-        return (JSTemporalTimeObject) result;
+        return (JSTemporalPlainTimeObject) result;
     }
 
     // 4.5.10
@@ -432,7 +434,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     // 4.5.11
     public static DynamicObject toTemporalTimeRecord(DynamicObject temporalTimeLike,
                                               JSRealm realm, IsObjectNode isObject, DynamicObjectLibrary dol,
-                                              JSToIntegerAsIntNode toInt) {
+                                              JSToIntegerAsLongNode toInt) {
         assert isObject.executeBoolean(temporalTimeLike);
         DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         for(String property : PROPERTIES) {
@@ -440,7 +442,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
             if (value == null) {
                 throw Errors.createTypeError(String.format("Property %s should not be undefined.", property));
             }
-            value = toInt.executeInt(value);
+            value = toInt.executeLong(value);
             JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
         }
         return result;
@@ -456,8 +458,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     // 4.5.13
-    public static int compareTemporalTime(int h1, int min1, int s1, int ms1, int mus1, int ns1,
-                                          int h2, int min2, int s2, int ms2, int mus2, int ns2) {
+    public static int compareTemporalTime(long h1, long min1, long s1, long ms1, long mus1, long ns1,
+                                          long h2, long min2, long s2, long ms2, long mus2, long ns2) {
         if (h1 > h2) {
             return 1;
         }
