@@ -59,12 +59,6 @@ import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
 import org.graalvm.collections.Pair;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDay;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
@@ -155,6 +149,12 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDay;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
