@@ -382,6 +382,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return JSConfig.ECMAScript2017;
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
+            } else if (EnumSet.of(TemporalPlainTime, TemporalCalendar, TemporalDuration,
+                    TemporalPlainDate, TemporalPlainYearMonth, TemporalPlainMonthDay).contains(this)) {
+                return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }

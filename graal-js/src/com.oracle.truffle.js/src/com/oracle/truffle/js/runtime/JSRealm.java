@@ -1672,7 +1672,9 @@ public class JSRealm {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
 
-        addTemporalGlobals();
+        if(isTemporalEnabled()) {
+            addTemporalGlobals();
+        }
     }
 
     private void initGlobalNashornExtensions() {
@@ -1801,6 +1803,10 @@ public class JSRealm {
         if (context.isOptionIntl402()) {
             putGlobalProperty(JSIntl.CLASS_NAME, preinitIntlObject != null ? preinitIntlObject : createIntlObject());
         }
+    }
+
+    private boolean isTemporalEnabled() {
+        return context.getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
     }
 
     private void addTemporalGlobals() {
