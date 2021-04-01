@@ -623,22 +623,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             case TemporalPlainTime:
                 if(construct) {
-                    return newTarget ? ConstructTemporalPlainTimeNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                                    : ConstructTemporalPlainTimeNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                    return newTarget ? ConstructTemporalPlainTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(6).createArgumentNodes(context))
+                                    : ConstructTemporalPlainTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(6).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case TemporalPlainDate:
                 if (construct) {
-                    return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).varArgs().createArgumentNodes(context))
-                            : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(3).varArgs().createArgumentNodes(context));
+                    return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
+                            : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case TemporalDuration:
                 if(construct) {
-                    return newTarget ? ConstructTemporalDurationNodeGen.create(context, builtin, true, args().newTarget().varArgs().createArgumentNodes(context))
-                            : ConstructTemporalDurationNodeGen.create(context, builtin, false, args().function().varArgs().createArgumentNodes(context));
+                    return newTarget ? ConstructTemporalDurationNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
+                            : ConstructTemporalDurationNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1077,77 +1077,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization(guards = {"args.length == 0"})
-        protected DynamicObject constructTemporalPlainTime(DynamicObject newTarget, Object[] args) {
-            return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    0, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 1"})
-        protected DynamicObject constructTemporalPlainTimeH(DynamicObject newTarget, Object[] args,
-                                                            @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long hour = toIntegerNode.executeLong(args[0]);
-            return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    hour, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 2"})
-        protected DynamicObject constructTemporalPlainTimeHM(DynamicObject newTarget, Object[] args,
-                                                             @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long hour = toIntegerNode.executeLong(args[0]);
-            final long minute = toIntegerNode.executeLong(args[1]);
-            return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    hour, minute, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 3"})
-        protected DynamicObject constructTemporalPlainTimeHMS(DynamicObject newTarget, Object[] args,
-                                                              @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long hour = toIntegerNode.executeLong(args[0]);
-            final long minute = toIntegerNode.executeLong(args[1]);
-            final long second = toIntegerNode.executeLong(args[2]);
-            return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    hour, minute, second, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 4"})
-        protected DynamicObject constructTemporalPlainTimeHMSMil(DynamicObject newTarget, Object[] args,
-                                                                 @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long hour = toIntegerNode.executeLong(args[0]);
-            final long minute = toIntegerNode.executeLong(args[1]);
-            final long second = toIntegerNode.executeLong(args[2]);
-            final long millisecond = toIntegerNode.executeLong(args[3]);
-            return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    hour, minute, second, millisecond, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 5"})
-        protected DynamicObject constructTemporalPlainTimeHMSMilMic(DynamicObject newTarget, Object[] args,
-                                                                    @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long hour = toIntegerNode.executeLong(args[0]);
-            final long minute = toIntegerNode.executeLong(args[1]);
-            final long second = toIntegerNode.executeLong(args[2]);
-            final long millisecond = toIntegerNode.executeLong(args[3]);
-            final long microsecond = toIntegerNode.executeLong(args[4]);
-            return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    hour, minute, second, millisecond, microsecond, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 6"})
-        protected DynamicObject constructTemporalPlainTimeHMSMilMicN(DynamicObject newTarget, Object[] args,
-                                                                     @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long hour = toIntegerNode.executeLong(args[0]);
-            final long minute = toIntegerNode.executeLong(args[1]);
-            final long second = toIntegerNode.executeLong(args[2]);
-            final long millisecond = toIntegerNode.executeLong(args[3]);
-            final long microsecond = toIntegerNode.executeLong(args[4]);
-            final long nanosecond = toIntegerNode.executeLong(args[5]);
+        @Specialization
+        protected DynamicObject constructTemporalPlainTime(DynamicObject newTarget, Object hourObj, Object minuteObj,
+                                                           Object secondObj, Object millisecondObject,
+                                                           Object microsecondObject, Object nanosecondObject,
+                                                           @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
+            final long hour = toIntegerNode.executeLong(hourObj);
+            final long minute = toIntegerNode.executeLong(minuteObj);
+            final long second = toIntegerNode.executeLong(secondObj);
+            final long millisecond = toIntegerNode.executeLong(millisecondObject);
+            final long microsecond = toIntegerNode.executeLong(microsecondObject);
+            final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
             return swapPrototype(JSTemporalPlainTime.create(getContext(),
                     hour, minute, second, millisecond, microsecond, nanosecond
             ), newTarget);
@@ -1165,143 +1105,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization(guards = {"args.length == 0"})
-        protected DynamicObject constructTemporalDuration(DynamicObject newTarget, Object[] args) {
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    0, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 1"})
-        protected DynamicObject constructTemporalDurationY(DynamicObject newTarget, Object[] args,
-                                                       @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, 0, 0, 0, 0, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 2"})
-        protected DynamicObject constructTemporalDurationYM(DynamicObject newTarget, Object[] args,
-                                                        @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, 0, 0, 0, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 3"})
-        protected DynamicObject constructTemporalDurationYMW(DynamicObject newTarget, Object[] args,
-                                                         @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, 0, 0, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 4"})
-        protected DynamicObject constructTemporalDurationYMWD(DynamicObject newTarget, Object[] args,
-                                                            @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, 0, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 5"})
-        protected DynamicObject constructTemporalDurationYMWDH(DynamicObject newTarget, Object[] args,
-                                                               @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            final long hours = toIntegerNode.executeLong(args[4]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, hours, 0, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 6"})
-        protected DynamicObject constructTemporalDurationYMWDHMin(DynamicObject newTarget, Object[] args,
-                                                                  @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            final long hours = toIntegerNode.executeLong(args[4]);
-            final long minutes = toIntegerNode.executeLong(args[5]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, hours, minutes, 0, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 7"})
-        protected DynamicObject constructTemporalDurationYMWDHMinS(DynamicObject newTarget, Object[] args,
-                                                                     @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            final long hours = toIntegerNode.executeLong(args[4]);
-            final long minutes = toIntegerNode.executeLong(args[5]);
-            final long seconds = toIntegerNode.executeLong(args[6]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, hours, minutes, seconds, 0, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 8"})
-        protected DynamicObject constructTemporalDurationYMWDHMinSMil(DynamicObject newTarget, Object[] args,
-                                                                     @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            final long hours = toIntegerNode.executeLong(args[4]);
-            final long minutes = toIntegerNode.executeLong(args[5]);
-            final long seconds = toIntegerNode.executeLong(args[6]);
-            final long milliseconds = toIntegerNode.executeLong(args[7]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, hours, minutes, seconds, milliseconds, 0, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 9"})
-        protected DynamicObject constructTemporalDurationYMWDHMinSMilMic(DynamicObject newTarget, Object[] args,
-                                                                      @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            final long hours = toIntegerNode.executeLong(args[4]);
-            final long minutes = toIntegerNode.executeLong(args[5]);
-            final long seconds = toIntegerNode.executeLong(args[6]);
-            final long milliseconds = toIntegerNode.executeLong(args[7]);
-            final long microseconds = toIntegerNode.executeLong(args[8]);
-            return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, 0
-            ), newTarget);
-        }
-
-        @Specialization(guards = {"args.length == 10"})
-        protected DynamicObject constructTemporalDurationYMWDHMinSMilMicN(DynamicObject newTarget, Object[] args,
-                                                                         @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(args[0]);
-            final long months = toIntegerNode.executeLong(args[1]);
-            final long weeks = toIntegerNode.executeLong(args[2]);
-            final long days = toIntegerNode.executeLong(args[3]);
-            final long hours = toIntegerNode.executeLong(args[4]);
-            final long minutes = toIntegerNode.executeLong(args[5]);
-            final long seconds = toIntegerNode.executeLong(args[6]);
-            final long milliseconds = toIntegerNode.executeLong(args[7]);
-            final long microseconds = toIntegerNode.executeLong(args[8]);
-            final long nanoseconds = toIntegerNode.executeLong(args[9]);
+        @Specialization
+        protected DynamicObject constructTemporalDuration(DynamicObject newTarget, Object yearsObj, Object monthsObj,
+                                                          Object weeksObj, Object daysObj, Object hoursObj,
+                                                          Object minutesObj, Object secondsObj,
+                                                          Object millisecondsObject, Object microsecondsObject,
+                                                          Object nanosecondsObject,
+                                                          @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+            final long years = toIntegerNode.executeLong(yearsObj);
+            final long months = toIntegerNode.executeLong(monthsObj);
+            final long weeks = toIntegerNode.executeLong(weeksObj);
+            final long days = toIntegerNode.executeLong(daysObj);
+            final long hours = toIntegerNode.executeLong(hoursObj);
+            final long minutes = toIntegerNode.executeLong(minutesObj);
+            final long seconds = toIntegerNode.executeLong(secondsObj);
+            final long milliseconds = toIntegerNode.executeLong(millisecondsObject);
+            final long microseconds = toIntegerNode.executeLong(microsecondsObject);
+            final long nanoseconds = toIntegerNode.executeLong(nanosecondsObject);
             return swapPrototype(JSTemporalDuration.create(getContext(),
                     years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds
             ), newTarget);
