@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -437,6 +437,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         Scope parent;
         if (hasParameterExpressions()) {
             parent = getParameterScope();
+            if (needsArguments()) {
+                assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
+                parent.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+            }
             parent.close();
             parameters = Collections.emptyList();
         } else {
@@ -476,6 +480,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public Scope getParameterScope() {
         return parameterBlock.getScope();
+    }
+
+    private boolean needsArguments() {
+        return getFlag(FunctionNode.DEFINES_ARGUMENTS) == 0 && getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0;
     }
 
     public String getInternalName() {
