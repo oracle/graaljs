@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,8 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
@@ -76,7 +77,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -160,8 +163,31 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     public abstract boolean executeEvaluated(Object objectResult, Object propertyResult);
 
-    @Specialization(guards = "isJSDynamicObject(targetObject)")
-    protected final boolean doJSObject(DynamicObject targetObject, Object key,
+    @Specialization(guards = {"isJSOrdinaryObject(targetObject)"})
+    protected final boolean doJSOrdinaryObject(JSDynamicObject targetObject, Object key,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                    @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary dynamicObjectLib) {
+        Object propertyKey = toPropertyKeyNode.execute(key);
+
+        Property foundProperty = dynamicObjectLib.getProperty(targetObject, propertyKey);
+        if (foundProperty != null) {
+            if (!JSProperty.isConfigurable(foundProperty)) {
+                if (strict) {
+                    throw Errors.createTypeErrorNotConfigurableProperty(propertyKey);
+                } else {
+                    return false;
+                }
+            }
+            dynamicObjectLib.removeKey(targetObject, propertyKey);
+            return true;
+        } else {
+            /* the prototype might have a property with that name, but we don't care */
+            return true;
+        }
+    }
+
+    @Specialization(guards = {"!isJSOrdinaryObject(targetObject)"})
+    protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,
                     @Cached("createBinaryProfile()") ConditionProfile arrayProfile,
                     @Cached("create()") ToArrayIndexNode toArrayIndexNode,

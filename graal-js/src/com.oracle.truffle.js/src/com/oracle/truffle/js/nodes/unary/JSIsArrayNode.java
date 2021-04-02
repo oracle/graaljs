@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,8 +83,8 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
         return JSRuntime.isProxyAnArray(object);
     }
 
-    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSArray(object)", "!isJSProxy(object)"}, replaces = {"doIsArrayClass"})
-    protected boolean doJSObject(DynamicObject object) {
+    @Specialization(guards = {"!isJSArray(object)", "!isJSProxy(object)", "isJSDynamicObject(object)"}, replaces = {"doIsArrayClass"})
+    protected boolean doJSObject(Object object) {
         assert !JSRuntime.isArray(object);
         return false;
     }

@@ -49,7 +49,6 @@ import java.util.Comparator;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
@@ -107,7 +106,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayUnshi
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.CallbackNode;
@@ -115,7 +113,6 @@ import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
-import com.oracle.truffle.js.nodes.access.IsArrayNode.IsArrayWrappedNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -170,6 +167,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -266,7 +264,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ArrayPrototype builtinEnum) {
         switch (builtinEnum) {
             case push:
-                return JSArrayPushNode.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                return JSArrayPushNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case pop:
                 return JSArrayPopNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case slice:
@@ -635,19 +633,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private JSHasPropertyNode hasPropertyNode;
         @Child private JSArrayNextElementIndexNode nextElementIndexNode;
         @Child private JSArrayPreviousElementIndexNode previousElementIndexNode;
-        @CompilationFinal boolean seenIndexLargerThanInt;
-
-        private boolean indexFitsInInt(long index) {
-            if (seenIndexLargerThanInt) {
-                return false;
-            } else if (JSRuntime.longIsRepresentableAsInt(index)) {
-                return true;
-            } else {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                seenIndexLargerThanInt = true;
-                return false;
-            }
-        }
 
         protected void setLength(Object thisObject, int length) {
             setLengthIntl(thisObject, length);
@@ -684,11 +669,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected Object read(Object target, long index) {
             ReadElementNode read = getOrCreateReadNode();
-            if (indexFitsInInt(index)) {
-                return read.executeWithTargetAndIndex(target, (int) index);
-            } else {
-                return read.executeWithTargetAndIndex(target, (double) index);
-            }
+            return read.executeWithTargetAndIndex(target, index);
         }
 
         private WriteElementNode getOrCreateWriteNode() {
@@ -705,11 +686,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected void write(Object target, long index, Object value) {
             WriteElementNode write = getOrCreateWriteNode();
-            if (indexFitsInInt(index)) {
-                write.executeWithTargetAndIndexAndValue(target, (int) index, value);
-            } else {
-                write.executeWithTargetAndIndexAndValue(target, (double) index, value);
-            }
+            write.executeWithTargetAndIndexAndValue(target, index, value);
         }
 
         // represent the 7.3.6 CreateDataPropertyOrThrow(O, P, V)
@@ -727,11 +704,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected void writeOwn(Object target, long index, Object value) {
             WriteElementNode write = getOrCreateWriteOwnNode();
-            if (indexFitsInInt(index)) {
-                write.executeWithTargetAndIndexAndValue(target, (int) index, value);
-            } else {
-                write.executeWithTargetAndIndexAndValue(target, (double) index, value);
-            }
+            write.executeWithTargetAndIndexAndValue(target, index, value);
         }
 
         private JSHasPropertyNode getOrCreateHasPropertyNode() {
@@ -796,16 +769,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        public static JSArrayPushNode create(JSContext context, JSBuiltin builtin, JavaScriptNode[] args) {
-            assert args.length == 2;
-            JavaScriptNode[] fullArgs = Arrays.copyOf(args, args.length + 1);
-            fullArgs[args.length] = IsArrayWrappedNode.createIsArray(args[0]);
-            return JSArrayPushNodeGen.create(context, builtin, fullArgs);
-        }
-
-        @Specialization(guards = {"isArray", "args.length == 0"})
-        protected Object pushArrayNone(DynamicObject thisObject, @SuppressWarnings("unused") Object[] args, @SuppressWarnings("unused") boolean isArray) {
-            assert JSArray.isJSArray(thisObject);
+        @Specialization(guards = {"isJSArray(thisObject)", "args.length == 0"})
+        protected Object pushArrayNone(DynamicObject thisObject, @SuppressWarnings("unused") Object[] args) {
             long len = getLength(thisObject);
             setLength(thisObject, len); // could have side effect / throw
             if (len >= Integer.MAX_VALUE) {
@@ -816,9 +781,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         }
 
-        @Specialization(guards = {"isArray", "args.length == 1"}, rewriteOn = SlowPathException.class)
-        protected int pushArraySingle(DynamicObject thisObject, Object[] args, @SuppressWarnings("unused") boolean isArray) throws SlowPathException {
-            assert JSArray.isJSArray(thisObject);
+        @Specialization(guards = {"isJSArray(thisObject)", "args.length == 1"}, rewriteOn = SlowPathException.class)
+        protected int pushArraySingle(DynamicObject thisObject, Object[] args) throws SlowPathException {
             long len = getLength(thisObject);
             if (len >= Integer.MAX_VALUE) {
                 throw JSNodeUtil.slowPathException();
@@ -830,9 +794,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return newLength;
         }
 
-        @Specialization(guards = {"isArray", "args.length == 1"})
-        protected double pushArraySingleLong(DynamicObject thisObject, Object[] args, @SuppressWarnings("unused") boolean isArray) {
-            assert JSArray.isJSArray(thisObject);
+        @Specialization(guards = {"isJSArray(thisObject)", "args.length == 1"})
+        protected double pushArraySingleLong(DynamicObject thisObject, Object[] args) {
             long len = getLength(thisObject);
             checkLength(args, len);
             write(thisObject, len, args[0]);
@@ -841,9 +804,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return newLength;
         }
 
-        @Specialization(guards = {"isArray", "args.length >= 2"}, rewriteOn = SlowPathException.class)
-        protected int pushArrayAll(DynamicObject thisObject, Object[] args, @SuppressWarnings("unused") boolean isArray) throws SlowPathException {
-            assert JSArray.isJSArray(thisObject);
+        @Specialization(guards = {"isJSArray(thisObject)", "args.length >= 2"}, rewriteOn = SlowPathException.class)
+        protected int pushArrayAll(DynamicObject thisObject, Object[] args) throws SlowPathException {
             long len = getLength(thisObject);
             if (len + args.length >= Integer.MAX_VALUE) {
                 throw JSNodeUtil.slowPathException();
@@ -856,9 +818,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return ilen + args.length;
         }
 
-        @Specialization(guards = {"isArray", "args.length >= 2"})
-        protected double pushArrayAllLong(DynamicObject thisObject, Object[] args, @SuppressWarnings("unused") boolean isArray) {
-            assert JSArray.isJSArray(thisObject);
+        @Specialization(guards = {"isJSArray(thisObject)", "args.length >= 2"})
+        protected double pushArrayAllLong(DynamicObject thisObject, Object[] args) {
             long len = getLength(thisObject);
             checkLength(args, len);
             for (int i = 0; i < args.length; i++) {
@@ -868,9 +829,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return (double) len + args.length;
         }
 
-        @Specialization(guards = "!isArray")
-        protected double pushProperty(Object thisObject, Object[] args, @SuppressWarnings("unused") boolean isArray) {
-            assert !JSArray.isJSArray(thisObject);
+        @Specialization(guards = "!isJSArray(thisObject)")
+        protected double pushProperty(Object thisObject, Object[] args) {
             Object thisObj = toObject(thisObject);
             long len = getLength(thisObj);
             checkLength(args, len);
@@ -3118,7 +3078,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSArrayReverseNode extends JSArrayOperation {
         @Child private TestArrayNode hasHolesNode;
-        @Child private IsArrayNode isArrayNode;
         @Child private DeletePropertyNode deletePropertyNode;
         private final ConditionProfile bothExistProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile onlyUpperExistsProfile = ConditionProfile.createBinaryProfile();
@@ -3127,7 +3086,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         public JSArrayReverseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.hasHolesNode = TestArrayNode.createHasHoles();
-            this.isArrayNode = IsArrayNode.createIsArray();
         }
 
         private boolean deleteProperty(Object array, long index) {
@@ -3139,12 +3097,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object reverse(Object thisObj) {
+        protected Object reverseJSArray(JSArrayObject thisObj) {
+            return reverse(thisObj, true);
+        }
+
+        @Specialization(replaces = "reverseJSArray")
+        protected Object reverseGeneric(Object thisObj) {
             final Object array = toObject(thisObj);
+            return reverse(array, JSArray.isJSArray(array));
+        }
+
+        private Object reverse(Object array, boolean isArray) {
             final long length = getLength(array);
             long lower = 0;
             long upper = length - 1;
-            boolean isArray = isArrayNode.execute(array);
             boolean hasHoles = isArray && hasHolesNode.executeBoolean((DynamicObject) array);
 
             while (lower < upper) {

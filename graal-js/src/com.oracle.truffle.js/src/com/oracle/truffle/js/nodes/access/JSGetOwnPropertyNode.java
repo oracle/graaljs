@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
@@ -164,7 +165,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "usesOrdinaryGetOwnProperty.execute(thisObj)", replaces = "cachedOrdinary", limit = "1")
     PropertyDescriptor uncachedOrdinary(DynamicObject thisObj, Object propertyKey,
-                    @SuppressWarnings("unused") @Cached UsesOrdinaryGetOwnPropertyNode usesOrdinaryGetOwnProperty) {
+                    @Cached @Shared("usesOrdinaryGetOwnProperty") @SuppressWarnings("unused") UsesOrdinaryGetOwnPropertyNode usesOrdinaryGetOwnProperty) {
         assert JSRuntime.isPropertyKey(propertyKey) && JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         Property prop = thisObj.getShape().getProperty(propertyKey);
         return ordinaryGetOwnProperty(thisObj, prop);
@@ -228,9 +229,11 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return getPropertyProxyValueNode.execute(obj, propertyProxy);
     }
 
-    @Specialization(guards = {"!jsclassProfile.getJSClass(thisObj).usesOrdinaryGetOwnProperty()", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
+    @Specialization(guards = {"!usesOrdinaryGetOwnProperty.execute(thisObj)", "!isJSArray(thisObj)", "!isJSString(thisObj)"}, limit = "1")
     static PropertyDescriptor generic(DynamicObject thisObj, Object key,
-                    @Cached("create()") JSClassProfile jsclassProfile) {
+                    @Cached("create()") JSClassProfile jsclassProfile,
+                    @Cached @Shared("usesOrdinaryGetOwnProperty") @SuppressWarnings("unused") UsesOrdinaryGetOwnPropertyNode usesOrdinaryGetOwnProperty) {
+        assert !JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         return JSObject.getOwnProperty(thisObj, key, jsclassProfile);
     }
 
