@@ -348,6 +348,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             }
             return getHasNode.getValue(object);
         }
+
+        protected final Object constructSet(Object... argeuments) {
+            Object ctr = getContext().getRealm().getSetConstructor();
+            return JSRuntime.construct(ctr, argeuments);
+        }
     }
 
     /**
@@ -361,8 +366,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject union(DynamicObject set, Object iterable) {
-            Object ctr = getContext().getRealm().getSetConstructor();
-            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
+            DynamicObject newSet = (DynamicObject) constructSet(set);
             Object adder = getAddFunction(newSet);
             addEntryFromIterable(newSet, iterable, adder);
             return newSet;
@@ -388,8 +392,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject intersection(DynamicObject set, Object iterable) {
-            Object ctr = getContext().getRealm().getSetConstructor();
-            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[0]);
+            DynamicObject newSet = (DynamicObject) constructSet();
             Object hasCheck = getHasFunction(set);
             if (!JSRuntime.isCallable(hasCheck)) {
                 hasError.enter();
@@ -439,8 +442,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject difference(DynamicObject set, Object iterable) {
-            Object ctr = getContext().getRealm().getSetConstructor();
-            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
+            DynamicObject newSet = (DynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!JSRuntime.isCallable(remover)) {
                 removerError.enter();
@@ -482,8 +484,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject symmetricDifference(DynamicObject set, Object iterable) {
-            Object ctr = getContext().getRealm().getSetConstructor();
-            DynamicObject newSet = (DynamicObject) JSRuntime.construct(ctr, new Object[]{set});
+            DynamicObject newSet = (DynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!JSRuntime.isCallable(remover)) {
                 removerError.enter();
@@ -545,7 +546,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             Object hasCheck = getHasFunction(otherSet);
             if (!JSRuntime.isCallable(hasCheck)) {
                 needCreateNewBranch.enter();
-                otherSet = (DynamicObject) JSRuntime.construct(getContext().getRealm().getSetConstructor(), new Object[0]);
+                otherSet = (DynamicObject) constructSet();
                 addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
                 hasCheck = getHasFunction(otherSet);
             }
