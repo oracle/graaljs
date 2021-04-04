@@ -885,6 +885,8 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
                 case SPREAD_ARGUMENT:
                 case SPREAD_ARRAY:
                 case SPREAD_OBJECT:
+                case SPREAD_RECORD:
+                case SPREAD_TUPLE:
                     operator = "...";
                     prefix = true;
                     break;

@@ -151,6 +151,7 @@ public final class JSTags {
         public enum Type {
             ObjectLiteral,
             ArrayLiteral,
+            RecordLiteral,
             TupleLiteral,
             FunctionLiteral,
             NumericLiteral,

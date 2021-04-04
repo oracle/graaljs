@@ -82,6 +82,8 @@ import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
+import com.oracle.js.parser.ir.RecordNode;
+import com.oracle.js.parser.ir.RecordPropertyNode;
 import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
@@ -151,6 +153,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
+import com.oracle.truffle.js.nodes.record.RecordLiteralNode.AbstractRecordLiteralMemberNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.nodes.unary.VoidNode;
@@ -1471,6 +1474,34 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             elements[i] = transform(elementExpression);
         }
         return hasSpread ? factory.createTupleLiteralWithSpread(context, elements) : factory.createTupleLiteral(context, elements);
+    }
+
+    @Override
+    public JavaScriptNode enterRecordNode(RecordNode recordNode) {
+        AbstractRecordLiteralMemberNode[] members = transformRecordPropertyDefinitionList(recordNode.getElements());
+        return tagExpression(factory.createRecordLiteral(context, members), recordNode);
+    }
+
+    private AbstractRecordLiteralMemberNode[] transformRecordPropertyDefinitionList(List<RecordPropertyNode> properties) {
+        AbstractRecordLiteralMemberNode[] elements = new AbstractRecordLiteralMemberNode[properties.size()];
+        for (int i = 0; i < properties.size(); i++) {
+            elements[i] = enterRecordPropertyNode(properties.get(i));
+        }
+        return elements;
+    }
+
+    private AbstractRecordLiteralMemberNode enterRecordPropertyNode(RecordPropertyNode property) {
+        if (property.isSpread()) {
+            JavaScriptNode from = transform(((UnaryNode) property.getKey()).getExpression());
+            return factory.createSpreadRecordMember(from);
+        }
+        JavaScriptNode value = transform(property.getValue());
+        if (property.isComputed()) {
+            JavaScriptNode computedKey = transform(property.getKey());
+            return factory.createComputedRecordMember(computedKey, value);
+        } else {
+            return factory.createRecordMember(property.getKeyName(), value);
+        }
     }
 
     @Override

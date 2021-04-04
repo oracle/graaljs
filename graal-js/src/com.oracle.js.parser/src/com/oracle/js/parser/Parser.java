@@ -88,6 +88,7 @@ import static com.oracle.js.parser.TokenType.SET;
 import static com.oracle.js.parser.TokenType.SPREAD_ARGUMENT;
 import static com.oracle.js.parser.TokenType.SPREAD_ARRAY;
 import static com.oracle.js.parser.TokenType.SPREAD_OBJECT;
+import static com.oracle.js.parser.TokenType.SPREAD_RECORD;
 import static com.oracle.js.parser.TokenType.SPREAD_TUPLE;
 import static com.oracle.js.parser.TokenType.STATIC;
 import static com.oracle.js.parser.TokenType.STRING;
@@ -157,6 +158,8 @@ import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyKey;
 import com.oracle.js.parser.ir.PropertyNode;
+import com.oracle.js.parser.ir.RecordNode;
+import com.oracle.js.parser.ir.RecordPropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
 import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.Scope;
@@ -4301,18 +4304,110 @@ public class Parser extends AbstractParser {
      *
      * RecordPropertyDefinitionList[Yield, Await] :
      *      RecordPropertyDefinition[?Yield, ?Await]
-     *      RecordPropertyDefinitionList[?Yield, ?Await],RecordPropertyDefinition[?Yield, ?Await]
-     *
-     * RecordPropertyDefinition[Yield, Await] :
-     *      IdentifierReference[?Yield, ?Await]
-     *      PropertyName[?Yield, ?Await]:AssignmentExpression[+In, ?Yield, ?Await]
-     *      ... AssignmentExpression[+In, ?Yield, ?Await]
+     *      RecordPropertyDefinitionList[?Yield, ?Await] , RecordPropertyDefinition[?Yield, ?Await]
      * </pre>
      *
      * @return Expression node.
      */
-    private Expression recordLiteral(boolean yield, boolean await) { // TODO: return type
-        return objectLiteral(yield, await); // TODO: implement
+    private RecordNode recordLiteral(boolean yield, boolean await) {
+        // Capture HASH_LBRACE token.
+        final long recordToken = token;
+        // HASH_LBRACE tested in caller.
+        next();
+
+        // Accumulate record property elements.
+        final ArrayList<RecordPropertyNode> elements = new ArrayList<>();
+        boolean commaSeen = true;
+        loop: while (true) {
+            switch (type) {
+                case RBRACE:
+                    next();
+                    break loop;
+
+                case COMMARIGHT:
+                    if (commaSeen) {
+                        throw error(AbstractParser.message("expected.property.id", type.getNameOrType()));
+                    }
+                    next();
+                    commaSeen = true;
+                    break;
+
+                default:
+                    if (!commaSeen) {
+                        throw error(AbstractParser.message("expected.comma", type.getNameOrType()));
+                    }
+                    commaSeen = false;
+                    // Get and add the next property.
+                    final RecordPropertyNode property = recordPropertyDefinition(yield, await);
+                    elements.add(property);
+            }
+        }
+
+        return new RecordNode(recordToken, finish, optimizeList(elements));
+    }
+
+    /**
+     * Parse an record literal property definition.
+     * Compared to its object literal counterpart it does not contain
+     * CoverInitializedName and MethodDefinition productions.
+     *
+     * <pre>
+     * RecordPropertyDefinition[Yield, Await] :
+     *      IdentifierReference[?Yield, ?Await]
+     *      PropertyName[?Yield, ?Await] : AssignmentExpression[+In, ?Yield, ?Await]
+     *      ... AssignmentExpression[+In, ?Yield, ?Await]
+     * </pre>
+     *
+     * @return Record property node.
+     */
+    private RecordPropertyNode recordPropertyDefinition(boolean yield, boolean await) {
+        // Capture firstToken.
+        final long propertyToken = token;
+
+        final Expression propertyKey;
+
+        if (type == ELLIPSIS) {
+            // ... AssignmentExpression[+In, ?Yield, ?Await]
+            long spreadToken = Token.recast(propertyToken, SPREAD_RECORD);
+            next();
+            propertyKey = new UnaryNode(spreadToken, assignmentExpression(true, yield, await));
+            return new RecordPropertyNode(propertyToken, finish, propertyKey, null, false);
+        }
+
+        final boolean computed = type == LBRACKET;
+        final boolean isIdentifier = isIdentifier();
+        if (isIdentifier) {
+            // IdentifierReference[?Yield, ?Await]
+            propertyKey = getIdent().setIsPropertyName();
+            if (type == COMMARIGHT || type == RBRACE) {
+                verifyIdent((IdentNode) propertyKey, yield, await);
+                return new RecordPropertyNode(propertyToken, finish, propertyKey, propertyKey, false);
+            }
+        } else {
+            // PropertyName[?Yield, ?Await]
+            propertyKey = propertyName(yield, await);
+        }
+
+        // : AssignmentExpression[+In, ?Yield, ?Await]
+        Expression propertyValue;
+        expect(COLON);
+
+        if (isIdentifier && PROTO_NAME.equals(((PropertyKey) propertyKey).getPropertyName())) {
+            throw error("'__proto__' is not allowed in Record expressions", propertyKey.getToken());
+        }
+
+        pushDefaultName(propertyKey);
+        try {
+            propertyValue = assignmentExpression(true, yield, await);
+        } finally {
+            popDefaultName();
+        }
+
+        if (!computed && isAnonymousFunctionDefinition(propertyValue) && propertyKey instanceof PropertyKey) {
+            propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyKey).getPropertyName());
+        }
+
+        return new RecordPropertyNode(propertyToken, finish, propertyKey, propertyValue, computed);
     }
 
     /**
@@ -5916,10 +6011,13 @@ public class Parser extends AbstractParser {
     /**
      * AssignmentExpression.
      *
-     * AssignmentExpression[In, Yield] : ConditionalExpression[?In, ?Yield] [+Yield]
-     * YieldExpression[?In] ArrowFunction[?In, ?Yield] AsyncArrowFunction
-     * LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
-     * LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
+     * AssignmentExpression[In, Yield] :
+     *      ConditionalExpression[?In, ?Yield, ?Await]
+     *      [+Yield] YieldExpression[?In, ?Await]
+     *      ArrowFunction[?In, ?Yield, ?Await]
+     *      AsyncArrowFunction[?In, ?Yield, ?Await]
+     *      LeftHandSideExpression[?Yield, ?Await] = AssignmentExpression[?In, ?Yield, ?Await]
+     *      LeftHandSideExpression[?Yield, ?Await] AssignmentOperator AssignmentExpression[?In, ?Yield, ?Await]
      */
     private Expression assignmentExpression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
         if (type == YIELD && yield) {

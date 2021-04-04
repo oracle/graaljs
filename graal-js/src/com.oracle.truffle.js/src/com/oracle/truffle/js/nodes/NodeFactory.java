@@ -103,7 +103,6 @@ import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode.RequireObje
 import com.oracle.truffle.js.nodes.access.RestObjectNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.SuperPropertyReferenceNode;
-import com.oracle.truffle.js.nodes.tuples.TupleLiteralNode;
 import com.oracle.truffle.js.nodes.access.WithTargetNode;
 import com.oracle.truffle.js.nodes.access.WithVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -207,6 +206,9 @@ import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.nodes.module.ResolveNamedImportNode;
 import com.oracle.truffle.js.nodes.module.ResolveStarImportNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
+import com.oracle.truffle.js.nodes.record.RecordLiteralNode;
+import com.oracle.truffle.js.nodes.record.RecordLiteralNode.AbstractRecordLiteralMemberNode;
+import com.oracle.truffle.js.nodes.tuples.TupleLiteralNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryMinusNode;
@@ -782,6 +784,22 @@ public class NodeFactory {
 
     public JavaScriptNode createArrayLiteralWithSpread(JSContext context, JavaScriptNode[] elements) {
         return ArrayLiteralNode.createWithSpread(context, elements);
+    }
+
+    public JavaScriptNode createRecordLiteral(JSContext context, AbstractRecordLiteralMemberNode[] members) {
+        return RecordLiteralNode.create(context, members);
+    }
+
+    public AbstractRecordLiteralMemberNode createRecordMember(String keyName, JavaScriptNode value) {
+        return RecordLiteralNode.createMember(keyName, value);
+    }
+
+    public AbstractRecordLiteralMemberNode createComputedRecordMember(JavaScriptNode key, JavaScriptNode value) {
+        return RecordLiteralNode.createComputedMember(key, value);
+    }
+
+    public AbstractRecordLiteralMemberNode createSpreadRecordMember(JavaScriptNode node) {
+        return RecordLiteralNode.createSpreadMember(node);
     }
 
     public JavaScriptNode createTupleLiteral(JSContext context, JavaScriptNode[] elements) {

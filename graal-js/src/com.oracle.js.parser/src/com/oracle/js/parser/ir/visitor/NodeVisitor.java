@@ -78,6 +78,8 @@ import com.oracle.js.parser.ir.Node;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
+import com.oracle.js.parser.ir.RecordNode;
+import com.oracle.js.parser.ir.RecordPropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
 import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.SwitchNode;
@@ -672,6 +674,46 @@ public abstract class NodeVisitor<T extends LexicalContext> {
      */
     public Node leavePropertyNode(final PropertyNode propertyNode) {
         return leaveDefault(propertyNode);
+    }
+
+    /**
+     * Callback for entering an RecordNode
+     *
+     * @param recordNode the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public boolean enterRecordNode(final RecordNode recordNode) {
+        return enterDefault(recordNode);
+    }
+
+    /**
+     * Callback for leaving an RecordNode
+     *
+     * @param recordNode the node
+     * @return processed node, which will replace the original one, or the original node
+     */
+    public Node leaveRecordNode(final RecordNode recordNode) {
+        return leaveDefault(recordNode);
+    }
+
+    /**
+     * Callback for entering a RecordPropertyNode
+     *
+     * @param recordPropertyNode the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public boolean enterPropertyNode(final RecordPropertyNode recordPropertyNode) {
+        return enterDefault(recordPropertyNode);
+    }
+
+    /**
+     * Callback for leaving a RecordPropertyNode
+     *
+     * @param recordPropertyNode the node
+     * @return processed node, which will replace the original one, or the original node
+     */
+    public Node leavePropertyNode(final RecordPropertyNode recordPropertyNode) {
+        return leaveDefault(recordPropertyNode);
     }
 
     /**

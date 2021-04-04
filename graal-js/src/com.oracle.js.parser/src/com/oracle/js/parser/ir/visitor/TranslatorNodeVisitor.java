@@ -78,6 +78,8 @@ import com.oracle.js.parser.ir.Node;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
+import com.oracle.js.parser.ir.RecordNode;
+import com.oracle.js.parser.ir.RecordPropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
 import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.SwitchNode;
@@ -373,6 +375,26 @@ public abstract class TranslatorNodeVisitor<T extends LexicalContext, R> {
 
     public R enterNamedImportsNode(final NamedImportsNode namedImportsNode) {
         return enterDefault(namedImportsNode);
+    }
+
+    /**
+     * Callback for entering an RecordNode
+     *
+     * @param recordNode the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public R enterRecordNode(final RecordNode recordNode) {
+        return enterDefault(recordNode);
+    }
+
+    /**
+     * Callback for entering a RecordPropertyNode
+     *
+     * @param recordPropertyNode the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public R enterPropertyNode(final RecordPropertyNode recordPropertyNode) {
+        return enterDefault(recordPropertyNode);
     }
 
     /**
