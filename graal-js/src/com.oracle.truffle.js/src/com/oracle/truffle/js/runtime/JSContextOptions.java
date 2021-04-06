@@ -495,6 +495,26 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> WEBASSEMBLY = new OptionKey<>(false);
     @CompilationFinal private boolean webAssembly;
 
+    public enum UnhandledRejectionsTrackingMode {
+        NONE,
+        WARN,
+        THROW,
+    }
+
+    public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
+    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
+                    "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
+                    "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
+                    "'throw', an exception is thrown when an unhandled rejection is detected.") //
+    public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE, new OptionType<>("Mode", ur -> {
+        try {
+            return UnhandledRejectionsTrackingMode.valueOf(ur.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Unknown value '" + ur + "' for option " + UNHANDLED_REJECTIONS_NAME + ". Accepted values: 'none', 'warn', 'throw'.");
+        }
+    }));
+    @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -578,6 +598,7 @@ public final class JSContextOptions {
         this.topLevelAwait = TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? readBooleanOption(TOP_LEVEL_AWAIT) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.useUTCForLegacyDates = USE_UTC_FOR_LEGACY_DATES.hasBeenSet(optionValues) ? readBooleanOption(USE_UTC_FOR_LEGACY_DATES) : !v8CompatibilityMode;
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
+        this.unhandledRejectionsMode = readUnhandledRejectionsMode();
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -589,6 +610,10 @@ public final class JSContextOptions {
             invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
         }
         return newValue;
+    }
+
+    private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
+        return UNHANDLED_REJECTIONS.getValue(optionValues);
     }
 
     private boolean readBooleanOption(OptionKey<Boolean> key) {
@@ -936,6 +961,10 @@ public final class JSContextOptions {
         return webAssembly;
     }
 
+    public UnhandledRejectionsTrackingMode getUnhandledRejectionsMode() {
+        return unhandledRejectionsMode;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -986,6 +1015,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.topLevelAwait ? 1 : 0);
         hash = 53 * hash + (this.useUTCForLegacyDates ? 1 : 0);
         hash = 53 * hash + (this.webAssembly ? 1 : 0);
+        hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         return hash;
     }
 
@@ -1137,6 +1167,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.webAssembly != other.webAssembly) {
+            return false;
+        }
+        if (this.unhandledRejectionsMode != other.unhandledRejectionsMode) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

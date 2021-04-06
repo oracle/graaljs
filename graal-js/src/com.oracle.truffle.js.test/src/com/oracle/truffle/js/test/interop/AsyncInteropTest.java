@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -55,6 +56,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Test;
@@ -63,6 +65,199 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
 public class AsyncInteropTest {
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"none"</code> (or not
+     * provided), no warnings are printed when rejected promises are not handled using `catch()`.
+     */
+    @Test
+    public void testJavaUnhandledRejectionNone() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "none").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})");
+            asyncFn.executeVoid();
+        }
+        assertTrue(out.toString().isEmpty());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, a warning
+     * is printed to the stderr when a promise is rejected in JS land and not handled in Java or JS.
+     */
+    @Test
+    public void testJavaUnhandledRejectionWarn() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})");
+            asyncFn.executeVoid();
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n", out.toString());
+        }
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, a warning
+     * is printed when a promise rejection is not immediately handled. Another warning is printed
+     * when a reaction is registered later on (e.g., in Java).
+     */
+    @Test
+    public void testJavaHandledRejection() {
+        TestOutput out = new TestOutput();
+        TestOutput err = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(err).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})");
+            Value asyncPromise = asyncFn.execute();
+            Consumer<Object> javaThen = (v) -> out.write("Got exception: " + v.toString());
+            asyncPromise.invokeMember("catch", javaThen);
+        }
+        assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n" +
+                        "[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: failed!!\n", err.toString());
+        assertEquals("Got exception: failed!!", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, a warning
+     * is printed when a promise rejection is not immediately handled. Another warning is printed
+     * when a reaction is registered later on (e.g., in Java).
+     */
+    @Test
+    public void testJavaHandledRejectionStep() {
+        TestOutput out = new TestOutput();
+        TestOutput err = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(err).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value promise = context.eval(ID, "Promise.reject(42);");
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: 42\n", err.toString());
+            err.reset();
+            Consumer<Object> javaThen = (v) -> out.write("Promise rejected: " + v.toString());
+            promise.invokeMember("catch", javaThen);
+        }
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
+        assertEquals("Promise rejected: 42", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, no warning
+     * is printed when a promise rejection is immediately handled.
+     */
+    @Test
+    public void testJSHandledRejection() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            context.eval(ID, "" +
+                            "(async function foo() {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})().catch(x => console.log('Got exception: ' + x));");
+        }
+        assertEquals("Got exception: failed!!\n", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, no warning
+     * is printed when a promise rejection is handled before leaving a Polyglot context.
+     */
+    @Test
+    public void testJSHandledRejectionLater() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            context.eval(ID, "" +
+                            "const promise = (async function foo() {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})();" +
+                            "for (var i = 0; i < 42; i++);" +
+                            "promise.catch(x => console.log('Got exception: ' + x + ' --- ' + i));");
+        }
+        assertEquals("Got exception: failed!! --- 42\n", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code> a polyglot
+     * exception is thrown as soon as an unhandled promise rejection is detected.
+     */
+    @Test
+    public void testJavaUnhandledRejectionThrow() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            try {
+                context.eval(ID, "Promise.reject(42);");
+                assert false;
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertEquals("Error: Unhandled promise rejection: 42", e.getMessage());
+            }
+        }
+        assertTrue(out.toString().isEmpty());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code>, no
+     * exception is raised when a promise rejection is immediately handled.
+     */
+    @Test
+    public void testJSHandledRejectionThrow() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            context.eval(ID, "" +
+                            "(async function foo() {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})().catch(x => console.log('Got exception: ' + x));");
+        }
+        assertEquals("Got exception: failed!!\n", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code>, an
+     * exception is raised when a promise rejection is not handled. A further warning is printed
+     * when a reaction is registered later on.
+     */
+    @Test
+    public void testJSHandledRejectionThrowAsyncRegisterThen() {
+        TestOutput out = new TestOutput();
+        TestOutput err = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(err).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            try {
+                context.eval(ID, "const rejectedPromise = Promise.reject(42);");
+                assert false;
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertEquals("Error: Unhandled promise rejection: 42", e.getMessage());
+            }
+            context.eval("js", "rejectedPromise.catch(x => console.log(`Async handled: ${x}`));");
+        }
+        assertEquals("Async handled: 42\n", out.toString());
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
+    }
 
     /**
      * A Java object with a method called 'then' can be used as thenable.

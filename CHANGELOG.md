@@ -5,6 +5,7 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 21.2.0
 * Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+* Added the `js.unhandled-rejections` option to track unhandled promise rejections in a polyglot `Context`. By default, the option is set to `none`, and unhandled promise rejections are not tracked.
 
 ## Version 21.1.0
 * Updated Node.js to version 14.16.1.

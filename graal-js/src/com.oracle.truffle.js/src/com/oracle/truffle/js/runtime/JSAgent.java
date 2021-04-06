@@ -100,7 +100,14 @@ public abstract class JSAgent implements EcmaAgent {
 
     private final Deque<WaiterRecord> waitAsyncJobsQueue;
 
+    private final PromiseRejectionTracker promiseRejectionTracker;
+
     public JSAgent(boolean canBlock) {
+        this(null, canBlock);
+    }
+
+    public JSAgent(PromiseRejectionTracker promiseRejectionTracker, boolean canBlock) {
+        this.promiseRejectionTracker = promiseRejectionTracker;
         this.signifier = signifierGenerator.incrementAndGet();
         this.canBlock = canBlock;
         this.promiseJobsQueue = new ArrayDeque<>();
@@ -221,6 +228,9 @@ public abstract class JSAgent implements EcmaAgent {
                     weakRefTargets.clear();
                 }
                 cleanupFinalizers();
+            }
+            if (promiseRejectionTracker != null) {
+                promiseRejectionTracker.promiseReactionJobsProcessed();
             }
         }
     }

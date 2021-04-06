@@ -67,6 +67,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -578,6 +579,10 @@ public class JSContext {
 
         this.regexOptions = createRegexOptions(contextOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
+
+        if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
+            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -658,7 +663,7 @@ public class JSContext {
             if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
                 newRealm.setAgent(new DebugJSAgent(contextOptions.canAgentBlock(), env.getOptions()));
             } else {
-                newRealm.setAgent(new MainJSAgent());
+                newRealm.setAgent(new MainJSAgent(newRealm.getContext().getPromiseRejectionTracker()));
             }
             if (contextOptions.isV8RealmBuiltin()) {
                 newRealm.initRealmList();
@@ -1352,6 +1357,10 @@ public class JSContext {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             prepareStackTraceCallbackNotUsedAssumption.invalidate("prepare stack trace callback unused");
         }
+    }
+
+    public PromiseRejectionTracker getPromiseRejectionTracker() {
+        return promiseRejectionTracker;
     }
 
     public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
