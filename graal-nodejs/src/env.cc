@@ -550,10 +550,9 @@ void Environment::InitializeLibuv(bool start_profiler_idle_notifier) {
   }
 }
 
-void Environment::Stop() {
+void Environment::ExitEnv() {
   set_can_call_into_js(false);
   set_stopping(true);
-  stop_sub_worker_contexts();
   isolate_->TerminateExecution();
   SetImmediateThreadsafe([](Environment* env) { uv_stop(env->event_loop()); });
 }
@@ -1039,6 +1038,8 @@ void Environment::Exit(int exit_code) {
 }
 
 void Environment::stop_sub_worker_contexts() {
+  DCHECK_EQ(Isolate::GetCurrent(), isolate());
+
   while (!sub_worker_contexts_.empty()) {
     Worker* w = *sub_worker_contexts_.begin();
     remove_sub_worker_context(w);
