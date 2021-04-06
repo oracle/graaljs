@@ -45,12 +45,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.Set;
 
@@ -157,6 +159,24 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
     @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
     protected boolean doJavaNumber(Object a, Object b) {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
+    }
+
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected boolean doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createHintNumberLeftToRight(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+        Object result = overloadedOperatorNode.execute(a, b);
+        if (result == Undefined.instance) {
+            return false;
+        } else {
+            return !toBooleanNode.executeBoolean(result);
+        }
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "<";
     }
 
     @Specialization(replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString", "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})

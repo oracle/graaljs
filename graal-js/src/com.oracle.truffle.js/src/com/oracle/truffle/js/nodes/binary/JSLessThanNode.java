@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -159,8 +160,24 @@ public abstract class JSLessThanNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString", "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected boolean doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createHintNumberLeftToRight(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+        return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "<";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
+                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
     protected boolean doGeneric(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber2,

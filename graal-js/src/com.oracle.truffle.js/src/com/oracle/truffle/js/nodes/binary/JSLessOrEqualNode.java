@@ -45,12 +45,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringOrNumberNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import java.util.Set;
 
@@ -159,8 +161,29 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString", "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    protected boolean doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createHintNumberRightToLeft(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+        Object result = overloadedOperatorNode.execute(b, a);
+        if (result == Undefined.instance) {
+            return false;
+        } else {
+            return !toBooleanNode.executeBoolean(result);
+        }
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "<";
+    }
+
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
+                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
     protected boolean doGeneric(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber2,

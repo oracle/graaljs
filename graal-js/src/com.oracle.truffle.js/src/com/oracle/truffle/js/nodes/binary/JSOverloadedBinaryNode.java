@@ -67,31 +67,41 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     private final String overloadedOperatorName;
     private final boolean numeric;
     private final Hint hint;
+    private final boolean leftToRight;
 
-    protected JSOverloadedBinaryNode(String overloadedOperatorName, boolean numeric, Hint hint) {
+    protected JSOverloadedBinaryNode(String overloadedOperatorName, boolean numeric, Hint hint, boolean leftToRight) {
         this.overloadedOperatorName = overloadedOperatorName;
         this.numeric = numeric;
         this.hint = hint;
+        this.leftToRight = leftToRight;
     }
 
     public static JSOverloadedBinaryNode create(String overloadedOperatorName, Hint hint) {
-        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, hint);
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, hint, true);
     }
 
     public static JSOverloadedBinaryNode createHintNone(String overloadedOperatorName) {
-        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.None);
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.None, true);
     }
 
     public static JSOverloadedBinaryNode createHintNumber(String overloadedOperatorName) {
-        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number);
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, true);
+    }
+
+    public static JSOverloadedBinaryNode createHintNumberLeftToRight(String overloadedOperatorName) {
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, true);
+    }
+
+    public static JSOverloadedBinaryNode createHintNumberRightToLeft(String overloadedOperatorName) {
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.Number, false);
     }
 
     public static JSOverloadedBinaryNode createHintString(String overloadedOperatorName) {
-        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.String);
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, false, Hint.String, true);
     }
 
     public static JSOverloadedBinaryNode createNumeric(String overloadedOperatorName) {
-        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, true, null);
+        return JSOverloadedBinaryNodeGen.create(overloadedOperatorName, true, null, true);
     }
 
     public abstract Object execute(Object left, Object right);
@@ -102,8 +112,16 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
-        Object leftOperand = toOperandLeftNode.execute(left);
-        Object rightOperand = toOperandRightNode.execute(right);
+        Object leftOperand;
+        Object rightOperand;
+
+        if (leftToRight) {
+            leftOperand = toOperandLeftNode.execute(left);
+            rightOperand = toOperandRightNode.execute(right);
+        } else {
+            rightOperand = toOperandRightNode.execute(right);
+            leftOperand = toOperandLeftNode.execute(left);
+        }
 
         return dispatchBinaryOperatorNode.execute(leftOperand, rightOperand);
     }
@@ -119,8 +137,16 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     @Cached("createBinaryProfile()") ConditionProfile leftStringProfile,
                     @Cached("createBinaryProfile()") ConditionProfile rightStringProfile,
                     @Cached("createUnoptimized()") JSAddNode addNode) {
-        Object leftOperand = toOperandLeftNode.execute(left);
-        Object rightOperand = toOperandRightNode.execute(right);
+        Object leftOperand;
+        Object rightOperand;
+
+        if (leftToRight) {
+            leftOperand = toOperandLeftNode.execute(left);
+            rightOperand = toOperandRightNode.execute(right);
+        } else {
+            rightOperand = toOperandRightNode.execute(right);
+            leftOperand = toOperandLeftNode.execute(left);
+        }
 
         if (leftStringProfile.profile(isString(leftOperand))) {
             return addNode.execute(leftOperand, toStringRightNode.executeString(rightOperand));
@@ -138,8 +164,16 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     @Cached("create()") JSToNumericOperandNode toNumericOperandLeftNode,
                     @Cached("create()") JSToNumericOperandNode toNumericOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
-        Object leftOperand = toNumericOperandLeftNode.execute(left);
-        Object rightOperand = toNumericOperandRightNode.execute(right);
+        Object leftOperand;
+        Object rightOperand;
+
+        if (leftToRight) {
+            leftOperand = toNumericOperandLeftNode.execute(left);
+            rightOperand = toNumericOperandRightNode.execute(right);
+        } else {
+            rightOperand = toNumericOperandRightNode.execute(right);
+            leftOperand = toNumericOperandLeftNode.execute(left);
+        }
 
         return dispatchBinaryOperatorNode.execute(leftOperand, rightOperand);
     }
