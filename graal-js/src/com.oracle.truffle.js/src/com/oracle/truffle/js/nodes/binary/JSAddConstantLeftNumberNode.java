@@ -143,7 +143,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         return createLazyString.executeCharSequence(leftString, right);
     }
 
-    @Specialization(guards = {"rightHasOverloadedOperatorsNode.execute(right)"})
+    @Specialization(guards = {"rightHasOverloadedOperatorsNode.execute(right)"}, limit = "1")
     protected Object doOverloaded(DynamicObject right,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rightHasOverloadedOperatorsNode,
                     @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -154,7 +154,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         return "+";
     }
 
-    @Specialization(guards = {"!rightHasOverloadedOperatorsNode.execute(right)"}, replaces = {"doInt", "doDouble", "doNumberString"})
+    @Specialization(guards = {"!rightHasOverloadedOperatorsNode.execute(right)"}, replaces = {"doInt", "doDouble", "doNumberString"}, limit = "1")
     protected Object doPrimitiveConversion(Object right,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rightHasOverloadedOperatorsNode,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,

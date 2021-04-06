@@ -99,7 +99,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return a.not();
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"})
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
@@ -110,7 +110,7 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return "~";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"}, limit = "1")
     protected Object doGeneric(VirtualFrame frame, Object value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached JSToNumericNode toNumericNode,

@@ -145,7 +145,7 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         return a.or(a);
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -156,7 +156,7 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         return "|";
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"}, limit = "1")
     protected Object doGenericIntCase(Object a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumeric,
@@ -179,7 +179,7 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         return isInt;
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"}, limit = "1")
     protected BigInt doGenericBigIntCase(Object a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumeric,

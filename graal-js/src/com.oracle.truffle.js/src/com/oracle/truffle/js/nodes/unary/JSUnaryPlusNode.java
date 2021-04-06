@@ -67,7 +67,7 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
         return JSUnaryPlusNodeGen.create(operand);
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(value)"})
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
     protected Object doOverloaded(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
@@ -78,7 +78,7 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
         return "pos";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"})
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
     protected Object doDefault(Object value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode) {
         if (toNumberNode == null) {

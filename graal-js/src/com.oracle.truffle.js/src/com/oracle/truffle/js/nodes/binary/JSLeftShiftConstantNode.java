@@ -131,7 +131,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -142,7 +142,7 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         return "<<";
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"}, limit = "1")
     protected Object doGeneric(Object a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode leftToNumericNode,

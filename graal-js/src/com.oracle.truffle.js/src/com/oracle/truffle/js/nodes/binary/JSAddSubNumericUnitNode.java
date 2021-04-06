@@ -111,7 +111,7 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
         return isAddition ? doubleValue + 1 : doubleValue - 1;
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"})
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
@@ -122,7 +122,7 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
         return isAddition ? "++" : "--";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(a)"}, replaces = {"doInt", "doDouble", "doBigInt", "doJavaNumber"})
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(a)"}, replaces = {"doInt", "doDouble", "doBigInt", "doJavaNumber"}, limit = "1")
     protected Object doGeneric(Object a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumeric,

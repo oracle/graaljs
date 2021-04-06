@@ -115,7 +115,7 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return a.negate();
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"})
+    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected Object doOverloaded(DynamicObject a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
@@ -126,7 +126,7 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return "neg";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(a)"})
+    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected static Object doGeneric(Object a,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumericNode,

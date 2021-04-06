@@ -172,7 +172,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return unsignedRightShift;
     }
 
-    @Specialization(guards = {"isUnsignedRightShift()", "hasOverloadedOperatorsNode.execute(value)"})
+    @Specialization(guards = {"isUnsignedRightShift()", "hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
     protected Object doOverloadedOperator(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -183,7 +183,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return ">>>";
     }
 
-    @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperatorsNode.execute(value)"})
+    @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
     protected double doJSObject(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumberNode toNumberNode) {

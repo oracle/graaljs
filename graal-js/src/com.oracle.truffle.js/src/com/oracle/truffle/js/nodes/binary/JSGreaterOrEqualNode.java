@@ -161,7 +161,7 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
     protected boolean doOverloaded(Object a, Object b,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
@@ -179,8 +179,11 @@ public abstract class JSGreaterOrEqualNode extends JSCompareNode {
         return "<";
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString", "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
+    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
+                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"}, limit = "1")
     protected boolean doGeneric(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber2,

@@ -205,7 +205,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return bitwiseOr;
     }
 
-    @Specialization(guards = {"isBitwiseOr()", "hasOverloadedOperatorsNode.execute(value)"})
+    @Specialization(guards = {"isBitwiseOr()", "hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
     protected Object doOverloadedOperator(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -216,7 +216,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return "|";
     }
 
-    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperatorsNode.execute(value)"})
+    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
     protected int doJSObject(DynamicObject value,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToDoubleNode toDoubleNode) {
