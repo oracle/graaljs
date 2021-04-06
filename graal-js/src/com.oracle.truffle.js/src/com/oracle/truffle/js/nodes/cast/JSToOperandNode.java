@@ -56,14 +56,14 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
     @Child JSToPrimitiveNode toPrimitiveNode;
 
     protected final Hint hint;
+    protected final boolean checkOperatorAllowed;
 
-    protected JSToOperandNode(Hint hint) {
+    protected JSToOperandNode(Hint hint, boolean checkOperatorAllowed) {
         this.hint = hint;
+        this.checkOperatorAllowed = checkOperatorAllowed;
 
         this.hasOverloadedOperatorsNode = insert(HasOverloadedOperatorsNode.create());
     }
-
-    public abstract Object execute(Object value);
 
     public static JSToOperandNode createHintNone() {
         return create(Hint.None);
@@ -78,12 +78,20 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
     }
 
     public static JSToOperandNode create(Hint hint) {
-        return JSToOperandNodeGen.create(hint);
+        return JSToOperandNodeGen.create(hint, true);
     }
+
+    public static JSToOperandNode create(Hint hint, boolean checkOperatorAllowed) {
+        return JSToOperandNodeGen.create(hint, checkOperatorAllowed);
+    }
+
+    public abstract Object execute(Object value);
 
     @Specialization(guards = {"hasOverloadedOperatorsNode.execute(arg)"})
     protected Object doOverloaded(DynamicObject arg) {
-        checkOverloadedOperatorsAllowed(arg);
+        if (checkOperatorAllowed) {
+            checkOverloadedOperatorsAllowed(arg);
+        }
         return arg;
     }
 

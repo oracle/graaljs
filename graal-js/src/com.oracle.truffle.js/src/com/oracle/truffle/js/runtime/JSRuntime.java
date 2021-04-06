@@ -59,8 +59,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -1582,10 +1584,32 @@ public final class JSRuntime {
             return equal(a, booleanToNumber((Boolean) b));
         } else if (isObject(a)) {
             assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
-            return equal(JSObject.toPrimitive((DynamicObject) a), b);
+            DynamicObject dynA = (DynamicObject) a;
+            if (OperatorsBuiltins.hasOverloadedOperators(dynA)) {
+                if (isObject(b) && !OperatorsBuiltins.hasOverloadedOperators((DynamicObject) b)) {
+                    return equal(a, JSObject.toPrimitive((DynamicObject) b));
+                }
+                if (isObject(b) || isNumber(b) || isBigInt(b) || isString(b)) {
+                    return equalOverloaded(a, b);
+                } else {
+                    return false;
+                }
+            } else {
+                return equal(JSObject.toPrimitive(dynA), b);
+            }
         } else if (isObject(b)) {
-            assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
-            return equal(a, JSObject.toPrimitive(((DynamicObject) b)));
+            assert a != Undefined.instance && a != Null.instance; // covered by (DynOb, DynOb)
+            assert !isObject(a);
+            DynamicObject dynB = (DynamicObject) b;
+            if (OperatorsBuiltins.hasOverloadedOperators(dynB)) {
+                if (isNumber(a) || isBigInt(a) || isString(a)) {
+                    return equalOverloaded(a, b);
+                } else {
+                    return false;
+                }
+            } else {
+                return equal(a, JSObject.toPrimitive(dynB));
+            }
         } else if (isForeignObject(a) || isForeignObject(b)) {
             return equalInterop(a, b);
         } else {
@@ -1640,6 +1664,15 @@ public final class JSRuntime {
             return !Double.isNaN(numberVal) && a.compareValueTo(numberVal) == 0;
         } else {
             return a.compareValueTo(longValue(b)) == 0;
+        }
+    }
+
+    private static boolean equalOverloaded(Object a, Object b) {
+        Object operatorImplementation = JSOverloadedBinaryNode.DispatchBinaryOperatorNode.getOperatorImplementation(a, b, "==");
+        if (operatorImplementation == null) {
+            return false;
+        } else {
+            return toBoolean(call(operatorImplementation, Undefined.instance, new Object[]{a, b}));
         }
     }
 

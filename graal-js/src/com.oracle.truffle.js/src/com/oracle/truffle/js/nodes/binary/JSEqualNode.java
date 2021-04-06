@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -211,8 +212,26 @@ public abstract class JSEqualNode extends JSCompareNode {
         return isNullish(a, aInterop);
     }
 
-    @Specialization(guards = {"isObject(a)", "!isObject(b)"})
+    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    protected boolean doOverloaded(Object a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
+                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+        if (a == b) {
+            return true;
+        } else {
+            return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+        }
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "==";
+    }
+
+    @Specialization(guards = {"isObject(a)", "!isObject(b)", "!aHasOverloadedOperatorsNode.execute(a)"}, limit = "1")
     protected boolean doJSObject(DynamicObject a, Object b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
@@ -222,8 +241,9 @@ public abstract class JSEqualNode extends JSCompareNode {
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
-    @Specialization(guards = {"!isObject(a)", "isObject(b)"})
+    @Specialization(guards = {"!isObject(a)", "isObject(b)", "!bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
     protected boolean doJSObject(Object a, DynamicObject b,
+                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {

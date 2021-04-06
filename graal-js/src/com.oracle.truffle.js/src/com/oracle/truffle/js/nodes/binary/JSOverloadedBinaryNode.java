@@ -107,10 +107,10 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     public abstract Object execute(Object left, Object right);
 
     @Specialization(guards = {"!isNumeric()", "!isAddition()"})
-    protected Object doGeneric(Object left,
+    protected Object doToOperandGeneric(Object left,
                     Object right,
-                    @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
-                    @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
+                    @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandLeftNode,
+                    @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
         Object leftOperand;
         Object rightOperand;
@@ -127,7 +127,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"!isNumeric()", "isAddition()"})
-    protected Object doGenericAdd(Object left,
+    protected Object doToOperandAddition(Object left,
                     Object right,
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
@@ -159,7 +159,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = {"isNumeric()"})
-    protected Object doGenericNumeric(Object left,
+    protected Object doToNumericOperand(Object left,
                     Object right,
                     @Cached("create()") JSToNumericOperandNode toNumericOperandLeftNode,
                     @Cached("create()") JSToNumericOperandNode toNumericOperandRightNode,
@@ -192,6 +192,10 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
     protected boolean isAddition() {
         return overloadedOperatorName.equals("+");
+    }
+
+    protected boolean isEquality() {
+        return overloadedOperatorName.equals("==");
     }
 
     public abstract static class DispatchBinaryOperatorNode extends JavaScriptBaseNode {
@@ -282,7 +286,11 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
         private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object left, Object right) {
             if (operatorImplementation == null) {
-                throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName());
+                if (isEquality()) {
+                    return false;
+                } else {
+                    throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName());
+                }
             }
             // What should be the value of 'this' when invoking overloaded operators?
             // Currently, we set it to 'undefined'.
@@ -290,7 +298,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         }
 
         @TruffleBoundary
-        protected static Object getOperatorImplementation(Object left, Object right, String operatorName) {
+        public static Object getOperatorImplementation(Object left, Object right, String operatorName) {
             OperatorSet leftOperatorSet = OperatorsBuiltins.getOperatorSet(left);
             OperatorSet rightOperatorSet = OperatorsBuiltins.getOperatorSet(right);
             if (leftOperatorSet == rightOperatorSet) {
@@ -319,6 +327,10 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
         protected boolean isAddition() {
             return overloadedOperatorName.equals("+");
+        }
+
+        protected boolean isEquality() {
+            return overloadedOperatorName.equals("==");
         }
     }
 }
