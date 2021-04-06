@@ -3254,6 +3254,15 @@ namespace v8 {
         TRACE
     }
 
+    CpuProfiler* CpuProfiler::New(Isolate* isolate) {
+        TRACE
+        return nullptr;
+    }
+
+    void CpuProfiler::StartProfiling(Local<String> title, bool record_samples) {
+        TRACE
+    }
+
     void CpuProfiler::UseDetailedSourcePositionsForProfiling(Isolate* isolate) {
         TRACE
     }
