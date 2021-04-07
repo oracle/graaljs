@@ -127,8 +127,10 @@ def parse_js_args(args, default_cp=None, useDoubleDash=False):
         if skip:
             skip = False
             continue
-        elif any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-javaagent']) or arg in ['-esa', '-d64', '-server']:
+        elif any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea', '-javaagent:', '-agentlib:', '-agentpath:']) or arg in ['-esa', '-d64', '-server']:
             vm_args += [arg]
+        elif arg.startswith('--vm.D') or arg.startswith('--vm.X'):
+            vm_args += ['-' + arg[5:]]
         elif useDoubleDash and arg == '--':
             remainder += args[i:]
             break
