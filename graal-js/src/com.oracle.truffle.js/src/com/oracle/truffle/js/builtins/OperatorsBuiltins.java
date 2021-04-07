@@ -127,9 +127,10 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
     @TruffleBoundary
     public static boolean hasOverloadedOperators(DynamicObject object) {
-        return object.getShape().hasProperty(OPERATOR_SET_ID);
+        return hasOverloadedOperators(object.getShape());
     }
 
+    @TruffleBoundary
     public static boolean hasOverloadedOperators(Shape shape) {
         return shape.hasProperty(OPERATOR_SET_ID);
     }
@@ -147,6 +148,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
     }
 
+    @TruffleBoundary
     public static OperatorSet getOperatorSet(DynamicObject object) {
         return (OperatorSet) DynamicObjectLibrary.getUncached().getOrDefault(object, OperatorsBuiltins.OPERATOR_SET_ID, null);
     }

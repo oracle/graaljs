@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -98,6 +99,7 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
         return overloadedOperatorName;
     }
 
+    @TruffleBoundary
     protected static Object getOperatorImplementation(DynamicObject operand, String operatorName) {
         OperatorSet operatorSet = OperatorsBuiltins.getOperatorSet(operand);
         return operatorSet.selfOperatorDefinition.get(operatorName);
