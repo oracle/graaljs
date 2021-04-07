@@ -74,6 +74,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     private static final byte VALUE_DOUBLE = 2;
     private static final byte VALUE_OBJECT = 3;
 
+    private final boolean verifyHasProperty;
     @CompilationFinal private boolean referenceErrorThrown;
 
     protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict, boolean verifyHasProperty) {
@@ -81,7 +82,9 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         this.rhsNode = rhs;
         boolean superProperty = target instanceof SuperPropertyReferenceNode;
         this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
-        if (verifyHasProperty) {
+        this.verifyHasProperty = verifyHasProperty;
+        // HasProperty node is usually unused when setting a global property in non-strict mode.
+        if (verifyHasProperty && (isStrict || !isGlobal)) {
             this.hasProperty = HasPropertyCacheNode.create(propertyKey, context);
         }
     }
@@ -139,7 +142,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
                 if (clonedRhs == rhsNode) {
                     clonedRhs = cloneUninitialized(rhsNode, materializedTags);
                 }
-                WritePropertyNode clone = create(clonedTarget, cache.getKey(), clonedRhs, cache.getContext(), cache.isStrict(), cache.isGlobal(), hasProperty != null);
+                WritePropertyNode clone = create(clonedTarget, cache.getKey(), clonedRhs, cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
                 transferSourceSectionAndTags(this, clone);
                 return clone;
             }
@@ -312,7 +315,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
      * V.[[Strict]], throw ReferenceError.
      */
     private void verifyPropertyResolvable(Object target) {
-        if (hasProperty != null) {
+        if (verifyHasProperty) {
             verifyBindingExists(target);
         }
     }
@@ -322,12 +325,21 @@ public class WritePropertyNode extends JSTargetableWriteNode {
      * a ReferenceError in strict mode.
      */
     private void verifyBindingStillExists(Object target) {
-        if (hasProperty != null) {
+        if (verifyHasProperty) {
             verifyBindingExists(target);
         }
     }
 
     private void verifyBindingExists(Object target) {
+        assert verifyHasProperty;
+        // We may omit the check in non-strict mode if HasProperty is side effect free.
+        if (!cache.isStrict() && cache.isGlobal() && cache.getContext().getGlobalObjectPristineAssumption().isValid()) {
+            return;
+        }
+        if (hasProperty == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hasProperty = insert(HasPropertyCacheNode.create(cache.getKey(), cache.getContext()));
+        }
         // HasProperty is required even in non-strict mode due to potential observable side effects
         if (!hasProperty.hasProperty(target) && cache.isStrict()) {
             unresolvablePropertyInStrictMode(target);
@@ -346,7 +358,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(cloneUninitialized(targetNode, materializedTags), cache.getKey(), cloneUninitialized(rhsNode, materializedTags),
-                        cache.getContext(), cache.isStrict(), cache.isGlobal(), hasProperty != null);
+                        cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
     }
 
     @Override
