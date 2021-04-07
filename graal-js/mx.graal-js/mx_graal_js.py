@@ -158,6 +158,10 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
             vm_args += ['-Xmx' + max_heap]
     if stack_size and not any(x.startswith('-Xss') for x in vm_args):
         vm_args += ['-Xss' + stack_size]
+
+    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vm_args):
+        vm_args += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+
     return vm_args
 
 def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):

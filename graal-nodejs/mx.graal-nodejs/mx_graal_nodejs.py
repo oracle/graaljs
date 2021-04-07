@@ -428,6 +428,9 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
         mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
 
+    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs):
+        vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+
     _setEnvVar('JAVA_HOME', _java_home())
     # if mx.suite('compiler', fatalIfMissing=False) is None:
     #     _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
