@@ -125,7 +125,11 @@ public abstract class TestSuite {
         this.htmlOutputList = config.isHtmlOutput() ? new ArrayList<>() : null;
         this.textOutputList = config.isTextOutput() ? new ArrayList<>() : null;
         this.extLauncherPipePool = config.isExtLauncher() ? Executors.newCachedThreadPool() : null;
-        this.sharedEngine = config.isShareEngine() ? Engine.newBuilder().allowExperimentalOptions(true).build() : null;
+        this.sharedEngine = config.isShareEngine() ? createSharedEngine() : null;
+    }
+
+    protected Engine createSharedEngine() {
+        return Engine.newBuilder().allowExperimentalOptions(true).option("engine.WarnInterpreterOnly", Boolean.toString(false)).build();
     }
 
     public final SuiteConfig getConfig() {

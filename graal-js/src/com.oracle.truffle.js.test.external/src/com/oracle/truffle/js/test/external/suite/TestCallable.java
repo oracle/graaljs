@@ -83,6 +83,8 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.options(extraOptions);
         if (getConfig().isShareEngine()) {
             contextBuilder.engine(suite.getSharedEngine());
+        } else {
+            contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
         }
     }
 
