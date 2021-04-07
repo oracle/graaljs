@@ -408,7 +408,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         if (options.isProfileTime() && options.isProfileTimePrintCumulative()) {
             context.getTimeProfiler().printCumulative();
         }
-        realm.setGlobalObject(Undefined.instance);
+        realm.dispose();
     }
 
     @Override

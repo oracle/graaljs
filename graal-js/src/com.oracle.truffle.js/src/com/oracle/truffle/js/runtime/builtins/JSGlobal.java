@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -98,5 +99,15 @@ public final class JSGlobal extends JSNonProxy {
     @Override
     public String getClassName(DynamicObject object) {
         return CLASS_NAME;
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean setPrototypeOf(DynamicObject thisObj, DynamicObject newPrototype) {
+        if (JSObject.getPrototype(thisObj) == newPrototype) {
+            return true;
+        }
+        JSObject.getJSContext(thisObj).getGlobalObjectPristineAssumption().invalidate();
+        return super.setPrototypeOf(thisObj, newPrototype);
     }
 }
