@@ -241,7 +241,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
                     return JSToUInt32WrapperNodeGen.create(toInt32Child.getOperand());
                 }
             }
-            return JSToUInt32WrapperNodeGen.create(child);
+            return JSToUInt32WrapperNodeGen.create(child, unsignedRightShift, shiftValue);
         }
 
         @Specialization
