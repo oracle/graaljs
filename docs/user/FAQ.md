@@ -236,3 +236,35 @@ HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
   .allowAccess(Function.class.getMethod("apply", Object.class))
   .build();
 ```
+
+### Warning: Implementation does not support runtime compilation.
+
+If you get the following warning, you are not running on GraalVM or a JVMCI-enabled JVM using the GraalVM compiler:
+```
+[engine] WARNING: The polyglot context is using an implementation that does not support runtime compilation.
+The guest application code will therefore be executed in interpreted mode only.
+Execution only in interpreted mode will strongly impact the guest application performance.
+For more information on using GraalVM see https://www.graalvm.org/java/quickstart/.
+To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+```
+
+To resolve this, use [GraalVM](https://www.graalvm.org/java/quickstart/) or see [RunOnJDK.md](https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
+
+Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the above mentioned option, either via the command line or using the `Context.Builder`, e.g.:
+```java
+try (Context ctx = Context.newBuilder("js")
+    .option("engine.WarnInterpreterOnly", "false")
+    .build()) {
+  ctx.eval("js", "console.log('Greetings!');");
+}
+```
+Note that when using an explicit polyglot engine, the option has to be set on the `Engine`, e.g.:
+```java
+try (Engine engine = Engine.newBuilder()
+    .option("engine.WarnInterpreterOnly", "false")
+    .build()) {
+  try (Context ctx = Context.newBuilder("js").engine(engine).build()) {
+    ctx.eval("js", "console.log('Greetings!');");
+  }
+}
+```
