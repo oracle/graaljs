@@ -79,12 +79,12 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.allowExperimentalOptions(true);
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(false));
-        contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(false));
-        contextBuilder.option(JSContextOptions.CONST_AS_VAR_NAME, Boolean.toString(false));
         contextBuilder.options(suite.getCommonOptions());
         contextBuilder.options(extraOptions);
         if (getConfig().isShareEngine()) {
             contextBuilder.engine(suite.getSharedEngine());
+        } else {
+            contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
         }
     }
 
