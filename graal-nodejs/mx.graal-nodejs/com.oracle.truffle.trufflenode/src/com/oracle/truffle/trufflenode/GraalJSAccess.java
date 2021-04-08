@@ -138,6 +138,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -192,6 +193,7 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -1232,7 +1234,21 @@ public final class GraalJSAccess {
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
-        return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+            JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(interopBuffer.getByteLength());
+            InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
+            try {
+                for (int i = 0; i < byteBuffer.capacity(); i++) {
+                    byteBuffer.put(interop.readBufferByte(interopBuffer, i));
+                }
+            } catch (InteropException iex) {
+                iex.printStackTrace(); // should not happen
+            }
+            return byteBuffer;
+        } else {
+            return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        }
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {
