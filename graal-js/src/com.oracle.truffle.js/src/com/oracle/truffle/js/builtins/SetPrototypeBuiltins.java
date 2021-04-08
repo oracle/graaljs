@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.EnumSet;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -75,6 +77,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -119,6 +122,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (EnumSet.of(union, intersection, difference, symmetricDifference, isSubsetOf, isSupersetOf, isDisjointedFrom).contains(this)) {
+                return JSConfig.ECMAScript2022;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
         }
     }
 
@@ -277,6 +288,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Child protected PropertyGetNode getAddNode;
         @Child protected PropertyGetNode getRemoveNode;
         @Child protected PropertyGetNode getHasNode;
+        @Child protected IsCallableNode isCallableNode;
         protected final BranchProfile iteratorError = BranchProfile.create();
         protected final BranchProfile adderError = BranchProfile.create();
 
@@ -353,6 +365,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             Object ctr = getContext().getRealm().getSetConstructor();
             return JSRuntime.construct(ctr, argeuments);
         }
+
+        protected final boolean isCallable(Object object) {
+            if (isCallableNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isCallableNode = insert(IsCallableNode.create());
+            }
+            return isCallableNode.executeBoolean(object);
+        }
     }
 
     /**
@@ -394,12 +414,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject intersection(DynamicObject set, Object iterable) {
             DynamicObject newSet = (DynamicObject) constructSet();
             Object hasCheck = getHasFunction(set);
-            if (!JSRuntime.isCallable(hasCheck)) {
+            if (isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
-            if (!JSRuntime.isCallable(adder)) {
+            if (isCallable(adder)) {
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
@@ -444,7 +464,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject difference(DynamicObject set, Object iterable) {
             DynamicObject newSet = (DynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
-            if (!JSRuntime.isCallable(remover)) {
+            if (isCallable(remover)) {
                 removerError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
@@ -486,13 +506,13 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject symmetricDifference(DynamicObject set, Object iterable) {
             DynamicObject newSet = (DynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
-            if (!JSRuntime.isCallable(remover)) {
+            if (isCallable(remover)) {
                 removerError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
 
-            if (!JSRuntime.isCallable(adder)) {
+            if (isCallable(adder)) {
                 // unreachable due to constructor add
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
@@ -544,7 +564,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             }
             DynamicObject otherSet = (DynamicObject) iterable;
             Object hasCheck = getHasFunction(otherSet);
-            if (!JSRuntime.isCallable(hasCheck)) {
+            if (isCallable(hasCheck)) {
                 needCreateNewBranch.enter();
                 otherSet = (DynamicObject) constructSet();
                 addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
@@ -589,7 +609,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization(guards = "isJSSet(set)")
         protected Boolean isSupersetOf(DynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
-            if (!JSRuntime.isCallable(hasCheck)) {
+            if (isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
@@ -633,7 +653,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization(guards = "isJSSet(set)")
         protected Boolean isDisjointedFrom(DynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
-            if (!JSRuntime.isCallable(hasCheck)) {
+            if (isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
