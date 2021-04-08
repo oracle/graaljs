@@ -159,7 +159,7 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
     if stack_size and not any(x.startswith('-Xss') for x in vm_args):
         vm_args += ['-Xss' + stack_size]
 
-    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vm_args):
+    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vm_args + get_jdk().java_args):
         vm_args += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     return vm_args
