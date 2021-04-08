@@ -42,8 +42,11 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -52,7 +55,9 @@ import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -60,7 +65,6 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -93,7 +97,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             this.setConstructorNode = CreateMethodPropertyNode.create(context, JSObject.CONSTRUCTOR);
         }
 
-        @Specialization
+        @Specialization(guards = "isJSObject(table)")
         protected DynamicObject doOperators(VirtualFrame frame, DynamicObject table, Object... extraTables) {
             DynamicObject prototype = createPrototypeNode.execute(frame);
             OperatorSet operatorSet = new OperatorSet(getContext().getRealm(), getContext().incOperatorCounter(), table, extraTables);
@@ -107,12 +111,14 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         @TruffleBoundary
         private DynamicObject createConstructor(OperatorSet operatorSet) {
             JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
-                private DynamicObjectLibrary dynamicObjectLibrary = DynamicObjectLibrary.getFactory().createDispatched(1);
+                @Child private SpecializedNewObjectNode newObjectNode = SpecializedNewObjectNode.create(getContext(), false, true, false, false);
+                @Child private UpdateOverloadedShapeNode updateOverloadedShapeNode = UpdateOverloadedShapeNode.create();
 
                 @Override
                 public Object execute(VirtualFrame innerFrame) {
-                    DynamicObject object = JSOrdinary.create(getContext());
-                    dynamicObjectLibrary.putConstant(object, OPERATOR_SET_ID, operatorSet, 0);
+                    Object constructor = JSArguments.getNewTarget(innerFrame.getArguments());
+                    DynamicObject object = newObjectNode.execute(innerFrame, (DynamicObject) constructor);
+                    updateOverloadedShapeNode.execute(object, operatorSet);
                     return object;
                 }
             }), 0, "");
@@ -122,6 +128,31 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         @Specialization(guards = "!isJSObject(arg)")
         protected DynamicObject doTypeError(Object arg, @SuppressWarnings("unused") Object... extraArgs) {
             throw Errors.createTypeErrorNotAnObject(arg, this);
+        }
+    }
+
+    public abstract static class UpdateOverloadedShapeNode extends Node {
+
+        public static UpdateOverloadedShapeNode create() {
+            return OperatorsBuiltinsFactory.UpdateOverloadedShapeNodeGen.create();
+        }
+
+        public abstract DynamicObject execute(DynamicObject object, OperatorSet operatorSet);
+
+        @Specialization(guards = "oldShape.check(object)", limit = "3")
+        protected DynamicObject doCached(DynamicObject object, @SuppressWarnings("unused") OperatorSet operatorSet,
+                                @CachedLibrary("object") DynamicObjectLibrary dynamicObjectLibrary,
+                                @Cached("object.getShape()") @SuppressWarnings("unused") Shape oldShape,
+                                @Cached("doGeneric(object, operatorSet, dynamicObjectLibrary).getShape()") Shape newShape) {
+            dynamicObjectLibrary.resetShape(object, newShape);
+            return object;
+        }
+
+        @Specialization(replaces = {"doCached"})
+        protected DynamicObject doGeneric(DynamicObject object, OperatorSet operatorSet,
+                                 @CachedLibrary(limit = "0") DynamicObjectLibrary dynamicObjectLibrary) {
+            dynamicObjectLibrary.putConstant(object, OPERATOR_SET_ID, operatorSet, 0);
+            return object;
         }
     }
 
