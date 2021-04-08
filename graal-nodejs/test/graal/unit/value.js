@@ -443,10 +443,16 @@ describe('Value - Is*()', function () {
             });
             typedArrays.forEach(function (valueType) {
                 var expectedResult = valueType === type;
-                var value = new this[valueType];
+                var value = new global[valueType];
                 it('should return ' + expectedResult + ' for ' + valueType, function () {
                     assert.strictEqual(testedFunction(value), expectedResult);
                 });
+                if (typeof java !== 'undefined') {
+                    it('should return ' + expectedResult + ' for interop ' + valueType, function () {
+                        var interopTypedArray = new (global[valueType])(java.nio.ByteBuffer.allocate(8));
+                        assert.strictEqual(testedFunction(interopTypedArray), expectedResult);
+                    });                    
+                }
             });
         });
     });
