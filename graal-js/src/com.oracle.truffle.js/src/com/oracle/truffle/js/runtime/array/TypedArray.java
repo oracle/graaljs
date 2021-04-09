@@ -375,8 +375,14 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static class InteropInt8Array extends TypedIntArray {
+    public static class InteropInt8Array extends InteropOneByteIntArray {
         InteropInt8Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
+        }
+    }
+
+    public static class InteropOneByteIntArray extends TypedIntArray {
+        InteropOneByteIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
@@ -475,7 +481,7 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static final class InteropUint8Array extends InteropInt8Array {
+    public static final class InteropUint8Array extends InteropOneByteIntArray {
         InteropUint8Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }
