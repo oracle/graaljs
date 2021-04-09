@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -67,7 +68,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     @Child protected JavaScriptNode targetNode;
     @Child protected JavaScriptNode rhsNode;
     @Child protected PropertySetNode cache;
-    @Child protected HasPropertyCacheNode hasProperty;
 
     @CompilationFinal private byte valueState;
     private static final byte VALUE_INT = 1;
@@ -75,7 +75,8 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     private static final byte VALUE_OBJECT = 3;
 
     private final boolean verifyHasProperty;
-    @CompilationFinal private boolean referenceErrorThrown;
+    @CompilationFinal private BranchProfile referenceErrorBranch;
+    @Child protected HasPropertyCacheNode hasProperty;
 
     protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict, boolean verifyHasProperty) {
         this.targetNode = target;
@@ -83,9 +84,12 @@ public class WritePropertyNode extends JSTargetableWriteNode {
         boolean superProperty = target instanceof SuperPropertyReferenceNode;
         this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
         this.verifyHasProperty = verifyHasProperty;
-        // HasProperty node is usually unused when setting a global property in non-strict mode.
-        if (verifyHasProperty && (isStrict || !isGlobal)) {
-            this.hasProperty = HasPropertyCacheNode.create(propertyKey, context);
+        if (verifyHasProperty) {
+            this.referenceErrorBranch = BranchProfile.create();
+            // HasProperty node is usually unused when setting a global property in non-strict mode.
+            if (isStrict || !isGlobal) {
+                this.hasProperty = HasPropertyCacheNode.create(propertyKey, context);
+            }
         }
     }
 
@@ -347,10 +351,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     private void unresolvablePropertyInStrictMode(Object thisObj) {
-        if (!referenceErrorThrown) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            referenceErrorThrown = true;
-        }
+        referenceErrorBranch.enter();
         assert !cache.isGlobal() || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == cache.getContext().getRealm().getGlobalObject());
         throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
     }
