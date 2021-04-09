@@ -46,15 +46,15 @@
 
 #include "graal_object-inl.h"
 
-inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer) : GraalObject(isolate, java_array_buffer) {
+inline GraalArrayBuffer::GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct) : GraalObject(isolate, java_array_buffer), direct_(direct) {
 }
 
-inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer) {
-    return new GraalArrayBuffer(isolate, java_array_buffer);
+inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct) {
+    return new GraalArrayBuffer(isolate, java_array_buffer, direct);
 }
 
-inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, void* placement) {
-    return new(placement) GraalArrayBuffer(isolate, java_array_buffer);    
+inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement) {
+    return new(placement) GraalArrayBuffer(isolate, java_array_buffer, direct);
 }
 
 #endif /* GRAAL_ARRAY_BUFFER_INL_H_ */

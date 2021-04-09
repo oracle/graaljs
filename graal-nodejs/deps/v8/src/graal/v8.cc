@@ -130,7 +130,13 @@ namespace v8 {
         GraalArrayBuffer* graal_array_buffer = reinterpret_cast<GraalArrayBuffer*> (this);
         GraalIsolate* graal_isolate = graal_array_buffer->Isolate();
         jobject java_array_buffer = graal_array_buffer->GetJavaObject();
-        jobject java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        jobject java_buffer;
+        if (graal_array_buffer->IsDirect()) {
+            java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        } else {
+            JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, java_array_buffer);
+            java_buffer = java_not_direct_buffer;
+        }
         JNIEnv* env = graal_isolate->GetJNIEnv();
         ArrayBuffer::Contents contents;
         if (java_buffer == nullptr) {
@@ -958,27 +964,28 @@ namespace v8 {
         graal_isolate->TryCatchEnter();
     }
 
-#define ArrayBufferViewNew(view_class, view_type, graal_access_method) \
+#define ArrayBufferViewNew(view_class, direct_view_type, interop_view_type, graal_access_method) \
     Local<view_class> view_class::New(Local<ArrayBuffer> array_buffer, size_t byte_offset, size_t length) { \
         GraalArrayBuffer* graal_array_buffer = reinterpret_cast<GraalArrayBuffer*> (*array_buffer); \
         jobject java_array_buffer = graal_array_buffer->GetJavaObject(); \
         GraalIsolate* graal_isolate = graal_array_buffer->Isolate(); \
         JNI_CALL(jobject, java_array_buffer_view, graal_isolate, GraalAccessMethod::graal_access_method, Object, java_array_buffer, (jint) byte_offset, (jint) length); \
-        return reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, GraalArrayBufferView::view_type)); \
+        int view_type = graal_array_buffer->IsDirect() ? GraalArrayBufferView::direct_view_type : GraalArrayBufferView::interop_view_type; \
+        return reinterpret_cast<view_class*> (GraalArrayBufferView::Allocate(graal_isolate, java_array_buffer_view, view_type)); \
     }
 
-    ArrayBufferViewNew(Uint8Array, kUint8Array, uint8_array_new)
-    ArrayBufferViewNew(Uint8ClampedArray, kUint8ClampedArray, uint8_clamped_array_new)
-    ArrayBufferViewNew(Int8Array, kInt8Array, int8_array_new)
-    ArrayBufferViewNew(Uint16Array, kUint16Array, uint16_array_new)
-    ArrayBufferViewNew(Int16Array, kInt16Array, int16_array_new)
-    ArrayBufferViewNew(Uint32Array, kUint32Array, uint32_array_new)
-    ArrayBufferViewNew(Int32Array, kInt32Array, int32_array_new)
-    ArrayBufferViewNew(Float32Array, kFloat32Array, float32_array_new)
-    ArrayBufferViewNew(Float64Array, kFloat64Array, float64_array_new)
-    ArrayBufferViewNew(DataView, kDataView, data_view_new)
-    ArrayBufferViewNew(BigInt64Array, kBigInt64Array, big_int64_array_new)
-    ArrayBufferViewNew(BigUint64Array, kBigUint64Array, big_uint64_array_new)
+    ArrayBufferViewNew(Uint8Array, kDirectUint8Array, kInteropUint8Array, uint8_array_new)
+    ArrayBufferViewNew(Uint8ClampedArray, kDirectUint8ClampedArray, kInteropUint8ClampedArray, uint8_clamped_array_new)
+    ArrayBufferViewNew(Int8Array, kDirectInt8Array, kInteropInt8Array, int8_array_new)
+    ArrayBufferViewNew(Uint16Array, kDirectUint16Array, kInteropUint16Array, uint16_array_new)
+    ArrayBufferViewNew(Int16Array, kDirectInt16Array, kInteropInt16Array, int16_array_new)
+    ArrayBufferViewNew(Uint32Array, kDirectUint32Array, kInteropUint32Array, uint32_array_new)
+    ArrayBufferViewNew(Int32Array, kDirectInt32Array, kInteropInt32Array, int32_array_new)
+    ArrayBufferViewNew(Float32Array, kDirectFloat32Array, kInteropFloat32Array, float32_array_new)
+    ArrayBufferViewNew(Float64Array, kDirectFloat64Array, kInteropFloat64Array, float64_array_new)
+    ArrayBufferViewNew(DataView, kDataView, kDataView, data_view_new)
+    ArrayBufferViewNew(BigInt64Array, kDirectBigInt64Array, kInteropBigInt64Array, big_int64_array_new)
+    ArrayBufferViewNew(BigUint64Array, kDirectBigUint64Array, kInteropBigUint64Array, big_uint64_array_new)
 
     size_t TypedArray::Length() {
         GraalArrayBufferView* graal_typed_array = reinterpret_cast<GraalArrayBufferView*> (this);
@@ -2890,7 +2897,13 @@ namespace v8 {
         GraalArrayBuffer* graal_array_buffer = reinterpret_cast<GraalArrayBuffer*> (this);
         GraalIsolate* graal_isolate = graal_array_buffer->Isolate();
         jobject java_array_buffer = graal_array_buffer->GetJavaObject();
-        jobject java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        jobject java_buffer;
+        if (graal_array_buffer->IsDirect()) {
+            java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        } else {
+            JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, java_array_buffer);
+            java_buffer = java_not_direct_buffer;
+        }
         graal_isolate->Externalize(java_buffer);
         JNIEnv* env = graal_isolate->GetJNIEnv();
         ArrayBuffer::Contents contents;

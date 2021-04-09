@@ -48,10 +48,11 @@ class GraalIsolate;
 
 class GraalArrayBuffer : public GraalObject {
 public:
-    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer);
-    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, void* placement);
+    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct);
+    inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement);
     size_t ByteLength() const;
     bool IsArrayBuffer() const;
+    bool IsDirect() const;
     bool IsExternal() const;
     void Detach();
     std::shared_ptr<v8::BackingStore> GetBackingStore();
@@ -59,11 +60,13 @@ public:
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode);
     static v8::Local<v8::ArrayBuffer> New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store);
 protected:
-    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer);
+    inline GraalArrayBuffer(GraalIsolate* isolate, jobject java_array_buffer, bool direct);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
     inline void Recycle() override {
         delete this;
     }
+private:
+    bool direct_;
 };
 
 #endif /* GRAAL_ARRAY_BUFFER_H_ */
