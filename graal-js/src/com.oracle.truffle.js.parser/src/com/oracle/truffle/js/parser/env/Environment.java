@@ -331,20 +331,19 @@ public abstract class Environment {
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
+                VarRef withVarNameRef = Objects.requireNonNull(findInternalSlot(withVarName));
                 JSTargetableNode withAccessNode;
                 if (access == WrapAccess.Delete) {
                     withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
-                    withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
+                    withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
                 } else if (access == WrapAccess.Read) {
                     assert delegateNode instanceof ReadNode || delegateNode instanceof RepeatableNode : delegateNode;
                     withAccessNode = factory.createReadProperty(context, null, name);
                 } else {
                     throw new IllegalArgumentException();
                 }
-                VarRef withVarNameRef = findInternalSlot(withVarName);
-                Objects.requireNonNull(withVarNameRef);
                 JavaScriptNode withTarget = factory.createWithTarget(context, name, withVarNameRef.createReadNode());
                 return factory.createWithVarWrapper(name, withTarget, withAccessNode, delegateNode);
             }
@@ -353,7 +352,7 @@ public abstract class Environment {
             public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> applyCompound(Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> suppliers) {
                 // Use temp var to ensure unscopables check is evaluated only once.
                 VarRef withTargetTempVar = Environment.this.createTempVar();
-                VarRef withObjVar = findInternalSlot(withVarName);
+                VarRef withObjVar = Objects.requireNonNull(findInternalSlot(withVarName));
                 Supplier<JavaScriptNode> innerReadSupplier = suppliers.getFirst();
                 UnaryOperator<JavaScriptNode> innerWriteSupplier = suppliers.getSecond();
                 Supplier<JavaScriptNode> readSupplier = () -> {
@@ -362,7 +361,7 @@ public abstract class Environment {
                 };
                 UnaryOperator<JavaScriptNode> writeSupplier = (rhs) -> {
                     JavaScriptNode withTarget = factory.createWithTarget(context, name, withObjVar.createReadNode());
-                    WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode());
+                    WritePropertyNode writeWithProperty = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
                     return factory.createWithVarWrapper(name, withTargetTempVar.createWriteNode(withTarget), writeWithProperty, innerWriteSupplier.apply(rhs));
                 };
                 return new Pair<>(readSupplier, writeSupplier);
@@ -648,7 +647,7 @@ public abstract class Environment {
         public abstract JavaScriptNode createDeleteNode();
 
         public Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> createCompoundAssignNode() {
-            return new Pair<>(this::createReadNode, rhs -> withRequired(false).createWriteNode(rhs));
+            return new Pair<>(this::createReadNode, this::createWriteNode);
         }
 
         public VarRef withTDZCheck() {
@@ -853,7 +852,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createWriteProperty(factory.createGlobalObject(context), name, rhs, required, context, isStrictMode());
+            return factory.createWriteProperty(factory.createGlobalObject(context), name, rhs, context, isStrictMode(), isGlobal(), required);
         }
 
         @Override
@@ -916,7 +915,7 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, checkTDZ);
-            return factory.createWriteProperty(globalScope, name, rhs, required, context, true);
+            return factory.createWriteProperty(globalScope, name, rhs, context, true, required, false);
         }
 
         @Override

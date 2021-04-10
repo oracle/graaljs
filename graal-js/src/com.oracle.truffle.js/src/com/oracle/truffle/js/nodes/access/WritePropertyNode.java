@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -57,8 +58,10 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.InputNodeTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.NodeObjectDescriptor;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class WritePropertyNode extends JSTargetableWriteNode {
 
@@ -71,19 +74,31 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     private static final byte VALUE_DOUBLE = 2;
     private static final byte VALUE_OBJECT = 3;
 
-    protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict) {
+    private final boolean verifyHasProperty;
+    @CompilationFinal private BranchProfile referenceErrorBranch;
+    @Child protected HasPropertyCacheNode hasProperty;
+
+    protected WritePropertyNode(JavaScriptNode target, JavaScriptNode rhs, Object propertyKey, boolean isGlobal, JSContext context, boolean isStrict, boolean verifyHasProperty) {
         this.targetNode = target;
         this.rhsNode = rhs;
         boolean superProperty = target instanceof SuperPropertyReferenceNode;
         this.cache = PropertySetNode.createImpl(propertyKey, isGlobal, context, isStrict, false, JSAttributes.getDefault(), false, superProperty);
+        this.verifyHasProperty = verifyHasProperty;
+        if (verifyHasProperty) {
+            this.referenceErrorBranch = BranchProfile.create();
+            // HasProperty node is usually unused when setting a global property in non-strict mode.
+            if (isStrict || !isGlobal) {
+                this.hasProperty = HasPropertyCacheNode.create(propertyKey, context);
+            }
+        }
     }
 
     public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext ctx, boolean isStrict) {
-        return create(target, propertyKey, rhs, false, ctx, isStrict);
+        return create(target, propertyKey, rhs, ctx, isStrict, false, false);
     }
 
-    public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, boolean isGlobal, JSContext ctx, boolean isStrict) {
-        return new WritePropertyNode(target, rhs, propertyKey, isGlobal, ctx, isStrict);
+    public static WritePropertyNode create(JavaScriptNode target, Object propertyKey, JavaScriptNode rhs, JSContext ctx, boolean isStrict, boolean isGlobal, boolean verifyHasProperty) {
+        return new WritePropertyNode(target, rhs, propertyKey, isGlobal, ctx, isStrict, verifyHasProperty);
     }
 
     @Override
@@ -131,7 +146,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
                 if (clonedRhs == rhsNode) {
                     clonedRhs = cloneUninitialized(rhsNode, materializedTags);
                 }
-                WritePropertyNode clone = WritePropertyNode.create(clonedTarget, cache.getKey(), clonedRhs, cache.isGlobal(), cache.getContext(), cache.isStrict());
+                WritePropertyNode clone = create(clonedTarget, cache.getKey(), clonedRhs, cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
                 transferSourceSectionAndTags(this, clone);
                 return clone;
             }
@@ -162,31 +177,37 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     }
 
     public final Object executeWithValue(Object obj, Object value) {
+        verifyBindingStillExists(obj);
         cache.setValue(obj, value);
         return value;
     }
 
     public final int executeIntWithValue(Object obj, int value) {
+        verifyBindingStillExists(obj);
         cache.setValueInt(obj, value);
         return value;
     }
 
     public final double executeDoubleWithValue(Object obj, double value) {
+        verifyBindingStillExists(obj);
         cache.setValueDouble(obj, value);
         return value;
     }
 
     private Object executeEvaluated(Object obj, Object value, Object receiver) {
+        verifyBindingStillExists(obj);
         cache.setValue(obj, value, receiver);
         return value;
     }
 
     private int executeIntEvaluated(Object obj, int value, Object receiver) {
+        verifyBindingStillExists(obj);
         cache.setValueInt(obj, value, receiver);
         return value;
     }
 
     private double executeDoubleEvaluated(Object obj, double value, Object receiver) {
+        verifyBindingStillExists(obj);
         cache.setValueDouble(obj, value, receiver);
         return value;
     }
@@ -288,12 +309,57 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
-        return targetNode.execute(frame);
+        Object target = targetNode.execute(frame);
+        verifyPropertyResolvable(target);
+        return target;
+    }
+
+    /**
+     * GetIdentifierReference: env.HasBinding(name) / PutValue: If IsUnresolvableReference(V) and
+     * V.[[Strict]], throw ReferenceError.
+     */
+    private void verifyPropertyResolvable(Object target) {
+        if (verifyHasProperty) {
+            verifyBindingExists(target);
+        }
+    }
+
+    /**
+     * Object Environment SetMutableBinding: Verify that the binding still exists; and if not, throw
+     * a ReferenceError in strict mode.
+     */
+    private void verifyBindingStillExists(Object target) {
+        if (verifyHasProperty) {
+            verifyBindingExists(target);
+        }
+    }
+
+    private void verifyBindingExists(Object target) {
+        assert verifyHasProperty;
+        // We may omit the check in non-strict mode if HasProperty is side effect free.
+        if (!cache.isStrict() && cache.isGlobal() && cache.getContext().getGlobalObjectPristineAssumption().isValid()) {
+            return;
+        }
+        if (hasProperty == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            hasProperty = insert(HasPropertyCacheNode.create(cache.getKey(), cache.getContext()));
+        }
+        // HasProperty is required even in non-strict mode due to potential observable side effects
+        if (!hasProperty.hasProperty(target) && cache.isStrict()) {
+            unresolvablePropertyInStrictMode(target);
+        }
+    }
+
+    private void unresolvablePropertyInStrictMode(Object thisObj) {
+        referenceErrorBranch.enter();
+        assert !cache.isGlobal() || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == cache.getContext().getRealm().getGlobalObject());
+        throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(targetNode, materializedTags), cache.getKey(), cloneUninitialized(rhsNode, materializedTags), cache.isGlobal(), cache.getContext(), cache.isStrict());
+        return create(cloneUninitialized(targetNode, materializedTags), cache.getKey(), cloneUninitialized(rhsNode, materializedTags),
+                        cache.getContext(), cache.isStrict(), cache.isGlobal(), verifyHasProperty);
     }
 
     @Override

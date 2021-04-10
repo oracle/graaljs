@@ -705,8 +705,8 @@ public class NodeFactory {
         return WritePropertyNode.create(target, propertyKey, rhs, context, strictMode);
     }
 
-    public WritePropertyNode createWriteProperty(JavaScriptNode target, String name, JavaScriptNode rhs, boolean isGlobal, JSContext context, boolean isStrict) {
-        return WritePropertyNode.create(target, name, rhs, isGlobal, context, isStrict);
+    public WritePropertyNode createWriteProperty(JavaScriptNode target, String name, JavaScriptNode rhs, JSContext context, boolean isStrict, boolean isGlobal, boolean verifyHasProperty) {
+        return WritePropertyNode.create(target, name, rhs, context, isStrict, isGlobal, verifyHasProperty);
     }
 
     public ConstantVariableWriteNode createWriteConstantVariable(JavaScriptNode rhs, boolean doThrow) {
