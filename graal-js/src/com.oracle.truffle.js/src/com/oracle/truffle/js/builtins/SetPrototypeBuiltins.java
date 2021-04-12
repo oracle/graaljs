@@ -596,7 +596,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
     }
 
     /**
-     * Implementation of the Set.prototype.isSubsetOf().
+     * Implementation of the Set.prototype.isSupersetOf().
      */
     public abstract static class JSSetIsSupersetOfNode extends JSSetNewOperation {
 
@@ -640,7 +640,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
     }
 
     /**
-     * Implementation of the Set.prototype.isSubsetOf().
+     * Implementation of the Set.prototype.isDisjointedFrom().
      */
     public abstract static class JSSetIsDisjointedFromNode extends JSSetNewOperation {
 
