@@ -41,23 +41,39 @@
 package com.oracle.truffle.trufflenode;
 
 import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.BIGINT64ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.BIGUINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_ARRAY_BUFFER_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.EXTERNAL_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.FLOAT32ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.FLOAT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.FUNCTION_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.INT16ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.INT32ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_ARRAY_BUFFER_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.LAZY_STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.MAP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.NULL_VALUE;
@@ -69,10 +85,6 @@ import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
-import static com.oracle.truffle.trufflenode.ValueType.UINT16ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.UINT32ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.UINT8ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.UNDEFINED_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
 import static com.oracle.truffle.trufflenode.buffer.NIOBuffer.NIO_BUFFER_MODULE_NAME;
@@ -126,6 +138,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -180,6 +193,7 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -479,7 +493,9 @@ public final class GraalJSAccess {
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
             return valueTypeArrayBufferView(obj, useSharedBuffer);
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(obj)) {
-            return ARRAY_BUFFER_OBJECT;
+            return DIRECT_ARRAY_BUFFER_OBJECT;
+        } else if (JSArrayBuffer.isJSInteropArrayBuffer(obj)) {
+            return INTEROP_ARRAY_BUFFER_OBJECT;
         } else if (JSDataView.isJSDataView(obj)) {
             if (useSharedBuffer) {
                 JSContext context = JSObject.getJSContext(obj);
@@ -508,27 +524,49 @@ public final class GraalJSAccess {
         }
         ScriptArray array = JSObject.getArray(obj);
         if (array instanceof TypedArray.DirectUint8Array) {
-            return UINT8ARRAY_OBJECT;
+            return DIRECT_UINT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint8ClampedArray) {
-            return UINT8CLAMPEDARRAY_OBJECT;
+            return DIRECT_UINT8CLAMPEDARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt8Array) {
-            return INT8ARRAY_OBJECT;
+            return DIRECT_INT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint16Array) {
-            return UINT16ARRAY_OBJECT;
+            return DIRECT_UINT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt16Array) {
-            return INT16ARRAY_OBJECT;
+            return DIRECT_INT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint32Array) {
-            return UINT32ARRAY_OBJECT;
+            return DIRECT_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt32Array) {
-            return INT32ARRAY_OBJECT;
+            return DIRECT_INT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat32Array) {
-            return FLOAT32ARRAY_OBJECT;
+            return DIRECT_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat64Array) {
-            return FLOAT64ARRAY_OBJECT;
+            return DIRECT_FLOAT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigInt64Array) {
-            return BIGINT64ARRAY_OBJECT;
+            return DIRECT_BIGINT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigUint64Array) {
-            return BIGUINT64ARRAY_OBJECT;
+            return DIRECT_BIGUINT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint8Array) {
+            return INTEROP_UINT8ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint8ClampedArray) {
+            return INTEROP_UINT8CLAMPEDARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropInt8Array) {
+            return INTEROP_INT8ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint16Array) {
+            return INTEROP_UINT16ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropInt16Array) {
+            return INTEROP_INT16ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint32Array) {
+            return INTEROP_UINT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropInt32Array) {
+            return INTEROP_INT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropFloat32Array) {
+            return INTEROP_FLOAT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropFloat64Array) {
+            return INTEROP_FLOAT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropBigInt64Array) {
+            return INTEROP_BIGINT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropBigUint64Array) {
+            return INTEROP_BIGUINT64ARRAY_OBJECT;
         } else {
             return ARRAY_BUFFER_VIEW_OBJECT;
         }
@@ -1196,7 +1234,21 @@ public final class GraalJSAccess {
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
-        return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+            JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
+            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(interopBuffer.getByteLength());
+            InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
+            try {
+                for (int i = 0; i < byteBuffer.capacity(); i++) {
+                    byteBuffer.put(interop.readBufferByte(interopBuffer, i));
+                }
+            } catch (InteropException iex) {
+                iex.printStackTrace(); // should not happen
+            }
+            return byteBuffer;
+        } else {
+            return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        }
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {

@@ -177,7 +177,7 @@ import com.oracle.js.parser.ir.visitor.NodeVisitor;
 @SuppressWarnings("fallthrough")
 public class Parser extends AbstractParser {
     /** The arguments variable name. */
-    private static final String ARGUMENTS_NAME = "arguments";
+    static final String ARGUMENTS_NAME = "arguments";
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
     private static final String CONSTRUCTOR_NAME = "constructor";
@@ -2394,7 +2394,8 @@ public class Parser extends AbstractParser {
             } else {
                 Scope parentScope = scope.getParent();
                 if (parentScope != null && (parentScope.isCatchParameterScope() || parentScope.isFunctionParameterScope())) {
-                    if (parentScope.getExistingSymbol(varName) != null) {
+                    existingSymbol = parentScope.getExistingSymbol(varName);
+                    if (existingSymbol != null && !existingSymbol.isArguments()) {
                         return true;
                     }
                 }

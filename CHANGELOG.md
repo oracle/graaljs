@@ -3,8 +3,11 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.2.0
+* Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+
 ## Version 21.1.0
-* Updated Node.js to version 14.16.0.
+* Updated Node.js to version 14.16.1.
 * Prototype of WebAssembly JavaScript Interface implemented. It is available behind the `--js.webassembly` flag.
 * Implemented iterator interop support, enabling foreign objects that have an iterator to be used where JS expects iterables, as well as JS iterables to be used in other languages and via the [Value](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getIterator--) API.
 * Adopted new buffer interop support, allowing foreign buffers to be used with typed arrays and `DataView`, without copying. Likewise enables `ArrayBuffer` to be used in other languages.

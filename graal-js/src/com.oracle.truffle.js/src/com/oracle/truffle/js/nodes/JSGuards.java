@@ -278,6 +278,10 @@ public final class JSGuards {
         return JSArrayBuffer.isJSDirectArrayBuffer(thisObj);
     }
 
+    public static boolean isJSInteropArrayBuffer(Object thisObj) {
+        return JSArrayBuffer.isJSInteropArrayBuffer(thisObj);
+    }
+
     public static boolean isJSSharedArrayBuffer(Object thisObj) {
         return JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
     }

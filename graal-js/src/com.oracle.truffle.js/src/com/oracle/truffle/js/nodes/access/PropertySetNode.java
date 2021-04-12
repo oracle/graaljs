@@ -940,22 +940,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    /**
-     * If object is the global object and we are in strict mode, throw ReferenceError.
-     */
-    public static final class ReferenceErrorPropertySetNode extends LinkedPropertySetNode {
-
-        public ReferenceErrorPropertySetNode(AbstractShapeCheckNode shapeCheckNode) {
-            super(shapeCheckNode);
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            root.globalPropertySetInStrictMode(thisObj);
-            return true;
-        }
-    }
-
     public static final class JSAdapterPropertySetNode extends LinkedPropertySetNode {
         public JSAdapterPropertySetNode(ReceiverCheckNode receiverCheckNode) {
             super(receiverCheckNode);
@@ -1026,8 +1010,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             Object key = root.getKey();
             if (key instanceof HiddenKey) {
                 JSObjectUtil.putHiddenProperty(thisJSObj, key, value);
-            } else if (root.isGlobal() && root.isStrict() && !JSObject.hasProperty(thisJSObj, key, jsclassProfile)) {
-                root.globalPropertySetInStrictMode(thisObj);
             } else if (root.isOwnProperty()) {
                 if (root.isDeclaration()) {
                     assert JSGlobal.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
@@ -1349,8 +1331,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (JSAdapter.isJSAdapter(store)) {
                 ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSAdapterPropertySetNode(receiverCheck);
-            } else if (isStrict() && isGlobal() && !JSObject.hasProperty(thisJSObj, key)) {
-                return new ReferenceErrorPropertySetNode(shapeCheck);
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
@@ -1414,12 +1394,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @Override
     protected SetCacheNode createTruffleObjectPropertyNode() {
         return new ForeignPropertySetNode(context);
-    }
-
-    @TruffleBoundary
-    protected void globalPropertySetInStrictMode(Object thisObj) {
-        assert JSDynamicObject.isJSDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
-        throw Errors.createReferenceErrorNotDefined(context, getKey(), this);
     }
 
     @Override

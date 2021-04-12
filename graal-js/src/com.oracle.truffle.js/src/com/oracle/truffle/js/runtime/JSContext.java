@@ -151,6 +151,10 @@ public class JSContext {
      */
     private Object embedderData;
 
+    /**
+     * Nashorn compatibility mode only: Assumption is valid as long as no
+     * {@code __noSuchProperty__}, {@code __noSuchMethod__} properties have been defined.
+     */
     private final Assumption noSuchPropertyUnusedAssumption;
     private final Assumption noSuchMethodUnusedAssumption;
 
@@ -168,7 +172,7 @@ public class JSContext {
      * typically not happen by the ES6 spec, but be used by tests (and by future versions of the
      * spec).
      */
-    @CompilationFinal private Assumption typedArrayNotDetachedAssumption;
+    private final Assumption typedArrayNotDetachedAssumption;
 
     /**
      * Assumption: Static RegExp results (RegExp.$1 etc) are never used. As long as this assumption
@@ -176,6 +180,12 @@ public class JSContext {
      * objects to be virtualized in RegExp#exec().
      */
     private final Assumption regExpStaticResultUnusedAssumption;
+
+    /**
+     * Assumption: The global object has not been replaced and its prototype has not been changed.
+     * While valid, guarantees that globalObject.[[HasProperty]] is side effect free.
+     */
+    private final Assumption globalObjectPristineAssumption;
 
     private volatile Map<String, Symbol> symbolRegistry;
 
@@ -442,6 +452,7 @@ public class JSContext {
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");
         this.fastArgumentsObjectAssumption = Truffle.getRuntime().createAssumption("fastArgumentsObjectAssumption");
         this.regExpStaticResultUnusedAssumption = Truffle.getRuntime().createAssumption("regExpStaticResultUnusedAssumption");
+        this.globalObjectPristineAssumption = Truffle.getRuntime().createAssumption("globalObjectPristineAssumption");
 
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
@@ -620,6 +631,10 @@ public class JSContext {
 
     public final Assumption getRegExpStaticResultUnusedAssumption() {
         return regExpStaticResultUnusedAssumption;
+    }
+
+    public final Assumption getGlobalObjectPristineAssumption() {
+        return globalObjectPristineAssumption;
     }
 
     public static JSContext createContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {

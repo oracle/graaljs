@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,6 +105,8 @@ public final class Symbol implements Comparable<Symbol> {
     public static final int IS_PRIVATE_NAME_METHOD = 1 << 19;
     /** Is this symbol a private name associated with an accessor? */
     public static final int IS_PRIVATE_NAME_ACCESSOR = 1 << 20;
+    /** Is this symbol the function 'arguments' binding? */
+    public static final int IS_ARGUMENTS = 1 << 21;
 
     /** Null or name identifying symbol. */
     private final String name;
@@ -397,5 +399,12 @@ public final class Symbol implements Comparable<Symbol> {
      */
     public boolean isPrivateAccessor() {
         return (flags & IS_PRIVATE_NAME_ACCESSOR) != 0;
+    }
+
+    /**
+     * Is this symbol the function 'arguments' binding.
+     */
+    public boolean isArguments() {
+        return (flags & IS_ARGUMENTS) != 0;
     }
 }

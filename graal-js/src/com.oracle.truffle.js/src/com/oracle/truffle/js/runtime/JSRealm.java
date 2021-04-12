@@ -827,12 +827,18 @@ public class JSRealm {
     }
 
     public final void setGlobalObject(DynamicObject global) {
+        context.getGlobalObjectPristineAssumption().invalidate();
         this.globalObject = global;
         this.topScope = createTopScope();
     }
 
     private TopScopeObject createTopScope() {
         return new TopScopeObject(new Object[]{scriptEngineImportScope, new DynamicScopeWrapper(globalScope), globalObject});
+    }
+
+    public final void dispose() {
+        this.globalObject = Undefined.instance;
+        this.topScope = TopScopeObject.empty();
     }
 
     public final DynamicObject getObjectConstructor() {
