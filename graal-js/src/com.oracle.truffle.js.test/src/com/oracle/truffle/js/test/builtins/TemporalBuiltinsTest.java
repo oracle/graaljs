@@ -44,6 +44,25 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 
     @Test
+    public void testPlainTimeAddDurationLikeObject() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let plainTime = new Temporal.PlainTime(12, 45, 35);" +
+                                "plainTime = plainTime.add({ seconds: 20 });");
+            validatePlainTime(ctx, 12, 45, 55, 0, 0, 0);
+        }
+    }
+
+    @Test
+    public void testPlainTimeAddDurationObject() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 0, 0, 20);" +
+                                "let plainTime = new Temporal.PlainTime(12, 45, 35);" +
+                                "plainTime = plainTime.add(duration);");
+            validatePlainTime(ctx, 12, 45, 55, 0, 0, 0);
+        }
+    }
+
+    @Test
     public void testPlainTimeToLocaleString() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(10, 25, 5, 500, 400, 760);");
