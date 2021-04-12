@@ -138,7 +138,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIntersectionHasNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.has = null;" +
+            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.has = 17;" +
                             "var result = set1.intersection(set2);",
                             createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
             context.eval(JavaScriptLanguage.ID, code);
@@ -151,7 +151,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIntersectionAddNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.add = null;" +
+            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.add = 17;" +
                             "var result = set1.intersection(set2);",
                             createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
             context.eval(JavaScriptLanguage.ID, code);
@@ -216,7 +216,7 @@ public class NewSetMethodsTest {
     @Test
     public void testDifferenceDeleteNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.delete = null;" +
+            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.delete = 17;" +
                             "set1.difference(set2);",
                             createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
             context.eval(JavaScriptLanguage.ID, code);
@@ -281,7 +281,7 @@ public class NewSetMethodsTest {
     @Test
     public void testSymmetricDifferenceDeleteNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.delete = null;" +
+            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.delete = 17;" +
                             "set1.symmetricDifference(set2);",
                             createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
             context.eval(JavaScriptLanguage.ID, code);
@@ -351,7 +351,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIsSubsetOfNoIterable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var x = 0; Array.prototype.has = null;" +
+            String code = String.format("var set1 = %s; var x = 0; Array.prototype.has = 17;" +
                             "set1.isSubsetOf(x);",
                             createSetString(3, 5));
             context.eval(JavaScriptLanguage.ID, code);
@@ -364,7 +364,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIsSubsetOfIterableHasNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var arr = [3, 4, 5, 6]; Array.prototype.has = null;" +
+            String code = String.format("var set1 = %s; var arr = [3, 4, 5, 6]; Array.prototype.has = 17;" +
                             "set1.isSubsetOf(arr);",
                             createSetString(3, 5));
             Value result = context.eval(JavaScriptLanguage.ID, code);
@@ -411,7 +411,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIsSupersetOfIterableHasNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var arr = [3, 6]; Set.prototype.has = null;" +
+            String code = String.format("var set1 = %s; var arr = [3, 6]; Set.prototype.has = 17;" +
                             "set1.isSupersetOf(arr);",
                             createSetString(3, 4, 5, 6));
             context.eval(JavaScriptLanguage.ID, code);
@@ -459,7 +459,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIsDisjointedFromHasNotCallable() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022").build()) {
-            String code = String.format("var set1 = %s; var arr = [3, 4]; Set.prototype.has = null;" +
+            String code = String.format("var set1 = %s; var arr = [3, 4]; Set.prototype.has = 17;" +
                             "set1.isDisjointedFrom(arr);",
                             createSetString(1, 2));
             context.eval(JavaScriptLanguage.ID, code);
