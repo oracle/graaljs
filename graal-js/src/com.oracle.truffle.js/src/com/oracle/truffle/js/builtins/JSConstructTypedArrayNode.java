@@ -204,7 +204,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, true, false, lengthIsUndefined);
     }
 
-    private DynamicObject doArrayBufferImpl(DynamicObject arrayBuffer, Object byteOffset0, Object length0, DynamicObject newTarget, int bufferByteLength,
+    private DynamicObject doArrayBufferImpl(DynamicObject arrayBuffer, Object byteOffset0, Object length0, DynamicObject newTarget, long bufferByteLength,
                     boolean direct, boolean isInteropBuffer, ConditionProfile lengthIsUndefinedProfile) {
         final int elementSize = factory.getBytesPerElement();
 
@@ -261,7 +261,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createBinaryProfile()") @Shared("lengthIsUndefined") ConditionProfile lengthIsUndefined,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         Object buffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
-        int arrayBufferLength = getBufferSizeSafe(buffer, interop);
+        long arrayBufferLength = getBufferSizeSafe(buffer, interop);
         return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, arrayBufferLength, false, true, lengthIsUndefined);
     }
 
@@ -404,7 +404,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
             DynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), object);
-            int bufferByteLength = getBufferSizeSafe(object, interop);
+            long bufferByteLength = getBufferSizeSafe(object, interop);
             return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, bufferByteLength, false, true, lengthIsUndefined);
         }
 
@@ -433,11 +433,9 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return obj;
     }
 
-    private int getBufferSizeSafe(Object object, InteropLibrary interop) {
+    private static long getBufferSizeSafe(Object object, InteropLibrary interop) {
         try {
-            long bufferByteLength = interop.getBufferSize(object);
-            checkLengthLimit(bufferByteLength, factory.getBytesPerElement());
-            return (int) bufferByteLength;
+            return interop.getBufferSize(object);
         } catch (UnsupportedMessageException e) {
             return 0;
         }
