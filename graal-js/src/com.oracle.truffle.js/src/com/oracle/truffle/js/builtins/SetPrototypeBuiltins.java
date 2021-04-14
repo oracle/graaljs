@@ -434,12 +434,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject intersection(DynamicObject set, Object iterable) {
             DynamicObject newSet = (DynamicObject) constructSet();
             Object hasCheck = getHasFunction(set);
-            if (isCallable(hasCheck)) {
+            if (!isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
-            if (isCallable(adder)) {
+            if (!isCallable(adder)) {
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
@@ -484,7 +484,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject difference(DynamicObject set, Object iterable) {
             DynamicObject newSet = (DynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
-            if (isCallable(remover)) {
+            if (!isCallable(remover)) {
                 removerError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
@@ -526,13 +526,13 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected DynamicObject symmetricDifference(DynamicObject set, Object iterable) {
             DynamicObject newSet = (DynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
-            if (isCallable(remover)) {
+            if (!isCallable(remover)) {
                 removerError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
 
-            if (isCallable(adder)) {
+            if (!isCallable(adder)) {
                 // unreachable due to constructor add
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
@@ -584,7 +584,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             }
             DynamicObject otherSet = (DynamicObject) iterable;
             Object hasCheck = getHasFunction(otherSet);
-            if (isCallable(hasCheck)) {
+            if (!isCallable(hasCheck)) {
                 needCreateNewBranch.enter();
                 otherSet = (DynamicObject) constructSet();
                 addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
@@ -629,7 +629,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization(guards = "isJSSet(set)")
         protected Boolean isSupersetOf(DynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
-            if (isCallable(hasCheck)) {
+            if (!isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
@@ -673,7 +673,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization(guards = "isJSSet(set)")
         protected Boolean isDisjointedFrom(DynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
-            if (isCallable(hasCheck)) {
+            if (!isCallable(hasCheck)) {
                 hasError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }

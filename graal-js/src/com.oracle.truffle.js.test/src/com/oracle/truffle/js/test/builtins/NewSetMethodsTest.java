@@ -46,8 +46,8 @@ import static org.junit.Assert.assertTrue;
 import java.util.Arrays;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
