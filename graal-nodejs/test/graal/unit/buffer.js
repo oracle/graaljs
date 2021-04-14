@@ -93,6 +93,20 @@ describe('Buffer.utf8Write', function() {
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Write.length, 0);
     });
+    if (typeof java !== undefined) {
+        it('should accept interop buffer', function() {
+            var byteLength = 8;
+            var offset = 4;
+            var array = new Uint8Array(new ArrayBuffer(byteLength), offset);
+            var interopArray = new Uint8Array(new ArrayBuffer(java.nio.ByteBuffer.allocate(byteLength)), offset);
+            var text = 'foo';
+            Buffer.prototype.utf8Write.call(array, text, 1, 2);
+            Buffer.prototype.utf8Write.call(interopArray, text, 1, 2);
+            for (var i = 0; i < byteLength; i++) {
+                assert.strictEqual(interopArray[i], array[i]);
+            }
+        });
+    }
 });
 
 describe('Buffer.utf8Slice', function() {
@@ -145,4 +159,15 @@ describe('Buffer.utf8Slice', function() {
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Slice.length, 0);
     });
+    if (typeof java !== undefined) {
+        it('should accept interop buffer', function() {
+            var javaBuffer = java.nio.ByteBuffer.allocate(8);
+            javaBuffer.put(3, 'f'.codePointAt(0));
+            javaBuffer.put(4, 'o'.codePointAt(0));
+            javaBuffer.put(5, 'o'.codePointAt(0));
+            var array = new Uint8Array(new ArrayBuffer(javaBuffer), 2);
+            var result = Buffer.prototype.utf8Slice.call(array, 1, 4);
+            assert.strictEqual(result, 'foo');
+        });
+    }
 });
