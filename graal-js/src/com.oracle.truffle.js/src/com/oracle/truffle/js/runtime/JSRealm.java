@@ -92,7 +92,6 @@ import com.oracle.truffle.js.builtins.ReflectBuiltins;
 import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.SetPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
@@ -1409,9 +1408,6 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
-        if (context.getContextOptions().isNewSetMethods()) {
-            addNewSetMethods();
-        }
 
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
@@ -1439,11 +1435,6 @@ public class JSRealm {
             putGlobalProperty("print", lookupFunction(GlobalBuiltins.GLOBAL_PRINT, "print"));
             putGlobalProperty("printErr", lookupFunction(GlobalBuiltins.GLOBAL_PRINT, "printErr"));
         }
-    }
-
-    private void addNewSetMethods() {
-        assert getContext().getContextOptions().isNewSetMethods();
-        JSObjectUtil.putFunctionsFromContainer(this, setPrototype, SetPrototypeBuiltins.NEW_SET_BUILTINS);
     }
 
     @TruffleBoundary

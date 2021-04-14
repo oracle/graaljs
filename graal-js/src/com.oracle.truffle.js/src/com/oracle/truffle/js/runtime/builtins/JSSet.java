@@ -152,6 +152,9 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
         // the initial value of the values property.
         JSObjectUtil.putDataProperty(ctx, prototype, "keys", values, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(ctx, prototype, Symbol.SYMBOL_ITERATOR, values, JSAttributes.getDefaultNotEnumerable());
+        if (ctx.getContextOptions().isNewSetMethods()) {
+            JSObjectUtil.putFunctionsFromContainer(realm, prototype, SetPrototypeBuiltins.NEW_SET_BUILTINS);
+        }
         return prototype;
     }
 

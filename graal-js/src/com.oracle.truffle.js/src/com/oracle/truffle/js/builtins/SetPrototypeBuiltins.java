@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,7 +55,7 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetDifferenc
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetForEachNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetHasNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIntersectionNodeGen;
-import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsDisjointedFromNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsDisjointFromNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSubsetOfNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSupersetOfNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetSymmetricDifferenceNodeGen;
@@ -152,7 +152,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             symmetricDifference(1),
             isSubsetOf(1),
             isSupersetOf(1),
-            isDisjointedFrom(1);
+            isDisjointFrom(1);
 
             private final int length;
 
@@ -181,8 +181,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     return JSSetIsSubsetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 case isSupersetOf:
                     return JSSetIsSupersetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-                case isDisjointedFrom:
-                    return JSSetIsDisjointedFromNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case isDisjointFrom:
+                    return JSSetIsDisjointFromNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             }
             return null;
         }
@@ -296,7 +296,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
     }
 
     /**
-     * Implementation of the Set.prototype.intersection().
+     * Base class for the New Set Methods.
      */
     protected abstract static class JSSetNewOperation extends JSSetOperation {
 
@@ -329,8 +329,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE)
+                    if (next == Boolean.FALSE) {
                         return target;
+                    }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
                     call(adder, target, nextValue);
                 }
@@ -381,9 +382,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             return getHasNode.getValue(object);
         }
 
-        protected final Object constructSet(Object... argeuments) {
+        protected final Object constructSet(Object... arguments) {
             Object ctr = getContext().getRealm().getSetConstructor();
-            return JSRuntime.construct(ctr, argeuments);
+            return JSRuntime.construct(ctr, arguments);
         }
 
         protected final boolean isCallable(Object object) {
@@ -447,8 +448,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE)
+                    if (next == Boolean.FALSE) {
                         return newSet;
+                    }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
                     Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.TRUE) {
@@ -492,8 +494,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE)
+                    if (next == Boolean.FALSE) {
                         return newSet;
+                    }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
                     call(remover, newSet, nextValue);
                 }
@@ -541,8 +544,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE)
+                    if (next == Boolean.FALSE) {
                         return newSet;
+                    }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
                     Object removed = call(remover, newSet, nextValue);
                     if (removed == Boolean.FALSE) {
@@ -593,8 +597,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE)
+                    if (next == Boolean.FALSE) {
                         return Boolean.TRUE;
+                    }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
                     Object has = call(hasCheck, otherSet, nextValue);
                     if (has == Boolean.FALSE) {
@@ -637,8 +642,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE)
+                    if (next == Boolean.FALSE) {
                         return Boolean.TRUE;
+                    }
                     Object nextValue = iteratorValueNode.execute((DynamicObject) next);
                     Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.FALSE) {
@@ -660,18 +666,18 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
     }
 
     /**
-     * Implementation of the Set.prototype.isDisjointedFrom().
+     * Implementation of the Set.prototype.isDisjointFrom().
      */
-    public abstract static class JSSetIsDisjointedFromNode extends JSSetNewOperation {
+    public abstract static class JSSetIsDisjointFromNode extends JSSetNewOperation {
 
         private BranchProfile hasError = BranchProfile.create();
 
-        public JSSetIsDisjointedFromNode(JSContext context, JSBuiltin builtin) {
+        public JSSetIsDisjointFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization(guards = "isJSSet(set)")
-        protected Boolean isDisjointedFrom(DynamicObject set, Object iterable) {
+        protected Boolean isDisjointFrom(DynamicObject set, Object iterable) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
                 hasError.enter();

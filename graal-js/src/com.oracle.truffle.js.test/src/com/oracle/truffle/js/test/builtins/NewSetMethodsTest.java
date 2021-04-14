@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,7 @@ import com.oracle.truffle.js.test.JSTest;
 
 public class NewSetMethodsTest {
 
-    private Context getNewSetMethodsContext() {
+    private static Context getNewSetMethodsContext() {
         return JSTest.newContextBuilder().option(JSContextOptions.NEW_SET_METHODS_NAME, "true").build();
     }
 
@@ -439,9 +439,9 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testIsDisjointedFrom() {
+    public void testIsDisjointFrom() {
         try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; set1.isDisjointedFrom(set2);",
+            String code = String.format("var set1 = %s; var set2 = %s; set1.isDisjointFrom(set2);",
                             createSetString(1, 2), createSetString(3, 4));
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isBoolean());
@@ -450,9 +450,9 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testIsNotDisjointedFrom() {
+    public void testIsNotDisjointFrom() {
         try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; set1.isDisjointedFrom(set2);",
+            String code = String.format("var set1 = %s; var set2 = %s; set1.isDisjointFrom(set2);",
                             createSetString(1, 2), createSetString(2, 3));
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isBoolean());
@@ -461,10 +461,10 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testIsDisjointedFromHasNotCallable() {
+    public void testIsDisjointFromHasNotCallable() {
         try (Context context = getNewSetMethodsContext()) {
             String code = String.format("var set1 = %s; var arr = [3, 4]; Set.prototype.has = 17;" +
-                            "set1.isDisjointedFrom(arr);",
+                            "set1.isDisjointFrom(arr);",
                             createSetString(1, 2));
             context.eval(JavaScriptLanguage.ID, code);
             Assert.fail("Non callable expected.");
@@ -474,9 +474,9 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testIsDisjointedFromIsNotSet() {
+    public void testIsDisjointFromIsNotSet() {
         try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("Set.prototype.isDisjointedFrom.call(0, [1, 2, 3]);",
+            String code = String.format("Set.prototype.isDisjointFrom.call(0, [1, 2, 3]);",
                             createSetString(), createSetString(), createSetString(),
                             setEqualsString("result", "expected"));
             context.eval(JavaScriptLanguage.ID, code);
@@ -486,7 +486,7 @@ public class NewSetMethodsTest {
         }
     }
 
-    private static final String setEqualsString(String varName1, String varName2) {
+    private static String setEqualsString(String varName1, String varName2) {
         return String.format("%s.size === %s.size && [...%s].every(value => %s.has(value));",
                         varName1, varName2, varName1, varName2);
     }
