@@ -40,12 +40,10 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -77,7 +75,6 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -92,6 +89,7 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SetPrototypeBuiltins.SetPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new SetPrototypeBuiltins();
+    public static final JSBuiltinsContainer NEW_SET_BUILTINS = new NewSetPrototypeBuiltins();
 
     protected SetPrototypeBuiltins() {
         super(JSSet.PROTOTYPE_NAME, SetPrototype.class);
@@ -104,14 +102,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         has(1),
         forEach(1),
         values(0),
-        entries(0),
-        union(1),
-        intersection(1),
-        difference(1),
-        symmetricDifference(1),
-        isSubsetOf(1),
-        isSupersetOf(1),
-        isDisjointedFrom(1);
+        entries(0);
 
         private final int length;
 
@@ -122,14 +113,6 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Override
         public int getLength() {
             return length;
-        }
-
-        @Override
-        public int getECMAScriptVersion() {
-            if (EnumSet.of(union, intersection, difference, symmetricDifference, isSubsetOf, isSupersetOf, isDisjointedFrom).contains(this)) {
-                return JSConfig.ECMAScript2022;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
         }
     }
 
@@ -150,22 +133,59 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
-            case union:
-                return JSSetUnionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case intersection:
-                return JSSetIntersectionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case difference:
-                return JSSetDifferenceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case symmetricDifference:
-                return JSSetSymmetricDifferenceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case isSubsetOf:
-                return JSSetIsSubsetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case isSupersetOf:
-                return JSSetIsSupersetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case isDisjointedFrom:
-                return JSSetIsDisjointedFromNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
+    }
+
+    /**
+     * Built-ins from the NewSetMethods proposal (https://github.com/tc39/proposal-set-methods).
+     */
+    public static final class NewSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<NewSetPrototypeBuiltins.NewSetPrototype> {
+        protected NewSetPrototypeBuiltins() {
+            super(NewSetPrototype.class);
+        }
+
+        public enum NewSetPrototype implements BuiltinEnum<NewSetPrototype> {
+            union(1),
+            intersection(1),
+            difference(1),
+            symmetricDifference(1),
+            isSubsetOf(1),
+            isSupersetOf(1),
+            isDisjointedFrom(1);
+
+            private final int length;
+
+            NewSetPrototype(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, NewSetPrototype builtinEnum) {
+            switch (builtinEnum) {
+                case union:
+                    return JSSetUnionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case intersection:
+                    return JSSetIntersectionNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case difference:
+                    return JSSetDifferenceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case symmetricDifference:
+                    return JSSetSymmetricDifferenceNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case isSubsetOf:
+                    return JSSetIsSubsetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case isSupersetOf:
+                    return JSSetIsSupersetOfNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case isDisjointedFrom:
+                    return JSSetIsDisjointedFromNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            }
+            return null;
+        }
     }
 
     public abstract static class JSSetOperation extends JSBuiltinNode {
