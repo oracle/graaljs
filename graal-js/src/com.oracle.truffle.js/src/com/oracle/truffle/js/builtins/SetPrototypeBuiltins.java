@@ -321,7 +321,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         protected Object addEntryFromIterable(Object target, Object iterable, Object adder) {
-            if (!JSRuntime.isCallable(adder)) {
+            if (!isCallable(adder)) {
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }

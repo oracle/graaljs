@@ -62,6 +62,25 @@ public class NewSetMethodsTest {
     }
 
     @Test
+    public void testNotAvailableByDefault() {
+        String code = String.format("var set1 = %s; set1.union(set1)", createSetString(1, 2, 3, 4));
+
+        try (Context context = JSTest.newContextBuilder().build()) {
+            context.eval(JavaScriptLanguage.ID, code);
+            Assert.fail("Should fail with default flags.");
+        } catch (PolyglotException ex) {
+            assertTrue(ex.getMessage().contains("union is not a function"));
+        }
+
+        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.NEW_SET_METHODS_NAME, "false").build()) {
+            context.eval(JavaScriptLanguage.ID, code);
+            Assert.fail("Should fail with js.new-set-methods=false");
+        } catch (PolyglotException ex) {
+            assertTrue(ex.getMessage().contains("union is not a function"));
+        }
+    }
+
+    @Test
     public void testUnion() {
         try (Context context = getNewSetMethodsContext()) {
             String code = String.format("var set1 = %s; var set2 = %s; var expected = %s;" +

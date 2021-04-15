@@ -63,7 +63,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.utilities.CyclicAssumption;
-import com.oracle.truffle.js.runtime.JSContextOptions.UnhandledRejectionsTrackingMode;
 
 public final class JSContextOptions {
 
