@@ -3207,8 +3207,98 @@ namespace v8 {
         TRACE
     }
 
+    CpuProfiler::CpuProfiler() {
+        TRACE
+    }
+
+    CpuProfiler::~CpuProfiler() {
+        TRACE
+    }
+
+    CpuProfiler* CpuProfiler::New(Isolate* isolate, CpuProfilingNamingMode namingMode, CpuProfilingLoggingMode loggingMode) {
+        TRACE
+        return new CpuProfiler();
+    }
+
+    void CpuProfiler::Dispose() {
+        TRACE
+        delete this;
+    }
+
+    void CpuProfiler::SetSamplingInterval(int us) {
+        TRACE
+    }
+
+    void CpuProfiler::StartProfiling(Local<String> title, bool record_samples) {
+        TRACE
+    }
+
+    CpuProfile* CpuProfiler::StopProfiling(Local<String> title) {
+        TRACE
+        return nullptr;
+    }
+
     void CpuProfiler::UseDetailedSourcePositionsForProfiling(Isolate* isolate) {
         TRACE
+    }
+
+    Local<String> CpuProfile::GetTitle() const {
+        TRACE
+        return String::NewFromUtf8Literal(Isolate::GetCurrent(), "ProfileTitle");
+    }
+
+    int64_t CpuProfile::GetStartTime() const {
+        TRACE
+        return 0;
+    }
+
+    int64_t CpuProfile::GetEndTime() const {
+        TRACE
+        return 0;
+    }
+
+    void CpuProfile::Delete() {
+        TRACE
+    }
+
+    const CpuProfileNode* CpuProfile::GetTopDownRoot() const {
+        TRACE
+        return nullptr;
+    }
+
+    int CpuProfileNode::GetChildrenCount() const {
+        TRACE
+        return 0;
+    }
+
+    unsigned CpuProfileNode::GetHitCount() const {
+        TRACE
+        return 0;
+    }
+
+    int CpuProfileNode::GetColumnNumber() const {
+        TRACE
+        return kNoColumnNumberInfo;
+    }
+
+    int CpuProfileNode::GetLineNumber() const {
+        TRACE
+        return kNoLineNumberInfo;
+    }
+
+    int CpuProfileNode::GetScriptId() const {
+        TRACE
+        return -1;
+    }
+
+    Local<String> CpuProfileNode::GetScriptResourceName() const {
+        TRACE
+        return String::NewFromUtf8Literal(Isolate::GetCurrent(), "unknown");
+    }
+
+    Local<String> CpuProfileNode::GetFunctionName() const {
+        TRACE
+        return String::NewFromUtf8Literal(Isolate::GetCurrent(), "unknown");
     }
 
     SnapshotCreator::SnapshotCreator(Isolate* isolate, const intptr_t* external_references, StartupData* existing_blob) {
