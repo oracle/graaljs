@@ -605,6 +605,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRangeErrorStackOverflow(Throwable cause, Node originatingNode) {
+        return Errors.createRangeError("Maximum call stack size exceeded", cause, originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorInvalidStringLength() {
         return Errors.createRangeError("Invalid string length");
     }
@@ -833,6 +838,11 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createRangeError(Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.RangeError, cause.getMessage(), cause, originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeError(String message, Throwable cause, Node originatingNode) {
+        return JSException.create(JSErrorType.RangeError, message, cause, originatingNode);
     }
 
     @TruffleBoundary
