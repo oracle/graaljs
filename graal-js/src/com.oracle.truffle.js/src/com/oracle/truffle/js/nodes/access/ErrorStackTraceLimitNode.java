@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,20 +42,24 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     private final JSContext context;
-    @Child private PropertyGetNode getStackTraceLimit;
+    @Child private DynamicObjectLibrary getStackTraceLimit;
     @Child private JSToIntegerAsIntNode toInteger;
 
     protected ErrorStackTraceLimitNode(JSContext context) {
         this.context = context;
-        this.getStackTraceLimit = PropertyGetNode.create(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, false, context);
+        this.getStackTraceLimit = JSObjectUtil.createDispatched(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME);
         this.toInteger = JSToIntegerAsIntNode.create();
     }
 
@@ -66,7 +70,12 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     @Specialization
     public int doInt() {
         DynamicObject errorConstructor = context.getRealm().getErrorConstructor(JSErrorType.Error);
-        return Math.max(0, toInteger.executeInt(getStackTraceLimit.getValue(errorConstructor)));
+        if (JSProperty.isData(getStackTraceLimit.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
+            Object value = getStackTraceLimit.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
+            return Math.max(0, toInteger.executeInt(value));
+        } else {
+            return 0;
+        }
     }
 
     public abstract int executeInt();
