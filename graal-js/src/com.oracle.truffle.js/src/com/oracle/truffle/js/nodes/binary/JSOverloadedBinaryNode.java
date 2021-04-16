@@ -40,13 +40,12 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins.OperatorSet;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNodeGen.DispatchBinaryOperatorNodeGen;
@@ -198,6 +197,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return overloadedOperatorName.equals("==");
     }
 
+    @ImportStatic(OperatorSet.class)
     public abstract static class DispatchBinaryOperatorNode extends JavaScriptBaseNode {
 
         private final String overloadedOperatorName;
@@ -280,7 +280,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         protected Object doGeneric(Object left,
                         Object right,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
-            Object operatorImplementation = getOperatorImplementation(left, right, getOverloadedOperatorName());
+            Object operatorImplementation = OperatorSet.getOperatorImplementation(left, right, getOverloadedOperatorName());
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
@@ -289,36 +289,12 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                 if (isEquality()) {
                     return false;
                 } else {
-                    throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName());
+                    throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName(), this);
                 }
             }
             // What should be the value of 'this' when invoking overloaded operators?
             // Currently, we set it to 'undefined'.
             return callNode.executeCall(JSArguments.create(Undefined.instance, operatorImplementation, left, right));
-        }
-
-        @TruffleBoundary
-        public static Object getOperatorImplementation(Object left, Object right, String operatorName) {
-            OperatorSet leftOperatorSet = OperatorsBuiltins.getOperatorSet(left);
-            OperatorSet rightOperatorSet = OperatorsBuiltins.getOperatorSet(right);
-            if (leftOperatorSet == rightOperatorSet) {
-                return leftOperatorSet.selfOperatorDefinition.get(operatorName);
-            } else if (leftOperatorSet.operatorCounter < rightOperatorSet.operatorCounter) {
-                Object[] rightOperatorDefinitions = rightOperatorSet.rightOperatorDefinitions.get(operatorName);
-                if (rightOperatorDefinitions != null) {
-                    return rightOperatorDefinitions[leftOperatorSet.operatorCounter];
-                } else {
-                    return null;
-                }
-            } else {
-                assert leftOperatorSet.operatorCounter > rightOperatorSet.operatorCounter;
-                Object[] leftOperatorDefinitions = leftOperatorSet.leftOperatorDefinitions.get(operatorName);
-                if (leftOperatorDefinitions != null) {
-                    return leftOperatorDefinitions[rightOperatorSet.operatorCounter];
-                } else {
-                    return null;
-                }
-            }
         }
 
         protected String getOverloadedOperatorName() {

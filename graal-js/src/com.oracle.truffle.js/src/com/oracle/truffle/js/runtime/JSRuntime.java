@@ -60,9 +60,9 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
+import com.oracle.truffle.js.builtins.OperatorsBuiltins.OperatorSet;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
-import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -1668,7 +1668,7 @@ public final class JSRuntime {
     }
 
     private static boolean equalOverloaded(Object a, Object b) {
-        Object operatorImplementation = JSOverloadedBinaryNode.DispatchBinaryOperatorNode.getOperatorImplementation(a, b, "==");
+        Object operatorImplementation = OperatorSet.getOperatorImplementation(a, b, "==");
         if (operatorImplementation == null) {
             return false;
         } else {

@@ -66,7 +66,7 @@ public abstract class JSToNumericOperandNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"hasOverloadedOperatorsNode.execute(arg)"})
     protected Object doOverloaded(DynamicObject arg) {
-        checkOverloadedOperatorsAllowed(arg);
+        checkOverloadedOperatorsAllowed(arg, this);
         return arg;
     }
 

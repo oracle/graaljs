@@ -90,7 +90,7 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
     @Specialization(guards = {"hasOverloadedOperatorsNode.execute(arg)"})
     protected Object doOverloaded(DynamicObject arg) {
         if (checkOperatorAllowed) {
-            checkOverloadedOperatorsAllowed(arg);
+            checkOverloadedOperatorsAllowed(arg, this);
         }
         return arg;
     }
