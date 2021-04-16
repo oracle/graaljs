@@ -45,7 +45,6 @@ import java.util.List;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -468,9 +467,5 @@ public final class JSGuards {
 
     public static boolean isArrayIndexLengthInRange(String str) {
         return JSRuntime.arrayIndexLengthInRange(str);
-    }
-
-    public static boolean hasOverloadedOperators(Shape shape) {
-        return OperatorsBuiltins.hasOverloadedOperators(shape);
     }
 }

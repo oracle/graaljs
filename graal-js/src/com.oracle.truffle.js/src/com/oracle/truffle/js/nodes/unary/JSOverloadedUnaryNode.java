@@ -45,11 +45,11 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.OperatorsBuiltins.OperatorSet;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;

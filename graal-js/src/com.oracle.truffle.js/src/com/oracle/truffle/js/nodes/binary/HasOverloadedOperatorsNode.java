@@ -42,15 +42,17 @@ package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
+@ImportStatic(OperatorSet.class)
 public abstract class HasOverloadedOperatorsNode extends JavaScriptBaseNode {
 
     protected HasOverloadedOperatorsNode() {
@@ -86,7 +88,7 @@ public abstract class HasOverloadedOperatorsNode extends JavaScriptBaseNode {
     @Specialization(replaces = {"doCached", "doPrimitive"})
     protected boolean doGeneric(Object operand) {
         if (JSDynamicObject.isJSDynamicObject(operand)) {
-            return OperatorsBuiltins.hasOverloadedOperators((DynamicObject) operand);
+            return OperatorSet.hasOverloadedOperators((DynamicObject) operand);
         } else {
             return false;
         }

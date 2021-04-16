@@ -59,8 +59,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.builtins.OperatorsBuiltins;
-import com.oracle.truffle.js.builtins.OperatorsBuiltins.OperatorSet;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
@@ -90,6 +88,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Nullish;
+import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -1585,8 +1584,8 @@ public final class JSRuntime {
         } else if (isObject(a)) {
             assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
             DynamicObject dynA = (DynamicObject) a;
-            if (OperatorsBuiltins.hasOverloadedOperators(dynA)) {
-                if (isObject(b) && !OperatorsBuiltins.hasOverloadedOperators((DynamicObject) b)) {
+            if (OperatorSet.hasOverloadedOperators(dynA)) {
+                if (isObject(b) && !OperatorSet.hasOverloadedOperators((DynamicObject) b)) {
                     return equal(a, JSObject.toPrimitive((DynamicObject) b));
                 }
                 if (isObject(b) || isNumber(b) || isBigInt(b) || isString(b)) {
@@ -1601,7 +1600,7 @@ public final class JSRuntime {
             assert a != Undefined.instance && a != Null.instance; // covered by (DynOb, DynOb)
             assert !isObject(a);
             DynamicObject dynB = (DynamicObject) b;
-            if (OperatorsBuiltins.hasOverloadedOperators(dynB)) {
+            if (OperatorSet.hasOverloadedOperators(dynB)) {
                 if (isNumber(a) || isBigInt(a) || isString(a)) {
                     return equalOverloaded(a, b);
                 } else {
