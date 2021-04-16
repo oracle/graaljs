@@ -1235,20 +1235,25 @@ public final class GraalJSAccess {
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
         if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
-            JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
-            ByteBuffer byteBuffer = ByteBuffer.allocateDirect(interopBuffer.getByteLength());
-            InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
-            try {
-                for (int i = 0; i < byteBuffer.capacity(); i++) {
-                    byteBuffer.put(interop.readBufferByte(interopBuffer, i));
-                }
-            } catch (InteropException iex) {
-                iex.printStackTrace(); // should not happen
-            }
-            return byteBuffer;
+            return interopArrayBufferGetContents(arrayBuffer);
         } else {
             return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         }
+    }
+
+    public static ByteBuffer interopArrayBufferGetContents(Object arrayBuffer) {
+        assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
+        JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
+        ByteBuffer byteBuffer = DirectByteBufferHelper.allocateDirect(interopBuffer.getByteLength());
+        InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
+        try {
+            for (int i = 0; i < byteBuffer.capacity(); i++) {
+                byteBuffer.put(interop.readBufferByte(interopBuffer, i));
+            }
+        } catch (InteropException iex) {
+            throw Errors.shouldNotReachHere(iex);
+        }
+        return byteBuffer;
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {

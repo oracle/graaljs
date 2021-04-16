@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import java.nio.charset.CodingErrorAction;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
@@ -65,6 +67,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     protected final BranchProfile nativePath = BranchProfile.create();
     protected final BranchProfile errorBranch = BranchProfile.create();
+    protected final BranchProfile interopBranch = BranchProfile.create();
 
     public NIOBufferUTF8WriteNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -137,9 +140,26 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
             outOfBoundsFail();
         }
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
+        boolean interopBuffer = false;
+        if (rawBuffer == null) {
+            interopBranch.enter();
+            interopBuffer = true;
+            rawBuffer = GraalJSAccess.interopArrayBufferGetContents(arrayBuffer);
+        }
         int destLimit = Math.min(bufferLen, destOffset + bytes);
         ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);
         doEncode(str, buffer);
+        if (interopBuffer) {
+            // Write the data to the original interop buffer
+            InteropLibrary interop = InteropLibrary.getUncached(arrayBuffer);
+            try {
+                for (int i = 0; i < buffer.position(); i++) {
+                    interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, buffer.get(i));
+                }
+            } catch (InteropException iex) {
+                throw Errors.shouldNotReachHere(iex);
+            }
+        }
         return buffer.position();
     }
 
