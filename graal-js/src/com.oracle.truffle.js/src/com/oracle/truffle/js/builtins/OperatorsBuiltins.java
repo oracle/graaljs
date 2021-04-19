@@ -187,6 +187,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         @Child private PropertyGetNode getOperatorDefinitionsNode;
         @Child private JSGetLengthNode getOpenSetLengthNode;
         @Child private ReadElementNode readOpenSetElementNode;
+        @Child private PropertyGetNode getClassNameNode;
 
         protected final JSContext context;
 
@@ -210,7 +211,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 if (tableHasKey(table, operator)) {
                     Object value = tableGet(table, operator);
                     if (!JSRuntime.isCallable(value)) {
-                        throw Errors.createTypeErrorNotAFunction(value, this);
+                        throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator [[Class]] %s [[Class]] is not a function", operator), this);
                     }
                     Boundaries.economicMapPut(selfOperatorDefinitions, operator, value);
                 }
@@ -248,16 +249,16 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     }
                     OperatorSet leftSet = getOperatorSetOfClass(realm, (DynamicObject) leftType);
                     if (leftSet == null) {
-                        throw Errors.createTypeError("the left: value must be a class with operators overloaded", this);
+                        throw Errors.createTypeError(Boundaries.stringFormat("the left: value %s must be a class with operators overloaded", getClassName(leftType)), this);
                     }
-                    for (String operator : OperatorSet.ALL_OPERATORS) {
+                    for (String operator : OperatorSet.BINARY_OPERATORS) {
                         if (tableHasKey(extraTable, operator)) {
                             Object operatorImplementation = tableGet(extraTable, operator);
                             if (!JSRuntime.isCallable(operatorImplementation)) {
-                                throw Errors.createTypeErrorNotAFunction(operatorImplementation, this);
+                                throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator %s %s [[Class]] is not a function", getClassName(leftType), operator), this);
                             }
                             if (!leftSet.isOperatorOpen(operator)) {
-                                throw Errors.createTypeError("the operator " + operator + " may not be overloaded on the provided type", this);
+                                throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(leftType), this));
                             }
                             if (!Boundaries.economicMapContainsKey(rightOperatorDefinitions, operator)) {
                                 Boundaries.economicMapPut(rightOperatorDefinitions, operator, new DynamicObject[operatorCounter]);
@@ -275,16 +276,16 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     }
                     OperatorSet rightSet = getOperatorSetOfClass(realm, (DynamicObject) rightType);
                     if (rightSet == null) {
-                        throw Errors.createTypeError("the right: value must be a class with operators overloaded", this);
+                        throw Errors.createTypeError(Boundaries.stringFormat("the right: value %s must be a class with operators overloaded", getClassName(rightType)), this);
                     }
-                    for (String operator : OperatorSet.ALL_OPERATORS) {
+                    for (String operator : OperatorSet.BINARY_OPERATORS) {
                         if (tableHasKey(extraTable, operator)) {
                             Object operatorImplementation = tableGet(extraTable, operator);
                             if (!JSRuntime.isCallable(operatorImplementation)) {
-                                throw Errors.createTypeErrorNotAFunction(operatorImplementation, this);
+                                throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator [[Class]] %s %s is not a function", operator, getClassName(rightType)), this);
                             }
                             if (!rightSet.isOperatorOpen(operator)) {
-                                throw Errors.createTypeError("the operator " + operator + " may not be overloaded on the provided type", this);
+                                throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(rightType), this));
                             }
                             if (!leftOperatorDefinitions.containsKey(operator)) {
                                 leftOperatorDefinitions.put(operator, new DynamicObject[operatorCounter]);
@@ -380,6 +381,14 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             } else {
                 return getOperatorDefinitions(constructor);
             }
+        }
+
+        protected String getClassName(Object constructor) {
+            if (getClassNameNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getClassNameNode = insert(PropertyGetNode.create(JSFunction.NAME, getContext()));
+            }
+            return getClassNameNode.getValue(constructor).toString();
         }
     }
 }
