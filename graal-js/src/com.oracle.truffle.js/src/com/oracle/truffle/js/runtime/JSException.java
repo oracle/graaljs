@@ -144,11 +144,12 @@ public final class JSException extends GraalJSException {
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
         if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
-            final long limit = JSRuntime.toInteger(stackTraceLimit);
-            return Math.max(0, limit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) limit);
-        } else {
-            return 0;
+            if (JSRuntime.isNumber(stackTraceLimit)) {
+                final long limit = JSRuntime.toInteger(stackTraceLimit);
+                return Math.max(0, limit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) limit);
+            }
         }
+        return 0;
     }
 
     @Override
