@@ -232,7 +232,6 @@ public class JSContext {
         AsyncGeneratorReturnFulfilled,
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
-        CollatorCaseSensitiveCompare,
         CollatorCompare,
         DateTimeFormatFormat,
         NumberFormatFormat,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
@@ -225,6 +224,11 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 state.collator.setStrength(Collator.SECONDARY);
                 break;
             case IntlUtil.CASE:
+                state.collator.setStrength(Collator.PRIMARY);
+                if (state.collator instanceof RuleBasedCollator) {
+                    ((RuleBasedCollator) state.collator).setCaseLevel(true);
+                }
+                break;
             case IntlUtil.VARIANT:
                 state.collator.setStrength(Collator.TERTIARY);
                 break;
@@ -268,34 +272,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
     private static String normalize(String s) {
         return Normalizer.normalize(s, Normalizer.Form.NFD);
-    }
-
-    @TruffleBoundary
-    public static int caseSensitiveCompare(DynamicObject collatorObj, String one, String two) {
-        Collator collator = getCollatorProperty(collatorObj);
-        String a = stripAccents(one);
-        String b = stripAccents(two);
-        return collator.compare(a, b);
-    }
-
-    private static String stripAccents(String input) {
-        if (input == null) {
-            return null;
-        }
-        StringBuilder resultBuilder = new StringBuilder(normalize(input));
-        stripLlAccents(resultBuilder);
-        Pattern accentMatchingPattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        return accentMatchingPattern.matcher(resultBuilder).replaceAll("");
-    }
-
-    private static void stripLlAccents(StringBuilder s) {
-        for (int i = 0; i < s.length(); i++) {
-            if (s.charAt(i) == '\u0141') {
-                s.setCharAt(i, 'L');
-            } else if (s.charAt(i) == '\u0142') {
-                s.setCharAt(i, 'l');
-            }
-        }
     }
 
     public static class InternalState {
@@ -360,21 +336,13 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                     }
 
                     if (state.boundCompareFunction == null) {
-                        JSFunctionData compareFunctionData;
-                        DynamicObject compareFn;
                         if (realmRef == null) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             realmRef = lookupContextReference(JavaScriptLanguage.class);
                         }
                         JSRealm realm = realmRef.get();
-                        if (state.sensitivity.equals(IntlUtil.CASE)) {
-                            compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCaseSensitiveCompare,
-                                            c -> createCaseSensitiveCompareFunctionData(c));
-                            compareFn = JSFunction.create(realm, compareFunctionData);
-                        } else {
-                            compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
-                            compareFn = JSFunction.create(realm, compareFunctionData);
-                        }
+                        JSFunctionData compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
+                        DynamicObject compareFn = JSFunction.create(realm, compareFunctionData);
                         setBoundObjectNode.setValue(compareFn, collatorObj);
                         state.boundCompareFunction = compareFn;
                     }
@@ -402,25 +370,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
                 String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return compare(thisObj, one, two);
-            }
-        }), 2, "");
-    }
-
-    private static JSFunctionData createCaseSensitiveCompareFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
-            @Child private JSToStringNode toString1Node = JSToStringNode.create();
-            @Child private JSToStringNode toString2Node = JSToStringNode.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                DynamicObject thisObj = (DynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
-                assert isJSCollator(thisObj);
-                int argumentCount = JSArguments.getUserArgumentCount(arguments);
-                String one = (argumentCount > 0) ? toString1Node.executeString(JSArguments.getUserArgument(arguments, 0)) : Undefined.NAME;
-                String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
-                return caseSensitiveCompare(thisObj, one, two);
             }
         }), 2, "");
     }
