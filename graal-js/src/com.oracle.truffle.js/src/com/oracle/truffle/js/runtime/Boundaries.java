@@ -390,11 +390,6 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static <K, V> EconomicMap<K, V> economicMapCreate(int initialCapacity) {
-        return EconomicMap.create(initialCapacity);
-    }
-
-    @TruffleBoundary
     public static <K, V> V economicMapPut(EconomicMap<K, V> map, K key, V value) {
         return map.put(key, value);
     }
