@@ -199,6 +199,7 @@ import com.oracle.truffle.js.nodes.function.IterationScopeNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.nodes.function.JSNewNode;
+import com.oracle.truffle.js.nodes.function.NamedEvaluationNode;
 import com.oracle.truffle.js.nodes.function.NewTargetRootNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
 import com.oracle.truffle.js.nodes.module.ImportMetaNode;
@@ -1164,6 +1165,10 @@ public class NodeFactory {
 
     public JavaScriptNode createOptionalChainShortCircuit(JavaScriptNode valueNode) {
         return OptionalChainNode.createShortCircuit(valueNode);
+    }
+
+    public JavaScriptNode createNamedEvaluation(JavaScriptNode expressionNode, JavaScriptNode nameNode) {
+        return NamedEvaluationNode.create(expressionNode, nameNode);
     }
 
     public IfNode copyIfWithCondition(IfNode origIfNode, JavaScriptNode condition) {

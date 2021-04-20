@@ -1965,6 +1965,7 @@ public class Parser extends AbstractParser {
                 initializer = setAnonymousFunctionName(initializer, ((PropertyKey) propertyName).getPropertyName());
             } else {
                 isAnonymousFunctionDefinition = true;
+                initializer = new UnaryNode(Token.recast(initializer.getToken(), TokenType.NAMEDEVALUATION), initializer);
             }
         }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -52,14 +54,11 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.function.SetFunctionNameNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /**
  * InitializeInstanceElements (O, constructor).
@@ -175,11 +174,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if (initializer != Undefined.instance) {
                 callNode = JSFunctionCallNode.createCall();
             }
-            SetFunctionNameNode setFunctionNameNode = null;
-            if (isAnonymousFunctionDefinition) {
-                setFunctionNameNode = SetFunctionNameNode.create();
-            }
-            fieldNodes[i] = new DefineFieldNode(writeNode, callNode, setFunctionNameNode);
+            fieldNodes[i] = new DefineFieldNode(writeNode, callNode, isAnonymousFunctionDefinition);
         }
         return fieldNodes;
     }
@@ -187,22 +182,19 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     static final class DefineFieldNode extends JavaScriptBaseNode {
         @Child JavaScriptBaseNode writeNode;
         @Child JSFunctionCallNode callNode;
-        @Child SetFunctionNameNode setFunctionNameNode;
+        private final boolean isAnonymousFunctionDefinition;
 
-        DefineFieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode, SetFunctionNameNode setFunctionNameNode) {
+        DefineFieldNode(JavaScriptBaseNode writeNode, JSFunctionCallNode callNode, boolean isAnonymousFunctionDefinition) {
             this.writeNode = writeNode;
             this.callNode = callNode;
-            this.setFunctionNameNode = setFunctionNameNode;
+            this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
         }
 
         void defineField(Object target, Object key, Object initializer) {
             assert (callNode != null) == (initializer != Undefined.instance);
             Object value = Undefined.instance;
             if (callNode != null) {
-                value = callNode.executeCall(JSArguments.createZeroArg(target, initializer));
-                if (setFunctionNameNode != null) {
-                    setFunctionNameNode.execute(value, key);
-                }
+                value = callNode.executeCall(isAnonymousFunctionDefinition ? JSArguments.createOneArg(target, initializer, key) : JSArguments.createZeroArg(target, initializer));
             }
             if (writeNode instanceof PrivateFieldAddNode) {
                 assert key instanceof HiddenKey : key;
