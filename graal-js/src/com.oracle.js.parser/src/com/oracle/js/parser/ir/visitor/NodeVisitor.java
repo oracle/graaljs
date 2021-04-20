@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,18 +44,17 @@ package com.oracle.js.parser.ir.visitor;
 import com.oracle.js.parser.ir.AccessNode;
 import com.oracle.js.parser.ir.BinaryNode;
 import com.oracle.js.parser.ir.Block;
+import com.oracle.js.parser.ir.BlockExpression;
 import com.oracle.js.parser.ir.BlockStatement;
 import com.oracle.js.parser.ir.BreakNode;
 import com.oracle.js.parser.ir.CallNode;
 import com.oracle.js.parser.ir.CaseNode;
 import com.oracle.js.parser.ir.CatchNode;
 import com.oracle.js.parser.ir.ClassNode;
-import com.oracle.js.parser.ir.BlockExpression;
 import com.oracle.js.parser.ir.ContinueNode;
 import com.oracle.js.parser.ir.DebuggerNode;
 import com.oracle.js.parser.ir.EmptyNode;
 import com.oracle.js.parser.ir.ErrorNode;
-import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.ExportNode;
 import com.oracle.js.parser.ir.ExportSpecifierNode;
 import com.oracle.js.parser.ir.ExpressionStatement;
@@ -73,14 +72,15 @@ import com.oracle.js.parser.ir.LabelNode;
 import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
+import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.NamedImportsNode;
 import com.oracle.js.parser.ir.Node;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
-import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.SwitchNode;
+import com.oracle.js.parser.ir.TemplateLiteralNode;
 import com.oracle.js.parser.ir.TernaryNode;
 import com.oracle.js.parser.ir.ThrowNode;
 import com.oracle.js.parser.ir.TryNode;
@@ -695,26 +695,6 @@ public abstract class NodeVisitor<T extends LexicalContext> {
     }
 
     /**
-     * Callback for entering a RuntimeNode
-     *
-     * @param runtimeNode the node
-     * @return true if traversal should continue and node children be traversed, false otherwise
-     */
-    public boolean enterRuntimeNode(final RuntimeNode runtimeNode) {
-        return enterDefault(runtimeNode);
-    }
-
-    /**
-     * Callback for leaving a RuntimeNode
-     *
-     * @param runtimeNode the node
-     * @return processed node, which will replace the original one, or the original node
-     */
-    public Node leaveRuntimeNode(final RuntimeNode runtimeNode) {
-        return leaveDefault(runtimeNode);
-    }
-
-    /**
      * Callback for entering a SwitchNode
      *
      * @param switchNode the node
@@ -952,5 +932,25 @@ public abstract class NodeVisitor<T extends LexicalContext> {
      */
     public Node leaveParameterNode(final ParameterNode paramNode) {
         return leaveDefault(paramNode);
+    }
+
+    /**
+     * Callback for entering a TemplateLiteralNode
+     *
+     * @param templateLiteralNode the node
+     * @return true if traversal should continue and node children be traversed, false otherwise
+     */
+    public boolean enterTemplateLiteralNode(final TemplateLiteralNode templateLiteralNode) {
+        return enterDefault(templateLiteralNode);
+    }
+
+    /**
+     * Callback for leaving a TemplateLiteralNode
+     *
+     * @param templateLiteralNode the node
+     * @return processed node, which will replace the original one, or the original node
+     */
+    public Node leaveTemplateLiteralNode(final TemplateLiteralNode templateLiteralNode) {
+        return leaveDefault(templateLiteralNode);
     }
 }
