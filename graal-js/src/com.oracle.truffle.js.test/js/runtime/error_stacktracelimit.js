@@ -46,8 +46,14 @@ assertThrows(() => recurse(20), MyError);
 Object.defineProperty(Error, "stackTraceLimit", {value: 5, configurable: true, writable: true})
 assertThrows(() => recurse(20), MyError, e => assertSame(5, countOccurrences(e.stack, 'recurse')));
 
+// stackTraceLimit missing or not of type Number.
+var emptyStack = e => {assertSame(0, countOccurrences(String(e.stack), 'recurse')); assertSame(true, 'stack' in e);};
+
 Error.stackTraceLimit = 0;
-assertThrows(() => recurse(20), MyError, e => {assertSame(0, countOccurrences(String(e.stack), 'recurse')); assertSame(true, 'stack' in e);});
+assertThrows(() => recurse(20), MyError, emptyStack);
+
+Error.stackTraceLimit = -2147483649;
+assertThrows(() => recurse(20), MyError, emptyStack);
 
 // stackTraceLimit missing or not of type Number.
 var invalidLimit = e => {assertSame(0, countOccurrences(String(e.stack), 'recurse')); assertSame(true, 'stack' in e);};

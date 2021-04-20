@@ -146,7 +146,7 @@ public final class JSException extends GraalJSException {
             Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
             if (JSRuntime.isNumber(stackTraceLimit)) {
                 final long limit = JSRuntime.toInteger(stackTraceLimit);
-                return Math.max(0, limit > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) limit);
+                return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
             }
         }
         return 0;
