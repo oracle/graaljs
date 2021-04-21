@@ -1408,6 +1408,7 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
+
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }

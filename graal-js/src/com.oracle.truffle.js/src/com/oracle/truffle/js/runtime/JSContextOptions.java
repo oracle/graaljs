@@ -73,32 +73,27 @@ public final class JSContextOptions {
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
-    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(
-                    JSConfig.CurrentECMAScriptVersion,
-                    new OptionType<>(
-                                    "ecmascript-version",
-                                    new Function<String, Integer>() {
+    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.CurrentECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
-                                        @Override
-                                        public Integer apply(String t) {
-                                            try {
-                                                int version = Integer.parseInt(t);
+        @Override
+        public Integer apply(String t) {
+            try {
+                int version = Integer.parseInt(t);
 
-                                                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptNumberYearDelta;
-                                                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta;
-                                                if (minYearVersion <= version && version <= maxYearVersion) {
-                                                    version -= JSConfig.ECMAScriptNumberYearDelta;
-                                                }
-                                                if (version < 5 || version > JSConfig.MaxECMAScriptVersion) {
-                                                    throw new IllegalArgumentException(
-                                                                    "Supported values are 5 to " + JSConfig.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
-                                                }
-                                                return version;
-                                            } catch (NumberFormatException e) {
-                                                throw new IllegalArgumentException(e.getMessage(), e);
-                                            }
-                                        }
-                                    }));
+                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptNumberYearDelta;
+                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta;
+                if (minYearVersion <= version && version <= maxYearVersion) {
+                    version -= JSConfig.ECMAScriptNumberYearDelta;
+                }
+                if (version < 5 || version > JSConfig.MaxECMAScriptVersion) {
+                    throw new IllegalArgumentException("Supported values are 5 to " + JSConfig.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
+                }
+                return version;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(e.getMessage(), e);
+            }
+        }
+    }));
     @CompilationFinal private int ecmascriptVersion;
 
     public static final String ANNEX_B_NAME = JS_OPTION_PREFIX + "annex-b";
@@ -277,9 +272,8 @@ public final class JSContextOptions {
 
     public static final String COMMONJS_CORE_MODULES_REPLACEMENTS_NAME = JS_OPTION_PREFIX + "commonjs-core-modules-replacements";
     @Option(name = COMMONJS_CORE_MODULES_REPLACEMENTS_NAME, category = OptionCategory.USER, help = "Npm packages used to replace global Node.js builtins. Syntax: name1:module1,name2:module2,...") //
-    public static final OptionKey<Map<String, String>> COMMONJS_CORE_MODULES_REPLACEMENTS = new OptionKey<>(Collections.emptyMap(), new OptionType<>(
-                    "commonjs-require-globals",
-                    new Function<String, Map<String, String>>() {
+    public static final OptionKey<Map<String, String>> COMMONJS_CORE_MODULES_REPLACEMENTS = new OptionKey<>(Collections.emptyMap(),
+                    new OptionType<>("commonjs-require-globals", new Function<String, Map<String, String>>() {
                         @Override
                         public Map<String, String> apply(String value) {
                             Map<String, String> map = new HashMap<>();
@@ -495,6 +489,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> WEBASSEMBLY = new OptionKey<>(false);
     @CompilationFinal private boolean webAssembly;
 
+    public static final String NEW_SET_METHODS_NAME = JS_OPTION_PREFIX + "new-set-methods";
+    @Option(name = NEW_SET_METHODS_NAME, category = OptionCategory.EXPERT, help = "Enable new Set methods.") //
+    public static final OptionKey<Boolean> NEW_SET_METHODS = new OptionKey<>(false);
+    @CompilationFinal private boolean newSetMethods;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -599,6 +598,7 @@ public final class JSContextOptions {
         this.useUTCForLegacyDates = USE_UTC_FOR_LEGACY_DATES.hasBeenSet(optionValues) ? readBooleanOption(USE_UTC_FOR_LEGACY_DATES) : !v8CompatibilityMode;
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
+        this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -965,6 +965,10 @@ public final class JSContextOptions {
         return unhandledRejectionsMode;
     }
 
+    public boolean isNewSetMethods() {
+        return newSetMethods;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1016,6 +1020,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.useUTCForLegacyDates ? 1 : 0);
         hash = 53 * hash + (this.webAssembly ? 1 : 0);
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
+        hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         return hash;
     }
 
@@ -1170,6 +1175,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.unhandledRejectionsMode != other.unhandledRejectionsMode) {
+            return false;
+        }
+        if (this.newSetMethods != other.newSetMethods) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
