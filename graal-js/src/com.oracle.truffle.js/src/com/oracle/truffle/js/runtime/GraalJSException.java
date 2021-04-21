@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,7 +112,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     private static int truffleStackTraceLimit(int stackTraceLimit) {
-        return stackTraceLimit <= 0 ? 0 : UNLIMITED_STACK_TRACE;
+        return stackTraceLimit <= 0 ? 0 : stackTraceLimit;
     }
 
     protected static <T extends GraalJSException> T fillInStackTrace(T exception, DynamicObject skipFramesUpTo, boolean capture) {
