@@ -41,7 +41,7 @@
 
 const assert = require('assert');
 
-describe('waitAsync', function () {
+describe.skipOnNode('waitAsync', function () {
     it('should work', function() {
         this.timeout(20000);
         var child_process = require('child_process');
