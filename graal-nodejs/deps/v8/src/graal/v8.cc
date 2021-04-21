@@ -452,7 +452,25 @@ namespace v8 {
         return nullptr;
     }
 
+    SnapshotObjectId HeapProfiler::GetHeapStats(OutputStream* stream, int64_t* timestamp_us) {
+        TRACE
+        stream->WriteAsciiChunk(nullptr, 0);
+        stream->EndOfStream();
+        return 0;
+    }
+
+    SnapshotObjectId HeapProfiler::GetObjectId(Local<Value> value) {
+        TRACE
+        return kUnknownObjectId;
+    }
+
+    void HeapProfiler::StopTrackingHeapObjects() {
+        TRACE
+    }
+
     void HeapSnapshot::Serialize(OutputStream* stream, SerializationFormat format) const {
+        stream->WriteAsciiChunk("\"unsupported\"", 13);
+        stream->EndOfStream();
         TRACE
     }
 
@@ -468,6 +486,11 @@ namespace v8 {
     const HeapGraphNode* HeapSnapshot::GetRoot() const {
         TRACE
         return nullptr;
+    }
+
+    SnapshotObjectId HeapSnapshot::GetMaxSnapshotJSObjectId() const {
+        TRACE
+        return 0;
     }
 
     SnapshotObjectId HeapGraphNode::GetId() const {
@@ -488,6 +511,11 @@ namespace v8 {
     int HeapGraphNode::GetChildrenCount() const {
         TRACE
         return 0;
+    }
+
+    Local<String> HeapGraphNode::GetName() const {
+        TRACE
+        return String::NewFromUtf8Literal(Isolate::GetCurrent(), "unknown");
     }
 
     void Isolate::GetHeapStatistics(HeapStatistics* heap_statistics) {
@@ -3261,6 +3289,11 @@ namespace v8 {
         TRACE
     }
 
+    int CpuProfile::GetSamplesCount() const {
+        TRACE
+        return 0;
+    }
+
     const CpuProfileNode* CpuProfile::GetTopDownRoot() const {
         TRACE
         return nullptr;
@@ -3299,6 +3332,26 @@ namespace v8 {
     Local<String> CpuProfileNode::GetFunctionName() const {
         TRACE
         return String::NewFromUtf8Literal(Isolate::GetCurrent(), "unknown");
+    }
+
+    const char* CpuProfileNode::GetBailoutReason() const {
+        TRACE
+        return "unknown";
+    }
+
+    unsigned CpuProfileNode::GetNodeId() const {
+        TRACE
+        return 0;
+    }
+
+    unsigned int CpuProfileNode::GetHitLineCount() const {
+        TRACE
+        return 0;
+    }
+
+    bool CpuProfileNode::GetLineTicks(LineTick* entries, unsigned int length) const {
+        TRACE
+        return false;
     }
 
     SnapshotCreator::SnapshotCreator(Isolate* isolate, const intptr_t* external_references, StartupData* existing_blob) {
