@@ -58,15 +58,20 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
+import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -191,14 +196,20 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
     public abstract static class ConstructOperatorSetNode extends JavaScriptBaseNode {
 
+        @Child private IsObjectNode tableIsObjectNode;
         @Child private JSHasPropertyNode tableHasKeyNode;
         @Child private ReadElementNode tableGetNode;
-        @Child private HasPropertyCacheNode hasOperatorDefinitionsNode;
-        @Child private GetPrototypeNode getSuperclassNode;
+        @Child private IsCallableNode isCallableNode;
         @Child private PropertyGetNode getOperatorDefinitionsNode;
         @Child private JSGetLengthNode getOpenSetLengthNode;
         @Child private ReadElementNode readOpenSetElementNode;
+        @Child private JSToStringNode openOperatorToStringNode;
+        @Child private IsJSObjectNode typeIsJSObjectNode;
+        @Child private IsConstructorNode typeIsConstructorNode;
+        @Child private GetPrototypeNode getSuperclassNode;
+        @Child private HasPropertyCacheNode hasOperatorDefinitionsNode;
         @Child private PropertyGetNode getClassNameNode;
+        @Child private JSToStringNode classNameToStringNode;
 
         protected final JSContext context;
 
@@ -213,15 +224,19 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         public abstract OperatorSet execute(Object table, Object[] extraTables);
 
         @Specialization
-        protected OperatorSet construct(DynamicObject table, Object[] extraTables, @CachedContext(JavaScriptLanguage.class) JSRealm realm) {
+        protected OperatorSet construct(Object table, Object[] extraTables, @CachedContext(JavaScriptLanguage.class) JSRealm realm) {
 
-            int operatorCounter = getContext().incOperatorCounter();
+            int operatorCounter = getContext().getOperatorCounter();
+
+            if (!tableIsObject(table)) {
+                throw Errors.createTypeErrorNotAnObject(table, this);
+            }
 
             EconomicMap<String, Object> selfOperatorDefinitions = Boundaries.economicMapCreate();
             for (String operator : OperatorSet.ALL_OPERATORS) {
                 if (tableHasKey(table, operator)) {
                     Object value = tableGet(table, operator);
-                    if (!JSRuntime.isCallable(value)) {
+                    if (!isCallable(value)) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator [[Class]] %s [[Class]] is not a function", operator), this);
                     }
                     Boundaries.economicMapPut(selfOperatorDefinitions, operator, value);
@@ -235,8 +250,8 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 long openSetLength = getOpenSetLength(openSet);
                 for (int i = 0; i < openSetLength; i++) {
                     Object element = readOpenSetElement(openSet, i);
-                    if (!(JSRuntime.isString(element)) || !OperatorSet.ALL_OPERATORS.contains(JSRuntime.toStringIsString(element))) {
-                        throw Errors.createTypeError("unrecognized operator " + JSRuntime.toString(element), this);
+                    if (!(JSRuntime.isString(element)) || !Boundaries.economicSetContains(OperatorSet.ALL_OPERATORS, JSRuntime.toStringIsString(element))) {
+                        throw Errors.createTypeError(Boundaries.stringConcat("unrecognized operator ", openOperatorToString(element)), this);
                     }
                     Boundaries.economicSetAdd(openOperators, JSRuntime.toStringIsString(element));
                 }
@@ -247,7 +262,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             EconomicMap<String, Object[]> leftOperatorDefinitions = Boundaries.economicMapCreate();
             EconomicMap<String, Object[]> rightOperatorDefinitions = Boundaries.economicMapCreate();
             for (Object extraTable : extraTables) {
-                if (!JSRuntime.isObject(extraTable)) {
+                if (!tableIsObject(extraTable)) {
                     throw Errors.createTypeErrorNotAnObject(extraTable, this);
                 }
                 if (tableHasKey(extraTable, LEFT_ID)) {
@@ -255,7 +270,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                         throw Errors.createTypeError("overload table must not be both left and right", this);
                     }
                     Object leftType = tableGet(extraTable, LEFT_ID);
-                    if (!(JSRuntime.isObject(leftType) && JSRuntime.isConstructor(leftType))) {
+                    if (!isJSConstructor(leftType)) {
                         throw Errors.createTypeError("the left: value must be an ECMAScript constructor", this);
                     }
                     OperatorSet leftSet = getOperatorSetOfClass(realm, (DynamicObject) leftType);
@@ -265,7 +280,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     for (String operator : OperatorSet.BINARY_OPERATORS) {
                         if (tableHasKey(extraTable, operator)) {
                             Object operatorImplementation = tableGet(extraTable, operator);
-                            if (!JSRuntime.isCallable(operatorImplementation)) {
+                            if (!isCallable(operatorImplementation)) {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator %s %s [[Class]] is not a function", getClassName(leftType), operator), this);
                             }
                             if (!leftSet.isOperatorOpen(operator)) {
@@ -282,7 +297,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                         throw Errors.createTypeError("Either left: or right: must be provided", this);
                     }
                     Object rightType = tableGet(extraTable, RIGHT_ID);
-                    if (!(JSRuntime.isObject(rightType) && JSRuntime.isConstructor(rightType))) {
+                    if (!isJSConstructor(rightType)) {
                         throw Errors.createTypeError("the right: value must be an ECMAScript constructor", this);
                     }
                     OperatorSet rightSet = getOperatorSetOfClass(realm, (DynamicObject) rightType);
@@ -292,21 +307,23 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     for (String operator : OperatorSet.BINARY_OPERATORS) {
                         if (tableHasKey(extraTable, operator)) {
                             Object operatorImplementation = tableGet(extraTable, operator);
-                            if (!JSRuntime.isCallable(operatorImplementation)) {
+                            if (!isCallable(operatorImplementation)) {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator [[Class]] %s %s is not a function", operator, getClassName(rightType)), this);
                             }
                             if (!rightSet.isOperatorOpen(operator)) {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(rightType), this));
                             }
-                            if (!leftOperatorDefinitions.containsKey(operator)) {
-                                leftOperatorDefinitions.put(operator, new DynamicObject[operatorCounter]);
+                            if (!Boundaries.economicMapContainsKey(leftOperatorDefinitions, operator)) {
+                                Boundaries.economicMapPut(leftOperatorDefinitions, operator, new DynamicObject[operatorCounter]);
                             }
-                            leftOperatorDefinitions.get(operator)[rightSet.getOperatorCounter()] = operatorImplementation;
+                            Boundaries.economicMapGet(leftOperatorDefinitions, operator)[rightSet.getOperatorCounter()] = operatorImplementation;
                         }
                     }
                 }
             }
 
+            // Only bump the operator counter if we actually return an OperatorSet.
+            getContext().incOperatorCounter();
             return new OperatorSet(operatorCounter, selfOperatorDefinitions, leftOperatorDefinitions, rightOperatorDefinitions, openOperators);
         }
 
@@ -326,6 +343,14 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return context;
         }
 
+        protected boolean tableIsObject(Object table) {
+            if (tableIsObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                tableIsObjectNode = insert(IsObjectNode.create());
+            }
+            return tableIsObjectNode.executeBoolean(table);
+        }
+
         protected boolean tableHasKey(Object table, String key) {
             if (tableHasKeyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -342,6 +367,14 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             return tableGetNode.executeWithTargetAndIndex(table, key);
         }
 
+        protected boolean isCallable(Object operatorImplementation) {
+            if (isCallableNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isCallableNode = insert(IsCallableNode.create());
+            }
+            return isCallableNode.executeBoolean(operatorImplementation);
+        }
+
         protected long getOpenSetLength(Object openSet) {
             if (getOpenSetLengthNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -356,6 +389,26 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 readOpenSetElementNode = insert(ReadElementNode.create(getContext()));
             }
             return readOpenSetElementNode.executeWithTargetAndIndex(openSet, index);
+        }
+
+        protected String openOperatorToString(Object openOperator) {
+            if (openOperatorToStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                openOperatorToStringNode = insert(JSToStringNode.create());
+            }
+            return openOperatorToStringNode.executeString(openOperator);
+        }
+
+        protected boolean isJSConstructor(Object type) {
+            if (typeIsJSObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                typeIsJSObjectNode = IsJSObjectNode.create();
+            }
+            if (typeIsConstructorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                typeIsConstructorNode = IsConstructorNode.create();
+            }
+            return typeIsJSObjectNode.executeBoolean(type) && typeIsConstructorNode.executeBoolean(type);
         }
 
         protected boolean hasOperatorDefinitions(DynamicObject constructor) {
@@ -399,7 +452,11 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getClassNameNode = insert(PropertyGetNode.create(JSFunction.NAME, getContext()));
             }
-            return getClassNameNode.getValue(constructor).toString();
+            if (classNameToStringNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                classNameToStringNode = insert(JSToStringNode.create());
+            }
+            return classNameToStringNode.executeString(getClassNameNode.getValue(constructor));
         }
     }
 }

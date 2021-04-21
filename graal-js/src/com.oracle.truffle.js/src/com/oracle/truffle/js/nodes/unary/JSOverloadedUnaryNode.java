@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
@@ -92,7 +93,7 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
     private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object operand) {
         if (operatorImplementation == null) {
-            throw Errors.createTypeError("No overload found for " + getOverloadedOperatorName(), this);
+            throw Errors.createTypeError(Boundaries.stringConcat("No overload found for ", getOverloadedOperatorName()), this);
         }
         // What should be the value of 'this' when invoking overloaded operators?
         // Currently, we set it to 'undefined'.

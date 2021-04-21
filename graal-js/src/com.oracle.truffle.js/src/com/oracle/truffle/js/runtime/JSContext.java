@@ -723,6 +723,10 @@ public class JSContext {
         }
     }
 
+    public int getOperatorCounter() {
+        return operatorCounter;
+    }
+
     public int incOperatorCounter() {
         return operatorCounter++;
     }
