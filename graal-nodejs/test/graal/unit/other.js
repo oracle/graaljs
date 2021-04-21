@@ -91,4 +91,7 @@ describe('Other', function () {
         // should not fail (fails when Node.js is built without intl support)
         new util.TextDecoder('utf-8', { fatal: true });
     });
+    it('should not define FinalizationGroup', function () {
+        assert.strictEqual(global.FinalizationGroup, undefined);
+    });
 });
