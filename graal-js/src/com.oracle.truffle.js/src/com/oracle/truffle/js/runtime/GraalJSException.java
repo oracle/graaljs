@@ -112,7 +112,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     protected static int truffleStackTraceLimit(int stackTraceLimit, boolean customSkip) {
-        return customSkip ? UNLIMITED_STACK_TRACE : stackTraceLimit;
+        if (customSkip && stackTraceLimit > 0) {
+            return UNLIMITED_STACK_TRACE;
+        } else {
+            return stackTraceLimit;
+        }
     }
 
     protected static <T extends GraalJSException> T fillInStackTrace(T exception, DynamicObject skipFramesUpTo, boolean capture) {
