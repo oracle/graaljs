@@ -125,6 +125,7 @@ public abstract class TemplateLiteralNode extends Expression {
 
         protected UntaggedTemplateLiteralNode(long token, int finish, List<Expression> expressions) {
             super(token, finish);
+            assert verifyStringLiterals(expressions);
             this.expressions = expressions;
         }
 
@@ -151,7 +152,7 @@ public abstract class TemplateLiteralNode extends Expression {
             sb.append('`');
             for (int i = 0; i < expressions.size(); i++) {
                 Expression expression = expressions.get(i);
-                if (i % 2 == 0 && expression instanceof LiteralNode<?>) {
+                if (i % 2 == 0) {
                     sb.append(((LiteralNode<?>) expression).getString());
                 } else {
                     sb.append("${");
@@ -160,6 +161,18 @@ public abstract class TemplateLiteralNode extends Expression {
                 }
             }
             sb.append('`');
+        }
+
+        private static boolean verifyStringLiterals(List<Expression> expressions) {
+            for (int i = 0; i < expressions.size(); i++) {
+                if (i % 2 == 0) {
+                    Expression expression = expressions.get(i);
+                    if (!(expression instanceof LiteralNode<?>)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
         }
     }
 
