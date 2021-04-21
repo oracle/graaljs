@@ -48,7 +48,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNodeGen.DispatchBinaryOperatorNodeGen;
-import com.oracle.truffle.js.nodes.cast.JSToNumericOperandNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToOperandNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -187,8 +187,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isNumeric()"})
     protected Object doToNumericOperand(Object left,
                     Object right,
-                    @Cached("create()") JSToNumericOperandNode toNumericOperandLeftNode,
-                    @Cached("create()") JSToNumericOperandNode toNumericOperandRightNode,
+                    @Cached("create(true)") JSToNumericNode toNumericOperandLeftNode,
+                    @Cached("create(true)") JSToNumericNode toNumericOperandRightNode,
                     @Cached("create(getOverloadedOperatorName())") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
         Object leftOperand;
         Object rightOperand;
