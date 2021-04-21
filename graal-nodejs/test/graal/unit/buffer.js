@@ -93,7 +93,7 @@ describe('Buffer.utf8Write', function() {
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Write.length, 0);
     });
-    if (typeof java !== undefined) {
+    if (typeof java !== "undefined") {
         it('should accept interop buffer', function() {
             var byteLength = 8;
             var offset = 4;
@@ -159,7 +159,7 @@ describe('Buffer.utf8Slice', function() {
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Slice.length, 0);
     });
-    if (typeof java !== undefined) {
+    if (typeof java !== "undefined") {
         it('should accept interop buffer', function() {
             var javaBuffer = java.nio.ByteBuffer.allocate(8);
             javaBuffer.put(3, 'f'.codePointAt(0));
