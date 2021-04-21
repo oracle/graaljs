@@ -1971,6 +1971,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return tagExpression(createYieldNode(unaryNode), unaryNode);
             case AWAIT:
                 return tagExpression(translateAwaitNode(unaryNode), unaryNode);
+            case NAMEDEVALUATION:
+                return enterNamedEvaluation(unaryNode);
             default:
                 throw new UnsupportedOperationException(unaryNode.tokenType().toString());
         }
@@ -2096,6 +2098,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             default:
                 throw new UnsupportedOperationException(tokenType.toString());
         }
+    }
+
+    private JavaScriptNode enterNamedEvaluation(UnaryNode unaryNode) {
+        return factory.createNamedEvaluation(transform(unaryNode.getExpression()), factory.createAccessArgument(0));
     }
 
     private JavaScriptNode enterDelete(UnaryNode unaryNode) {
