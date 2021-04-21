@@ -54,6 +54,10 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
+/**
+ * This node implements unary operators applied to an operand with overloaded operators. The logic
+ * of this node mirrors that of the {@code JSOverloadedBinaryNode}, with some simplifications.
+ */
 @ImportStatic(OperatorSet.class)
 public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 

@@ -49,6 +49,12 @@ import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
+/**
+ * Converts a value to a numeric 'operand', which is a preliminary step when invoking an overloaded
+ * operator. If the value is an object with overloaded operators, this ought to check that
+ * overloaded operators for that object have been enabled. Otherwise, if the value doesn't feature
+ * overloaded operators, it is coerced to a number using ToNumeric.
+ */
 public abstract class JSToNumericOperandNode extends JavaScriptBaseNode {
 
     @Child HasOverloadedOperatorsNode hasOverloadedOperatorsNode;

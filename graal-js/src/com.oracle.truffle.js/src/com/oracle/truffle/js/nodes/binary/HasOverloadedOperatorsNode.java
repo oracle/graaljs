@@ -52,6 +52,13 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
+/**
+ * This node implements a check for whether an object features overloaded operators. The reason this
+ * has its own node instead of being a simple predicate is that in non-megamorphic cases, we can
+ * implement this by checking the shape of the object against a series of cached shapes, without
+ * having to examine the shape any further during run-time. This is important because this check
+ * will likely end up on performance-critical paths.
+ */
 @ImportStatic(OperatorSet.class)
 public abstract class HasOverloadedOperatorsNode extends JavaScriptBaseNode {
 

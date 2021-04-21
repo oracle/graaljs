@@ -52,6 +52,15 @@ import org.graalvm.collections.EconomicSet;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Instances of this class represent instances of the OperatorSet spec object. These hold the
+ * definitions of any overloaded operators for a given type. Each such OperatorSet has a unique
+ * numerical ID ({@link #getOperatorCounter()}), which are used for dispatching overloaded operators
+ * between different classes (e.g. Matrix * Vector). An instance of this class is held in an
+ * internal slot by the constructor of the class that overloads operators. This instance is then
+ * also reachable from an internal slot of every instance of that class (we use a constant property
+ * that is bound to the objects' Shape).
+ */
 public class OperatorSet {
 
     public static final HiddenKey OPERATOR_SET_ID = new HiddenKey("OperatorSet");

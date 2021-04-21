@@ -68,7 +68,10 @@ import java.util.Set;
  */
 public abstract class JSToInt32Node extends JSUnaryNode {
 
-    // Whether this node is used to implement x | 0.
+    /**
+     * Whether this node is used to implement {@code x | 0}. This optimization is valid insofar as
+     * {@code x} does not overload operators.
+     */
     protected final boolean bitwiseOr;
 
     protected JSToInt32Node(JavaScriptNode operand, boolean bitwiseOr) {

@@ -69,7 +69,17 @@ import java.util.Set;
 
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
+    /**
+     * Whether this node is used to implement {@code x >>> n}, where {@code n % 32 == 0}. Such an
+     * optimization is only valid as long as {@code x} does not overload operators (in which case we
+     * would expect either a TypeError or some custom overloaded behavior).
+     */
     private final boolean unsignedRightShift;
+    /**
+     * If {@link #unsignedRightShift} is {@code true}, this value stores the amount {@code n} by
+     * which the argument is to be shifted to the right. If we encounter an object with overloaded
+     * unsingned right shift, this is the value that we will pass to the overload.
+     */
     private final int shiftValue;
 
     protected JSToUInt32Node(boolean unsignedRightShift, int shiftValue) {

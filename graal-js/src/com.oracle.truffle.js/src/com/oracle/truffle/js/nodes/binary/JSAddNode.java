@@ -198,6 +198,30 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
     }
 
+    /*
+     * Operators that can be overloaded use the following pattern. We introduce a specialization for
+     * the overloaded case (used when at least one of the operands features overloaded operators).
+     * This specialization is placed towards the end of the list of specializations, just before the
+     * generic cases. This avoids allocating instances of the HasOverloadedOperatorsNode unless we
+     * hit the most generic case, which is usually the only case that admits ordinary JS objects as
+     * arguments. Furthermore, we limit the number of these specializations to 1, since the Cached
+     * nodes are independent of the arguments and we want to avoid Truffle generating a string of
+     * identical specializations when the guards return false. This new specialization contains
+     * within itself the added complexity of supporting overloaded operators. The only change to the
+     * rest of the node is adding guards to the generic cases which restrict them to cases that
+     * don't feature overloaded operators.
+     */
+    // This leads to the following breakdown:
+    // *) Operation nodes which always hit primitive values don't get any overhead.
+    // *) Operation nodes that run into overloaded operators get one set of
+    // HasOverloadedOperatorsNodes, which are executed once.
+    // *) Operation nodes that run into ordinary JS objects without overloaded operators get two
+    // sets of HasOverloadedOperatorsNodes, one on the overloaded specialization and one on the
+    // generic specialization, with both of them being executed (with the compiler possibly
+    // optmizing the second set of redundant shape checks away). Sharing the nodes between the
+    // two specializations would introduce two new pointer fields to every operation node. This
+    // generic case is expected to be much rarer than the common case when an operation is used
+    // only on primitives or objects with overloaded operators.
     @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
     protected Object doOverloaded(Object a, Object b,
                     @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,

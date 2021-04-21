@@ -99,6 +99,11 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                         (context, builtin) -> OperatorsBuiltinsFactory.OperatorsNodeGen.create(context, builtin, args().fixedArgs(1).varArgs().createArgumentNodes(context)));
     }
 
+    /**
+     * This is a stub function that always returns {@code true}. If we ever implement the
+     * {@code with operators from} part of the operator overloading proposal, this is where we would
+     * perform the check.
+     */
     @SuppressWarnings("unused")
     public static boolean overloadedOperatorsAllowed(DynamicObject arg) {
         return true;
@@ -110,6 +115,12 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         }
     }
 
+    /**
+     * This class implements the Operators builtin. This is a function that takes as input a series
+     * of objects that map operator names to their overloaded implementations. The result is a class
+     * object that should be subclassed by a class that wishes to have the supplied operator
+     * semantics.
+     */
     public abstract static class OperatorsNode extends JSBuiltinNode {
         @Child private CreateObjectNode createPrototypeNode;
         @Child private ConstructOperatorSetNode constructOperatorSetNode;

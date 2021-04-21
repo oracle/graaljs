@@ -61,11 +61,37 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 import static com.oracle.truffle.js.nodes.JSGuards.isString;
 
+/**
+ * This node implements the semantics of a binary operator in the case when one of the two operands
+ * features overloaded operators. Its job is to call ToOperand on its arguments (converting objects
+ * which don't overload operators to primitives). The bulk of the work is then delegated to the
+ * {@link DispatchBinaryOperatorNode}.
+ * <p>
+ * Check {@link JSAddNode} for an example of using this node.
+ * </p>
+ */
 public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
 
+    /**
+     * The name of the overloaded operator, used to lookup its definition in the user-provided table
+     * of overloaded operators.
+     */
     private final String overloadedOperatorName;
+    /**
+     * Whether operands should be converted using ToNumericOperand (i.e. ToNumeric) or ToOperand
+     * (i.e. ToPrimitive).
+     */
     private final boolean numeric;
+    /**
+     * Which hint should be passed to ToOperand (and consequently to ToPrimitive). Only applies when
+     * {@link #numeric} is {@code false}.
+     */
     private final Hint hint;
+    /**
+     * Whether the two operands should be evaluated (converted using ToOperand) from left-to-right
+     * or right-to-left. This is needed for comparison operators, which can swap the order of the
+     * operands.
+     */
     private final boolean leftToRight;
 
     protected JSOverloadedBinaryNode(String overloadedOperatorName, boolean numeric, Hint hint, boolean leftToRight) {
@@ -147,6 +173,8 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             leftOperand = toOperandLeftNode.execute(left);
         }
 
+        // Addition with Strings cannot be overloaded. If either operand of + is a String, the
+        // result is always the concatenation of their String values.
         if (leftStringProfile.profile(isString(leftOperand))) {
             return addNode.execute(leftOperand, toStringRightNode.executeString(rightOperand));
         } else if (rightStringProfile.profile(isString(rightOperand))) {
@@ -154,7 +182,6 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         } else {
             return dispatchBinaryOperatorNode.execute(leftOperand, rightOperand);
         }
-
     }
 
     @Specialization(guards = {"isNumeric()"})
@@ -197,6 +224,12 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
         return overloadedOperatorName.equals("==");
     }
 
+    /**
+     * This class implements the {@code DispatchBinaryOperator} spec function. Its responsibility is
+     * to call the correct operator overload. This node aims to perform the overload lookup at
+     * compile-time and then use direct, inlinable function calls, guarded by shape checks and type
+     * checks.
+     */
     @ImportStatic(OperatorSet.class)
     public abstract static class DispatchBinaryOperatorNode extends JavaScriptBaseNode {
 
