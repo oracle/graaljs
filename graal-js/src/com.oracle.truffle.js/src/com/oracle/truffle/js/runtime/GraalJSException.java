@@ -90,29 +90,29 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
     private static final String DYNAMIC_FUNCTION_NAME = "anonymous";
 
-    protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit) {
-        super(message, cause, truffleStackTraceLimit(stackTraceLimit), node);
+    protected GraalJSException(String message, Throwable cause, Node node, int stackTraceLimit, int truffleStackTraceLimit) {
+        super(message, cause, truffleStackTraceLimit, node);
         this.location = node;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    protected GraalJSException(String message, Node node, int stackTraceLimit) {
-        super(message, null, truffleStackTraceLimit(stackTraceLimit), node);
+    protected GraalJSException(String message, Node node, int stackTraceLimit, int truffleStackTraceLimit) {
+        super(message, null, truffleStackTraceLimit, node);
         this.location = node;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    protected GraalJSException(String message, SourceSection location, int stackTraceLimit) {
-        super(message, null, truffleStackTraceLimit(stackTraceLimit), null);
+    protected GraalJSException(String message, SourceSection location, int stackTraceLimit, int truffleStackTraceLimit) {
+        super(message, null, truffleStackTraceLimit, null);
         this.location = location;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    private static int truffleStackTraceLimit(int stackTraceLimit) {
-        return stackTraceLimit <= 0 ? 0 : stackTraceLimit;
+    protected static int truffleStackTraceLimit(int stackTraceLimit, boolean customSkip) {
+        return customSkip ? UNLIMITED_STACK_TRACE : stackTraceLimit;
     }
 
     protected static <T extends GraalJSException> T fillInStackTrace(T exception, DynamicObject skipFramesUpTo, boolean capture) {
@@ -254,7 +254,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
         int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
-        return UserScriptException.createCapture("", originatingNode, stackTraceLimit, Undefined.instance).getJSStackTrace();
+        return UserScriptException.createCapture("", originatingNode, stackTraceLimit, Undefined.instance, false).getJSStackTrace();
     }
 
     private static final class FrameVisitorImpl {

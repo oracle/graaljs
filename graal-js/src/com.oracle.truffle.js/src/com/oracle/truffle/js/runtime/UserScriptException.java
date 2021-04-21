@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,24 +63,24 @@ public final class UserScriptException extends GraalJSException {
     private static final long serialVersionUID = -6624166672101791072L;
     final Object exceptionObject;
 
-    private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
-        super(getMessage(exceptionObject), originatingNode, stackTraceLimit);
+    private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit, int truffleStackTraceLimit) {
+        super(getMessage(exceptionObject), originatingNode, stackTraceLimit, truffleStackTraceLimit);
         this.exceptionObject = exceptionObject;
     }
 
-    private UserScriptException(Throwable exception, Node originatingNode, int stackTraceLimit) {
-        super(exception.toString(), exception, originatingNode, stackTraceLimit);
+    private UserScriptException(Throwable exception, Node originatingNode, int stackTraceLimit, int truffleStackTraceLimit) {
+        super(exception.toString(), exception, originatingNode, stackTraceLimit, truffleStackTraceLimit);
         this.exceptionObject = exception;
     }
 
     @TruffleBoundary
-    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), skipFramesUpTo, true);
+    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean customSkip) {
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit, truffleStackTraceLimit(stackTraceLimit, customSkip)), skipFramesUpTo, true);
     }
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), Undefined.instance, false);
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit, stackTraceLimit), Undefined.instance, false);
     }
 
     @TruffleBoundary
