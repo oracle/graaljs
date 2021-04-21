@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,6 +162,15 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
     @Override
     public boolean isFunction() {
         return true;
+    }
+
+    @Override
+    protected boolean countsTowardsStackTraceLimit() {
+        if (body instanceof JSBuiltinNode) {
+            return ((JSBuiltinNode) body).countsTowardsStackTraceLimit();
+        } else {
+            return !isInternal();
+        }
     }
 
     @Override

@@ -413,6 +413,11 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(function);
         }
+
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     public abstract static class JSCallNode extends JSBuiltinNode {
@@ -429,6 +434,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return callNode.executeCall(JSArguments.create(target, function, args));
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     public abstract static class HasInstanceNode extends JSBuiltinNode {

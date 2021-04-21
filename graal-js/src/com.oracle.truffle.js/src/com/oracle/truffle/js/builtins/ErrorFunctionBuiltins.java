@@ -101,5 +101,9 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
             return Undefined.instance;
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 }

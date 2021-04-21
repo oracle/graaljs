@@ -1939,6 +1939,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getErrorPrototype(errorType);
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     @ImportStatic(JSRuntime.class)
@@ -1988,6 +1992,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getErrorPrototype(JSErrorType.AggregateError);
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     @ImportStatic({JSArrayBuffer.class, JSConfig.class})
