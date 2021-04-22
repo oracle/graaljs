@@ -40,6 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+
+import java.util.Set;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -65,48 +79,38 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-import java.util.Set;
-
 public class JSTemporalDuration extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-        PrototypeSupplier {
+                PrototypeSupplier {
 
     public static final JSTemporalDuration INSTANCE = new JSTemporalDuration();
 
     public static final String CLASS_NAME = "TemporalDuration";
     public static final String PROTOTYPE_NAME = "TemporalDuration.prototype";
 
-    public static final String YEARS = "years";
-    public static final String MONTHS = "months";
-    public static final String WEEKS = "weeks";
-    public static final String DAYS = "days";
-    public static final String HOURS = "hours";
-    public static final String MINUTES = "minutes";
-    public static final String SECONDS = "seconds";
-    public static final String MILLISECONDS = "milliseconds";
-    public static final String MICROSECONDS = "microseconds";
-    public static final String NANOSECONDS = "nanoseconds";
     public static final String SIGN = "sign";
     public static final String BLANK = "blank";
 
     public static final String[] PROPERTIES = new String[]{
-            DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS
+                    DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS,
+                    TemporalConstants.NANOSECONDS, TemporalConstants.SECONDS, TemporalConstants.WEEKS, TemporalConstants.YEARS
     };
 
     private JSTemporalDuration() {
     }
 
     public static DynamicObject create(JSContext context, long years, long months, long weeks, long days, long hours,
-                                       long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         if (!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
-                nanoseconds)) {
+                        nanoseconds)) {
             throw Errors.createRangeError("Given duration outside range.");
         }
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalDurationFactory();
         DynamicObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
-                years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);
+                        years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);
         return context.trackAllocation(obj);
     }
 
@@ -169,57 +173,57 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     private static DynamicObject createGetSignFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(
-                BuiltinFunctionKey.TemporalDurationSign, (c) -> {
-                    CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                        private final BranchProfile errorBranch = BranchProfile.create();
+                        BuiltinFunctionKey.TemporalDurationSign, (c) -> {
+                            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                                private final BranchProfile errorBranch = BranchProfile.create();
 
-                        @Override
-                        public Object execute(VirtualFrame frame) {
-                            Object obj = frame.getArguments()[0];
-                            if (JSTemporalDuration.isJSTemporalDuration(obj)) {
-                                JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
-                                return durationSign(temporalDuration.getYears(), temporalDuration.getMonths(),
-                                        temporalDuration.getWeeks(), temporalDuration.getDays(),
-                                        temporalDuration.getHours(), temporalDuration.getMinutes(),
-                                        temporalDuration.getSeconds(), temporalDuration.getMilliseconds(),
-                                        temporalDuration.getMicroseconds(), temporalDuration.getNanoseconds());
-                            } else {
-                                errorBranch.enter();
-                                throw Errors.createTypeErrorTemporalDurationExpected();
-                            }
-                        }
-                    });
-                    return JSFunctionData.createCallOnly(c, callTarget, 0, "get sign");
-                });
+                                @Override
+                                public Object execute(VirtualFrame frame) {
+                                    Object obj = frame.getArguments()[0];
+                                    if (JSTemporalDuration.isJSTemporalDuration(obj)) {
+                                        JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
+                                        return durationSign(temporalDuration.getYears(), temporalDuration.getMonths(),
+                                                        temporalDuration.getWeeks(), temporalDuration.getDays(),
+                                                        temporalDuration.getHours(), temporalDuration.getMinutes(),
+                                                        temporalDuration.getSeconds(), temporalDuration.getMilliseconds(),
+                                                        temporalDuration.getMicroseconds(), temporalDuration.getNanoseconds());
+                                    } else {
+                                        errorBranch.enter();
+                                        throw Errors.createTypeErrorTemporalDurationExpected();
+                                    }
+                                }
+                            });
+                            return JSFunctionData.createCallOnly(c, callTarget, 0, "get sign");
+                        });
         DynamicObject getter = JSFunction.create(realm, getterData);
         return getter;
     }
 
     private static DynamicObject createGetBlankFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(
-                BuiltinFunctionKey.TemporalDurationBlank, (c) -> {
-                    CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                        private final BranchProfile errorBranch = BranchProfile.create();
+                        BuiltinFunctionKey.TemporalDurationBlank, (c) -> {
+                            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                                private final BranchProfile errorBranch = BranchProfile.create();
 
-                        @Override
-                        public Object execute(VirtualFrame frame) {
-                            Object obj = frame.getArguments()[0];
-                            if (JSTemporalDuration.isJSTemporalDuration(obj)) {
-                                JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
-                                int sign = durationSign(temporalDuration.getYears(), temporalDuration.getMonths(),
-                                        temporalDuration.getWeeks(), temporalDuration.getDays(),
-                                        temporalDuration.getHours(), temporalDuration.getMinutes(),
-                                        temporalDuration.getSeconds(), temporalDuration.getMilliseconds(),
-                                        temporalDuration.getMicroseconds(), temporalDuration.getNanoseconds());
-                                return sign == 0;
-                            } else {
-                                errorBranch.enter();
-                                throw Errors.createTypeErrorTemporalDurationExpected();
-                            }
-                        }
-                    });
-                    return JSFunctionData.createCallOnly(c, callTarget, 0, "get blank");
-                });
+                                @Override
+                                public Object execute(VirtualFrame frame) {
+                                    Object obj = frame.getArguments()[0];
+                                    if (JSTemporalDuration.isJSTemporalDuration(obj)) {
+                                        JSTemporalDurationObject temporalDuration = (JSTemporalDurationObject) obj;
+                                        int sign = durationSign(temporalDuration.getYears(), temporalDuration.getMonths(),
+                                                        temporalDuration.getWeeks(), temporalDuration.getDays(),
+                                                        temporalDuration.getHours(), temporalDuration.getMinutes(),
+                                                        temporalDuration.getSeconds(), temporalDuration.getMilliseconds(),
+                                                        temporalDuration.getMicroseconds(), temporalDuration.getNanoseconds());
+                                        return sign == 0;
+                                    } else {
+                                        errorBranch.enter();
+                                        throw Errors.createTypeErrorTemporalDurationExpected();
+                                    }
+                                }
+                            });
+                            return JSFunctionData.createCallOnly(c, callTarget, 0, "get blank");
+                        });
         DynamicObject getter = JSFunction.create(realm, getterData);
         return getter;
     }
@@ -231,29 +235,29 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, YEARS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationYears, YEARS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationYears, YEARS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTHS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMonths, MONTHS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMonths, MONTHS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, WEEKS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationWeeks, WEEKS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationWeeks, WEEKS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationDays, DAYS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationDays, DAYS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, HOURS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationHours, HOURS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationHours, HOURS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MINUTES,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMinutes, MINUTES), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMinutes, MINUTES), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SECONDS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationSeconds, SECONDS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationSeconds, SECONDS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MILLISECONDS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMilliseconds, MILLISECONDS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMilliseconds, MILLISECONDS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MICROSECONDS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMicroseconds, MICROSECONDS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationMicroseconds, MICROSECONDS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECONDS,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationNanoseconds, NANOSECONDS), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDurationNanoseconds, NANOSECONDS), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, SIGN,
-                createGetSignFunction(realm), Undefined.instance);
+                        createGetSignFunction(realm), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, BLANK,
-                createGetBlankFunction(realm), Undefined.instance);
+                        createGetBlankFunction(realm), Undefined.instance);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalDurationPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.Duration");
 
@@ -279,14 +283,14 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return obj instanceof JSTemporalDurationObject;
     }
 
-    //region Abstract methods
+    // region Abstract methods
     // 7.2.1
-    public static Object toTemporalDuration(DynamicObject item, DynamicObject constructor, JSRealm realm,
-                                            IsObjectNode isObject, JSToIntegerAsLongNode toInt, DynamicObjectLibrary dol,
-                                            JSToStringNode toString, IsConstructorNode isConstructor,
-                                            JSFunctionCallNode callNode) {
+    public static Object toTemporalDuration(DynamicObject item, DynamicObject constr, JSRealm realm,
+                    IsObjectNode isObject, JSToIntegerAsLongNode toInt, DynamicObjectLibrary dol,
+                    JSToStringNode toString, IsConstructorNode isConstructor,
+                    JSFunctionCallNode callNode) {
         try {
-            constructor = constructor != null ? constructor : realm.getTemporalDurationConstructor();
+            DynamicObject constructor = constr != null ? constr : realm.getTemporalDurationConstructor();
             DynamicObject result;
             if (isObject.executeBoolean(item)) {
                 if (isJSTemporalDuration(item)) {
@@ -295,22 +299,22 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 result = toTemporalDurationRecord(item, realm, isObject, toInt, dol);
             } else {
                 String string = toString.executeString(item);
-                result = null;      // TODO: https://tc39.es/proposal-temporal/#sec-temporal-parsetemporaldurationstring
+                result = null;      // TODO:
+                                    // https://tc39.es/proposal-temporal/#sec-temporal-parsetemporaldurationstring
             }
             return createTemporalDurationFromStatic(
-                    constructor,
-                    dol.getLongOrDefault(result, YEARS, 0),
-                    dol.getLongOrDefault(result, MONTHS, 0),
-                    dol.getLongOrDefault(result, WEEKS, 0),
-                    dol.getLongOrDefault(result, DAYS, 0),
-                    dol.getLongOrDefault(result, HOURS, 0),
-                    dol.getLongOrDefault(result, MINUTES, 0),
-                    dol.getLongOrDefault(result, SECONDS, 0),
-                    dol.getLongOrDefault(result, MILLISECONDS, 0),
-                    dol.getLongOrDefault(result, MICROSECONDS, 0),
-                    dol.getLongOrDefault(result, NANOSECONDS, 0),
-                    isConstructor, callNode
-            );
+                            constructor,
+                            dol.getLongOrDefault(result, YEARS, 0),
+                            dol.getLongOrDefault(result, MONTHS, 0),
+                            dol.getLongOrDefault(result, WEEKS, 0),
+                            dol.getLongOrDefault(result, DAYS, 0),
+                            dol.getLongOrDefault(result, HOURS, 0),
+                            dol.getLongOrDefault(result, MINUTES, 0),
+                            dol.getLongOrDefault(result, SECONDS, 0),
+                            dol.getLongOrDefault(result, MILLISECONDS, 0),
+                            dol.getLongOrDefault(result, MICROSECONDS, 0),
+                            dol.getLongOrDefault(result, NANOSECONDS, 0),
+                            isConstructor, callNode);
         } catch (UnexpectedResultException e) {
             throw new RuntimeException(e);
         }
@@ -318,8 +322,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.2
     public static DynamicObject toTemporalDurationRecord(DynamicObject temporalDurationLike, JSRealm realm,
-                                                         IsObjectNode isObject, JSToIntegerAsLongNode toInt,
-                                                         DynamicObjectLibrary dol) {
+                    IsObjectNode isObject, JSToIntegerAsLongNode toInt,
+                    DynamicObjectLibrary dol) {
         assert isObject.executeBoolean(temporalDurationLike);
         if (isJSTemporalDuration(temporalDurationLike)) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) temporalDurationLike;
@@ -353,7 +357,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.3
     public static int durationSign(long years, long months, long weeks, long days, long hours, long minutes,
-                                   long seconds, long milliseconds, long microseconds, long nanoseconds) {
+                    long seconds, long milliseconds, long microseconds, long nanoseconds) {
         if (years < 0) {
             return -1;
         }
@@ -484,10 +488,10 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.5
     public static boolean validateTemporalDuration(long years, long months, long weeks, long days, long hours,
-                                                   long minutes, long seconds, long milliseconds, long microseconds,
-                                                   long nanoseconds) {
+                    long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds) {
         int sign = durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
-                nanoseconds);
+                        nanoseconds);
         if (years < 0 && sign > 0) {
             return false;
         }
@@ -553,8 +557,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.6
     public static String defaultTemporalLargestUnit(long years, long months, long weeks, long days, long hours,
-                                                    long minutes, long seconds, long milliseconds, long microseconds,
-                                                    long nanoseconds) {
+                    long minutes, long seconds, long milliseconds, long microseconds) {
         if (years != 0) {
             return YEARS;
         }
@@ -587,8 +590,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.7
     public static DynamicObject toPartialDuration(DynamicObject temporalDurationLike, JSRealm realm,
-                                                  IsObjectNode isObjectNode, DynamicObjectLibrary dol,
-                                                  JSToIntegerAsLongNode toInt) {
+                    IsObjectNode isObjectNode, DynamicObjectLibrary dol,
+                    JSToIntegerAsLongNode toInt) {
         if (!isObjectNode.executeBoolean(temporalDurationLike)) {
             throw Errors.createTypeError("Given duration like is not a object.");
         }
@@ -609,9 +612,9 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.8
     public static DynamicObject createTemporalDuration(long years, long months, long weeks, long days, long hours,
-                                                       long minutes, long seconds, long milliseconds, long microseconds,
-                                                       long nanoseconds, JSRealm realm) {
-        if(!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+                    long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds, JSRealm realm) {
+        if (!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw Errors.createRangeError("Duration not valid.");
         }
         DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(realm);
@@ -629,12 +632,11 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     // 7.5.9
-    public static JSTemporalDurationObject createTemporalDurationFromInstance(JSTemporalDurationObject duration,
-                                                                              long years, long months, long weeks, long days,
-                                                                              long hours, long minutes, long seconds,
-                                                                              long milliseconds, long microseconds,
-                                                                              long nanoseconds, JSRealm realm,
-                                                                              JSFunctionCallNode callNode) {
+    public static JSTemporalDurationObject createTemporalDurationFromInstance(long years, long months, long weeks, long days,
+                    long hours, long minutes, long seconds,
+                    long milliseconds, long microseconds,
+                    long nanoseconds, JSRealm realm,
+                    JSFunctionCallNode callNode) {
         assert validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         DynamicObject constructor = realm.getTemporalDurationConstructor();
         Object[] ctorArgs = new Object[]{years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
@@ -646,8 +648,9 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.11
     public static long calculateOffsetShift(DynamicObject relativeTo, long y, long mon, long w, long d, long h, long min,
-                                            long s, long ms, long mus, long ns, IsObjectNode isObject) {
-        if(isObject.executeBoolean(relativeTo)) { // TODO: Check if there is an internal slot for InitializedTemporalZoneDateTime
+                    long s, long ms, long mus, long ns, IsObjectNode isObject) {
+        if (isObject.executeBoolean(relativeTo)) { // TODO: Check if there is an internal slot for
+                                                   // InitializedTemporalZoneDateTime
             return 0;
         }
         DynamicObject instant = null;   // TODO: Call JSTemporalInstant.createTemporalInstant()
@@ -660,10 +663,10 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.10
     public static Object createTemporalDurationFromStatic(DynamicObject constructor, long years, long months,
-                                                                 long weeks, long days, long hours, long minutes,
-                                                                 long seconds, long milliseconds, long microseconds,
-                                                                 long nanoseconds, IsConstructorNode isConstructor,
-                                                                 JSFunctionCallNode callNode) {
+                    long weeks, long days, long hours, long minutes,
+                    long seconds, long milliseconds, long microseconds,
+                    long nanoseconds, IsConstructorNode isConstructor,
+                    JSFunctionCallNode callNode) {
         assert validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         if (!isConstructor.executeBoolean(constructor)) {
             throw Errors.createTypeError("Given constructor is not an constructor.");
@@ -677,7 +680,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.12
     public static long totalDurationNanoseconds(long days, long hours, long minutes, long seconds, long milliseconds,
-                                                long microseconds, long nanoseconds, long offsetShift) {
+                    long microseconds, long nanoseconds, long offsetShift) {
         long ns = nanoseconds;
         if (days != 0) {
             ns -= offsetShift;
@@ -687,15 +690,15 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         long s = seconds + min * 60;
         long ms = milliseconds + s * 1000;
         long mus = microseconds + ms * 1000;
-        return  ns + mus * 1000;
+        return ns + mus * 1000;
     }
 
     // 7.5.13
     public static DynamicObject balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
-                                                long microseconds, long nanoseconds, String largestUnit,
-                                                DynamicObject relativeTo, JSRealm realm) {
+                    long microseconds, long nanoseconds, String largestUnit,
+                    DynamicObject relativeTo, JSRealm realm) {
         long ns;
-        if(relativeTo != null) {    // TODO: Check if is temporal zoned date time
+        if (relativeTo != null) {    // TODO: Check if is temporal zoned date time
             ns = nanoseconds;
         } else {
             ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
@@ -710,7 +713,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         long sign = ns < 0 ? -1 : 1;
         ns = Math.abs(ns);
         if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) || largestUnit.equals(WEEKS) ||
-                largestUnit.equals(DAYS) || largestUnit.equals(HOURS)) {
+                        largestUnit.equals(DAYS) || largestUnit.equals(HOURS)) {
             mus = Math.floorDiv(ns, 1000);
             ns = ns % 1000;
             ms = Math.floorDiv(mus, 1000);
@@ -760,11 +763,16 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     // 7.5.14
-    public static DynamicObject unbalanceDurationRelative(long years, long months, long weeks, long days,
-                                                          String largestUnit, DynamicObject relativeTo,
-                                                          DynamicObjectLibrary dol, JSRealm realm) {
+    public static DynamicObject unbalanceDurationRelative(long y, long m, long w, long d,
+                    String largestUnit, DynamicObject relTo,
+                    DynamicObjectLibrary dol, JSRealm realm) {
+        long years = y;
+        long months = m;
+        long weeks = w;
+        long days = d;
+        DynamicObject relativeTo = relTo;
         try {
-            if(largestUnit.equals(YEARS) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
+            if (largestUnit.equals(YEARS) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
                 DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
                 JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
                 JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
@@ -776,11 +784,10 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             DynamicObject oneYear = JSTemporalDuration.createTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, realm);
             DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, realm);
             DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, realm);
-            DynamicObject oneDay = JSTemporalDuration.createTemporalDuration(0, 0, 0, sign, 0, 0, 0, 0, 0, 0, realm);
             DynamicObject calendar = null;
             if (relativeTo != null) {
-                assert JSObject.hasProperty(relativeTo, "calendar");
-                calendar = (DynamicObject) JSObject.get(relativeTo, "calendar");
+                assert JSObject.hasProperty(relativeTo, CALENDAR);
+                calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
             }
             if (largestUnit.equals(MONTHS)) {
                 if (calendar == null) {
@@ -798,8 +805,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                     years = years - sign;
                     months = months + oneYearMonths;
                 }
-            } else if(largestUnit.equals(WEEKS)) {
-                if(calendar == null) {
+            } else if (largestUnit.equals(WEEKS)) {
+                if (calendar == null) {
                     throw Errors.createRangeError("Calendar should be not undefined.");
                 }
                 while (Math.abs(years) > 0) {
@@ -857,7 +864,12 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     // 7.5.15
-    public static DynamicObject balanceDurationRelative(long years, long months, long weeks, long days, String largestUnit, DynamicObject relativeTo, DynamicObjectLibrary dol, JSRealm realm) {
+    public static DynamicObject balanceDurationRelative(long y, long m, long w, long d, String largestUnit, DynamicObject relTo, DynamicObjectLibrary dol, JSRealm realm) {
+        long years = y;
+        long months = m;
+        long weeks = w;
+        long days = d;
+        DynamicObject relativeTo = relTo;
         try {
             if ((!largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS)) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
                 DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
@@ -950,11 +962,11 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.16
     public static DynamicObject addDuration(long y1, long mon1, long w1, long d1, long h1, long min1, long s1, long ms1, long mus1, long ns1,
-                                            long y2, long mon2, long w2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
-                                            DynamicObject relativeTo, JSRealm realm, DynamicObjectLibrary dol) {
+                    long y2, long mon2, long w2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
+                    DynamicObject relativeTo, JSRealm realm, DynamicObjectLibrary dol) {
         try {
-            String largestUnit1 = defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1, ns1);
-            String largestUnit2 = defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2, ns2);
+            String largestUnit1 = defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1);
+            String largestUnit2 = defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2);
             String largestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits(largestUnit1, largestUnit2);
             long years = 0, months = 0, weeks = 0, days = 0, hours = 0, minutes = 0, seconds = 0, milliseconds = 0, microseconds = 0, nanoseconds = 0;
             if (relativeTo == null) {
@@ -962,7 +974,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                     throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
                 }
                 DynamicObject result = balanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2,
-                        ns1 + ns2, largestUnit, null, realm);
+                                ns1 + ns2, largestUnit, null, realm);
                 years = 0;
                 months = 0;
                 weeks = 0;
@@ -974,11 +986,11 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 microseconds = dol.getLongOrDefault(result, MICROSECONDS, 0L);
                 nanoseconds = dol.getLongOrDefault(result, NANOSECONDS, 0L);
             } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
-                // TODO: Get calendar
                 DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(realm.getContext(),
-                        dol.getLongOrDefault(relativeTo, "ISOYear", 0L),
-                        dol.getLongOrDefault(relativeTo, "ISOMonth", 0L),
-                        dol.getLongOrDefault(relativeTo, "ISODay", 0L));
+                                dol.getLongOrDefault(relativeTo, "ISOYear", 0L),
+                                dol.getLongOrDefault(relativeTo, "ISOMonth", 0L),
+                                dol.getLongOrDefault(relativeTo, "ISODay", 0L),
+                                (DynamicObject) dol.getOrDefault(relativeTo, "Calendar", Undefined.instance));
                 DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, realm);
                 DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, realm);
                 // TODO: Get dateAdd function of calendar
@@ -990,7 +1002,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 JSObjectUtil.putDataProperty(realm.getContext(), differenceOptions, "largestUnit", dateLargestUnit);
                 DynamicObject dateDifference = null; // TODO: Call dateUntil function
                 DynamicObject result = JSTemporalDuration.balanceDuration(dol.getLongOrDefault(dateDifference, DAYS, 0L),
-                        h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, null, realm);
+                                h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, null, realm);
                 years = dol.getLongOrDefault(dateDifference, YEARS, 0L);
                 months = dol.getLongOrDefault(dateDifference, MONTHS, 0L);
                 weeks = dol.getLongOrDefault(dateDifference, WEEKS, 0L);
@@ -1004,8 +1016,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             } else {
                 // TODO: Handle ZonedDateTime
             }
-            if(!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds,
-                    microseconds, nanoseconds)) {
+            if (!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds,
+                            microseconds, nanoseconds)) {
                 throw Errors.createRangeError("Duration out of range!");
             }
             DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
@@ -1029,8 +1041,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     public static long daysUntil(DynamicObject earlier, DynamicObject later, DynamicObjectLibrary dol) {
         try {
             assert dol.containsKey(earlier, "ISOYear") && dol.containsKey(later, "ISOYear") &&
-                    dol.containsKey(earlier, "ISOMonth") && dol.containsKey(later, "ISOMonth") &&
-                    dol.containsKey(earlier, "ISODay") && dol.containsKey(later, "ISODay");
+                            dol.containsKey(earlier, "ISOMonth") && dol.containsKey(later, "ISOMonth") &&
+                            dol.containsKey(earlier, "ISODay") && dol.containsKey(later, "ISODay");
             DynamicObject difference = null;    // TODO: Call differenceDate.
             return dol.getLongOrDefault(difference, DAYS, 0);
         } catch (UnexpectedResultException e) {
@@ -1040,7 +1052,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.18
     public static DynamicObject moveRelativeDate(DynamicObject calendar, DynamicObject relativeTo, DynamicObject duration,
-                                                 DynamicObjectLibrary dol, JSRealm realm) {
+                    DynamicObjectLibrary dol, JSRealm realm) {
         DynamicObject options = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         DynamicObject later = null; // TODO: Invoke dateAdd on calendar
         long days = daysUntil(relativeTo, later, dol);
@@ -1052,10 +1064,21 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     // 7.5.20
-    public static DynamicObject roundDuration(long years, long months, long weeks, long days, long hours, long minutes,
-                                              long seconds, long milliseconds, long microseconds, long nanoseconds,
-                                              long increment, String unit, String roundingMode, DynamicObject relativeTo,
-                                              DynamicObjectLibrary dol, JSRealm realm) {
+    public static DynamicObject roundDuration(long y, long m, long w, long d, long h, long min,
+                    long sec, long milsec, long micsec, long nsec,
+                    long increment, String unit, String roundingMode, DynamicObject relTo,
+                    DynamicObjectLibrary dol, JSRealm realm) {
+        long years = y;
+        long months = m;
+        long weeks = w;
+        long days = d;
+        long hours = h;
+        long minutes = min;
+        long seconds = sec;
+        long microseconds = micsec;
+        long milliseconds = milsec;
+        long nanoseconds = nsec;
+        DynamicObject relativeTo = relTo;
         try {
             if ((unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS)) && relativeTo == null) {
                 throw Errors.createRangeError(String.format("RelativeTo object should be not undefined if unit is %s.", unit));
@@ -1078,9 +1101,14 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 }
                 DynamicObject result = null; // TODO: Call nanosecondsToDays
                 days = days + dol.getLongOrDefault(result, DAYS, 0) +
-                        (dol.getLongOrDefault(result, NANOSECONDS, 0) /
-                                Math.abs(dol.getLongOrDefault(result, "dayLength", 1)));
-                hours = 0; minutes = 0; seconds = 0; milliseconds = 0; microseconds = 0; nanoseconds = 0;
+                                (dol.getLongOrDefault(result, NANOSECONDS, 0) /
+                                                Math.abs(dol.getLongOrDefault(result, "dayLength", 1)));
+                hours = 0;
+                minutes = 0;
+                seconds = 0;
+                milliseconds = 0;
+                microseconds = 0;
+                nanoseconds = 0;
             } else {
                 fractionalSeconds = (nanoseconds * 0.000_000_000_1) + (microseconds * 0.000_000_1) + (milliseconds * 0.000_1);
             }
@@ -1111,7 +1139,9 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 double fractionalYears = years + ((double) days / Math.abs(oneYearDays));
                 years = (long) TemporalUtil.roundNumberToIncrement(fractionalYears, increment, roundingMode);
                 remainder = fractionalYears - years;
-                months = 0; weeks = 0; years = 0;
+                months = 0;
+                weeks = 0;
+                years = 0;
             } else if (unit.equals(MONTHS)) {
                 DynamicObject yearsMonths = createTemporalDuration(years, months, 0, 0, 0, 0, 0, 0, 0, 0, realm);
                 DynamicObject yearsMonthsLater = null; // TODO: Call dateAdd
@@ -1135,10 +1165,11 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                     relativeTo = (DynamicObject) dol.getOrDefault(moveResult, "relativeTo", null);
                     oneMonthDays = dol.getLongOrDefault(moveResult, DAYS, 0);
                 }
-                double fractionalMonths = months + ((double)days / Math.abs(oneMonthDays));
+                double fractionalMonths = months + ((double) days / Math.abs(oneMonthDays));
                 months = (long) TemporalUtil.roundNumberToIncrement(fractionalMonths, increment, roundingMode);
                 remainder = fractionalMonths - months;
-                weeks = 0; days = 0;
+                weeks = 0;
+                days = 0;
             } else if (unit.equals(WEEKS)) {
                 long sign = TemporalUtil.sign(days);
                 if (sign == 0) {
@@ -1167,21 +1198,31 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 double fractionalHours = (((fractionalSeconds / 60) + minutes) / 60) + hours;
                 hours = (long) TemporalUtil.roundNumberToIncrement(fractionalHours, increment, roundingMode);
                 remainder = fractionalHours - hours;
-                minutes = 0; seconds = 0; milliseconds = 0; microseconds = 0; nanoseconds = 0;
+                minutes = 0;
+                seconds = 0;
+                milliseconds = 0;
+                microseconds = 0;
+                nanoseconds = 0;
             } else if (unit.equals(MINUTES)) {
                 double fractionalMinutes = (fractionalSeconds / 60) + minutes;
                 minutes = (long) TemporalUtil.roundNumberToIncrement(fractionalMinutes, increment, roundingMode);
                 remainder = fractionalMinutes - minutes;
-                seconds = 0; milliseconds = 0; microseconds = 0; nanoseconds = 0;
+                seconds = 0;
+                milliseconds = 0;
+                microseconds = 0;
+                nanoseconds = 0;
             } else if (unit.equals(SECONDS)) {
                 seconds = (long) TemporalUtil.roundNumberToIncrement(fractionalSeconds, increment, roundingMode);
                 remainder = fractionalSeconds - seconds;
-                milliseconds = 0; microseconds = 0; nanoseconds = 0;
+                milliseconds = 0;
+                microseconds = 0;
+                nanoseconds = 0;
             } else if (unit.equals(MILLISECONDS)) {
                 double fractionalMilliseconds = (nanoseconds * 0.000_000_1) + (microseconds * 0.000_1) + milliseconds;
                 milliseconds = (long) TemporalUtil.roundNumberToIncrement(fractionalMilliseconds, increment, roundingMode);
                 remainder = fractionalMilliseconds - milliseconds;
-                microseconds = 0; nanoseconds = 0;
+                microseconds = 0;
+                nanoseconds = 0;
             } else if (unit.equals(MICROSECONDS)) {
                 double fractionalMicroseconds = (nanoseconds * 0.000_1) + microseconds;
                 microseconds = (long) TemporalUtil.roundNumberToIncrement(fractionalMicroseconds, increment, roundingMode);
@@ -1214,13 +1255,18 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.21
     public static DynamicObject adjustRoundedDurationDays(long years, long months, long weeks, long days, long hours,
-                                                          long minutes, long seconds, long milliseconds, long microseconds,
-                                                          long nanoseconds, long increment, String unit,
-                                                          String roundingMode, DynamicObject relativeTo,
-                                                          DynamicObjectLibrary dol, JSRealm realm) {
+                    long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds, long increment, String unit,
+                    String roundingMode, DynamicObject relativeTo,
+                    DynamicObjectLibrary dol, JSRealm realm) {
         try {
-            if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) || // TODO: CHeck for InitializedTemporalZonedDateTime internal slot
-                    (unit.equals(NANOSECONDS) && increment == 1)) {
+            if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) || // TODO:
+                                                                                                        // CHeck
+                                                                                                        // for
+                                                                                                        // InitializedTemporalZonedDateTime
+                                                                                                        // internal
+                                                                                                        // slot
+                            (unit.equals(NANOSECONDS) && increment == 1)) {
                 DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
                 JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
                 JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
@@ -1255,8 +1301,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             }
             timeRemainderNs = 0; // TODO: Call roundTemporalInstant
             DynamicObject adjustedDateDuration = addDuration(years, months, weeks, days, 0, 0, 0, 0,
-                    0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
-                    relativeTo, realm, dol);
+                            0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
+                            relativeTo, realm, dol);
             DynamicObject adjustedTimeDuration = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", null, realm);
             DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
             JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, dol.getLongOrDefault(adjustedDateDuration, YEARS, 0));
@@ -1277,9 +1323,9 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.22
     public static DynamicObject toLimitedTemporalDuration(DynamicObject temporalDurationLike,
-                                                          Set<String> disallowedFields, JSRealm realm,
-                                                          IsObjectNode isObject, JSToStringNode toString,
-                                                          JSToIntegerAsLongNode toInt, DynamicObjectLibrary dol) {
+                    Set<String> disallowedFields, JSRealm realm,
+                    IsObjectNode isObject, JSToStringNode toString,
+                    JSToIntegerAsLongNode toInt, DynamicObjectLibrary dol) {
         DynamicObject duration;
         if (!isObject.executeBoolean(temporalDurationLike)) {
             String str = toString.executeString(temporalDurationLike);
@@ -1289,17 +1335,16 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         }
         try {
             if (!validateTemporalDuration(
-                    dol.getLongOrDefault(duration, YEARS, 0L),
-                    dol.getLongOrDefault(duration, MONTHS, 0L),
-                    dol.getLongOrDefault(duration, WEEKS, 0L),
-                    dol.getLongOrDefault(duration, DAYS, 0L),
-                    dol.getLongOrDefault(duration, HOURS, 0L),
-                    dol.getLongOrDefault(duration, MINUTES, 0L),
-                    dol.getLongOrDefault(duration, SECONDS, 0L),
-                    dol.getLongOrDefault(duration, MILLISECONDS, 0L),
-                    dol.getLongOrDefault(duration, MICROSECONDS, 0L),
-                    dol.getLongOrDefault(duration, NANOSECONDS, 0L)
-            )) {
+                            dol.getLongOrDefault(duration, YEARS, 0L),
+                            dol.getLongOrDefault(duration, MONTHS, 0L),
+                            dol.getLongOrDefault(duration, WEEKS, 0L),
+                            dol.getLongOrDefault(duration, DAYS, 0L),
+                            dol.getLongOrDefault(duration, HOURS, 0L),
+                            dol.getLongOrDefault(duration, MINUTES, 0L),
+                            dol.getLongOrDefault(duration, SECONDS, 0L),
+                            dol.getLongOrDefault(duration, MILLISECONDS, 0L),
+                            dol.getLongOrDefault(duration, MICROSECONDS, 0L),
+                            dol.getLongOrDefault(duration, NANOSECONDS, 0L))) {
                 throw Errors.createRangeError("Given duration outside range.");
             }
 
@@ -1307,7 +1352,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 long value = dol.getLongOrDefault(duration, property, 0L);
                 if (value > 0 && disallowedFields.contains(property)) {
                     throw Errors.createRangeError(
-                            String.format("Property %s is a disallowed field and not 0.", property));
+                                    String.format("Property %s is a disallowed field and not 0.", property));
                 }
             }
             return duration;
@@ -1335,8 +1380,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         microseconds = microseconds % 1000;
         seconds += milliseconds / 1000;
         milliseconds = milliseconds % 1000;
-        if (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0 && seconds == 0
-                && milliseconds == 0 && microseconds == 0 && nanoseconds == 0) {
+        if (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0 && seconds == 0 && milliseconds == 0 && microseconds == 0 && nanoseconds == 0) {
             return "PT0S";
         }
         StringBuilder datePart = new StringBuilder();
@@ -1395,5 +1439,5 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         }
         return result.toString();
     }
-    //endregion
+    // endregion
 }

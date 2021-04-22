@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey.TemporalCalendarId;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -66,10 +72,8 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-import static com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey.TemporalCalendarId;
-
 public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-        PrototypeSupplier {
+                PrototypeSupplier {
 
     public static final JSTemporalCalendar INSTANCE = new JSTemporalCalendar();
 
@@ -160,13 +164,13 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.1
     public static Object createTemporalCalendarFromStatic(DynamicObject constructor, String id,
-                                                          IsConstructorNode isConstructor,
-                                                          JSFunctionCallNode callNode) {
+                    IsConstructorNode isConstructor,
+                    JSFunctionCallNode callNode) {
         assert isBuiltinCalendar(id);
         if (!isConstructor.executeBoolean(constructor)) {
             throw Errors.createTypeError("Given constructor is not an constructor.");
         }
-        Object[] ctorArgs = new Object[] {id};
+        Object[] ctorArgs = new Object[]{id};
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
         System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
         Object result = callNode.executeCall(args);
@@ -180,7 +184,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.3
     public static JSTemporalCalendarObject getBuiltinCalendar(String id, DynamicObject constructor, IsConstructorNode isConstructorNode,
-                                            JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         if (!isBuiltinCalendar(id)) {
             throw Errors.createRangeError("Given calender identifier is not a builtin.");
         }
@@ -189,12 +193,12 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.4
     public static JSTemporalCalendarObject getISO8601Calender(JSRealm realm, IsConstructorNode isConstructorNode,
-                                                   JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return getBuiltinCalendar("iso8601", realm.getTemporalCalendarConstructor(), isConstructorNode, callNode);
     }
 
     private static Object executeFunction(JSTemporalCalendarObject calendarObject, String functionName,
-                                          DynamicObjectLibrary dol, JSFunctionCallNode callNode, Object... funcArgs) {
+                    DynamicObjectLibrary dol, JSFunctionCallNode callNode, Object... funcArgs) {
         Object function = dol.getOrDefault(calendarObject.getPrototypeOf(), functionName, null);
         Object[] args = JSArguments.createInitial(calendarObject, function, funcArgs.length);
         System.arraycopy(funcArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, funcArgs.length);
@@ -203,92 +207,92 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.9
     public static long calendarYear(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                    JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "year", dol, callNode, dateLike);
     }
 
     // 12.1.10
     public static long calendarMonth(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                    JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "month", dol, callNode, dateLike);
     }
 
     // 12.1.11
     public static String calendarMonthCode(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                    JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (String) executeFunction(calendar, "monthCode", dol, callNode, dateLike);
     }
 
     // 12.1.12
     public static long calendarDay(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "day", dol, callNode, dateLike);
     }
 
     // 12.1.13
     public static long calendarDayOfWeek(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "dayOfWeek", dol, callNode, dateLike);
     }
 
     // 12.1.14
     public static long calendarDayOfYear(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "dayOfYear", dol, callNode, dateLike);
     }
 
     // 12.1.15
     public static long calendarWeekOfYear(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "weekOfYear", dol, callNode, dateLike);
     }
 
     // 12.1.16
     public static long calendarDaysInWeek(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "daysInWeek", dol, callNode, dateLike);
     }
 
     // 12.1.17
     public static long calendarDaysInMonth(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "daysInMonth", dol, callNode, dateLike);
     }
 
     // 12.1.18
     public static long calendarDaysInYear(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "daysInYear", dol, callNode, dateLike);
     }
 
     // 12.1.19
     public static long calendarMonthsInYear(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (long) executeFunction(calendar, "monthsInYear", dol, callNode, dateLike);
     }
 
     // 12.1.20
     public static boolean calendarInLeapYear(JSTemporalCalendarObject calendar, DynamicObject dateLike, DynamicObjectLibrary dol,
-                                         JSFunctionCallNode callNode) {
+                    JSFunctionCallNode callNode) {
         return (boolean) executeFunction(calendar, "inLeapYear", dol, callNode, dateLike);
     }
 
     // 12.1.21
-    public static Object toTemporalCalendar(DynamicObject temporalCalendarLike, JSRealm realm, DynamicObjectLibrary dol,
-                                            IsObjectNode isObjectNode, JSToStringNode toStringNode,
-                                            IsConstructorNode isConstructorNode, JSFunctionCallNode callNode) {
+    public static Object toTemporalCalendar(Object temporalCalendarLike, JSRealm realm, DynamicObjectLibrary dol,
+                    IsObjectNode isObjectNode, JSToStringNode toStringNode,
+                    IsConstructorNode isConstructorNode, JSFunctionCallNode callNode) {
         if (isObjectNode.executeBoolean(temporalCalendarLike)) {
             return temporalCalendarLike;
         }
         return calendarFrom(temporalCalendarLike, realm.getTemporalCalendarConstructor(), dol, isObjectNode, toStringNode,
-                isConstructorNode, callNode);
+                        isConstructorNode, callNode);
     }
 
     // 12.1.22
-    public static Object toOptionalTemporalCalendar(DynamicObject temporalCalendarLike, JSRealm realm,
-                                                    DynamicObjectLibrary dol, JSToStringNode toString,
-                                                    IsObjectNode isObject, IsConstructorNode isConstructor,
-                                                    JSFunctionCallNode callNode) {
+    public static Object toOptionalTemporalCalendar(Object temporalCalendarLike, JSRealm realm,
+                    DynamicObjectLibrary dol, JSToStringNode toString,
+                    IsObjectNode isObject, IsConstructorNode isConstructor,
+                    JSFunctionCallNode callNode) {
         if (Undefined.instance.equals(temporalCalendarLike) || temporalCalendarLike == null) {
             return getISO8601Calender(realm, isConstructor, callNode);
         }
@@ -296,15 +300,16 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
     }
 
     // 12.1.24
-    public static Object calendarFrom(DynamicObject item, DynamicObject constructor,
-                                      DynamicObjectLibrary dol, IsObjectNode isObject, JSToStringNode toString,
-                                      IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
+    public static Object calendarFrom(Object itemParam, DynamicObject constructor,
+                    DynamicObjectLibrary dol, IsObjectNode isObject, JSToStringNode toString,
+                    IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
+        Object item = itemParam;
         if (isObject.executeBoolean(item)) {
-            if (!dol.containsKey(item, "calendar")) {
+            if (!dol.containsKey((DynamicObject) item, "calendar")) {
                 return item;
             }
-            item = (DynamicObject) dol.getOrDefault(item, "calendar", null);
-            if (isObject.executeBoolean(item) && !dol.containsKey(item,"calendar")) {
+            item = dol.getOrDefault((DynamicObject) item, "calendar", null);
+            if (isObject.executeBoolean(item) && !dol.containsKey((DynamicObject) item, "calendar")) {
                 return item;
             }
         }
@@ -366,8 +371,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         if (m == 11 || m == 12) {
             y = y - 1;
         }
-        long weekDay = Math.floorMod((day + (long) Math.floor((2.6 * m) - 0.2) - (2 * c) + y + Math.floorDiv(y, 4)
-                + Math.floorDiv(c, 4)), 7);
+        long weekDay = Math.floorMod((day + (long) Math.floor((2.6 * m) - 0.2) - (2 * c) + y + Math.floorDiv(y, 4) + Math.floorDiv(c, 4)), 7);
         if (weekDay == 0) { // Sunday
             return 7;
         }
@@ -408,9 +412,9 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.38
     public static Object resolveISOMonth(DynamicObject fields, DynamicObjectLibrary dol,
-                                         JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
-        Object month = dol.getOrDefault(fields, JSTemporalPlainDate.MONTH, null);
-        Object monthCode = dol.getOrDefault(fields, JSTemporalPlainDate.MONTH_CODE, null);
+                    JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
+        Object month = dol.getOrDefault(fields, MONTH, null);
+        Object monthCode = dol.getOrDefault(fields, MONTH_CODE, null);
         if (monthCode == null) {
             if (month == null) {
                 throw Errors.createTypeError("No month or month code present.");
@@ -427,71 +431,76 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");
         }
-        if(month != null && !month.equals(numberPart2)) {
+        if (month != null && !month.equals(numberPart2)) {
             throw Errors.createTypeError("Month equals not the month code.");
         }
-//        if(!identicalNode.executeBoolean(monthCode, numberPart)) {  // Doesn't make sense to me
-//            throw Errors.createRangeError("Not same value");
-//        }
+        if (!identicalNode.executeBoolean(monthCode, TemporalUtil.buildISOMonthCode(numberPart))) {
+            throw Errors.createRangeError("Not same value");
+        }
+
         return (long) numberPart2;
     }
 
     // 12.1.39
     public static DynamicObject isoDateFromFields(DynamicObject fields, DynamicObject options, JSRealm realm, IsObjectNode isObject,
-                                                  DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
-                                                  JSToStringNode toString, JSStringToNumberNode stringToNumber,
-                                                  JSIdenticalNode identicalNode) {
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
+                    JSToStringNode toString, JSStringToNumberNode stringToNumber,
+                    JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
-        fields = JSTemporalPlainDate.toTemporalDateFields(fields,
-                TemporalUtil.toSet(JSTemporalPlainDate.DAY, JSTemporalPlainDate.MONTH,
-                        JSTemporalPlainDate.MONTH_CODE, JSTemporalPlainDate.YEAR), realm, isObject, dol);
-        Object year = dol.getOrDefault(fields, JSTemporalPlainDate.YEAR, null);
+        DynamicObject preparedFields = JSTemporalPlainDate.toTemporalDateFields(fields,
+                        TemporalUtil.toSet(DAY, MONTH,
+                                        MONTH_CODE, YEAR),
+                        realm, isObject, dol);
+        Object year = dol.getOrDefault(preparedFields, YEAR, null);
         if (year == null) {
             throw Errors.createTypeError("Year not present.");
         }
-        Object month = resolveISOMonth(fields, dol, stringToNumber, identicalNode);
-        Object day = dol.getOrDefault(fields, JSTemporalPlainDate.DAY, null);
+        Object month = resolveISOMonth(preparedFields, dol, stringToNumber, identicalNode);
+        Object day = dol.getOrDefault(preparedFields, DAY, null);
         return JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow, realm);
     }
 
     // 12.1.40
     public static DynamicObject isoYearMonthFromFields(DynamicObject fields, DynamicObject options, JSRealm realm, IsObjectNode isObject,
-                                                       DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
-                                                       JSToStringNode toString, JSStringToNumberNode stringToNumber,
-                                                       JSIdenticalNode identicalNode) {
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
+                    JSToStringNode toString, JSStringToNumberNode stringToNumber,
+                    JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
-        fields = fields;    // TODO: Call JSTemporalPlainYearMonth.toTemporalYearMonthFields()
-        Object year = dol.getOrDefault(fields, JSTemporalPlainDate.YEAR, null);
+        DynamicObject preparedFields = JSTemporalPlainDate.toTemporalDateFields(fields,
+                        TemporalUtil.toSet(MONTH,
+                                        MONTH_CODE, YEAR),
+                        realm, isObject, dol);
+        Object year = dol.getOrDefault(preparedFields, YEAR, null);
         if (year == null) {
             throw Errors.createTypeError("Year not present.");
         }
-        Object month = resolveISOMonth(fields, dol, stringToNumber, identicalNode);
-        DynamicObject result = null;    // TODO: Call JSTemporalPlainYearMonth.regulateISOYearMonth()
-        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.YEAR, dol.getOrDefault(result, JSTemporalPlainDate.YEAR, 0L));
-        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.MONTH, dol.getOrDefault(result, JSTemporalPlainDate.MONTH, 0L));
-        JSObjectUtil.putDataProperty(realm.getContext(), record, "referenceISODay", 1);
-        return record;
+        Object month = resolveISOMonth(preparedFields, dol, stringToNumber, identicalNode);
+
+        DynamicObject result = TemporalUtil.regulateISOYearMonth(TemporalUtil.asLong(year), TemporalUtil.asLong(month), overflow, realm);
+        JSObjectUtil.putDataProperty(realm.getContext(), result, "referenceISODay", 1);
+        return result;
     }
 
     // 12.1.41
     public static DynamicObject isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSRealm realm, IsObjectNode isObject,
-                                                      DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
-                                                      JSToStringNode toString, JSStringToNumberNode stringToNumber,
-                                                      JSIdenticalNode identicalNode) {
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean,
+                    JSToStringNode toString, JSStringToNumberNode stringToNumber,
+                    JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
-        fields = fields;    // TODO: Call JSTemporalPlainMonthDay.toTemporalMonthDayFields()
-        Object month = dol.getOrDefault(fields, JSTemporalPlainDate.MONTH, null);
-        Object monthCode = dol.getOrDefault(fields, JSTemporalPlainDate.MONTH_CODE, null);
-        Object year = dol.getOrDefault(fields, JSTemporalPlainDate.YEAR, null);
+        DynamicObject preparedFields = JSTemporalPlainDate.toTemporalDateFields(fields,
+                        TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR),
+                        realm, isObject, dol);
+        Object month = dol.getOrDefault(preparedFields, MONTH, null);
+        Object monthCode = dol.getOrDefault(preparedFields, MONTH_CODE, null);
+        Object year = dol.getOrDefault(preparedFields, YEAR, null);
         if (month != null && monthCode == null && year == null) {
             throw Errors.createTypeError("A year or a month code should be present.");
         }
-        month = resolveISOMonth(fields, dol, stringToNumber, identicalNode);
-        Object day = dol.getOrDefault(fields, JSTemporalPlainDate.DAY, null);
+        month = resolveISOMonth(preparedFields, dol, stringToNumber, identicalNode);
+        Object day = dol.getOrDefault(preparedFields, DAY, null);
         if (day == null) {
             throw Errors.createTypeError("Day not present.");
         }
@@ -503,48 +512,41 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
             result = JSTemporalPlainDate.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow, realm);
         }
         DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.MONTH, dol.getOrDefault(result, JSTemporalPlainDate.MONTH, 0L));
-        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalPlainDate.DAY, dol.getOrDefault(result, JSTemporalPlainDate.DAY, 0L));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, MONTH, dol.getOrDefault(result, MONTH, 0L));
+        JSObjectUtil.putDataProperty(realm.getContext(), record, DAY, dol.getOrDefault(result, DAY, 0L));
         JSObjectUtil.putDataProperty(realm.getContext(), record, "referenceISOYear", referenceISOYear);
         return record;
     }
 
     // 12.1.42
     public static long isoYear(DynamicObject dateOrDateTime, JSRealm realm, IsObjectNode isObject,
-                               DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
-                               IsConstructorNode isConstructor, JSFunctionCallNode callNode,
-                               JSToIntegerAsLongNode toInt) {
-        if (!isObject.executeBoolean(dateOrDateTime) || !dol.containsKey(dateOrDateTime, JSTemporalPlainDate.YEAR)) {
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
+                    JSToIntegerAsLongNode toInt) {
+        if (!isObject.executeBoolean(dateOrDateTime) || !dol.containsKey(dateOrDateTime, YEAR)) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                    dateOrDateTime, null, null, realm, isObject, dol, toBoolean, toString, isConstructor,
-                    callNode
-            );
+                            dateOrDateTime, null, realm, isObject, dol, toBoolean, toString);
             return date.getYear();
         }
-        return toInt.executeLong(dol.getOrDefault(dateOrDateTime, JSTemporalPlainDate.YEAR, 0L));
+        return toInt.executeLong(dol.getOrDefault(dateOrDateTime, YEAR, 0L));
     }
 
     // 12.1.43
     public static long isoMonth(DynamicObject dateOrDateTime, JSRealm realm, IsObjectNode isObject,
-                               DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
-                               IsConstructorNode isConstructor, JSFunctionCallNode callNode,
-                               JSToIntegerAsLongNode toInt) {
-        if (!isObject.executeBoolean(dateOrDateTime) || !dol.containsKey(dateOrDateTime, JSTemporalPlainDate.MONTH)) {
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
+                    JSToIntegerAsLongNode toInt) {
+        if (!isObject.executeBoolean(dateOrDateTime) || !dol.containsKey(dateOrDateTime, MONTH)) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                    dateOrDateTime, null, null, realm, isObject, dol, toBoolean, toString, isConstructor,
-                    callNode
-            );
+                            dateOrDateTime, null, realm, isObject, dol, toBoolean, toString);
             return date.getMonth();
         }
-        return toInt.executeLong(dol.getOrDefault(dateOrDateTime, JSTemporalPlainDate.MONTH, 0L));
+        return toInt.executeLong(dol.getOrDefault(dateOrDateTime, MONTH, 0L));
     }
 
     // 12.1.44
     public static String isoMonthCode(DynamicObject dateOrDateTime, JSRealm realm, IsObjectNode isObject,
-                                DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
-                                IsConstructorNode isConstructor, JSFunctionCallNode callNode,
-                                JSToIntegerAsLongNode toInt) {
-        long month = isoMonth(dateOrDateTime, realm, isObject, dol, toBoolean, toString, isConstructor, callNode, toInt);
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
+                    JSToIntegerAsLongNode toInt) {
+        long month = isoMonth(dateOrDateTime, realm, isObject, dol, toBoolean, toString, toInt);
         String monthCode = String.format("%1$2d", month).replace(" ", "0");
         return "M".concat(monthCode);
     }
@@ -557,16 +559,13 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.45
     public static long isoDay(DynamicObject dateOrDateTime, JSRealm realm, IsObjectNode isObject,
-                                DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
-                                IsConstructorNode isConstructor, JSFunctionCallNode callNode,
-                                JSToIntegerAsLongNode toInt) {
-        if (!isObject.executeBoolean(dateOrDateTime) || !dol.containsKey(dateOrDateTime, JSTemporalPlainDate.MONTH)) {
+                    DynamicObjectLibrary dol, JSToBooleanNode toBoolean, JSToStringNode toString,
+                    JSToIntegerAsLongNode toInt) {
+        if (!isObject.executeBoolean(dateOrDateTime) || !dol.containsKey(dateOrDateTime, MONTH)) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                    dateOrDateTime, null, null, realm, isObject, dol, toBoolean, toString, isConstructor,
-                    callNode
-            );
+                            dateOrDateTime, null, realm, isObject, dol, toBoolean, toString);
             return date.getDay();
         }
-        return toInt.executeLong(dol.getOrDefault(dateOrDateTime, JSTemporalPlainDate.DAY, 0L));
+        return toInt.executeLong(dol.getOrDefault(dateOrDateTime, DAY, 0L));
     }
 }

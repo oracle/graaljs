@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.nio.ByteBuffer;
 import java.util.EnumSet;
 import java.util.Objects;
 import java.util.StringJoiner;
@@ -383,7 +382,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
             } else if (EnumSet.of(TemporalPlainTime, TemporalCalendar, TemporalDuration,
-                    TemporalPlainDate, TemporalPlainYearMonth, TemporalPlainMonthDay).contains(this)) {
+                            TemporalPlainDate, TemporalPlainYearMonth, TemporalPlainMonthDay).contains(this)) {
                 return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -625,7 +624,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 }
 
             case TemporalPlainTime:
-                if(construct) {
+                if (construct) {
                     return newTarget ? ConstructTemporalPlainTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(6).createArgumentNodes(context))
                                     : ConstructTemporalPlainTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(6).createArgumentNodes(context));
                 } else {
@@ -634,21 +633,21 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case TemporalPlainDate:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                            : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                                    : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case TemporalDuration:
-                if(construct) {
+                if (construct) {
                     return newTarget ? ConstructTemporalDurationNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
-                            : ConstructTemporalDurationNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
+                                    : ConstructTemporalDurationNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case TemporalCalendar:
-                if(construct) {
+                if (construct) {
                     return newTarget ? ConstructTemporalCalendarNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                            : ConstructTemporalCalendarNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                                    : ConstructTemporalCalendarNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
 
                 } else {
                     return createCallRequiresNew(context, builtin);
@@ -656,14 +655,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case TemporalPlainYearMonth:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                            : ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                                    : ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
             case TemporalPlainMonthDay:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
-                            : ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                                    : ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1057,15 +1056,20 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization
+        @Specialization(limit = "3")
         protected DynamicObject constructTemporalPlainDate(DynamicObject newTarget, Object isoYear, Object isoMonth,
-                                                           Object isoDay, Object calendarLike,
-                                                           @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+                        Object isoDay, DynamicObject calendarLike,
+                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") IsConstructorNode isConstructor,
+                        @Cached("createNew()") JSFunctionCallNode callNode,
+                        @CachedLibrary("calendarLike") DynamicObjectLibrary dol) {
             final long y = toIntegerNode.executeLong(isoYear);
             final long m = toIntegerNode.executeLong(isoMonth);
             final long d = toIntegerNode.executeLong(isoDay);
-            // TODO: Handle calender
-            return swapPrototype(JSTemporalPlainDate.createTemporalDate(getContext(), y, m ,d), newTarget);
+            DynamicObject calendar = (DynamicObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike, getContext().getRealm(), dol, toString, isObject, isConstructor, callNode);
+            return swapPrototype(JSTemporalPlainDate.createTemporalDate(getContext(), y, m, d, calendar), newTarget);
         }
 
         @Override
@@ -1082,9 +1086,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalPlainTime(DynamicObject newTarget, Object hourObj, Object minuteObj,
-                                                           Object secondObj, Object millisecondObject,
-                                                           Object microsecondObject, Object nanosecondObject,
-                                                           @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
+                        Object secondObj, Object millisecondObject,
+                        Object microsecondObject, Object nanosecondObject,
+                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
             final long hour = toIntegerNode.executeLong(hourObj);
             final long minute = toIntegerNode.executeLong(minuteObj);
             final long second = toIntegerNode.executeLong(secondObj);
@@ -1092,8 +1096,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long microsecond = toIntegerNode.executeLong(microsecondObject);
             final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
             return swapPrototype(JSTemporalPlainTime.create(getContext(),
-                    hour, minute, second, millisecond, microsecond, nanosecond
-            ), newTarget);
+                            hour, minute, second, millisecond, microsecond, nanosecond), newTarget);
         }
 
         @Override
@@ -1110,11 +1113,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalDuration(DynamicObject newTarget, Object yearsObj, Object monthsObj,
-                                                          Object weeksObj, Object daysObj, Object hoursObj,
-                                                          Object minutesObj, Object secondsObj,
-                                                          Object millisecondsObject, Object microsecondsObject,
-                                                          Object nanosecondsObject,
-                                                          @Cached("create()")JSToIntegerAsLongNode toIntegerNode) {
+                        Object weeksObj, Object daysObj, Object hoursObj,
+                        Object minutesObj, Object secondsObj,
+                        Object millisecondsObject, Object microsecondsObject,
+                        Object nanosecondsObject,
+                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
             final long years = toIntegerNode.executeLong(yearsObj);
             final long months = toIntegerNode.executeLong(monthsObj);
             final long weeks = toIntegerNode.executeLong(weeksObj);
@@ -1126,8 +1129,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long microseconds = toIntegerNode.executeLong(microsecondsObject);
             final long nanoseconds = toIntegerNode.executeLong(nanosecondsObject);
             return swapPrototype(JSTemporalDuration.create(getContext(),
-                    years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds
-            ), newTarget);
+                            years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), newTarget);
         }
 
         @Override
@@ -1144,7 +1146,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalCalendar(DynamicObject newTarget, Object arg,
-                                                          @Cached("create()") JSToStringNode toString) {
+                        @Cached("create()") JSToStringNode toString) {
             final String id = toString.executeString(arg);
             return swapPrototype(JSTemporalCalendar.create(getContext(), id), newTarget);
         }
@@ -1163,21 +1165,23 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(limit = "3")
         protected DynamicObject constructTemporalPlainYearMonth(DynamicObject newTarget, Object isoYear,
-                                                                Object isoMonth, DynamicObject calendarLike,
-                                                                Object referenceISODay,
-                                                                @Cached("create()") JSToIntegerAsLongNode toInt,
-                                                                @Cached("create()") JSToStringNode toString,
-                                                                @Cached("create()") IsObjectNode isObject,
-                                                                @Cached("create()") IsConstructorNode isConstructor,
-                                                                @Cached("createNew()") JSFunctionCallNode callNode,
-                                                                @CachedLibrary("calendarLike") DynamicObjectLibrary dol) {
+                        Object isoMonth, DynamicObject calendarLike,
+                        Object refISODay,
+                        @Cached("create()") JSToIntegerAsLongNode toInt,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") IsConstructorNode isConstructor,
+                        @Cached("createNew()") JSFunctionCallNode callNode,
+                        @CachedLibrary("calendarLike") DynamicObjectLibrary dol) {
+
+            Object referenceISODay = refISODay;
             if (Undefined.instance.equals(referenceISODay) || referenceISODay == null) {
                 referenceISODay = 1;
             }
             long y = toInt.executeLong(isoYear);
             long m = toInt.executeLong(isoMonth);
             JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike,
-                    getContext().getRealm(), dol, toString, isObject, isConstructor, callNode);
+                            getContext().getRealm(), dol, toString, isObject, isConstructor, callNode);
             long ref = toInt.executeLong(referenceISODay);
             return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
         }
@@ -1196,21 +1200,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(limit = "3")
         protected DynamicObject constructTemporalPlainMonthDay(DynamicObject newTarget, Object isoMonth,
-                                                                Object isoDay, DynamicObject calendarLike,
-                                                                Object referenceISOYear,
-                                                                @Cached("create()") JSToIntegerAsLongNode toInt,
-                                                                @Cached("create()") JSToStringNode toString,
-                                                                @Cached("create()") IsObjectNode isObject,
-                                                                @Cached("create()") IsConstructorNode isConstructor,
-                                                                @Cached("createNew()") JSFunctionCallNode callNode,
-                                                                @CachedLibrary("calendarLike") DynamicObjectLibrary dol) {
+                        Object isoDay, DynamicObject calendarLike,
+                        Object refISOYear,
+                        @Cached("create()") JSToIntegerAsLongNode toInt,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") IsConstructorNode isConstructor,
+                        @Cached("createNew()") JSFunctionCallNode callNode,
+                        @CachedLibrary("calendarLike") DynamicObjectLibrary dol) {
+            Object referenceISOYear = refISOYear;
             if (Undefined.instance.equals(referenceISOYear) || referenceISOYear == null) {
                 referenceISOYear = 1972;
             }
             long m = toInt.executeLong(isoMonth);
             long d = toInt.executeLong(isoDay);
             JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike,
-                    getContext().getRealm(), dol, toString, isObject, isConstructor, callNode);
+                            getContext().getRealm(), dol, toString, isObject, isConstructor, callNode);
             long ref = toInt.executeLong(referenceISOYear);
             return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref), newTarget);
         }

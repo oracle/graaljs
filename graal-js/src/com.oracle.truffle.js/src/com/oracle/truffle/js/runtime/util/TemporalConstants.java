@@ -38,48 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.util;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+public final class TemporalConstants {
 
-public class JSTemporalPlainDateObject extends JSNonProxyObject {
+    public static final String YEAR = "year";
+    public static final String MONTH = "month";
+    public static final String MONTH_CODE = "monthCode";
+    public static final String DAY = "day";
+    public static final String HOUR = "hour";
+    public static final String MINUTE = "minute";
+    public static final String SECOND = "second";
+    public static final String MILLISECOND = "millisecond";
+    public static final String MICROSECOND = "microsecond";
+    public static final String NANOSECOND = "nanosecond";
 
-    private final int year;
-    private final int month;
-    private final int day;
-    private final DynamicObject calendar;
+    public static final String YEARS = "years";
+    public static final String MONTHS = "months";
+    public static final String WEEKS = "weeks";
+    public static final String DAYS = "days";
+    public static final String HOURS = "hours";
+    public static final String MINUTES = "minutes";
+    public static final String SECONDS = "seconds";
+    public static final String MILLISECONDS = "milliseconds";
+    public static final String MICROSECONDS = "microseconds";
+    public static final String NANOSECONDS = "nanoseconds";
 
-    protected JSTemporalPlainDateObject(Shape shape) {
-        super(shape);
-        this.year = 0;
-        this.month = 0;
-        this.day = 0;
-        this.calendar = null;
-    }
+    public static final String OFFSET = "offset";
+    public static final String ERA = "era";
+    public static final String ERA_YEAR = "eraYear";
 
-    public JSTemporalPlainDateObject(Shape shape, int year, int month, int day, DynamicObject calendar) {
-        super(shape);
-        this.year = year;
-        this.month = month;
-        this.day = day;
-        this.calendar = calendar;
-    }
-
-    public int getYear() {
-        return year;
-    }
-
-    public int getMonth() {
-        return month;
-    }
-
-    public int getDay() {
-        return day;
-    }
-
-    public DynamicObject getCalendar() {
-        return calendar;
-    }
+    public static final String CALENDAR = "calendar";
+    public static final String DAYS_IN_YEAR = "daysInYear";
+    public static final String DAYS_IN_MONTH = "daysInMonth";
+    public static final String MONTHS_IN_YEAR = "monthsInYear";
+    public static final String IN_LEAP_YEAR = "inLeapYear";
 }

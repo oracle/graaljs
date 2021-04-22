@@ -40,6 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+
+import java.util.Collections;
+import java.util.Set;
+
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
@@ -56,21 +70,13 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-import java.util.Collections;
-import java.util.Set;
-
 public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
-        PrototypeSupplier{
+                PrototypeSupplier {
 
     public static final JSTemporalPlainDate INSTANCE = new JSTemporalPlainDate();
 
     public static final String CLASS_NAME = "TemporalPlainDate";
     public static final String PROTOTYPE_NAME = "TemporalPlainDate.prototype";
-
-    public static final String YEAR = "year";
-    public static final String MONTH_CODE = "monthCode";
-    public static final String MONTH = "month";
-    public static final String DAY = "day";
 
     private JSTemporalPlainDate() {
     }
@@ -87,11 +93,8 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
 
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
-        JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-
         JSObjectUtil.putToStringTag(prototype, "Temporal.PlainDate");
-
         return prototype;
     }
 
@@ -114,17 +117,15 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static DynamicObject createTemporalDate(JSContext context, long y, long m, long d) {
+    public static DynamicObject createTemporalDate(JSContext context, long y, long m, long d, DynamicObject calendar) {
         rejectDate(y, m, d);
-        if(!dateTimeWithinLimits(y, m, d, 12, 0, 0, 0, 0, 0)) {
+        if (!dateTimeWithinLimits(y, m, d, 12, 0, 0, 0, 0, 0)) {
             throw Errors.createRangeError("Date is not within range.");
         }
-        // TODO: Check if calendar is not an object.
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
-                (int) y, (int)m, (int)d
-        ), realm);
+                        (int) y, (int) m, (int) d, calendar), realm);
         return context.trackAllocation(object);
     }
 
@@ -174,9 +175,9 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     }
 
     private static boolean dateTimeWithinLimits(long year, long month, long day, long hour, long minute, long second,
-                                                long millisecond, long microsecond, long nanosecond) {
+                    long millisecond, long microsecond, long nanosecond) {
         long ns = getEpochFromParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
-        if((ns / 100_000_000_000_000L) <= -864_000L - 864L) {
+        if ((ns / 100_000_000_000_000L) <= -864_000L - 864L) {
             return false;
         } else if ((ns / 100_000_000_000_000L) >= 864_000L + 864L) {
             return false;
@@ -185,7 +186,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     }
 
     private static long getEpochFromParts(long year, long month, long day, long hour, long minute, long second,
-                                          long millisecond, long microsecond, long nanosecond) {
+                    long millisecond, long microsecond, long nanosecond) {
         assert month >= 1 && month <= 12;
         assert day >= 1 && day <= daysInMonth(year, month);
         assert JSTemporalPlainTime.validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
@@ -202,8 +203,8 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
 
     // 3.5.3
     public static Object createTemporalDateFromStatic(DynamicObject constructor, long isoYear, long isoMonth, long isoDay,
-                                                      DynamicObject calendar, IsConstructorNode isConstructor,
-                                                      JSFunctionCallNode callNode) {
+                    DynamicObject calendar, IsConstructorNode isConstructor,
+                    JSFunctionCallNode callNode) {
         assert validateISODate(isoYear, isoMonth, isoDay);
         if (!isConstructor.executeBoolean(constructor)) {
             throw Errors.createTypeError("Given constructor is not an constructor.");
@@ -216,54 +217,52 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     }
 
     // 3.5.4
-    public static Object toTemporalDate(DynamicObject item, DynamicObject constructor, DynamicObject options,
-                                               JSRealm realm, IsObjectNode isObject, DynamicObjectLibrary dol,
-                                               JSToBooleanNode toBoolean, JSToStringNode toString,
-                                               IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
+    public static DynamicObject toTemporalDate(DynamicObject item, DynamicObject optionsParam,
+                    JSRealm realm, IsObjectNode isObject, DynamicObjectLibrary dol,
+                    JSToBooleanNode toBoolean, JSToStringNode toString) {
         try {
-            constructor = constructor != null ? constructor : realm.getTemporalPlainDateConstructor();
-            options = options != null ? options : JSObjectUtil.createOrdinaryPrototypeObject(realm);
+            DynamicObject options = optionsParam != null ? optionsParam : JSObjectUtil.createOrdinaryPrototypeObject(realm);
             if (isObject.executeBoolean(item)) {
                 if (isJSTemporalPlainDate(item)) {
                     return item;
                 }
-                DynamicObject calendar = null;  // TODO: Call JSTemporalCalendar.getOptionalTemporalCalendar()
-                Set<String> fieldNames = null; // TODO: Call JSTemporalCalendar.calendarFields()
+                DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item);
+                Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"});
                 DynamicObject fields = toTemporalDateFields(item, fieldNames, realm, isObject, dol);
-                return null;    // TODO: Call JSTemporalCalendar.dateFromFields()
+                return TemporalUtil.dateFromFields(calendar, fields, options);
             }
             String overflows = TemporalUtil.toTemporalOverflow(options, dol, isObject, toBoolean, toString);
-            String string = toString.executeString(item);
-            DynamicObject result = null;    // TODO: Call TemporalUtil.parseTemporalDateString
+            DynamicObject result = TemporalUtil.parseTemporalDateString(toString.executeString(item));
             if (!validateISODate(dol.getLongOrDefault(result, YEAR, 0),
-                    dol.getLongOrDefault(result, MONTH, 0), dol.getLongOrDefault(result, DAY, 0))) {
+                            dol.getLongOrDefault(result, MONTH, 0), dol.getLongOrDefault(result, DAY, 0))) {
                 throw Errors.createRangeError("Given date is not valid.");
             }
-            DynamicObject calendar = null;  // TODO: Call JSTemporalCalendar.toOptionalTemporalCalendar()
+            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item);
             result = regulateISODate(dol.getLongOrDefault(result, YEAR, 0),
-                    dol.getLongOrDefault(result, MONTH, 0), dol.getLongOrDefault(result, DAY, 0),
-                    overflows, realm);
-            return createTemporalDateFromStatic(constructor, dol.getLongOrDefault(result, YEAR, 0),
-                    dol.getLongOrDefault(result, MONTH, 0), dol.getLongOrDefault(result, DAY, 0),
-                    calendar, isConstructor, callNode);
+                            dol.getLongOrDefault(result, MONTH, 0), dol.getLongOrDefault(result, DAY, 0),
+                            overflows, realm);
+
+            return createTemporalDate(realm.getContext(), dol.getLongOrDefault(result, YEAR, 0),
+                            dol.getLongOrDefault(result, MONTH, 0), dol.getLongOrDefault(result, DAY, 0),
+                            calendar);
         } catch (UnexpectedResultException e) {
             throw new RuntimeException(e);
         }
     }
 
     // 3.5.5
-    public static DynamicObject differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnit,
-                                                  JSRealm realm, DynamicObjectLibrary dol) {
+    public static DynamicObject differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnitParam,
+                    JSRealm realm, DynamicObjectLibrary dol) {
         try {
-            assert largestUnit.equals(JSTemporalDuration.YEARS) || largestUnit.equals(JSTemporalDuration.MONTHS) ||
-                    largestUnit.equals(JSTemporalDuration.WEEKS) || largestUnit.equals(JSTemporalDuration.DAYS) ||
-                    largestUnit.equals(JSTemporalDuration.HOURS) || largestUnit.equals(JSTemporalDuration.MINUTES) ||
-                    largestUnit.equals(JSTemporalDuration.SECONDS);
-            if (!largestUnit.equals(JSTemporalDuration.YEARS) && !largestUnit.equals(JSTemporalDuration.MONTHS)
-                    && !largestUnit.equals(JSTemporalDuration.WEEKS)) {
-                largestUnit = JSTemporalDuration.DAYS;
+            String largestUnit = largestUnitParam;
+            assert largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) ||
+                            largestUnit.equals(WEEKS) || largestUnit.equals(DAYS) ||
+                            largestUnit.equals(HOURS) || largestUnit.equals(MINUTES) ||
+                            largestUnit.equals(SECONDS);
+            if (!largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS)) {
+                largestUnit = DAYS;
             }
-            if (largestUnit.equals(JSTemporalDuration.YEARS) || largestUnit.equals(JSTemporalDuration.MONTHS)) {
+            if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS)) {
                 long sign = compareISODate(y1, m1, d1, y2, m2, d2);
                 if (sign == 0) {
                     return toRecord(0, 0, 0, realm);
@@ -273,22 +272,21 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 long years = dol.getLongOrDefault(end, YEAR, 0L) - dol.getLongOrDefault(start, YEAR, 0L);
                 DynamicObject mid = addISODate(y1, m1, d1, years, 0, 0, 0, "constrain", realm, dol);
                 long midSign = compareISODate(
-                        dol.getLongOrDefault(mid, YEAR, 0L),
-                        dol.getLongOrDefault(mid, MONTH, 0L),
-                        dol.getLongOrDefault(mid, DAY, 0L),
-                        y2, m2, d2
-                );
+                                dol.getLongOrDefault(mid, YEAR, 0L),
+                                dol.getLongOrDefault(mid, MONTH, 0L),
+                                dol.getLongOrDefault(mid, DAY, 0L),
+                                y2, m2, d2);
                 if (midSign == 0) {
                     DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-                    if (largestUnit.equals(JSTemporalDuration.YEARS)) {
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.YEARS, years);
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MONTHS, 0);
+                    if (largestUnit.equals(YEARS)) {
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, 0);
                     } else {
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.YEARS, 0);
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MONTHS, years * 12);
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, 0);
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, years * 12);
                     }
-                    JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.WEEKS, 0);
-                    JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.DAYS, 0);
+                    JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, 0);
+                    JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, 0);
                     return record;
                 }
                 long months = dol.getLongOrDefault(end, MONTH, 0L) - dol.getLongOrDefault(start, MONTH, 0L);
@@ -298,22 +296,21 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 }
                 mid = addISODate(y1, m1, d1, years, months, 0, 0, "constrain", realm, dol);
                 midSign = compareISODate(
-                        dol.getLongOrDefault(mid, YEAR, 0L),
-                        dol.getLongOrDefault(mid, MONTH, 0L),
-                        dol.getLongOrDefault(mid, DAY, 0L),
-                        y2, m2, d2
-                );
+                                dol.getLongOrDefault(mid, YEAR, 0L),
+                                dol.getLongOrDefault(mid, MONTH, 0L),
+                                dol.getLongOrDefault(mid, DAY, 0L),
+                                y2, m2, d2);
                 if (midSign == 0) {
                     DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-                    if (largestUnit.equals(JSTemporalDuration.YEARS)) {
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.YEARS, years);
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MONTHS, months);
+                    if (largestUnit.equals(YEARS)) {
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
                     } else {
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.YEARS, 0);
-                        JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MONTHS, months + (years * 12));
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, 0);
+                        JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months + (years * 12));
                     }
-                    JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.WEEKS, 0);
-                    JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.DAYS, 0);
+                    JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, 0);
+                    JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, 0);
                     return record;
                 }
                 if (midSign != sign) {
@@ -324,39 +321,35 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                     }
                     mid = addISODate(y1, m1, d1, years, months, 0, 0, "constrain", realm, dol);
                     midSign = compareISODate(
-                            dol.getLongOrDefault(mid, YEAR, 0L),
-                            dol.getLongOrDefault(mid, MONTH, 0L),
-                            dol.getLongOrDefault(mid, DAY, 0L),
-                            y2, m2, d2
-                    );
+                                    dol.getLongOrDefault(mid, YEAR, 0L),
+                                    dol.getLongOrDefault(mid, MONTH, 0L),
+                                    dol.getLongOrDefault(mid, DAY, 0L),
+                                    y2, m2, d2);
                 }
                 long days = 0;
-                if (dol.getLongOrDefault(mid, MONTH, 0L) == dol.getLongOrDefault(end, MONTH, 0L)
-                        && dol.getLongOrDefault(mid, YEAR, 0L) == dol.getLongOrDefault(end, YEAR, 0L)) {
+                if (dol.getLongOrDefault(mid, MONTH, 0L) == dol.getLongOrDefault(end, MONTH, 0L) && dol.getLongOrDefault(mid, YEAR, 0L) == dol.getLongOrDefault(end, YEAR, 0L)) {
                     days = dol.getLongOrDefault(end, DAY, 0L) - dol.getLongOrDefault(mid, DAY, 0L);
                 } else if (sign < 0) {
                     days = -dol.getLongOrDefault(mid, DAY, 0L) -
-                            (JSTemporalCalendar.isoDaysInMonth(
-                                    dol.getLongOrDefault(end, YEAR, 0L), dol.getLongOrDefault(end, MONTH, 0L)
-                            ) - dol.getLongOrDefault(end, DAY, 0L));
+                                    (JSTemporalCalendar.isoDaysInMonth(
+                                                    dol.getLongOrDefault(end, YEAR, 0L), dol.getLongOrDefault(end, MONTH, 0L)) - dol.getLongOrDefault(end, DAY, 0L));
                 } else {
                     days = dol.getLongOrDefault(end, DAY, 0L) +
-                            (JSTemporalCalendar.isoDaysInMonth(
-                                    dol.getLongOrDefault(mid, YEAR, 0L), dol.getLongOrDefault(mid, MONTH, 0L)
-                            ) - dol.getLongOrDefault(mid, DAY, 0L));
+                                    (JSTemporalCalendar.isoDaysInMonth(
+                                                    dol.getLongOrDefault(mid, YEAR, 0L), dol.getLongOrDefault(mid, MONTH, 0L)) - dol.getLongOrDefault(mid, DAY, 0L));
                 }
-                if (largestUnit.equals(JSTemporalDuration.MONTHS)) {
+                if (largestUnit.equals(MONTHS)) {
                     months = months + (years * 12);
                     years = 0;
                 }
                 DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.YEARS, years);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MONTHS, months);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.WEEKS, 0);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.DAYS, days);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, years);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, months);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, 0);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days);
                 return record;
             }
-            if (largestUnit.equals(JSTemporalDuration.DAYS) || largestUnit.equals(JSTemporalDuration.WEEKS)) {
+            if (largestUnit.equals(DAYS) || largestUnit.equals(WEEKS)) {
                 DynamicObject smaller;
                 DynamicObject greater;
                 long sign;
@@ -371,31 +364,29 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 }
                 long years = dol.getLongOrDefault(greater, YEAR, 0L) - dol.getLongOrDefault(smaller, YEAR, 0L);
                 long days = JSTemporalCalendar.toISODayOfYear(
-                        dol.getLongOrDefault(greater, YEAR, 0L),
-                        dol.getLongOrDefault(greater, MONTH, 0L),
-                        dol.getLongOrDefault(greater, DAY, 0L)
-                ) - JSTemporalCalendar.toISODayOfYear(
-                        dol.getLongOrDefault(smaller, YEAR, 0L),
-                        dol.getLongOrDefault(smaller, MONTH, 0L),
-                        dol.getLongOrDefault(smaller, DAY, 0L)
-                );
+                                dol.getLongOrDefault(greater, YEAR, 0L),
+                                dol.getLongOrDefault(greater, MONTH, 0L),
+                                dol.getLongOrDefault(greater, DAY, 0L)) -
+                                JSTemporalCalendar.toISODayOfYear(
+                                                dol.getLongOrDefault(smaller, YEAR, 0L),
+                                                dol.getLongOrDefault(smaller, MONTH, 0L),
+                                                dol.getLongOrDefault(smaller, DAY, 0L));
                 assert years >= 0;
                 while (years > 0) {
                     days = days + JSTemporalCalendar.isoDaysInYear(
-                            dol.getLongOrDefault(smaller, YEAR, 0L) + years - 1
-                    );
+                                    dol.getLongOrDefault(smaller, YEAR, 0L) + years - 1);
                     years = years - 1;
                 }
                 long weeks = 0;
-                if (largestUnit.equals(JSTemporalDuration.WEEKS)) {
+                if (largestUnit.equals(WEEKS)) {
                     weeks = Math.floorDiv(days, 7);
                     days = days % 7;
                 }
                 DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.YEARS, 0);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.MONTHS, 0);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.WEEKS, weeks * sign);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, JSTemporalDuration.DAYS, days * sign);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, YEARS, 0);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, MONTHS, 0);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, WEEKS, weeks * sign);
+                JSObjectUtil.putDataProperty(realm.getContext(), record, DAYS, days * sign);
                 return record;
             }
             return null;
@@ -443,17 +434,18 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
 
     // 3.5.10
     public static DynamicObject constrainISODate(long year, long month, long day, JSRealm realm) {
-        month = TemporalUtil.constraintToRange(month, 1, 12);
-        day = TemporalUtil.constraintToRange(day, 1, 31);   // TODO: Replace 31 with call JSTemporalCalendar.isoDaysInMonth
-        return toRecord(year, month, day, realm);
+        long monthPrepared = TemporalUtil.constrainToRange(month, 1, 12);
+        long dayPrepared = TemporalUtil.constrainToRange(day, 1, TemporalUtil.isoDaysInMonth(year, month));
+        return toRecord(year, monthPrepared, dayPrepared, realm);
     }
 
     // 3.5.11
-    public static DynamicObject balanceISODate(long year, long month, long day, JSRealm realm, DynamicObjectLibrary dol) {
+    public static DynamicObject balanceISODate(long yearParam, long monthParam, long dayParam, JSRealm realm, DynamicObjectLibrary dol) {
         try {
-            DynamicObject balancedYearMonth = null; // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
-            month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
-            year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
+            DynamicObject balancedYearMonth = TemporalUtil.balanceISOYearMonth(yearParam, monthParam, realm);
+            long month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
+            long year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
+            long day = dayParam;
             long testYear;
             if (month > 2) {
                 testYear = year;
@@ -472,14 +464,14 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 testYear = testYear + 1;
             }
             while (day < 1) {
-                balancedYearMonth = null;   // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+                balancedYearMonth = TemporalUtil.balanceISOYearMonth(year, month - 1, realm);
                 year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
                 month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
                 day = day + JSTemporalCalendar.isoDaysInMonth(year, month);
             }
             while (day > JSTemporalCalendar.isoDaysInMonth(year, month)) {
                 day = day - JSTemporalCalendar.isoDaysInMonth(year, month);
-                balancedYearMonth = null;   // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+                balancedYearMonth = TemporalUtil.balanceISOYearMonth(year, month + 1, realm);
                 year = dol.getLongOrDefault(balancedYearMonth, YEAR, 0L);
                 month = dol.getLongOrDefault(balancedYearMonth, MONTH, 0L);
             }
@@ -491,21 +483,20 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
 
     // 3.5.14
     public static DynamicObject addISODate(long year, long month, long day, long years, long months, long weeks,
-                                           long days, String overflow, JSRealm realm, DynamicObjectLibrary dol) {
+                    long days, String overflow, JSRealm realm, DynamicObjectLibrary dol) {
         try {
             assert overflow.equals("constrain") || overflow.equals("reject");
             long y = year + years;
             long m = month + months;
-            DynamicObject intermediate = null;  // TODO: Call JSTemporalPlainYearMonth.balanceISOYearMonth()
+            DynamicObject intermediate = TemporalUtil.balanceISOYearMonth(y, m, realm);
             intermediate = regulateISODate(dol.getLongOrDefault(intermediate, YEAR, 0L),
-                    dol.getLongOrDefault(intermediate, MONTH, 0L), day, overflow, realm);
-            days = days + (7 * weeks);
-            long d = dol.getLongOrDefault(intermediate, DAY, 0L) + days;
+                            dol.getLongOrDefault(intermediate, MONTH, 0L), day, overflow, realm);
+            long d = dol.getLongOrDefault(intermediate, DAY, 0L) + (days + (7 * weeks));
             intermediate = balanceISODate(dol.getLongOrDefault(intermediate, YEAR, 0L),
-                    dol.getLongOrDefault(intermediate, MONTH, 0L), d, realm, dol);
+                            dol.getLongOrDefault(intermediate, MONTH, 0L), d, realm, dol);
             return regulateISODate(dol.getLongOrDefault(intermediate, YEAR, 0L),
-                    dol.getLongOrDefault(intermediate, MONTH, 0L),
-                    dol.getLongOrDefault(intermediate, DAY, 0L), overflow, realm);
+                            dol.getLongOrDefault(intermediate, MONTH, 0L),
+                            dol.getLongOrDefault(intermediate, DAY, 0L), overflow, realm);
         } catch (UnexpectedResultException e) {
             throw new RuntimeException(e);
         }

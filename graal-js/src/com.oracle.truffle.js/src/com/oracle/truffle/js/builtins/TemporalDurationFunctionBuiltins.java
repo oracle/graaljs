@@ -40,6 +40,17 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -59,7 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction>{
+public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction> {
 
     public static final JSBuiltinsContainer BUILTINS = new TemporalDurationFunctionBuiltins();
 
@@ -102,22 +113,22 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization(limit = "3")
         protected Object from(DynamicObject item,
-                              @Cached("create()") IsObjectNode isObject,
-                              @Cached("create()") IsConstructorNode isConstructor,
-                              @Cached("create()") JSToIntegerAsLongNode toInt,
-                              @Cached("create()") JSToStringNode toString,
-                              @Cached("createNew()") JSFunctionCallNode callNode,
-                              @CachedLibrary("item") DynamicObjectLibrary dol) {
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") IsConstructorNode isConstructor,
+                        @Cached("create()") JSToIntegerAsLongNode toInt,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("createNew()") JSFunctionCallNode callNode,
+                        @CachedLibrary("item") DynamicObjectLibrary dol) {
             DynamicObject constructor = getContext().getRealm().getTemporalDurationConstructor();
-            if(isObject.executeBoolean(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
+            if (isObject.executeBoolean(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
                 return JSTemporalDuration.createTemporalDurationFromStatic(constructor, duration.getYears(),
-                        duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
-                        duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                        duration.getMicroseconds(), duration.getNanoseconds(), isConstructor, callNode);
+                                duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
+                                duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                                duration.getMicroseconds(), duration.getNanoseconds(), isConstructor, callNode);
             }
             return JSTemporalDuration.toTemporalDuration(item, constructor, getContext().getRealm(), isObject,
-                    toInt, dol, toString, isConstructor, callNode);
+                            toInt, dol, toString, isConstructor, callNode);
         }
     }
 
@@ -128,88 +139,82 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization(limit = "3")
-        protected int compare(DynamicObject one, DynamicObject two, DynamicObject options,
-                              @Cached("create()") IsObjectNode isObject,
-                              @Cached("create()") IsConstructorNode isConstructor,
-                              @Cached("create()") JSToIntegerAsLongNode toInt,
-                              @Cached("create()") JSToStringNode toString,
-                              @Cached("createNew()") JSFunctionCallNode callNode,
-                              @CachedLibrary("options") DynamicObjectLibrary dol) {
+        protected int compare(DynamicObject oneParam, DynamicObject twoParam, DynamicObject optionsParam,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") IsConstructorNode isConstructor,
+                        @Cached("create()") JSToIntegerAsLongNode toInt,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("createNew()") JSFunctionCallNode callNode,
+                        @CachedLibrary("optionsParam") DynamicObjectLibrary dol) {
             try {
-                one = (DynamicObject) JSTemporalDuration.toTemporalDuration(one, null, getContext().getRealm(), isObject,
-                        toInt, dol, toString, isConstructor, callNode);
-                two = (DynamicObject) JSTemporalDuration.toTemporalDuration(two, null, getContext().getRealm(), isObject,
-                        toInt, dol, toString, isConstructor, callNode);
-                options = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, null, getContext().getRealm(), isObject,
+                                toInt, dol, toString, isConstructor, callNode);
+                DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, null, getContext().getRealm(), isObject,
+                                toInt, dol, toString, isConstructor, callNode);
+                DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
                 DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, isObject, dol);
                 long shift1 = JSTemporalDuration.calculateOffsetShift(relativeTo,
-                        dol.getLongOrDefault(one, JSTemporalDuration.YEARS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MONTHS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.WEEKS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.DAYS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.HOURS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MINUTES, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.SECONDS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MILLISECONDS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MICROSECONDS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.NANOSECONDS, 0),
-                        isObject
-                );
+                                dol.getLongOrDefault(one, YEARS, 0),
+                                dol.getLongOrDefault(one, MONTHS, 0),
+                                dol.getLongOrDefault(one, WEEKS, 0),
+                                dol.getLongOrDefault(one, DAYS, 0),
+                                dol.getLongOrDefault(one, HOURS, 0),
+                                dol.getLongOrDefault(one, MINUTES, 0),
+                                dol.getLongOrDefault(one, SECONDS, 0),
+                                dol.getLongOrDefault(one, MILLISECONDS, 0),
+                                dol.getLongOrDefault(one, MICROSECONDS, 0),
+                                dol.getLongOrDefault(one, NANOSECONDS, 0),
+                                isObject);
                 long shift2 = JSTemporalDuration.calculateOffsetShift(relativeTo,
-                        dol.getLongOrDefault(two, JSTemporalDuration.YEARS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MONTHS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.WEEKS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.DAYS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.HOURS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MINUTES, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.SECONDS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MILLISECONDS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MICROSECONDS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.NANOSECONDS, 0),
-                        isObject
-                );
+                                dol.getLongOrDefault(two, YEARS, 0),
+                                dol.getLongOrDefault(two, MONTHS, 0),
+                                dol.getLongOrDefault(two, WEEKS, 0),
+                                dol.getLongOrDefault(two, DAYS, 0),
+                                dol.getLongOrDefault(two, HOURS, 0),
+                                dol.getLongOrDefault(two, MINUTES, 0),
+                                dol.getLongOrDefault(two, SECONDS, 0),
+                                dol.getLongOrDefault(two, MILLISECONDS, 0),
+                                dol.getLongOrDefault(two, MICROSECONDS, 0),
+                                dol.getLongOrDefault(two, NANOSECONDS, 0),
+                                isObject);
                 long days1, days2;
-                if(dol.getLongOrDefault(one, JSTemporalDuration.YEARS, 0) != 0 || dol.getLongOrDefault(two, JSTemporalDuration.YEARS, 0) != 0 ||
-                        dol.getLongOrDefault(one, JSTemporalDuration.MONTHS, 0) != 0 || dol.getLongOrDefault(two, JSTemporalDuration.MONTHS, 0) != 0 ||
-                        dol.getLongOrDefault(one, JSTemporalDuration.WEEKS, 0) != 0 || dol.getLongOrDefault(two, JSTemporalDuration.WEEKS, 0) != 0) {
+                if (dol.getLongOrDefault(one, YEARS, 0) != 0 || dol.getLongOrDefault(two, YEARS, 0) != 0 ||
+                                dol.getLongOrDefault(one, MONTHS, 0) != 0 || dol.getLongOrDefault(two, MONTHS, 0) != 0 ||
+                                dol.getLongOrDefault(one, WEEKS, 0) != 0 || dol.getLongOrDefault(two, WEEKS, 0) != 0) {
                     DynamicObject balanceResult1 = JSTemporalDuration.unbalanceDurationRelative(
-                            dol.getLongOrDefault(one, JSTemporalDuration.YEARS, 0),
-                            dol.getLongOrDefault(one, JSTemporalDuration.YEARS, 0),
-                            dol.getLongOrDefault(one, JSTemporalDuration.YEARS, 0),
-                            dol.getLongOrDefault(one, JSTemporalDuration.YEARS, 0),
-                            JSTemporalDuration.DAYS, relativeTo, dol, getContext().getRealm()
-                    );
+                                    dol.getLongOrDefault(one, YEARS, 0),
+                                    dol.getLongOrDefault(one, MONTHS, 0),
+                                    dol.getLongOrDefault(one, WEEKS, 0),
+                                    dol.getLongOrDefault(one, DAYS, 0),
+                                    DAYS, relativeTo, dol, getContext().getRealm());
                     DynamicObject balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
-                            dol.getLongOrDefault(two, JSTemporalDuration.YEARS, 0),
-                            dol.getLongOrDefault(two, JSTemporalDuration.YEARS, 0),
-                            dol.getLongOrDefault(two, JSTemporalDuration.YEARS, 0),
-                            dol.getLongOrDefault(two, JSTemporalDuration.YEARS, 0),
-                            JSTemporalDuration.DAYS, relativeTo, dol, getContext().getRealm()
-                    );
-                    days1 = dol.getLongOrDefault(balanceResult1, JSTemporalDuration.DAYS, 0);
-                    days2 = dol.getLongOrDefault(balanceResult2, JSTemporalDuration.DAYS, 0);
+                                    dol.getLongOrDefault(two, YEARS, 0),
+                                    dol.getLongOrDefault(two, MONTHS, 0),
+                                    dol.getLongOrDefault(two, WEEKS, 0),
+                                    dol.getLongOrDefault(two, DAYS, 0),
+                                    DAYS, relativeTo, dol, getContext().getRealm());
+                    days1 = dol.getLongOrDefault(balanceResult1, DAYS, 0);
+                    days2 = dol.getLongOrDefault(balanceResult2, DAYS, 0);
                 } else {
-                    days1 = dol.getLongOrDefault(one, JSTemporalDuration.DAYS, 0);
-                    days2 = dol.getLongOrDefault(two, JSTemporalDuration.DAYS, 0);
+                    days1 = dol.getLongOrDefault(one, DAYS, 0);
+                    days2 = dol.getLongOrDefault(two, DAYS, 0);
                 }
                 long ns1 = JSTemporalDuration.totalDurationNanoseconds(days1,
-                        dol.getLongOrDefault(one, JSTemporalDuration.HOURS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MINUTES, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.SECONDS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MILLISECONDS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.MICROSECONDS, 0),
-                        dol.getLongOrDefault(one, JSTemporalDuration.NANOSECONDS, 0),
-                        shift1
-                );
+                                dol.getLongOrDefault(one, HOURS, 0),
+                                dol.getLongOrDefault(one, MINUTES, 0),
+                                dol.getLongOrDefault(one, SECONDS, 0),
+                                dol.getLongOrDefault(one, MILLISECONDS, 0),
+                                dol.getLongOrDefault(one, MICROSECONDS, 0),
+                                dol.getLongOrDefault(one, NANOSECONDS, 0),
+                                shift1);
                 long ns2 = JSTemporalDuration.totalDurationNanoseconds(days2,
-                        dol.getLongOrDefault(two, JSTemporalDuration.HOURS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MINUTES, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.SECONDS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MILLISECONDS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.MICROSECONDS, 0),
-                        dol.getLongOrDefault(two, JSTemporalDuration.NANOSECONDS, 0),
-                        shift2
-                );
+                                dol.getLongOrDefault(two, HOURS, 0),
+                                dol.getLongOrDefault(two, MINUTES, 0),
+                                dol.getLongOrDefault(two, SECONDS, 0),
+                                dol.getLongOrDefault(two, MILLISECONDS, 0),
+                                dol.getLongOrDefault(two, MICROSECONDS, 0),
+                                dol.getLongOrDefault(two, NANOSECONDS, 0),
+                                shift2);
                 if (ns1 > ns2) {
                     return 1;
                 }

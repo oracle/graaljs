@@ -40,6 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -57,27 +66,18 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
-        PrototypeSupplier{
+                PrototypeSupplier {
 
     public static final JSTemporalPlainYearMonth INSTANCE = new JSTemporalPlainYearMonth();
 
     public static final String CLASS_NAME = "TemporalPlainYearMonth";
     public static final String PROTOTYPE_NAME = "TemporalPlainYearMonth.prototype";
 
-    public static final String CALENDAR = "calendar";
-    public static final String YEAR = "year";
-    public static final String MONTH = "month";
-    public static final String MONTH_CODE = "monthCode";
-    public static final String DAYS_IN_YEAR = "daysInYear";
-    public static final String DAYS_IN_MONTH = "daysInMonth";
-    public static final String MONTHS_IN_YEAR = "monthsInYear";
-    public static final String IN_LEAP_YEAR = "inLeapYear";
-
     private JSTemporalPlainYearMonth() {
     }
 
     public static DynamicObject create(JSContext context, long isoYear, long isoMonth, JSTemporalCalendarObject calendar,
-                                       long referenceISODay) {
+                    long referenceISODay) {
         if (!JSTemporalPlainDate.validateISODate(isoYear, isoMonth, referenceISODay)) {
             throw Errors.createRangeError("Not a valid date.");
         }
@@ -88,7 +88,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
-                isoMonth, referenceISODay, calendar), realm);
+                        isoMonth, referenceISODay, calendar), realm);
         return context.trackAllocation(obj);
     }
 
@@ -103,7 +103,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
     }
 
     private static DynamicObject createGetterFunction(JSRealm realm, BuiltinFunctionKey functionKey,
-                                                      String property) {
+                    String property) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -118,46 +118,39 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
                                 return temporalPlainYearMonth.getCalendar();
                             case YEAR:
                                 return JSTemporalCalendar.calendarYear(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             case MONTH:
                                 return JSTemporalCalendar.calendarMonth(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             case MONTH_CODE:
                                 return JSTemporalCalendar.calendarMonthCode(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             case DAYS_IN_YEAR:
                                 return JSTemporalCalendar.calendarDaysInYear(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             case DAYS_IN_MONTH:
                                 return JSTemporalCalendar.calendarDaysInMonth(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             case MONTHS_IN_YEAR:
                                 return JSTemporalCalendar.calendarMonthsInYear(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             case IN_LEAP_YEAR:
                                 return JSTemporalCalendar.calendarInLeapYear(
-                                        temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                        DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall()
-                                );
+                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
+                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
                             default:
                                 errorBranch.enter();
                                 throw Errors.createTypeErrorTemporalPlainMonthYearExpected();
                         }
                     } else {
                         errorBranch.enter();
-                        throw  Errors.createTypeErrorTemporalPlainMonthYearExpected();
+                        throw Errors.createTypeErrorTemporalPlainMonthYearExpected();
                     }
                 }
             });
@@ -174,21 +167,21 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
         JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthCalendar, CALENDAR), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthCalendar, CALENDAR), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, YEAR,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthYear, YEAR), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthYear, YEAR), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthMonth, MONTH), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthMonth, MONTH), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthMonthCode, MONTH_CODE), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthMonthCode, MONTH_CODE), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_YEAR,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthDaysInYear, DAYS_IN_YEAR), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthDaysInYear, DAYS_IN_YEAR), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_MONTH,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthDaysInMonth, DAYS_IN_MONTH), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthDaysInMonth, DAYS_IN_MONTH), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTHS_IN_YEAR,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthMonthsInYear, MONTHS_IN_YEAR), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthMonthsInYear, MONTHS_IN_YEAR), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR,
-                createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthInLeapYear, IN_LEAP_YEAR), Undefined.instance);
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthInLeapYear, IN_LEAP_YEAR), Undefined.instance);
 
         JSObjectUtil.putToStringTag(prototype, "Temporal.PlainYearMonth");
 
