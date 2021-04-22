@@ -40,22 +40,23 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.dsl.Cached;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
+
+import java.util.Collections;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddNodeGen;
 import com.oracle.truffle.js.builtins.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
@@ -78,9 +79,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-
-import java.util.Collections;
 
 public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationPrototypeBuiltins.TemporalDurationPrototype> {
 
@@ -147,33 +147,28 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         protected DynamicObject with(DynamicObject thisObj, DynamicObject temporalDurationLike,
                         @Cached("create()") IsObjectNode isObjectNode,
-                        @CachedLibrary("temporalDurationLike") DynamicObjectLibrary dol,
                         @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("createNew()") JSFunctionCallNode functionCallNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             DynamicObject durationLike = JSTemporalDuration.toPartialDuration(temporalDurationLike,
-                            getContext().getRealm(), isObjectNode, dol, toInt);
+                            getContext().getRealm(), isObjectNode, toInt);
 
-            try {
-                long years = dol.getLongOrDefault(durationLike, YEARS, duration.getYears());
-                long months = dol.getLongOrDefault(durationLike, MONTHS, duration.getMonths());
-                long weeks = dol.getLongOrDefault(durationLike, WEEKS, duration.getWeeks());
-                long days = dol.getLongOrDefault(durationLike, DAYS, duration.getDays());
-                long hours = dol.getLongOrDefault(durationLike, HOURS, duration.getHours());
-                long minutes = dol.getLongOrDefault(durationLike, MINUTES, duration.getMinutes());
-                long seconds = dol.getLongOrDefault(durationLike, SECONDS, duration.getSeconds());
-                long milliseconds = dol.getLongOrDefault(durationLike, MILLISECONDS, duration.getMilliseconds());
-                long microseconds = dol.getLongOrDefault(durationLike, MICROSECONDS, duration.getMicroseconds());
-                long nanoseconds = dol.getLongOrDefault(durationLike, NANOSECONDS, duration.getNanoseconds());
-                return JSTemporalDuration.createTemporalDurationFromInstance(years, months, weeks, days,
-                                hours, minutes, seconds, milliseconds, microseconds, nanoseconds, getContext().getRealm(),
-                                functionCallNode);
-            } catch (UnexpectedResultException e) {
-                throw Errors.createTypeError(e.getMessage());
-            }
+            long years = getLong(durationLike, YEARS, duration.getYears());
+            long months = getLong(durationLike, MONTHS, duration.getMonths());
+            long weeks = getLong(durationLike, WEEKS, duration.getWeeks());
+            long days = getLong(durationLike, DAYS, duration.getDays());
+            long hours = getLong(durationLike, HOURS, duration.getHours());
+            long minutes = getLong(durationLike, MINUTES, duration.getMinutes());
+            long seconds = getLong(durationLike, SECONDS, duration.getSeconds());
+            long milliseconds = getLong(durationLike, MILLISECONDS, duration.getMilliseconds());
+            long microseconds = getLong(durationLike, MICROSECONDS, duration.getMicroseconds());
+            long nanoseconds = getLong(durationLike, NANOSECONDS, duration.getNanoseconds());
+            return JSTemporalDuration.createTemporalDurationFromInstance(years, months, weeks, days,
+                            hours, minutes, seconds, milliseconds, microseconds, nanoseconds, getContext().getRealm(),
+                            functionCallNode);
         }
     }
 
@@ -222,49 +217,44 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         protected DynamicObject add(DynamicObject thisObj, DynamicObject other, DynamicObject options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @CachedLibrary("other") DynamicObjectLibrary dol,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
-            try {
-                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-                DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
-                                getContext().getRealm(), isObject, toString, toInt, dol);
-                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
-                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
-                DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
-                                duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
-                                duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
-                                duration.getNanoseconds(),
-                                dol.getLongOrDefault(otherDuration, YEARS, 0L),
-                                dol.getLongOrDefault(otherDuration, MONTHS, 0L),
-                                dol.getLongOrDefault(otherDuration, WEEKS, 0L),
-                                dol.getLongOrDefault(otherDuration, DAYS, 0L),
-                                dol.getLongOrDefault(otherDuration, HOURS, 0L),
-                                dol.getLongOrDefault(otherDuration, MINUTES, 0L),
-                                dol.getLongOrDefault(otherDuration, SECONDS, 0L),
-                                dol.getLongOrDefault(otherDuration, MILLISECONDS, 0L),
-                                dol.getLongOrDefault(otherDuration, MICROSECONDS, 0L),
-                                dol.getLongOrDefault(otherDuration, NANOSECONDS, 0L),
-                                relativeTo, getContext().getRealm(), dol);
-                return JSTemporalDuration.createTemporalDurationFromInstance(
-                                dol.getLongOrDefault(result, YEARS, 0L),
-                                dol.getLongOrDefault(result, MONTHS, 0L),
-                                dol.getLongOrDefault(result, WEEKS, 0L),
-                                dol.getLongOrDefault(result, DAYS, 0L),
-                                dol.getLongOrDefault(result, HOURS, 0L),
-                                dol.getLongOrDefault(result, MINUTES, 0L),
-                                dol.getLongOrDefault(result, SECONDS, 0L),
-                                dol.getLongOrDefault(result, MILLISECONDS, 0L),
-                                dol.getLongOrDefault(result, MICROSECONDS, 0L),
-                                dol.getLongOrDefault(result, NANOSECONDS, 0L),
-                                getContext().getRealm(), callNode);
-            } catch (UnexpectedResultException e) {
-                throw new RuntimeException(e);
-            }
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
+                            getContext().getRealm(), isObject, toString, toInt);
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject);
+            DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
+                            duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
+                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                            duration.getNanoseconds(),
+                            getLong(otherDuration, YEARS),
+                            getLong(otherDuration, MONTHS),
+                            getLong(otherDuration, WEEKS),
+                            getLong(otherDuration, DAYS),
+                            getLong(otherDuration, HOURS),
+                            getLong(otherDuration, MINUTES),
+                            getLong(otherDuration, SECONDS),
+                            getLong(otherDuration, MILLISECONDS),
+                            getLong(otherDuration, MICROSECONDS),
+                            getLong(otherDuration, NANOSECONDS),
+                            relativeTo, getContext().getRealm());
+            return JSTemporalDuration.createTemporalDurationFromInstance(
+                            getLong(result, YEARS),
+                            getLong(result, MONTHS),
+                            getLong(result, WEEKS),
+                            getLong(result, DAYS),
+                            getLong(result, HOURS),
+                            getLong(result, MINUTES),
+                            getLong(result, SECONDS),
+                            getLong(result, MILLISECONDS),
+                            getLong(result, MICROSECONDS),
+                            getLong(result, NANOSECONDS),
+                            getContext().getRealm(), callNode);
         }
     }
 
@@ -275,49 +265,44 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         protected DynamicObject subtract(DynamicObject thisObj, DynamicObject other, DynamicObject options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @CachedLibrary("other") DynamicObjectLibrary dol,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
-            try {
-                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-                DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
-                                getContext().getRealm(), isObject, toString, toInt, dol);
-                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
-                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
-                DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
-                                duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
-                                duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
-                                duration.getNanoseconds(),
-                                -dol.getLongOrDefault(otherDuration, YEARS, 0L),
-                                -dol.getLongOrDefault(otherDuration, MONTHS, 0L),
-                                -dol.getLongOrDefault(otherDuration, WEEKS, 0L),
-                                -dol.getLongOrDefault(otherDuration, DAYS, 0L),
-                                -dol.getLongOrDefault(otherDuration, HOURS, 0L),
-                                -dol.getLongOrDefault(otherDuration, MINUTES, 0L),
-                                -dol.getLongOrDefault(otherDuration, SECONDS, 0L),
-                                -dol.getLongOrDefault(otherDuration, MILLISECONDS, 0L),
-                                -dol.getLongOrDefault(otherDuration, MICROSECONDS, 0L),
-                                -dol.getLongOrDefault(otherDuration, NANOSECONDS, 0L),
-                                relativeTo, getContext().getRealm(), dol);
-                return JSTemporalDuration.createTemporalDurationFromInstance(
-                                dol.getLongOrDefault(result, YEARS, 0L),
-                                dol.getLongOrDefault(result, MONTHS, 0L),
-                                dol.getLongOrDefault(result, WEEKS, 0L),
-                                dol.getLongOrDefault(result, DAYS, 0L),
-                                dol.getLongOrDefault(result, HOURS, 0L),
-                                dol.getLongOrDefault(result, MINUTES, 0L),
-                                dol.getLongOrDefault(result, SECONDS, 0L),
-                                dol.getLongOrDefault(result, MILLISECONDS, 0L),
-                                dol.getLongOrDefault(result, MICROSECONDS, 0L),
-                                dol.getLongOrDefault(result, NANOSECONDS, 0L),
-                                getContext().getRealm(), callNode);
-            } catch (UnexpectedResultException e) {
-                throw new RuntimeException(e);
-            }
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
+                            getContext().getRealm(), isObject, toString, toInt);
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject);
+            DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
+                            duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
+                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                            duration.getNanoseconds(),
+                            -getLong(otherDuration, YEARS),
+                            -getLong(otherDuration, MONTHS),
+                            -getLong(otherDuration, WEEKS),
+                            -getLong(otherDuration, DAYS),
+                            -getLong(otherDuration, HOURS),
+                            -getLong(otherDuration, MINUTES),
+                            -getLong(otherDuration, SECONDS),
+                            -getLong(otherDuration, MILLISECONDS),
+                            -getLong(otherDuration, MICROSECONDS),
+                            -getLong(otherDuration, NANOSECONDS),
+                            relativeTo, getContext().getRealm());
+            return JSTemporalDuration.createTemporalDurationFromInstance(
+                            getLong(result, YEARS),
+                            getLong(result, MONTHS),
+                            getLong(result, WEEKS),
+                            getLong(result, DAYS),
+                            getLong(result, HOURS),
+                            getLong(result, MINUTES),
+                            getLong(result, SECONDS),
+                            getLong(result, MILLISECONDS),
+                            getLong(result, MICROSECONDS),
+                            getLong(result, NANOSECONDS),
+                            getContext().getRealm(), callNode);
         }
     }
 
@@ -328,105 +313,100 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         protected DynamicObject round(DynamicObject thisObj, DynamicObject options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToNumberNode toNumber,
-                        @CachedLibrary("options") DynamicObjectLibrary dol,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
-            try {
-                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-                if (options == null) {
-                    throw Errors.createTypeError("No options given.");
-                }
-                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
-                boolean smallestUnitPresent = true;
-                boolean largestUnitPresent = true;
-                String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, null,
-                                Collections.emptySet(), dol, isObject, toBoolean, toString);
-                if (smallestUnit == null) {
-                    smallestUnitPresent = false;
-                    smallestUnit = NANOSECONDS;
-                }
-                String defaultLargestUnit = JSTemporalDuration.defaultTemporalLargestUnit(duration.getYears(),
-                                duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
-                                duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds());
-                defaultLargestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits(defaultLargestUnit, smallestUnit);
-                String largestUnit = TemporalUtil.toLargestTemporalUnit(normalizedOptions, Collections.emptySet(),
-                                null, dol, isObject, toBoolean, toString);
-                if (largestUnit == null) {
-                    largestUnitPresent = false;
-                    largestUnit = defaultLargestUnit;
-                } else if ("auto".equals(largestUnit)) {
-                    largestUnit = defaultLargestUnit;
-                }
-                if (!smallestUnitPresent && !largestUnitPresent) {
-                    throw Errors.createRangeError("unit expected");
-                }
-                TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-                String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, "nearest", dol,
-                                isObject, toBoolean, toString);
-                Long maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-                double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options,
-                                maximum == null ? null : maximum.doubleValue(), false, dol, isObject, toNumber);
-                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, isObject, dol);
-                DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
-                                duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit, relativeTo, dol,
-                                getContext().getRealm());
-                DynamicObject roundResult = JSTemporalDuration.roundDuration(
-                                dol.getLongOrDefault(unbalanceResult, YEARS, 0),
-                                dol.getLongOrDefault(unbalanceResult, MONTHS, 0),
-                                dol.getLongOrDefault(unbalanceResult, WEEKS, 0),
-                                dol.getLongOrDefault(unbalanceResult, DAYS, 0),
-                                duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
-                                roundingMode, relativeTo, dol, getContext().getRealm());
-                DynamicObject adjustResult = JSTemporalDuration.adjustRoundedDurationDays(
-                                dol.getLongOrDefault(roundResult, YEARS, 0),
-                                dol.getLongOrDefault(roundResult, MONTHS, 0),
-                                dol.getLongOrDefault(roundResult, WEEKS, 0),
-                                dol.getLongOrDefault(roundResult, DAYS, 0),
-                                dol.getLongOrDefault(roundResult, HOURS, 0),
-                                dol.getLongOrDefault(roundResult, MINUTES, 0),
-                                dol.getLongOrDefault(roundResult, SECONDS, 0),
-                                dol.getLongOrDefault(roundResult, MILLISECONDS, 0),
-                                dol.getLongOrDefault(roundResult, MICROSECONDS, 0),
-                                dol.getLongOrDefault(roundResult, NANOSECONDS, 0),
-                                (long) roundingIncrement, smallestUnit, roundingMode, relativeTo, dol, getContext().getRealm());
-                DynamicObject balanceResult = JSTemporalDuration.balanceDurationRelative(
-                                dol.getLongOrDefault(adjustResult, YEARS, 0),
-                                dol.getLongOrDefault(adjustResult, MONTHS, 0),
-                                dol.getLongOrDefault(adjustResult, WEEKS, 0),
-                                dol.getLongOrDefault(adjustResult, DAYS, 0),
-                                largestUnit, relativeTo, dol, getContext().getRealm());
-                // TODO: Check if relativeTo has InitializedTemporalZonedDateTime 7.3.22.22
-                DynamicObject result = JSTemporalDuration.balanceDuration(
-                                dol.getLongOrDefault(balanceResult, DAYS, 0),
-                                dol.getLongOrDefault(adjustResult, HOURS, 0),
-                                dol.getLongOrDefault(adjustResult, MINUTES, 0),
-                                dol.getLongOrDefault(adjustResult, SECONDS, 0),
-                                dol.getLongOrDefault(adjustResult, MILLISECONDS, 0),
-                                dol.getLongOrDefault(adjustResult, MICROSECONDS, 0),
-                                dol.getLongOrDefault(adjustResult, NANOSECONDS, 0),
-                                largestUnit, relativeTo, getContext().getRealm());
-                return JSTemporalDuration.createTemporalDurationFromInstance(
-                                dol.getLongOrDefault(balanceResult, YEARS, 0),
-                                dol.getLongOrDefault(balanceResult, MONTHS, 0),
-                                dol.getLongOrDefault(balanceResult, WEEKS, 0),
-                                dol.getLongOrDefault(result, DAYS, 0),
-                                dol.getLongOrDefault(result, HOURS, 0),
-                                dol.getLongOrDefault(result, MINUTES, 0),
-                                dol.getLongOrDefault(result, SECONDS, 0),
-                                dol.getLongOrDefault(result, MILLISECONDS, 0),
-                                dol.getLongOrDefault(result, MICROSECONDS, 0),
-                                dol.getLongOrDefault(result, NANOSECONDS, 0),
-                                getContext().getRealm(), callNode);
-            } catch (UnexpectedResultException e) {
-                throw new RuntimeException(e);
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            if (options == null) {
+                throw Errors.createTypeError("No options given.");
             }
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+            boolean smallestUnitPresent = true;
+            boolean largestUnitPresent = true;
+            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, null,
+                            Collections.emptySet(), isObject, toBoolean, toString);
+            if (smallestUnit == null) {
+                smallestUnitPresent = false;
+                smallestUnit = NANOSECONDS;
+            }
+            String defaultLargestUnit = JSTemporalDuration.defaultTemporalLargestUnit(duration.getYears(),
+                            duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
+                            duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                            duration.getMicroseconds());
+            defaultLargestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits(defaultLargestUnit, smallestUnit);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(normalizedOptions, Collections.emptySet(),
+                            null, isObject, toBoolean, toString);
+            if (largestUnit == null) {
+                largestUnitPresent = false;
+                largestUnit = defaultLargestUnit;
+            } else if ("auto".equals(largestUnit)) {
+                largestUnit = defaultLargestUnit;
+            }
+            if (!smallestUnitPresent && !largestUnitPresent) {
+                throw Errors.createRangeError("unit expected");
+            }
+            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, "nearest",
+                            isObject, toBoolean, toString);
+            double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options,
+                            maximum, false, isObject, toNumber);
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, isObject);
+            DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
+                            duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit, relativeTo,
+                            getContext().getRealm());
+            DynamicObject roundResult = JSTemporalDuration.roundDuration(
+                            getLong(unbalanceResult, YEARS, 0),
+                            getLong(unbalanceResult, MONTHS, 0),
+                            getLong(unbalanceResult, WEEKS, 0),
+                            getLong(unbalanceResult, DAYS, 0),
+                            duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                            duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
+                            roundingMode, relativeTo, getContext().getRealm());
+            DynamicObject adjustResult = JSTemporalDuration.adjustRoundedDurationDays(
+                            getLong(roundResult, YEARS, 0),
+                            getLong(roundResult, MONTHS, 0),
+                            getLong(roundResult, WEEKS, 0),
+                            getLong(roundResult, DAYS, 0),
+                            getLong(roundResult, HOURS, 0),
+                            getLong(roundResult, MINUTES, 0),
+                            getLong(roundResult, SECONDS, 0),
+                            getLong(roundResult, MILLISECONDS, 0),
+                            getLong(roundResult, MICROSECONDS, 0),
+                            getLong(roundResult, NANOSECONDS, 0),
+                            (long) roundingIncrement, smallestUnit, roundingMode, relativeTo, getContext().getRealm());
+            DynamicObject balanceResult = JSTemporalDuration.balanceDurationRelative(
+                            getLong(adjustResult, YEARS, 0),
+                            getLong(adjustResult, MONTHS, 0),
+                            getLong(adjustResult, WEEKS, 0),
+                            getLong(adjustResult, DAYS, 0),
+                            largestUnit, relativeTo, getContext().getRealm());
+            // TODO: Check if relativeTo has InitializedTemporalZonedDateTime 7.3.22.22
+            DynamicObject result = JSTemporalDuration.balanceDuration(
+                            getLong(balanceResult, DAYS, 0),
+                            getLong(adjustResult, HOURS, 0),
+                            getLong(adjustResult, MINUTES, 0),
+                            getLong(adjustResult, SECONDS, 0),
+                            getLong(adjustResult, MILLISECONDS, 0),
+                            getLong(adjustResult, MICROSECONDS, 0),
+                            getLong(adjustResult, NANOSECONDS, 0),
+                            largestUnit, relativeTo, getContext().getRealm());
+            return JSTemporalDuration.createTemporalDurationFromInstance(
+                            getLong(balanceResult, YEARS, 0),
+                            getLong(balanceResult, MONTHS, 0),
+                            getLong(balanceResult, WEEKS, 0),
+                            getLong(result, DAYS, 0),
+                            getLong(result, HOURS, 0),
+                            getLong(result, MINUTES, 0),
+                            getLong(result, SECONDS, 0),
+                            getLong(result, MILLISECONDS, 0),
+                            getLong(result, MICROSECONDS, 0),
+                            getLong(result, NANOSECONDS, 0),
+                            getContext().getRealm(), callNode);
         }
     }
 
@@ -437,79 +417,75 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(limit = "3")
+        @Specialization
         protected long total(DynamicObject thisObj, DynamicObject options,
                         @Cached("create()") IsObjectNode isObject,
-                        @CachedLibrary("options") DynamicObjectLibrary dol,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            try {
-                JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
-                DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject, dol);
-                String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, dol, isObject, toBoolean, toString);
-                if (unit == null) {
-                    throw Errors.createRangeError("Unit not defined.");
-                }
-                DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
-                                duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo, dol,
-                                getContext().getRealm());
-                DynamicObject intermediate = null;
-                // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes intermediate
-                // = moveRelativeZonedDateTime()
-                DynamicObject balanceResult = JSTemporalDuration.balanceDuration(
-                                dol.getLongOrDefault(unbalanceResult, DAYS, 0),
-                                dol.getLongOrDefault(unbalanceResult, HOURS, 0),
-                                dol.getLongOrDefault(unbalanceResult, MINUTES, 0),
-                                dol.getLongOrDefault(unbalanceResult, SECONDS, 0),
-                                dol.getLongOrDefault(unbalanceResult, MILLISECONDS, 0),
-                                dol.getLongOrDefault(unbalanceResult, MICROSECONDS, 0),
-                                dol.getLongOrDefault(unbalanceResult, NANOSECONDS, 0),
-                                unit, intermediate, getContext().getRealm());
-                DynamicObject roundResult = JSTemporalDuration.roundDuration(
-                                dol.getLongOrDefault(unbalanceResult, YEARS, 0),
-                                dol.getLongOrDefault(unbalanceResult, MONTHS, 0),
-                                dol.getLongOrDefault(unbalanceResult, WEEKS, 0),
-                                dol.getLongOrDefault(balanceResult, DAYS, 0),
-                                dol.getLongOrDefault(balanceResult, HOURS, 0),
-                                dol.getLongOrDefault(balanceResult, MINUTES, 0),
-                                dol.getLongOrDefault(balanceResult, SECONDS, 0),
-                                dol.getLongOrDefault(balanceResult, MILLISECONDS, 0),
-                                dol.getLongOrDefault(balanceResult, MICROSECONDS, 0),
-                                dol.getLongOrDefault(balanceResult, NANOSECONDS, 0),
-                                1, unit, "trunc", relativeTo, dol, getContext().getRealm());
-                long whole = 0;
-                if (unit.equals(YEARS)) {
-                    whole = dol.getLongOrDefault(roundResult, YEARS, 0);
-                }
-                if (unit.equals(MONTHS)) {
-                    whole = dol.getLongOrDefault(roundResult, MONTHS, 0);
-                }
-                if (unit.equals(WEEKS)) {
-                    whole = dol.getLongOrDefault(roundResult, WEEKS, 0);
-                }
-                if (unit.equals(DAYS)) {
-                    whole = dol.getLongOrDefault(roundResult, DAYS, 0);
-                }
-                if (unit.equals(HOURS)) {
-                    whole = dol.getLongOrDefault(roundResult, HOURS, 0);
-                }
-                if (unit.equals(MINUTES)) {
-                    whole = dol.getLongOrDefault(roundResult, MINUTES, 0);
-                }
-                if (unit.equals(SECONDS)) {
-                    whole = dol.getLongOrDefault(roundResult, SECONDS, 0);
-                }
-                if (unit.equals(MILLISECONDS)) {
-                    whole = dol.getLongOrDefault(roundResult, MILLISECONDS, 0);
-                }
-                if (unit.equals(MICROSECONDS)) {
-                    whole = dol.getLongOrDefault(roundResult, MICROSECONDS, 0);
-                }
-                return whole + dol.getLongOrDefault(roundResult, "remainder", 0);
-            } catch (UnexpectedResultException e) {
-                throw new RuntimeException(e);
+            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, isObject);
+            String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, isObject, toBoolean, toString);
+            if (unit == null) {
+                throw Errors.createRangeError("Unit not defined.");
             }
+            DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
+                            duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo,
+                            getContext().getRealm());
+            DynamicObject intermediate = null;
+            // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes
+            // intermediate
+            // = moveRelativeZonedDateTime()
+            DynamicObject balanceResult = JSTemporalDuration.balanceDuration(
+                            getLong(unbalanceResult, DAYS, 0),
+                            getLong(unbalanceResult, HOURS, 0),
+                            getLong(unbalanceResult, MINUTES, 0),
+                            getLong(unbalanceResult, SECONDS, 0),
+                            getLong(unbalanceResult, MILLISECONDS, 0),
+                            getLong(unbalanceResult, MICROSECONDS, 0),
+                            getLong(unbalanceResult, NANOSECONDS, 0),
+                            unit, intermediate, getContext().getRealm());
+            DynamicObject roundResult = JSTemporalDuration.roundDuration(
+                            getLong(unbalanceResult, YEARS, 0),
+                            getLong(unbalanceResult, MONTHS, 0),
+                            getLong(unbalanceResult, WEEKS, 0),
+                            getLong(balanceResult, DAYS, 0),
+                            getLong(balanceResult, HOURS, 0),
+                            getLong(balanceResult, MINUTES, 0),
+                            getLong(balanceResult, SECONDS, 0),
+                            getLong(balanceResult, MILLISECONDS, 0),
+                            getLong(balanceResult, MICROSECONDS, 0),
+                            getLong(balanceResult, NANOSECONDS, 0),
+                            1, unit, "trunc", relativeTo, getContext().getRealm());
+            long whole = 0;
+            if (unit.equals(YEARS)) {
+                whole = getLong(roundResult, YEARS, 0);
+            }
+            if (unit.equals(MONTHS)) {
+                whole = getLong(roundResult, MONTHS, 0);
+            }
+            if (unit.equals(WEEKS)) {
+                whole = getLong(roundResult, WEEKS, 0);
+            }
+            if (unit.equals(DAYS)) {
+                whole = getLong(roundResult, DAYS, 0);
+            }
+            if (unit.equals(HOURS)) {
+                whole = getLong(roundResult, HOURS, 0);
+            }
+            if (unit.equals(MINUTES)) {
+                whole = getLong(roundResult, MINUTES, 0);
+            }
+            if (unit.equals(SECONDS)) {
+                whole = getLong(roundResult, SECONDS, 0);
+            }
+            if (unit.equals(MILLISECONDS)) {
+                whole = getLong(roundResult, MILLISECONDS, 0);
+            }
+            if (unit.equals(MICROSECONDS)) {
+                whole = getLong(roundResult, MICROSECONDS, 0);
+            }
+            return whole + getLong(roundResult, "remainder", 0);
         }
     }
 
@@ -535,7 +511,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object valueOf(DynamicObject thisObj) {
+        protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
+            // TODO ?
             throw Errors.createTypeError("Not supported.");
         }
     }

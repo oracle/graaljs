@@ -40,6 +40,32 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
+
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -50,7 +76,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
@@ -58,38 +83,16 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TemporalUtil {
-
-    private static final String YEAR = "year";
-    private static final String MONTH = "month";
-    private static final String MONTH_CODE = "monthCode";
-    private static final String DAY = "day";
-    private static final String HOUR = "hour";
-    private static final String MINUTE = "minute";
-    private static final String SECOND = "second";
-    private static final String MILLISECOND = "millisecond";
-    private static final String MICROSECOND = "microsecond";
-    private static final String NANOSECOND = "nanosecond";
-
-    private static final String YEARS = "years";
-    private static final String MONTHS = "months";
-    private static final String WEEKS = "weeks";
-    private static final String DAYS = "days";
-    private static final String HOURS = "hours";
-    private static final String MINUTES = "minutes";
-    private static final String SECONDS = "seconds";
-    private static final String MILLISECONDS = "milliseconds";
-    private static final String MICROSECONDS = "microseconds";
-    private static final String NANOSECONDS = "nanoseconds";
-
-    private static final String OFFSET = "offset";
-    private static final String ERA = "era";
-    private static final String ERA_YEAR = "eraYear";
 
     private static final Function<Object, Object> toIntegerOrInfinity = (argument -> (long) JSToDoubleNode.create().executeDouble(argument));
     private static final Function<Object, Object> toPositiveIntegerOrInfinity = TemporalUtil::toPositiveIntegerOrInfinity;
@@ -116,7 +119,8 @@ public final class TemporalUtil {
     private static final Map<String, Object> temporalFieldDefaults = toMap(
                     new String[]{YEAR, MONTH, MONTH_CODE, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS,
                                     MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR},
-                    new Object[]{null, null, null, null, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, null, null, null});
+                    new Object[]{Undefined.instance, Undefined.instance, Undefined.instance, Undefined.instance, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Undefined.instance, Undefined.instance,
+                                    Undefined.instance});
 
     // 13.1
     public static DynamicObject normalizeOptionsObject(DynamicObject options,
@@ -133,20 +137,18 @@ public final class TemporalUtil {
     }
 
     // 13.2
-    public static Object getOptions(DynamicObject options, String property, String type,
-                    Set<Object> values, Object fallback,
-                    DynamicObjectLibrary dol, IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+    public static Object getOptions(DynamicObject options, String property, String type, Set<Object> values, Object fallback, IsObjectNode isObjectNode, JSToBooleanNode toBoolean,
+                    JSToStringNode toStringNode) {
         assert isObjectNode.executeBoolean(options);
-        Object value = dol.getOrDefault(options, property, null);
-        if (value == null) {
+        Object value = JSObject.get(options, property);
+        if (value == Undefined.instance) {
             return fallback;
         }
         assert type.equals("boolean") || type.equals("string");
         if (type.equals("boolean")) {
             value = toBoolean.executeBoolean(value);
         } else if (type.equals("string")) {
-            value = toString.executeString(value);
+            value = toStringNode.executeString(value);
         }
         if (values != null && !values.contains(value)) {
             throw Errors.createRangeError(
@@ -158,7 +160,7 @@ public final class TemporalUtil {
     // 13.3
     public static double defaultNumberOptions(Object value, double minimum, double maximum, double fallback,
                     JSToNumberNode toNumber) {
-        if (value == null) {
+        if (value == Undefined.instance) {
             return fallback;
         }
         double numberValue = toNumber.executeNumber(value).doubleValue();
@@ -170,19 +172,18 @@ public final class TemporalUtil {
 
     // 13.4
     public static double getNumberOption(DynamicObject options, String property, double minimum, double maximum,
-                    double fallback, DynamicObjectLibrary dol, IsObjectNode isObject,
+                    double fallback, IsObjectNode isObject,
                     JSToNumberNode numberNode) {
         assert isObject.executeBoolean(options);
-        Object value = dol.getOrDefault(options, property, null);
+        Object value = JSObject.get(options, property);
         return defaultNumberOptions(value, minimum, maximum, fallback, numberNode);
     }
 
     // 13.5
     public static Object getStringOrNumberOption(DynamicObject options, String property, Set<String> stringValues,
-                    double minimum, double maximum, Object fallback, DynamicObjectLibrary dol,
-                    IsObjectNode isObject, JSToNumberNode toNumber, JSToStringNode toString) {
+                    double minimum, double maximum, Object fallback, IsObjectNode isObject, JSToNumberNode toNumber, JSToStringNode toStringNode) {
         assert isObject.executeBoolean(options);
-        Object value = dol.getOrDefault(options, property, null);
+        Object value = JSObject.get(options, property);
         if (value == null) {
             return fallback;
         }
@@ -193,7 +194,7 @@ public final class TemporalUtil {
             }
             return Math.floor(numberValue);
         }
-        value = toString.executeString(value);
+        value = toStringNode.executeString(value);
         if (stringValues != null && !stringValues.contains(value)) {
             throw Errors.createRangeError("Given string value is not in string values");
         }
@@ -202,53 +203,53 @@ public final class TemporalUtil {
 
     // 13.8
     public static String toTemporalOverflow(DynamicObject normalizedOptions,
-                    DynamicObjectLibrary dol,
                     IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+                    JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         Set<Object> values = new HashSet<>();
-        values.add("constrain");
-        values.add("reject");
-        return (String) getOptions(normalizedOptions, "overflow", "string", values, "constrain", dol,
-                        isObjectNode, toBoolean, toString);
+        values.add(CONSTRAIN);
+        values.add(REJECT);
+        return (String) getOptions(normalizedOptions, "overflow", "string", values, CONSTRAIN, isObjectNode, toBoolean, toStringNode);
     }
 
     // 13.11
-    public static String toTemporalRoundingMode(DynamicObject normalizedOptions, String fallback,
-                    DynamicObjectLibrary dol, IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+    public static String toTemporalRoundingMode(DynamicObject normalizedOptions, String fallback, IsObjectNode isObjectNode,
+                    JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         return (String) getOptions(normalizedOptions, "roundingMode", "string", toSet("ceil", "floor", "trunc", "nearest"),
-                        fallback, dol, isObjectNode, toBoolean, toString);
+                        fallback, isObjectNode, toBoolean, toStringNode);
     }
 
     // 13.17
     public static double toTemporalRoundingIncrement(DynamicObject normalizedOptions, Double dividend, boolean inclusive,
-                    DynamicObjectLibrary dol, IsObjectNode isObject,
+                    IsObjectNode isObject,
                     JSToNumberNode toNumber) {
         double maximum;
+        double dDividend = Double.NaN;
         if (dividend == null) {
             maximum = Double.POSITIVE_INFINITY;
-        } else if (inclusive) {
-            maximum = dividend;
-        } else if (dividend > 1) {
-            maximum = dividend - 1;
         } else {
-            maximum = 1;
+            dDividend = dividend.doubleValue();
+            if (inclusive) {
+                maximum = dDividend;
+            } else if (dDividend > 1) {
+                maximum = dDividend - 1;
+            } else {
+                maximum = 1;
+            }
         }
-        double increment = getNumberOption(normalizedOptions, "roundingIncrement", 1, maximum, 1,
-                        dol, isObject, toNumber);
-        if (dividend != null && dividend % increment != 0) {
+
+        double increment = getNumberOption(normalizedOptions, "roundingIncrement", 1, maximum, 1, isObject, toNumber);
+        if (dividend != null && dDividend % increment != 0) {
             throw Errors.createRangeError("Increment out of range.");
         }
         return increment;
     }
 
     // 13.19
-    public static DynamicObject toSecondsStringPrecision(DynamicObject normalizedOptions, DynamicObjectLibrary dol,
-                    IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString,
+    public static DynamicObject toSecondsStringPrecision(DynamicObject normalizedOptions, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toStringNode,
                     JSToNumberNode toNumberNode, JSRealm realm) {
         String smallestUnit = (String) getOptions(normalizedOptions, "smallestUnit", "string", toSet(MINUTE, SECOND,
                         MILLISECOND, MICROSECOND, NANOSECOND, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS),
-                        null, dol, isObject, toBoolean, toString);
+                        null, isObject, toBoolean, toStringNode);
         if (pluralUnits.contains(smallestUnit)) {
             smallestUnit = pluralToSingular.get(smallestUnit);
         }
@@ -287,7 +288,7 @@ public final class TemporalUtil {
         }
         assert smallestUnit == null;
         Object digits = getStringOrNumberOption(normalizedOptions, "fractionalSecondDigits",
-                        Collections.singleton("auto"), 0, 9, "auto", dol, isObject, toNumberNode, toString);
+                        Collections.singleton("auto"), 0, 9, "auto", isObject, toNumberNode, toStringNode);
         if (digits.equals("auto")) {
             JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", "auto");
             JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
@@ -321,13 +322,13 @@ public final class TemporalUtil {
 
     // 13.21
     public static String toLargestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String defaultUnit,
-                    DynamicObjectLibrary dol, IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+                    IsObjectNode isObjectNode,
+                    JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         assert !disallowedUnits.contains(defaultUnit) && !disallowedUnits.contains("auto");
         String largestUnit = (String) getOptions(normalizedOptions, "largestUnit", "string", toSet(
                         "auto", "year", "years", "month", "months", "week", "weeks", "day", "days", "hour",
                         "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), "auto", dol, isObjectNode, toBoolean, toString);
+                        "microseconds", "nanosecond", "nanoseconds"), "auto", isObjectNode, toBoolean, toStringNode);
         if (largestUnit.equals("auto")) {
             return defaultUnit;
         }
@@ -342,11 +343,10 @@ public final class TemporalUtil {
 
     // 13.22
     public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits,
-                    DynamicObjectLibrary dol, IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+                    IsObjectNode isObjectNode, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         String smallestUnit = (String) getOptions(normalizedOptions, "smallestUnit", "string", toSet("day", "days", "hour",
                         "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), null, dol, isObjectNode, toBoolean, toString);
+                        "microseconds", "nanosecond", "nanoseconds"), null, isObjectNode, toBoolean, toStringNode);
         if (smallestUnit == null) {
             throw Errors.createRangeError("No smallest unit found.");
         }
@@ -361,12 +361,12 @@ public final class TemporalUtil {
 
     // 13.23
     public static String toSmallestTemporalDurationUnit(DynamicObject normalizedOptions, String fallback, Set<String> disallowedUnits,
-                    DynamicObjectLibrary dol, IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+                    IsObjectNode isObjectNode,
+                    JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         String smallestUnit = (String) getOptions(normalizedOptions, "smallestUnit", "string", toSet(
                         "year", "years", "month", "months", "week", "weeks", "day", "days", "hour",
                         "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), fallback, dol, isObjectNode, toBoolean, toString);
+                        "microseconds", "nanosecond", "nanoseconds"), fallback, isObjectNode, toBoolean, toStringNode);
         if (singularUnits.contains(smallestUnit)) {
             smallestUnit = singularToPlural.get(smallestUnit);
         }
@@ -377,13 +377,11 @@ public final class TemporalUtil {
     }
 
     // 13.24
-    public static String toTemporalDurationTotalUnit(DynamicObject normalizedOptions,
-                    DynamicObjectLibrary dol, IsObjectNode isObjectNode,
-                    JSToBooleanNode toBoolean, JSToStringNode toString) {
+    public static String toTemporalDurationTotalUnit(DynamicObject normalizedOptions, IsObjectNode isObjectNode, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         String unit = (String) getOptions(normalizedOptions, "unit", "string", toSet(YEARS, YEAR, MONTHS, MONTH, WEEKS,
                         DAYS, DAY, HOURS, HOUR, MINUTES, MINUTE, SECONDS, SECOND, MILLISECONDS, MILLISECOND, MICROSECONDS,
                         MICROSECOND, NANOSECONDS, NANOSECONDS),
-                        null, dol, isObjectNode, toBoolean, toString);
+                        null, isObjectNode, toBoolean, toStringNode);
         if (singularUnits.contains(unit)) {
             unit = singularToPlural.get(unit);
         }
@@ -391,15 +389,15 @@ public final class TemporalUtil {
     }
 
     // 13.26
-    public static DynamicObject toRelativeTemporalObject(DynamicObject options, IsObjectNode isObject,
-                    DynamicObjectLibrary dol) {
+    public static DynamicObject toRelativeTemporalObject(DynamicObject options, IsObjectNode isObject) {
         assert isObject.executeBoolean(options);
-        DynamicObject value = (DynamicObject) dol.getOrDefault(options, "relativeTo", null);
+        DynamicObject value = (DynamicObject) JSObject.get(options, "relativeTo");
         if (value == null) {
             return value;
         }
         // TODO: https://tc39.es/proposal-temporal/#sec-temporal-torelativetemporalobject
-        return null;
+        throw Errors.unsupported("TODO");
+
     }
 
     // 13.27
@@ -466,18 +464,18 @@ public final class TemporalUtil {
     }
 
     // 13.31
-    public static Long maximumTemporalDurationRoundingIncrement(String unit) {
+    public static double maximumTemporalDurationRoundingIncrement(String unit) {
         if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS)) {
-            return null;
+            return Double.POSITIVE_INFINITY; // Undefined according to spec, we fix in caller
         }
         if (unit.equals(HOURS)) {
-            return 24L;
+            return 24d;
         }
         if (unit.equals(MINUTES) || unit.equals(SECONDS)) {
-            return 60L;
+            return 60d;
         }
         assert unit.equals(MILLISECONDS) || unit.equals(MICROSECONDS) || unit.equals(NANOSECONDS);
-        return 1000L;
+        return 1000d;
     }
 
     // 13.32
@@ -585,12 +583,12 @@ public final class TemporalUtil {
     }
 
     // 13.52
-    public static DynamicObject prepareTemporalFields(DynamicObject fields, Set<String> fieldNames, Set<String> requiredFields, JSRealm realm, IsObjectNode isObjectNode, DynamicObjectLibrary dol) {
+    public static DynamicObject prepareTemporalFields(DynamicObject fields, Set<String> fieldNames, Set<String> requiredFields, JSRealm realm, IsObjectNode isObjectNode) {
         assert isObjectNode.executeBoolean(fields);
         DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         for (String property : fieldNames) {
-            Object value = dol.getOrDefault(fields, property, null);
-            if (value == null) {
+            Object value = JSObject.get(fields, property);
+            if (value == null || value == Undefined.instance) { // TODO (CW) null is probably wrong
                 if (requiredFields.contains(property)) {
                     throw Errors.createTypeError(String.format("Property %s is required.", property));
                 } else {
@@ -624,11 +622,11 @@ public final class TemporalUtil {
     public static DynamicObject regulateISOYearMonth(long year, long month, String overflow, JSRealm realm) {
         assert isInteger(year);
         assert isInteger(month);
-        assert "constrain".equals(overflow) || "reject".equals(overflow);
+        assert CONSTRAIN.equals(overflow) || REJECT.equals(overflow);
 
-        if ("constrain".equals(overflow)) {
+        if (CONSTRAIN.equals(overflow)) {
             return constrainISOYearMonth(year, month, realm);
-        } else if ("reject".equals(overflow)) {
+        } else if (REJECT.equals(overflow)) {
             if (!validateISOYearMonth(year, month)) {
                 throw Errors.createRangeError("validation of year and month failed");
             }
@@ -655,7 +653,7 @@ public final class TemporalUtil {
     private static DynamicObject createRecordYearMonth(long year, long monthPrepared, JSRealm realm) {
         DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putDataProperty(realm.getContext(), record, MONTH, monthPrepared);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, DAY, year);
+        JSObjectUtil.putDataProperty(realm.getContext(), record, YEAR, year);
         return record;
     }
 
@@ -713,24 +711,83 @@ public final class TemporalUtil {
         return (long) value;
     }
 
-    public static DynamicObject getOptionalTemporalCalendar(DynamicObject item) {
-        // TODO Auto-generated method stub
-        return null;
+    public static DynamicObject getOptionalTemporalCalendar(DynamicObject item, JSContext ctx) {
+        if (item instanceof JSTemporalPlainDateObject) {
+            return ((JSTemporalPlainDateObject) item).getCalendar();
+            // TODO implement other types here, see 12.1.22
+        } else {
+            Object calendar = JSObject.get(item, TemporalConstants.CALENDAR);
+            return toOptionalTemporalCalendar(calendar, ctx);
+        }
     }
 
-    public static Set<String> calendarFields(DynamicObject calendar, String[] strings) {
+    private static DynamicObject toOptionalTemporalCalendar(Object calendar, JSContext ctx) {
+        if (calendar == Undefined.instance) {
+            return getISO8601Calendar(ctx);
+        } else {
+            return toTemporalCalendar(calendar, ctx);
+        }
+    }
+
+    private static DynamicObject getISO8601Calendar(JSContext ctx) {
+        return getBuiltinCalendar("iso8601", ctx);
+    }
+
+    private static DynamicObject getBuiltinCalendar(String id, JSContext ctx) {
+        Object cal = JSRuntime.construct(ctx.getRealm().getTemporalCalendarConstructor(), new Object[]{id});
+        return (DynamicObject) cal; // TODO does that hold?
+    }
+
+    private static DynamicObject toTemporalCalendar(Object calendar, JSContext ctx) {
         // TODO Auto-generated method stub
-        return null;
+        throw Errors.unsupported("TODO");
+    }
+
+    public static Set<String> calendarFields(DynamicObject calendar, String[] strings, JSContext ctx) {
+        DynamicObject fields = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.FIELDS);
+
+        if (fields == Undefined.instance) {
+            Set<String> set = new HashSet<>();
+            for (String s : strings) {
+                set.add(s);
+            }
+            return set;
+
+        } else {
+            DynamicObject fieldsArray = JSArray.createConstant(ctx, strings);
+            return arrayToStringSet((DynamicObject) JSRuntime.call(fields, calendar, new Object[]{fieldsArray}));
+        }
+    }
+
+    public static Set<String> arrayToStringSet(DynamicObject array) {
+        long len = (long) JSObject.get(array, "length");
+        Set<String> set = new HashSet<>();
+        for (int i = 0; i < len; i++) {
+            set.add(JSObject.get(array, i).toString());
+        }
+        return set;
     }
 
     public static DynamicObject dateFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
-        // TODO Auto-generated method stub
-        return null;
+        Object dateFromFields = JSObject.get(calendar, TemporalConstants.DATE_FROM_FIELDS);
+        DynamicObject date = (DynamicObject) JSRuntime.call(dateFromFields, calendar, new Object[]{fields, options});
+        requireInternalSlot(date, "InitializedTemporalDate");
+        return date;
     }
 
     public static DynamicObject parseTemporalDateString(String string) {
         // TODO Auto-generated method stub
-        return null;
+        throw Errors.unsupported("TODO");
+    }
+
+    private static Object parseTemporalTimeZone(String string) {
+        // TODO Auto-generated method stub
+        throw Errors.unsupported("TODO");
+    }
+
+    public static DynamicObject parseTemporalTimeString(String string) {
+        // TODO Auto-generated method stub
+        throw Errors.unsupported("TODO");
     }
 
     public static Object buildISOMonthCode(String numberPart) {
@@ -738,8 +795,8 @@ public final class TemporalUtil {
         return numberPart.length() >= 2 ? "M" + numberPart : "M0" + numberPart;
     }
 
-    public static void requireInternalSlot(DynamicObject temporalTime, String string) {
-        // TODO
+    public static void requireInternalSlot(DynamicObject obj, String str) {
+        // TODO ECMAScript 10.1.15
     }
 
     public static DynamicObject toTemporalTimeZone(DynamicObject temporalTimeZoneLike) {
@@ -760,27 +817,44 @@ public final class TemporalUtil {
 
     private static DynamicObject createTemporalTimeZone(Object parseTemporalTimeZone) {
         // TODO Auto-generated method stub
-        return null;
-    }
-
-    private static Object parseTemporalTimeZone(String identifier) {
-        // TODO Auto-generated method stub
-        return null;
+        throw Errors.unsupported("TODO");
     }
 
     public static DynamicObject createTemporalDateTime(int year, int month, int day, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds,
                     DynamicObject calendar) {
         // TODO Auto-generated method stub
-        return null;
+        throw Errors.unsupported("TODO"); // probably JSTemporalPlainDateTime.create ....
     }
 
     public static DynamicObject builtinTimeZoneGetInstantFor(DynamicObject timeZone, DynamicObject temporalDateTime, String string) {
         // TODO Auto-generated method stub
-        return null;
+        throw Errors.unsupported("TODO");
     }
 
     public static DynamicObject createTemporalZonedDateTime(long longOrDefault, DynamicObject timeZone, DynamicObject calendar) {
         // TODO Auto-generated method stub
-        return null;
+        throw Errors.unsupported("TODO");
+    }
+
+    // TODO get rid of this, just for legacy
+    public static long getLong(DynamicObject ob, String key, Object defaultValue) {
+        return getLong(ob, key);
+    }
+
+    public static long getLong(DynamicObject ob, String key) {
+        Object value = JSObject.get(ob, key);
+        Number n = (Number) value;
+        return n.longValue();
+    }
+
+    public static int getInt(DynamicObject ob, String key) {
+        Object value = JSObject.get(ob, key);
+        Number n = (Number) value;
+        return n.intValue();
+    }
+
+    public static Object getOrDefault(DynamicObject ob, String key, Object defaultValue) {
+        Object value = JSObject.get(ob, key);
+        return value != null ? value : defaultValue;
     }
 }

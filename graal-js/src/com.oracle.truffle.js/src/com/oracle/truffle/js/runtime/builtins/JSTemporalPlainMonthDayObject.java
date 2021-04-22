@@ -51,11 +51,27 @@ public class JSTemporalPlainMonthDayObject extends JSNonProxyObject {
     private final long isoYear;
 
     protected JSTemporalPlainMonthDayObject(Shape shape, long isoMonth, long isoDay, JSTemporalCalendarObject calendar,
-                                            long isoYear) {
+                    long isoYear) {
         super(shape);
         this.isoMonth = isoMonth;
         this.isoDay = isoDay;
         this.calendar = calendar;
         this.isoYear = isoYear;
+    }
+
+    public long getISOMonth() {
+        return isoMonth;
+    }
+
+    public long getISODay() {
+        return isoDay;
+    }
+
+    public long getISOYear() {
+        return isoYear;
+    }
+
+    public JSTemporalCalendarObject getCalendar() {
+        return calendar;
     }
 }

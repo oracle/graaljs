@@ -219,7 +219,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testPlainTimeSubtractDurationLikeObject() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(12, 45, 35);" +
-                            "plainTime = plainTime.add({ seconds: 20 });");
+                            "plainTime = plainTime.subtract({ seconds: 20 });");
             validatePlainTime(ctx, 12, 45, 15, 0, 0, 0);
         }
     }
@@ -264,8 +264,8 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testPlainTimeToString() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(10, 25, 5, 500, 400, 760);");
-            Value toString = ctx.eval(ID, "plainTime.toString();");
-            assertEquals("10:25:05.50040076", toString.asString());
+            Value str = ctx.eval(ID, "plainTime.toString();");
+            assertEquals("10:25:05.50040076", str.asString());
         }
     }
 
@@ -273,8 +273,8 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testPlainTimeToLocaleString() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(10, 25, 5, 500, 400, 760);");
-            Value toString = ctx.eval(ID, "plainTime.toLocaleString();");
-            assertEquals("10:25:05.50040076", toString.asString());
+            Value str = ctx.eval(ID, "plainTime.toLocaleString();");
+            assertEquals("10:25:05.50040076", str.asString());
         }
     }
 
@@ -282,8 +282,8 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testPlainTimeToJSON() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(10, 25, 5, 500, 400, 760);");
-            Value toString = ctx.eval(ID, "plainTime.toJSON();");
-            assertEquals("10:25:05.50040076", toString.asString());
+            Value str = ctx.eval(ID, "plainTime.toJSON();");
+            assertEquals("10:25:05.50040076", str.asString());
         }
     }
 
@@ -321,7 +321,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationFrom() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = Temporal.Duration.from({ years: 0, months: 0, weeks: 0, days: 0," +
-                            " hours: 12, minutes: 45, seconds: 35, milliseconds: 520, microseconds: 450, nanoseconds: 860 };");
+                            " hours: 12, minutes: 45, seconds: 35, milliseconds: 520, microseconds: 450, nanoseconds: 860 });");
             validateDuration(ctx, 0, 0, 0, 0, 12, 45, 35, 520,
                             450, 860);
         }
@@ -331,7 +331,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationCompare() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            Value compareValue = ctx.eval(ID, "Temporal.Duration.Compare(duration, duration);");
+            Value compareValue = ctx.eval(ID, "Temporal.Duration.compare(duration, duration);");
             assertEquals(0, compareValue.asInt());
         }
     }
@@ -358,7 +358,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationWith() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.with({ years: 8 }");
+            ctx.eval(ID, "duration = duration.with({ years: 8 })");
             validateDuration(ctx, 8, 0, 0, 0, 12, 45, 35, 520,
                             450, 860);
         }
@@ -368,7 +368,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationAdd() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.add({ seconds: 20 }");
+            ctx.eval(ID, "duration = duration.add({ seconds: 20 });");
             validateDuration(ctx, 0, 0, 0, 0, 12, 45, 55, 520,
                             450, 860);
         }
@@ -378,7 +378,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationSubtract() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.subtract({ seconds: 20 }");
+            ctx.eval(ID, "duration = duration.subtract({ seconds: 20 });");
             validateDuration(ctx, 0, 0, 0, 0, 12, 45, 15, 520,
                             450, 860);
         }
@@ -406,7 +406,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationRound() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "duration = duration.round({ smallestUnit: hours });");
+            ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' });");
             validateDuration(ctx, 0, 0, 0, 0, 13, 0, 0, 0,
                             0, 0);
         }
@@ -643,7 +643,7 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testPlainDateCreation() {
         try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let plainYearMonth = new Temporal.PlainDate(2021, 4, 22)");
+            ctx.eval(ID, "let plainDate = new Temporal.PlainDate(2021, 4, 22)");
             validatePlainDate(ctx, 2021, 4, 22);
         }
     }
@@ -663,7 +663,7 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testPlainMonthDayCreation() {
         try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "let plainYearMonth = new Temporal.PlainMonthDay(4, 22)");
+            ctx.eval(ID, "let plainMonthDay = new Temporal.PlainMonthDay(4, 22)");
             validatePlainMonthDay(ctx, "M04", 22);
         }
     }

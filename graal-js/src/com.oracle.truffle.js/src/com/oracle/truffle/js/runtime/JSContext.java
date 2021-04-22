@@ -337,7 +337,20 @@ public class JSContext {
         TemporalPlainYearMonthDaysInYear,
         TemporalPlainYearMonthDaysInMonth,
         TemporalPlainYearMonthMonthsInYear,
-        TemporalPlainYearMonthInLeapYear
+        TemporalPlainYearMonthInLeapYear,
+        TemporalDateCalendar,
+        TemporalDateYear,
+        TemporalDateMonth,
+        TemporalDateMonthCode,
+        TemporalDateDay,
+        TemporalDateDayOfWeek,
+        TemporalDateDayOfYear,
+        TemporalDateWeekOfYear,
+        TemporalDateDaysInWeek,
+        TemporalDateDaysInMonth,
+        TemporalDateDaysInYear,
+        TemporalDateMonthsInYear,
+        TemporalDateInLeapYear
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;

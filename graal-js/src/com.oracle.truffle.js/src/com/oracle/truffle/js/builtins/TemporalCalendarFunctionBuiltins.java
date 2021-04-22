@@ -42,9 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.builtins.TemporalCalendarFunctionBuiltinsFactory.JSTemporalCalendarFromNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -55,14 +53,13 @@ import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 
-public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarFunctionBuiltins.TemporalCalendarFunction>{
+public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarFunctionBuiltins.TemporalCalendarFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new TemporalPlainTimeFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new TemporalCalendarFunctionBuiltins();
 
     protected TemporalCalendarFunctionBuiltins() {
-        super(JSTemporalPlainTime.CLASS_NAME, TemporalCalendarFunctionBuiltins.TemporalCalendarFunction.class);
+        super(JSTemporalCalendar.CLASS_NAME, TemporalCalendarFunctionBuiltins.TemporalCalendarFunction.class);
     }
 
     public enum TemporalCalendarFunction implements BuiltinEnum<TemporalCalendarFunctionBuiltins.TemporalCalendarFunction> {
@@ -95,16 +92,14 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
             super(context, builtin);
         }
 
-        @Specialization(limit = "3")
-        protected Object from(DynamicObject item,
-                              @Cached("create()") IsObjectNode isObject,
-                              @Cached("create()") IsConstructorNode isConstructor,
-                              @CachedLibrary("item") DynamicObjectLibrary dol,
-                              @Cached("create()") JSToStringNode toString,
-                              @Cached("createNew()") JSFunctionCallNode callNode) {
+        @Specialization
+        protected Object from(Object item,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") IsConstructorNode isConstructor,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("createNew()") JSFunctionCallNode callNode) {
             DynamicObject constructor = getContext().getRealm().getTemporalCalendarConstructor();
-            return JSTemporalCalendar.calendarFrom(item, constructor, dol, isObject, toString,
-                    isConstructor, callNode);
+            return JSTemporalCalendar.calendarFrom(item, constructor, isObject, toString, isConstructor, callNode);
         }
 
     }

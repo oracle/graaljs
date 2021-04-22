@@ -68,9 +68,23 @@ public final class TemporalConstants {
     public static final String ERA = "era";
     public static final String ERA_YEAR = "eraYear";
 
+    public static final String FIELDS = "fields";
     public static final String CALENDAR = "calendar";
     public static final String DAYS_IN_YEAR = "daysInYear";
     public static final String DAYS_IN_MONTH = "daysInMonth";
+    public static final String DAYS_IN_WEEK = "daysInWeek";
     public static final String MONTHS_IN_YEAR = "monthsInYear";
     public static final String IN_LEAP_YEAR = "inLeapYear";
+
+    public static final String DAY_OF_WEEK = "daysOfWeek";
+    public static final String DAY_OF_YEAR = "daysOfYear";
+    public static final String WEEK_OF_YEAR = "weekOfYear";
+
+    public static final String DATE_FROM_FIELDS = "dateFromFields";
+    public static final Object ISO8601 = "iso8601";
+    public static final String REFERENCE_ISO_DAY = "referenceIsoDay";
+    public static final String REFERENCE_ISO_YEAR = "referenceIsoYear";
+
+    public static final String CONSTRAIN = "constrain";
+    public static final String REJECT = "reject";
 }
