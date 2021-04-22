@@ -77,9 +77,9 @@ import com.oracle.js.parser.ir.Node;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
-import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.Statement;
 import com.oracle.js.parser.ir.SwitchNode;
+import com.oracle.js.parser.ir.TemplateLiteralNode;
 import com.oracle.js.parser.ir.TernaryNode;
 import com.oracle.js.parser.ir.ThrowNode;
 import com.oracle.js.parser.ir.TryNode;
@@ -320,12 +320,7 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
 
     @Override
     public boolean enterExpressionStatement(final ExpressionStatement expressionStatement) {
-        // handle debugger statement
         final Node expression = expressionStatement.getExpression();
-        if (expression instanceof RuntimeNode) {
-            assert false : "should not reach here: RuntimeNode";
-            return false;
-        }
 
         enterDefault(expressionStatement);
 
@@ -737,20 +732,6 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     }
 
     @Override
-    public boolean enterRuntimeNode(final RuntimeNode runtimeNode) {
-        enterDefault(runtimeNode);
-
-        property("request", runtimeNode.getRequest().name());
-        comma();
-
-        array("args", runtimeNode.getArgs());
-
-        leave();
-
-        return false;
-    }
-
-    @Override
     public boolean enterSwitchNode(final SwitchNode switchNode) {
         enterDefault(switchNode);
 
@@ -997,6 +978,22 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
 
         property("body");
         withNode.getBody().accept(this);
+
+        return leave();
+    }
+
+    @Override
+    public boolean enterTemplateLiteralNode(final TemplateLiteralNode templateLiteralNode) {
+        enterDefault(templateLiteralNode);
+
+        type("TemplateLiteral");
+        comma();
+
+        if (templateLiteralNode instanceof TemplateLiteralNode.TaggedTemplateLiteralNode) {
+            array("elements", ((TemplateLiteralNode.TaggedTemplateLiteralNode) templateLiteralNode).getCookedStrings());
+        } else {
+            array("elements", ((TemplateLiteralNode.UntaggedTemplateLiteralNode) templateLiteralNode).getExpressions());
+        }
 
         return leave();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,9 @@ public final class CallNode extends OptionalExpression {
     /** Is this call part of an optional chain. */
     private static final int IS_OPTIONAL_CHAIN = 1 << 5;
 
+    /** Is this a tagged template literal call. */
+    private static final int IS_TAGGED_TEMPLATE_LITERAL = 1 << 6;
+
     private final int flags;
 
     private final int lineNumber;
@@ -95,8 +98,19 @@ public final class CallNode extends OptionalExpression {
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
                     boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments) {
+        return create(lineNumber, token, start, finish, function, args, optional, optionalChain, isEval, isApplyArguments, false);
+    }
+
+    public static Expression forTaggedTemplateLiteral(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args) {
+        return create(lineNumber, token, start, finish, function, args, false, false, false, false, true);
+    }
+
+    private static Expression create(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
+                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isTaggedTemplateLiteral) {
         return new CallNode(lineNumber, token, start, finish, setIsFunction(function), args,
-                        (optional ? IS_OPTIONAL : 0) | (optionalChain ? IS_OPTIONAL_CHAIN : 0) | (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0));
+                        (optional ? IS_OPTIONAL : 0) | (optionalChain ? IS_OPTIONAL_CHAIN : 0) |
+                                        (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0) |
+                                        (isTaggedTemplateLiteral ? IS_TAGGED_TEMPLATE_LITERAL : 0));
     }
 
     public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args) {
@@ -265,5 +279,12 @@ public final class CallNode extends OptionalExpression {
     @Override
     public boolean isOptionalChain() {
         return (flags & IS_OPTIONAL_CHAIN) != 0;
+    }
+
+    /**
+     * Check if this is a tagged template literal call.
+     */
+    public boolean isTaggedTemplateLiteral() {
+        return (flags & IS_TAGGED_TEMPLATE_LITERAL) != 0;
     }
 }
