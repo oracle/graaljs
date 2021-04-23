@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
@@ -89,8 +87,6 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
 
     public static final String CLASS_NAME = "TemporalPlainTime";
     public static final String PROTOTYPE_NAME = "TemporalPlainTime.prototype";
-
-    private static final String[] PROPERTIES = new String[]{HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
 
     private JSTemporalPlainTime() {
     }
@@ -242,8 +238,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                 return item;
             }
             // TODO: 4.c Calendar
-            result = toTemporalTimeRecord(item, realm, isObject, toInt);
-            result = regulateTime(
+            result = TemporalUtil.toTemporalTimeRecord(item, realm);
+            result = TemporalUtil.regulateTime(
                             getLong(result, HOUR),
                             getLong(result, MINUTE),
                             getLong(result, SECOND),
@@ -253,7 +249,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                             overflow, realm);
         } else {
             String string = toString.executeString(item);
-            result = TemporalUtil.parseTemporalTimeString(string);
+            result = TemporalUtil.parseTemporalTimeString(string, realm.getContext());
             if (TemporalUtil.validateTime(
                             getLong(result, HOUR),
                             getLong(result, MINUTE),
@@ -287,7 +283,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         }
         DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         boolean any = false;
-        for (String property : PROPERTIES) {
+        for (String property : TemporalUtil.TIME_LIKE_PROPERTIES) {
             Object value = JSObject.get(temporalTimeLike, property);
             if (value != null) {
                 any = true;
@@ -298,45 +294,6 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         if (!any) {
             throw Errors.createTypeError("No Temporal.Time property found in given object.");
         }
-        return result;
-    }
-
-    // 4.5.4
-    public static DynamicObject regulateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds, String overflow, JSRealm realm) {
-        assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
-        if (overflow.equals(CONSTRAIN)) {
-            return constrainTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, realm);
-        } else {
-            if (!TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
-                throw Errors.createRangeError("Given time outside the range.");
-            }
-
-            DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, DAYS, 0);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, HOUR, hours);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, MINUTE, minutes);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, SECOND, seconds);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, MILLISECOND, milliseconds);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECOND, microseconds);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECOND, nanoseconds);
-
-            return result;
-        }
-    }
-
-    // 4.5.7
-    public static DynamicObject constrainTime(long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, JSRealm realm) {
-
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putDataProperty(realm.getContext(), result, HOUR, TemporalUtil.constrainToRange(hours, 0, 23));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, MINUTE, TemporalUtil.constrainToRange(minutes, 0, 59));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, SECOND, TemporalUtil.constrainToRange(seconds, 0, 59));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, MILLISECOND, TemporalUtil.constrainToRange(milliseconds, 0, 999));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECOND, TemporalUtil.constrainToRange(microseconds, 0, 999));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECOND, TemporalUtil.constrainToRange(nanoseconds, 0, 999));
-
         return result;
     }
 
@@ -367,22 +324,6 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
         System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
         Object result = callNode.executeCall(args);
-        return result;
-    }
-
-    // 4.5.11
-    public static DynamicObject toTemporalTimeRecord(DynamicObject temporalTimeLike,
-                    JSRealm realm, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
-        assert isObject.executeBoolean(temporalTimeLike);
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        for (String property : PROPERTIES) {
-            Object value = JSObject.get(temporalTimeLike, property);
-            if (value == null) {
-                throw Errors.createTypeError(String.format("Property %s should not be undefined.", property));
-            }
-            value = toInt.executeLong(value);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
-        }
         return result;
     }
 

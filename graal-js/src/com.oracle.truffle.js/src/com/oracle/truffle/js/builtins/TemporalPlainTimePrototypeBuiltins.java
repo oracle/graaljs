@@ -210,7 +210,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             getLong(duration, MICROSECONDS),
                             getLong(duration, NANOSECONDS),
                             getContext().getRealm());
-            result = JSTemporalPlainTime.regulateTime(
+            result = TemporalUtil.regulateTime(
                             getLong(result, HOUR),
                             getLong(result, MINUTE),
                             getLong(result, SECOND),
@@ -266,7 +266,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             -getLong(duration, MICROSECONDS),
                             -getLong(duration, NANOSECONDS),
                             getContext().getRealm());
-            result = JSTemporalPlainTime.regulateTime(
+            result = TemporalUtil.regulateTime(
                             getLong(result, HOUR),
                             getLong(result, MINUTE),
                             getLong(result, SECOND),
@@ -350,7 +350,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             } else {
                 nanosecond = temporalTime.getNanoseconds();
             }
-            DynamicObject result = JSTemporalPlainTime.regulateTime(hour, minute, second, millisecond, microsecond,
+            DynamicObject result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond,
                             nanosecond, overflow, getContext().getRealm());
             return JSTemporalPlainTime.createTemporalTimeFromInstance(
                             getLong(result, HOUR),

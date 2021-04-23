@@ -61,4 +61,9 @@ public final class TemporalErrors {
         return Errors.createRangeError("Smallest unit is out of range.");
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorFieldsNotAnObject() {
+        return Errors.createTypeError("Given fields is not an object.");
+    }
+
 }

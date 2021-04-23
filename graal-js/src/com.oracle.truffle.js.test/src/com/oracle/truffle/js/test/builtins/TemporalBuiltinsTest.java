@@ -217,7 +217,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testPlainTimeWith() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(12, 45, 35, 520, 450, 860);");
-            ctx.eval(ID, "plainTime = plaintTime.with({ minute: 0, second: 0 });");
+            ctx.eval(ID, "plainTime = plainTime.with({ minute: 0, second: 0 });");
             validatePlainTime(ctx, 12, 0, 0, 520, 450, 860);
         }
     }
@@ -623,7 +623,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testCalendarMonthDayFromFields() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let calendar = Temporal.Calendar.from('iso8601');");
-            ctx.eval(ID, "let plainMonthDay = calendar.monthDayFromFields({ month: 4, day: 22 });");
+            ctx.eval(ID, "let plainMonthDay = calendar.monthDayFromFields({ month: 4, monthCode: 'M04', day: 22 });");
             validatePlainMonthDay(ctx, "M04", 22);
         }
     }

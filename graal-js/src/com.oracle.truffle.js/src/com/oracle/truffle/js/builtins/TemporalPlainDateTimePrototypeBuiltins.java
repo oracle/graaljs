@@ -75,7 +75,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
@@ -176,8 +175,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public DynamicObject add(DynamicObject thisObj, DynamicObject temporalDurationLike, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @Cached("createNew()") JSFunctionCallNode callNode) {
+                        @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalPlainDateTimeObject temporalDT = (JSTemporalPlainDateTimeObject) thisObj;
             DynamicObject duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), getContext().getRealm(), isObject, toString, toInt);
@@ -197,9 +195,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay(),
                             temporalDT.getHours(), temporalDT.getMinutes(), temporalDT.getSeconds(),
                             temporalDT.getMilliseconds(), temporalDT.getMicroseconds(), temporalDT.getNanoseconds(),
+                            temporalDT.getCalendar(),
                             getLong(duration, YEARS),
                             getLong(duration, MONTHS),
                             getLong(duration, WEEKS),
+                            getLong(duration, DAYS),
                             getLong(duration, HOURS),
                             getLong(duration, MINUTES),
                             getLong(duration, SECONDS),
@@ -234,8 +234,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public DynamicObject subtract(DynamicObject thisObj, DynamicObject temporalDurationLike, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @Cached("createNew()") JSFunctionCallNode callNode) {
+                        @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalPlainDateTimeObject temporalDT = (JSTemporalPlainDateTimeObject) thisObj;
             DynamicObject duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), getContext().getRealm(), isObject, toString, toInt);
@@ -255,9 +254,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             temporalDT.getYear(), temporalDT.getMonth(), temporalDT.getDay(),
                             temporalDT.getHours(), temporalDT.getMinutes(), temporalDT.getSeconds(),
                             temporalDT.getMilliseconds(), temporalDT.getMicroseconds(), temporalDT.getNanoseconds(),
+                            temporalDT.getCalendar(),
                             -getLong(duration, YEARS),
                             -getLong(duration, MONTHS),
                             -getLong(duration, WEEKS),
+                            -getLong(duration, DAYS),
                             -getLong(duration, HOURS),
                             -getLong(duration, MINUTES),
                             -getLong(duration, SECONDS),

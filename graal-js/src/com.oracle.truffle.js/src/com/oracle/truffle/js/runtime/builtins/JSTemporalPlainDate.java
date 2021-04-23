@@ -317,7 +317,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         String overflows = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
-        DynamicObject result = TemporalUtil.parseTemporalDateString(toString.executeString(item));
+        DynamicObject result = TemporalUtil.parseTemporalDateString(toString.executeString(item), realm.getContext());
         if (!validateISODate(getLong(result, YEAR, 0),
                         getLong(result, MONTH, 0), getLong(result, DAY, 0))) {
             throw Errors.createRangeError("Given date is not valid.");

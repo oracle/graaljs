@@ -431,8 +431,12 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");
         }
-        if (month != null && !month.equals(numberPart2)) {
-            throw Errors.createTypeError("Month equals not the month code.");
+
+        long m1 = TemporalUtil.asLong(month);
+        long m2 = (long) numberPart2;
+
+        if (month != null && m1 != m2) {
+            throw Errors.createTypeError("Month does not equal the month code.");
         }
         if (!identicalNode.executeBoolean(monthCode, TemporalUtil.buildISOMonthCode(numberPart))) {
             throw Errors.createRangeError("Not same value");
