@@ -87,4 +87,11 @@ public final class TemporalConstants {
 
     public static final String CONSTRAIN = "constrain";
     public static final String REJECT = "reject";
+    public static final String OVERFLOW = "overflow";
+    public static final String COMPATIBLE = "compatible";
+
+    public static final String TIME_ZONE = "timeZone";
+    public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
+    public static final String TIME_ZONE_IANA_NAME = "timeZoneIANAName";
+
 }

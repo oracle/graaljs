@@ -108,6 +108,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
@@ -452,8 +453,9 @@ public class JSContext {
     private final JSObjectFactory jsAdapterFactory;
     private final JSObjectFactory dictionaryObjectFactory;
 
-    private final JSObjectFactory temporalTimeFactory;
+    private final JSObjectFactory temporalPlainTimeFactory;
     private final JSObjectFactory temporalPlainDateFactory;
+    private final JSObjectFactory temporalPlainDateTimeFactory;
     private final JSObjectFactory temporalDurationFactory;
     private final JSObjectFactory temporalCalendarFactory;
     private final JSObjectFactory temporalPlainYearMonthFactory;
@@ -619,8 +621,9 @@ public class JSContext {
         this.jsAdapterFactory = nashornCompat ? builder.create(JSAdapter.INSTANCE) : null;
         this.javaImporterFactory = nashornCompat ? builder.create(JavaImporter.instance()) : null;
 
-        this.temporalTimeFactory = builder.create(JSTemporalPlainTime.INSTANCE);
+        this.temporalPlainTimeFactory = builder.create(JSTemporalPlainTime.INSTANCE);
         this.temporalPlainDateFactory = builder.create(JSTemporalPlainDate.INSTANCE);
+        this.temporalPlainDateTimeFactory = builder.create(JSTemporalPlainDateTime.INSTANCE);
         this.temporalDurationFactory = builder.create(JSTemporalDuration.INSTANCE);
         this.temporalCalendarFactory = builder.create(JSTemporalCalendar.INSTANCE);
         this.temporalPlainYearMonthFactory = builder.create(JSTemporalPlainYearMonth.INSTANCE);
@@ -1063,12 +1066,16 @@ public class JSContext {
         return javaPackageFactory;
     }
 
-    public final JSObjectFactory getTemporalTimeFactory() {
-        return temporalTimeFactory;
+    public final JSObjectFactory getTemporalPlainTimeFactory() {
+        return temporalPlainTimeFactory;
     }
 
     public final JSObjectFactory getTemporalPlainDateFactory() {
         return temporalPlainDateFactory;
+    }
+
+    public final JSObjectFactory getTemporalPlainDateTimeFactory() {
+        return temporalPlainDateTimeFactory;
     }
 
     public final JSObjectFactory getTemporalDurationFactory() {

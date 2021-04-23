@@ -111,6 +111,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbol
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalCalendarNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainMonthDayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainYearMonthNodeGen;
@@ -221,6 +222,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
@@ -256,6 +258,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Contains built-in constructor functions.
@@ -338,6 +341,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         TemporalPlainTime(6),
         TemporalPlainDate(4),
+        TemporalPlainDateTime(10),
         TemporalDuration(10),
         TemporalCalendar(1),
         TemporalPlainYearMonth(4),
@@ -381,7 +385,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
             } else if (EnumSet.of(TemporalPlainTime, TemporalCalendar, TemporalDuration,
-                            TemporalPlainDate, TemporalPlainYearMonth, TemporalPlainMonthDay).contains(this)) {
+                            TemporalPlainDate, TemporalPlainDateTime, TemporalPlainYearMonth, TemporalPlainMonthDay).contains(this)) {
                 return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -633,6 +637,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case TemporalPlainDateTime:
+                if (construct) {
+                    return newTarget ? ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
+                                    : ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1095,6 +1106,38 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
             return swapPrototype(JSTemporalPlainTime.create(getContext(),
                             hour, minute, second, millisecond, microsecond, nanosecond), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getTemporalPlainTimePrototype();
+        }
+    }
+
+    public abstract static class ConstructTemporalPlainDateTimeNode extends ConstructWithNewTargetNode {
+
+        protected ConstructTemporalPlainDateTimeNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected DynamicObject constructTemporalPlainDateTime(DynamicObject newTarget, Object yearObj, Object monthObj, Object dayObj, Object hourObj, Object minuteObj,
+                        Object secondObj, Object millisecondObject,
+                        Object microsecondObject, Object nanosecondObject, Object calendarLike,
+                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
+            final long year = toIntegerNode.executeLong(yearObj);
+            final long month = toIntegerNode.executeLong(monthObj);
+            final long day = toIntegerNode.executeLong(dayObj);
+
+            final long hour = toIntegerNode.executeLong(hourObj);
+            final long minute = toIntegerNode.executeLong(minuteObj);
+            final long second = toIntegerNode.executeLong(secondObj);
+            final long millisecond = toIntegerNode.executeLong(millisecondObject);
+            final long microsecond = toIntegerNode.executeLong(microsecondObject);
+            final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
+            DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(calendarLike, getContext());
+            return swapPrototype(JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
+                            year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar), newTarget);
         }
 
         @Override

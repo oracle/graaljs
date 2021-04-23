@@ -44,8 +44,8 @@ import static com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey.Tempora
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
@@ -447,9 +447,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
-        DynamicObject preparedFields = JSTemporalPlainDate.toTemporalDateFields(fields,
-                        TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR),
-                        realm, isObject);
+        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), realm);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
             throw Errors.createTypeError("Year not present.");
@@ -466,10 +464,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
-        DynamicObject preparedFields = JSTemporalPlainDate.toTemporalDateFields(fields,
-                        TemporalUtil.toSet(MONTH,
-                                        MONTH_CODE, YEAR),
-                        realm, isObject);
+        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), realm);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
             throw Errors.createTypeError("Year not present.");
@@ -488,9 +483,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
-        DynamicObject preparedFields = JSTemporalPlainDate.toTemporalDateFields(fields,
-                        TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR),
-                        realm, isObject);
+        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), realm);
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
         Object year = JSObject.get(preparedFields, YEAR);

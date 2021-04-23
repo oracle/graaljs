@@ -205,7 +205,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!isObject.executeBoolean(fields)) {
                 throw Errors.createRangeError("Given fields is not an object.");
             }
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject result = JSTemporalCalendar.isoDateFromFields(fields, options, getContext().getRealm(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
 
@@ -233,7 +233,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!isObject.executeBoolean(fields)) {
                 throw Errors.createTypeError("Given fields is not an object.");
             }
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject result = JSTemporalCalendar.isoYearMonthFromFields(fields, options, getContext().getRealm(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
             return JSTemporalPlainYearMonth.create(getContext(), getLong(result, YEAR), getLong(result, MONTH),
@@ -261,7 +261,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!isObject.executeBoolean(fields)) {
                 throw Errors.createTypeError("Given fields is not an object.");
             }
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject result = JSTemporalCalendar.isoMonthDayFromFields(fields, options, getContext().getRealm(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
             return null;    // TODO: Call JSTemporalPlainMonthDay.createTemporalMonthDayFromStatic()
@@ -289,7 +289,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             null, getContext().getRealm(), isObject, toBoolean, toString);
             JSTemporalDurationObject duration = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(
                             durationObj, null, getContext().getRealm(), isObject, toInt, toString, isConstructor, callNode);
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
             DynamicObject result = JSTemporalPlainDate.addISODate(date.getYear(), date.getMonth(), date.getDay(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow,
@@ -317,7 +317,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             null, getContext().getRealm(), isObject, toBoolean, toString);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(twoObj,
                             null, getContext().getRealm(), isObject, toBoolean, toString);
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options,
                             TemporalUtil.toSet(HOURS, MINUTES, SECONDS,
                                             MILLISECONDS, MICROSECONDS,

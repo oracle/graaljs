@@ -276,7 +276,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                     long millisecond, long microsecond, long nanosecond) {
         assert month >= 1 && month <= 12;
         assert day >= 1 && day <= daysInMonth(year, month);
-        assert JSTemporalPlainTime.validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
+        assert TemporalUtil.validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
         double date = JSDate.makeDay(year, month, day);
         double time = JSDate.makeTime(hour, minute, second, millisecond);
         double ms = JSDate.makeDate(date, time);
@@ -313,7 +313,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             }
             DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, realm.getContext());
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"}, realm.getContext());
-            DynamicObject fields = toTemporalDateFields(item, fieldNames, realm, isObject);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(item, fieldNames, TemporalUtil.toSet(), realm);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         String overflows = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
@@ -474,8 +474,8 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     }
 
     // 3.5.6
-    public static DynamicObject toTemporalDateFields(DynamicObject temporalDateLike, Set<String> fieldNames, JSRealm realm, IsObjectNode isObject) {
-        return TemporalUtil.prepareTemporalFields(temporalDateLike, fieldNames, Collections.emptySet(), realm, isObject);
+    public static DynamicObject toTemporalDateFields(DynamicObject temporalDateLike, Set<String> fieldNames, JSRealm realm) {
+        return TemporalUtil.prepareTemporalFields(temporalDateLike, fieldNames, Collections.emptySet(), realm);
     }
 
     // 3.5.7
@@ -573,7 +573,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     }
 
     // 3.5.15
-    public static long compareISODate(long y1, long m1, long d1, long y2, long m2, long d2) {
+    public static int compareISODate(long y1, long m1, long d1, long y2, long m2, long d2) {
         if (y1 > y2) {
             return 1;
         }

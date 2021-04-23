@@ -59,6 +59,8 @@ public class TemporalBuiltinsTest extends JSTest {
         return JSTest.newContextBuilder(ID).option("js.ecmascript-version", "2022").build();
     }
 
+    // TODO PlainDateTime tests
+
     private static void validatePlainTime(Context ctx, long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond) {
         final Value hourValue = ctx.eval(ID, "plainTime.hour");
@@ -132,6 +134,30 @@ public class TemporalBuiltinsTest extends JSTest {
         assertEquals(year, yearValue.asLong());
         assertEquals(month, monthValue.asLong());
         assertEquals(day, dayValue.asLong());
+    }
+
+    private static void validatePlainDateTime(Context ctx, long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
+                    long nanosecond) {
+        final Value hourValue = ctx.eval(ID, "plainDateTime.hour");
+        final Value minuteValue = ctx.eval(ID, "plainDateTime.minute");
+        final Value secondValue = ctx.eval(ID, "plainDateTime.second");
+        final Value millisecondValue = ctx.eval(ID, "plainDateTime.millisecond");
+        final Value microsecondValue = ctx.eval(ID, "plainDateTime.microsecond");
+        final Value nanosecondValue = ctx.eval(ID, "plainDateTime.nanosecond");
+
+        Value yearValue = ctx.eval(ID, "plainDateTime.year");
+        Value monthValue = ctx.eval(ID, "plainDateTime.month");
+        Value dayValue = ctx.eval(ID, "plainDateTime.day");
+
+        assertEquals(year, yearValue.asLong());
+        assertEquals(month, monthValue.asLong());
+        assertEquals(day, dayValue.asLong());
+        assertEquals(hour, hourValue.asLong());
+        assertEquals(minute, minuteValue.asLong());
+        assertEquals(second, secondValue.asLong());
+        assertEquals(millisecond, millisecondValue.asLong());
+        assertEquals(microsecond, microsecondValue.asLong());
+        assertEquals(nanosecond, nanosecondValue.asLong());
     }
 
     private static void validatePlainYearMonth(Context ctx, long year, long month, String monthCode, long daysInYear,
@@ -648,6 +674,32 @@ public class TemporalBuiltinsTest extends JSTest {
         }
     }
 // endregion
+
+    // region PlainDateTime Tests
+    @Test
+    public void testPlainDateTimeCreation() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let plainDateTime = new Temporal.PlainDateTime(2021, 04, 23, 12, 45, 35, 520, 450, 860);");
+            validatePlainDateTime(ctx, 2021, 04, 23, 12, 45, 35, 520, 450, 860);
+        }
+    }
+
+    @Test
+    public void testPlainDateTimeFrom() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let plainDateTime = Temporal.PlainDateTime.from({ year: 2021, month: 4, day: 23, hour: 12, minute: 45, second: 35, millisecond: 520, microsecond: 450, nanosecond: 860 });");
+            validatePlainDateTime(ctx, 2021, 04, 23, 12, 45, 35, 520, 450, 860);
+        }
+    }
+
+    @Test
+    public void testPlainDateTimeCompare() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let plainDateTime = new Temporal.PlainDateTime(2021, 04, 23, 12, 45, 35, 520, 450, 860);");
+            Value compareResult = ctx.eval(ID, "Temporal.PlainDateTime.compare(plainDateTime, plainDateTime);");
+            assertEquals(0, compareResult.asInt());
+        }
+    }
 
 // region PlainYearMonth Tests
     @Test

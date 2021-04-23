@@ -103,15 +103,15 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimePrototypeBuiltins.TemporalTimePrototype> {
+public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimePrototypeBuiltins.TemporalPlainTimePrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new TemporalPlainTimePrototypeBuiltins();
 
     protected TemporalPlainTimePrototypeBuiltins() {
-        super(JSTemporalPlainTime.PROTOTYPE_NAME, TemporalTimePrototype.class);
+        super(JSTemporalPlainTime.PROTOTYPE_NAME, TemporalPlainTimePrototype.class);
     }
 
-    public enum TemporalTimePrototype implements BuiltinEnum<TemporalTimePrototype> {
+    public enum TemporalPlainTimePrototype implements BuiltinEnum<TemporalPlainTimePrototype> {
         add(1),
         subtract(1),
         with(2),
@@ -129,7 +129,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         private final int length;
 
-        TemporalTimePrototype(int length) {
+        TemporalPlainTimePrototype(int length) {
             this.length = length;
         }
 
@@ -140,7 +140,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalTimePrototype builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainTimePrototype builtinEnum) {
         switch (builtinEnum) {
             case add:
                 return JSTemporalPlainTimeAddNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
@@ -310,7 +310,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             // TODO: Get calendar value.
             DynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, getContext().getRealm(),
                             isObject, toInt);
-            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(),
+            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(),
                             isObject);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, isObject, toBoolean, toString);
             long hour, minute, second, millisecond, microsecond, nanosecond;
@@ -383,7 +383,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj,
                             null, null, getContext().getRealm(), isObject, toInt, toString,
                             isConstructor, callNode);
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, NANOSECONDS,
                             TemporalUtil.toSet(YEARS, MONTHS, WEEKS, DAYS),
                             isObject, toBoolean, toString);
@@ -449,7 +449,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj,
                             null, null, getContext().getRealm(), isObject, toInt, toString,
                             isConstructor, callNode);
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, NANOSECONDS,
                             TemporalUtil.toSet(YEARS, MONTHS, WEEKS, DAYS),
                             isObject, toBoolean, toString);
@@ -528,7 +528,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 if (options == Undefined.instance) {
                     throw Errors.createTypeError("Options should not be null.");
                 }
-                DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options, getContext().getRealm(), isObject);
+                DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
                 String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, Collections.singleton("day"),
                                 isObject, toBoolean, toString);
                 String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "nearest", isObject, toBoolean, toString);
@@ -692,7 +692,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("create()") JSToBooleanNode toBoolean) {
             JSTemporalPlainTimeObject temporalTime = (JSTemporalPlainTimeObject) thisObj;
-            DynamicObject options = TemporalUtil.normalizeOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject precision = TemporalUtil.toSecondsStringPrecision(options, isObject, toBoolean, toString, toNumber, getContext().getRealm());
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);
             DynamicObject roundResult = JSTemporalPlainTime.roundTime(

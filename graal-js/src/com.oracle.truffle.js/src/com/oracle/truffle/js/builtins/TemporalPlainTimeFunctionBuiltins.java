@@ -69,7 +69,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public enum TemporalPlainTimeFunction implements BuiltinEnum<TemporalPlainTimeFunction> {
-        from(2),
+        from(1),
         compare(2);
 
         private final int length;
@@ -110,7 +110,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
-            DynamicObject normalizedOptions = TemporalUtil.normalizeOptionsObject(options,
+            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options,
                             getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, isObject, toBoolean, toString);
             if (isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalTime(item)) {
