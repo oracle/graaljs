@@ -63,8 +63,7 @@ public final class JSTuple extends JSNonProxy implements JSConstructorFactory.De
 
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
-        return initialShape;
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
@@ -118,4 +117,6 @@ public final class JSTuple extends JSNonProxy implements JSConstructorFactory.De
         Tuple tuple = ((JSTupleObject) thisObj).getTupleValue();
         return tuple.hasElement(index);
     }
+
+    // TODO: override [[GetOwnProperty]], [[Delete]], etc.
 }

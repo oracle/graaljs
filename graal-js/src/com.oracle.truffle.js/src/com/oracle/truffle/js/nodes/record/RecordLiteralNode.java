@@ -38,7 +38,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package com.oracle.truffle.js.nodes.record;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -57,9 +56,9 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 
 import java.util.List;
 import java.util.Map;
@@ -83,7 +82,7 @@ public class RecordLiteralNode extends JavaScriptNode {
         for (AbstractRecordLiteralMemberNode element : elements) {
             element.evaluate(frame, entries, context);
         }
-        return Null.instance; // TODO: create Record primitive
+        return new Record(entries);
     }
 
     @Override

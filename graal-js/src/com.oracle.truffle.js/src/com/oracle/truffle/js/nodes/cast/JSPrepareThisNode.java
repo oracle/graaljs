@@ -55,11 +55,13 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTuple;
@@ -140,6 +142,11 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
     @Specialization
     protected DynamicObject doSymbol(Symbol value) {
         return JSSymbol.create(context, value);
+    }
+
+    @Specialization
+    protected DynamicObject doRecord(Record value) {
+        return JSRecord.create(context, value);
     }
 
     @Specialization

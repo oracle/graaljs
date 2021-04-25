@@ -95,6 +95,7 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -403,6 +404,7 @@ public class JSContext {
     private final JSObjectFactory webAssemblyTableFactory;
     private final JSObjectFactory webAssemblyGlobalFactory;
 
+    private final JSObjectFactory recordFactory;
     private final JSObjectFactory tupleFactory;
 
     private final int factoryCount;
@@ -561,6 +563,7 @@ public class JSContext {
         this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
+        this.recordFactory = builder.create(JSRecord.INSTANCE);
         this.tupleFactory = builder.create(JSTuple.INSTANCE);
 
         this.factoryCount = builder.finish();
@@ -987,6 +990,10 @@ public class JSContext {
 
     public JSObjectFactory getWebAssemblyGlobalFactory() {
         return webAssemblyGlobalFactory;
+    }
+
+    public final JSObjectFactory getRecordFactory() {
+        return recordFactory;
     }
 
     public final JSObjectFactory getTupleFactory() {

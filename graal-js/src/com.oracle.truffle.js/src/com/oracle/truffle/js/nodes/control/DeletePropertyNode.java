@@ -73,9 +73,13 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -183,6 +187,24 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             propertyKey = toPropertyKeyNode.execute(key);
         }
         return JSObject.delete(targetObject, propertyKey, strict, jsclassProfile);
+    }
+
+    @Specialization
+    protected boolean doRecord(Record target, Object property,
+                                      @Cached("create()") JSClassProfile jsclassProfile,
+                                      @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        Object propertyKey = toPropertyKeyNode.execute(property);
+        DynamicObject object = JSRecord.create(context, target);
+        return JSObject.delete(object, propertyKey, strict, jsclassProfile);
+    }
+
+    @Specialization
+    protected boolean doTuple(Tuple target, Object property,
+                                      @Cached("create()") JSClassProfile jsclassProfile,
+                                      @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        Object propertyKey = toPropertyKeyNode.execute(property);
+        DynamicObject object = JSTuple.create(context, target);
+        return JSObject.delete(object, propertyKey, strict, jsclassProfile);
     }
 
     @SuppressWarnings("unused")

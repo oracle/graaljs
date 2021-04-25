@@ -74,6 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -1525,6 +1526,8 @@ public final class JSRuntime {
             return JSNumber.create(ctx, (Number) value);
         } else if (value instanceof Symbol) {
             return JSSymbol.create(ctx, (Symbol) value);
+        } else if (value instanceof Record) {
+            return JSRecord.create(ctx, (Record) value);
         } else if (value instanceof Tuple) {
             return JSTuple.create(ctx, (Tuple) value);
         } else {
@@ -1618,8 +1621,9 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
-                        !(value instanceof BigInt) && !(value instanceof Tuple);
+        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol)
+                && !(value instanceof JSLazyString) && !(value instanceof SafeInteger)
+                && !(value instanceof BigInt) && !(value instanceof Tuple) && !(value instanceof Record);
     }
 
     private static boolean equalInterop(Object a, Object b) {
@@ -2009,8 +2013,13 @@ public final class JSRuntime {
         return JSDynamicObject.isJSDynamicObject(value) || isJSPrimitive(value);
     }
 
+    /**
+     * Is value a native JavaScript primitive?
+     */
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol || value instanceof Tuple;
+        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value)
+                || value == Undefined.instance || value == Null.instance || value instanceof Symbol
+                || value instanceof Tuple || value instanceof Record;
     }
 
     /**
