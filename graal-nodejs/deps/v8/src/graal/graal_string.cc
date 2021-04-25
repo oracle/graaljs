@@ -50,7 +50,7 @@ GraalHandleContent* GraalString::CopyImpl(jobject java_object_copy) {
     return GraalString::Allocate(Isolate(), (jstring) java_object_copy);
 }
 
-v8::Local<v8::String> GraalString::NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::String::NewStringType type, int length) {
+v8::Local<v8::String> GraalString::NewFromOneByte(v8::Isolate* isolate, unsigned char const* data, v8::NewStringType type, int length) {
     // JVM does not support this kind of encoding directly => we check whether
     // the given buffer can be reused as if it was in null-terminated modified
     // utf8 encoding, we transform the data into utf16 encoding otherwise
@@ -238,7 +238,7 @@ void GraalString::Utf16Write(const unsigned char* input, jchar* output, int leng
     }
 }
 
-v8::Local<v8::String> GraalString::NewFromUtf8(v8::Isolate* isolate, char const* data, v8::String::NewStringType type, int length) {
+v8::Local<v8::String> GraalString::NewFromUtf8(v8::Isolate* isolate, char const* data, v8::NewStringType type, int length) {
     if (length == -1) {
         // determine the length of the input (without the null-termination)
         const char* current = data;
@@ -264,7 +264,7 @@ v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, con
     return reinterpret_cast<v8::String*> (graal_string);
 }
 
-v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::String::NewStringType type, int length) {
+v8::Local<v8::String> GraalString::NewFromTwoByte(v8::Isolate* isolate, const uint16_t* data, v8::NewStringType type, int length) {
     if (length == -1) {
         // determine the length of the input (without the null-termination)
         const uint16_t* current = data;
@@ -466,7 +466,7 @@ void GraalString::ExternalResourceDeallocator(const v8::WeakCallbackInfo<void>& 
 }
 
 v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String::ExternalOneByteStringResource* resource) {
-    v8::Local<v8::String> result = GraalString::NewFromOneByte(isolate, (const unsigned char*) resource->data(), v8::String::kNormalString, resource->length());
+    v8::Local<v8::String> result = GraalString::NewFromOneByte(isolate, (const unsigned char*) resource->data(), v8::NewStringType::kNormal, resource->length());
     if (!result.IsEmpty()) {
         GraalString* graal_string = reinterpret_cast<GraalString*> (*result);
         JNI_CALL_VOID(isolate, GraalAccessMethod::string_external_resource_callback, graal_string->GetJavaObject(), (jlong) resource, (jlong) & ExternalResourceDeallocator);
@@ -475,7 +475,7 @@ v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String:
 }
 
 v8::Local<v8::String> GraalString::NewExternal(v8::Isolate* isolate, v8::String::ExternalStringResource* resource) {
-    v8::Local<v8::String> result = GraalString::NewFromTwoByte(isolate, resource->data(), v8::String::kNormalString, resource->length());
+    v8::Local<v8::String> result = GraalString::NewFromTwoByte(isolate, resource->data(), v8::NewStringType::kNormal, resource->length());
     if (!result.IsEmpty()) {
         GraalString* graal_string = reinterpret_cast<GraalString*> (*result);
         JNI_CALL_VOID(isolate, GraalAccessMethod::string_external_resource_callback, graal_string->GetJavaObject(), (jlong) resource, (jlong) & ExternalResourceDeallocator);

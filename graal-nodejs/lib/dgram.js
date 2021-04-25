@@ -41,7 +41,6 @@ const {
   ERR_SOCKET_ALREADY_BOUND,
   ERR_SOCKET_BAD_BUFFER_SIZE,
   ERR_SOCKET_BUFFER_SIZE,
-  ERR_SOCKET_CANNOT_SEND,
   ERR_SOCKET_DGRAM_IS_CONNECTED,
   ERR_SOCKET_DGRAM_NOT_CONNECTED,
   ERR_SOCKET_DGRAM_NOT_RUNNING,
@@ -496,7 +495,7 @@ function enqueue(self, toEnqueue) {
   // event handler that flushes the send queue after binding is done.
   if (state.queue === undefined) {
     state.queue = [];
-    self.once('error', onListenError);
+    self.once(EventEmitter.errorMonitor, onListenError);
     self.once('listening', onListenSuccess);
   }
   state.queue.push(toEnqueue);
@@ -504,7 +503,7 @@ function enqueue(self, toEnqueue) {
 
 
 function onListenSuccess() {
-  this.removeListener('error', onListenError);
+  this.removeListener(EventEmitter.errorMonitor, onListenError);
   clearQueue.call(this);
 }
 
@@ -512,7 +511,6 @@ function onListenSuccess() {
 function onListenError(err) {
   this.removeListener('listening', onListenSuccess);
   this[kStateSymbol].queue = undefined;
-  this.emit('error', new ERR_SOCKET_CANNOT_SEND());
 }
 
 

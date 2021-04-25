@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -939,22 +940,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    /**
-     * If object is the global object and we are in strict mode, throw ReferenceError.
-     */
-    public static final class ReferenceErrorPropertySetNode extends LinkedPropertySetNode {
-
-        public ReferenceErrorPropertySetNode(AbstractShapeCheckNode shapeCheckNode) {
-            super(shapeCheckNode);
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            root.globalPropertySetInStrictMode(thisObj);
-            return true;
-        }
-    }
-
     public static final class JSAdapterPropertySetNode extends LinkedPropertySetNode {
         public JSAdapterPropertySetNode(ReceiverCheckNode receiverCheckNode) {
             super(receiverCheckNode);
@@ -1025,8 +1010,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             Object key = root.getKey();
             if (key instanceof HiddenKey) {
                 JSObjectUtil.putHiddenProperty(thisJSObj, key, value);
-            } else if (root.isGlobal() && root.isStrict() && !JSObject.hasProperty(thisJSObj, key, jsclassProfile)) {
-                root.globalPropertySetInStrictMode(thisObj);
             } else if (root.isOwnProperty()) {
                 if (root.isDeclaration()) {
                     assert JSGlobal.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
@@ -1062,6 +1045,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private final JSContext context;
         @Child private InteropLibrary interop;
         @Child private InteropLibrary setterInterop;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public ForeignPropertySetNode(JSContext context) {
             super(new ForeignLanguageCheckNode());
@@ -1110,6 +1094,16 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
             String stringKey = (String) root.getKey();
+
+            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+                try {
+                    interop.writeHashEntry(truffleObject, stringKey, value);
+                } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                }
+            }
+
             if (context.isOptionNashornCompatibilityMode()) {
                 if (tryInvokeSetter(truffleObject, value, root)) {
                     return true;
@@ -1122,6 +1116,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                 }
             } else {
@@ -1129,6 +1124,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     try {
                         interop.writeMember(truffleObject, stringKey, value);
                     } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                        errorBranch.enter();
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
                     }
                 }
@@ -1335,8 +1331,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (JSAdapter.isJSAdapter(store)) {
                 ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSAdapterPropertySetNode(receiverCheck);
-            } else if (isStrict() && isGlobal() && !JSObject.hasProperty(thisJSObj, key)) {
-                return new ReferenceErrorPropertySetNode(shapeCheck);
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
                 return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
@@ -1400,12 +1394,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @Override
     protected SetCacheNode createTruffleObjectPropertyNode() {
         return new ForeignPropertySetNode(context);
-    }
-
-    @TruffleBoundary
-    protected void globalPropertySetInStrictMode(Object thisObj) {
-        assert JSDynamicObject.isJSDynamicObject(thisObj) && context.getRealm().getGlobalObject() == thisObj;
-        throw Errors.createReferenceErrorNotDefined(context, getKey(), this);
     }
 
     @Override

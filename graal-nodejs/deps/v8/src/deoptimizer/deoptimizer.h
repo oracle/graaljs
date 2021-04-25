@@ -39,13 +39,17 @@ enum class BuiltinContinuationMode;
 
 class TranslatedValue {
  public:
-  // Allocation-less getter of the value.
+  // Allocation-free getter of the value.
   // Returns ReadOnlyRoots::arguments_marker() if allocation would be necessary
-  // to get the value.
+  // to get the value. In the case of numbers, returns a Smi if possible.
   Object GetRawValue() const;
 
-  // Getter for the value, takes care of materializing the subgraph
-  // reachable from this value.
+  // Convenience wrapper around GetRawValue (checked).
+  int GetSmiValue() const;
+
+  // Returns the value, possibly materializing it first (and the whole subgraph
+  // reachable from this value). In the case of numbers, returns a Smi if
+  // possible.
   Handle<Object> GetValue();
 
   bool IsMaterializedObject() const;
@@ -102,15 +106,14 @@ class TranslatedValue {
   static TranslatedValue NewInvalid(TranslatedState* container);
 
   Isolate* isolate() const;
-  void MaterializeSimple();
 
   void set_storage(Handle<HeapObject> storage) { storage_ = storage; }
-  void set_initialized_storage(Handle<Object> storage);
+  void set_initialized_storage(Handle<HeapObject> storage);
   void mark_finished() { materialization_state_ = kFinished; }
   void mark_allocated() { materialization_state_ = kAllocated; }
 
-  Handle<Object> GetStorage() {
-    DCHECK_NE(kUninitialized, materialization_state());
+  Handle<HeapObject> storage() {
+    DCHECK_NE(materialization_state(), kUninitialized);
     return storage_;
   }
 
@@ -120,9 +123,9 @@ class TranslatedValue {
                                 // objects and constructing handles (to get
                                 // to the isolate).
 
-  Handle<Object> storage_;  // Contains the materialized value or the
-                            // byte-array that will be later morphed into
-                            // the materialized object.
+  Handle<HeapObject> storage_;  // Contains the materialized value or the
+                                // byte-array that will be later morphed into
+                                // the materialized object.
 
   struct MaterializedObjectInfo {
     int id_;
@@ -376,7 +379,7 @@ class TranslatedState {
                                int* value_index, std::stack<int>* worklist);
   void EnsureCapturedObjectAllocatedAt(int object_index,
                                        std::stack<int>* worklist);
-  Handle<Object> InitializeObjectAt(TranslatedValue* slot);
+  Handle<HeapObject> InitializeObjectAt(TranslatedValue* slot);
   void InitializeCapturedObjectAt(int object_index, std::stack<int>* worklist,
                                   const DisallowHeapAllocation& no_allocation);
   void InitializeJSObjectAt(TranslatedFrame* frame, int* value_index,
@@ -392,6 +395,9 @@ class TranslatedState {
   TranslatedValue* ResolveCapturedObject(TranslatedValue* slot);
   TranslatedValue* GetValueByObjectIndex(int object_index);
   Handle<Object> GetValueAndAdvance(TranslatedFrame* frame, int* value_index);
+  TranslatedValue* GetResolvedSlot(TranslatedFrame* frame, int value_index);
+  TranslatedValue* GetResolvedSlotAndAdvance(TranslatedFrame* frame,
+                                             int* value_index);
 
   static uint32_t GetUInt32Slot(Address fp, int slot_index);
   static uint64_t GetUInt64Slot(Address fp, int slot_index);
@@ -488,14 +494,14 @@ class Deoptimizer : public Malloced {
                                     DeoptimizeKind* type);
 
   // Code generation support.
-  static int input_offset() { return OFFSET_OF(Deoptimizer, input_); }
+  static int input_offset() { return offsetof(Deoptimizer, input_); }
   static int output_count_offset() {
-    return OFFSET_OF(Deoptimizer, output_count_);
+    return offsetof(Deoptimizer, output_count_);
   }
-  static int output_offset() { return OFFSET_OF(Deoptimizer, output_); }
+  static int output_offset() { return offsetof(Deoptimizer, output_); }
 
   static int caller_frame_top_offset() {
-    return OFFSET_OF(Deoptimizer, caller_frame_top_);
+    return offsetof(Deoptimizer, caller_frame_top_);
   }
 
   V8_EXPORT_PRIVATE static int GetDeoptimizedCodeCount(Isolate* isolate);
@@ -513,11 +519,12 @@ class Deoptimizer : public Malloced {
   // Set to true when the architecture supports deoptimization exit sequences
   // of a fixed size, that can be sorted so that the deoptimization index is
   // deduced from the address of the deoptimization exit.
-  static const bool kSupportsFixedDeoptExitSize;
+  static const bool kSupportsFixedDeoptExitSizes;
 
   // Size of deoptimization exit sequence. This is only meaningful when
-  // kSupportsFixedDeoptExitSize is true.
-  static const int kDeoptExitSize;
+  // kSupportsFixedDeoptExitSizes is true.
+  static const int kNonLazyDeoptExitSize;
+  static const int kLazyDeoptExitSize;
 
  private:
   friend class FrameWriter;
@@ -712,7 +719,7 @@ class FrameDescription {
   void SetTop(intptr_t top) { top_ = top; }
 
   intptr_t GetPc() const { return pc_; }
-  void SetPc(intptr_t pc) { pc_ = pc; }
+  void SetPc(intptr_t pc);
 
   intptr_t GetFp() const { return fp_; }
   void SetFp(intptr_t fp) { fp_ = fp; }
@@ -731,11 +738,11 @@ class FrameDescription {
   int parameter_count() { return parameter_count_; }
 
   static int registers_offset() {
-    return OFFSET_OF(FrameDescription, register_values_.registers_);
+    return offsetof(FrameDescription, register_values_.registers_);
   }
 
   static int double_registers_offset() {
-    return OFFSET_OF(FrameDescription, register_values_.double_registers_);
+    return offsetof(FrameDescription, register_values_.double_registers_);
   }
 
   static int frame_size_offset() {
@@ -772,7 +779,7 @@ class FrameDescription {
   intptr_t continuation_;
 
   // This must be at the end of the object as the object is allocated larger
-  // than it's definition indicate to extend this array.
+  // than its definition indicates to extend this array.
   intptr_t frame_content_[1];
 
   intptr_t* GetFrameSlotPointer(unsigned offset) {

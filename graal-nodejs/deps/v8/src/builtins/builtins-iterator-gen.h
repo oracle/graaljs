@@ -12,6 +12,8 @@ namespace internal {
 
 using compiler::Node;
 
+class GrowableFixedArray;
+
 class IteratorBuiltinsAssembler : public CodeStubAssembler {
  public:
   explicit IteratorBuiltinsAssembler(compiler::CodeAssemblerState* state)
@@ -20,16 +22,13 @@ class IteratorBuiltinsAssembler : public CodeStubAssembler {
   using IteratorRecord = TorqueStructIteratorRecord;
 
   // Returns object[Symbol.iterator].
-  TNode<Object> GetIteratorMethod(Node* context, Node* object);
+  TNode<Object> GetIteratorMethod(TNode<Context> context, TNode<Object>);
 
   // https://tc39.github.io/ecma262/#sec-getiterator --- never used for
   // @@asyncIterator.
-  IteratorRecord GetIterator(Node* context, Node* object,
-                             Label* if_exception = nullptr,
-                             Variable* exception = nullptr);
-  IteratorRecord GetIterator(Node* context, Node* object, Node* method,
-                             Label* if_exception = nullptr,
-                             Variable* exception = nullptr);
+  IteratorRecord GetIterator(TNode<Context> context, TNode<Object> object);
+  IteratorRecord GetIterator(TNode<Context> context, TNode<Object> object,
+                             TNode<Object> method);
 
   // https://tc39.github.io/ecma262/#sec-iteratorstep
   // If the iterator is done, goto {if_done}, otherwise returns an iterator
@@ -38,9 +37,7 @@ class IteratorBuiltinsAssembler : public CodeStubAssembler {
   // object, loaded from the native context.
   TNode<JSReceiver> IteratorStep(
       TNode<Context> context, const IteratorRecord& iterator, Label* if_done,
-      base::Optional<TNode<Map>> fast_iterator_result_map = base::nullopt,
-      Label* if_exception = nullptr, Variable* exception = nullptr);
-
+      base::Optional<TNode<Map>> fast_iterator_result_map = base::nullopt);
   TNode<JSReceiver> IteratorStep(
       TNode<Context> context, const IteratorRecord& iterator,
       base::Optional<TNode<Map>> fast_iterator_result_map, Label* if_done) {
@@ -53,14 +50,7 @@ class IteratorBuiltinsAssembler : public CodeStubAssembler {
   // object, loaded from the native context.
   TNode<Object> IteratorValue(
       TNode<Context> context, TNode<JSReceiver> result,
-      base::Optional<TNode<Map>> fast_iterator_result_map = base::nullopt,
-      Label* if_exception = nullptr, Variable* exception = nullptr);
-
-  // https://tc39.github.io/ecma262/#sec-iteratorclose
-  void IteratorCloseOnException(Node* context, const IteratorRecord& iterator,
-                                Label* if_exception, Variable* exception);
-  void IteratorCloseOnException(Node* context, const IteratorRecord& iterator,
-                                TNode<Object> exception);
+      base::Optional<TNode<Map>> fast_iterator_result_map = base::nullopt);
 
   // #sec-iterabletolist
   // Build a JSArray by iterating over {iterable} using {iterator_fn},
@@ -68,8 +58,24 @@ class IteratorBuiltinsAssembler : public CodeStubAssembler {
   TNode<JSArray> IterableToList(TNode<Context> context, TNode<Object> iterable,
                                 TNode<Object> iterator_fn);
 
+  TNode<FixedArray> IterableToFixedArray(TNode<Context> context,
+                                         TNode<Object> iterable,
+                                         TNode<Object> iterator_fn);
+
+  void FillFixedArrayFromIterable(TNode<Context> context,
+                                  TNode<Object> iterable,
+                                  TNode<Object> iterator_fn,
+                                  GrowableFixedArray* values);
+
+  // Currently at https://tc39.github.io/proposal-intl-list-format/
+  // #sec-createstringlistfromiterable
+  TNode<JSArray> StringListFromIterable(TNode<Context> context,
+                                        TNode<Object> iterable);
+
   void FastIterableToList(TNode<Context> context, TNode<Object> iterable,
-                          TVariable<Object>* var_result, Label* slow);
+                          TVariable<JSArray>* var_result, Label* slow);
+  TNode<JSArray> FastIterableToList(TNode<Context> context,
+                                    TNode<Object> iterable, Label* slow);
 };
 
 }  // namespace internal

@@ -14,7 +14,7 @@ load("test/mjsunit/wasm/user-properties-common.js");
     builder.addImport("m", "f", kSig_i_i);
     builder.addFunction("main", kSig_i_i)
       .addBody([
-        kExprGetLocal, 0,
+        kExprLocalGet, 0,
         kExprCallFunction, 0])
       .exportAs("main");
     builder.addMemory(1, 1, false)
@@ -45,7 +45,7 @@ load("test/mjsunit/wasm/user-properties-common.js");
         assertEquals(f(j), g(j));
       }
       verifyHeap();
-      // The WASM-internal fields of {g} are only inspected when {g} is
+      // The Wasm-internal fields of {g} are only inspected when {g} is
       // used as an import into another instance. Use {g} as the import
       // the next time through the loop.
       f = g;

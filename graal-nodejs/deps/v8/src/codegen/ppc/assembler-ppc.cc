@@ -36,7 +36,7 @@
 
 #include "src/codegen/ppc/assembler-ppc.h"
 
-#if V8_TARGET_ARCH_PPC
+#if V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64
 
 #include "src/base/bits.h"
 #include "src/base/cpu.h"
@@ -123,6 +123,11 @@ void CpuFeatures::PrintTarget() {
 
 void CpuFeatures::PrintFeatures() {
   printf("FPU=%d\n", CpuFeatures::IsSupported(FPU));
+  printf("FPR_GPR_MOV=%d\n", CpuFeatures::IsSupported(FPR_GPR_MOV));
+  printf("LWSYNC=%d\n", CpuFeatures::IsSupported(LWSYNC));
+  printf("ISELECT=%d\n", CpuFeatures::IsSupported(ISELECT));
+  printf("VSX=%d\n", CpuFeatures::IsSupported(VSX));
+  printf("MODULO=%d\n", CpuFeatures::IsSupported(MODULO));
 }
 
 Register ToRegister(int num) {
@@ -200,8 +205,8 @@ void Assembler::AllocateAndInstallRequestedHeapObjects(Isolate* isolate) {
     Handle<HeapObject> object;
     switch (request.kind()) {
       case HeapObjectRequest::kHeapNumber: {
-        object = isolate->factory()->NewHeapNumber(request.heap_number(),
-                                                   AllocationType::kOld);
+        object = isolate->factory()->NewHeapNumber<AllocationType::kOld>(
+            request.heap_number());
         break;
       }
       case HeapObjectRequest::kStringConstant: {
@@ -506,7 +511,7 @@ void Assembler::target_at_put(int pos, int target_pos, bool* is_branch) {
     case kUnboundJumpTableEntryOpcode: {
       PatchingAssembler patcher(options(),
                                 reinterpret_cast<byte*>(buffer_start_ + pos),
-                                kPointerSize / kInstrSize);
+                                kSystemPointerSize / kInstrSize);
       // Keep internal references relative until EmitRelocations.
       patcher.dp(target_pos);
       break;
@@ -1752,6 +1757,32 @@ void Assembler::fmsub(const DoubleRegister frt, const DoubleRegister fra,
        frc.code() * B6 | rc);
 }
 
+// Vector instructions
+void Assembler::mfvsrd(const Register ra, const DoubleRegister rs) {
+  int SX = 1;
+  emit(MFVSRD | rs.code() * B21 | ra.code() * B16 | SX);
+}
+
+void Assembler::mfvsrwz(const Register ra, const DoubleRegister rs) {
+  int SX = 1;
+  emit(MFVSRWZ | rs.code() * B21 | ra.code() * B16 | SX);
+}
+
+void Assembler::mtvsrd(const DoubleRegister rt, const Register ra) {
+  int TX = 1;
+  emit(MTVSRD | rt.code() * B21 | ra.code() * B16 | TX);
+}
+
+void Assembler::vor(const DoubleRegister rt, const DoubleRegister ra,
+                    const DoubleRegister rb) {
+  emit(VOR | rt.code() * B21 | ra.code() * B16 | rb.code() * B11);
+}
+
+void Assembler::vsro(const DoubleRegister rt, const DoubleRegister ra,
+                     const DoubleRegister rb) {
+  emit(VSRO | rt.code() * B21 | ra.code() * B16 | rb.code() * B11);
+}
+
 // Pseudo instructions.
 void Assembler::nop(int type) {
   Register reg = r0;
@@ -1955,4 +1986,4 @@ Register UseScratchRegisterScope::Acquire() {
 }  // namespace internal
 }  // namespace v8
 
-#endif  // V8_TARGET_ARCH_PPC
+#endif  // V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64

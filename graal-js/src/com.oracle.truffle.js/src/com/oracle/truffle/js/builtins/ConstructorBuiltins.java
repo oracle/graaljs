@@ -51,6 +51,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -202,7 +203,6 @@ import com.oracle.truffle.js.runtime.builtins.JSDataView;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -2194,13 +2194,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructJavaImporter(Object[] args) {
-            SimpleArrayList<Object> pkgs = new SimpleArrayList<>(args.length);
-            for (Object pkg : args) {
-                if (JavaPackage.isJavaPackage(pkg)) {
-                    pkgs.addUnchecked(pkg);
+            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            SimpleArrayList<Object> imports = new SimpleArrayList<>(args.length);
+            for (Object anImport : args) {
+                if (JavaPackage.isJavaPackage(anImport)) {
+                    imports.addUnchecked(anImport);
+                } else if (env.isHostObject(anImport)) {
+                    Object hostObject = env.asHostObject(anImport);
+                    if (hostObject instanceof Class) {
+                        imports.addUnchecked(anImport);
+                    }
                 }
             }
-            return JavaImporter.create(getContext(), pkgs.toArray());
+            return JavaImporter.create(getContext(), imports.toArray());
         }
     }
 
@@ -2215,7 +2221,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private IteratorStepNode iteratorStepNode;
         @Child private JSFunctionCallNode callAdderNode;
         @Child private PropertyGetNode getAdderFnNode;
-        protected final ConditionProfile needFillIterable = ConditionProfile.createBinaryProfile();
         protected final BranchProfile errorBranch = BranchProfile.create();
 
         protected void iteratorCloseAbrupt(DynamicObject iterator) {
@@ -2250,7 +2255,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return iteratorStepNode.execute(iterator);
         }
 
-        protected Object call(Object target, DynamicObject function, Object... userArguments) {
+        protected Object call(Object target, Object function, Object... userArguments) {
             if (callAdderNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 callAdderNode = insert(JSFunctionCallNode.createCall());
@@ -2261,7 +2266,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Object getAdderFn(DynamicObject obj, String name) {
             if (getAdderFnNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getAdderFnNode = insert(PropertyGetNode.create(name, false, getContext()));
+                getAdderFnNode = insert(PropertyGetNode.create(name, getContext()));
             }
             return getAdderFnNode.getValue(obj);
         }
@@ -2269,61 +2274,57 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructMapNode extends JSConstructIterableOperation {
 
-        private @Child ReadElementNode readElementNode;
-
         public ConstructMapNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization
-        protected DynamicObject constructMap(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContext();
-            DynamicObject mapObj = JSMap.create(context);
-            fillWithIterable(mapObj, iterable);
+        @Specialization(guards = "isNullOrUndefined(iterable)")
+        protected DynamicObject constructEmptyMap(DynamicObject newTarget, @SuppressWarnings("unused") Object iterable) {
+            DynamicObject mapObj = newMapObject();
             swapPrototype(mapObj, newTarget);
             return mapObj;
         }
 
-        protected void fillWithIterable(DynamicObject mapObj, Object iterable) {
-            if (needFillIterable.profile(iterable == Undefined.instance || iterable == Null.instance)) {
-                return;
-            } else {
-                Object adder = getAdderFn(mapObj, "set");
-                if (!JSFunction.isJSFunction(adder)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("function set not callable");
-                }
-                DynamicObject adderFn = (DynamicObject) adder;
-                IteratorRecord iter = getIterator(iterable);
+        @Specialization(guards = "!isNullOrUndefined(iterable)")
+        protected DynamicObject constructMapFromIterable(DynamicObject newTarget, Object iterable,
+                        @Cached("create(getContext())") ReadElementNode readElementNode,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached IsCallableNode isCallableNode) {
+            DynamicObject mapObj = newMapObject();
+            swapPrototype(mapObj, newTarget);
 
-                try {
-                    while (true) {
-                        Object next = iteratorStep(iter);
-                        if (next == Boolean.FALSE) {
-                            return;
-                        }
-                        Object nextItem = getIteratorValue((DynamicObject) next);
-                        if (!JSDynamicObject.isJSDynamicObject(nextItem)) {
-                            errorBranch.enter();
-                            throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
-                        }
-                        Object k = readElement(nextItem, 0);
-                        Object v = readElement(nextItem, 1);
-                        call(mapObj, adderFn, k, v);
-                    }
-                } catch (Exception ex) {
-                    iteratorCloseAbrupt(iter.getIterator());
-                    throw ex;
-                }
+            Object adder = getAdderFn(mapObj, "set");
+            if (!isCallableNode.executeBoolean(adder)) {
+                errorBranch.enter();
+                throw Errors.createTypeError("function set not callable");
             }
+            IteratorRecord iter = getIterator(iterable);
+
+            try {
+                while (true) {
+                    Object next = iteratorStep(iter);
+                    if (next == Boolean.FALSE) {
+                        break;
+                    }
+                    Object nextItem = getIteratorValue((DynamicObject) next);
+                    if (!isObjectNode.executeBoolean(nextItem)) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
+                    }
+                    Object k = readElementNode.executeWithTargetAndIndex(nextItem, 0);
+                    Object v = readElementNode.executeWithTargetAndIndex(nextItem, 1);
+                    call(mapObj, adder, k, v);
+                }
+            } catch (Exception ex) {
+                iteratorCloseAbrupt(iter.getIterator());
+                throw ex;
+            }
+
+            return mapObj;
         }
 
-        private Object readElement(Object target, int index) {
-            if (readElementNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readElementNode = insert(ReadElementNode.create(getContext()));
-            }
-            return readElementNode.executeWithTargetAndIndex(target, index);
+        protected DynamicObject newMapObject() {
+            return JSMap.create(getContext());
         }
 
         @Override
@@ -2338,41 +2339,45 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, isNewTargetCase);
         }
 
-        @Specialization
-        protected DynamicObject constructSet(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContext();
-            DynamicObject setObj = JSSet.create(context);
-            fillWithIterable(setObj, iterable);
+        @Specialization(guards = "isNullOrUndefined(iterable)")
+        protected DynamicObject constructEmptySet(DynamicObject newTarget, @SuppressWarnings("unused") Object iterable) {
+            DynamicObject setObj = newSetObject();
             swapPrototype(setObj, newTarget);
             return setObj;
         }
 
-        protected void fillWithIterable(DynamicObject setObj, Object iterable) {
-            if (needFillIterable.profile(iterable == Undefined.instance || iterable == Null.instance)) {
-                return;
-            } else {
-                Object adder = getAdderFn(setObj, "add");
-                if (!JSFunction.isJSFunction(adder)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("function add not callable");
-                }
-                DynamicObject adderFn = (DynamicObject) adder;
-                IteratorRecord iter = getIterator(iterable);
+        @Specialization(guards = "!isNullOrUndefined(iterable)")
+        protected DynamicObject constructSetFromIterable(DynamicObject newTarget, Object iterable,
+                        @Cached IsCallableNode isCallableNode) {
+            DynamicObject setObj = newSetObject();
+            swapPrototype(setObj, newTarget);
 
-                try {
-                    while (true) {
-                        Object next = iteratorStep(iter);
-                        if (next == Boolean.FALSE) {
-                            return;
-                        }
-                        Object nextValue = getIteratorValue((DynamicObject) next);
-                        call(setObj, adderFn, nextValue);
-                    }
-                } catch (Exception ex) {
-                    iteratorCloseAbrupt(iter.getIterator());
-                    throw ex;
-                }
+            Object adder = getAdderFn(setObj, "add");
+            if (!isCallableNode.executeBoolean(adder)) {
+                errorBranch.enter();
+                throw Errors.createTypeError("function add not callable");
             }
+            IteratorRecord iter = getIterator(iterable);
+
+            try {
+                while (true) {
+                    Object next = iteratorStep(iter);
+                    if (next == Boolean.FALSE) {
+                        break;
+                    }
+                    Object nextValue = getIteratorValue((DynamicObject) next);
+                    call(setObj, adder, nextValue);
+                }
+            } catch (Exception ex) {
+                iteratorCloseAbrupt(iter.getIterator());
+                throw ex;
+            }
+
+            return setObj;
+        }
+
+        protected DynamicObject newSetObject() {
+            return JSSet.create(getContext());
         }
 
         @Override
@@ -2388,13 +2393,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Override
-        @Specialization
-        protected DynamicObject constructSet(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContext();
-            DynamicObject setObj = JSWeakSet.create(context);
-            fillWithIterable(setObj, iterable);
-            swapPrototype(setObj, newTarget);
-            return setObj;
+        protected DynamicObject newSetObject() {
+            return JSWeakSet.create(getContext());
         }
 
         @Override
@@ -2410,13 +2410,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Override
-        @Specialization
-        protected DynamicObject constructMap(DynamicObject newTarget, Object iterable) {
-            JSContext context = getContext();
-            DynamicObject mapObj = JSWeakMap.create(context);
-            fillWithIterable(mapObj, iterable);
-            swapPrototype(mapObj, newTarget);
-            return mapObj;
+        protected DynamicObject newMapObject() {
+            return JSWeakMap.create(getContext());
         }
 
         @Override

@@ -20,6 +20,9 @@ Still, several sources of differences have to be considered:
 - **Setup:**
 GraalVM mostly mimicks the original setup of Node, including the `node` executable, `npm`, and similar. However, not all command-line options are supported (or behave exactly identically). You need to (re-)compile native modules against the v8.h file, etc.
 
+Since GraalVM 21.1, Node.js and all related executables (e.g., `node`, `npm`, etc.) are not included by default in the GraalVM binary.
+Node.js support is now packaged in a separate component that can be installed with the _GraalVM Updater_ using `$GRAALVM/bin/gu install nodejs`.
+
 - **Internals:**
 GraalVM is implemented on top of a JVM, and thus has a different internal architecture than Node.js based on V8. This implies that some internal mechanisms behave differently and cannot exactly replicate V8 behaviour. This will hardly ever affect user code, but might affect modules implemented natively, depending on V8 internals.
 
@@ -232,4 +235,36 @@ HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
   //warning: too permissive for use in production
   .allowAccess(Function.class.getMethod("apply", Object.class))
   .build();
+```
+
+### Warning: Implementation does not support runtime compilation.
+
+If you get the following warning, you are not running on GraalVM or a JVMCI-enabled JVM using the GraalVM compiler:
+```
+[engine] WARNING: The polyglot context is using an implementation that does not support runtime compilation.
+The guest application code will therefore be executed in interpreted mode only.
+Execution only in interpreted mode will strongly impact the guest application performance.
+For more information on using GraalVM see https://www.graalvm.org/java/quickstart/.
+To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+```
+
+To resolve this, use [GraalVM](https://www.graalvm.org/java/quickstart/) or see [RunOnJDK.md](https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
+
+Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the above mentioned option, either via the command line or using the `Context.Builder`, e.g.:
+```java
+try (Context ctx = Context.newBuilder("js")
+    .option("engine.WarnInterpreterOnly", "false")
+    .build()) {
+  ctx.eval("js", "console.log('Greetings!');");
+}
+```
+Note that when using an explicit polyglot engine, the option has to be set on the `Engine`, e.g.:
+```java
+try (Engine engine = Engine.newBuilder()
+    .option("engine.WarnInterpreterOnly", "false")
+    .build()) {
+  try (Context ctx = Context.newBuilder("js").engine(engine).build()) {
+    ctx.eval("js", "console.log('Greetings!');");
+  }
+}
 ```

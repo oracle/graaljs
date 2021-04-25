@@ -207,15 +207,13 @@ assert.deepStrictEqual(dns.getServers(), []);
 }
 
 {
-  /*
-  * Make sure that dns.lookup throws if hints does not represent a valid flag.
-  * (dns.V4MAPPED | dns.ADDRCONFIG | dns.ALL) + 1 is invalid because:
-  * - it's different from dns.V4MAPPED and dns.ADDRCONFIG and dns.ALL.
-  * - it's different from any subset of them bitwise ored.
-  * - it's different from 0.
-  * - it's an odd number different than 1, and thus is invalid, because
-  * flags are either === 1 or even.
-  */
+  // Make sure that dns.lookup throws if hints does not represent a valid flag.
+  // (dns.V4MAPPED | dns.ADDRCONFIG | dns.ALL) + 1 is invalid because:
+  // - it's different from dns.V4MAPPED and dns.ADDRCONFIG and dns.ALL.
+  // - it's different from any subset of them bitwise ored.
+  // - it's different from 0.
+  // - it's an odd number different than 1, and thus is invalid, because
+  // flags are either === 1 or even.
   const hints = (dns.V4MAPPED | dns.ADDRCONFIG | dns.ALL) + 1;
   const err = {
     code: 'ERR_INVALID_OPT_VALUE',
@@ -338,7 +336,6 @@ assert.throws(() => {
 
 {
   dns.resolveMx('foo.onion', function(err) {
-    assert.deepStrictEqual(err.errno, 'ENOTFOUND');
     assert.deepStrictEqual(err.code, 'ENOTFOUND');
     assert.deepStrictEqual(err.syscall, 'queryMx');
     assert.deepStrictEqual(err.hostname, 'foo.onion');
@@ -445,8 +442,7 @@ assert.throws(() => {
 
       validateResults(await dnsPromises[method]('example.org', options));
 
-      dns[method]('example.org', options, common.mustCall((err, res) => {
-        assert.ifError(err);
+      dns[method]('example.org', options, common.mustSucceed((res) => {
         validateResults(res);
         cases.shift();
         nextCase();

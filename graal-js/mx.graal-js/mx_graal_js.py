@@ -127,8 +127,10 @@ def parse_js_args(args, default_cp=None, useDoubleDash=False):
         if skip:
             skip = False
             continue
-        elif any(arg.startswith(prefix) for prefix in ['-X', '-G:', '-D', '-verbose', '-ea', '-javaagent']) or arg in ['-esa', '-d64', '-server']:
+        elif any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea', '-javaagent:', '-agentlib:', '-agentpath:']) or arg in ['-esa', '-d64', '-server']:
             vm_args += [arg]
+        elif arg.startswith('--vm.D') or arg.startswith('--vm.X'):
+            vm_args += ['-' + arg[5:]]
         elif useDoubleDash and arg == '--':
             remainder += args[i:]
             break
@@ -158,6 +160,10 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
             vm_args += ['-Xmx' + max_heap]
     if stack_size and not any(x.startswith('-Xss') for x in vm_args):
         vm_args += ['-Xss' + stack_size]
+
+    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vm_args + get_jdk().java_args):
+        vm_args += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+
     return vm_args
 
 def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
@@ -324,7 +330,8 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         )
     ],
     boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
-    supported=True,
+    installable=True,
+    stability="supported",
 ))
 
 def verify_ci(args):

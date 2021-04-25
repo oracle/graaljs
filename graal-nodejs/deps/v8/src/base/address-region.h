@@ -15,6 +15,14 @@ namespace base {
 // Helper class representing an address region of certain size.
 class AddressRegion {
  public:
+  // Function object that compares the start address of two regions. Usable as
+  // compare function on std data structures and algorithms.
+  struct StartAddressLess {
+    bool operator()(base::AddressRegion a, base::AddressRegion b) const {
+      return a.begin() < b.begin();
+    }
+  };
+
   using Address = uintptr_t;
 
   AddressRegion() = default;
@@ -65,6 +73,16 @@ class AddressRegion {
   size_t size_ = 0;
 };
 ASSERT_TRIVIALLY_COPYABLE(AddressRegion);
+
+// Construct an AddressRegion from anything providing a {data()} and {size()}
+// accessor.
+template <typename Container,
+          typename = decltype(std::declval<Container>().data()),
+          typename = decltype(std::declval<Container>().size())>
+inline constexpr AddressRegion AddressRegionOf(Container&& c) {
+  return AddressRegion{reinterpret_cast<AddressRegion::Address>(c.data()),
+                       sizeof(*c.data()) * c.size()};
+}
 
 inline std::ostream& operator<<(std::ostream& out, AddressRegion region) {
   return out << "[" << reinterpret_cast<void*>(region.begin()) << "+"

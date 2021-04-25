@@ -60,4 +60,36 @@ EXPORT_TO_JS(GetContentsDataPointerIsNull) {
     args.GetReturnValue().Set(data == nullptr);
 }
 
+EXPORT_TO_JS(GetContentsSum) {
+    ArrayBuffer::Contents contents = args[0].As<ArrayBuffer>()->GetContents();
+    size_t length = contents.ByteLength();
+    uint8_t* data = reinterpret_cast<uint8_t*> (contents.Data());
+    int32_t sum = 0;
+    for (size_t i = 0; i<length; i++) {
+        sum += data[i];
+    }
+    args.GetReturnValue().Set(sum);
+}
+
+#define ArrayBufferViewNewTest(view_class, bytes_per_element) \
+EXPORT_TO_JS(New ## view_class) { \
+    Local<ArrayBuffer> buffer = args[0].As<ArrayBuffer>(); \
+    size_t byte_length = buffer->ByteLength(); \
+    Local<view_class> array = view_class::New(buffer, 0, byte_length/bytes_per_element); \
+    args.GetReturnValue().Set(array); \
+}
+
+ArrayBufferViewNewTest(Uint8Array, 1)
+ArrayBufferViewNewTest(Uint8ClampedArray, 1)
+ArrayBufferViewNewTest(Int8Array, 1)
+ArrayBufferViewNewTest(Uint16Array, 2)
+ArrayBufferViewNewTest(Int16Array, 2)
+ArrayBufferViewNewTest(Uint32Array, 4)
+ArrayBufferViewNewTest(Int32Array, 4)
+ArrayBufferViewNewTest(Float32Array, 4)
+ArrayBufferViewNewTest(Float64Array, 8)
+ArrayBufferViewNewTest(BigInt64Array, 8)
+ArrayBufferViewNewTest(BigUint64Array, 8)
+ArrayBufferViewNewTest(DataView, 1)
+
 #undef SUITE

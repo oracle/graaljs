@@ -26,7 +26,6 @@ function findMarkdownFilesRecursively(dirPath) {
 
     if (
       entry.isDirectory() &&
-      entry.name !== 'api' &&
       entry.name !== 'build' &&
       entry.name !== 'changelogs' &&
       entry.name !== 'deps' &&
@@ -46,6 +45,7 @@ function findMarkdownFilesRecursively(dirPath) {
 function checkFile(path) {
   const tree = unified()
     .use(require('remark-parse'))
+    .use(require('remark-gfm'))
     .parse(fs.readFileSync(path));
 
   const base = pathToFileURL(path);
@@ -66,7 +66,7 @@ function checkFile(path) {
         console.error((process.env.GITHUB_ACTIONS ?
           `::error file=${path},line=${line},col=${column}::` : '') +
           `Unordered reference at ${path}:${line}:${column} (` +
-          `"${node.label}" should be before "${previousDefinitionLabel})"`
+          `"${node.label}" should be before "${previousDefinitionLabel}")`
         );
         process.exitCode = 1;
       }

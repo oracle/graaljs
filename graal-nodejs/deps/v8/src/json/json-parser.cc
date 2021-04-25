@@ -64,7 +64,7 @@ enum class EscapeKind : uint8_t {
   kUnicode
 };
 
-using EscapeKindField = BitField8<EscapeKind, 0, 3>;
+using EscapeKindField = base::BitField8<EscapeKind, 0, 3>;
 using MayTerminateStringField = EscapeKindField::Next<bool, 1>;
 using NumberPartField = MayTerminateStringField::Next<bool, 1>;
 
@@ -267,7 +267,7 @@ void JsonParser<Char>::ReportUnexpectedToken(JsonToken token) {
 
   Handle<Script> script(factory->NewScript(original_source_));
   if (isolate()->NeedsSourcePositionsForProfiling()) {
-    Script::InitLineEnds(script);
+    Script::InitLineEnds(isolate(), script);
   }
   // We should sent compile error event because we compile JSON object in
   // separated source file.
@@ -362,7 +362,7 @@ JsonString JsonParser<Char>::ScanJsonPropertyKey(JsonContinuation* cont) {
         uint32_t index = first - '0';
         while (true) {
           cursor_ = std::find_if(cursor_ + 1, end_, [&index](Char c) {
-            return !TryAddIndexChar(&index, c);
+            return !TryAddArrayIndexChar(&index, c);
           });
 
           if (CurrentCharacter() == '"') {
@@ -374,7 +374,7 @@ JsonString JsonParser<Char>::ScanJsonPropertyKey(JsonContinuation* cont) {
           }
 
           if (CurrentCharacter() == '\\' && NextCharacter() == 'u') {
-            if (TryAddIndexChar(&index, ScanUnicodeCharacter())) continue;
+            if (TryAddArrayIndexChar(&index, ScanUnicodeCharacter())) continue;
           }
 
           break;
@@ -394,7 +394,8 @@ Handle<Map> ParentOfDescriptorOwner(Isolate* isolate, Handle<Map> maybe_root,
     DCHECK_EQ(0, maybe_root->NumberOfOwnDescriptors());
     return maybe_root;
   }
-  return handle(source->FindFieldOwner(isolate, descriptor - 1), isolate);
+  return handle(source->FindFieldOwner(isolate, InternalIndex(descriptor - 1)),
+                isolate);
 }
 }  // namespace
 
@@ -461,10 +462,11 @@ Handle<Object> JsonParser<Char>::BuildJsonObject(
     if (property.string.is_index()) continue;
     Handle<String> expected;
     Handle<Map> target;
+    InternalIndex descriptor_index(descriptor);
     if (descriptor < feedback_descriptors) {
-      expected = handle(
-          String::cast(feedback->instance_descriptors().GetKey(descriptor)),
-          isolate_);
+      expected = handle(String::cast(feedback->instance_descriptors().GetKey(
+                            descriptor_index)),
+                        isolate_);
     } else {
       DisallowHeapAllocation no_gc;
       TransitionsAccessor transitions(isolate(), *map, &no_gc);
@@ -495,7 +497,7 @@ Handle<Object> JsonParser<Char>::BuildJsonObject(
     Handle<Object> value = property.value;
 
     PropertyDetails details =
-        target->instance_descriptors().GetDetails(descriptor);
+        target->instance_descriptors().GetDetails(descriptor_index);
     Representation expected_representation = details.representation();
 
     if (!value->FitsRepresentation(expected_representation)) {
@@ -507,23 +509,24 @@ Handle<Object> JsonParser<Char>::BuildJsonObject(
       }
       Handle<FieldType> value_type =
           value->OptimalType(isolate(), representation);
-      Map::GeneralizeField(isolate(), target, descriptor, details.constness(),
-                           representation, value_type);
+      Map::GeneralizeField(isolate(), target, descriptor_index,
+                           details.constness(), representation, value_type);
     } else if (expected_representation.IsHeapObject() &&
                !target->instance_descriptors()
-                    .GetFieldType(descriptor)
+                    .GetFieldType(descriptor_index)
                     .NowContains(value)) {
       Handle<FieldType> value_type =
           value->OptimalType(isolate(), expected_representation);
-      Map::GeneralizeField(isolate(), target, descriptor, details.constness(),
-                           expected_representation, value_type);
+      Map::GeneralizeField(isolate(), target, descriptor_index,
+                           details.constness(), expected_representation,
+                           value_type);
     } else if (!FLAG_unbox_double_fields &&
                expected_representation.IsDouble() && value->IsSmi()) {
       new_mutable_double++;
     }
 
     DCHECK(target->instance_descriptors()
-               .GetFieldType(descriptor)
+               .GetFieldType(descriptor_index)
                .NowContains(value));
     map = target;
     descriptor++;
@@ -560,18 +563,21 @@ Handle<Object> JsonParser<Char>::BuildJsonObject(
             : reinterpret_cast<Address>(
                   mutable_double_buffer->GetDataStartAddress());
     Address filler_address = mutable_double_address;
-    if (IsAligned(mutable_double_address, kDoubleAlignment)) {
-      mutable_double_address += kTaggedSize;
-    } else {
-      filler_address += HeapNumber::kSize;
+    if (kTaggedSize != kDoubleSize) {
+      if (IsAligned(mutable_double_address, kDoubleAlignment)) {
+        mutable_double_address += kTaggedSize;
+      } else {
+        filler_address += HeapNumber::kSize;
+      }
     }
     for (int j = 0; j < i; j++) {
       const JsonProperty& property = property_stack[start + j];
       if (property.string.is_index()) continue;
+      InternalIndex descriptor_index(descriptor);
       PropertyDetails details =
-          map->instance_descriptors().GetDetails(descriptor);
+          map->instance_descriptors().GetDetails(descriptor_index);
       Object value = *property.value;
-      FieldIndex index = FieldIndex::ForDescriptor(*map, descriptor);
+      FieldIndex index = FieldIndex::ForDescriptor(*map, descriptor_index);
       descriptor++;
 
       if (details.representation().IsDouble()) {
@@ -619,9 +625,13 @@ Handle<Object> JsonParser<Char>::BuildJsonObject(
 #ifdef DEBUG
       Address end =
           reinterpret_cast<Address>(mutable_double_buffer->GetDataEndAddress());
-      DCHECK_EQ(Min(filler_address, mutable_double_address), end);
-      DCHECK_GE(filler_address, end);
-      DCHECK_GE(mutable_double_address, end);
+      if (kTaggedSize != kDoubleSize) {
+        DCHECK_EQ(Min(filler_address, mutable_double_address), end);
+        DCHECK_GE(filler_address, end);
+        DCHECK_GE(mutable_double_address, end);
+      } else {
+        DCHECK_EQ(mutable_double_address, end);
+      }
 #endif
       mutable_double_buffer->set_length(0);
     }
@@ -830,6 +840,9 @@ MaybeHandle<Object> JsonParser<Char>::ParseJsonValue() {
             // from the transition tree.
             if (!maybe_feedback.IsDetached(isolate_)) {
               feedback = handle(maybe_feedback, isolate_);
+              if (feedback->is_deprecated()) {
+                feedback = Map::Update(isolate_, feedback);
+              }
             }
           }
           value = BuildJsonObject(cont, property_stack, feedback);
@@ -896,7 +909,8 @@ Handle<Object> JsonParser<Char>::ParseJsonNumber() {
       // Prefix zero is only allowed if it's the only digit before
       // a decimal point or exponent.
       c = NextCharacter();
-      if (IsInRange(c, 0, static_cast<int32_t>(unibrow::Latin1::kMaxChar)) &&
+      if (base::IsInRange(c, 0,
+                          static_cast<int32_t>(unibrow::Latin1::kMaxChar)) &&
           IsNumberPart(character_json_scan_flags[c])) {
         if (V8_UNLIKELY(IsDecimalDigit(c))) {
           AllowHeapAllocation allow_before_exception;
@@ -919,7 +933,8 @@ Handle<Object> JsonParser<Char>::ParseJsonNumber() {
       STATIC_ASSERT(Smi::IsValid(999999999));
       const int kMaxSmiLength = 9;
       if ((cursor_ - smi_start) <= kMaxSmiLength &&
-          (!IsInRange(c, 0, static_cast<int32_t>(unibrow::Latin1::kMaxChar)) ||
+          (!base::IsInRange(c, 0,
+                            static_cast<int32_t>(unibrow::Latin1::kMaxChar)) ||
            !IsNumberPart(character_json_scan_flags[c]))) {
         // Smi.
         int32_t i = 0;
@@ -1139,7 +1154,7 @@ JsonString JsonParser<Char>::ScanJsonString(bool needs_internalization) {
     if (*cursor_ == '\\') {
       has_escape = true;
       uc32 c = NextCharacter();
-      if (V8_UNLIKELY(!IsInRange(
+      if (V8_UNLIKELY(!base::IsInRange(
               c, 0, static_cast<int32_t>(unibrow::Latin1::kMaxChar)))) {
         AllowHeapAllocation allow_before_exception;
         ReportUnexpectedCharacter(c);

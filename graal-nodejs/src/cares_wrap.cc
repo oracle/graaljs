@@ -22,6 +22,7 @@
 #define CARES_STATICLIB
 #include "ares.h"
 #include "async_wrap-inl.h"
+#include "base64-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
 #include "node.h"
@@ -66,7 +67,6 @@ using v8::Int32;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Null;
 using v8::Object;
 using v8::String;
@@ -78,13 +78,6 @@ Mutex ares_library_mutex;
 
 inline uint16_t cares_get_16bit(const unsigned char* p) {
   return static_cast<uint32_t>(p[0] << 8U) | (static_cast<uint32_t>(p[1]));
-}
-
-inline uint32_t cares_get_32bit(const unsigned char* p) {
-  return static_cast<uint32_t>(p[0] << 24U) |
-         static_cast<uint32_t>(p[1] << 16U) |
-         static_cast<uint32_t>(p[2] << 8U) |
-         static_cast<uint32_t>(p[3]);
 }
 
 const int ns_t_cname_or_a = -1;
@@ -1130,11 +1123,11 @@ int ParseSoaReply(Environment* env,
         return ARES_EBADRESP;
       }
 
-      const unsigned int serial = cares_get_32bit(ptr + 0 * 4);
-      const unsigned int refresh = cares_get_32bit(ptr + 1 * 4);
-      const unsigned int retry = cares_get_32bit(ptr + 2 * 4);
-      const unsigned int expire = cares_get_32bit(ptr + 3 * 4);
-      const unsigned int minttl = cares_get_32bit(ptr + 4 * 4);
+      const unsigned int serial = ReadUint32BE(ptr + 0 * 4);
+      const unsigned int refresh = ReadUint32BE(ptr + 1 * 4);
+      const unsigned int retry = ReadUint32BE(ptr + 2 * 4);
+      const unsigned int expire = ReadUint32BE(ptr + 3 * 4);
+      const unsigned int minttl = ReadUint32BE(ptr + 4 * 4);
 
       Local<Object> soa_record = Object::New(env->isolate());
       soa_record->Set(context,
@@ -1939,8 +1932,8 @@ void CanonicalizeIP(const FunctionCallbackInfo<Value>& args) {
   char canonical_ip[INET6_ADDRSTRLEN];
   const int af = (rc == 4 ? AF_INET : AF_INET6);
   CHECK_EQ(0, uv_inet_ntop(af, &result, canonical_ip, sizeof(canonical_ip)));
-  Local<String> val = String::NewFromUtf8(isolate, canonical_ip,
-      NewStringType::kNormal).ToLocalChecked();
+  Local<String> val = String::NewFromUtf8(isolate, canonical_ip)
+      .ToLocalChecked();
   args.GetReturnValue().Set(val);
 }
 

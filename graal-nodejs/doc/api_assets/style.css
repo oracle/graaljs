@@ -572,6 +572,20 @@ td > *:last-child {
   margin-bottom: 0;
 }
 
+kbd {
+  background-color: #eee;
+  border-radius: 3px;
+  border: 1px solid #b4b4b4;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, .2);
+  color: #333;
+  display: inline-block;
+  font-size: .85em;
+  font-weight: 700;
+  padding: 2px 4px;
+  white-space: nowrap;
+  vertical-align: middle;
+ }
+
 .changelog > summary {
   margin: .5rem 0;
   padding: .5rem 0;

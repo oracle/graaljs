@@ -6,8 +6,8 @@
 #define V8_COMPILER_JS_OPERATOR_H_
 
 #include "src/base/compiler-specific.h"
-#include "src/common/globals.h"
 #include "src/compiler/feedback-source.h"
+#include "src/compiler/globals.h"
 #include "src/handles/maybe-handles.h"
 #include "src/objects/type-hints.h"
 #include "src/runtime/runtime.h"
@@ -85,8 +85,8 @@ class ConstructForwardVarargsParameters final {
     return p.bit_field_;
   }
 
-  using ArityField = BitField<size_t, 0, 16>;
-  using StartIndexField = BitField<uint32_t, 16, 16>;
+  using ArityField = base::BitField<size_t, 0, 16>;
+  using StartIndexField = base::BitField<uint32_t, 16, 16>;
 
   uint32_t const bit_field_;
 };
@@ -147,8 +147,8 @@ class CallForwardVarargsParameters final {
     return p.bit_field_;
   }
 
-  using ArityField = BitField<size_t, 0, 15>;
-  using StartIndexField = BitField<uint32_t, 15, 15>;
+  using ArityField = base::BitField<size_t, 0, 15>;
+  using StartIndexField = base::BitField<uint32_t, 15, 15>;
 
   uint32_t const bit_field_;
 };
@@ -165,12 +165,20 @@ class CallParameters final {
   CallParameters(size_t arity, CallFrequency const& frequency,
                  FeedbackSource const& feedback,
                  ConvertReceiverMode convert_mode,
-                 SpeculationMode speculation_mode)
+                 SpeculationMode speculation_mode,
+                 CallFeedbackRelation feedback_relation)
       : bit_field_(ArityField::encode(arity) |
+                   CallFeedbackRelationField::encode(feedback_relation) |
                    SpeculationModeField::encode(speculation_mode) |
                    ConvertReceiverModeField::encode(convert_mode)),
         frequency_(frequency),
-        feedback_(feedback) {}
+        feedback_(feedback) {
+    // CallFeedbackRelation is ignored if the feedback slot is invalid.
+    DCHECK_IMPLIES(speculation_mode == SpeculationMode::kAllowSpeculation,
+                   feedback.IsValid());
+    DCHECK_IMPLIES(!feedback.IsValid(),
+                   feedback_relation == CallFeedbackRelation::kUnrelated);
+  }
 
   size_t arity() const { return ArityField::decode(bit_field_); }
   CallFrequency const& frequency() const { return frequency_; }
@@ -181,6 +189,10 @@ class CallParameters final {
 
   SpeculationMode speculation_mode() const {
     return SpeculationModeField::decode(bit_field_);
+  }
+
+  CallFeedbackRelation feedback_relation() const {
+    return CallFeedbackRelationField::decode(bit_field_);
   }
 
   bool operator==(CallParameters const& that) const {
@@ -197,9 +209,10 @@ class CallParameters final {
                               feedback_hash(p.feedback_));
   }
 
-  using ArityField = BitField<size_t, 0, 28>;
-  using SpeculationModeField = BitField<SpeculationMode, 28, 1>;
-  using ConvertReceiverModeField = BitField<ConvertReceiverMode, 29, 2>;
+  using ArityField = base::BitField<size_t, 0, 27>;
+  using CallFeedbackRelationField = base::BitField<CallFeedbackRelation, 27, 1>;
+  using SpeculationModeField = base::BitField<SpeculationMode, 28, 1>;
+  using ConvertReceiverModeField = base::BitField<ConvertReceiverMode, 29, 2>;
 
   uint32_t const bit_field_;
   CallFrequency const frequency_;
@@ -409,13 +422,13 @@ class StoreGlobalParameters final {
       : language_mode_(language_mode), name_(name), feedback_(feedback) {}
 
   LanguageMode language_mode() const { return language_mode_; }
-  const FeedbackSource& feedback() const { return feedback_; }
-  const Handle<Name>& name() const { return name_; }
+  FeedbackSource const& feedback() const { return feedback_; }
+  Handle<Name> const& name() const { return name_; }
 
  private:
-  const LanguageMode language_mode_;
-  const Handle<Name> name_;
-  const FeedbackSource feedback_;
+  LanguageMode const language_mode_;
+  Handle<Name> const name_;
+  FeedbackSource const feedback_;
 };
 
 bool operator==(StoreGlobalParameters const&, StoreGlobalParameters const&);
@@ -598,6 +611,35 @@ std::ostream& operator<<(std::ostream&, CreateClosureParameters const&);
 
 const CreateClosureParameters& CreateClosureParametersOf(const Operator* op);
 
+class GetTemplateObjectParameters final {
+ public:
+  GetTemplateObjectParameters(Handle<TemplateObjectDescription> description,
+                              Handle<SharedFunctionInfo> shared,
+                              FeedbackSource const& feedback)
+      : description_(description), shared_(shared), feedback_(feedback) {}
+
+  Handle<TemplateObjectDescription> description() const { return description_; }
+  Handle<SharedFunctionInfo> shared() const { return shared_; }
+  FeedbackSource const& feedback() const { return feedback_; }
+
+ private:
+  Handle<TemplateObjectDescription> const description_;
+  Handle<SharedFunctionInfo> const shared_;
+  FeedbackSource const feedback_;
+};
+
+bool operator==(GetTemplateObjectParameters const&,
+                GetTemplateObjectParameters const&);
+bool operator!=(GetTemplateObjectParameters const&,
+                GetTemplateObjectParameters const&);
+
+size_t hash_value(GetTemplateObjectParameters const&);
+
+std::ostream& operator<<(std::ostream&, GetTemplateObjectParameters const&);
+
+const GetTemplateObjectParameters& GetTemplateObjectParametersOf(
+    const Operator* op);
+
 // Defines shared information for the literal that should be created. This is
 // used as parameter by JSCreateLiteralArray, JSCreateLiteralObject and
 // JSCreateLiteralRegExp operators.
@@ -652,6 +694,31 @@ size_t hash_value(CloneObjectParameters const&);
 std::ostream& operator<<(std::ostream&, CloneObjectParameters const&);
 
 const CloneObjectParameters& CloneObjectParametersOf(const Operator* op);
+
+// Defines the shared information for the iterator symbol thats loaded and
+// called. This is used as a parameter by JSGetIterator operator.
+class GetIteratorParameters final {
+ public:
+  GetIteratorParameters(const FeedbackSource& load_feedback,
+                        const FeedbackSource& call_feedback)
+      : load_feedback_(load_feedback), call_feedback_(call_feedback) {}
+
+  FeedbackSource const& loadFeedback() const { return load_feedback_; }
+  FeedbackSource const& callFeedback() const { return call_feedback_; }
+
+ private:
+  FeedbackSource const load_feedback_;
+  FeedbackSource const call_feedback_;
+};
+
+bool operator==(GetIteratorParameters const&, GetIteratorParameters const&);
+bool operator!=(GetIteratorParameters const&, GetIteratorParameters const&);
+
+size_t hash_value(GetIteratorParameters const&);
+
+std::ostream& operator<<(std::ostream&, GetIteratorParameters const&);
+
+const GetIteratorParameters& GetIteratorParametersOf(const Operator* op);
 
 // Descriptor used by the JSForInPrepare and JSForInNext opcodes.
 enum class ForInMode : uint8_t {
@@ -742,7 +809,6 @@ class V8_EXPORT_PRIVATE JSOperatorBuilder final
   const Operator* CreateEmptyLiteralArray(FeedbackSource const& feedback);
   const Operator* CreateArrayFromIterable();
   const Operator* CreateEmptyLiteralObject();
-
   const Operator* CreateLiteralObject(
       Handle<ObjectBoilerplateDescription> constant,
       FeedbackSource const& feedback, int literal_flags,
@@ -753,17 +819,28 @@ class V8_EXPORT_PRIVATE JSOperatorBuilder final
                                       FeedbackSource const& feedback,
                                       int literal_flags);
 
+  const Operator* GetTemplateObject(
+      Handle<TemplateObjectDescription> description,
+      Handle<SharedFunctionInfo> shared, FeedbackSource const& feedback);
+
   const Operator* CallForwardVarargs(size_t arity, uint32_t start_index);
   const Operator* Call(
       size_t arity, CallFrequency const& frequency = CallFrequency(),
       FeedbackSource const& feedback = FeedbackSource(),
       ConvertReceiverMode convert_mode = ConvertReceiverMode::kAny,
-      SpeculationMode speculation_mode = SpeculationMode::kDisallowSpeculation);
-  const Operator* CallWithArrayLike(CallFrequency const& frequency);
+      SpeculationMode speculation_mode = SpeculationMode::kDisallowSpeculation,
+      CallFeedbackRelation feedback_relation =
+          CallFeedbackRelation::kUnrelated);
+  const Operator* CallWithArrayLike(
+      CallFrequency const& frequency,
+      const FeedbackSource& feedback = FeedbackSource{},
+      SpeculationMode speculation_mode = SpeculationMode::kDisallowSpeculation,
+      CallFeedbackRelation feedback_relation = CallFeedbackRelation::kRelated);
   const Operator* CallWithSpread(
       uint32_t arity, CallFrequency const& frequency = CallFrequency(),
       FeedbackSource const& feedback = FeedbackSource(),
-      SpeculationMode speculation_mode = SpeculationMode::kDisallowSpeculation);
+      SpeculationMode speculation_mode = SpeculationMode::kDisallowSpeculation,
+      CallFeedbackRelation feedback_relation = CallFeedbackRelation::kRelated);
   const Operator* CallRuntime(Runtime::FunctionId id);
   const Operator* CallRuntime(Runtime::FunctionId id, size_t arity);
   const Operator* CallRuntime(const Runtime::Function* function, size_t arity);
@@ -805,6 +882,7 @@ class V8_EXPORT_PRIVATE JSOperatorBuilder final
                               const Handle<Name>& name,
                               const FeedbackSource& feedback);
 
+  const Operator* HasContextExtension(size_t depth);
   const Operator* LoadContext(size_t depth, size_t index, bool immutable);
   const Operator* StoreContext(size_t depth, size_t index);
 
@@ -837,7 +915,7 @@ class V8_EXPORT_PRIVATE JSOperatorBuilder final
   const Operator* GeneratorRestoreRegister(int index);
   const Operator* GeneratorRestoreInputOrDebugPos();
 
-  const Operator* StackCheck();
+  const Operator* StackCheck(StackCheckKind kind);
   const Operator* Debugger();
 
   const Operator* FulfillPromise();
@@ -856,7 +934,8 @@ class V8_EXPORT_PRIVATE JSOperatorBuilder final
   const Operator* ParseInt();
   const Operator* RegExpTest();
 
-  const Operator* GetIterator(FeedbackSource const& feedback);
+  const Operator* GetIterator(FeedbackSource const& load_feedback,
+                              FeedbackSource const& call_feedback);
 
  private:
   Zone* zone() const { return zone_; }

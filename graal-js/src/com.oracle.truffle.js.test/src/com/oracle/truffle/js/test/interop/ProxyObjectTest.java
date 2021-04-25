@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import java.util.Map;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyArray;
+import org.graalvm.polyglot.proxy.ProxyHashMap;
 import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Before;
@@ -108,7 +109,7 @@ public class ProxyObjectTest {
 
     @Test
     public void copyPropertiesFromProxyObject() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         map.put("p3", 43);
@@ -122,7 +123,7 @@ public class ProxyObjectTest {
 
     @Test
     public void objectAssignFromProxyObject() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         map.put("p3", 43);
@@ -136,7 +137,7 @@ public class ProxyObjectTest {
 
     @Test
     public void objectAssignToProxyObject() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         ProxyObject proxyObject = ProxyObject.fromMap(map);
         context.getBindings(ID).putMember("proxyObj", proxyObject);
         context.eval(ID, "obj = Object.assign(proxyObj, {p1: 41, p2: 42, p3: 43});");
@@ -147,7 +148,7 @@ public class ProxyObjectTest {
 
     @Test
     public void definePropertyViaJSProxy() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         map.put("p3", 43);
@@ -207,7 +208,7 @@ public class ProxyObjectTest {
 
     @Test
     public void objectPrototypeHasOwnProperty() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         ProxyObject proxyObject = ProxyObject.fromMap(map);
@@ -218,7 +219,7 @@ public class ProxyObjectTest {
 
     @Test
     public void objectGetOwnPropertyNames() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         map.put("p3", 43);
@@ -229,7 +230,7 @@ public class ProxyObjectTest {
 
     @Test
     public void objectGetOwnPropertyDescriptor() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         map.put("p3", 43);
@@ -240,7 +241,7 @@ public class ProxyObjectTest {
 
     @Test
     public void objectGetOwnPropertyDescriptors() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("p1", 41);
         map.put("p2", 42);
         map.put("p3", 43);
@@ -259,7 +260,7 @@ public class ProxyObjectTest {
 
     @Test
     public void writeNumericMemberAsNumber() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         ProxyObject proxyObject = ProxyObject.fromMap(map);
         context.getBindings(ID).putMember("proxyObj", proxyObject);
         context.eval(ID, "proxyObj[42] = 'foo'");
@@ -269,7 +270,7 @@ public class ProxyObjectTest {
 
     @Test
     public void writeNumericMemberAsString() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         ProxyObject proxyObject = ProxyObject.fromMap(map);
         context.getBindings(ID).putMember("proxyObj", proxyObject);
         context.eval(ID, "proxyObj['42'] = 'foo'");
@@ -279,7 +280,7 @@ public class ProxyObjectTest {
 
     @Test
     public void readNumericMemberAsNumber() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("42", "foo");
         ProxyObject proxyObject = ProxyObject.fromMap(map);
         context.getBindings(ID).putMember("proxyObj", proxyObject);
@@ -289,7 +290,7 @@ public class ProxyObjectTest {
 
     @Test
     public void readNumericMemberAsString() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("42", "foo");
         ProxyObject proxyObject = ProxyObject.fromMap(map);
         context.getBindings(ID).putMember("proxyObj", proxyObject);
@@ -299,12 +300,22 @@ public class ProxyObjectTest {
 
     @Test
     public void proxyObjectToString() {
-        HashMap<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new HashMap<>();
         map.put("42", "foo");
         ProxyObject proxyObject = ProxyObject.fromMap(map);
         context.getBindings(ID).putMember("proxyObj", proxyObject);
         Value value = context.eval(ID, "proxyObj.toString = function() { return 'executed'; }; ''+proxyObj;");
         assertEquals(value.asString(), "executed");
+    }
+
+    @Test
+    public void objectKeysProxyHashWithoutMembers() {
+        Map<Object, Object> map = new HashMap<>();
+        map.put("42", "foo");
+        ProxyHashMap proxyObject = ProxyHashMap.from(map);
+        context.getBindings(ID).putMember("proxyObj", proxyObject);
+        Value keys = context.eval(ID, "Object.keys(proxyObj);");
+        assertEquals(0, keys.getArraySize());
     }
 
 }

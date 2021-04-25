@@ -4,14 +4,12 @@
 
 #include <memory>
 
-#include "test/cctest/cctest.h"
-
 #include "include/v8-inspector.h"
 #include "include/v8.h"
 #include "src/inspector/protocol/Runtime.h"
-#include "src/inspector/string-16.h"
+#include "src/inspector/string-util.h"
+#include "test/cctest/cctest.h"
 
-using v8_inspector::String16;
 using v8_inspector::StringBuffer;
 using v8_inspector::StringView;
 using v8_inspector::V8ContextInfo;
@@ -66,15 +64,107 @@ TEST(WrapInsideWrapOnInterrupt) {
   session->wrapObject(env.local(), v8::Null(isolate), object_group_view, false);
 }
 
-TEST(String16EndianTest) {
-  const v8_inspector::UChar* expected =
-      reinterpret_cast<const v8_inspector::UChar*>(u"Hello, \U0001F30E.");
-  const uint16_t* utf16le = reinterpret_cast<const uint16_t*>(
-      "H\0e\0l\0l\0o\0,\0 \0\x3c\xd8\x0e\xdf.\0");  // Same text in UTF16LE
-                                                    // encoding
+TEST(BinaryFromBase64) {
+  auto checkBinary = [](const v8_inspector::protocol::Binary& binary,
+                        const std::vector<uint8_t>& values) {
+    std::vector<uint8_t> binary_vector(binary.data(),
+                                       binary.data() + binary.size());
+    CHECK_EQ(binary_vector, values);
+  };
 
-  String16 utf16_str = String16::fromUTF16LE(utf16le, 10);
-  String16 expected_str = expected;
+  {
+    bool success;
+    auto binary = v8_inspector::protocol::Binary::fromBase64("", &success);
+    CHECK(success);
+    checkBinary(binary, {});
+  }
+  {
+    bool success;
+    auto binary = v8_inspector::protocol::Binary::fromBase64("YQ==", &success);
+    CHECK(success);
+    checkBinary(binary, {'a'});
+  }
+  {
+    bool success;
+    auto binary = v8_inspector::protocol::Binary::fromBase64("YWI=", &success);
+    CHECK(success);
+    checkBinary(binary, {'a', 'b'});
+  }
+  {
+    bool success;
+    auto binary = v8_inspector::protocol::Binary::fromBase64("YWJj", &success);
+    CHECK(success);
+    checkBinary(binary, {'a', 'b', 'c'});
+  }
+  {
+    bool success;
+    // Wrong input length:
+    auto binary = v8_inspector::protocol::Binary::fromBase64("Y", &success);
+    CHECK(!success);
+  }
+  {
+    bool success;
+    // Invalid space:
+    auto binary = v8_inspector::protocol::Binary::fromBase64("=AAA", &success);
+    CHECK(!success);
+  }
+  {
+    bool success;
+    // Invalid space in a non-final block of four:
+    auto binary =
+        v8_inspector::protocol::Binary::fromBase64("AAA=AAAA", &success);
+    CHECK(!success);
+  }
+  {
+    bool success;
+    // Invalid invalid space in second to last position:
+    auto binary = v8_inspector::protocol::Binary::fromBase64("AA=A", &success);
+    CHECK(!success);
+  }
+  {
+    bool success;
+    // Invalid character:
+    auto binary = v8_inspector::protocol::Binary::fromBase64(" ", &success);
+    CHECK(!success);
+  }
+}
 
-  CHECK_EQ(utf16_str, expected_str);
+TEST(BinaryToBase64) {
+  uint8_t input[] = {'a', 'b', 'c'};
+  {
+    auto binary = v8_inspector::protocol::Binary::fromSpan(input, 0);
+    v8_inspector::protocol::String base64 = binary.toBase64();
+    CHECK_EQ(base64.utf8(), "");
+  }
+  {
+    auto binary = v8_inspector::protocol::Binary::fromSpan(input, 1);
+    v8_inspector::protocol::String base64 = binary.toBase64();
+    CHECK_EQ(base64.utf8(), "YQ==");
+  }
+  {
+    auto binary = v8_inspector::protocol::Binary::fromSpan(input, 2);
+    v8_inspector::protocol::String base64 = binary.toBase64();
+    CHECK_EQ(base64.utf8(), "YWI=");
+  }
+  {
+    auto binary = v8_inspector::protocol::Binary::fromSpan(input, 3);
+    v8_inspector::protocol::String base64 = binary.toBase64();
+    CHECK_EQ(base64.utf8(), "YWJj");
+  }
+}
+
+TEST(BinaryBase64RoundTrip) {
+  std::array<uint8_t, 256> values;
+  for (uint16_t b = 0x0; b <= 0xFF; ++b) values[b] = b;
+  auto binary =
+      v8_inspector::protocol::Binary::fromSpan(values.data(), values.size());
+  v8_inspector::protocol::String base64 = binary.toBase64();
+  bool success = false;
+  auto roundtrip_binary =
+      v8_inspector::protocol::Binary::fromBase64(base64, &success);
+  CHECK(success);
+  CHECK_EQ(values.size(), roundtrip_binary.size());
+  for (size_t i = 0; i < values.size(); ++i) {
+    CHECK_EQ(values[i], roundtrip_binary.data()[i]);
+  }
 }

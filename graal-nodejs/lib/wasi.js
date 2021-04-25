@@ -4,8 +4,10 @@ const {
   ArrayPrototypePush,
   FunctionPrototypeBind,
   ObjectEntries,
+  String,
   Symbol,
 } = primordials;
+
 const {
   ERR_INVALID_ARG_TYPE,
   ERR_WASI_ALREADY_STARTED

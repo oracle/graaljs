@@ -3,8 +3,10 @@
 /* global WebAssembly */
 
 const {
+  ArrayPrototypeMap,
   Boolean,
   JSONParse,
+  ObjectGetPrototypeOf,
   ObjectPrototypeHasOwnProperty,
   ObjectKeys,
   PromisePrototypeCatch,
@@ -13,8 +15,10 @@ const {
   SafeMap,
   SafeSet,
   StringPrototypeReplace,
+  StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
+  SyntaxErrorPrototype,
 } = primordials;
 
 let _TYPES = null;
@@ -56,6 +60,7 @@ const { getOptionValue } = require('internal/options');
 const experimentalImportMetaResolve =
     getOptionValue('--experimental-import-meta-resolve');
 const asyncESM = require('internal/process/esm_loader');
+const { emitWarningSync } = require('internal/process/warning');
 
 let cjsParse;
 async function initCJSParse() {
@@ -145,26 +150,25 @@ translators.set('module', async function moduleStrategy(url) {
   return module;
 });
 
-
 function enrichCJSError(err) {
+  if (err == null || ObjectGetPrototypeOf(err) !== SyntaxErrorPrototype) {
+    return;
+  }
   const stack = StringPrototypeSplit(err.stack, '\n');
   /*
-    The regular expression below targets the most common import statement
-    usage. However, some cases are not matching, cases like import statement
-    after a comment block and/or after a variable definition.
+  * The regular expression below targets the most common import statement
+  * usage. However, some cases are not matching, cases like import statement
+  * after a comment block and/or after a variable definition.
   */
   if (StringPrototypeStartsWith(err.message, 'Unexpected token \'export\'') ||
-    (RegExpPrototypeTest(/^\s*import(?=[ {'"*])\s*(?![ (])/, stack[1]))) {
+    RegExpPrototypeTest(/^\s*import(?=[ {'"*])\s*(?![ (])/, stack[1])) {
     // Emit the warning synchronously because we are in the middle of handling
     // a SyntaxError that will throw and likely terminate the process before an
     // asynchronous warning would be emitted.
-    process.emitWarning(
+    emitWarningSync(
       'To load an ES module, set "type": "module" in the package.json or use ' +
-      'the .mjs extension.',
-      undefined,
-      undefined,
-      undefined,
-      true);
+      'the .mjs extension.'
+    );
   }
 }
 
@@ -275,9 +279,9 @@ function cjsPreparseModuleExports(filename) {
 translators.set('builtin', async function builtinStrategy(url) {
   debug(`Translating BuiltinModule ${url}`);
   // Slice 'node:' scheme
-  const id = url.slice(5);
+  const id = StringPrototypeSlice(url, 5);
   const module = loadNativeModule(id, url, true);
-  if (!url.startsWith('node:') || !module) {
+  if (!StringPrototypeStartsWith(url, 'node:') || !module) {
     throw new ERR_UNKNOWN_BUILTIN_MODULE(url);
   }
   debug(`Loading BuiltinModule ${url}`);
@@ -289,7 +293,8 @@ translators.set('json', async function jsonStrategy(url) {
   emitExperimentalWarning('Importing JSON modules');
   debug(`Translating JSONModule ${url}`);
   debug(`Loading JSONModule ${url}`);
-  const pathname = url.startsWith('file:') ? fileURLToPath(url) : null;
+  const pathname = StringPrototypeStartsWith(url, 'file:') ?
+    fileURLToPath(url) : null;
   let modulePath;
   let module;
   if (pathname) {
@@ -363,8 +368,11 @@ translators.set('wasm', async function(url) {
   }
 
   const imports =
-      WebAssembly.Module.imports(compiled).map(({ module }) => module);
-  const exports = WebAssembly.Module.exports(compiled).map(({ name }) => name);
+      ArrayPrototypeMap(WebAssembly.Module.imports(compiled),
+                        ({ module }) => module);
+  const exports =
+    ArrayPrototypeMap(WebAssembly.Module.exports(compiled),
+                      ({ name }) => name);
 
   return createDynamicModule(imports, exports, url, (reflect) => {
     const { exports } = new WebAssembly.Instance(compiled, reflect.imports);

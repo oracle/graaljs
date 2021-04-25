@@ -13,6 +13,7 @@
 const {
   ArrayIsArray,
   Error,
+  ErrorCaptureStackTrace,
   ErrorPrototypeToString,
   JSONStringify,
   Map,
@@ -21,9 +22,14 @@ const {
   NumberIsInteger,
   ObjectDefineProperty,
   ObjectKeys,
+  RangeError,
+  String,
   StringPrototypeStartsWith,
   Symbol,
   SymbolFor,
+  SyntaxError,
+  TypeError,
+  URIError,
   WeakMap,
 } = primordials;
 
@@ -46,8 +52,6 @@ const kTypes = [
   'bigint',
   'symbol'
 ];
-
-const { kMaxLength } = internalBinding('buffer');
 
 const MainContextError = Error;
 const overrideStackTrace = new WeakMap();
@@ -82,7 +86,7 @@ const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
   // https://crbug.com/v8/7848
   // `globalThis` is the global that contains the constructor which
   // created `error`.
-  if (typeof globalThis.Error.prepareStackTrace === 'function') {
+  if (typeof globalThis.Error?.prepareStackTrace === 'function') {
     return globalThis.Error.prepareStackTrace(error, trace);
   }
   // We still have legacy usage that depends on the main context's `Error`
@@ -299,8 +303,7 @@ function hideStackFrames(fn) {
 function addCodeToName(err, name, code) {
   // Set the stack
   if (excludedStackFn !== undefined) {
-    // eslint-disable-next-line no-restricted-syntax
-    Error.captureStackTrace(err, excludedStackFn);
+    ErrorCaptureStackTrace(err, excludedStackFn);
   }
   // Add the error code to the name to include it in the stack trace.
   err.name = `${name} [${code}]`;
@@ -436,9 +439,7 @@ function uvException(ctx) {
   if (dest) {
     err.dest = dest;
   }
-
-  // eslint-disable-next-line no-restricted-syntax
-  Error.captureStackTrace(err, excludedStackFn || uvException);
+  ErrorCaptureStackTrace(err, excludedStackFn || uvException);
   return err;
 }
 
@@ -473,15 +474,13 @@ function uvExceptionWithHostPort(err, syscall, address, port) {
   const ex = new Error(`${message}${details}`);
   Error.stackTraceLimit = tmpLimit;
   ex.code = code;
-  ex.errno = code;
+  ex.errno = err;
   ex.syscall = syscall;
   ex.address = address;
   if (port) {
     ex.port = port;
   }
-
-  // eslint-disable-next-line no-restricted-syntax
-  Error.captureStackTrace(ex, excludedStackFn || uvExceptionWithHostPort);
+  ErrorCaptureStackTrace(ex, excludedStackFn || uvExceptionWithHostPort);
   return ex;
 }
 
@@ -505,12 +504,10 @@ function errnoException(err, syscall, original) {
 
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(message);
-  // TODO(joyeecheung): errno is supposed to err, like in uvException
-  ex.code = ex.errno = code;
+  ex.errno = err;
+  ex.code = code;
   ex.syscall = syscall;
-
-  // eslint-disable-next-line no-restricted-syntax
-  Error.captureStackTrace(ex, excludedStackFn || errnoException);
+  ErrorCaptureStackTrace(ex, excludedStackFn || errnoException);
   return ex;
 }
 
@@ -549,17 +546,15 @@ function exceptionWithHostPort(err, syscall, address, port, additional) {
   Error.stackTraceLimit = 0;
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(`${syscall} ${code}${details}`);
-  // TODO(joyeecheung): errno is supposed to err, like in uvException
   Error.stackTraceLimit = tmpLimit;
-  ex.code = ex.errno = code;
+  ex.errno = err;
+  ex.code = code;
   ex.syscall = syscall;
   ex.address = address;
   if (port) {
     ex.port = port;
   }
-
-  // eslint-disable-next-line no-restricted-syntax
-  Error.captureStackTrace(ex, excludedStackFn || exceptionWithHostPort);
+  ErrorCaptureStackTrace(ex, excludedStackFn || exceptionWithHostPort);
   return ex;
 }
 
@@ -570,9 +565,16 @@ function exceptionWithHostPort(err, syscall, address, port, additional) {
  * @returns {Error}
  */
 function dnsException(code, syscall, hostname) {
+  let errno;
   // If `code` is of type number, it is a libuv error number, else it is a
   // c-ares error code.
+  // TODO(joyeecheung): translate c-ares error codes into numeric ones and
+  // make them available in a property that's not error.errno (since they
+  // can be in conflict with libuv error codes). Also make sure
+  // util.getSystemErrorName() can understand them when an being informed that
+  // the number is a c-ares error code.
   if (typeof code === 'number') {
+    errno = code;
     // ENOTFOUND is not a proper POSIX error, but this error has been in place
     // long enough that it's not practical to remove it.
     if (code === lazyUv().UV_EAI_NODATA || code === lazyUv().UV_EAI_NONAME) {
@@ -589,18 +591,14 @@ function dnsException(code, syscall, hostname) {
   Error.stackTraceLimit = 0;
   // eslint-disable-next-line no-restricted-syntax
   const ex = new Error(message);
-  // TODO(joyeecheung): errno is supposed to be a number / err, like in
   Error.stackTraceLimit = tmpLimit;
-  // uvException.
-  ex.errno = code;
+  ex.errno = errno;
   ex.code = code;
   ex.syscall = syscall;
   if (hostname) {
     ex.hostname = hostname;
   }
-
-  // eslint-disable-next-line no-restricted-syntax
-  Error.captureStackTrace(ex, excludedStackFn || dnsException);
+  ErrorCaptureStackTrace(ex, excludedStackFn || dnsException);
   return ex;
 }
 
@@ -774,6 +772,7 @@ E('ERR_CHILD_PROCESS_STDIO_MAXBUFFER', '%s maxBuffer length exceeded',
   RangeError);
 E('ERR_CONSOLE_WRITABLE_STREAM',
   'Console expects a writable stream instance for %s', TypeError);
+E('ERR_CONTEXT_NOT_INITIALIZED', 'context used is not initialized', Error);
 E('ERR_CPU_USAGE', 'Unable to obtain cpu usage %s', Error);
 E('ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED',
   'Custom engines not supported by this OpenSSL', Error);
@@ -820,13 +819,18 @@ E('ERR_ENCODING_INVALID_ENCODED_DATA', function(encoding, ret) {
 }, TypeError);
 E('ERR_ENCODING_NOT_SUPPORTED', 'The "%s" encoding is not supported',
   RangeError);
+E('ERR_EVAL_ESM_CANNOT_PRINT', '--print cannot be used with ESM input', Error);
+E('ERR_EVENT_RECURSION', 'The event "%s" is already being dispatched', Error);
 E('ERR_FALSY_VALUE_REJECTION', function(reason) {
   this.reason = reason;
   return 'Promise was rejected with falsy value';
 }, Error);
-E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than possible Buffer: ' +
-    `${kMaxLength} bytes`,
-  RangeError);
+E('ERR_FEATURE_UNAVAILABLE_ON_PLATFORM',
+  'The feature %s is unavailable on the current platform' +
+  ', which is being used to run Node.js',
+  TypeError);
+E('ERR_FS_EISDIR', 'Path is a directory', SystemError);
+E('ERR_FS_FILE_TOO_LARGE', 'File size (%s) is greater than 2 GB', RangeError);
 E('ERR_FS_INVALID_SYMLINK_TYPE',
   'Symlink type must be one of "dir", "file", or "junction". Received "%s"',
   Error); // Switch to TypeError. The current implementation does not seem right
@@ -928,6 +932,7 @@ E('ERR_HTTP_HEADERS_SENT',
 E('ERR_HTTP_INVALID_HEADER_VALUE',
   'Invalid value "%s" for header "%s"', TypeError);
 E('ERR_HTTP_INVALID_STATUS_CODE', 'Invalid status code: %s', RangeError);
+E('ERR_HTTP_REQUEST_TIMEOUT', 'Request timeout', Error);
 E('ERR_HTTP_TRAILER_INVALID',
   'Trailers are invalid with this transfer encoding', Error);
 E('ERR_INCOMPATIBLE_OPTION_PAIR',
@@ -1202,7 +1207,8 @@ E('ERR_MANIFEST_ASSERT_INTEGRITY',
     return msg;
   }, Error);
 E('ERR_MANIFEST_DEPENDENCY_MISSING',
-  'Manifest resource %s does not list %s as a dependency specifier',
+  'Manifest resource %s does not list %s as a dependency specifier for ' +
+  'conditions: %s',
   Error);
 E('ERR_MANIFEST_INTEGRITY_MISMATCH',
   'Manifest resource %s has multiple entries but integrity lists do not match',
@@ -1235,9 +1241,6 @@ E('ERR_MISSING_ARGS',
     }
     return `${msg} must be specified`;
   }, TypeError);
-E('ERR_MISSING_DYNAMIC_INSTANTIATE_HOOK',
-  'The ES Module loader may not return a format of \'dynamic\' when no ' +
-  'dynamicInstantiate function was provided', Error);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
 E('ERR_MODULE_NOT_FOUND', (path, base, type = 'package') => {
   return `Cannot find ${type} '${path}' imported from ${base}`;
@@ -1326,7 +1329,6 @@ E('ERR_SOCKET_BAD_TYPE',
 E('ERR_SOCKET_BUFFER_SIZE',
   'Could not get or set buffer size',
   SystemError);
-E('ERR_SOCKET_CANNOT_SEND', 'Unable to send data', Error);
 E('ERR_SOCKET_CLOSED', 'Socket is closed', Error);
 E('ERR_SOCKET_DGRAM_IS_CONNECTED', 'Already connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_CONNECTED', 'Not connected', Error);
@@ -1334,6 +1336,9 @@ E('ERR_SOCKET_DGRAM_NOT_RUNNING', 'Not running', Error);
 E('ERR_SRI_PARSE',
   'Subresource Integrity string %j had an unexpected %j at position %d',
   SyntaxError);
+E('ERR_STREAM_ALREADY_FINISHED',
+  'Cannot call %s after a stream was finished',
+  Error);
 E('ERR_STREAM_CANNOT_PIPE', 'Cannot pipe, not readable', Error);
 E('ERR_STREAM_DESTROYED', 'Cannot call %s after a stream was destroyed', Error);
 E('ERR_STREAM_NULL_VALUES', 'May not write null values to stream', TypeError);
@@ -1442,6 +1447,9 @@ E('ERR_WORKER_PATH', (filename) =>
   'relative path starting with \'./\' or \'../\'.' +
   (filename.startsWith('file://') ?
     ' Wrap file:// URLs with `new URL`.' : ''
+  ) +
+  (filename.startsWith('data:text/javascript') ?
+    ' Wrap data: URLs with `new URL`.' : ''
   ) +
   ` Received "${filename}"`,
   TypeError);

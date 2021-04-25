@@ -343,6 +343,39 @@ load('test/mjsunit/wasm/wasm-module-builder.js');
     () => new WebAssembly.Function({parameters:[], results:[]}, _ => 0));
 })();
 
+(function TestFunctionConstructorWithWasmExportedFunction() {
+  let builder = new WasmModuleBuilder();
+
+  builder.addFunction('func1', kSig_v_i).addBody([]).exportFunc();
+  builder.addFunction('func2', kSig_v_v).addBody([]).exportFunc();
+
+  const instance = builder.instantiate();
+  assertThrows(
+      () => new WebAssembly.Function(
+          {parameters: [], results: []}, instance.exports.func1),
+      TypeError,
+      'WebAssembly.Function(): The signature of Argument 1 (a ' +
+      'WebAssembly function) does not match the signature specified in ' +
+      'Argument 0');
+
+  assertDoesNotThrow(
+      () => new WebAssembly.Function(
+          {parameters: [], results: []}, instance.exports.func2));
+})();
+
+(function TestFunctionConstructorWithWasmJSFunction() {
+  const func = new WebAssembly.Function({parameters: [], results: []}, _ => 0);
+
+  assertDoesNotThrow(
+      () => new WebAssembly.Function({parameters: [], results: []}, func));
+  assertThrows(
+      () => new WebAssembly.Function({parameters: ['i32'], results: []}, func),
+      TypeError,
+      'WebAssembly.Function(): The signature of Argument 1 (a ' +
+          'WebAssembly function) does not match the signature specified in ' +
+          'Argument 0');
+})();
+
 (function TestFunctionConstructorNonArray1() {
   let log = [];  // Populated with a log of accesses.
   let two = { toString: () => "2" };  // Just a fancy "2".
@@ -533,7 +566,7 @@ load('test/mjsunit/wasm/wasm-module-builder.js');
   table.set(0, fun1);
   builder.addFunction('main', kSig_i_i)
       .addBody([
-        kExprGetLocal, 0,
+        kExprLocalGet, 0,
         kExprCallIndirect, sig_index, table_index
       ])
       .exportFunc();
@@ -554,7 +587,7 @@ load('test/mjsunit/wasm/wasm-module-builder.js');
   table.set(0, fun);
   builder.addFunction('main', kSig_v_i)
       .addBody([
-        kExprGetLocal, 0,
+        kExprLocalGet, 0,
         kExprCallIndirect, sig_index, table_index,
         kExprDrop
       ])

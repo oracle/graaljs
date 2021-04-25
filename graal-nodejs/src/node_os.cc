@@ -71,10 +71,8 @@ static void GetHostname(const FunctionCallbackInfo<Value>& args) {
   }
 
   args.GetReturnValue().Set(
-      String::NewFromUtf8(env->isolate(), buf, NewStringType::kNormal)
-          .ToLocalChecked());
+      String::NewFromUtf8(env->isolate(), buf).ToLocalChecked());
 }
-
 
 static void GetOSInformation(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
@@ -89,19 +87,15 @@ static void GetOSInformation(const FunctionCallbackInfo<Value>& args) {
 
   // [sysname, version, release]
   Local<Value> osInformation[] = {
-    String::NewFromUtf8(
-        env->isolate(), info.sysname, NewStringType::kNormal).ToLocalChecked(),
-    String::NewFromUtf8(
-        env->isolate(), info.version, NewStringType::kNormal).ToLocalChecked(),
-    String::NewFromUtf8(
-        env->isolate(), info.release, NewStringType::kNormal).ToLocalChecked()
+    String::NewFromUtf8(env->isolate(), info.sysname).ToLocalChecked(),
+    String::NewFromUtf8(env->isolate(), info.version).ToLocalChecked(),
+    String::NewFromUtf8(env->isolate(), info.release).ToLocalChecked()
   };
 
   args.GetReturnValue().Set(Array::New(env->isolate(),
                                        osInformation,
                                        arraysize(osInformation)));
 }
-
 
 static void GetCPUInfo(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
@@ -160,7 +154,7 @@ static void GetLoadAvg(const FunctionCallbackInfo<Value>& args) {
   Local<Float64Array> array = args[0].As<Float64Array>();
   CHECK_EQ(array->Length(), 3);
   Local<ArrayBuffer> ab = array->Buffer();
-  double* loadavg = static_cast<double*>(ab->GetContents().Data());
+  double* loadavg = static_cast<double*>(ab->GetBackingStore()->Data());
   uv_loadavg(loadavg);
 }
 
@@ -197,8 +191,7 @@ static void GetInterfaceAddresses(const FunctionCallbackInfo<Value>& args) {
     // to assume UTF8 as the default as well. It’s what people will expect if
     // they name the interface from any input that uses UTF-8, which should be
     // the most frequent case by far these days.)
-    name = String::NewFromUtf8(isolate, raw_name,
-        NewStringType::kNormal).ToLocalChecked();
+    name = String::NewFromUtf8(isolate, raw_name).ToLocalChecked();
 
     snprintf(mac.data(),
              mac.size(),
@@ -387,12 +380,12 @@ void Initialize(Local<Object> target,
   env->SetMethod(target, "getTotalMem", GetTotalMemory);
   env->SetMethod(target, "getFreeMem", GetFreeMemory);
   env->SetMethod(target, "getCPUs", GetCPUInfo);
-  env->SetMethod(target, "getOSInformation", GetOSInformation);
   env->SetMethod(target, "getInterfaceAddresses", GetInterfaceAddresses);
   env->SetMethod(target, "getHomeDirectory", GetHomeDirectory);
   env->SetMethod(target, "getUserInfo", GetUserInfo);
   env->SetMethod(target, "setPriority", SetPriority);
   env->SetMethod(target, "getPriority", GetPriority);
+  env->SetMethod(target, "getOSInformation", GetOSInformation);
   target->Set(env->context(),
               FIXED_ONE_BYTE_STRING(env->isolate(), "isBigEndian"),
               Boolean::New(env->isolate(), IsBigEndian())).Check();

@@ -47,7 +47,7 @@ const {
   },
   hideStackFrames
 } = require('internal/errors');
-const Transform = require('_stream_transform');
+const { Transform, finished } = require('stream');
 const {
   deprecate
 } = require('internal/util');
@@ -64,6 +64,7 @@ const {
 const { owner_symbol } = require('internal/async_hooks').symbols;
 
 const kFlushFlag = Symbol('kFlushFlag');
+const kError = Symbol('kError');
 
 const constants = internalBinding('constants').zlib;
 const {
@@ -175,14 +176,13 @@ function zlibOnError(message, errno, code) {
   const self = this[owner_symbol];
   // There is no way to cleanly recover.
   // Continuing only obscures problems.
-  _close(self);
-  self._hadError = true;
 
   // eslint-disable-next-line no-restricted-syntax
   const error = new Error(message);
   error.errno = errno;
   error.code = code;
-  self.emit('error', error);
+  self.destroy(error);
+  self[kError] = error;
 }
 
 // 1. Returns false for undefined and NaN
@@ -267,8 +267,8 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
     }
   }
 
-  Transform.call(this, opts);
-  this._hadError = false;
+  Transform.call(this, { autoDestroy: true, ...opts });
+  this[kError] = null;
   this.bytesWritten = 0;
   this._handle = handle;
   handle[owner_symbol] = this;
@@ -281,7 +281,6 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   this._defaultFlushFlag = flush;
   this._finishFlushFlag = finishFlush;
   this._defaultFullFlushFlag = fullFlush;
-  this.once('end', _close.bind(null, this));
   this._info = opts && opts.info;
   this._maxOutputLength = maxOutputLength;
 }
@@ -374,7 +373,7 @@ ZlibBase.prototype.flush = function(kind, callback) {
 };
 
 ZlibBase.prototype.close = function(callback) {
-  _close(this, callback);
+  if (callback) finished(this, callback);
   this.destroy();
 };
 
@@ -437,6 +436,8 @@ function processChunkSync(self, chunk, flushFlag) {
                      availOutBefore); // out_len
     if (error)
       throw error;
+    else if (self[kError])
+      throw self[kError];
 
     availOutAfter = state[0];
     availInAfter = state[1];
@@ -519,7 +520,7 @@ function processCallback() {
   const self = this[owner_symbol];
   const state = self._writeState;
 
-  if (self._hadError || self.destroyed) {
+  if (self.destroyed) {
     this.buffer = null;
     this.cb();
     return;
@@ -585,10 +586,7 @@ function processCallback() {
   this.cb();
 }
 
-function _close(engine, callback) {
-  if (callback)
-    process.nextTick(callback);
-
+function _close(engine) {
   // Caller may invoke .close after a zlib error (which will null _handle).
   if (!engine._handle)
     return;
@@ -682,7 +680,7 @@ ObjectSetPrototypeOf(Zlib, ZlibBase);
 function paramsAfterFlushCallback(level, strategy, callback) {
   assert(this._handle, 'zlib binding closed');
   this._handle.params(level, strategy);
-  if (!this._hadError) {
+  if (!this.destroyed) {
     this._level = level;
     this._strategy = strategy;
     if (callback) callback();

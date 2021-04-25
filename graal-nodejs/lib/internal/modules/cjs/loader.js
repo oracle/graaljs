@@ -30,15 +30,19 @@ const {
   ObjectCreate,
   ObjectDefineProperty,
   ObjectFreeze,
+  ObjectGetOwnPropertyDescriptor,
+  ObjectGetPrototypeOf,
   ObjectKeys,
+  ObjectPrototypeHasOwnProperty,
+  ObjectSetPrototypeOf,
   ReflectSet,
   RegExpPrototypeTest,
   SafeMap,
-  SafeSet,
   SafeWeakMap,
+  String,
   StringPrototypeEndsWith,
-  StringPrototypeIndexOf,
   StringPrototypeLastIndexOf,
+  StringPrototypeIndexOf,
   StringPrototypeMatch,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
@@ -73,17 +77,18 @@ const {
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,
+  cjsConditions,
   loadNativeModule
 } = require('internal/modules/cjs/helpers');
 const { getOptionValue } = require('internal/options');
 const enableSourceMaps = getOptionValue('--enable-source-maps');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
-const manifest = getOptionValue('--experimental-policy') ?
-  require('internal/process/policy').manifest :
+// Do not eagerly grab .manifest, it may be in TDZ
+const policy = getOptionValue('--experimental-policy') ?
+  require('internal/process/policy') :
   null;
 const { compileFunction } = internalBinding('contextify');
-const userConditions = getOptionValue('--conditions');
 
 // Whether any user-provided CJS modules had been loaded (executed).
 // Used for internal assertions.
@@ -103,6 +108,10 @@ const {
   CHAR_BACKWARD_SLASH,
   CHAR_COLON
 } = require('internal/constants');
+
+const {
+  isProxy
+} = require('internal/util/types');
 
 const asyncESM = require('internal/process/esm_loader');
 const { enrichCJSError } = require('internal/modules/esm/translators');
@@ -277,14 +286,13 @@ function readPackageScope(checkPath) {
 }
 
 function tryPackage(requestPath, exts, isMain, originalPath) {
-  const pkg = readPackage(requestPath);
-  const pkgMain = pkg && pkg.main;
+  const pkg = readPackage(requestPath)?.main;
 
-  if (!pkgMain) {
+  if (!pkg) {
     return tryExtensions(path.resolve(requestPath, 'index'), exts, isMain);
   }
 
-  const filename = path.resolve(requestPath, pkgMain);
+  const filename = path.resolve(requestPath, pkg);
   let actual = tryFile(filename, isMain) ||
     tryExtensions(filename, exts, isMain) ||
     tryExtensions(path.resolve(filename, 'index'), exts, isMain);
@@ -304,7 +312,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
     } else if (pendingDeprecation) {
       const jsonPath = path.resolve(requestPath, 'package.json');
       process.emitWarning(
-        `Invalid 'main' field in '${jsonPath}' of '${pkgMain}'. ` +
+        `Invalid 'main' field in '${jsonPath}' of '${pkg}'. ` +
           'Please either fix that or report it to the module author',
         'DeprecationWarning',
         'DEP0128'
@@ -638,6 +646,54 @@ Module._resolveLookupPaths = function(request, parent) {
   return parentDir;
 };
 
+function emitCircularRequireWarning(prop) {
+  process.emitWarning(
+    `Accessing non-existent property '${String(prop)}' of module exports ` +
+    'inside circular dependency'
+  );
+}
+
+// A Proxy that can be used as the prototype of a module.exports object and
+// warns when non-existent properties are accessed.
+const CircularRequirePrototypeWarningProxy = new Proxy({}, {
+  get(target, prop) {
+    // Allow __esModule access in any case because it is used in the output
+    // of transpiled code to determine whether something comes from an
+    // ES module, and is not used as a regular key of `module.exports`.
+    if (prop in target || prop === '__esModule') return target[prop];
+    emitCircularRequireWarning(prop);
+    return undefined;
+  },
+
+  getOwnPropertyDescriptor(target, prop) {
+    if (ObjectPrototypeHasOwnProperty(target, prop) || prop === '__esModule')
+      return ObjectGetOwnPropertyDescriptor(target, prop);
+    emitCircularRequireWarning(prop);
+    return undefined;
+  }
+});
+
+// Object.prototype and ObjectPrototype refer to our 'primordials' versions
+// and are not identical to the versions on the global object.
+const PublicObjectPrototype = global.Object.prototype;
+
+function getExportsForCircularRequire(module) {
+  if (module.exports &&
+      !isProxy(module.exports) &&
+      ObjectGetPrototypeOf(module.exports) === PublicObjectPrototype &&
+      // Exclude transpiled ES6 modules / TypeScript code because those may
+      // employ unusual patterns for accessing 'module.exports'. That should
+      // be okay because ES6 modules have a different approach to circular
+      // dependencies anyway.
+      !module.exports.__esModule) {
+    // This is later unset once the module is done loading.
+    ObjectSetPrototypeOf(
+      module.exports, CircularRequirePrototypeWarningProxy);
+  }
+
+  return module.exports;
+}
+
 // Check the cache for the requested file.
 // 1. If a module already exists in the cache: return its exports object.
 // 2. If the module is native: call
@@ -658,6 +714,8 @@ Module._load = function(request, parent, isMain) {
       const cachedModule = Module._cache[filename];
       if (cachedModule !== undefined) {
         updateChildren(parent, cachedModule, true);
+        if (!cachedModule.loaded)
+          return getExportsForCircularRequire(cachedModule);
         return cachedModule.exports;
       }
       delete relativeResolveCache[relResolveCacheIdentifier];
@@ -669,11 +727,14 @@ Module._load = function(request, parent, isMain) {
   const cachedModule = Module._cache[filename];
   if (cachedModule !== undefined) {
     updateChildren(parent, cachedModule, true);
-    const parseCachedModule = cjsParseCache.get(cachedModule);
-    if (parseCachedModule && !parseCachedModule.loaded)
+    if (!cachedModule.loaded) {
+      const parseCachedModule = cjsParseCache.get(cachedModule);
+      if (!parseCachedModule || parseCachedModule.loaded)
+        return getExportsForCircularRequire(cachedModule);
       parseCachedModule.loaded = true;
-    else
+    } else {
       return cachedModule.exports;
+    }
   }
 
   const mod = loadNativeModule(filename, request);
@@ -721,13 +782,17 @@ Module._load = function(request, parent, isMain) {
           }
         }
       }
+    } else if (module.exports &&
+               !isProxy(module.exports) &&
+               ObjectGetPrototypeOf(module.exports) ===
+                 CircularRequirePrototypeWarningProxy) {
+      ObjectSetPrototypeOf(module.exports, PublicObjectPrototype);
     }
   }
 
   return module.exports;
 };
 
-const cjsConditions = new SafeSet(['require', 'node', ...userConditions]);
 Module._resolveFilename = function(request, parent, isMain, options) {
   if (NativeModule.canBeRequiredByUsers(request)) {
     return request;
@@ -867,7 +932,7 @@ Module.prototype.load = function(filename) {
   // Create module entry at load time to snapshot exports correctly
   const exports = this.exports;
   // Preemptively cache
-  if ((!module || module.module === undefined ||
+  if ((module?.module === undefined ||
        module.module.getStatus() < kEvaluated) &&
       !ESMLoader.cjsCache.has(this))
     ESMLoader.cjsCache.set(this, exports);
@@ -909,7 +974,6 @@ function wrapSafe(filename, content, cjsModuleInstance) {
       },
     });
   }
-
   let compiled;
   try {
     compiled = compileFunction(
@@ -953,16 +1017,16 @@ function wrapSafe(filename, content, cjsModuleInstance) {
 Module.prototype._compile = function(content, filename) {
   let moduleURL;
   let redirects;
-  if (manifest) {
+  if (policy?.manifest) {
     moduleURL = pathToFileURL(filename);
-    redirects = manifest.getRedirector(moduleURL);
-    manifest.assertIntegrity(moduleURL, content);
+    redirects = policy.manifest.getDependencyMapper(moduleURL);
+    policy.manifest.assertIntegrity(moduleURL, content);
   }
 
   maybeCacheSourceMap(filename, content, this);
   const compiledWrapper = wrapSafe(filename, content, this);
 
-  var inspectorWrapper = null;
+  let inspectorWrapper = null;
   if (getOptionValue('--inspect-brk') && process._eval == null) {
     if (!resolvedArgv) {
       // We enter the repl if we're not given a filename argument.
@@ -1010,7 +1074,8 @@ Module._extensions['.js'] = function(module, filename) {
     const pkg = readPackageScope(filename);
     // Function require shouldn't be used in ES modules.
     if (pkg && pkg.data && pkg.data.type === 'module') {
-      const parentPath = module.parent && module.parent.filename;
+      const { parent } = module;
+      const parentPath = parent && parent.filename;
       const packageJsonPath = path.resolve(pkg.path, 'package.json');
       throw new ERR_REQUIRE_ESM(filename, parentPath, packageJsonPath);
     }
@@ -1032,9 +1097,9 @@ Module._extensions['.js'] = function(module, filename) {
 Module._extensions['.json'] = function(module, filename) {
   const content = fs.readFileSync(filename, 'utf8');
 
-  if (manifest) {
+  if (policy?.manifest) {
     const moduleURL = pathToFileURL(filename);
-    manifest.assertIntegrity(moduleURL, content);
+    policy.manifest.assertIntegrity(moduleURL, content);
   }
 
   try {
@@ -1048,10 +1113,10 @@ Module._extensions['.json'] = function(module, filename) {
 
 // Native extension for .node
 Module._extensions['.node'] = function(module, filename) {
-  if (manifest) {
+  if (policy?.manifest) {
     const content = fs.readFileSync(filename);
     const moduleURL = pathToFileURL(filename);
-    manifest.assertIntegrity(moduleURL, content);
+    policy.manifest.assertIntegrity(moduleURL, content);
   }
   // Be aware this doesn't use `content`
   return process.dlopen(module, path.toNamespacedPath(filename));
@@ -1073,7 +1138,12 @@ function createRequireFromPath(filename) {
   return makeRequireFunction(m, null);
 }
 
-Module.createRequireFromPath = createRequireFromPath;
+Module.createRequireFromPath = deprecate(
+  createRequireFromPath,
+  'Module.createRequireFromPath() is deprecated. ' +
+  'Use Module.createRequire() instead.',
+  'DEP0130'
+);
 
 const createRequireError = 'must be a file URL object, file URL string, or ' +
   'absolute path string';

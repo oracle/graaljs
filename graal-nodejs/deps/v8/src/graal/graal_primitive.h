@@ -52,4 +52,3 @@ public:
 };
 
 #endif /* GRAAL_PRIMITIVE_H_ */
-

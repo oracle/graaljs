@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,17 +58,13 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 /**
- * Basic interface for all JavaScript "classes". A JSClass defines the internal and access methods
- * of a JSObject and allows for overriding their behavior for different types of objects.
+ * Basic interface for all JavaScript (ordinary and exotic) object types. A JSClass defines the
+ * internal and access methods of a JSObject and allows for overriding their behavior for different
+ * types of objects. It can be obtained from an object via {@link Shape#getDynamicType()}.
  *
- * See also ECMA 8.6.2 "Object Internal Properties and Methods" for a list of internal properties
- * and methods.
+ * The interface is inspired by ECMAScript internal methods.
  *
- * <pre>
- * Implementation notes:
- * - keep parameter order consistent: JSObject receiver[, the rest...].
- * - keep interface clean, avoid redundant methods, maximize consistency with JSObject and ECMAScript
- * </pre>
+ * Parameter order: JSDynamicObject receiver[, the rest...].
  */
 public abstract class JSClass extends ObjectType {
     protected static final String[] EMPTY_STRING_ARRAY = new String[0];

@@ -3,11 +3,17 @@
 const assert = require('internal/assert');
 const {
   ArrayIsArray,
+  ArrayPrototypeForEach,
+  ArrayPrototypeIndexOf,
+  ArrayPrototypeSome,
   ObjectCreate,
   ObjectDefineProperty,
-  SafePromise,
+  ObjectGetPrototypeOf,
+  ObjectSetPrototypeOf,
+  PromiseAll,
+  SafeWeakMap,
   Symbol,
-  WeakMap,
+  TypeError,
 } = primordials;
 
 const { isContext } = internalBinding('contextify');
@@ -58,7 +64,7 @@ const STATUS_MAP = {
 
 let globalModuleId = 0;
 const defaultModuleName = 'vm:module';
-const wrapToModuleMap = new WeakMap();
+const wrapToModuleMap = new SafeWeakMap();
 
 const kWrap = Symbol('kWrap');
 const kContext = Symbol('kContext');
@@ -219,22 +225,31 @@ class Module {
         'must be one of linked, evaluated, or errored'
       );
     }
-    const result = this[kWrap].evaluate(timeout, breakOnSigint);
-    return { __proto__: null, result };
+    await this[kWrap].evaluate(timeout, breakOnSigint);
   }
 
   [customInspectSymbol](depth, options) {
-    let ctor = getConstructorOf(this);
-    ctor = ctor === null ? Module : ctor;
-
+    if (this[kWrap] === undefined) {
+      throw new ERR_VM_MODULE_NOT_MODULE();
+    }
     if (typeof depth === 'number' && depth < 0)
-      return options.stylize(`[${ctor.name}]`, 'special');
+      return this;
 
-    const o = ObjectCreate({ constructor: ctor });
+    const constructor = getConstructorOf(this) || Module;
+    const o = ObjectCreate({ constructor });
     o.status = this.status;
     o.identifier = this.identifier;
     o.context = this.context;
-    return require('internal/util/inspect').inspect(o, options);
+
+    ObjectSetPrototypeOf(o, ObjectGetPrototypeOf(this));
+    ObjectDefineProperty(o, Symbol.toStringTag, {
+      value: constructor.name,
+      configurable: true
+    });
+
+    // Lazy to avoid circular dependency
+    const { inspect } = require('internal/util/inspect');
+    return inspect(o, { ...options, customInspect: false });
   }
 }
 
@@ -319,7 +334,7 @@ class SourceTextModule extends Module {
 
       try {
         if (promises !== undefined) {
-          await SafePromise.all(promises);
+          await PromiseAll(promises);
         }
       } catch (e) {
         this.#error = e;
@@ -379,13 +394,13 @@ class SourceTextModule extends Module {
 class SyntheticModule extends Module {
   constructor(exportNames, evaluateCallback, options = {}) {
     if (!ArrayIsArray(exportNames) ||
-      exportNames.some((e) => typeof e !== 'string')) {
+      ArrayPrototypeSome(exportNames, (e) => typeof e !== 'string')) {
       throw new ERR_INVALID_ARG_TYPE('exportNames',
                                      'Array of unique strings',
                                      exportNames);
     } else {
-      exportNames.forEach((name, i) => {
-        if (exportNames.indexOf(name, i + 1) !== -1) {
+      ArrayPrototypeForEach(exportNames, (name, i) => {
+        if (ArrayPrototypeIndexOf(exportNames, name, i + 1) !== -1) {
           throw new ERR_INVALID_ARG_VALUE(`exportNames.${name}`,
                                           name,
                                           'is duplicated');

@@ -67,6 +67,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.promise.BuiltinPromiseRejectionTracker;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
@@ -153,6 +154,10 @@ public class JSContext {
      */
     private Object embedderData;
 
+    /**
+     * Nashorn compatibility mode only: Assumption is valid as long as no
+     * {@code __noSuchProperty__}, {@code __noSuchMethod__} properties have been defined.
+     */
     private final Assumption noSuchPropertyUnusedAssumption;
     private final Assumption noSuchMethodUnusedAssumption;
 
@@ -170,7 +175,7 @@ public class JSContext {
      * typically not happen by the ES6 spec, but be used by tests (and by future versions of the
      * spec).
      */
-    @CompilationFinal private Assumption typedArrayNotDetachedAssumption;
+    private final Assumption typedArrayNotDetachedAssumption;
 
     /**
      * Assumption: Static RegExp results (RegExp.$1 etc) are never used. As long as this assumption
@@ -178,6 +183,12 @@ public class JSContext {
      * objects to be virtualized in RegExp#exec().
      */
     private final Assumption regExpStaticResultUnusedAssumption;
+
+    /**
+     * Assumption: The global object has not been replaced and its prototype has not been changed.
+     * While valid, guarantees that globalObject.[[HasProperty]] is side effect free.
+     */
+    private final Assumption globalObjectPristineAssumption;
 
     private volatile Map<String, Symbol> symbolRegistry;
 
@@ -223,7 +234,6 @@ public class JSContext {
         AsyncGeneratorReturnFulfilled,
         AsyncGeneratorReturnRejected,
         AsyncFromSyncIteratorValueUnwrap,
-        CollatorCaseSensitiveCompare,
         CollatorCompare,
         DateTimeFormatFormat,
         NumberFormatFormat,
@@ -447,6 +457,7 @@ public class JSContext {
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");
         this.fastArgumentsObjectAssumption = Truffle.getRuntime().createAssumption("fastArgumentsObjectAssumption");
         this.regExpStaticResultUnusedAssumption = Truffle.getRuntime().createAssumption("regExpStaticResultUnusedAssumption");
+        this.globalObjectPristineAssumption = Truffle.getRuntime().createAssumption("globalObjectPristineAssumption");
 
         this.evaluator = evaluator;
         this.nodeFactory = evaluator.getDefaultNodeFactory();
@@ -575,6 +586,10 @@ public class JSContext {
 
         this.regexOptions = createRegexOptions(contextOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
+
+        if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
+            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
+        }
     }
 
     @SuppressWarnings("deprecation")
@@ -630,6 +645,10 @@ public class JSContext {
         return regExpStaticResultUnusedAssumption;
     }
 
+    public final Assumption getGlobalObjectPristineAssumption() {
+        return globalObjectPristineAssumption;
+    }
+
     public static JSContext createContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
         return new JSContext(evaluator, contextOptions, lang, env);
     }
@@ -651,7 +670,7 @@ public class JSContext {
             if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
                 newRealm.setAgent(new DebugJSAgent(contextOptions.canAgentBlock(), env.getOptions()));
             } else {
-                newRealm.setAgent(new MainJSAgent());
+                newRealm.setAgent(new MainJSAgent(newRealm.getContext().getPromiseRejectionTracker()));
             }
             if (contextOptions.isV8RealmBuiltin()) {
                 newRealm.initRealmList();
@@ -715,6 +734,10 @@ public class JSContext {
     public final void promiseEnqueueJob(JSRealm realm, DynamicObject job) {
         invalidatePromiseQueueNotUsedAssumption();
         realm.getAgent().enqueuePromiseJob(job);
+    }
+
+    public final void signalAsyncWaiterRecordUsage() {
+        invalidatePromiseQueueNotUsedAssumption();
     }
 
     private void invalidatePromiseQueueNotUsedAssumption() {
@@ -1351,6 +1374,10 @@ public class JSContext {
         }
     }
 
+    public PromiseRejectionTracker getPromiseRejectionTracker() {
+        return promiseRejectionTracker;
+    }
+
     public final void setPromiseRejectionTracker(PromiseRejectionTracker tracker) {
         invalidatePromiseRejectionTrackerNotUsedAssumption();
         this.promiseRejectionTracker = tracker;
@@ -1700,5 +1727,9 @@ public class JSContext {
 
     public boolean isOptionTopLevelAwait() {
         return getContextOptions().isTopLevelAwait();
+    }
+
+    public boolean isWaitAsyncEnabled() {
+        return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
     }
 }

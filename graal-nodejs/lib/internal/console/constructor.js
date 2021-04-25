@@ -6,19 +6,31 @@
 const {
   ArrayFrom,
   ArrayIsArray,
+  ArrayPrototypePush,
+  ArrayPrototypeUnshift,
   Boolean,
-  Error,
-  Map,
+  ErrorCaptureStackTrace,
+  FunctionPrototypeBind,
+  MathFloor,
+  Number,
+  NumberPrototypeToFixed,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
   ObjectValues,
   ReflectOwnKeys,
+  SafeMap,
+  SafeWeakMap,
+  StringPrototypeIncludes,
+  StringPrototypePadStart,
+  StringPrototypeRepeat,
+  StringPrototypeReplace,
+  StringPrototypeSlice,
+  StringPrototypeSplit,
   Symbol,
   SymbolHasInstance,
   SymbolToStringTag,
-  WeakMap,
 } = primordials;
 
 const { trace } = internalBinding('trace_events');
@@ -55,6 +67,9 @@ const kTraceBegin = CHAR_LOWERCASE_B;
 const kTraceEnd = CHAR_LOWERCASE_E;
 const kTraceInstant = CHAR_LOWERCASE_N;
 
+const kSecond = 1000;
+const kMinute = 60 * kSecond;
+const kHour = 60 * kMinute;
 const kMaxGroupIndentation = 1000;
 
 // Lazy loaded for startup performance.
@@ -75,7 +90,7 @@ const kBindStreamsLazy = Symbol('kBindStreamsLazy');
 const kUseStdout = Symbol('kUseStdout');
 const kUseStderr = Symbol('kUseStderr');
 
-const optionsMap = new WeakMap();
+const optionsMap = new SafeWeakMap();
 
 function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
   // We have to test new.target here to see if this function is called
@@ -137,7 +152,7 @@ function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
     // We have to bind the methods grabbed from the instance instead of from
     // the prototype so that users extending the Console can override them
     // from the prototype chain of the subclass.
-    this[key] = this[key].bind(this);
+    this[key] = FunctionPrototypeBind(this[key], this);
     ObjectDefineProperty(this[key], 'name', {
       value: key
     });
@@ -219,9 +234,9 @@ ObjectDefineProperties(Console.prototype, {
           ...consolePropAttributes,
           value: Boolean(ignoreErrors)
         },
-        '_times': { ...consolePropAttributes, value: new Map() },
+        '_times': { ...consolePropAttributes, value: new SafeMap() },
         // Corresponds to https://console.spec.whatwg.org/#count-map
-        [kCounts]: { ...consolePropAttributes, value: new Map() },
+        [kCounts]: { ...consolePropAttributes, value: new SafeMap() },
         [kColorMode]: { ...consolePropAttributes, value: colorMode },
         [kIsConsole]: { ...consolePropAttributes, value: true },
         [kGroupIndent]: { ...consolePropAttributes, value: '' },
@@ -250,8 +265,8 @@ ObjectDefineProperties(Console.prototype, {
         this._stdoutErrorHandler : this._stderrErrorHandler;
 
       if (groupIndent.length !== 0) {
-        if (string.includes('\n')) {
-          string = string.replace(/\n/g, `\n${groupIndent}`);
+        if (StringPrototypeIncludes(string, '\n')) {
+          string = StringPrototypeReplace(string, /\n/g, `\n${groupIndent}`);
         }
         string = groupIndent + string;
       }
@@ -390,8 +405,7 @@ const consoleMethods = {
       name: 'Trace',
       message: this[kFormatForStderr](args)
     };
-    // eslint-disable-next-line no-restricted-syntax
-    Error.captureStackTrace(err, trace);
+    ErrorCaptureStackTrace(err, trace);
     this.error(err.stack);
   },
 
@@ -446,13 +460,16 @@ const consoleMethods = {
     if (data.length > 0) {
       this.log(...data);
     }
-    this[kGroupIndent] += ' '.repeat(this[kGroupIndentationWidth]);
+    this[kGroupIndent] +=
+      StringPrototypeRepeat(' ', this[kGroupIndentationWidth]);
   },
 
   groupEnd() {
-    this[kGroupIndent] =
-      this[kGroupIndent].slice(0, this[kGroupIndent].length -
-        this[kGroupIndentationWidth]);
+    this[kGroupIndent] = StringPrototypeSlice(
+      this[kGroupIndent],
+      0,
+      this[kGroupIndent].length - this[kGroupIndentationWidth]
+    );
   },
 
   // https://console.spec.whatwg.org/#table
@@ -497,14 +514,14 @@ const consoleMethods = {
       let length = 0;
       if (mapIter) {
         for (; i < tabularData.length / 2; ++i) {
-          keys.push(_inspect(tabularData[i * 2]));
-          values.push(_inspect(tabularData[i * 2 + 1]));
+          ArrayPrototypePush(keys, _inspect(tabularData[i * 2]));
+          ArrayPrototypePush(values, _inspect(tabularData[i * 2 + 1]));
           length++;
         }
       } else {
         for (const [k, v] of tabularData) {
-          keys.push(_inspect(k));
-          values.push(_inspect(v));
+          ArrayPrototypePush(keys, _inspect(k));
+          ArrayPrototypePush(values, _inspect(v));
           length++;
         }
       }
@@ -526,7 +543,7 @@ const consoleMethods = {
       const values = [];
       let length = 0;
       for (const v of tabularData) {
-        values.push(_inspect(v));
+        ArrayPrototypePush(values, _inspect(v));
         length++;
       }
       return final([iterKey, valuesKey], [getIndexArray(length), values]);
@@ -561,11 +578,11 @@ const consoleMethods = {
     const keys = ObjectKeys(map);
     const values = ObjectValues(map);
     if (hasPrimitives) {
-      keys.push(valuesKey);
-      values.push(valuesKeyArray);
+      ArrayPrototypePush(keys, valuesKey);
+      ArrayPrototypePush(values, valuesKeyArray);
     }
-    keys.unshift(indexKey);
-    values.unshift(indexKeyArray);
+    ArrayPrototypeUnshift(keys, indexKey);
+    ArrayPrototypeUnshift(values, indexKeyArray);
 
     return final(keys, values);
   },
@@ -580,12 +597,52 @@ function timeLogImpl(self, name, label, data) {
   }
   const duration = process.hrtime(time);
   const ms = duration[0] * 1000 + duration[1] / 1e6;
+
+  const formatted = formatTime(ms);
+
   if (data === undefined) {
-    self.log('%s: %sms', label, ms.toFixed(3));
+    self.log('%s: %s', label, formatted);
   } else {
-    self.log('%s: %sms', label, ms.toFixed(3), ...data);
+    self.log('%s: %s', label, formatted, ...data);
   }
   return true;
+}
+
+function pad(value) {
+  return StringPrototypePadStart(`${value}`, 2, '0');
+}
+
+function formatTime(ms) {
+  let hours = 0;
+  let minutes = 0;
+  let seconds = 0;
+
+  if (ms >= kSecond) {
+    if (ms >= kMinute) {
+      if (ms >= kHour) {
+        hours = MathFloor(ms / kHour);
+        ms = ms % kHour;
+      }
+      minutes = MathFloor(ms / kMinute);
+      ms = ms % kMinute;
+    }
+    seconds = ms / kSecond;
+  }
+
+  if (hours !== 0 || minutes !== 0) {
+    [seconds, ms] = StringPrototypeSplit(
+      NumberPrototypeToFixed(seconds, 3),
+      '.'
+    );
+    const res = hours !== 0 ? `${hours}:${pad(minutes)}` : minutes;
+    return `${res}:${pad(seconds)}.${ms} (${hours !== 0 ? 'h:m' : ''}m:ss.mmm)`;
+  }
+
+  if (seconds !== 0) {
+    return `${NumberPrototypeToFixed(seconds, 3)}s`;
+  }
+
+  return `${Number(NumberPrototypeToFixed(ms, 3))}ms`;
 }
 
 const keyKey = 'Key';
@@ -609,5 +666,6 @@ Console.prototype.groupCollapsed = Console.prototype.group;
 module.exports = {
   Console,
   kBindStreamsLazy,
-  kBindProperties
+  kBindProperties,
+  formatTime // exported for tests
 };

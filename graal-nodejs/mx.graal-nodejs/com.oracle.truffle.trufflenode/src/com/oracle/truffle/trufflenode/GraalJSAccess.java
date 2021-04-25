@@ -41,23 +41,39 @@
 package com.oracle.truffle.trufflenode;
 
 import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.BIGINT64ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.BIGUINT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_FALSE;
 import static com.oracle.truffle.trufflenode.ValueType.BOOLEAN_VALUE_TRUE;
 import static com.oracle.truffle.trufflenode.ValueType.DATA_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.DATE_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_ARRAY_BUFFER_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_FLOAT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.DIRECT_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.EXTERNAL_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.FLOAT32ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.FLOAT64ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.FUNCTION_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.INT16ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.INT32ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_ARRAY_BUFFER_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_BIGUINT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_FLOAT64ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_INT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT16ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT32ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8ARRAY_OBJECT;
+import static com.oracle.truffle.trufflenode.ValueType.INTEROP_UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.LAZY_STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.MAP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.NULL_VALUE;
@@ -69,10 +85,6 @@ import static com.oracle.truffle.trufflenode.ValueType.REGEXP_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.SET_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.STRING_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
-import static com.oracle.truffle.trufflenode.ValueType.UINT16ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.UINT32ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.UINT8ARRAY_OBJECT;
-import static com.oracle.truffle.trufflenode.ValueType.UINT8CLAMPEDARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.UNDEFINED_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
 import static com.oracle.truffle.trufflenode.buffer.NIOBuffer.NIO_BUFFER_MODULE_NAME;
@@ -120,10 +132,13 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.debug.SuspendedCallback;
 import com.oracle.truffle.api.debug.SuspendedEvent;
+import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -178,6 +193,7 @@ import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -211,6 +227,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -476,7 +493,9 @@ public final class GraalJSAccess {
         } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
             return valueTypeArrayBufferView(obj, useSharedBuffer);
         } else if (JSArrayBuffer.isJSDirectArrayBuffer(obj)) {
-            return ARRAY_BUFFER_OBJECT;
+            return DIRECT_ARRAY_BUFFER_OBJECT;
+        } else if (JSArrayBuffer.isJSInteropArrayBuffer(obj)) {
+            return INTEROP_ARRAY_BUFFER_OBJECT;
         } else if (JSDataView.isJSDataView(obj)) {
             if (useSharedBuffer) {
                 JSContext context = JSObject.getJSContext(obj);
@@ -505,27 +524,49 @@ public final class GraalJSAccess {
         }
         ScriptArray array = JSObject.getArray(obj);
         if (array instanceof TypedArray.DirectUint8Array) {
-            return UINT8ARRAY_OBJECT;
+            return DIRECT_UINT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint8ClampedArray) {
-            return UINT8CLAMPEDARRAY_OBJECT;
+            return DIRECT_UINT8CLAMPEDARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt8Array) {
-            return INT8ARRAY_OBJECT;
+            return DIRECT_INT8ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint16Array) {
-            return UINT16ARRAY_OBJECT;
+            return DIRECT_UINT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt16Array) {
-            return INT16ARRAY_OBJECT;
+            return DIRECT_INT16ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectUint32Array) {
-            return UINT32ARRAY_OBJECT;
+            return DIRECT_UINT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectInt32Array) {
-            return INT32ARRAY_OBJECT;
+            return DIRECT_INT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat32Array) {
-            return FLOAT32ARRAY_OBJECT;
+            return DIRECT_FLOAT32ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectFloat64Array) {
-            return FLOAT64ARRAY_OBJECT;
+            return DIRECT_FLOAT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigInt64Array) {
-            return BIGINT64ARRAY_OBJECT;
+            return DIRECT_BIGINT64ARRAY_OBJECT;
         } else if (array instanceof TypedArray.DirectBigUint64Array) {
-            return BIGUINT64ARRAY_OBJECT;
+            return DIRECT_BIGUINT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint8Array) {
+            return INTEROP_UINT8ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint8ClampedArray) {
+            return INTEROP_UINT8CLAMPEDARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropInt8Array) {
+            return INTEROP_INT8ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint16Array) {
+            return INTEROP_UINT16ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropInt16Array) {
+            return INTEROP_INT16ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropUint32Array) {
+            return INTEROP_UINT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropInt32Array) {
+            return INTEROP_INT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropFloat32Array) {
+            return INTEROP_FLOAT32ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropFloat64Array) {
+            return INTEROP_FLOAT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropBigInt64Array) {
+            return INTEROP_BIGINT64ARRAY_OBJECT;
+        } else if (array instanceof TypedArray.InteropBigUint64Array) {
+            return INTEROP_BIGUINT64ARRAY_OBJECT;
         } else {
             return ARRAY_BUFFER_VIEW_OBJECT;
         }
@@ -555,7 +596,7 @@ public final class GraalJSAccess {
     public Object valueToInteger(Object value) {
         if (value instanceof Double) {
             double doubleValue = (Double) value;
-            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue || doubleValue == 0) {
+            if (doubleValue < Long.MIN_VALUE || Long.MAX_VALUE < doubleValue) {
                 return value; // Integer already
             }
         }
@@ -1153,7 +1194,7 @@ public final class GraalJSAccess {
             // Callable Proxy: get the creation context from the target function.
             return objectCreationContext(JSProxy.getTarget(object));
         }
-        throw new IllegalArgumentException("Cannot get creation context for this object");
+        return mainJSRealm;
     }
 
     public void objectSetIntegrityLevel(Object object, boolean freeze) {
@@ -1188,8 +1229,31 @@ public final class GraalJSAccess {
         return JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteLength);
     }
 
+    public Object arrayBufferNewBackingStore(int byteLength) {
+        return DirectByteBufferHelper.allocateDirect(byteLength);
+    }
+
     public Object arrayBufferGetContents(Object arrayBuffer) {
-        return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+            return interopArrayBufferGetContents(arrayBuffer);
+        } else {
+            return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        }
+    }
+
+    public static ByteBuffer interopArrayBufferGetContents(Object arrayBuffer) {
+        assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
+        JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
+        ByteBuffer byteBuffer = DirectByteBufferHelper.allocateDirect(interopBuffer.getByteLength());
+        InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
+        try {
+            for (int i = 0; i < byteBuffer.capacity(); i++) {
+                byteBuffer.put(interop.readBufferByte(interopBuffer, i));
+            }
+        } catch (InteropException iex) {
+            throw Errors.shouldNotReachHere(iex);
+        }
+        return byteBuffer;
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {
@@ -1301,9 +1365,11 @@ public final class GraalJSAccess {
     }
 
     public void sharedArrayBufferExternalize(Object sharedArrayBuffer, long pointer) {
-        DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
-        JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
-        updateWaiterList(dynamicObject, pointer);
+        if (!sharedArrayBufferIsExternal(sharedArrayBuffer)) {
+            DynamicObject dynamicObject = (DynamicObject) sharedArrayBuffer;
+            JSObjectUtil.putHiddenProperty(dynamicObject, EXTERNALIZED_KEY, true);
+            updateWaiterList(dynamicObject, pointer);
+        }
     }
 
     public int typedArrayLength(Object typedArray) {
@@ -1314,7 +1380,15 @@ public final class GraalJSAccess {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
-        return JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        boolean detached = JSArrayBuffer.isDetachedBuffer(dynamicObject);
+        if (detached) {
+            dynamicObject = JSArrayBuffer.createDirectArrayBuffer(context, 0);
+        }
+        DynamicObject result = JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        if (detached) {
+            JSArrayBuffer.detachArrayBuffer(dynamicObject);
+        }
+        return result;
     }
 
     public Object uint8ArrayNew(Object arrayBuffer, int offset, int length) {
@@ -2492,7 +2566,12 @@ public final class GraalJSAccess {
     private void processWeakCallback(WeakCallback callback) {
         weakCallbacks.remove(callback);
         if (callback.callback != 0) {
-            NativeAccess.weakCallback(callback.callback, callback.data, callback.type);
+            if (callback.type == -1) {
+                DeleterCallback deleter = (DeleterCallback) callback;
+                NativeAccess.deleterCallback(deleter.callback, deleter.data, deleter.length, deleter.deleterData);
+            } else {
+                NativeAccess.weakCallback(callback.callback, callback.data, callback.type);
+            }
         }
     }
 
@@ -2527,12 +2606,14 @@ public final class GraalJSAccess {
     }
 
     private boolean createChildContext;
+    private Set<JSRealm> childContextSet = Collections.newSetFromMap(new WeakHashMap<JSRealm, Boolean>());
 
     public Object contextNew(Object templateObj) {
         JSRealm realm;
         JSContext context;
         if (createChildContext) {
             realm = mainJSRealm.createChildRealm();
+            childContextSet.add(realm);
             context = realm.getContext();
             assert realm.getAgent() == agent;
         } else {
@@ -2668,7 +2749,20 @@ public final class GraalJSAccess {
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
-            agent.processAllPromises(true);
+            try {
+                agent.processAllPromises(true);
+            } catch (AbstractTruffleException atex) {
+                InteropLibrary interop = InteropLibrary.getUncached(atex);
+                if (interop.isException(atex)) {
+                    ExceptionType type = interop.getExceptionType(atex);
+                    if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
+                        throw atex;
+                    }
+                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
+                } else {
+                    throw atex;
+                }
+            }
         } catch (Exception ex) {
             ex.printStackTrace();
             System.exit(1);
@@ -3020,6 +3114,37 @@ public final class GraalJSAccess {
         debugger.install(breakpoint);
     }
 
+    public void isolateMeasureMemory(Object resolver, boolean detailed) {
+        Runtime runtime = Runtime.getRuntime();
+        double total = runtime.totalMemory();
+        double used = total - runtime.freeMemory();
+
+        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+        JSObject.set(result, "total", createMemoryInfoObject(used, total));
+
+        if (detailed) {
+            JSObject.set(result, "current", createMemoryInfoObject(used, total));
+
+            int contexts = childContextSet.size();
+            Object[] array = new Object[contexts];
+            for (int i = 0; i < contexts; i++) {
+                array[i] = createMemoryInfoObject(0, total);
+            }
+
+            JSObject.set(result, "other", JSArray.createConstantObjectArray(mainJSContext, array));
+        }
+
+        promiseResolverResolve(resolver, result);
+    }
+
+    private Object createMemoryInfoObject(double used, double total) {
+        Object range = JSArray.createConstantDoubleArray(mainJSContext, new double[]{used, total});
+        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+        JSObject.set(result, "jsMemoryEstimate", used);
+        JSObject.set(result, "jsMemoryRange", range);
+        return result;
+    }
+
     public Object correctReturnValue(Object value) {
         if (value == INT_PLACEHOLDER) {
             resetSharedBuffer();
@@ -3269,16 +3394,22 @@ public final class GraalJSAccess {
         JSRealm jsRealm = (JSRealm) context;
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        if (moduleRecord.isEvaluated() && moduleRecord.getEvaluationError() == null) {
-            return Undefined.instance;
-        }
-        jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
 
-        Throwable evaluationError = moduleRecord.getEvaluationError();
-        if (evaluationError == null) {
+        if (!moduleRecord.isEvaluated()) {
+            jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
+        }
+
+        if (!moduleRecord.isTopLevelAsync()) {
+            Throwable evaluationError = moduleRecord.getEvaluationError();
+            if (evaluationError != null) {
+                throw JSRuntime.rethrow(evaluationError);
+            }
+        }
+        PromiseCapabilityRecord promiseCapability = moduleRecord.getTopLevelCapability();
+        if (promiseCapability == null) {
             return moduleRecord.getExecutionResult();
         } else {
-            throw JSRuntime.rethrow(evaluationError);
+            return promiseCapability.getPromise();
         }
     }
 
@@ -3569,6 +3700,10 @@ public final class GraalJSAccess {
         }
     }
 
+    public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
+        weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
+    }
+
     private static class WeakCallback extends WeakReference<Object> {
 
         long data;
@@ -3582,6 +3717,18 @@ public final class GraalJSAccess {
             this.type = type;
         }
 
+    }
+
+    // v8:BackingStore::DeleterCallback
+    private static class DeleterCallback extends WeakCallback {
+        int length;
+        long deleterData;
+
+        DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
+            super(backingStore, data, callback, -1, queue);
+            this.length = length;
+            this.deleterData = deleterData;
+        }
     }
 
     static class PropertyHandlerPrototypeNode extends JavaScriptRootNode {

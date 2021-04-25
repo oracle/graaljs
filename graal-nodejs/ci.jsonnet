@@ -55,8 +55,8 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + common.gate      + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk8-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux_aarch64  + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-linux-aarch64'},
-    graalNodeJs + common.jdk8  + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk8-darwin-amd64'},
-    graalNodeJs + common.jdk11 + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-darwin-amd64'},
+    graalNodeJs + common.jdk8  + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk8-darwin-amd64', timelimit: '45:00'},
+    graalNodeJs + common.jdk11 + common.gate      + common.darwin         + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-gate-jdk11-darwin-amd64', timelimit: '45:00'},
     graalNodeJs + common.jdk8  + common.gate      + common.windows_jdk8   + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk8-windows-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows_jdk11  + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk11-windows-amd64'},
 //  disabled due to GR-26245

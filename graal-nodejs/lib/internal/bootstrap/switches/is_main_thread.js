@@ -6,8 +6,12 @@ const rawMethods = internalBinding('process_methods');
 // TODO(joyeecheung): deprecate and remove these underscore methods
 process._debugProcess = rawMethods._debugProcess;
 process._debugEnd = rawMethods._debugEnd;
-process._startProfilerIdleNotifier = rawMethods._startProfilerIdleNotifier;
-process._stopProfilerIdleNotifier = rawMethods._stopProfilerIdleNotifier;
+
+// See the discussion in https://github.com/nodejs/node/issues/19009 and
+// https://github.com/nodejs/node/pull/34010 for why these are no-ops.
+// Five word summary: they were broken beyond repair.
+process._startProfilerIdleNotifier = () => {};
+process._stopProfilerIdleNotifier = () => {};
 
 function defineStream(name, getter) {
   ObjectDefineProperty(process, name, {
@@ -58,8 +62,9 @@ function createWritableStdioStream(fd) {
       // an error when trying to use it again. In that case, create the socket
       // using the existing handle instead of the fd.
       if (process.channel && process.channel.fd === fd) {
+        const { kChannelHandle } = require('internal/child_process');
         stream = new net.Socket({
-          handle: process.channel,
+          handle: process[kChannelHandle],
           readable: false,
           writable: true
         });

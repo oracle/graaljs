@@ -82,4 +82,3 @@ private:
 };
 
 #endif /* GRAAL_FUNCTION_H_ */
-

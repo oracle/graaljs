@@ -22,7 +22,7 @@ const {
     ERR_MISSING_ARGS
   }
 } = require('internal/errors');
-const { validateString } = require('internal/validators');
+const { validateString, validateOneOf } = require('internal/validators');
 const EventEmitter = require('events');
 const net = require('net');
 const dgram = require('dgram');
@@ -43,7 +43,7 @@ const { TTY } = internalBinding('tty_wrap');
 const { UDP } = internalBinding('udp_wrap');
 const SocketList = require('internal/socket_list');
 const { owner_symbol } = require('internal/async_hooks').symbols;
-const { convertToValidSignal } = require('internal/util');
+const { convertToValidSignal, deprecate } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const spawn_sync = internalBinding('spawn_sync');
 const { kStateSymbol } = require('internal/dgram');
@@ -67,6 +67,7 @@ let freeParser;
 let HTTPParser;
 
 const MAX_HANDLE_RETRANSMISSIONS = 3;
+const kChannelHandle = Symbol('kChannelHandle');
 const kIsUsedAsStdio = Symbol('kIsUsedAsStdio');
 
 // This object contain function to convert TCP objects to native handle objects
@@ -109,7 +110,7 @@ const handleConversion = {
         // The worker should keep track of the socket
         message.key = socket.server._connectionKey;
 
-        const firstTime = !this.channel.sockets.send[message.key];
+        const firstTime = !this[kChannelHandle].sockets.send[message.key];
         const socketList = getSocketList('send', this, message.key);
 
         // The server should no longer expose a .connection property
@@ -301,9 +302,7 @@ function flushStdio(subprocess) {
     // TODO(addaleax): This doesn't necessarily account for all the ways in
     // which data can be read from a stream, e.g. being consumed on the
     // native layer directly as a StreamBase.
-    if (!stream || !stream.readable ||
-        stream._readableState.readableListening ||
-        stream[kIsUsedAsStdio]) {
+    if (!stream || !stream.readable || stream[kIsUsedAsStdio]) {
       continue;
     }
     stream.resume();
@@ -347,13 +346,9 @@ ChildProcess.prototype.spawn = function(options) {
   const ipcFd = stdio.ipcFd;
   stdio = options.stdio = stdio.stdio;
 
-  if (options.serialization !== undefined &&
-      options.serialization !== 'json' &&
-      options.serialization !== 'advanced') {
-    throw new ERR_INVALID_OPT_VALUE('options.serialization',
-                                    options.serialization);
-  }
 
+  validateOneOf(options.serialization, 'options.serialization',
+                [undefined, 'json', 'advanced'], true);
   const serialization = options.serialization || 'json';
 
   if (ipc !== undefined) {
@@ -513,39 +508,69 @@ ChildProcess.prototype.unref = function() {
 };
 
 class Control extends EventEmitter {
+  #channel = null;
+  #refs = 0;
+  #refExplicitlySet = false;
+
   constructor(channel) {
     super();
-    this.channel = channel;
-    this.refs = 0;
+    this.#channel = channel;
   }
-  ref() {
-    if (++this.refs === 1) {
-      this.channel.ref();
+
+  // The methods keeping track of the counter are being used to track the
+  // listener count on the child process object as well as when writes are
+  // in progress. Once the user has explicitly requested a certain state, these
+  // methods become no-ops in order to not interfere with the user's intentions.
+  refCounted() {
+    if (++this.#refs === 1 && !this.#refExplicitlySet) {
+      this.#channel.ref();
     }
   }
-  unref() {
-    if (--this.refs === 0) {
-      this.channel.unref();
+
+  unrefCounted() {
+    if (--this.#refs === 0 && !this.#refExplicitlySet) {
+      this.#channel.unref();
       this.emit('unref');
     }
   }
+
+  ref() {
+    this.#refExplicitlySet = true;
+    this.#channel.ref();
+  }
+
+  unref() {
+    this.#refExplicitlySet = true;
+    this.#channel.unref();
+  }
+
+  get fd() {
+    return this.#channel ? this.#channel.fd : undefined;
+  }
 }
+
+const channelDeprecationMsg = '_channel is deprecated. ' +
+                              'Use ChildProcess.channel instead.';
 
 let serialization;
 function setupChannel(target, channel, serializationMode) {
-  target.channel = channel;
+  const control = new Control(channel);
+  target.channel = control;
+  target[kChannelHandle] = channel;
 
-  // _channel can be deprecated in version 8
   ObjectDefineProperty(target, '_channel', {
-    get() { return target.channel; },
-    set(val) { target.channel = val; },
-    enumerable: true
+    get: deprecate(() => {
+      return target.channel;
+    }, channelDeprecationMsg, 'DEP0129'),
+    set: deprecate((val) => {
+      target.channel = val;
+    }, channelDeprecationMsg, 'DEP0129'),
+    configurable: true,
+    enumerable: false
   });
 
   target._handleQueue = null;
   target._pendingMessage = null;
-
-  const control = new Control(channel);
 
   if (serialization === undefined)
     serialization = require('internal/child_process/serialization');
@@ -794,11 +819,11 @@ function setupChannel(target, channel, serializationMode) {
 
       if (wasAsyncWrite) {
         req.oncomplete = () => {
-          control.unref();
+          control.unrefCounted();
           if (typeof callback === 'function')
             callback(null);
         };
-        control.ref();
+        control.refCounted();
       } else if (typeof callback === 'function') {
         process.nextTick(callback, null);
       }
@@ -853,6 +878,7 @@ function setupChannel(target, channel, serializationMode) {
 
     // This marks the fact that the channel is actually disconnected.
     this.channel = null;
+    this[kChannelHandle] = null;
 
     if (this._pendingMessage)
       closePendingHandle(this);
@@ -1009,7 +1035,7 @@ function getValidStdio(stdio, sync) {
 
 
 function getSocketList(type, worker, key) {
-  const sockets = worker.channel.sockets[type];
+  const sockets = worker[kChannelHandle].sockets[type];
   let socketList = sockets[key];
   if (!socketList) {
     const Construct = type === 'send' ? SocketListSend : SocketListReceive;
@@ -1027,8 +1053,7 @@ function maybeClose(subprocess) {
   }
 }
 
-function spawnSync(opts) {
-  const options = opts.options;
+function spawnSync(options) {
   const result = spawn_sync.spawn(options);
 
   if (result.output && options.encoding && options.encoding !== 'buffer') {
@@ -1043,9 +1068,9 @@ function spawnSync(opts) {
   result.stderr = result.output && result.output[2];
 
   if (result.error) {
-    result.error = errnoException(result.error, 'spawnSync ' + opts.file);
-    result.error.path = opts.file;
-    result.error.spawnargs = opts.args.slice(1);
+    result.error = errnoException(result.error, 'spawnSync ' + options.file);
+    result.error.path = options.file;
+    result.error.spawnargs = options.args.slice(1);
   }
 
   return result;
@@ -1053,6 +1078,7 @@ function spawnSync(opts) {
 
 module.exports = {
   ChildProcess,
+  kChannelHandle,
   setupChannel,
   getValidStdio,
   stdioStringToArray,

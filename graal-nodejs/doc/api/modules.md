@@ -503,7 +503,7 @@ wrapper that looks like the following:
 By doing this, Node.js achieves a few things:
 
 * It keeps top-level variables (defined with `var`, `const` or `let`) scoped to
-the module rather than the global object.
+  the module rather than the global object.
 * It helps to provide some global-looking variables that are actually specific
   to the module, such as:
   * The `module` and `exports` objects that the implementor can use to export
@@ -903,8 +903,8 @@ loading.
 <!-- YAML
 added: v0.1.16
 deprecated:
-  - v12.19.0
   - v14.6.0
+  - v12.19.0
 -->
 
 > Stability: 0 - Deprecated: Please use [`require.main`][] and
@@ -954,7 +954,7 @@ in order to be used.
 ## The `Module` object
 
 This section was moved to
-[Modules: `module` core module](module.html#module_the_module_object).
+[Modules: `module` core module](module.md#module_the_module_object).
 
 <!-- Anchors to make sure old links find a target -->
 * <a id="modules_module_builtinmodules" href="module.html#module_module_builtinmodules">`module.builtinModules`</a>
@@ -965,7 +965,7 @@ This section was moved to
 ## Source map v3 support
 
 This section was moved to
-[Modules: `module` core module](module.html#module_source_map_v3_support).
+[Modules: `module` core module](module.md#module_source_map_v3_support).
 
 <!-- Anchors to make sure old links find a target -->
 * <a id="modules_module_findsourcemap_path_error" href="module.html#module_module_findsourcemap_path_error">`module.findSourceMap(path[, error])`</a>
@@ -974,19 +974,19 @@ This section was moved to
   * <a id="modules_sourcemap_payload" href="module.html#module_sourcemap_payload">`sourceMap.payload`</a>
   * <a id="modules_sourcemap_findentry_linenumber_columnnumber" href="module.html#module_sourcemap_findentry_linenumber_columnnumber">`sourceMap.findEntry(lineNumber, columnNumber)`</a>
 
+[ECMAScript Modules]: esm.md
 [GLOBAL_FOLDERS]: #modules_loading_from_the_global_folders
-[`Error`]: errors.html#errors_class_error
+[`"main"`]: packages.md#packages_main
+[`Error`]: errors.md#errors_class_error
 [`__dirname`]: #modules_dirname
 [`__filename`]: #modules_filename
 [`module` object]: #modules_the_module_object
 [`module.id`]: #modules_module_id
 [`module.children`]: #modules_module_children
-[`path.dirname()`]: path.html#path_path_dirname_path
-[ECMAScript Modules]: esm.html
-[an error]: errors.html#errors_err_require_esm
+[`package.json`]: packages.md#packages_node_js_package_json_field_definitions
+[`path.dirname()`]: path.md#path_path_dirname_path
+[`require.main`]: #modules_require_main
+[an error]: errors.md#errors_err_require_esm
 [exports shortcut]: #modules_exports_shortcut
 [module resolution]: #modules_all_together
-[native addons]: addons.html
-[`require.main`]: #modules_require_main
-[`package.json`]: packages.html#packages_node_js_package_json_field_definitions
-[`"main"`]: packages.html#packages_main
+[native addons]: addons.md

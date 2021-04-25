@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --harmony-intl-numberformat-unified
-
 // Test default.
 let nf = new Intl.NumberFormat();
 assertEquals("auto", nf.resolvedOptions().signDisplay);
@@ -15,7 +13,7 @@ const testData = [
     ["auto",        "-123",  "-0",  "0",  "123"],
     ["always",      "-123",  "-0", "+0", "+123"],
     ["never",       "123",   "0",  "0",  "123"],
-    ["exceptZero",  "-123",  "-0",  "0",  "+123"],
+    ["exceptZero",  "-123",  "0",  "0",  "+123"],
 ];
 
 for (const [signDisplay, neg, negZero, zero, pos] of testData) {

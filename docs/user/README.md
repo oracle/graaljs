@@ -7,7 +7,7 @@ To migrate the code previously targeted to the Nashorn or Rhino engines, migrati
 
 ## Running JavaScript
 
-GraalVM can run plain JavaScript code:
+GraalVM can run plain JavaScript (ECMAScript) code:
 ```shell
 js [options] [filename...] -- [args]
 ```
@@ -15,24 +15,31 @@ js [options] [filename...] -- [args]
 For information about the compatibility of GraalVM JavaScript with existing standards and engines, see [JavaScriptCompatibility](JavaScriptCompatibility.md).
 
 ## Running Node.js
-GraalVM is adapted to run unmodified Node.js applications. Applications can
-import npm modules, including native ones.
+GraalVM is capable of executing unmodified Node.js applications.
+Applications can import npm modules, including native ones.
+Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM component.
+It can be installed with the _GraalVM Updater_.
 
-To run Node.js-based applications, use the `node` utility bundled with GraalVM by default:
+```shell
+$ $GRAALVM/bin/gu install nodejs
+```
+
+This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
+Use the `node` utility to execute Node.js applications:
 ```shell
 node [options] [filename] [args]
 ```
 
-To install a Node.js module, use the `npm` launcher from the GraalVM's `/bin` folder. The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
+To install a Node.js package, use the `npm` launcher from the GraalVM's `/bin` folder.
+The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
-1&#46; Install the `colors` and `ansispan` modules using `npm install` as
-follows:
+1&#46; Install the `colors` and `ansispan` packages using `npm install` as follows:
 ```shell
 npm install colors ansispan
 ```
-After the modules are installed, you can use them from your application.
+After the packages are installed, you can use them from your application.
 
-2&#46; Add the following code snippet to a file named `app.js` and save it in the same directory where you installed the Node.js modules:
+2&#46; Add the following code snippet to a file named `app.js` and save it in the same directory where you installed the Node.js packages:
 ```js
 const http = require("http");
 const span = require("ansispan");
@@ -52,7 +59,7 @@ node app.js
 ```
 For more information about running Node.js, continue to [Node.js Runtime](NodeJS.md).
 Node.js functionality is available when an application is started from the `node` binary launcher.
-Certain limits apply when launching a Node.js application or accessing npm modules from a Java context, see [Node.js vs. Java Script Context](NodeJSVSJavaScriptContext.md).
+Certain limits apply when launching a Node.js application or accessing npm packages from a Java context, see [Node.js vs. Java Script Context](NodeJSVSJavaScriptContext.md).
 
 ## Interoperability
 

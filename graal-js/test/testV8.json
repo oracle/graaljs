@@ -663,35 +663,19 @@
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-2timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-buffer-out-of-scope-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-promise-out-of-scope.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-timeouts-and-no-timeouts.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-all.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-fifo.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync-1thread-wake-up-simple.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "status" : "SKIP",
+    "comment" : "new test failures (update 2020-07-22), fails randomly"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-2-waits.js",
     "status" : "FAIL",
@@ -703,15 +687,11 @@
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-no-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/atomics-waitasync-worker-shutdown-before-wait-finished-timeout.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "mjsunit/harmony/atomics-waitasync.js",
-    "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
+    "comment" : "new test failures (update 2020-07-22), Worker not defined"
   }, {
     "filePath" : "mjsunit/harmony/bigint/regressions.js",
     "status" : "FAIL",
@@ -720,10 +700,6 @@
     "filePath" : "mjsunit/harmony/function-tostring.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/harmony/futex.js",
-    "status" : "SKIP",
-    "comment" : "Some parts use %SetAllowAtomicsWait and %AtomicsNumWaitersForTesting, all other parts pass"
   }, {
     "filePath" : "mjsunit/harmony/generators.js",
     "status" : "SKIP",
@@ -1336,10 +1312,6 @@
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
   }, {
     "filePath" : "mjsunit/regress/regress-8033.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-804801.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
@@ -3256,13 +3228,13 @@
     "filePath" : "mjsunit/wasm/instance-gc.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/instance-memory-gc-stress.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/instantiate-module-basic.js",
@@ -3293,7 +3265,7 @@
     "filePath" : "mjsunit/wasm/lazy-compilation.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/liftoff-trap-handler.js",
@@ -3341,13 +3313,13 @@
     "filePath" : "mjsunit/wasm/memory-external-call.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/memory-instance-validation.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/memory-size.js",

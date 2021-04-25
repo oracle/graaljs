@@ -1,8 +1,11 @@
 'use strict';
 
 const {
+  ArrayPrototypeJoin,
   ObjectDefineProperty,
+  ObjectPrototypeHasOwnProperty,
   SafeMap,
+  SafeSet,
 } = primordials;
 const {
   ERR_MANIFEST_DEPENDENCY_MISSING,
@@ -15,9 +18,15 @@ const path = require('path');
 const { pathToFileURL, fileURLToPath } = require('internal/url');
 const { URL } = require('url');
 
+const { getOptionValue } = require('internal/options');
+const userConditions = getOptionValue('--conditions');
+
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
 });
+
+// TODO: Use this set when resolving pkg#exports conditions in loader.js.
+const cjsConditions = new SafeSet(['require', 'node', ...userConditions]);
 
 function loadNativeModule(filename, request) {
   const mod = NativeModule.map.get(filename);
@@ -37,11 +46,12 @@ function makeRequireFunction(mod, redirects) {
 
   let require;
   if (redirects) {
-    const { resolve, reaction } = redirects;
     const id = mod.filename || mod.id;
-    require = function require(path) {
+    const conditions = cjsConditions;
+    const { resolve, reaction } = redirects;
+    require = function require(specifier) {
       let missing = true;
-      const destination = resolve(path);
+      const destination = resolve(specifier, conditions);
       if (destination === true) {
         missing = false;
       } else if (destination) {
@@ -65,9 +75,13 @@ function makeRequireFunction(mod, redirects) {
         }
       }
       if (missing) {
-        reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(id, path));
+        reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
+          id,
+          specifier,
+          ArrayPrototypeJoin([...conditions], ', ')
+        ));
       }
-      return mod.require(path);
+      return mod.require(specifier);
     };
   } else {
     require = function require(path) {
@@ -111,55 +125,17 @@ function stripBOM(content) {
   return content;
 }
 
-const builtinLibs = [
-  'assert',
-  'async_hooks',
-  'buffer',
-  'child_process',
-  'cluster',
-  'crypto',
-  'dgram',
-  'dns',
-  'domain',
-  'events',
-  'fs',
-  'http',
-  'http2',
-  'https',
-  'net',
-  'os',
-  'path',
-  'perf_hooks',
-  'punycode',
-  'querystring',
-  'readline',
-  'repl',
-  'stream',
-  'string_decoder',
-  'tls',
-  'trace_events',
-  'tty',
-  'url',
-  'util',
-  'v8',
-  'vm',
-  'worker_threads',
-  'zlib',
-];
-
-if (internalBinding('config').experimentalWasi) {
-  builtinLibs.push('wasi');
-  builtinLibs.sort();
-}
-
-if (typeof internalBinding('inspector').open === 'function') {
-  builtinLibs.push('inspector');
-  builtinLibs.sort();
-}
-
 function addBuiltinLibsToObject(object) {
   // Make built-in modules available directly (loaded lazily).
-  builtinLibs.forEach((name) => {
+  const { builtinModules } = require('internal/modules/cjs/loader').Module;
+  builtinModules.forEach((name) => {
+    // Neither add underscored modules, nor ones that contain slashes (e.g.,
+    // 'fs/promises') or ones that are already defined.
+    if (name.startsWith('_') ||
+        name.includes('/') ||
+        ObjectPrototypeHasOwnProperty(object, name)) {
+      return;
+    }
     // Goals of this mechanism are:
     // - Lazy loading of built-in modules
     // - Having all built-in modules available as non-enumerable properties
@@ -205,7 +181,7 @@ function normalizeReferrerURL(referrer) {
 
 module.exports = {
   addBuiltinLibsToObject,
-  builtinLibs,
+  cjsConditions,
   loadNativeModule,
   makeRequireFunction,
   normalizeReferrerURL,

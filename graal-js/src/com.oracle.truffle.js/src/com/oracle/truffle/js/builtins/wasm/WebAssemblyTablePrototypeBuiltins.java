@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGrowNodeGen;
@@ -184,12 +185,17 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             int indexInt = toIndexNode.executeInt(index);
-            if (value != Null.instance && !JSWebAssembly.isExportedFunction(value)) {
+            Object wasmFunction;
+            if (value == Null.instance) {
+                wasmFunction = Null.instance;
+            } else if (JSWebAssembly.isExportedFunction(value)) {
+                wasmFunction = JSWebAssembly.getExportedFunction((DynamicObject) value);
+            } else {
                 throw Errors.createTypeError("WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function");
             }
             try {
                 Object setFn = InteropLibrary.getUncached(wasmTable).readMember(wasmTable, "set");
-                InteropLibrary.getUncached(setFn).execute(setFn, indexInt, value);
+                InteropLibrary.getUncached(setFn).execute(setFn, indexInt, wasmFunction);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {

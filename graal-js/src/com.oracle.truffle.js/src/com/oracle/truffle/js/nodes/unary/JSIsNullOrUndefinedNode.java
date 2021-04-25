@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.nodes.binary.JSEqualNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -69,7 +70,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
  */
 @ImportStatic({JSConfig.class})
 public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
-    protected static final int MAX_CLASSES = 3;
 
     private final boolean isLeft;
     private final boolean isUndefined;
@@ -151,21 +151,10 @@ public abstract class JSIsNullOrUndefinedNode extends JSUnaryNode {
         return false;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"operand != null", "cachedClass != null", "cachedClass == operand.getClass()"}, limit = "MAX_CLASSES")
-    protected static boolean doJSValueCached(Object operand,
-                    @Cached("getNonTruffleObjectClass(operand)") Class<?> cachedClass) {
-        return false;
-    }
-
-    @Specialization(guards = {"!isTruffleObject(operand)"}, replaces = {"doJSValueCached"})
-    protected static boolean doJSValue(@SuppressWarnings("unused") Object operand) {
-        return false;
-    }
-
-    @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
-    protected boolean doForeign(Object operand,
+    @Specialization(guards = {"!isJSDynamicObject(operand)"}, limit = "InteropLibraryLimit")
+    protected boolean doJSValueOrForeign(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
+        assert JSRuntime.isJSPrimitive(operand) || JSRuntime.isForeignObject(operand);
         return interop.isNull(operand);
     }
 

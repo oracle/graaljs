@@ -1,3 +1,22 @@
+## 6.14.12 (2021-03-25)
+
+### DEPENDENCIES
+
+* [`e47654048`](https://github.com/npm/cli/commit/e4765404844a0b6795752b2bc6f9b9107fe713be)
+  [#2737](https://github.com/npm/cli/pull/2737)
+  Update y18n to fix CVE-2020-7774
+  ([@vecerek](https://github.com/vecerek))
+
+## 6.14.11 (2021-01-07)
+### DEPENDENCIES
+
+* [`19108ca5b`](https://github.com/npm/cli/commit/19108ca5be1b3e7e9787dac3131aafe2722c6218)
+  `ini@1.3.8`:
+  * addressing [`CVE-2020-7788`](https://github.com/advisories/GHSA-qqgx-2p2h-9c37)
+* [`7a0574074`](https://github.com/npm/cli/commit/7a05740743ac9d9229e2dc9e1b9ca8b57d58c789)
+  `bl@3.0.1`
+  * addressing [`CVE-2020-8244`](https://github.com/advisories/GHSA-pp7h-53gx-mx7r)
+
 ## 6.14.10 (2020-12-18)
 
 ### DEPENDENCIES

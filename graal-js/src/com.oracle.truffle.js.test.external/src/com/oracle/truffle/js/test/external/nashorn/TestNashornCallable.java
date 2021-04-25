@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,6 +95,7 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.allowIO(true);
         contextBuilder.allowExperimentalOptions(true);
 
+        contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
         contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(forceStrictMode));
         contextBuilder.option(JSContextOptions.SCRIPTING_NAME, Boolean.toString(scripting));

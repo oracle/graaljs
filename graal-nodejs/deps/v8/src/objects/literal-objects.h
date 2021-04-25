@@ -5,6 +5,7 @@
 #ifndef V8_OBJECTS_LITERAL_OBJECTS_H_
 #define V8_OBJECTS_LITERAL_OBJECTS_H_
 
+#include "src/base/bit-field.h"
 #include "src/objects/fixed-array.h"
 #include "src/objects/struct.h"
 
@@ -25,10 +26,10 @@ class ClassLiteral;
 class ObjectBoilerplateDescription : public FixedArray {
  public:
   inline Object name(int index) const;
-  inline Object name(Isolate* isolate, int index) const;
+  inline Object name(const Isolate* isolate, int index) const;
 
   inline Object value(int index) const;
-  inline Object value(Isolate* isolate, int index) const;
+  inline Object value(const Isolate* isolate, int index) const;
 
   inline void set_key_value(int index, Object key, Object value);
 
@@ -69,7 +70,6 @@ class ArrayBoilerplateDescription
   void BriefPrintDetails(std::ostream& os);
 
  private:
-  DECL_INT_ACCESSORS(flags)
   TQ_OBJECT_CONSTRUCTORS(ArrayBoilerplateDescription)
 };
 
@@ -116,17 +116,20 @@ class ClassBoilerplate : public FixedArray {
   DECL_ACCESSORS(instance_elements_template, Object)
   DECL_ACCESSORS(instance_computed_properties, FixedArray)
 
-  static void AddToPropertiesTemplate(Isolate* isolate,
+  template <typename LocalIsolate>
+  static void AddToPropertiesTemplate(LocalIsolate* isolate,
                                       Handle<NameDictionary> dictionary,
                                       Handle<Name> name, int key_index,
-                                      ValueKind value_kind, Object value);
+                                      ValueKind value_kind, Smi value);
 
-  static void AddToElementsTemplate(Isolate* isolate,
+  template <typename LocalIsolate>
+  static void AddToElementsTemplate(LocalIsolate* isolate,
                                     Handle<NumberDictionary> dictionary,
                                     uint32_t key, int key_index,
-                                    ValueKind value_kind, Object value);
+                                    ValueKind value_kind, Smi value);
 
-  static Handle<ClassBoilerplate> BuildClassBoilerplate(Isolate* isolate,
+  template <typename LocalIsolate>
+  static Handle<ClassBoilerplate> BuildClassBoilerplate(LocalIsolate* isolate,
                                                         ClassLiteral* expr);
 
   enum {
@@ -139,8 +142,6 @@ class ClassBoilerplate : public FixedArray {
     kPrototypeComputedPropertiesIndex,
     kBoileplateLength  // last element
   };
-
-  static const int kFullComputedEntrySize = 2;
 
  private:
   DECL_INT_ACCESSORS(flags)

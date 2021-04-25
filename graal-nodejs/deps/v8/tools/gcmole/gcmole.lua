@@ -44,6 +44,9 @@ local FLAGS = {
    -- TODO add some sort of whiteliste to filter out false positives.
    dead_vars = false;
 
+   -- Enable verbose tracing from the plugin itself.
+   verbose_trace = false;
+
    -- When building gcsuspects whitelist certain functions as if they
    -- can be causing GC. Currently used to reduce number of false
    -- positives in dead variables analysis. See TODO for WHITELIST
@@ -102,11 +105,12 @@ local function MakeClangCommandLine(
      end
      plugin_args = " " .. table.concat(plugin_args, " ")
    end
-   return CLANG_BIN .. "/clang++ -std=c++11 -c "
+   return CLANG_BIN .. "/clang++ -std=c++14 -c"
       .. " -Xclang -load -Xclang " .. CLANG_PLUGINS .. "/libgcmole.so"
       .. " -Xclang -plugin -Xclang "  .. plugin
       .. (plugin_args or "")
       .. " -Xclang -triple -Xclang " .. triple
+      .. " -fno-exceptions"
       .. " -D" .. arch_define
       .. " -DENABLE_DEBUGGER_SUPPORT"
       .. " -DV8_INTL_SUPPORT"
@@ -288,28 +292,36 @@ local ARCHITECTURES = {
 
 local gc, gc_caused, funcs
 
+-- Note that the gcsuspects file lists functions in the form:
+--  mangled_name,unmangled_function_name
+--
+-- This means that we can match just the function name by matching only
+-- after a comma.
 local WHITELIST = {
    -- The following functions call CEntryStub which is always present.
-   "MacroAssembler.*CallRuntime",
+   "MacroAssembler.*,CallRuntime",
    "CompileCallLoadPropertyWithInterceptor",
-   "CallIC.*GenerateMiss",
+   "CallIC.*,GenerateMiss",
 
    -- DirectCEntryStub is a special stub used on ARM.
    -- It is pinned and always present.
-   "DirectCEntryStub.*GenerateCall",
+   "DirectCEntryStub.*,GenerateCall",
 
    -- TODO GCMole currently is sensitive enough to understand that certain
    --      functions only cause GC and return Failure simulataneously.
    --      Callsites of such functions are safe as long as they are properly
    --      check return value and propagate the Failure to the caller.
    --      It should be possible to extend GCMole to understand this.
-   "Heap.*AllocateFunctionPrototype",
+   "Heap.*,TryEvacuateObject",
 
    -- Ignore all StateTag methods.
    "StateTag",
 
    -- Ignore printing of elements transition.
-   "PrintElementsTransition"
+   "PrintElementsTransition",
+
+   -- CodeCreateEvent receives AbstractCode (a raw ptr) as an argument.
+   "CodeCreateEvent",
 };
 
 local function AddCause(name, cause)
@@ -328,7 +340,7 @@ local function resolve(name)
       f = {}
       funcs[name] = f
 
-      if name:match "Collect.*Garbage" then
+      if name:match ",.*Collect.*Garbage" then
          gc[name] = true
          AddCause(name, "<GC>")
       end
@@ -442,8 +454,9 @@ local function CheckCorrectnessForArch(arch, for_test)
    log("** Searching for evaluation order problems%s for %s",
        FLAGS.dead_vars and " and dead variables" or "",
        arch)
-   local plugin_args
-   if FLAGS.dead_vars then plugin_args = { "--dead-vars" } end
+   local plugin_args = {}
+   if FLAGS.dead_vars then table.insert(plugin_args, "--dead-vars") end
+   if FLAGS.verbose_trace then table.insert(plugin_args, '--verbose') end
    InvokeClangPluginForEachFile(files,
                                 cfg:extend { plugin = "find-problems",
                                              plugin_args = plugin_args },
@@ -466,6 +479,11 @@ end
 
 local function TestRun()
    local errors, output = SafeCheckCorrectnessForArch('x64', true)
+   if not errors then
+      log("** Test file should produce errors, but none were found. Output:")
+      log(output)
+      return false
+   end
 
    local filename = "tools/gcmole/test-expectations.txt"
    local exp_file = assert(io.open(filename), "failed to open test expectations file")
@@ -473,18 +491,18 @@ local function TestRun()
 
    if output ~= expectations then
       log("** Output mismatch from running tests. Please run them manually.")
-   else
-      log("** Tests ran successfully")
+      return false
    end
+
+   log("** Tests ran successfully")
+   return true
 end
 
-TestRun()
-
-local errors = false
+local errors = not TestRun()
 
 for _, arch in ipairs(ARCHS) do
    if not ARCHITECTURES[arch] then
-      error ("Unknown arch: " .. arch)
+      error("Unknown arch: " .. arch)
    end
 
    errors = SafeCheckCorrectnessForArch(arch, false) or errors

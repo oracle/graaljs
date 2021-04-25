@@ -208,7 +208,7 @@
   }, {
     "filePath" : "basic/JDK-8015969.js",
     "status" : "SKIP",
-    "comment" : "context and engine variables"
+    "comment" : "context and engine variables; loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8019553.js",
     "status" : "FAIL"
@@ -241,10 +241,6 @@
   }, {
     "filePath" : "basic/JDK-8022731.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "basic/JDK-8022903.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8023551.js",
     "status" : "SKIP",
@@ -305,7 +301,8 @@
     "comment" : "Java interop migration"
   }, {
     "filePath" : "basic/JDK-8029364.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8030182_2.js",
     "status" : "FAIL"
@@ -384,21 +381,15 @@
   }, {
     "filePath" : "basic/JDK-8055796.js",
     "status" : "SKIP",
-    "comment" : "using jdk.nashorn.api.scripting.JSObject"
+    "comment" : "using jdk.nashorn.api.scripting.JSObject; loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8055796_2.js",
     "status" : "SKIP",
     "comment" : "Fails on SPARC, JDK does not provide netscape.javascript.JSObject and the instancof check seems to be wrong\nThe exception thrown by Java.type(\"netscape.javascript.JSObject\") is not a ClassCastException object\nbut a \"TypeError: java.lang.ClassNotFoundException: netscape.javascript.JSObject\". The test fails also on openjdk1.8.0_121-graalvm-jvmci-0.30."
   }, {
     "filePath" : "basic/JDK-8058422.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
-    "comment" : "Fails on JDK 15 due to Nashorn removal."
-  }, {
-    "filePath" : "basic/JDK-8060101.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8062141.js",
     "status" : "FAIL"
@@ -473,10 +464,12 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8114838.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8130853.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8131039.js",
     "status" : "FAIL",
@@ -495,7 +488,8 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8136544.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8136694.js",
     "status" : "FAIL"
@@ -524,13 +518,16 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8157160.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8157680.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8158467.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8161579.js",
     "status" : "FAIL"
@@ -546,7 +543,8 @@
     "status" : "FAIL"
   }, {
     "filePath" : "basic/JDK-8169886.js",
-    "status" : "FAIL"
+    "status" : "SKIP",
+    "comment" : "Loading the 'nashorn' engine"
   }, {
     "filePath" : "basic/JDK-8171219.js",
     "status" : "FAIL",
@@ -596,16 +594,6 @@
     "filePath" : "basic/NASHORN-296.js",
     "status" : "FAIL",
     "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/NASHORN-349.js",
-    "status" : "FAIL",
-    "comment" : "Java interop migration"
-  }, {
-    "filePath" : "basic/NASHORN-377-big-endian.js",
-    "status" : "PASS"
-  }, {
-    "filePath" : "basic/NASHORN-377.js",
-    "status" : "PASS"
   }, {
     "filePath" : "basic/NASHORN-401.js",
     "status" : "SKIP",

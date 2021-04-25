@@ -686,7 +686,7 @@ void TestStringCharacterStream(BuildString build, int test_cases) {
   for (int i = 0; i < test_cases; i++) {
     printf("%d\n", i);
     HandleScope inner_scope(isolate);
-    AlwaysAllocateScope always_allocate(isolate);
+    AlwaysAllocateScopeForTesting always_allocate(isolate->heap());
     // Build flat version of cons string.
     Handle<String> flat_string = build(i, &data);
     ConsStringStats flat_string_stats;
@@ -1347,10 +1347,9 @@ TEST(CachedHashOverflow) {
     const char* line = lines[i];
     printf("%s\n", line);
     v8::Local<v8::Value> result =
-        v8::Script::Compile(context,
-                            v8::String::NewFromUtf8(CcTest::isolate(), line,
-                                                    v8::NewStringType::kNormal)
-                                .ToLocalChecked())
+        v8::Script::Compile(
+            context,
+            v8::String::NewFromUtf8(CcTest::isolate(), line).ToLocalChecked())
             .ToLocalChecked()
             ->Run(context)
             .ToLocalChecked();
@@ -1857,6 +1856,40 @@ GC_INSIDE_NEW_STRING_FROM_UTF8_SUB_STRING(
 
 #undef GC_INSIDE_NEW_STRING_FROM_UTF8_SUB_STRING
 
+namespace {
+
+struct IndexData {
+  const char* string;
+  bool is_array_index;
+  uint32_t array_index;
+  bool is_integer_index;
+  size_t integer_index;
+};
+
+void TestString(i::Isolate* isolate, const IndexData& data) {
+  Handle<String> s = isolate->factory()->NewStringFromAsciiChecked(data.string);
+  if (data.is_array_index) {
+    uint32_t index;
+    CHECK(s->AsArrayIndex(&index));
+    CHECK_EQ(data.array_index, index);
+  }
+  if (data.is_integer_index) {
+    size_t index;
+    CHECK(s->AsIntegerIndex(&index));
+    CHECK_EQ(data.integer_index, index);
+    s->Hash();
+    CHECK_EQ(0, s->hash_field() & String::kIsNotIntegerIndexMask);
+    CHECK(s->HasHashCode());
+  }
+  if (!s->HasHashCode()) s->Hash();
+  CHECK(s->HasHashCode());
+  if (!data.is_integer_index) {
+    CHECK_NE(0, s->hash_field() & String::kIsNotIntegerIndexMask);
+  }
+}
+
+}  // namespace
+
 TEST(HashArrayIndexStrings) {
   CcTest::InitializeVM();
   LocalContext context;
@@ -1870,6 +1903,29 @@ TEST(HashArrayIndexStrings) {
   CHECK_EQ(StringHasher::MakeArrayIndexHash(1 /* value */, 1 /* length */) >>
                Name::kHashShift,
            isolate->factory()->one_string()->Hash());
+
+  IndexData tests[] = {
+    {"", false, 0, false, 0},
+    {"123no", false, 0, false, 0},
+    {"12345", true, 12345, true, 12345},
+    {"12345678", true, 12345678, true, 12345678},
+    {"4294967294", true, 4294967294u, true, 4294967294u},
+#if V8_TARGET_ARCH_32_BIT
+    {"4294967295", false, 0, false, 0},  // Valid length but not index.
+    {"4294967296", false, 0, false, 0},
+    {"9007199254740991", false, 0, false, 0},
+#else
+    {"4294967295", false, 0, true, 4294967295u},
+    {"4294967296", false, 0, true, 4294967296ull},
+    {"9007199254740991", false, 0, true, 9007199254740991ull},
+#endif
+    {"9007199254740992", false, 0, false, 0},
+    {"18446744073709551615", false, 0, false, 0},
+    {"18446744073709551616", false, 0, false, 0}
+  };
+  for (int i = 0, n = arraysize(tests); i < n; i++) {
+    TestString(isolate, tests[i]);
+  }
 }
 
 TEST(StringEquals) {
@@ -1877,21 +1933,13 @@ TEST(StringEquals) {
   v8::Isolate* isolate = CcTest::isolate();
   v8::HandleScope scope(isolate);
 
-  auto foo_str =
-      v8::String::NewFromUtf8(isolate, "foo", v8::NewStringType::kNormal)
-          .ToLocalChecked();
-  auto bar_str =
-      v8::String::NewFromUtf8(isolate, "bar", v8::NewStringType::kNormal)
-          .ToLocalChecked();
-  auto foo_str2 =
-      v8::String::NewFromUtf8(isolate, "foo", v8::NewStringType::kNormal)
-          .ToLocalChecked();
+  auto foo_str = v8::String::NewFromUtf8Literal(isolate, "foo");
+  auto bar_str = v8::String::NewFromUtf8Literal(isolate, "bar");
+  auto foo_str2 = v8::String::NewFromUtf8Literal(isolate, "foo");
 
   uint16_t* two_byte_source = AsciiToTwoByteString("foo");
   auto foo_two_byte_str =
-      v8::String::NewFromTwoByte(isolate, two_byte_source,
-                                 v8::NewStringType::kNormal)
-          .ToLocalChecked();
+      v8::String::NewFromTwoByte(isolate, two_byte_source).ToLocalChecked();
   i::DeleteArray(two_byte_source);
 
   CHECK(foo_str->StringEquals(foo_str));

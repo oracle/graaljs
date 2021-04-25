@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "src/heap/heap-inl.h"
+#include "src/heap/memory-chunk-inl.h"
 #include "src/objects/cell.h"
 #include "src/objects/feedback-cell.h"
 #include "src/objects/script.h"
@@ -44,11 +45,10 @@ bool IsInitiallyMutable(Factory* factory, Address object_address) {
   V(builtins_constants_table)             \
   V(current_microtask)                    \
   V(detached_contexts)                    \
-  V(dirty_js_finalization_groups)         \
   V(feedback_vectors_for_profiling_tools) \
+  V(shared_wasm_memories)                 \
   V(materialized_objects)                 \
   V(public_symbol_table)                  \
-  V(retained_maps)                        \
   V(retaining_path_targets)               \
   V(serialized_global_proxy_sizes)        \
   V(serialized_objects)                   \

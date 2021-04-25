@@ -4,6 +4,7 @@
 
 let {session, contextGroup, Protocol} =
     InspectorTest.start('Tests stepping through wasm scripts with source maps');
+session.setupScriptMap();
 
 utils.load('test/mjsunit/wasm/wasm-module-builder.js');
 
@@ -17,12 +18,12 @@ builder.addFunction('wasm_B', kSig_v_i)
     .addBody([
       // clang-format off
       kExprLoop, kWasmStmt,               // while
-        kExprGetLocal, 0,                 // -
+        kExprLocalGet, 0,                 // -
         kExprIf, kWasmStmt,               // if <param0> != 0
-          kExprGetLocal, 0,               // -
+          kExprLocalGet, 0,               // -
           kExprI32Const, 1,               // -
           kExprI32Sub,                    // -
-          kExprSetLocal, 0,               // decrease <param0>
+          kExprLocalSet, 0,               // decrease <param0>
           kExprCallFunction, func_a_idx,  // -
           kExprBr, 1,                     // continue
           kExprEnd,                       // -
@@ -80,8 +81,8 @@ function instantiate(bytes) {
   await waitForPauseAndStep('stepInto');  // to call
   await waitForPauseAndStep('stepInto');  // into wasm_A
   await waitForPauseAndStep('stepOut');   // out to wasm_B
-  // now step 9 times, until we are in wasm_A again.
-  for (let i = 0; i < 9; ++i) await waitForPauseAndStep('stepInto');
+  // Now step 8 times, until we are in wasm_A again.
+  for (let i = 0; i < 8; ++i) await waitForPauseAndStep('stepInto');
   // 3 more times, back to wasm_B.
   for (let i = 0; i < 3; ++i) await waitForPauseAndStep('stepInto');
   // then just resume.
@@ -93,9 +94,7 @@ function instantiate(bytes) {
 
 async function waitForPauseAndStep(stepAction) {
   const {params: {callFrames}} = await Protocol.Debugger.oncePaused();
-  const topFrame = callFrames[0];
-  InspectorTest.log(
-      `Paused at ${topFrame.url}:${topFrame.location.lineNumber}:${topFrame.location.columnNumber}`);
+  await session.logSourceLocation(callFrames[0].location);
   for (var frame of callFrames) {
     const functionName = frame.functionName || '(anonymous)';
     const lineNumber = frame.location.lineNumber;
@@ -103,7 +102,7 @@ async function waitForPauseAndStep(stepAction) {
     InspectorTest.log(`at ${functionName} (${lineNumber}:${columnNumber}):`);
     for (var scope of frame.scopeChain) {
       InspectorTest.logObject(' - scope (' + scope.type + '):');
-      if (scope.type === 'global') {
+      if (scope.type === 'global' || scope.type === 'module') {
         InspectorTest.logObject('   -- skipped');
       } else {
         const {result: {result: {value}}} =
@@ -112,9 +111,13 @@ async function waitForPauseAndStep(stepAction) {
               functionDeclaration: 'function() { return this; }',
               returnByValue: true
             });
-        if (value.locals)
-          InspectorTest.log(`   locals: ${JSON.stringify(value.locals)}`);
-        InspectorTest.log(`   stack: ${JSON.stringify(value.stack)}`);
+
+        if (scope.type === 'local') {
+          if (value.locals)
+            InspectorTest.log(`   locals: ${JSON.stringify(value.locals)}`);
+        } else {
+          InspectorTest.log(`   ${JSON.stringify(value)}`);
+        }
       }
     }
   }

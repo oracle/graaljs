@@ -24,16 +24,8 @@ def preprocess(input):
   input = re.sub(r'\bcase\s*(\([^{]*\))\s*:\s*deferred\s*{', r' if /*cAsEdEfF*/ \1 {', input)
   input = re.sub(r'\bcase\s*(\([^{]*\))\s*:\s*{', r' if /*cA*/ \1 {', input)
 
-  # Add extra space around | operators to fix union types later.
-  while True:
-    old = input
-    input = re.sub(r'(\w+\s*)\|(\s*\w+)',
-        r'\1|/**/\2', input)
-    if old == input:
-      break;
-
   input = re.sub(r'\bgenerates\s+\'([^\']+)\'\s*',
-      r' _GeNeRaTeS00_/*\1@*/', input)
+      r'_GeNeRaTeS00_/*\1@*/', input)
   input = re.sub(r'\bconstexpr\s+\'([^\']+)\'\s*',
       r' _CoNsExP_/*\1@*/', input)
   input = re.sub(r'\notherwise',
@@ -43,11 +35,17 @@ def preprocess(input):
   input = re.sub(r'@if\(', r'@iF(', input)
   input = re.sub(r'@export', r'@eXpOrT', input)
   input = re.sub(r'js-implicit[ \n]+', r'jS_iMpLiCiT_', input)
+  input = re.sub(r'^(\s*namespace\s+[a-zA-Z_0-9]+\s*{)(\s*)$', r'\1}\2', input, flags = re.MULTILINE);
 
   # Special handing of '%' for intrinsics, turn the percent
   # into a unicode character so that it gets treated as part of the
   # intrinsic's name if it's already adjacent to it.
   input = re.sub(r'%([A-Za-z])', kPercentEscape + r'\1', input)
+
+  # includes are not recognized, change them into comments so that the
+  # formatter ignores them first, until we can figure out a way to format cpp
+  # includes within a JS file.
+  input = re.sub(r'^#include', r'// InClUdE', input, flags=re.MULTILINE)
 
   return input
 
@@ -76,15 +74,12 @@ def postprocess(output):
       r"@export", output)
   output = re.sub(r'jS_iMpLiCiT_',
       r"js-implicit ", output)
-
-  while True:
-    old = output
-    output = re.sub(r'(\w+)\s{0,1}\|\s{0,1}/\*\*/(\s*\w+)',
-        r'\1 |\2', output)
-    if old == output:
-      break;
+  output = re.sub(r'}\n *label ', r'} label ', output);
+  output = re.sub(r'^(\s*namespace\s+[a-zA-Z_0-9]+\s*{)}(\s*)$', r'\1\2', output, flags = re.MULTILINE);
 
   output = re.sub(kPercentEscape, r'%', output)
+
+  output = re.sub( r'^// InClUdE',r'#include', output, flags=re.MULTILINE)
 
   return output
 

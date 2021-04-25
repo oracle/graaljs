@@ -23,7 +23,7 @@ if (credentials.implementsPosixCredentials) {
 // ----              compare the setups side-by-side                    -----
 
 const {
-  parseMode,
+  parseFileMode,
   validateString
 } = require('internal/validators');
 
@@ -119,12 +119,13 @@ function wrappedChdir(directory) {
 
 function wrappedUmask(mask) {
   if (mask !== undefined) {
-    mask = parseMode(mask, 'mask');
+    mask = parseFileMode(mask, 'mask');
   }
   return rawMethods.umask(mask);
 }
 
 function wrappedCwd() {
-  cachedCwd = rawMethods.cwd();
+  if (cachedCwd === '')
+    cachedCwd = rawMethods.cwd();
   return cachedCwd;
 }

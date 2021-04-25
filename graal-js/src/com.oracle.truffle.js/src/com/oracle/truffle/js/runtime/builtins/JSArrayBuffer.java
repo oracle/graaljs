@@ -206,7 +206,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
             return getDirectByteBuffer(arrayBuffer) == null;
         } else {
             assert isJSInteropArrayBuffer(arrayBuffer);
-            return false;
+            return getInteropBuffer(arrayBuffer) == null;
         }
     }
 
@@ -219,7 +219,10 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
             ((JSArrayBufferObject.Direct) arrayBuffer).detachArrayBuffer();
+        } else if (isJSInteropArrayBuffer(arrayBuffer)) {
+            ((JSArrayBufferObject.Interop) arrayBuffer).detachArrayBuffer();
         } else {
+            assert isJSHeapArrayBuffer(arrayBuffer);
             ((JSArrayBufferObject.Heap) arrayBuffer).detachArrayBuffer();
         }
     }

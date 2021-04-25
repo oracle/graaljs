@@ -106,6 +106,8 @@ RegExpMacroAssemblerMIPS::RegExpMacroAssemblerMIPS(Isolate* isolate, Zone* zone,
       backtrack_label_(),
       exit_label_(),
       internal_failure_label_() {
+  masm_->set_root_array_available(false);
+
   DCHECK_EQ(0, registers_to_save % 2);
   __ jmp(&entry_label_);   // We'll write the entry code later.
   // If the code gets too big or corrupted, an internal exception will be
@@ -156,6 +158,18 @@ void RegExpMacroAssemblerMIPS::AdvanceRegister(int reg, int by) {
 
 void RegExpMacroAssemblerMIPS::Backtrack() {
   CheckPreemption();
+  if (has_backtrack_limit()) {
+    Label next;
+    __ Lw(a0, MemOperand(frame_pointer(), kBacktrackCount));
+    __ Addu(a0, a0, Operand(1));
+    __ Sw(a0, MemOperand(frame_pointer(), kBacktrackCount));
+    __ Branch(&next, ne, a0, Operand(backtrack_limit()));
+
+    // Exceeded limits are treated as a failed match.
+    Fail();
+
+    __ bind(&next);
+  }
   // Pop Code offset from backtrack stack, add Code and jump to location.
   Pop(a0);
   __ Addu(a0, a0, code_pointer());
@@ -211,9 +225,8 @@ void RegExpMacroAssemblerMIPS::CheckGreedyLoop(Label* on_equal) {
   BranchOrBacktrack(on_equal, eq, current_input_offset(), Operand(a0));
 }
 
-
 void RegExpMacroAssemblerMIPS::CheckNotBackReferenceIgnoreCase(
-    int start_reg, bool read_backward, bool unicode, Label* on_no_match) {
+    int start_reg, bool read_backward, Label* on_no_match) {
   Label fallthrough;
   __ lw(a0, register_location(start_reg));  // Index of start of capture.
   __ lw(a1, register_location(start_reg + 1));  // Index of end of capture.
@@ -308,7 +321,7 @@ void RegExpMacroAssemblerMIPS::CheckNotBackReferenceIgnoreCase(
     //   a0: Address byte_offset1 - Address captured substring's start.
     //   a1: Address byte_offset2 - Address of current character position.
     //   a2: size_t byte_length - length of capture in bytes(!).
-    //   a3: Isolate* isolate or 0 if unicode flag.
+    //   a3: Isolate* isolate.
 
     // Address of start of capture.
     __ Addu(a0, a0, Operand(end_of_input_address()));
@@ -322,14 +335,7 @@ void RegExpMacroAssemblerMIPS::CheckNotBackReferenceIgnoreCase(
       __ Subu(a1, a1, Operand(s3));
     }
     // Isolate.
-#ifdef V8_INTL_SUPPORT
-    if (unicode) {
-      __ mov(a3, zero_reg);
-    } else  // NOLINT
-#endif      // V8_INTL_SUPPORT
-    {
-      __ li(a3, Operand(ExternalReference::isolate_address(masm_->isolate())));
-    }
+    __ li(a3, Operand(ExternalReference::isolate_address(masm_->isolate())));
 
     {
       AllowExternalCallThatCantCauseGC scope(masm_);
@@ -355,7 +361,6 @@ void RegExpMacroAssemblerMIPS::CheckNotBackReferenceIgnoreCase(
 
   __ bind(&fallthrough);
 }
-
 
 void RegExpMacroAssemblerMIPS::CheckNotBackReference(int start_reg,
                                                      bool read_backward,
@@ -639,9 +644,15 @@ Handle<HeapObject> RegExpMacroAssemblerMIPS::GetCode(Handle<String> source) {
     // Set frame pointer in space for it if this is not a direct call
     // from generated code.
     __ Addu(frame_pointer(), sp, Operand(4 * kPointerSize));
+
+    STATIC_ASSERT(kSuccessfulCaptures == kInputString - kSystemPointerSize);
     __ mov(a0, zero_reg);
     __ push(a0);  // Make room for success counter and initialize it to 0.
+    STATIC_ASSERT(kStringStartMinusOne ==
+                  kSuccessfulCaptures - kSystemPointerSize);
     __ push(a0);  // Make room for "string start - 1" constant.
+    STATIC_ASSERT(kBacktrackCount == kStringStartMinusOne - kSystemPointerSize);
+    __ push(a0);
 
     // Check if we have space on the stack for registers.
     Label stack_limit_hit;
@@ -904,7 +915,7 @@ Handle<HeapObject> RegExpMacroAssemblerMIPS::GetCode(Handle<String> source) {
                           .set_self_reference(masm_->CodeObject())
                           .Build();
   LOG(masm_->isolate(),
-      RegExpCodeCreateEvent(AbstractCode::cast(*code), *source));
+      RegExpCodeCreateEvent(Handle<AbstractCode>::cast(code), source));
   return Handle<HeapObject>::cast(code);
 }
 
@@ -947,25 +958,6 @@ RegExpMacroAssembler::IrregexpImplementation
   return kMIPSImplementation;
 }
 
-void RegExpMacroAssemblerMIPS::LoadCurrentCharacterImpl(int cp_offset,
-                                                        Label* on_end_of_input,
-                                                        bool check_bounds,
-                                                        int characters,
-                                                        int eats_at_least) {
-  // It's possible to preload a small number of characters when each success
-  // path requires a large number of characters, but not the reverse.
-  DCHECK_GE(eats_at_least, characters);
-
-  DCHECK(cp_offset < (1<<30));  // Be sane! (And ensure negation works).
-  if (check_bounds) {
-    if (cp_offset >= 0) {
-      CheckPosition(cp_offset + eats_at_least - 1, on_end_of_input);
-    } else {
-      CheckPosition(cp_offset, on_end_of_input);
-    }
-  }
-  LoadCurrentCharacterUnchecked(cp_offset, characters);
-}
 
 void RegExpMacroAssemblerMIPS::PopCurrentPosition() {
   Pop(current_input_offset());
@@ -1128,21 +1120,11 @@ void RegExpMacroAssemblerMIPS::CallCheckStackGuardState(Register scratch) {
       ExternalReference::re_check_stack_guard_state(masm_->isolate());
   __ li(t9, Operand(stack_guard_check));
 
-  if (FLAG_embedded_builtins) {
-    EmbeddedData d = EmbeddedData::FromBlob();
-    CHECK(Builtins::IsIsolateIndependent(Builtins::kDirectCEntry));
-    Address entry = d.InstructionStartOfBuiltin(Builtins::kDirectCEntry);
-    __ li(kScratchReg, Operand(entry, RelocInfo::OFF_HEAP_TARGET));
-    __ Call(kScratchReg);
-  } else {
-    // TODO(v8:8519): Remove this once embedded builtins are on unconditionally.
-    Handle<Code> code = BUILTIN_CODE(isolate(), DirectCEntry);
-    __ li(kScratchReg,
-          Operand(reinterpret_cast<intptr_t>(code.location()),
-                  RelocInfo::CODE_TARGET),
-          CONSTANT_SIZE);
-    __ Call(kScratchReg);
-  }
+  EmbeddedData d = EmbeddedData::FromBlob();
+  CHECK(Builtins::IsIsolateIndependent(Builtins::kDirectCEntry));
+  Address entry = d.InstructionStartOfBuiltin(Builtins::kDirectCEntry);
+  __ li(kScratchReg, Operand(entry, RelocInfo::OFF_HEAP_TARGET));
+  __ Call(kScratchReg);
 
   // DirectCEntry allocated space for the C argument slots so we have to
   // drop them with the return address from the stack with loading saved sp.

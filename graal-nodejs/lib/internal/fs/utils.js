@@ -4,17 +4,20 @@ const {
   ArrayIsArray,
   BigInt,
   DateNow,
-  Error,
+  ErrorCaptureStackTrace,
+  ObjectPrototypeHasOwnProperty,
   Number,
   NumberIsFinite,
+  MathMin,
   ObjectSetPrototypeOf,
   ReflectOwnKeys,
   Symbol,
 } = primordials;
 
-const { Buffer, kMaxLength } = require('buffer');
+const { Buffer } = require('buffer');
 const {
   codes: {
+    ERR_FS_EISDIR,
     ERR_FS_INVALID_SYMLINK_TYPE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
@@ -34,41 +37,77 @@ const {
 const { once } = require('internal/util');
 const { toPathIfFileURL } = require('internal/url');
 const {
+  validateBoolean,
   validateInt32,
   validateUint32
 } = require('internal/validators');
 const pathModule = require('path');
 const kType = Symbol('type');
 const kStats = Symbol('stats');
+const assert = require('internal/assert');
 
 const {
-  O_APPEND,
-  O_CREAT,
-  O_EXCL,
-  O_RDONLY,
-  O_RDWR,
-  O_SYNC,
-  O_TRUNC,
-  O_WRONLY,
-  S_IFBLK,
-  S_IFCHR,
-  S_IFDIR,
-  S_IFIFO,
-  S_IFLNK,
-  S_IFMT,
-  S_IFREG,
-  S_IFSOCK,
-  UV_FS_SYMLINK_DIR,
-  UV_FS_SYMLINK_JUNCTION,
-  UV_DIRENT_UNKNOWN,
-  UV_DIRENT_FILE,
-  UV_DIRENT_DIR,
-  UV_DIRENT_LINK,
-  UV_DIRENT_FIFO,
-  UV_DIRENT_SOCKET,
-  UV_DIRENT_CHAR,
-  UV_DIRENT_BLOCK
-} = internalBinding('constants').fs;
+  fs: {
+    F_OK = 0,
+    W_OK = 0,
+    R_OK = 0,
+    X_OK = 0,
+    COPYFILE_EXCL,
+    COPYFILE_FICLONE,
+    COPYFILE_FICLONE_FORCE,
+    O_APPEND,
+    O_CREAT,
+    O_EXCL,
+    O_RDONLY,
+    O_RDWR,
+    O_SYNC,
+    O_TRUNC,
+    O_WRONLY,
+    S_IFBLK,
+    S_IFCHR,
+    S_IFDIR,
+    S_IFIFO,
+    S_IFLNK,
+    S_IFMT,
+    S_IFREG,
+    S_IFSOCK,
+    UV_FS_SYMLINK_DIR,
+    UV_FS_SYMLINK_JUNCTION,
+    UV_DIRENT_UNKNOWN,
+    UV_DIRENT_FILE,
+    UV_DIRENT_DIR,
+    UV_DIRENT_LINK,
+    UV_DIRENT_FIFO,
+    UV_DIRENT_SOCKET,
+    UV_DIRENT_CHAR,
+    UV_DIRENT_BLOCK
+  },
+  os: {
+    errno: {
+      EISDIR
+    }
+  }
+} = internalBinding('constants');
+
+// The access modes can be any of F_OK, R_OK, W_OK or X_OK. Some might not be
+// available on specific systems. They can be used in combination as well
+// (F_OK | R_OK | W_OK | X_OK).
+const kMinimumAccessMode = MathMin(F_OK, W_OK, R_OK, X_OK);
+const kMaximumAccessMode = F_OK | W_OK | R_OK | X_OK;
+
+const kDefaultCopyMode = 0;
+// The copy modes can be any of COPYFILE_EXCL, COPYFILE_FICLONE or
+// COPYFILE_FICLONE_FORCE. They can be used in combination as well
+// (COPYFILE_EXCL | COPYFILE_FICLONE | COPYFILE_FICLONE_FORCE).
+const kMinimumCopyMode = MathMin(
+  kDefaultCopyMode,
+  COPYFILE_EXCL,
+  COPYFILE_FICLONE,
+  COPYFILE_FICLONE_FORCE
+);
+const kMaximumCopyMode = COPYFILE_EXCL |
+                         COPYFILE_FICLONE |
+                         COPYFILE_FICLONE_FORCE;
 
 const isWindows = process.platform === 'win32';
 
@@ -264,16 +303,14 @@ function getOptions(options, defaultOptions) {
 function handleErrorFromBinding(ctx) {
   if (ctx.errno !== undefined) {  // libuv error numbers
     const err = uvException(ctx);
-    // eslint-disable-next-line no-restricted-syntax
-    Error.captureStackTrace(err, handleErrorFromBinding);
+    ErrorCaptureStackTrace(err, handleErrorFromBinding);
     throw err;
   }
   if (ctx.error !== undefined) {  // Errors created in C++ land.
     // TODO(joyeecheung): currently, ctx.error are encoding errors
     // usually caused by memory problems. We need to figure out proper error
     // code(s) for this.
-    // eslint-disable-next-line no-restricted-syntax
-    Error.captureStackTrace(ctx.error, handleErrorFromBinding);
+    ErrorCaptureStackTrace(ctx.error, handleErrorFromBinding);
     throw ctx.error;
   }
 }
@@ -313,7 +350,6 @@ function preprocessSymlinkDestination(path, type, linkPath) {
     path = pathModule.resolve(linkPath, '..', path);
     return pathModule.toNamespacedPath(path);
   }
-
   if (pathModule.isAbsolute(path)) {
     // If the path is absolute, use the \\?\-prefix to enable long filenames
     return pathModule.toNamespacedPath(path);
@@ -478,6 +514,10 @@ function stringToFlags(flags) {
     return flags;
   }
 
+  if (flags == null) {
+    return O_RDONLY;
+  }
+
   switch (flags) {
     case 'r' : return O_RDONLY;
     case 'rs' : // Fall through.
@@ -569,9 +609,8 @@ const validateOffsetLengthWrite = hideStackFrames(
       throw new ERR_OUT_OF_RANGE('offset', `<= ${byteLength}`, offset);
     }
 
-    const max = byteLength > kMaxLength ? kMaxLength : byteLength;
-    if (length > max - offset) {
-      throw new ERR_OUT_OF_RANGE('length', `<= ${max - offset}`, length);
+    if (length > byteLength - offset) {
+      throw new ERR_OUT_OF_RANGE('length', `<= ${byteLength - offset}`, length);
     }
   }
 );
@@ -618,29 +657,131 @@ function warnOnNonPortableTemplate(template) {
   }
 }
 
+const defaultRmOptions = {
+  recursive: false,
+  force: false,
+  retryDelay: 100,
+  maxRetries: 0
+};
+
 const defaultRmdirOptions = {
   retryDelay: 100,
   maxRetries: 0,
   recursive: false,
 };
 
-const validateRmdirOptions = hideStackFrames((options) => {
-  if (options === undefined)
-    return defaultRmdirOptions;
-  if (options === null || typeof options !== 'object')
-    throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
+const validateRmOptions = hideStackFrames((path, options, callback) => {
+  options = validateRmdirOptions(options, defaultRmOptions);
+  validateBoolean(options.force, 'options.force');
 
-  options = { ...defaultRmdirOptions, ...options };
+  lazyLoadFs().stat(path, (err, stats) => {
+    if (err) {
+      if (options.force && err.code === 'ENOENT') {
+        return callback(null, options);
+      }
+      return callback(err, options);
+    }
 
-  if (typeof options.recursive !== 'boolean')
-    throw new ERR_INVALID_ARG_TYPE('recursive', 'boolean', options.recursive);
+    if (stats.isDirectory() && !options.recursive) {
+      return callback(new ERR_FS_EISDIR({
+        code: 'EISDIR',
+        message: 'is a directory',
+        path,
+        syscall: 'rm',
+        errno: EISDIR
+      }));
+    }
+    return callback(null, options);
+  });
+});
 
-  validateInt32(options.retryDelay, 'retryDelay', 0);
-  validateUint32(options.maxRetries, 'maxRetries');
+const validateRmOptionsSync = hideStackFrames((path, options) => {
+  options = validateRmdirOptions(options, defaultRmOptions);
+  validateBoolean(options.force, 'options.force');
+
+  try {
+    const stats = lazyLoadFs().statSync(path);
+
+    if (stats.isDirectory() && !options.recursive) {
+      throw new ERR_FS_EISDIR({
+        code: 'EISDIR',
+        message: 'is a directory',
+        path,
+        syscall: 'rm',
+        errno: EISDIR
+      });
+    }
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      throw err;
+    } else if (err.code === 'ENOENT' && !options.force) {
+      throw err;
+    }
+  }
 
   return options;
 });
 
+const validateRmdirOptions = hideStackFrames(
+  (options, defaults = defaultRmdirOptions) => {
+    if (options === undefined)
+      return defaults;
+    if (options === null || typeof options !== 'object')
+      throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
+
+    options = { ...defaults, ...options };
+
+    validateBoolean(options.recursive, 'options.recursive');
+    validateInt32(options.retryDelay, 'options.retryDelay', 0);
+    validateUint32(options.maxRetries, 'options.maxRetries');
+
+    return options;
+  });
+
+const getValidMode = hideStackFrames((mode, type) => {
+  let min = kMinimumAccessMode;
+  let max = kMaximumAccessMode;
+  let def = F_OK;
+  if (type === 'copyFile') {
+    min = kMinimumCopyMode;
+    max = kMaximumCopyMode;
+    def = mode || kDefaultCopyMode;
+  } else {
+    assert(type === 'access');
+  }
+  if (mode == null) {
+    return def;
+  }
+  if (Number.isInteger(mode) && mode >= min && mode <= max) {
+    return mode;
+  }
+  if (typeof mode !== 'number') {
+    throw new ERR_INVALID_ARG_TYPE('mode', 'integer', mode);
+  }
+  throw new ERR_OUT_OF_RANGE(
+    'mode', `an integer >= ${min} && <= ${max}`, mode);
+});
+
+const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
+  if (typeof buffer === 'string') {
+    return;
+  }
+
+  if (
+    typeof buffer === 'object' &&
+    buffer !== null &&
+    typeof buffer.toString === 'function' &&
+    ObjectPrototypeHasOwnProperty(buffer, 'toString')
+  ) {
+    return;
+  }
+
+  throw new ERR_INVALID_ARG_TYPE(
+    name,
+    ['string', 'Buffer', 'TypedArray', 'DataView'],
+    buffer
+  );
+});
 
 module.exports = {
   assertEncoding,
@@ -651,6 +792,7 @@ module.exports = {
   getDirents,
   getOptions,
   getValidatedPath,
+  getValidMode,
   handleErrorFromBinding,
   nullCheck,
   preprocessSymlinkDestination,
@@ -664,6 +806,9 @@ module.exports = {
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
   validatePath,
+  validateRmOptions,
+  validateRmOptionsSync,
   validateRmdirOptions,
+  validateStringAfterArrayBufferView,
   warnOnNonPortableTemplate
 };

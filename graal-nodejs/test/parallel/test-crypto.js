@@ -161,6 +161,13 @@ testImmutability(tls.getCiphers);
 testImmutability(crypto.getHashes);
 testImmutability(crypto.getCurves);
 
+const encodingError = {
+  code: 'ERR_INVALID_ARG_VALUE',
+  name: 'TypeError',
+  message: "The argument 'encoding' is invalid for data of length 1." +
+           " Received 'hex'",
+};
+
 // Regression tests for https://github.com/nodejs/node-v0.x-archive/pull/5725:
 // hex input that's not a power of two should throw, not assert in C++ land.
 ['createCipher', 'createDecipher'].forEach((funcName) => {
@@ -173,17 +180,26 @@ testImmutability(crypto.getCurves);
                error.name === 'Error' &&
                /^Error: not supported in FIPS mode$/.test(error);
       }
-      assert.throws(() => { throw error; }, /^TypeError: Bad input string$/);
+      assert.throws(() => { throw error; }, encodingError);
       return true;
     }
   );
 });
 
 assert.throws(
+  () => crypto.createHash('sha1').update('0', 'hex'),
+  (error) => {
+    assert.ok(!('opensslErrorStack' in error));
+    assert.throws(() => { throw error; }, encodingError);
+    return true;
+  }
+);
+
+assert.throws(
   () => crypto.createHmac('sha256', 'a secret').update('0', 'hex'),
   (error) => {
     assert.ok(!('opensslErrorStack' in error));
-    assert.throws(() => { throw error; }, /^TypeError: Bad input string$/);
+    assert.throws(() => { throw error; }, encodingError);
     return true;
   }
 );

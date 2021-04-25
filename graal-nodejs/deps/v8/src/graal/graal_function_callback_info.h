@@ -63,4 +63,3 @@ private:
 };
 
 #endif /* GRAAL_FUNCTION_CALLBACK_INFO_H_ */
-

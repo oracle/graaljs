@@ -57,6 +57,9 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic(ScriptArray.class)
@@ -89,20 +92,19 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
             return (double) result;
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))", "isLengthAlwaysInt(arrayType)"}, limit = "MAX_TYPE_COUNT")
-        protected static int doIntLength(DynamicObject target,
+        @Specialization
+        protected static int doTypedArray(JSTypedArrayObject target) {
+            return JSArrayBufferView.typedArrayGetLength(target);
+        }
+
+        @Specialization(guards = {"arrayType.isInstance(target.getArrayType())", "isLengthAlwaysInt(arrayType)"}, limit = "1")
+        protected static int doIntLength(JSArrayBase target,
                         @Cached("getArrayType(target)") ScriptArray arrayType) {
             return arrayType.lengthInt(target);
         }
 
-        @Specialization(guards = {"arrayType.isInstance(getArrayType(target))"}, replaces = "doIntLength", limit = "MAX_TYPE_COUNT")
-        protected static double doLongLength(DynamicObject target,
-                        @Cached("getArrayType(target)") ScriptArray arrayType) {
-            return arrayType.length(target);
-        }
-
-        @Specialization(replaces = {"doIntLength", "doLongLength"}, rewriteOn = UnexpectedResultException.class)
-        protected static int doUncachedIntLength(DynamicObject target) throws UnexpectedResultException {
+        @Specialization(replaces = {"doIntLength"}, rewriteOn = UnexpectedResultException.class)
+        protected static int doUncachedIntLength(JSArrayBase target) throws UnexpectedResultException {
             long uint32Len = JSAbstractArray.arrayGetLength(target);
             assert uint32Len == getArrayType(target).length(target);
             if (JSRuntime.longIsRepresentableAsInt(uint32Len)) {
@@ -114,7 +116,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         }
 
         @Specialization(replaces = {"doUncachedIntLength"})
-        protected static double doUncachedLongLength(DynamicObject target) {
+        protected static double doUncachedLongLength(JSArrayBase target) {
             long uint32Len = JSAbstractArray.arrayGetLength(target);
             assert uint32Len == getArrayType(target).length(target);
             return uint32Len;

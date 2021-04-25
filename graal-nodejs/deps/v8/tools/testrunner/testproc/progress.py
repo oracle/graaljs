@@ -12,6 +12,7 @@ import platform
 import subprocess
 import sys
 import time
+import util
 
 from . import base
 from ..local import junit_output
@@ -94,7 +95,7 @@ class SimpleProgressIndicator(ProgressIndicator):
         print(result.output.stdout.strip())
       print("Command: %s" % result.cmd.to_string())
       if result.output.HasCrashed():
-        print("exit code: %d" % result.output.exit_code)
+        print("exit code: %s" % result.output.exit_code_string)
         print("--- CRASHED ---")
         crashed += 1
       if result.output.HasTimedOut():
@@ -248,7 +249,7 @@ class CompactProgressIndicator(ProgressIndicator):
         print(self._templates['stderr'] % stderr)
       print("Command: %s" % result.cmd.to_string(relative=True))
       if output.HasCrashed():
-        print("exit code: %d" % output.exit_code)
+        print("exit code: %s" % output.exit_code_string)
         print("--- CRASHED ---")
       if output.HasTimedOut():
         print("--- TIMEOUT ---")
@@ -269,7 +270,7 @@ class CompactProgressIndicator(ProgressIndicator):
       'progress': progress,
       'failed': self._failed,
       'test': name,
-      'mins': int(elapsed) / 60,
+      'mins': int(elapsed) // 60,
       'secs': int(elapsed) % 60
     }
     status = self._truncate(status, 78)
@@ -357,7 +358,7 @@ class JUnitTestProgressIndicator(ProgressIndicator):
 
 
 class JsonTestProgressIndicator(ProgressIndicator):
-  def __init__(self, framework_name, json_test_results, arch, mode):
+  def __init__(self, framework_name, arch, mode):
     super(JsonTestProgressIndicator, self).__init__()
     # We want to drop stdout/err for all passed tests on the first try, but we
     # need to get outputs for all runs after the first one. To accommodate that,
@@ -366,11 +367,17 @@ class JsonTestProgressIndicator(ProgressIndicator):
     self._requirement = base.DROP_PASS_STDOUT
 
     self.framework_name = framework_name
-    self.json_test_results = json_test_results
     self.arch = arch
     self.mode = mode
     self.results = []
-    self.tests = []
+    self.duration_sum = 0
+    self.test_count = 0
+
+  def configure(self, options):
+    super(JsonTestProgressIndicator, self).configure(options)
+    self.tests = util.FixedSizeTopList(
+        self.options.slow_tests_cutoff,
+        key=lambda rec: rec['duration'])
 
   def _on_result_for(self, test, result):
     if result.is_rerun:
@@ -382,9 +389,8 @@ class JsonTestProgressIndicator(ProgressIndicator):
     for run, result in enumerate(results):
       # TODO(majeski): Support for dummy/grouped results
       output = result.output
-      # Buffer all tests for sorting the durations in the end.
-      # TODO(machenbach): Running average + buffer only slowest 20 tests.
-      self.tests.append((test, output.duration, result.cmd))
+
+      self._buffer_slow_tests(test, result, output, run)
 
       # Omit tests that run as expected on the first try.
       # Everything that happens after the first run is included in the output
@@ -392,15 +398,36 @@ class JsonTestProgressIndicator(ProgressIndicator):
       if not result.has_unexpected_output and run == 0:
         continue
 
-      self.results.append({
+      record = self._test_record(test, result, output, run)
+      record.update({
+          "result": test.output_proc.get_outcome(output),
+          "stdout": output.stdout,
+          "stderr": output.stderr,
+        })
+      self.results.append(record)
+
+  def _buffer_slow_tests(self, test, result, output, run):
+    def result_value(test, result, output):
+      if not result.has_unexpected_output:
+        return ""
+      return test.output_proc.get_outcome(output)
+
+    record = self._test_record(test, result, output, run)
+    record.update({
+        "result": result_value(test, result, output),
+        "marked_slow": test.is_slow,
+      })
+    self.tests.add(record)
+    self.duration_sum += record['duration']
+    self.test_count += 1
+
+  def _test_record(self, test, result, output, run):
+    return {
         "name": str(test),
         "flags": result.cmd.args,
         "command": result.cmd.to_string(relative=True),
         "run": run + 1,
-        "stdout": output.stdout,
-        "stderr": output.stderr,
         "exit_code": output.exit_code,
-        "result": test.output_proc.get_outcome(output),
         "expected": test.expected_outcomes,
         "duration": output.duration,
         "random_seed": test.random_seed,
@@ -408,42 +435,27 @@ class JsonTestProgressIndicator(ProgressIndicator):
         "variant": test.variant,
         "variant_flags": test.variant_flags,
         "framework_name": self.framework_name,
-      })
+      }
 
   def finished(self):
     complete_results = []
-    if os.path.exists(self.json_test_results):
-      with open(self.json_test_results, "r") as f:
-        # Buildbot might start out with an empty file.
+    if os.path.exists(self.options.json_test_results):
+      with open(self.options.json_test_results, "r") as f:
+        # On bots we might start out with an empty file.
         complete_results = json.loads(f.read() or "[]")
 
     duration_mean = None
-    if self.tests:
-      # Get duration mean.
-      duration_mean = (
-          sum(duration for (_, duration, cmd) in self.tests) /
-          float(len(self.tests)))
-
-    # Sort tests by duration.
-    self.tests.sort(key=lambda __duration_cmd: __duration_cmd[1], reverse=True)
-    slowest_tests = [
-      {
-        "name": str(test),
-        "flags": cmd.args,
-        "command": cmd.to_string(relative=True),
-        "duration": duration,
-        "marked_slow": test.is_slow,
-      } for (test, duration, cmd) in self.tests[:20]
-    ]
+    if self.test_count:
+      duration_mean = self.duration_sum / self.test_count
 
     complete_results.append({
       "arch": self.arch,
       "mode": self.mode,
       "results": self.results,
-      "slowest_tests": slowest_tests,
+      "slowest_tests": self.tests.as_list(),
       "duration_mean": duration_mean,
-      "test_total": len(self.tests),
+      "test_total": self.test_count,
     })
 
-    with open(self.json_test_results, "w") as f:
+    with open(self.options.json_test_results, "w") as f:
       f.write(json.dumps(complete_results))

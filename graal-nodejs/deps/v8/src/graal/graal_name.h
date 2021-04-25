@@ -50,4 +50,3 @@ public:
 };
 
 #endif /* GRAAL_NAME_H_ */
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,7 +69,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowRootTag;
  * </pre>
  */
 @NodeInfo(shortName = "switch")
-public final class SwitchNode extends StatementNode {
+public final class SwitchNode extends StatementNode implements ResumableNode {
 
     @Children private final JavaScriptNode[] caseExpressions;
     @Children private final JavaScriptNode[] statements;
@@ -196,32 +196,71 @@ public final class SwitchNode extends StatementNode {
     }
 
     private Object executeDefault(VirtualFrame frame) {
-        int statementStartIndex = identifyTargetCase(frame);
+        int statementStartIndex = identifyTargetCase(frame, 0);
         return executeStatements(frame, statementStartIndex);
     }
 
-    @ExplodeLoop
-    private int identifyTargetCase(VirtualFrame frame) {
-        int i;
-        for (i = 0; i < caseExpressions.length; i++) {
-            if (executeConditionAsBoolean(frame, caseExpressions[i])) {
-                break;
-            }
+    @Override
+    public Object resume(VirtualFrame frame) {
+        Object maybeState = getState(frame);
+        int caseIndex;
+        int statementIndex;
+        Object resumptionResult;
+        if (maybeState instanceof SwitchResumptionRecord) {
+            SwitchResumptionRecord state = (SwitchResumptionRecord) maybeState;
+            caseIndex = state.caseIndex;
+            statementIndex = state.statementIndex;
+            resumptionResult = state.result;
+        } else {
+            caseIndex = 0;
+            statementIndex = 0;
+            resumptionResult = EMPTY;
         }
-        int statementStartIndex = jumptable[i];
-        CompilerAsserts.partialEvaluationConstant(statementStartIndex);
-        return statementStartIndex;
+        if (caseIndex >= 0) {
+            statementIndex = identifyTargetCase(frame, caseIndex);
+        }
+        return executeStatements(frame, statementIndex, resumptionResult);
     }
 
     @ExplodeLoop
-    private Object executeStatements(VirtualFrame frame, int statementStartIndex) {
-        Object result = EMPTY;
-        for (int statementIndex = 0; statementIndex < statements.length; statementIndex++) {
-            if (statementIndex >= statementStartIndex) {
-                result = statements[statementIndex].execute(frame);
+    private int identifyTargetCase(VirtualFrame frame, int firstCase) {
+        int i = 0;
+        try {
+            for (; i < caseExpressions.length; i++) {
+                if (i >= firstCase) {
+                    if (executeConditionAsBoolean(frame, caseExpressions[i])) {
+                        break;
+                    }
+                }
             }
+            int statementStartIndex = jumptable[i];
+            CompilerAsserts.partialEvaluationConstant(statementStartIndex);
+            return statementStartIndex;
+        } catch (YieldException e) {
+            setState(frame, new SwitchResumptionRecord(i, -1, null));
+            throw e;
         }
-        return result;
+    }
+
+    private Object executeStatements(VirtualFrame frame, int statementStartIndex) {
+        return executeStatements(frame, statementStartIndex, EMPTY);
+    }
+
+    @ExplodeLoop
+    private Object executeStatements(VirtualFrame frame, int statementStartIndex, Object initialResult) {
+        int statementIndex = 0;
+        Object result = initialResult;
+        try {
+            for (; statementIndex < statements.length; statementIndex++) {
+                if (statementIndex >= statementStartIndex) {
+                    result = statements[statementIndex].execute(frame);
+                }
+            }
+            return result;
+        } catch (YieldException e) {
+            setState(frame, new SwitchResumptionRecord(-1, statementIndex, result));
+            throw e;
+        }
     }
 
     @ExplodeLoop
@@ -265,5 +304,18 @@ public final class SwitchNode extends StatementNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(cloneUninitialized(caseExpressions, materializedTags), jumptable, cloneUninitialized(statements, materializedTags));
+    }
+
+    private static class SwitchResumptionRecord {
+
+        private final Object result;
+        private final int caseIndex;
+        private final int statementIndex;
+
+        SwitchResumptionRecord(int resumptionCaseIndex, int statementIndex, Object result) {
+            this.result = result;
+            this.caseIndex = resumptionCaseIndex;
+            this.statementIndex = statementIndex;
+        }
     }
 }

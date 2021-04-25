@@ -1489,6 +1489,18 @@ Matcher<Node*> IsDead() {
   return MakeMatcher(new TestNodeMatcher(IrOpcode::kDead));
 }
 
+Matcher<Node*> IsUnreachable() {
+  return MakeMatcher(new TestNodeMatcher(IrOpcode::kUnreachable));
+}
+
+Matcher<Node*> IsThrow() {
+  return MakeMatcher(new TestNodeMatcher(IrOpcode::kThrow));
+}
+
+Matcher<Node*> IsStart() {
+  return MakeMatcher(new TestNodeMatcher(IrOpcode::kStart));
+}
+
 Matcher<Node*> IsEnd(const Matcher<Node*>& control0_matcher) {
   return MakeMatcher(new IsControl1Matcher(IrOpcode::kEnd, control0_matcher));
 }
@@ -2175,6 +2187,8 @@ IS_BINOP_MATCHER(Int64Add)
 IS_BINOP_MATCHER(Int64Div)
 IS_BINOP_MATCHER(Int64Sub)
 IS_BINOP_MATCHER(Int64Mul)
+IS_BINOP_MATCHER(Int64LessThan)
+IS_BINOP_MATCHER(Uint64LessThan)
 IS_BINOP_MATCHER(JSAdd)
 IS_BINOP_MATCHER(JSParseInt)
 IS_BINOP_MATCHER(Float32Equal)
@@ -2203,8 +2217,6 @@ IS_UNOP_MATCHER(ChangeInt32ToFloat64)
 IS_UNOP_MATCHER(ChangeInt32ToInt64)
 IS_UNOP_MATCHER(ChangeUint32ToFloat64)
 IS_UNOP_MATCHER(ChangeUint32ToUint64)
-IS_UNOP_MATCHER(ChangeCompressedToTagged)
-IS_UNOP_MATCHER(ChangeCompressedPointerToTaggedPointer)
 IS_UNOP_MATCHER(TruncateFloat64ToFloat32)
 IS_UNOP_MATCHER(TruncateInt64ToInt32)
 IS_UNOP_MATCHER(Float32Abs)

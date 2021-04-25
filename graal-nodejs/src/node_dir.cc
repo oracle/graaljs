@@ -149,7 +149,7 @@ void DirHandle::Close(const FunctionCallbackInfo<Value>& args) {
   dir->closing_ = false;
   dir->closed_ = true;
 
-  FSReqBase* req_wrap_async = GetReqWrap(env, args[0]);
+  FSReqBase* req_wrap_async = GetReqWrap(args, 0);
   if (req_wrap_async != nullptr) {  // close(req)
     AsyncCall(env, req_wrap_async, args, "closedir", UTF8, AfterClose,
               uv_fs_closedir, dir->dir());
@@ -253,7 +253,7 @@ void DirHandle::Read(const FunctionCallbackInfo<Value>& args) {
     dir->dir_->dirents = dir->dirents_.data();
   }
 
-  FSReqBase* req_wrap_async = GetReqWrap(env, args[2]);
+  FSReqBase* req_wrap_async = GetReqWrap(args, 2);
   if (req_wrap_async != nullptr) {  // dir.read(encoding, bufferSize, req)
     AsyncCall(env, req_wrap_async, args, "readdir", encoding,
               AfterDirRead, uv_fs_readdir, dir->dir());
@@ -321,7 +321,7 @@ static void OpenDir(const FunctionCallbackInfo<Value>& args) {
 
   const enum encoding encoding = ParseEncoding(isolate, args[1], UTF8);
 
-  FSReqBase* req_wrap_async = GetReqWrap(env, args[2]);
+  FSReqBase* req_wrap_async = GetReqWrap(args, 2);
   if (req_wrap_async != nullptr) {  // openDir(path, encoding, req)
     AsyncCall(env, req_wrap_async, args, "opendir", encoding, AfterOpenDir,
               uv_fs_opendir, *path);

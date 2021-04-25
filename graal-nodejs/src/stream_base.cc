@@ -1,6 +1,7 @@
 #include "stream_base.h"  // NOLINT(build/include_inline)
 #include "stream_base-inl.h"
 #include "stream_wrap.h"
+#include "allocated_buffer-inl.h"
 
 #include "node.h"
 #include "node_buffer.h"
@@ -17,18 +18,23 @@ namespace node {
 
 using v8::Array;
 using v8::ArrayBuffer;
+using v8::ConstructorBehavior;
 using v8::Context;
 using v8::DontDelete;
 using v8::DontEnum;
 using v8::External;
 using v8::Function;
 using v8::FunctionCallbackInfo;
+using v8::FunctionTemplate;
 using v8::HandleScope;
 using v8::Integer;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
+using v8::PropertyAttribute;
 using v8::ReadOnly;
+using v8::SideEffectType;
+using v8::Signature;
 using v8::String;
 using v8::Value;
 
@@ -127,7 +133,7 @@ int StreamBase::Writev(const FunctionCallbackInfo<Value>& args) {
 
   AllocatedBuffer storage;
   if (storage_size > 0)
-    storage = env->AllocateManaged(storage_size);
+    storage = AllocatedBuffer::AllocateManaged(env, storage_size);
 
   offset = 0;
   if (!all_buffers) {
@@ -271,12 +277,12 @@ int StreamBase::WriteString(const FunctionCallbackInfo<Value>& args) {
 
   if (try_write) {
     // Copy partial data
-    data = env->AllocateManaged(buf.len);
+    data = AllocatedBuffer::AllocateManaged(env, buf.len);
     memcpy(data.data(), buf.base, buf.len);
     data_size = buf.len;
   } else {
     // Write it
-    data = env->AllocateManaged(storage_size);
+    data = AllocatedBuffer::AllocateManaged(env, storage_size);
     data_size = StringBytes::Write(env->isolate(),
                                    data.data(),
                                    storage_size,
@@ -370,8 +376,8 @@ void StreamBase::AddMethod(Environment* env,
   Local<FunctionTemplate> templ =
       env->NewFunctionTemplate(stream_method,
                                signature,
-                               v8::ConstructorBehavior::kThrow,
-                               v8::SideEffectType::kHasNoSideEffect);
+                               ConstructorBehavior::kThrow,
+                               SideEffectType::kHasNoSideEffect);
   t->PrototypeTemplate()->SetAccessorProperty(
       string, templ, Local<FunctionTemplate>(), attributes);
 }
@@ -481,7 +487,7 @@ void StreamResource::ClearError() {
 uv_buf_t EmitToJSStreamListener::OnStreamAlloc(size_t suggested_size) {
   CHECK_NOT_NULL(stream_);
   Environment* env = static_cast<StreamBase*>(stream_)->stream_env();
-  return env->AllocateManaged(suggested_size).release();
+  return AllocatedBuffer::AllocateManaged(env, suggested_size).release();
 }
 
 void EmitToJSStreamListener::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
@@ -575,5 +581,56 @@ void ReportWritesToJSStreamListener::OnStreamAfterShutdown(
   OnStreamAfterReqFinished(req_wrap, status);
 }
 
+void ShutdownWrap::OnDone(int status) {
+  stream()->EmitAfterShutdown(this, status);
+  Dispose();
+}
+
+void WriteWrap::OnDone(int status) {
+  stream()->EmitAfterWrite(this, status);
+  Dispose();
+}
+
+StreamListener::~StreamListener() {
+  if (stream_ != nullptr)
+    stream_->RemoveStreamListener(this);
+}
+
+void StreamListener::OnStreamAfterShutdown(ShutdownWrap* w, int status) {
+  CHECK_NOT_NULL(previous_listener_);
+  previous_listener_->OnStreamAfterShutdown(w, status);
+}
+
+void StreamListener::OnStreamAfterWrite(WriteWrap* w, int status) {
+  CHECK_NOT_NULL(previous_listener_);
+  previous_listener_->OnStreamAfterWrite(w, status);
+}
+
+StreamResource::~StreamResource() {
+  while (listener_ != nullptr) {
+    StreamListener* listener = listener_;
+    listener->OnStreamDestroy();
+    // Remove the listener if it didn’t remove itself. This makes the logic
+    // in `OnStreamDestroy()` implementations easier, because they
+    // may call generic cleanup functions which can just remove the
+    // listener unconditionally.
+    if (listener == listener_)
+      RemoveStreamListener(listener_);
+  }
+}
+
+ShutdownWrap* StreamBase::CreateShutdownWrap(
+    Local<Object> object) {
+  auto* wrap = new SimpleShutdownWrap<AsyncWrap>(this, object);
+  wrap->MakeWeak();
+  return wrap;
+}
+
+WriteWrap* StreamBase::CreateWriteWrap(
+    Local<Object> object) {
+  auto* wrap = new SimpleWriteWrap<AsyncWrap>(this, object);
+  wrap->MakeWeak();
+  return wrap;
+}
 
 }  // namespace node

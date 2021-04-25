@@ -58,4 +58,3 @@ protected:
 };
 
 #endif /* GRAAL_UNBOUND_SCRIPT_H_ */
-

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -67,6 +69,12 @@ public abstract class ListGetNode extends JavaScriptBaseNode {
 
     @Specialization
     static Object unmodifiablePropertyKeyList(UnmodifiablePropertyKeyList<?> list, int index) {
+        return list.get(index);
+    }
+
+    @TruffleBoundary(allowInlining = true)
+    @Specialization
+    static Object arrayList(ArrayList<?> list, int index) {
         return list.get(index);
     }
 

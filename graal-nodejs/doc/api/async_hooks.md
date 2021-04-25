@@ -182,7 +182,7 @@ of asynchronous operations.
 * Returns: {AsyncHook} A reference to `asyncHook`.
 
 Enable the callbacks for a given `AsyncHook` instance. If no callbacks are
-provided enabling is a noop.
+provided, enabling is a no-op.
 
 The `AsyncHook` instance is disabled by default. If the `AsyncHook` instance
 should be enabled immediately after creation, the following pattern can be used.
@@ -308,11 +308,6 @@ host in `net.Server.listen()`. The API for accessing this information is
 not supported, but using the Embedder API, users can provide
 and document their own resource objects. For example, such a resource object
 could contain the SQL query being executed.
-
-In the case of Promises, the `resource` object will have an
-`isChainedPromise` property, set to `true` if the promise has a parent promise,
-and `false` otherwise. For example, in the case of `b = a.then(handler)`, `a` is
-considered a parent `Promise` of `b`. Here, `b` is considered a chained promise.
 
 In some cases the resource object is reused for performance reasons, it is
 thus not safe to use it as a key in a `WeakMap` or add properties to it.
@@ -489,7 +484,7 @@ init for PROMISE with id 6, trigger id: 5  # the Promise returned by then()
 #### `async_hooks.executionAsyncResource()`
 
 <!-- YAML
-added: v12.17.0
+added: v13.9.0
 -->
 
 * Returns: {Object} The resource representing the current execution.
@@ -549,7 +544,7 @@ added: v8.1.0
 changes:
   - version: v8.2.0
     pr-url: https://github.com/nodejs/node/pull/13490
-    description: Renamed from `currentId`
+    description: Renamed from `currentId`.
 -->
 
 * Returns: {number} The `asyncId` of the current execution context. Useful to
@@ -702,14 +697,14 @@ asyncResource.triggerAsyncId();
 * `type` {string} The type of async event.
 * `options` {Object}
   * `triggerAsyncId` {number} The ID of the execution context that created this
-  async event. **Default:** `executionAsyncId()`.
+    async event. **Default:** `executionAsyncId()`.
   * `requireManualDestroy` {boolean} If set to `true`, disables `emitDestroy`
-  when the object is garbage collected. This usually does not need to be set
-  (even if `emitDestroy` is called manually), unless the resource's `asyncId`
-  is retrieved and the sensitive API's `emitDestroy` is called with it.
-  When set to `false`, the `emitDestroy` call on garbage collection
-  will only take place if there is at least one active `destroy` hook.
-  **Default:** `false`.
+    when the object is garbage collected. This usually does not need to be set
+    (even if `emitDestroy` is called manually), unless the resource's `asyncId`
+    is retrieved and the sensitive API's `emitDestroy` is called with it.
+    When set to `false`, the `emitDestroy` call on garbage collection
+    will only take place if there is at least one active `destroy` hook.
+    **Default:** `false`.
 
 Example usage:
 
@@ -735,7 +730,7 @@ class DBQuery extends AsyncResource {
 
 #### Static method: `AsyncResource.bind(fn[, type])`
 <!-- YAML
-added: v12.19.0
+added: v14.8.0
 -->
 
 * `fn` {Function} The function to bind to the current execution context.
@@ -749,7 +744,7 @@ the `AsyncResource` to which the function is bound.
 
 #### `asyncResource.bind(fn)`
 <!-- YAML
-added: v12.19.0
+added: v14.8.0
 -->
 
 * `fn` {Function} The function to bind to the current `AsyncResource`.
@@ -790,7 +785,7 @@ never be called.
 #### `asyncResource.triggerAsyncId()`
 
 * Returns: {number} The same `triggerAsyncId` that is passed to the
-`AsyncResource` constructor.
+  `AsyncResource` constructor.
 
 <a id="async-resource-worker-pool"></a>
 ### Using `AsyncResource` for a `Worker` thread pool
@@ -942,7 +937,7 @@ const server = createServer((req, res) => {
 
 ## Class: `AsyncLocalStorage`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 This class is used to create asynchronous state within callbacks and promise
@@ -991,7 +986,7 @@ from each other. It is safe to instantiate this class multiple times.
 
 ### `new AsyncLocalStorage()`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 Creates a new instance of `AsyncLocalStorage`. Store is only provided within a
@@ -999,7 +994,7 @@ Creates a new instance of `AsyncLocalStorage`. Store is only provided within a
 
 ### `asyncLocalStorage.disable()`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 This method disables the instance of `AsyncLocalStorage`. All subsequent calls
@@ -1019,7 +1014,7 @@ in the current process.
 
 ### `asyncLocalStorage.getStore()`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * Returns: {any}
@@ -1030,7 +1025,7 @@ calling `asyncLocalStorage.run`, it will return `undefined`.
 
 ### `asyncLocalStorage.enterWith(store)`
 <!-- YAML
-added: v12.17.0
+added: v13.11.0
 -->
 
 * `store` {any}
@@ -1072,7 +1067,7 @@ asyncLocalStorage.getStore(); // Returns the same object
 
 ### `asyncLocalStorage.run(store, callback[, ...args])`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * `store` {any}
@@ -1107,7 +1102,7 @@ try {
 
 ### `asyncLocalStorage.exit(callback[, ...args])`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * `callback` {Function}
@@ -1172,16 +1167,16 @@ If you need to keep using callback-based API, or your code assumes
 a custom thenable implementation, use the [`AsyncResource`][] class
 to associate the asynchronous operation with the correct execution context.
 
+[Hook Callbacks]: #async_hooks_hook_callbacks
+[PromiseHooks]: https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit
 [`AsyncResource`]: #async_hooks_class_asyncresource
 [`after` callback]: #async_hooks_after_asyncid
 [`before` callback]: #async_hooks_before_asyncid
 [`destroy` callback]: #async_hooks_destroy_asyncid
 [`init` callback]: #async_hooks_init_asyncid_type_triggerasyncid_resource
 [`promiseResolve` callback]: #async_hooks_promiseresolve_asyncid
-[`EventEmitter`]: events.html#events_class_eventemitter
-[Hook Callbacks]: #async_hooks_hook_callbacks
-[PromiseHooks]: https://docs.google.com/document/d/1rda3yKGHimKIhg5YeoAmCOtyURgsbTH_qaYR79FELlk/edit
-[`Stream`]: stream.html#stream_stream
-[`Worker`]: worker_threads.html#worker_threads_class_worker
+[`EventEmitter`]: events.md#events_class_eventemitter
+[`Stream`]: stream.md#stream_stream
+[`Worker`]: worker_threads.md#worker_threads_class_worker
+[`util.promisify()`]: util.md#util_util_promisify_original
 [promise execution tracking]: #async_hooks_promise_execution_tracking
-[`util.promisify()`]: util.html#util_util_promisify_original

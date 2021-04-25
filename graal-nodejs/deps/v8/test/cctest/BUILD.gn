@@ -14,17 +14,11 @@ config("cctest_config") {
 v8_executable("cctest") {
   testonly = true
 
-  sources = [
-    "cctest.cc",
-  ]
+  sources = [ "cctest.cc" ]
 
-  deps = [
-    ":cctest_sources",
-  ]
+  deps = [ ":cctest_sources" ]
 
-  data_deps = [
-    "../../tools:v8_testrunner",
-  ]
+  data_deps = [ "../../tools:v8_testrunner" ]
 
   data = [
     "testcfg.py",
@@ -35,13 +29,18 @@ v8_executable("cctest") {
   configs = [
     "../..:external_config",
     "../..:internal_config_base",
+    "../..:v8_tracing_config",
     ":cctest_config",
   ]
 
   ldflags = []
 
   if (v8_use_perfetto) {
-    deps += [ "//third_party/perfetto/include/perfetto/tracing" ]
+    deps += [
+      # TODO(skyostil): Switch the test to use protozero.
+      "//third_party/perfetto/protos/perfetto/trace/interned_data:lite",
+      "//third_party/perfetto/protos/perfetto/trace/track_event:lite",
+    ]
   }
 
   # TODO(machenbach): Translate from gyp.
@@ -58,9 +57,7 @@ v8_header_set("cctest_headers") {
     "../..:internal_config_base",
   ]
 
-  sources = [
-    "cctest.h",
-  ]
+  sources = [ "cctest.h" ]
 }
 
 v8_source_set("cctest_sources") {
@@ -136,6 +133,7 @@ v8_source_set("cctest_sources") {
     "heap/test-alloc.cc",
     "heap/test-array-buffer-tracker.cc",
     "heap/test-compaction.cc",
+    "heap/test-concurrent-allocation.cc",
     "heap/test-concurrent-marking.cc",
     "heap/test-embedder-tracing.cc",
     "heap/test-external-string-tracker.cc",
@@ -145,6 +143,7 @@ v8_source_set("cctest_sources") {
     "heap/test-iterators.cc",
     "heap/test-lab.cc",
     "heap/test-mark-compact.cc",
+    "heap/test-memory-measurement.cc",
     "heap/test-page-promotion.cc",
     "heap/test-spaces.cc",
     "heap/test-unmapper.cc",
@@ -161,6 +160,7 @@ v8_source_set("cctest_sources") {
     "interpreter/test-source-positions.cc",
     "libplatform/test-tracing.cc",
     "libsampler/test-sampler.cc",
+    "manually-externalized-buffer.h",
     "parsing/test-parse-decision.cc",
     "parsing/test-preparser.cc",
     "parsing/test-scanner-streams.cc",
@@ -178,18 +178,22 @@ v8_source_set("cctest_sources") {
     "test-allocation.cc",
     "test-api-accessors.cc",
     "test-api-array-buffer.cc",
+    "test-api-icu.cc",
     "test-api-interceptors.cc",
     "test-api-stack-traces.cc",
     "test-api-typed-array.cc",
+    "test-api-wasm.cc",
     "test-api.cc",
     "test-api.h",
     "test-array-list.cc",
     "test-atomicops.cc",
+    "test-backing-store.cc",
     "test-bignum-dtoa.cc",
     "test-bignum.cc",
     "test-bit-vector.cc",
     "test-circular-queue.cc",
     "test-code-layout.cc",
+    "test-code-pages.cc",
     "test-code-stub-assembler.cc",
     "test-compiler.cc",
     "test-constantpool.cc",
@@ -225,6 +229,7 @@ v8_source_set("cctest_sources") {
     "test-intl.cc",
     "test-js-weak-refs.cc",
     "test-liveedit.cc",
+    "test-local-handles.cc",
     "test-lockers.cc",
     "test-log.cc",
     "test-managed.cc",
@@ -233,6 +238,7 @@ v8_source_set("cctest_sources") {
     "test-object.cc",
     "test-orderedhashtable.cc",
     "test-parsing.cc",
+    "test-persistent-handles.cc",
     "test-platform.cc",
     "test-profile-generator.cc",
     "test-random-number-generator.cc",
@@ -255,6 +261,7 @@ v8_source_set("cctest_sources") {
     "test-types.cc",
     "test-unboxed-doubles.cc",
     "test-unscopables-hidden-prototype.cc",
+    "test-unwinder-code-pages.cc",
     "test-unwinder.cc",
     "test-usecounters.cc",
     "test-utils.cc",
@@ -267,7 +274,11 @@ v8_source_set("cctest_sources") {
     "unicode-helpers.cc",
     "unicode-helpers.h",
     "wasm/test-c-wasm-entry.cc",
+    "wasm/test-compilation-cache.cc",
+    "wasm/test-gc.cc",
+    "wasm/test-grow-memory.cc",
     "wasm/test-jump-table-assembler.cc",
+    "wasm/test-liftoff-inspection.cc",
     "wasm/test-run-wasm-64.cc",
     "wasm/test-run-wasm-asmjs.cc",
     "wasm/test-run-wasm-atomics.cc",
@@ -278,13 +289,16 @@ v8_source_set("cctest_sources") {
     "wasm/test-run-wasm-js.cc",
     "wasm/test-run-wasm-module.cc",
     "wasm/test-run-wasm-sign-extension.cc",
+    "wasm/test-run-wasm-simd-liftoff.cc",
+    "wasm/test-run-wasm-simd-scalar-lowering.cc",
     "wasm/test-run-wasm-simd.cc",
     "wasm/test-run-wasm.cc",
     "wasm/test-streaming-compilation.cc",
     "wasm/test-wasm-breakpoints.cc",
     "wasm/test-wasm-codegen.cc",
+    "wasm/test-wasm-debug-evaluate.cc",
+    "wasm/test-wasm-debug-evaluate.h",
     "wasm/test-wasm-import-wrapper-cache.cc",
-    "wasm/test-wasm-interpreter-entry.cc",
     "wasm/test-wasm-serialization.cc",
     "wasm/test-wasm-shared-engine.cc",
     "wasm/test-wasm-stack.cc",
@@ -293,16 +307,6 @@ v8_source_set("cctest_sources") {
     "wasm/wasm-run-utils.cc",
     "wasm/wasm-run-utils.h",
   ]
-
-  if (use_jumbo_build) {
-    jumbo_excluded_sources = [
-      # TODO(mostynb@opera.com): figure out the jumbo issues with these source
-      # files, and include them in jumbo compilation units.
-      "interpreter/bytecode-expectations-printer.cc",
-      "interpreter/test-bytecode-generator.cc",
-      "test-api.cc",
-    ]
-  }
 
   if (v8_current_cpu == "arm") {
     sources += [  ### gcmole(arch:arm) ###
@@ -383,9 +387,15 @@ v8_source_set("cctest_sources") {
     ]
   }
 
+  if (v8_use_perfetto) {
+    # Perfetto doesn't use TraceObject.
+    sources -= [ "test-trace-event.cc" ]
+  }
+
   configs = [
     "../..:external_config",
     "../..:internal_config_base",
+    "../..:v8_tracing_config",
   ]
 
   public_deps = [
@@ -400,9 +410,7 @@ v8_source_set("cctest_sources") {
   ]
 
   defines = []
-  deps = [
-    "../..:run_torque",
-  ]
+  deps = [ "../..:run_torque" ]
 
   if (v8_enable_i18n_support) {
     defines += [ "V8_INTL_SUPPORT" ]
@@ -432,13 +440,17 @@ v8_source_set("cctest_sources") {
 
     # MSVS wants this for gay-{precision,shortest}.cc.
     cflags += [ "/bigobj" ]
+
+    if (symbol_level == 2) {
+      sources += [ "test-v8windbg.cc" ]
+      deps += [ "../../tools/v8windbg:v8windbg_test" ]
+    }
   }
 
   if (v8_use_perfetto) {
     deps += [
-      "//third_party/perfetto/include/perfetto/tracing",
-      "//third_party/perfetto/protos/perfetto/trace/chrome:lite",
-      "//third_party/perfetto/protos/perfetto/trace/chrome:zero",
+      # TODO(skyostil): Migrate to protozero.
+      "//third_party/perfetto/protos/perfetto/trace:lite",
     ]
   }
 }
@@ -465,7 +477,5 @@ v8_executable("generate-bytecode-expectations") {
     "//build/win:default_exe_manifest",
   ]
 
-  data = [
-    "interpreter/bytecode_expectations/",
-  ]
+  data = [ "interpreter/bytecode_expectations/" ]
 }

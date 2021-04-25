@@ -20,6 +20,7 @@
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 #include "tls_wrap.h"
+#include "allocated_buffer-inl.h"
 #include "async_wrap-inl.h"
 #include "debug_utils-inl.h"
 #include "memory_tracker-inl.h"
@@ -43,11 +44,13 @@ using v8::Exception;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
+using v8::HandleScope;
 using v8::Integer;
 using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Object;
+using v8::PropertyAttribute;
 using v8::ReadOnly;
 using v8::Signature;
 using v8::String;
@@ -92,9 +95,10 @@ bool TLSWrap::InvokeQueued(int status, const char* error_str) {
   if (!write_callback_scheduled_)
     return false;
 
-  if (current_write_ != nullptr) {
-    WriteWrap* w = current_write_;
-    current_write_ = nullptr;
+  if (current_write_) {
+    BaseObjectPtr<AsyncWrap> current_write = std::move(current_write_);
+    current_write_.reset();
+    WriteWrap* w = WriteWrap::FromObject(current_write);
     w->Done(status, error_str);
   }
 
@@ -298,7 +302,7 @@ void TLSWrap::EncOut() {
   }
 
   // Split-off queue
-  if (established_ && current_write_ != nullptr) {
+  if (established_ && current_write_) {
     Debug(this, "EncOut() setting write_callback_scheduled_");
     write_callback_scheduled_ = true;
   }
@@ -369,10 +373,12 @@ void TLSWrap::EncOut() {
 
 void TLSWrap::OnStreamAfterWrite(WriteWrap* req_wrap, int status) {
   Debug(this, "OnStreamAfterWrite(status = %d)", status);
-  if (current_empty_write_ != nullptr) {
+  if (current_empty_write_) {
     Debug(this, "Had empty write");
-    WriteWrap* finishing = current_empty_write_;
-    current_empty_write_ = nullptr;
+    BaseObjectPtr<AsyncWrap> current_empty_write =
+        std::move(current_empty_write_);
+    current_empty_write_.reset();
+    WriteWrap* finishing = WriteWrap::FromObject(current_empty_write);
     finishing->Done(status);
     return;
   }
@@ -732,14 +738,14 @@ int TLSWrap::DoWrite(WriteWrap* w,
     ClearOut();
     if (BIO_pending(enc_out_) == 0) {
       Debug(this, "No pending encrypted output, writing to underlying stream");
-      CHECK_NULL(current_empty_write_);
-      current_empty_write_ = w;
+      CHECK(!current_empty_write_);
+      current_empty_write_.reset(w->GetAsyncWrap());
       StreamWriteResult res =
           underlying_stream()->Write(bufs, count, send_handle);
       if (!res.async) {
         BaseObjectPtr<TLSWrap> strong_ref{this};
         env()->SetImmediate([this, strong_ref](Environment* env) {
-          OnStreamAfterWrite(current_empty_write_, 0);
+          OnStreamAfterWrite(WriteWrap::FromObject(current_empty_write_), 0);
         });
       }
       return 0;
@@ -747,8 +753,8 @@ int TLSWrap::DoWrite(WriteWrap* w,
   }
 
   // Store the current write wrap
-  CHECK_NULL(current_write_);
-  current_write_ = w;
+  CHECK(!current_write_);
+  current_write_.reset(w->GetAsyncWrap());
 
   // Write encrypted data to underlying stream and call Done().
   if (length == 0) {
@@ -770,7 +776,7 @@ int TLSWrap::DoWrite(WriteWrap* w,
   // and copying it when it could just be used.
 
   if (nonempty_count != 1) {
-    data = env()->AllocateManaged(length);
+    data = AllocatedBuffer::AllocateManaged(env(), length);
     size_t offset = 0;
     for (i = 0; i < count; i++) {
       memcpy(data.data() + offset, bufs[i].base, bufs[i].len);
@@ -786,7 +792,7 @@ int TLSWrap::DoWrite(WriteWrap* w,
     written = SSL_write(ssl_.get(), buf->base, buf->len);
 
     if (written == -1) {
-      data = env()->AllocateManaged(length);
+      data = AllocatedBuffer::AllocateManaged(env(), length);
       memcpy(data.data(), buf->base, buf->len);
     }
   }
@@ -801,7 +807,7 @@ int TLSWrap::DoWrite(WriteWrap* w,
     // If we stopped writing because of an error, it's fatal, discard the data.
     if (!arg.IsEmpty()) {
       Debug(this, "Got SSL error (%d), returning UV_EPROTO", err);
-      current_write_ = nullptr;
+      current_write_.reset();
       return UV_EPROTO;
     }
 
@@ -1146,7 +1152,7 @@ unsigned int TLSWrap::PskServerCallback(SSL* s,
   HandleScope scope(isolate);
 
   MaybeLocal<String> maybe_identity_str =
-      v8::String::NewFromUtf8(isolate, identity, v8::NewStringType::kNormal);
+      String::NewFromUtf8(isolate, identity);
 
   v8::Local<v8::String> identity_str;
   if (!maybe_identity_str.ToLocal(&identity_str)) return 0;
@@ -1279,7 +1285,7 @@ void TLSWrap::Initialize(Local<Object> target,
   Local<FunctionTemplate> get_write_queue_size =
       FunctionTemplate::New(env->isolate(),
                             GetWriteQueueSize,
-                            env->as_callback_data(),
+                            Local<Value>(),
                             Signature::New(env->isolate(), t));
   t->PrototypeTemplate()->SetAccessorProperty(
       env->write_queue_size_string(),

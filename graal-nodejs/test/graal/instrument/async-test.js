@@ -54,7 +54,7 @@ const values = [];
   let val = await 'POST';
 
   values.push(val);
-  
+
 })();
 
 values.push('PRE');

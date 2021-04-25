@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -55,6 +56,7 @@ import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.proxy.ProxyExecutable;
 import org.junit.Test;
@@ -63,6 +65,199 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
 public class AsyncInteropTest {
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"none"</code> (or not
+     * provided), no warnings are printed when rejected promises are not handled using `catch()`.
+     */
+    @Test
+    public void testJavaUnhandledRejectionNone() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "none").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})");
+            asyncFn.executeVoid();
+        }
+        assertTrue(out.toString().isEmpty());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, a warning
+     * is printed to the stderr when a promise is rejected in JS land and not handled in Java or JS.
+     */
+    @Test
+    public void testJavaUnhandledRejectionWarn() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})");
+            asyncFn.executeVoid();
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n", out.toString());
+        }
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, a warning
+     * is printed when a promise rejection is not immediately handled. Another warning is printed
+     * when a reaction is registered later on (e.g., in Java).
+     */
+    @Test
+    public void testJavaHandledRejection() {
+        TestOutput out = new TestOutput();
+        TestOutput err = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(err).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value asyncFn = context.eval(ID, "" +
+                            "(async function () {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})");
+            Value asyncPromise = asyncFn.execute();
+            Consumer<Object> javaThen = (v) -> out.write("Got exception: " + v.toString());
+            asyncPromise.invokeMember("catch", javaThen);
+        }
+        assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: failed!!\n" +
+                        "[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: failed!!\n", err.toString());
+        assertEquals("Got exception: failed!!", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, a warning
+     * is printed when a promise rejection is not immediately handled. Another warning is printed
+     * when a reaction is registered later on (e.g., in Java).
+     */
+    @Test
+    public void testJavaHandledRejectionStep() {
+        TestOutput out = new TestOutput();
+        TestOutput err = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(err).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            Value promise = context.eval(ID, "Promise.reject(42);");
+            assertEquals("[GraalVM JavaScript Warning] Unhandled promise rejection: 42\n", err.toString());
+            err.reset();
+            Consumer<Object> javaThen = (v) -> out.write("Promise rejected: " + v.toString());
+            promise.invokeMember("catch", javaThen);
+        }
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
+        assertEquals("Promise rejected: 42", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, no warning
+     * is printed when a promise rejection is immediately handled.
+     */
+    @Test
+    public void testJSHandledRejection() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            context.eval(ID, "" +
+                            "(async function foo() {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})().catch(x => console.log('Got exception: ' + x));");
+        }
+        assertEquals("Got exception: failed!!\n", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"warn"</code>, no warning
+     * is printed when a promise rejection is handled before leaving a Polyglot context.
+     */
+    @Test
+    public void testJSHandledRejectionLater() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "warn").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            context.eval(ID, "" +
+                            "const promise = (async function foo() {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})();" +
+                            "for (var i = 0; i < 42; i++);" +
+                            "promise.catch(x => console.log('Got exception: ' + x + ' --- ' + i));");
+        }
+        assertEquals("Got exception: failed!! --- 42\n", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code> a polyglot
+     * exception is thrown as soon as an unhandled promise rejection is detected.
+     */
+    @Test
+    public void testJavaUnhandledRejectionThrow() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            try {
+                context.eval(ID, "Promise.reject(42);");
+                assert false;
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertEquals("Error: Unhandled promise rejection: 42", e.getMessage());
+            }
+        }
+        assertTrue(out.toString().isEmpty());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code>, no
+     * exception is raised when a promise rejection is immediately handled.
+     */
+    @Test
+    public void testJSHandledRejectionThrow() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).err(out).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            context.eval(ID, "" +
+                            "(async function foo() {" +
+                            "  throw 'failed!!';" +
+                            "  console.log(x);" +
+                            "})().catch(x => console.log('Got exception: ' + x));");
+        }
+        assertEquals("Got exception: failed!!\n", out.toString());
+    }
+
+    /**
+     * When {@link JSContextOptions#UNHANDLED_REJECTIONS} is set to <code>"throw"</code>, an
+     * exception is raised when a promise rejection is not handled. A further warning is printed
+     * when a reaction is registered later on.
+     */
+    @Test
+    public void testJSHandledRejectionThrowAsyncRegisterThen() {
+        TestOutput out = new TestOutput();
+        TestOutput err = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).err(err).option(JSContextOptions.CONSOLE_NAME, "true").option(
+                        JSContextOptions.UNHANDLED_REJECTIONS_NAME,
+                        "throw").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").build()) {
+            try {
+                context.eval(ID, "const rejectedPromise = Promise.reject(42);");
+                assert false;
+            } catch (PolyglotException e) {
+                assertTrue(e.isGuestException());
+                assertEquals("Error: Unhandled promise rejection: 42", e.getMessage());
+            }
+            context.eval("js", "rejectedPromise.catch(x => console.log(`Async handled: ${x}`));");
+        }
+        assertEquals("Async handled: 42\n", out.toString());
+        assertEquals("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: 42\n", err.toString());
+    }
 
     /**
      * A Java object with a method called 'then' can be used as thenable.
@@ -224,6 +419,191 @@ public class AsyncInteropTest {
             Value jsFunction = context.eval("js", "(function jsFunction(v) { return v + 'JS'; })");
             String result = javaFuture.thenCompose(asChainable(jsFunction)).get();
             assertEquals("JavaJS", result);
+        }
+    }
+
+    @Test
+    public void orderedSwitchAsyncJava() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
+            Value func = context.eval("js", "async function doStuff(value, callback) {" //
+                            + "  async function somethingAsync(v) {" //
+                            + "    console.log(`From JS ${value} ${v}`);" //
+                            + "    return v;" //
+                            + "  };" //
+                            + "  var result = 0;" //
+                            + "  switch(value) {" //
+                            + "    case 'foo':" //
+                            + "      result += callback(1);" //
+                            + "      result += await somethingAsync(1);" //
+                            + "      result += callback(2);" //
+                            + "      result += await somethingAsync(2);" //
+                            + "      result += callback(3);" //
+                            + "  };" //
+                            + "  return result;" //
+                            + "};" //
+                            + "doStuff;");
+
+            func.execute("foo", (ProxyExecutable) arguments -> {
+                int arg = arguments[0].asInt();
+                out.write("From Java " + arg + "\n");
+                return arg;
+            }).invokeMember("then", (Consumer<Object>) result -> {
+                out.write("result: " + result.toString() + "\n");
+            });
+
+            assertEquals("From Java 1\n" //
+                            + "From JS foo 1\n" //
+                            + "From Java 2\n" //
+                            + "From JS foo 2\n" //
+                            + "From Java 3\n" //
+                            + "result: 9\n", out.toString());
+        }
+    }
+
+    @Test
+    public void orderedSwitchAsyncJS() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
+            context.eval("js", "async function doStuff(value, callback) {" //
+                            + "  async function somethingAsync(x) {" //
+                            + "    console.log(`From JS ${value} ${x}`);" //
+                            + "    return x;" //
+                            + "  };" //
+                            + "  async function caseExp(x) {" //
+                            + "    return 'oo';" //
+                            + "  };" //
+                            + "  var result = 0;" //
+                            + "  switch(value) {" //
+                            + "    case 'f' + await caseExp():" //
+                            + "      result += callback(1);" //
+                            + "      result += await somethingAsync(1);" //
+                            + "      result += callback(2);" //
+                            + "      result += await somethingAsync(2);" //
+                            + "      result += callback(3);" //
+                            + "  };" //
+                            + "  return result;" //
+                            + "};" //
+                            + "function cb(x) {" //
+                            + "  console.log(`From Callback ${x}`);" //
+                            + "  return x;" //
+                            + "};" //
+                            + "doStuff('foo', cb).then(x => console.log(`result: ${x}`));");
+
+            assertEquals("From Callback 1\n" //
+                            + "From JS foo 1\n" //
+                            + "From Callback 2\n" //
+                            + "From JS foo 2\n" //
+                            + "From Callback 3\n" //
+                            + "result: 9\n", out.toString());
+        }
+    }
+
+    @Test
+    public void unOrderedSwitchAsyncJS() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
+            context.eval("js", "async function doStuff(value, callback) {" //
+                            + "  async function somethingAsync(x) {" //
+                            + "    console.log(`From JS ${value} ${x}`);" //
+                            + "    return x;" //
+                            + "  };" //
+                            + "  var res = 0;" //
+                            + "  switch(value) {" //
+                            + "    case 'nope':" //
+                            + "      res += callback(42);" //
+                            + "      return res;" //
+                            + "    case 42:" //
+                            + "    case 33:" //
+                            + "      res += callback(1);" //
+                            + "      res += await somethingAsync(1);" //
+                            + "      res += callback(2);" //
+                            + "      res += await somethingAsync(2);" //
+                            + "      res += callback(3);" //
+                            + "    default:" //
+                            + "      return 3;" //
+                            + "    case 3:" //
+                            + "  };" //
+                            + "  return res;" //
+                            + "};" //
+                            + "function cb(x) {" //
+                            + "  console.log(`From Callback ${x}`);" //
+                            + "  return x;" //
+                            + "};" //
+                            + "doStuff(42, cb).then(x => console.log(`result: ${x}`));");
+
+            assertEquals("From Callback 1\n" //
+                            + "From JS 42 1\n" //
+                            + "From Callback 2\n" //
+                            + "From JS 42 2\n" //
+                            + "From Callback 3\n" //
+                            + "result: 3\n", out.toString());
+        }
+    }
+
+    @Test
+    public void unOrderedSwitchAsyncJSDefault() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
+            context.eval("js", "async function doStuff(value, callback) {" //
+                            + "  async function somethingAsync(x) {" //
+                            + "    console.log(`From JS ${value} ${x}`);" //
+                            + "    return x;" //
+                            + "  };" //
+                            + "  var res = 0;" //
+                            + "  switch(value) {" //
+                            + "    case 'nope':" //
+                            + "      res += callback(32);" //
+                            + "      return res + 10;" //
+                            + "    case 42:" //
+                            + "    case 33:" //
+                            + "      res += callback(1);" //
+                            + "    default:" //
+                            + "      return 42;" //
+                            + "    case 3:" //
+                            + "  };" //
+                            + "  return res;" //
+                            + "};" //
+                            + "function cb(x) {" //
+                            + "  console.log(`From Callback ${x}`);" //
+                            + "  return x;" //
+                            + "};" //
+                            + "doStuff('nope', cb).then(x => console.log(`result: ${x}`));" //
+                            + "doStuff('nein', cb).then(x => console.log(`result: ${x}`));");
+
+            assertEquals("From Callback 32\n" //
+                            + "result: 42\n" //
+                            + "result: 42\n", out.toString());
+        }
+    }
+
+    @Test
+    public void asyncCaseSwitch() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME,
+                        "false").build()) {
+            context.eval("js", "async function f(x) {" //
+                            + "  switch (x) {" //
+                            + "    case 0:" //
+                            + "      console.log('not 0');" //
+                            + "      break;" //
+                            + "    case await 42:" //
+                            + "      console.log('was 42');" //
+                            + "      break;" //
+                            + "    case await 84:" //
+                            + "      var x = 41 + await 43;" //
+                            + "      console.log('was ' + x);" //
+                            + "      break;" //
+                            + "  }" //
+                            + "};" //
+                            + "f(42);" //
+                            + "f(84);");
+
+            assertEquals("was 42\nwas 84\n", out.toString());
         }
     }
 

@@ -163,14 +163,14 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         if _is_windows:
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
-            extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw', '--without-snapshot']
+            extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw']
         else:
             extra_flags = []
 
         _mxrun(python_cmd() + [join(_suite.dir, 'configure'),
                 '--partly-static',
                 '--without-dtrace',
-                '--without-snapshot',
+                '--without-inspector',
                 '--without-node-snapshot',
                 '--without-node-code-cache',
                 '--java-home', _java_home(forBuild=True)
@@ -308,6 +308,8 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
             join('internal', 'readline', 'utils.js'),            # yield
             join('internal', 'streams', 'buffer_list.js'),       # yield
             join('internal', 'streams', 'from.js'),              # await
+            join('internal', 'streams', 'pipeline.js'),          # await
+            join('internal', 'streams', 'readable.js'),          # await
             join('internal', 'vm', 'module.js'),                 # await
         ]
 
@@ -425,6 +427,9 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
         mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
+
+    if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk().java_args):
+        vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
     _setEnvVar('JAVA_HOME', _java_home())
     # if mx.suite('compiler', fatalIfMissing=False) is None:
@@ -586,7 +591,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
     short_name='njs',
-    dir_name='js',
+    dir_name='nodejs',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal.js'],
@@ -597,17 +602,23 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'bin/<cmd:npm>',
         'bin/<cmd:npx>',
     ],
-    polyglot_lib_build_args=[
-        "-H:+ReportExceptionStackTraces",
-        "-H:JNIConfigurationResources=svmnodejs.jniconfig,svmnodejs_jdkspecific.jniconfig",
-        "-H:ReflectionConfigurationResources=svmnodejs.reflectconfig",
-    ],
-    polyglot_lib_jar_dependencies=[
-        "graal-nodejs:TRUFFLENODE"
+    polyglot_lib_build_args=['--language:nodejs'],
+    polyglot_lib_jar_dependencies=['graal-nodejs:TRUFFLENODE'],
+    library_configs=[
+        mx_sdk_vm.LibraryConfig(
+            destination='lib/<lib:graal-nodejs>',
+            jar_distributions=['graal-nodejs:TRUFFLENODE'],
+            build_args=[
+                '--tool:all',
+                '--language:nodejs',
+                '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+            ],
+            home_finder=True,
+        ),
     ],
     has_polyglot_lib_entrypoints=True,
-    installable=False,
-    supported=True,
+    installable=True,
+    stability="supported",
 ))
 
 # pylint: disable=line-too-long
@@ -626,6 +637,9 @@ mx_sdk_vm.register_vm_config('n1-ce', ['cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi
 # GraalVM configs to build with Native Image Enterprise
 mx_sdk_vm.register_vm_config('n-ee', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cmpee', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'niee', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'svmee', 'tfl', 'tflm'], _suite, env_file=False)
 mx_sdk_vm.register_vm_config('n1-ee', ['cmp', 'cmpee', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'niee', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'stage1', 'svm', 'svmee', 'tfl', 'tflm'], _suite, env_file=False)
+# GraalVM configs to run benchmarks
+mx_sdk_vm.register_vm_config('ce', ['bpolyglot', 'cmp', 'cov', 'dap', 'gu', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llrc', 'llrl', 'llrn', 'lsp', 'nfi', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'spolyglot', 'svm', 'svml', 'svmnfi', 'tfl', 'tflm', 'vvm'], _suite, env_file=False)
+mx_sdk_vm.register_vm_config('ee', ['bpolyglot', 'cmp', 'cmpee', 'cov', 'dap', 'gu', 'guee', 'gvm', 'ins', 'insight', 'insightheap', 'js', 'lg', 'libpoly', 'llrc', 'llre', 'llrl', 'llrm', 'llrn', 'llrnee', 'lsp', 'nfi', 'njs', 'poly', 'polynative', 'pro', 'rgx', 'sdk', 'snd', 'spolyglot', 'svm', 'svmee', 'svmeegc', 'svml', 'svmlee', 'svmnfi', 'tfl', 'tflm', 'vvm'], _suite, env_file=False)
 # pylint: enable=line-too-long
 
 mx.update_commands(_suite, {

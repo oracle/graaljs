@@ -100,6 +100,7 @@ if /i "%1"=="build-addons"   set build_addons=1&goto arg-ok
 if /i "%1"=="build-js-native-api-tests"   set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="build-node-api-tests"   set build_node_api_tests=1&goto arg-ok
 if /i "%1"=="test-addons"   set test_args=%test_args% addons&set build_addons=1&goto arg-ok
+if /i "%1"=="test-doc"      set test_args=%test_args% %CI_DOC%&set doc=1&&set lint_js=1&set lint_md=1&goto arg-ok
 if /i "%1"=="test-js-native-api"   set test_args=%test_args% js-native-api&set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="test-node-api"   set test_args=%test_args% node-api&set build_node_api_tests=1&goto arg-ok
 if /i "%1"=="test-benchmark" set test_args=%test_args% benchmark&goto arg-ok
@@ -126,7 +127,7 @@ if /i "%1"=="lint-md-build" set lint_md_build=1&goto arg-ok
 if /i "%1"=="lint"          set lint_cpp=1&set lint_js=1&set lint_md=1&goto arg-ok
 if /i "%1"=="lint-ci"       set lint_cpp=1&set lint_js_ci=1&goto arg-ok
 if /i "%1"=="package"       set package=1&goto arg-ok
-if /i "%1"=="msi"           set msi=1&set licensertf=1&set download_arg="--download=all"&set i18n_arg=small-icu&goto arg-ok
+if /i "%1"=="msi"           set msi=1&set licensertf=1&set download_arg="--download=all"&set i18n_arg=full-icu&goto arg-ok
 if /i "%1"=="build-release" set build_release=1&set sign=1&goto arg-ok
 if /i "%1"=="upload"        set upload=1&goto arg-ok
 if /i "%1"=="small-icu"     set i18n_arg=%1&goto arg-ok
@@ -172,7 +173,7 @@ if defined build_release (
   set msi=1
   set licensertf=1
   set download_arg="--download=all"
-  set i18n_arg=small-icu
+  set i18n_arg=full-icu
   set projgen=1
   set cctest=1
   set ltcg=1
@@ -208,6 +209,7 @@ if defined openssl_no_asm   set configure_flags=%configure_flags% --openssl-no-a
 if defined _java_home       set configure_flags=%configure_flags% --java-home=%_java_home% --without-dtrace
 if defined DEBUG_HELPER     set configure_flags=%configure_flags% --verbose
 if "%target_arch%"=="x86" if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set configure_flags=%configure_flags% --no-cross-compiling
+if "%target_arch%"=="arm64" set configure_flags=%configure_flags% --cross-compiling
 
 if not exist "%~dp0deps\icu" goto no-depsicu
 if "%target%"=="Clean" echo deleting %~dp0deps\icu
@@ -250,15 +252,56 @@ if %target_arch%==x64 if %msvs_host_arch%==amd64 set vcvarsall_arg=amd64
 @rem also if both are x86
 if %target_arch%==x86 if %msvs_host_arch%==x86 set vcvarsall_arg=x86
 
+@rem Look for Visual Studio 2019
+:vs-set-2019
+if defined target_env if "%target_env%" NEQ "vs2019" goto vs-set-2017
+echo Looking for Visual Studio 2019
+@rem VCINSTALLDIR may be set if run from a VS Command Prompt and needs to be
+@rem cleared first as vswhere_usability_wrapper.cmd doesn't when it fails to
+@rem detect the version searched for
+if not defined target_env set "VCINSTALLDIR="
+call tools\msvs\vswhere_usability_wrapper.cmd "[16.0,17.0)" "prerelease"
+if "_%VCINSTALLDIR%_" == "__" goto vs-set-2017
+set "WIXSDKDIR=%WIX%\SDK\VS2017"
+if defined msi (
+  echo Looking for WiX installation for Visual Studio 2019...
+  if not exist "%WIXSDKDIR%" (
+    echo Failed to find WiX install for Visual Studio 2019
+    echo VS2019 support for WiX is only present starting at version 3.11
+    goto vs-set-2017
+  )
+  if not exist "%VCINSTALLDIR%\..\MSBuild\Microsoft\WiX" (
+    echo Failed to find the WiX Toolset Visual Studio 2019 Extension
+    goto vs-set-2017
+  )
+)
+@rem check if VS2019 is already setup, and for the requested arch
+if "_%VisualStudioVersion%_" == "_16.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2019
+@rem need to clear VSINSTALLDIR for vcvarsall to work as expected
+set "VSINSTALLDIR="
+@rem prevent VsDevCmd.bat from changing the current working directory
+set "VSCMD_START_DIR=%CD%"
+set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vcvarsall_arg%
+echo calling: %vcvars_call%
+call %vcvars_call%
+if errorlevel 1 goto vs-set-2017
+if defined DEBUG_HELPER @ECHO ON
+:found_vs2019
+echo Found MSVS version %VisualStudioVersion%
+set GYP_MSVS_VERSION=2019
+set PLATFORM_TOOLSET=v142
+goto msbuild-found
+
 @rem Look for Visual Studio 2017
 :vs-set-2017
-if defined target_env if "%target_env%" NEQ "vs2017" goto vs-set-2019
+if defined target_env if "%target_env%" NEQ "vs2017" goto msbuild-not-found
 echo Looking for Visual Studio 2017
 call tools\msvs\vswhere_usability_wrapper.cmd "[15.0,16.0)"
 if "_%VCINSTALLDIR%_" == "__" goto msbuild-not-found
+set "WIXSDKDIR=%WIX%\SDK\VS2017"
 if defined msi (
   echo Looking for WiX installation for Visual Studio 2017...
-  if not exist "%WIX%\SDK\VS2017" (
+  if not exist "%WIXSDKDIR%" (
     echo Failed to find WiX install for Visual Studio 2017
     echo VS2017 support for WiX is only present starting at version 3.11
     goto msbuild-not-found
@@ -283,41 +326,6 @@ if defined DEBUG_HELPER @ECHO ON
 echo Found MSVS version %VisualStudioVersion%
 set GYP_MSVS_VERSION=2017
 set PLATFORM_TOOLSET=v141
-goto msbuild-found
-
-@rem Look for Visual Studio 2019
-:vs-set-2019
-if defined target_env if "%target_env%" NEQ "vs2019" goto msbuild-not-found
-echo Looking for Visual Studio 2019
-call tools\msvs\vswhere_usability_wrapper.cmd "[16.0,17.0)"
-if "_%VCINSTALLDIR%_" == "__" goto msbuild-not-found
-if defined msi (
-  echo Looking for WiX installation for Visual Studio 2019...
-  if not exist "%WIX%\SDK\VS2017" (
-    echo Failed to find WiX install for Visual Studio 2019
-    echo VS2019 support for WiX is only present starting at version 3.11
-    goto msbuild-not-found
-  )
-  if not exist "%VCINSTALLDIR%\..\MSBuild\Microsoft\WiX" (
-    echo Failed to find the WiX Toolset Visual Studio 2019 Extension
-    goto msbuild-not-found
-  )
-)
-@rem check if VS2019 is already setup, and for the requested arch
-if "_%VisualStudioVersion%_" == "_16.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2019
-@rem need to clear VSINSTALLDIR for vcvarsall to work as expected
-set "VSINSTALLDIR="
-@rem prevent VsDevCmd.bat from changing the current working directory
-set "VSCMD_START_DIR=%CD%"
-set vcvars_call="%VCINSTALLDIR%\Auxiliary\Build\vcvarsall.bat" %vcvarsall_arg%
-echo calling: %vcvars_call%
-call %vcvars_call%
-if errorlevel 1 goto msbuild-not-found
-if defined DEBUG_HELPER @ECHO ON
-:found_vs2019
-echo Found MSVS version %VisualStudioVersion%
-set GYP_MSVS_VERSION=2019
-set PLATFORM_TOOLSET=v142
 goto msbuild-found
 
 :msbuild-not-found
@@ -376,6 +384,10 @@ if "%target%"=="Build" (
 )
 if "%target%"=="node" if exist "%config%\cctest.exe" del "%config%\cctest.exe"
 if defined msbuild_args set "extra_msbuild_args=%extra_msbuild_args% %msbuild_args%"
+@rem Setup env variables to use multiprocessor build
+set UseMultiToolTask=True
+set EnforceProcessCountAcrossBuilds=True
+set MultiProcMaxCount=%NUMBER_OF_PROCESSORS%
 msbuild node.sln %msbcpu% /t:%target% /p:Configuration=%config% /p:Platform=%msbplatform% /clp:NoItemAndPropertyList;Verbosity=minimal /nologo %extra_msbuild_args%
 if errorlevel 1 (
   if not defined project_generated echo Building Node with reused solution failed. To regenerate project files use "vcbuild projgen"
@@ -401,7 +413,26 @@ if errorlevel 1 echo Failed to sign exe&goto exit
 @rem Skip license.rtf generation if not requested.
 if not defined licensertf goto stage_package
 
-%node_exe% tools\license2rtf.js < LICENSE > %config%\license.rtf
+set "use_x64_node_exe=false"
+if "%target_arch%"=="arm64" if "%PROCESSOR_ARCHITECTURE%"=="AMD64" set "use_x64_node_exe=true"
+if "%use_x64_node_exe%"=="true" (
+  echo Cross-compilation to ARM64 detected. We'll use the x64 Node executable for license2rtf.
+  if not defined "%x64_node_exe%" set "x64_node_exe=temp-vcbuild\node-x64-cross-compiling.exe"
+  if not exist "%x64_node_exe%" (
+    echo Downloading x64 node.exe...
+    if not exist "temp-vcbuild" mkdir temp-vcbuild
+    powershell -c "Invoke-WebRequest -Uri 'https://nodejs.org/dist/latest/win-x64/node.exe' -OutFile 'temp-vcbuild\node-x64-cross-compiling.exe'"
+  )
+  if not exist "%x64_node_exe%" (
+    echo Could not find the Node executable at the given x64_node_exe path. Aborting.
+    set exit_code=1
+    goto exit
+  )
+  %x64_node_exe% tools\license2rtf.js < LICENSE > %config%\license.rtf
+) else (
+  %node_exe% tools\license2rtf.js < LICENSE > %config%\license.rtf
+)
+
 if errorlevel 1 echo Failed to generate license.rtf&goto exit
 
 :stage_package
@@ -478,7 +509,7 @@ if not defined msi goto install-doctools
 echo Building node-v%FULLVERSION%-%target_arch%.msi
 set "msbsdk="
 if defined WindowsSDKVersion set "msbsdk=/p:WindowsTargetPlatformVersion=%WindowsSDKVersion:~0,-1%"
-msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:GypMsvsVersion=%GYP_MSVS_VERSION% /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
+msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:WixSdkDir="%WIXSDKDIR%" /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
 if errorlevel 1 goto exit
 
 if not defined sign goto upload
@@ -698,15 +729,12 @@ goto exit
 
 :create-msvs-files-failed
 echo Failed to create vc project files.
-if %VCBUILD_PYTHON_VERSION%==3 (
-  echo Python 3 is not yet fully supported, to avoid issues Python 2 should be installed.
-)
 del .used_configure_flags
 set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017/vs2019] [download-all] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2017/vs2019] [download-all] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build

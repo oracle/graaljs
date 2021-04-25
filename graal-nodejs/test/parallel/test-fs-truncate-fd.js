@@ -16,12 +16,11 @@ const msg = 'Using fs.truncate with a file descriptor is deprecated.' +
 
 
 common.expectWarning('DeprecationWarning', msg, 'DEP0081');
-fs.truncate(fd, 5, common.mustCall((err) => {
-  assert.ok(!err);
+fs.truncate(fd, 5, common.mustSucceed(() => {
   assert.strictEqual(fs.readFileSync(filename, 'utf8'), 'hello');
 }));
 
-process.on('exit', () => {
+process.once('beforeExit', () => {
   fs.closeSync(fd);
   fs.unlinkSync(filename);
   console.log('ok');

@@ -8,6 +8,7 @@
 #include "src/codegen/compiler.h"
 #include "src/codegen/optimized-compilation-info.h"
 #include "src/codegen/tick-counter.h"
+#include "src/compiler/access-builder.h"
 #include "src/compiler/all-nodes.h"
 #include "src/compiler/bytecode-graph-builder.h"
 #include "src/compiler/common-operator.h"
@@ -268,7 +269,6 @@ Node* JSInliner::CreateArtificialFrameState(Node* node, Node* outer_frame_state,
 
 namespace {
 
-// TODO(mstarzinger,verwaest): Move this predicate onto SharedFunctionInfo?
 bool NeedsImplicitReceiver(SharedFunctionInfoRef shared_info) {
   DisallowHeapAllocation no_gc;
   return !shared_info.construct_as_builtin() &&
@@ -318,13 +318,11 @@ base::Optional<SharedFunctionInfoRef> JSInliner::DetermineCallTarget(
   //  - JSConstruct(JSCreateClosure[shared](context), args..., new.target)
   if (match.IsJSCreateClosure()) {
     CreateClosureParameters const& p = CreateClosureParametersOf(match.op());
-
-    // TODO(turbofan): We might consider to eagerly create the feedback vector
-    // in such a case (in {DetermineCallContext} below) eventually.
-    FeedbackCellRef cell(FeedbackCellRef(broker(), p.feedback_cell()));
-    if (!cell.value().IsFeedbackVector()) return base::nullopt;
-
-    return SharedFunctionInfoRef(broker(), p.shared_info());
+    FeedbackCellRef cell(broker(), p.feedback_cell());
+    return cell.shared_function_info();
+  } else if (match.IsCheckClosure()) {
+    FeedbackCellRef cell(broker(), FeedbackCellOf(match.op()));
+    return cell.shared_function_info();
   }
 
   return base::nullopt;
@@ -355,10 +353,21 @@ FeedbackVectorRef JSInliner::DetermineCallContext(Node* node,
 
     // Load the feedback vector of the target by looking up its vector cell at
     // the instantiation site (we only decide to inline if it's populated).
-    FeedbackCellRef cell(FeedbackCellRef(broker(), p.feedback_cell()));
+    FeedbackCellRef cell(broker(), p.feedback_cell());
 
     // The inlinee uses the locally provided context at instantiation.
     *context_out = NodeProperties::GetContextInput(match.node());
+    return cell.value().AsFeedbackVector();
+  } else if (match.IsCheckClosure()) {
+    FeedbackCellRef cell(broker(), FeedbackCellOf(match.op()));
+
+    Node* effect = NodeProperties::GetEffectInput(node);
+    Node* control = NodeProperties::GetControlInput(node);
+    *context_out = effect = graph()->NewNode(
+        simplified()->LoadField(AccessBuilder::ForJSFunctionContext()),
+        match.node(), effect, control);
+    NodeProperties::ReplaceEffectInput(node, effect);
+
     return cell.value().AsFeedbackVector();
   }
 
@@ -413,14 +422,15 @@ Reduction JSInliner::ReduceJSCall(Node* node) {
   Node* exception_target = nullptr;
   NodeProperties::IsExceptionalCall(node, &exception_target);
 
-  // JSInliningHeuristic has already filtered candidates without a
-  // BytecodeArray by calling SharedFunctionInfoRef::IsInlineable. For the ones
-  // passing the IsInlineable check, The broker holds a reference to the
-  // bytecode array, which prevents it from getting flushed.
-  // Therefore, the following check should always hold true.
+  // JSInliningHeuristic has already filtered candidates without a BytecodeArray
+  // based on SharedFunctionInfoRef::GetInlineability. For the inlineable ones
+  // (kIsInlineable), the broker holds a reference to the bytecode array, which
+  // prevents it from getting flushed.  Therefore, the following check should
+  // always hold true.
   CHECK(shared_info->is_compiled());
 
-  if (!FLAG_concurrent_inlining && info_->is_source_positions_enabled()) {
+  if (!broker()->is_concurrent_inlining() &&
+      info_->is_source_positions_enabled()) {
     SharedFunctionInfo::EnsureSourcePositionsAvailable(isolate(),
                                                        shared_info->object());
   }
@@ -428,17 +438,10 @@ Reduction JSInliner::ReduceJSCall(Node* node) {
   TRACE("Inlining " << *shared_info << " into " << outer_shared_info
                     << ((exception_target != nullptr) ? " (inside try-block)"
                                                       : ""));
-  // Determine the targets feedback vector and its context.
+  // Determine the target's feedback vector and its context.
   Node* context;
   FeedbackVectorRef feedback_vector = DetermineCallContext(node, &context);
-
-  if (FLAG_concurrent_inlining &&
-      !shared_info->IsSerializedForCompilation(feedback_vector)) {
-    // TODO(neis): Should this be a broker message?
-    TRACE("Missed opportunity to inline a function ("
-          << *shared_info << " with " << feedback_vector << ")");
-    return NoChange();
-  }
+  CHECK(broker()->IsSerializedForCompilation(*shared_info, feedback_vector));
 
   // ----------------------------------------------------------------
   // After this point, we've made a decision to inline this function.

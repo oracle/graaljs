@@ -22,6 +22,7 @@ class StackFrameInfo : public Struct {
   DECL_INT_ACCESSORS(line_number)
   DECL_INT_ACCESSORS(column_number)
   DECL_INT_ACCESSORS(script_id)
+  DECL_INT_ACCESSORS(wasm_function_index)
   DECL_INT_ACCESSORS(promise_all_index)
   // Wasm frames only: function_offset instead of promise_all_index.
   DECL_INT_ACCESSORS(function_offset)
@@ -75,8 +76,6 @@ class StackTraceFrame
     : public TorqueGeneratedStackTraceFrame<StackTraceFrame, Struct> {
  public:
   NEVER_READ_ONLY_SPACE
-  DECL_INT_ACCESSORS(frame_index)
-  DECL_INT_ACCESSORS(id)
 
   // Dispatched behavior.
   DECL_PRINTER(StackTraceFrame)
@@ -88,6 +87,7 @@ class StackTraceFrame
   static int GetScriptId(Handle<StackTraceFrame> frame);
   static int GetPromiseAllIndex(Handle<StackTraceFrame> frame);
   static int GetFunctionOffset(Handle<StackTraceFrame> frame);
+  static int GetWasmFunctionIndex(Handle<StackTraceFrame> frame);
 
   static Handle<Object> GetFileName(Handle<StackTraceFrame> frame);
   static Handle<Object> GetScriptNameOrSourceUrl(Handle<StackTraceFrame> frame);
@@ -124,10 +124,9 @@ Handle<FrameArray> GetFrameArrayFromStackTrace(Isolate* isolate,
                                                Handle<FixedArray> stack_trace);
 
 class IncrementalStringBuilder;
-void SerializeStackTraceFrame(
-    Isolate* isolate, Handle<StackTraceFrame> frame,
-    IncrementalStringBuilder& builder  // NOLINT(runtime/references)
-);
+void SerializeStackTraceFrame(Isolate* isolate, Handle<StackTraceFrame> frame,
+                              IncrementalStringBuilder* builder);
+V8_EXPORT_PRIVATE
 MaybeHandle<String> SerializeStackTraceFrame(Isolate* isolate,
                                              Handle<StackTraceFrame> frame);
 

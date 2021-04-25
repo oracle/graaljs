@@ -40,18 +40,27 @@
  */
 
 #include "graal_array_buffer.h"
+#include "graal_backing_store.h"
 #include "graal_isolate.h"
 
 #include "graal_array_buffer-inl.h"
 
 GraalHandleContent* GraalArrayBuffer::CopyImpl(jobject java_object_copy) {
-    return new GraalArrayBuffer(Isolate(), java_object_copy);
+    return new GraalArrayBuffer(Isolate(), java_object_copy, IsDirect());
 }
 
 size_t GraalArrayBuffer::ByteLength() const {
-    jobject java_buffer = Isolate()->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
-    jlong capacity = Isolate()->GetJNIEnv()->GetDirectBufferCapacity(java_buffer);
-    Isolate()->GetJNIEnv()->DeleteLocalRef(java_buffer);
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_buffer;
+    if (IsDirect()) {
+        java_buffer = graal_isolate->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+    } else {
+        JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, GetJavaObject());
+        java_buffer = java_not_direct_buffer;
+    }
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    jlong capacity = env->GetDirectBufferCapacity(java_buffer);
+    env->DeleteLocalRef(java_buffer);
     return capacity;
 }
 
@@ -59,7 +68,7 @@ v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, size_t by
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_array_buffer, graal_isolate, GraalAccessMethod::array_buffer_new, Object, java_context, (jint) byte_length);
-    return reinterpret_cast<v8::ArrayBuffer*> (new GraalArrayBuffer(graal_isolate, java_array_buffer));
+    return reinterpret_cast<v8::ArrayBuffer*> (new GraalArrayBuffer(graal_isolate, java_array_buffer, true));
 }
 
 v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, void* data, size_t byte_length, v8::ArrayBufferCreationMode mode) {
@@ -69,11 +78,23 @@ v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, void* dat
     jobject java_context = graal_isolate->CurrentJavaContext();
     JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::array_buffer_new_buffer, Object, java_context, java_byte_buffer, pointer);
     graal_isolate->GetJNIEnv()->DeleteLocalRef(java_byte_buffer);
-    return reinterpret_cast<v8::ArrayBuffer*> (new GraalArrayBuffer(graal_isolate, java_array_buffer));
+    return reinterpret_cast<v8::ArrayBuffer*> (new GraalArrayBuffer(graal_isolate, java_array_buffer, true));
+}
+
+v8::Local<v8::ArrayBuffer> GraalArrayBuffer::New(v8::Isolate* isolate, std::shared_ptr<v8::BackingStore> backing_store) {
+    GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    jobject java_context = graal_isolate->CurrentJavaContext();
+    jobject java_store = reinterpret_cast<GraalBackingStore*> (backing_store.get())->GetJavaStore();
+    JNI_CALL(jobject, java_array_buffer, isolate, GraalAccessMethod::array_buffer_new_buffer, Object, java_context, java_store, 0);
+    return reinterpret_cast<v8::ArrayBuffer*> (new GraalArrayBuffer(graal_isolate, java_array_buffer, true));
 }
 
 bool GraalArrayBuffer::IsArrayBuffer() const {
     return true;
+}
+
+bool GraalArrayBuffer::IsDirect() const {
+    return direct_;
 }
 
 bool GraalArrayBuffer::IsExternal() const {
@@ -83,4 +104,25 @@ bool GraalArrayBuffer::IsExternal() const {
 
 void GraalArrayBuffer::Detach() {
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::array_buffer_detach, GetJavaObject());
+}
+
+std::shared_ptr<v8::BackingStore> GraalArrayBuffer::GetBackingStore() {
+    GraalIsolate* graal_isolate = Isolate();
+    jobject java_array_buffer = GetJavaObject();
+    jobject java_buffer;
+    if (IsDirect()) {
+        java_buffer = graal_isolate->JNIGetObjectFieldOrCall(java_array_buffer, GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+    } else {
+        JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, java_array_buffer);
+        java_buffer = java_not_direct_buffer;
+    }
+    jobject java_store;
+    if (java_buffer == nullptr) {
+        java_store = nullptr; // detached buffer
+    } else {
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        java_store = env->NewGlobalRef(java_buffer);
+        env->DeleteLocalRef(java_buffer);
+    }
+    return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store)));
 }

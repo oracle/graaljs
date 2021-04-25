@@ -52,13 +52,6 @@ class JSTypedLoweringTest : public TypedGraphTest {
     return reducer.Reduce(node);
   }
 
-  Handle<JSArrayBuffer> NewArrayBuffer(void* bytes, size_t byte_length) {
-    Handle<JSArrayBuffer> buffer =
-        factory()->NewJSArrayBuffer(SharedFlag::kNotShared);
-    JSArrayBuffer::Setup(buffer, isolate(), true, bytes, byte_length);
-    return buffer;
-  }
-
   JSOperatorBuilder* javascript() { return &javascript_; }
 
  private:
@@ -181,8 +174,7 @@ TEST_F(JSTypedLoweringTest, JSStrictEqualWithTheHole) {
     Reduction r = Reduce(
         graph()->NewNode(javascript()->StrictEqual(CompareOperationHint::kAny),
                          lhs, the_hole, context, effect, control));
-    ASSERT_TRUE(r.Changed());
-    EXPECT_THAT(r.replacement(), IsFalseConstant());
+    ASSERT_FALSE(r.Changed());
   }
 }
 

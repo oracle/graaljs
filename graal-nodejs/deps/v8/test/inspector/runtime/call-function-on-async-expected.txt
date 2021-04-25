@@ -235,10 +235,10 @@ Running test: testThrowNumber
                 callFrames : [
                     [0] : {
                         columnNumber : 10
-                        functionName :
+                        functionName : 
                         lineNumber : 0
                         scriptId : <scriptId>
-                        url :
+                        url : 
                     }
                 ]
             }
@@ -272,10 +272,10 @@ Running test: testAsyncFunctionWithUnknownReferenceReturnByValue
                 callFrames : [
                     [0] : {
                         columnNumber : 29
-                        functionName :
+                        functionName : 
                         lineNumber : 0
                         scriptId : <scriptId>
-                        url :
+                        url : 
                     }
                 ]
             }

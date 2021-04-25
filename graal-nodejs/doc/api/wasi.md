@@ -75,23 +75,27 @@ CLI arguments are needed for this example to run.
 
 ## Class: `WASI`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 The `WASI` class provides the WASI system call API and additional convenience
 methods for working with WASI-based applications. Each `WASI` instance
 represents a distinct sandbox environment. For security purposes, each `WASI`
-instance must have its command line arguments, environment variables, and
+instance must have its command-line arguments, environment variables, and
 sandbox directory structure configured explicitly.
 
 ### `new WASI([options])`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 * `options` {Object}
   * `args` {Array} An array of strings that the WebAssembly application will
-    see as command line arguments. The first argument is the virtual path to the
+    see as command-line arguments. The first argument is the virtual path to the
     WASI command itself. **Default:** `[]`.
   * `env` {Object} An object similar to `process.env` that the WebAssembly
     application will see as its environment. **Default:** `{}`.
@@ -112,7 +116,9 @@ added: v12.16.0
 
 ### `wasi.start(instance)`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 * `instance` {WebAssembly.Instance}
@@ -129,7 +135,7 @@ If `start()` is called more than once, an exception is thrown.
 ### `wasi.initialize(instance)`
 <!-- YAML
 added:
- - v12.19.0
+ - v14.6.0
 -->
 
 * `instance` {WebAssembly.Instance}
@@ -145,7 +151,9 @@ If `initialize()` is called more than once, an exception is thrown.
 
 ### `wasi.wasiImport`
 <!-- YAML
-added: v12.16.0
+added:
+ - v13.3.0
+ - v12.16.0
 -->
 
 * {Object}

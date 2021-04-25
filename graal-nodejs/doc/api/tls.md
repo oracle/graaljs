@@ -308,10 +308,10 @@ HIGH
 !CAMELLIA
 ```
 
-This default can be replaced entirely using the [`--tls-cipher-list`][] command
-line switch (directly, or via the [`NODE_OPTIONS`][] environment variable). For
-instance, the following makes `ECDHE-RSA-AES128-GCM-SHA256:!RC4` the default TLS
-cipher suite:
+This default can be replaced entirely using the [`--tls-cipher-list`][]
+command-line switch (directly, or via the [`NODE_OPTIONS`][] environment
+variable). For instance, the following makes `ECDHE-RSA-AES128-GCM-SHA256:!RC4`
+the default TLS cipher suite:
 
 ```bash
 node --tls-cipher-list='ECDHE-RSA-AES128-GCM-SHA256:!RC4' server.js
@@ -440,7 +440,9 @@ into the TLS server. In that case, any [`Duplex`][] stream can be passed.
 
 ### Event: `'keylog'`
 <!-- YAML
-added: v12.3.0
+added:
+ - v12.3.0
+ - v10.20.0
 -->
 
 * `line` {Buffer} Line of ASCII text, in NSS `SSLKEYLOGFILE` format.
@@ -642,7 +644,7 @@ added: v0.3.2
 -->
 
 * `callback` {Function} A listener callback that will be registered to listen
-for the server instance's `'close'` event.
+  for the server instance's `'close'` event.
 * Returns: {tls.Server}
 
 The `server.close()` method stops the server from accepting new connections.
@@ -764,7 +766,9 @@ Construct a new `tls.TLSSocket` object from an existing TCP socket.
 
 ### Event: `'keylog'`
 <!-- YAML
-added: v12.3.0
+added:
+ - v12.3.0
+ - v10.20.0
 -->
 
 * `line` {Buffer} Line of ASCII text, in NSS `SSLKEYLOGFILE` format.
@@ -929,13 +933,15 @@ socket has been destroyed, `null` will be returned.
 <!-- YAML
 added: v0.11.4
 changes:
+  - version:
+     - v13.4.0
+     - v12.16.0
+    pr-url: https://github.com/nodejs/node/pull/30637
+    description: Return the IETF cipher name as `standardName`.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/26625
     description: Return the minimum cipher version, instead of a fixed string
       (`'TLSv1/SSLv3'`).
-  - version: v12.16.0
-    pr-url: https://github.com/nodejs/node/pull/30637
-    description: Return the IETF cipher name as `standardName`.
 -->
 
 * Returns: {Object}
@@ -981,8 +987,8 @@ added: v9.9.0
 -->
 
 * Returns: {Buffer|undefined} The latest `Finished` message that has been
-sent to the socket as part of a SSL/TLS handshake, or `undefined` if
-no `Finished` message has been sent yet.
+  sent to the socket as part of a SSL/TLS handshake, or `undefined` if
+  no `Finished` message has been sent yet.
 
 As the `Finished` messages are message digests of the complete handshake
 (with a total of 192 bits for TLS 1.0 and more for SSL 3.0), they can
@@ -1039,7 +1045,7 @@ certificate.
    `'2A:7A:C2:DD:...'`.
 * `ext_key_usage` {Array} (Optional) The extended key usage, a set of OIDs.
 * `subjectaltname` {string} (Optional) A string containing concatenated names
- for the subject, an alternative to the `subject` names.
+   for the subject, an alternative to the `subject` names.
 * `infoAccess` {Array} (Optional) An array describing the AuthorityInfoAccess,
    used with OCSP.
 * `issuerCertificate` {Object} (Optional) The issuer certificate object. For
@@ -1105,8 +1111,8 @@ added: v9.9.0
 -->
 
 * Returns: {Buffer|undefined} The latest `Finished` message that is expected
-or has actually been received from the socket as part of a SSL/TLS handshake,
-or `undefined` if there is no `Finished` message so far.
+  or has actually been received from the socket as part of a SSL/TLS handshake,
+  or `undefined` if there is no `Finished` message so far.
 
 As the `Finished` messages are message digests of the complete handshake
 (with a total of 192 bits for TLS 1.0 and more for SSL 3.0), they can
@@ -1161,7 +1167,7 @@ added: v12.11.0
 -->
 
 * Returns: {Array} List of signature algorithms shared between the server and
-the client in the order of decreasing preference.
+  the client in the order of decreasing preference.
 
 See
 [SSL_get_shared_sigalgs](https://www.openssl.org/docs/man1.1.1/man3/SSL_get_shared_sigalgs.html)
@@ -1169,13 +1175,13 @@ for more information.
 
 ### `tlsSocket.exportKeyingMaterial(length, label[, context])`
 <!-- YAML
-added: v12.17.0
+added: v13.10.0
 -->
 
 * `length` {number} number of bytes to retrieve from keying material
 * `label` {string} an application specific label, typically this will be a
-value from the
-[IANA Exporter Label Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#exporter-labels).
+  value from the
+  [IANA Exporter Label Registry](https://www.iana.org/assignments/tls-parameters/tls-parameters.xhtml#exporter-labels).
 * `context` {Buffer} Optionally provide a context.
 
 * Returns: {Buffer} requested bytes of the keying material
@@ -1347,7 +1353,12 @@ being issued by trusted CA (`options.ca`).
 <!-- YAML
 added: v0.11.3
 changes:
-  - version: v12.16.0
+  - version: v14.1.0
+    pr-url: https://github.com/nodejs/node/pull/32786
+    description: The `highWaterMark` option is accepted now.
+  - version:
+     - v13.6.0
+     - v12.16.0
     pr-url: https://github.com/nodejs/node/pull/23188
     description: The `pskCallback` option is now supported.
   - version: v12.9.0
@@ -1359,7 +1370,9 @@ changes:
   - version: v12.2.0
     pr-url: https://github.com/nodejs/node/pull/27497
     description: The `enableTrace` option is now supported.
-  - version: v11.8.0
+  - version:
+     - v11.8.0
+     - v10.16.0
     pr-url: https://github.com/nodejs/node/pull/25517
     description: The `timeout` option is supported now.
   - version: v8.0.0
@@ -1369,7 +1382,9 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/11984
     description: The `ALPNProtocols` option can be a `TypedArray` or
      `DataView` now.
-  - version: v5.3.0, v4.7.0
+  - version:
+    - v5.3.0
+    - v4.7.0
     pr-url: https://github.com/nodejs/node/pull/4246
     description: The `secureContext` option is supported now.
   - version: v5.0.0
@@ -1443,6 +1458,8 @@ changes:
     TLS connection. When a server offers a DH parameter with a size less
     than `minDHSize`, the TLS connection is destroyed and an error is thrown.
     **Default:** `1024`.
+  * `highWaterMark`: {number} Consistent with the readable stream `highWaterMark` parameter.
+    **Default:** `16 * 1024`.
   * `secureContext`: TLS context object created with
     [`tls.createSecureContext()`][]. If a `secureContext` is _not_ provided, one
     will be created by passing the entire `options` object to
@@ -1549,7 +1566,9 @@ changes:
   - version: v11.5.0
     pr-url: https://github.com/nodejs/node/pull/24733
     description: The `ca:` option now supports `BEGIN TRUSTED CERTIFICATE`.
-  - version: v11.4.0
+  - version:
+     - v11.4.0
+     - v10.16.0
     pr-url: https://github.com/nodejs/node/pull/24405
     description: The `minVersion` and `maxVersion` can be used to restrict
                  the allowed TLS protocol versions.
@@ -1967,27 +1986,42 @@ added: v11.4.0
   `'TLSv1.3'`. If multiple of the options are provided, the lowest minimum is
   used.
 
+[Chrome's 'modern cryptography' setting]: https://www.chromium.org/Home/chromium-security/education/tls#TOC-Cipher-Suites
+[DHE]: https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
+[ECDHE]: https://en.wikipedia.org/wiki/Elliptic_curve_Diffie%E2%80%93Hellman
+[Mozilla's publicly trusted list of CAs]: https://hg.mozilla.org/mozilla-central/raw-file/tip/security/nss/lib/ckfw/builtins/certdata.txt
+[OCSP request]: https://en.wikipedia.org/wiki/OCSP_stapling
+[OpenSSL Options]: crypto.md#crypto_openssl_options
+[RFC 2246]: https://www.ietf.org/rfc/rfc2246.txt
+[RFC 4086]: https://tools.ietf.org/html/rfc4086
+[RFC 4279]: https://tools.ietf.org/html/rfc4279
+[RFC 5077]: https://tools.ietf.org/html/rfc5077
+[RFC 5929]: https://tools.ietf.org/html/rfc5929
+[SSL_METHODS]: https://www.openssl.org/docs/man1.1.1/man7/ssl.html#Dealing-with-Protocol-Methods
+[Session Resumption]: #tls_session_resumption
+[Stream]: stream.md#stream_stream
+[TLS recommendations]: https://wiki.mozilla.org/Security/Server_Side_TLS
+[`--tls-cipher-list`]: cli.md#cli_tls_cipher_list_list
+[`Duplex`]: stream.md#stream_class_stream_duplex
+[`NODE_OPTIONS`]: cli.md#cli_node_options_options
 [`'newSession'`]: #tls_event_newsession
 [`'resumeSession'`]: #tls_event_resumesession
 [`'secureConnect'`]: #tls_event_secureconnect
 [`'secureConnection'`]: #tls_event_secureconnection
 [`'session'`]: #tls_event_session
-[`--tls-cipher-list`]: cli.html#cli_tls_cipher_list_list
-[`NODE_OPTIONS`]: cli.html#cli_node_options_options
 [`SSL_export_keying_material`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_export_keying_material.html
 [`SSL_get_version`]: https://www.openssl.org/docs/man1.1.1/man3/SSL_get_version.html
-[`crypto.getCurves()`]: crypto.html#crypto_crypto_getcurves
-[`Duplex`]: stream.html#stream_class_stream_duplex
-[`net.createServer()`]: net.html#net_net_createserver_options_connectionlistener
-[`net.Server.address()`]: net.html#net_server_address
-[`net.Server`]: net.html#net_class_net_server
-[`net.Socket`]: net.html#net_class_net_socket
+[`crypto.getCurves()`]: crypto.md#crypto_crypto_getcurves
+[`net.Server.address()`]: net.md#net_server_address
+[`net.Server`]: net.md#net_class_net_server
+[`net.Socket`]: net.md#net_class_net_socket
+[`net.createServer()`]: net.md#net_net_createserver_options_connectionlistener
 [`server.addContext()`]: #tls_server_addcontext_hostname_context
-[`server.getConnections()`]: net.html#net_server_getconnections_callback
+[`server.getConnections()`]: net.md#net_server_getconnections_callback
 [`server.getTicketKeys()`]: #tls_server_getticketkeys
-[`server.listen()`]: net.html#net_server_listen
+[`server.listen()`]: net.md#net_server_listen
 [`server.setTicketKeys()`]: #tls_server_setticketkeys_keys
-[`socket.connect()`]: net.html#net_socket_connect_options_connectlistener
+[`socket.connect()`]: net.md#net_socket_connect_options_connectlistener
 [`tls.DEFAULT_ECDH_CURVE`]: #tls_tls_default_ecdh_curve
 [`tls.DEFAULT_MAX_VERSION`]: #tls_tls_default_max_version
 [`tls.DEFAULT_MIN_VERSION`]: #tls_tls_default_min_version
@@ -2003,25 +2037,10 @@ added: v11.4.0
 [`tls.createServer()`]: #tls_tls_createserver_options_secureconnectionlistener
 [`tls.getCiphers()`]: #tls_tls_getciphers
 [`tls.rootCertificates`]: #tls_tls_rootcertificates
-[Chrome's 'modern cryptography' setting]: https://www.chromium.org/Home/chromium-security/education/tls#TOC-Cipher-Suites
-[DHE]: https://en.wikipedia.org/wiki/Diffie%E2%80%93Hellman_key_exchange
-[ECDHE]: https://en.wikipedia.org/wiki/Elliptic_curve_Diffie%E2%80%93Hellman
-[forward secrecy]: https://en.wikipedia.org/wiki/Perfect_forward_secrecy
-[Mozilla's publicly trusted list of CAs]: https://hg.mozilla.org/mozilla-central/raw-file/tip/security/nss/lib/ckfw/builtins/certdata.txt
-[OCSP request]: https://en.wikipedia.org/wiki/OCSP_stapling
-[OpenSSL Options]: crypto.html#crypto_openssl_options
-[perfect forward secrecy]: #tls_perfect_forward_secrecy
-[RFC 2246]: https://www.ietf.org/rfc/rfc2246.txt
-[RFC 5077]: https://tools.ietf.org/html/rfc5077
-[RFC 5929]: https://tools.ietf.org/html/rfc5929
-[SSL_METHODS]: https://www.openssl.org/docs/man1.1.1/man7/ssl.html#Dealing-with-Protocol-Methods
-[Session Resumption]: #tls_session_resumption
-[Stream]: stream.html#stream_stream
-[TLS recommendations]: https://wiki.mozilla.org/Security/Server_Side_TLS
 [asn1.js]: https://www.npmjs.com/package/asn1.js
 [certificate object]: #tls_certificate_object
 [cipher list format]: https://www.openssl.org/docs/man1.1.1/man1/ciphers.html#CIPHER-LIST-FORMAT
+[forward secrecy]: https://en.wikipedia.org/wiki/Perfect_forward_secrecy
 [modifying the default cipher suite]: #tls_modifying_the_default_tls_cipher_suite
 [specific attacks affecting larger AES key sizes]: https://www.schneier.com/blog/archives/2009/07/another_new_aes.html
-[RFC 4279]: https://tools.ietf.org/html/rfc4279
-[RFC 4086]: https://tools.ietf.org/html/rfc4086
+[perfect forward secrecy]: #tls_perfect_forward_secrecy

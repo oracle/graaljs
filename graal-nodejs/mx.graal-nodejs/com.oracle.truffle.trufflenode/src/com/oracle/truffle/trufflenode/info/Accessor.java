@@ -54,7 +54,7 @@ public class Accessor {
     private static final AtomicInteger idGenerator = new AtomicInteger();
 
     private final GraalJSAccess graalAccess;
-    private final String name;
+    private final Object name;
     private final long getterPtr;
     private final long setterPtr;
     private final Object data;
@@ -64,7 +64,7 @@ public class Accessor {
 
     public Accessor(GraalJSAccess graalAccess, Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
         this.graalAccess = graalAccess;
-        this.name = (String) name;
+        this.name = name;
         this.getterPtr = getterPtr;
         this.setterPtr = setterPtr;
         this.data = data;
@@ -81,7 +81,7 @@ public class Accessor {
         return setterPtr;
     }
 
-    public String getName() {
+    public Object getName() {
         return name;
     }
 

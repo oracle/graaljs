@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
@@ -282,6 +283,10 @@ public final class JSGuards {
         return JSArrayBuffer.isJSDirectArrayBuffer(thisObj);
     }
 
+    public static boolean isJSInteropArrayBuffer(Object thisObj) {
+        return JSArrayBuffer.isJSInteropArrayBuffer(thisObj);
+    }
+
     public static boolean isJSSharedArrayBuffer(Object thisObj) {
         return JSSharedArrayBuffer.isJSSharedArrayBuffer(thisObj);
     }
@@ -298,8 +303,12 @@ public final class JSGuards {
         return JSProxy.isJSProxy(value);
     }
 
-    public static boolean isJSFastArguments(Object value) {
+    public static boolean isJSFastArgumentsObject(Object value) {
         return JSArgumentsArray.isJSFastArgumentsObject(value);
+    }
+
+    public static boolean isJSObjectPrototype(Object value) {
+        return JSObjectPrototype.isJSObjectPrototype(value);
     }
 
     public static boolean isJSSymbol(Object value) {
@@ -405,13 +414,6 @@ public final class JSGuards {
     public static Class<? extends Number> getJavaNumberClass(Object value) {
         if (value != null && isJavaNumber(value)) {
             return ((Number) value).getClass();
-        }
-        return null;
-    }
-
-    public static Class<?> getNonTruffleObjectClass(Object value) {
-        if (value != null && !(value instanceof TruffleObject)) {
-            return value.getClass();
         }
         return null;
     }

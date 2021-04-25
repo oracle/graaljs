@@ -6,6 +6,7 @@
 #define V8_COMPILER_NODE_MATCHERS_H_
 
 #include <cmath>
+#include <limits>
 
 #include "src/base/compiler-specific.h"
 #include "src/codegen/external-reference.h"
@@ -53,8 +54,13 @@ template <typename T, IrOpcode::Value kOpcode>
 struct ValueMatcher : public NodeMatcher {
   using ValueType = T;
 
-  explicit ValueMatcher(Node* node)
-      : NodeMatcher(node), value_(), has_value_(opcode() == kOpcode) {
+  explicit ValueMatcher(Node* node) : NodeMatcher(node) {
+    static_assert(kOpcode != IrOpcode::kFoldConstant, "unsupported opcode");
+    if (node->opcode() == IrOpcode::kFoldConstant) {
+      node = node->InputAt(1);
+    }
+    DCHECK_NE(node->opcode(), IrOpcode::kFoldConstant);
+    has_value_ = opcode() == kOpcode;
     if (has_value_) {
       value_ = OpParameter<T>(node->op());
     }
@@ -110,6 +116,30 @@ inline ValueMatcher<uint64_t, IrOpcode::kInt64Constant>::ValueMatcher(
   }
 }
 
+template <>
+inline ValueMatcher<double, IrOpcode::kNumberConstant>::ValueMatcher(Node* node)
+    : NodeMatcher(node), value_(), has_value_(false) {
+  if (node->opcode() == IrOpcode::kNumberConstant) {
+    value_ = OpParameter<double>(node->op());
+    has_value_ = true;
+  } else if (node->opcode() == IrOpcode::kFoldConstant) {
+    node = node->InputAt(1);
+    DCHECK_NE(node->opcode(), IrOpcode::kFoldConstant);
+  }
+}
+
+template <>
+inline ValueMatcher<Handle<HeapObject>, IrOpcode::kHeapConstant>::ValueMatcher(
+    Node* node)
+    : NodeMatcher(node), value_(), has_value_(false) {
+  if (node->opcode() == IrOpcode::kHeapConstant) {
+    value_ = OpParameter<Handle<HeapObject>>(node->op());
+    has_value_ = true;
+  } else if (node->opcode() == IrOpcode::kFoldConstant) {
+    node = node->InputAt(1);
+    DCHECK_NE(node->opcode(), IrOpcode::kFoldConstant);
+  }
+}
 
 // A pattern matcher for integer constants.
 template <typename T, IrOpcode::Value kOpcode>
@@ -131,7 +161,7 @@ struct IntMatcher final : public ValueMatcher<T, kOpcode> {
   }
   bool IsNegativePowerOf2() const {
     return this->HasValue() && this->Value() < 0 &&
-           ((this->Value() == kMinInt) ||
+           ((this->Value() == std::numeric_limits<T>::min()) ||
             (-this->Value() & (-this->Value() - 1)) == 0);
   }
   bool IsNegative() const { return this->HasValue() && this->Value() < 0; }
@@ -187,10 +217,11 @@ using Float64Matcher = FloatMatcher<double, IrOpcode::kFloat64Constant>;
 using NumberMatcher = FloatMatcher<double, IrOpcode::kNumberConstant>;
 
 // A pattern matcher for heap object constants.
-struct HeapObjectMatcher final
-    : public ValueMatcher<Handle<HeapObject>, IrOpcode::kHeapConstant> {
-  explicit HeapObjectMatcher(Node* node)
-      : ValueMatcher<Handle<HeapObject>, IrOpcode::kHeapConstant>(node) {}
+template <IrOpcode::Value kHeapConstantOpcode>
+struct HeapObjectMatcherImpl final
+    : public ValueMatcher<Handle<HeapObject>, kHeapConstantOpcode> {
+  explicit HeapObjectMatcherImpl(Node* node)
+      : ValueMatcher<Handle<HeapObject>, kHeapConstantOpcode>(node) {}
 
   bool Is(Handle<HeapObject> const& value) const {
     return this->HasValue() && this->Value().address() == value.address();
@@ -201,6 +232,9 @@ struct HeapObjectMatcher final
   }
 };
 
+using HeapObjectMatcher = HeapObjectMatcherImpl<IrOpcode::kHeapConstant>;
+using CompressedHeapObjectMatcher =
+    HeapObjectMatcherImpl<IrOpcode::kCompressedHeapConstant>;
 
 // A pattern matcher for external reference constants.
 struct ExternalReferenceMatcher final
@@ -295,6 +329,8 @@ using Float64BinopMatcher = BinopMatcher<Float64Matcher, Float64Matcher>;
 using NumberBinopMatcher = BinopMatcher<NumberMatcher, NumberMatcher>;
 using HeapObjectBinopMatcher =
     BinopMatcher<HeapObjectMatcher, HeapObjectMatcher>;
+using CompressedHeapObjectBinopMatcher =
+    BinopMatcher<CompressedHeapObjectMatcher, CompressedHeapObjectMatcher>;
 
 template <class BinopMatcher, IrOpcode::Value kMulOpcode,
           IrOpcode::Value kShiftOpcode>

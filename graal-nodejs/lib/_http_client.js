@@ -29,6 +29,8 @@ const {
   ObjectAssign,
   ObjectKeys,
   ObjectSetPrototypeOf,
+  String,
+  Symbol
 } = primordials;
 
 const net = require('net');
@@ -57,6 +59,7 @@ const {
   ERR_INVALID_PROTOCOL,
   ERR_UNESCAPED_CHARACTERS
 } = codes;
+const { validateInteger } = require('internal/validators');
 const { getTimerDuration } = require('internal/timers');
 const {
   DTRACE_HTTP_CLIENT_REQUEST,
@@ -64,6 +67,7 @@ const {
 } = require('internal/dtrace');
 
 const INVALID_PATH_REGEX = /[^\u0021-\u00ff]/;
+const kError = Symbol('kError');
 
 function validateHost(host, name) {
   if (host !== null && host !== undefined && typeof host !== 'string') {
@@ -179,6 +183,11 @@ function ClientRequest(input, options, cb) {
   } else {
     method = this.method = 'GET';
   }
+
+  const maxHeaderSize = options.maxHeaderSize;
+  if (maxHeaderSize !== undefined)
+    validateInteger(maxHeaderSize, 'maxHeaderSize', 0);
+  this.maxHeaderSize = maxHeaderSize;
 
   const insecureHTTPParser = options.insecureHTTPParser;
   if (insecureHTTPParser !== undefined &&
@@ -319,7 +328,7 @@ ObjectSetPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
 ObjectSetPrototypeOf(ClientRequest, OutgoingMessage);
 
 ClientRequest.prototype._finish = function _finish() {
-  DTRACE_HTTP_CLIENT_REQUEST(this, this.connection);
+  DTRACE_HTTP_CLIENT_REQUEST(this, this.socket);
   OutgoingMessage.prototype._finish.call(this);
 };
 
@@ -332,10 +341,19 @@ ClientRequest.prototype._implicitHeader = function _implicitHeader() {
 };
 
 ClientRequest.prototype.abort = function abort() {
-  if (!this.aborted) {
-    process.nextTick(emitAbortNT, this);
+  if (this.aborted) {
+    return;
   }
   this.aborted = true;
+  process.nextTick(emitAbortNT, this);
+  this.destroy();
+};
+
+ClientRequest.prototype.destroy = function destroy(err) {
+  if (this.destroyed) {
+    return this;
+  }
+  this.destroyed = true;
 
   // If we're aborting, we don't care about any more response data.
   if (this.res) {
@@ -345,11 +363,33 @@ ClientRequest.prototype.abort = function abort() {
   // In the event that we don't have a socket, we will pop out of
   // the request queue through handling in onSocket.
   if (this.socket) {
-    // in-progress
-    this.socket.destroy();
+    _destroy(this, this.socket, err);
+  } else if (err) {
+    this[kError] = err;
   }
+
+  return this;
 };
 
+function _destroy(req, socket, err) {
+  // TODO (ronag): Check if socket was used at all (e.g. headersSent) and
+  // re-use it in that case. `req.socket` just checks whether the socket was
+  // assigned to the request and *might* have been used.
+  if (socket && (!req.agent || req.socket)) {
+    socket.destroy(err);
+  } else {
+    if (socket) {
+      socket.emit('free');
+    }
+    if (!req.aborted && !err) {
+      err = connResetException('socket hang up');
+    }
+    if (err) {
+      req.emit('error', err);
+    }
+    req.emit('close');
+  }
+}
 
 function emitAbortNT(req) {
   req.emit('abort');
@@ -377,6 +417,8 @@ function socketCloseListener() {
   // the `socketOnData`.
   const parser = socket.parser;
   const res = req.res;
+
+  req.destroyed = true;
   if (res) {
     // Socket closed before we emitted 'end' below.
     if (!res.complete) {
@@ -384,7 +426,7 @@ function socketCloseListener() {
       res.emit('aborted');
     }
     req.emit('close');
-    if (res.readable) {
+    if (!res.aborted && res.readable) {
       res.on('end', function() {
         this.emit('close');
       });
@@ -427,17 +469,10 @@ function socketErrorListener(err) {
     req.emit('error', err);
   }
 
-  // Handle any pending data
-  socket.read();
-
   const parser = socket.parser;
   if (parser) {
-    // Use process.nextTick() on v12.x since 'error' events might be
-    // emitted synchronously from e.g. a failed write() call on the socket.
-    process.nextTick(() => {
-      parser.finish();
-      freeParser(parser, req, socket);
-    });
+    parser.finish();
+    freeParser(parser, req, socket);
   }
 
   // Ensure that no further data will come out of the socket
@@ -488,6 +523,10 @@ function socketOnData(d) {
     socket.removeListener('data', socketOnData);
     socket.removeListener('end', socketOnEnd);
     socket.removeListener('drain', ondrain);
+
+    if (req.timeoutCb) socket.removeListener('timeout', req.timeoutCb);
+    socket.removeListener('timeout', responseOnTimeout);
+
     parser.finish();
     freeParser(parser, req, socket);
 
@@ -594,6 +633,7 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
   // Add our listener first, so that we guarantee socket cleanup
   res.on('end', responseOnEnd);
   req.on('prefinish', requestOnPrefinish);
+  socket.on('timeout', responseOnTimeout);
 
   // If the user did not listen for the 'response' event, then they
   // can't possibly read the data, so we ._dump() it into the void
@@ -603,6 +643,11 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
 
   if (method === 'HEAD')
     return 1;  // Skip body but don't treat as Upgrade.
+
+  if (res.statusCode === 304) {
+    res.complete = true;
+    return 1; // Skip body as there won't be any
+  }
 
   return 0;  // No special treatment.
 }
@@ -629,20 +674,29 @@ function responseKeepAlive(req) {
   const asyncId = socket._handle ? socket._handle.getAsyncId() : undefined;
   // Mark this socket as available, AFTER user-added end
   // handlers have a chance to run.
-  defaultTriggerAsyncIdScope(asyncId, process.nextTick, emitFreeNT, socket);
+  defaultTriggerAsyncIdScope(asyncId, process.nextTick, emitFreeNT, req);
+
+  req.destroyed = true;
+  if (req.res) {
+    req.res.destroyed = true;
+    // Detach socket from IncomingMessage to avoid destroying the freed
+    // socket in IncomingMessage.destroy().
+    req.res.socket = null;
+  }
 }
 
 function responseOnEnd() {
   const req = this.req;
+  const socket = req.socket;
 
-  if (req.socket && req.timeoutCb) {
-    req.socket.removeListener('timeout', emitRequestTimeout);
+  if (socket) {
+    if (req.timeoutCb) socket.removeListener('timeout', emitRequestTimeout);
+    socket.removeListener('timeout', responseOnTimeout);
   }
 
   req._ended = true;
 
   if (!req.shouldKeepAlive) {
-    const socket = req.socket;
     if (socket.writable) {
       debug('AGENT socket.destroySoon()');
       if (typeof socket.destroySoon === 'function')
@@ -651,7 +705,7 @@ function responseOnEnd() {
         socket.end();
     }
     assert(!socket.writable);
-  } else if (req.finished) {
+  } else if (req.finished && !this.aborted) {
     // We can assume `req.finished` means all data has been written since:
     // - `'responseOnEnd'` means we have been assigned a socket.
     // - when we have a socket we write directly to it without buffering.
@@ -661,6 +715,14 @@ function responseOnEnd() {
   }
 }
 
+function responseOnTimeout() {
+  const req = this._httpMessage;
+  if (!req) return;
+  const res = req.res;
+  if (!res) return;
+  res.emit('timeout');
+}
+
 function requestOnPrefinish() {
   const req = this;
 
@@ -668,16 +730,23 @@ function requestOnPrefinish() {
     responseKeepAlive(req);
 }
 
-function emitFreeNT(socket) {
-  socket.emit('free');
+function emitFreeNT(req) {
+  req.emit('close');
+  if (req.res) {
+    req.res.emit('close');
+  }
+
+  if (req.socket) {
+    req.socket.emit('free');
+  }
 }
 
 function tickOnSocket(req, socket) {
   const parser = parsers.alloc();
   req.socket = socket;
-  req.connection = socket;
   parser.initialize(HTTPParser.RESPONSE,
                     new HTTPClientAsyncResource('HTTPINCOMINGMESSAGE', req),
+                    req.maxHeaderSize || 0,
                     req.insecureHTTPParser === undefined ?
                       isLenient() : req.insecureHTTPParser,
                     0);
@@ -732,20 +801,18 @@ function listenSocketTimeout(req) {
   }
 }
 
-ClientRequest.prototype.onSocket = function onSocket(socket) {
+ClientRequest.prototype.onSocket = function onSocket(socket, err) {
   // TODO(ronag): Between here and onSocketNT the socket
   // has no 'error' handler.
-  process.nextTick(onSocketNT, this, socket);
+  process.nextTick(onSocketNT, this, socket, err);
 };
 
-function onSocketNT(req, socket) {
-  if (req.aborted) {
-    // If we were aborted while waiting for a socket, skip the whole thing.
-    if (!req.agent) {
-      socket.destroy();
-    } else {
-      socket.emit('free');
-    }
+function onSocketNT(req, socket, err) {
+  if (req.destroyed) {
+    _destroy(req, socket, req[kError]);
+  } else if (err) {
+    req.destroyed = true;
+    _destroy(req, null, err);
   } else {
     tickOnSocket(req, socket);
   }

@@ -84,9 +84,9 @@ class PromiseWorker {
 
     compute(num) {
         // Using GraalVM's Java-to-JS interop, one can use a Java array to "wrap" the Promise's reject and resolve functions.
-        // In this way, they can be "borrowed" to a worker. Note that calling reject or resolve from the worker thread would 
-        // result in an exception, because JS functions can be executed only by the thread that created them. Nevertheless, 
-        // they can be sent back to the main worker, who will safely call them to resolve (or reject) a promise. In this way, 
+        // In this way, they can be "borrowed" to a worker. Note that calling reject or resolve from the worker thread would
+        // result in an exception, because JS functions can be executed only by the thread that created them. Nevertheless,
+        // they can be sent back to the main worker, who will safely call them to resolve (or reject) a promise. In this way,
         // there is no need to maintain an explicit mapping between worker messages and the corresponding promises.
         const JavaArray = Java.type('java.lang.Object[]');
         const worker = this.worker;

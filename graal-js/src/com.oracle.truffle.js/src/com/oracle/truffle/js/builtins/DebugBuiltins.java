@@ -690,7 +690,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected static Object detachBuffer(Object obj) {
-            if (!(JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj))) {
+            if (!(JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj) || JSArrayBuffer.isJSInteropArrayBuffer(obj))) {
                 throw Errors.createTypeError("ArrayBuffer expected");
             }
             JSArrayBuffer.detachArrayBuffer((DynamicObject) obj);

@@ -10,8 +10,10 @@
 #include "include/v8.h"
 #include "src/api/api-inl.h"
 #include "src/base/build_config.h"
+#include "src/objects/backing-store.h"
 #include "src/objects/objects-inl.h"
 #include "src/wasm/wasm-objects.h"
+#include "src/wasm/wasm-result.h"
 #include "test/unittests/test-utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -74,9 +76,6 @@ class ValueSerializerTest : public TestWithIsolate {
   const Local<Context>& deserialization_context() {
     return deserialization_context_;
   }
-
-  bool ExpectInlineWasm() const { return expect_inline_wasm_; }
-  void SetExpectInlineWasm(bool value) { expect_inline_wasm_ = value; }
 
   // Overridden in more specific fixtures.
   virtual ValueSerializer::Delegate* GetSerializerDelegate() { return nullptr; }
@@ -164,7 +163,6 @@ class ValueSerializerTest : public TestWithIsolate {
                                    static_cast<int>(data.size()),
                                    GetDeserializerDelegate());
     deserializer.SetSupportsLegacyWireFormat(true);
-    deserializer.SetExpectInlineWasm(ExpectInlineWasm());
     BeforeDecode(&deserializer);
     CHECK(deserializer.ReadHeader(context).FromMaybe(false));
     Local<Value> result;
@@ -186,7 +184,6 @@ class ValueSerializerTest : public TestWithIsolate {
                                    static_cast<int>(data.size()),
                                    GetDeserializerDelegate());
     deserializer.SetSupportsLegacyWireFormat(true);
-    deserializer.SetExpectInlineWasm(ExpectInlineWasm());
     BeforeDecode(&deserializer);
     CHECK(deserializer.ReadHeader(context).FromMaybe(false));
     CHECK_EQ(0u, deserializer.GetWireFormatVersion());
@@ -209,7 +206,6 @@ class ValueSerializerTest : public TestWithIsolate {
                                    static_cast<int>(data.size()),
                                    GetDeserializerDelegate());
     deserializer.SetSupportsLegacyWireFormat(true);
-    deserializer.SetExpectInlineWasm(ExpectInlineWasm());
     BeforeDecode(&deserializer);
     Maybe<bool> header_result = deserializer.ReadHeader(context);
     if (header_result.IsNothing()) {
@@ -239,8 +235,7 @@ class ValueSerializerTest : public TestWithIsolate {
   }
 
   Local<String> StringFromUtf8(const char* source) {
-    return String::NewFromUtf8(isolate(), source, NewStringType::kNormal)
-        .ToLocalChecked();
+    return String::NewFromUtf8(isolate(), source).ToLocalChecked();
   }
 
   std::string Utf8Value(Local<Value> value) {
@@ -258,8 +253,11 @@ class ValueSerializerTest : public TestWithIsolate {
 
   Local<Object> NewDummyUint8Array() {
     static uint8_t data[] = {4, 5, 6};
+    std::unique_ptr<v8::BackingStore> backing_store =
+        ArrayBuffer::NewBackingStore(
+            data, sizeof(data), [](void*, size_t, void*) {}, nullptr);
     Local<ArrayBuffer> ab =
-        ArrayBuffer::New(isolate(), static_cast<void*>(data), sizeof(data));
+        ArrayBuffer::New(isolate(), std::move(backing_store));
     return Uint8Array::New(ab, 0, sizeof(data));
   }
 
@@ -268,7 +266,6 @@ class ValueSerializerTest : public TestWithIsolate {
   Local<Context> deserialization_context_;
   Local<FunctionTemplate> host_object_constructor_template_;
   i::Isolate* isolate_;
-  bool expect_inline_wasm_ = false;
 
   DISALLOW_COPY_AND_ASSIGN(ValueSerializerTest);
 };
@@ -1723,13 +1720,13 @@ class ValueSerializerTestWithArrayBufferTransfer : public ValueSerializerTest {
   ValueSerializerTestWithArrayBufferTransfer() {
     {
       Context::Scope scope(serialization_context());
-      input_buffer_ = ArrayBuffer::New(isolate(), nullptr, 0);
+      input_buffer_ = ArrayBuffer::New(isolate(), 0);
     }
     {
       Context::Scope scope(deserialization_context());
       output_buffer_ = ArrayBuffer::New(isolate(), kTestByteLength);
       const uint8_t data[kTestByteLength] = {0x00, 0x01, 0x80, 0xFF};
-      memcpy(output_buffer_->GetContents().Data(), data, kTestByteLength);
+      memcpy(output_buffer_->GetBackingStore()->Data(), data, kTestByteLength);
     }
   }
 
@@ -1987,22 +1984,51 @@ class ValueSerializerTestWithSharedArrayBufferClone
   ValueSerializerTestWithSharedArrayBufferClone()
       : serializer_delegate_(this), deserializer_delegate_(this) {}
 
-  void InitializeData(const std::vector<uint8_t>& data) {
+  void InitializeData(const std::vector<uint8_t>& data, bool is_wasm_memory) {
     data_ = data;
     {
       Context::Scope scope(serialization_context());
       input_buffer_ =
-          SharedArrayBuffer::New(isolate(), data_.data(), data_.size());
+          NewSharedArrayBuffer(data_.data(), data_.size(), is_wasm_memory);
     }
     {
       Context::Scope scope(deserialization_context());
       output_buffer_ =
-          SharedArrayBuffer::New(isolate(), data_.data(), data_.size());
+          NewSharedArrayBuffer(data_.data(), data_.size(), is_wasm_memory);
     }
   }
 
   const Local<SharedArrayBuffer>& input_buffer() { return input_buffer_; }
   const Local<SharedArrayBuffer>& output_buffer() { return output_buffer_; }
+
+  Local<SharedArrayBuffer> NewSharedArrayBuffer(void* data, size_t byte_length,
+                                                bool is_wasm_memory) {
+    if (is_wasm_memory) {
+      // TODO(titzer): there is no way to create Wasm memory backing stores
+      // through the API, or to create a shared array buffer whose backing
+      // store is wasm memory, so use the internal API.
+      DCHECK_EQ(0, byte_length % i::wasm::kWasmPageSize);
+      auto pages = byte_length / i::wasm::kWasmPageSize;
+      auto i_isolate = reinterpret_cast<i::Isolate*>(isolate());
+      auto backing_store = i::BackingStore::AllocateWasmMemory(
+          i_isolate, pages, pages, i::SharedFlag::kShared);
+      memcpy(backing_store->buffer_start(), data, byte_length);
+      i::Handle<i::JSArrayBuffer> buffer =
+          i_isolate->factory()->NewJSSharedArrayBuffer(
+              std::move(backing_store));
+      return Utils::ToLocalShared(buffer);
+    } else {
+      std::unique_ptr<v8::BackingStore> backing_store =
+          SharedArrayBuffer::NewBackingStore(
+              data, byte_length,
+              [](void*, size_t, void*) {
+                // Leak the buffer as it has the
+                // lifetime of the test.
+              },
+              nullptr);
+      return SharedArrayBuffer::New(isolate(), std::move(backing_store));
+    }
+  }
 
   static void SetUpTestCase() {
     flag_was_enabled_ = i::FLAG_harmony_sharedarraybuffer;
@@ -2075,7 +2101,7 @@ bool ValueSerializerTestWithSharedArrayBufferClone::flag_was_enabled_ = false;
 
 TEST_F(ValueSerializerTestWithSharedArrayBufferClone,
        RoundTripSharedArrayBufferClone) {
-  InitializeData({0x00, 0x01, 0x80, 0xFF});
+  InitializeData({0x00, 0x01, 0x80, 0xFF}, false);
 
   EXPECT_CALL(serializer_delegate_,
               GetSharedArrayBufferId(isolate(), input_buffer()))
@@ -2114,7 +2140,7 @@ TEST_F(ValueSerializerTestWithSharedArrayBufferClone,
 
   std::vector<uint8_t> data = {0x00, 0x01, 0x80, 0xFF};
   data.resize(65536);
-  InitializeData(data);
+  InitializeData(data, true);
 
   EXPECT_CALL(serializer_delegate_,
               GetSharedArrayBufferId(isolate(), input_buffer()))
@@ -2420,7 +2446,7 @@ TEST_F(ValueSerializerTestWithHostArrayBufferView, RoundTripUint8ArrayInput) {
 
 // A simple module which exports an "increment" function.
 // Copied from test/mjsunit/wasm/incrementer.wasm.
-const unsigned char kIncrementerWasm[] = {
+constexpr uint8_t kIncrementerWasm[] = {
     0,   97, 115, 109, 1, 0,  0, 0, 1,   6,   1,  96,  1,   127, 1,   127,
     3,   2,  1,   0,   7, 13, 1, 9, 105, 110, 99, 114, 101, 109, 101, 110,
     116, 0,  0,   10,  9, 1,  7, 0, 32,  0,   65, 1,   106, 11,
@@ -2437,7 +2463,6 @@ class ValueSerializerTestWithWasm : public ValueSerializerTest {
   void Reset() {
     current_serializer_delegate_ = nullptr;
     transfer_modules_.clear();
-    SetExpectInlineWasm(false);
   }
 
   void EnableTransferSerialization() {
@@ -2474,10 +2499,8 @@ class ValueSerializerTestWithWasm : public ValueSerializerTest {
     Maybe<uint32_t> GetWasmModuleTransferId(
         Isolate* isolate, Local<WasmModuleObject> module) override {
       isolate->ThrowException(Exception::Error(
-          String::NewFromOneByte(
-              isolate,
-              reinterpret_cast<const uint8_t*>(kUnsupportedSerialization),
-              NewStringType::kNormal)
+          String::NewFromOneByte(isolate, reinterpret_cast<const uint8_t*>(
+                                              kUnsupportedSerialization))
               .ToLocalChecked()));
       return Nothing<uint32_t>();
     }
@@ -2487,35 +2510,32 @@ class ValueSerializerTestWithWasm : public ValueSerializerTest {
 
   class SerializeToTransfer : public ValueSerializer::Delegate {
    public:
-    SerializeToTransfer(
-        std::vector<WasmModuleObject::TransferrableModule>* modules)
+    explicit SerializeToTransfer(std::vector<CompiledWasmModule>* modules)
         : modules_(modules) {}
     Maybe<uint32_t> GetWasmModuleTransferId(
         Isolate* isolate, Local<WasmModuleObject> module) override {
-      modules_->push_back(module->GetTransferrableModule());
+      modules_->push_back(module->GetCompiledModule());
       return Just(static_cast<uint32_t>(modules_->size()) - 1);
     }
 
     void ThrowDataCloneError(Local<String> message) override { UNREACHABLE(); }
 
    private:
-    std::vector<WasmModuleObject::TransferrableModule>* modules_;
+    std::vector<CompiledWasmModule>* modules_;
   };
 
   class DeserializeFromTransfer : public ValueDeserializer::Delegate {
    public:
-    DeserializeFromTransfer(
-        std::vector<WasmModuleObject::TransferrableModule>* modules)
+    explicit DeserializeFromTransfer(std::vector<CompiledWasmModule>* modules)
         : modules_(modules) {}
 
     MaybeLocal<WasmModuleObject> GetWasmModuleFromId(Isolate* isolate,
                                                      uint32_t id) override {
-      return WasmModuleObject::FromTransferrableModule(isolate,
-                                                       modules_->at(id));
+      return WasmModuleObject::FromCompiledModule(isolate, modules_->at(id));
     }
 
    private:
-    std::vector<WasmModuleObject::TransferrableModule>* modules_;
+    std::vector<CompiledWasmModule>* modules_;
   };
 
   ValueSerializer::Delegate* GetSerializerDelegate() override {
@@ -2528,16 +2548,21 @@ class ValueSerializerTestWithWasm : public ValueSerializerTest {
 
   Local<WasmModuleObject> MakeWasm() {
     Context::Scope scope(serialization_context());
-    return WasmModuleObject::DeserializeOrCompile(
-               isolate(), {nullptr, 0},
-               {kIncrementerWasm, sizeof(kIncrementerWasm)})
-        .ToLocalChecked();
+    i::wasm::ErrorThrower thrower(i_isolate(), "MakeWasm");
+    auto enabled_features = i::wasm::WasmFeatures::FromIsolate(i_isolate());
+    i::MaybeHandle<i::JSObject> compiled =
+        i_isolate()->wasm_engine()->SyncCompile(
+            i_isolate(), enabled_features, &thrower,
+            i::wasm::ModuleWireBytes(i::ArrayVector(kIncrementerWasm)));
+    CHECK(!thrower.error());
+    return Local<WasmModuleObject>::Cast(
+        Utils::ToLocal(compiled.ToHandleChecked()));
   }
 
   void ExpectPass() {
     Local<Value> value = RoundTripTest(MakeWasm());
     Context::Scope scope(deserialization_context());
-    ASSERT_TRUE(value->IsWebAssemblyCompiledModule());
+    ASSERT_TRUE(value->IsWasmModuleObject());
     ExpectScriptTrue(
         "new WebAssembly.Instance(result).exports.increment(8) === 9");
   }
@@ -2595,7 +2620,7 @@ class ValueSerializerTestWithWasm : public ValueSerializerTest {
 
  private:
   static bool g_saved_flag;
-  std::vector<WasmModuleObject::TransferrableModule> transfer_modules_;
+  std::vector<CompiledWasmModule> transfer_modules_;
   SerializeToTransfer serialize_delegate_;
   DeserializeFromTransfer deserialize_delegate_;
   ValueSerializer::Delegate* current_serializer_delegate_ = nullptr;
@@ -2646,18 +2671,8 @@ TEST_F(ValueSerializerTestWithWasm, RoundtripWasmTransfer) {
   ExpectPass();
 }
 
-TEST_F(ValueSerializerTestWithWasm, RountripWasmInline) {
-  SetExpectInlineWasm(true);
-  ExpectPass();
-}
-
-TEST_F(ValueSerializerTestWithWasm, CannotDeserializeWasmInlineData) {
-  ExpectFail();
-}
-
 TEST_F(ValueSerializerTestWithWasm, CannotTransferWasmWhenExpectingInline) {
   EnableTransferSerialization();
-  SetExpectInlineWasm(true);
   ExpectFail();
 }
 
@@ -2669,136 +2684,12 @@ TEST_F(ValueSerializerTestWithWasm, ComplexObjectDuplicateTransfer) {
   ExpectScriptTrue("result.mod1 === result.mod2");
 }
 
-TEST_F(ValueSerializerTestWithWasm, ComplexObjectDuplicateInline) {
-  SetExpectInlineWasm(true);
-  Local<Value> value = RoundTripTest(GetComplexObjectWithDuplicate());
-  VerifyComplexObject(value);
-  ExpectScriptTrue("result.mod1 === result.mod2");
-}
-
 TEST_F(ValueSerializerTestWithWasm, ComplexObjectWithManyTransfer) {
   EnableTransferSerialization();
   EnableTransferDeserialization();
   Local<Value> value = RoundTripTest(GetComplexObjectWithMany());
   VerifyComplexObject(value);
   ExpectScriptTrue("result.mod1 != result.mod2");
-}
-
-TEST_F(ValueSerializerTestWithWasm, ComplexObjectWithManyInline) {
-  SetExpectInlineWasm(true);
-  Local<Value> value = RoundTripTest(GetComplexObjectWithMany());
-  VerifyComplexObject(value);
-  ExpectScriptTrue("result.mod1 != result.mod2");
-}
-
-// As produced around Chrome 56.
-const unsigned char kSerializedIncrementerWasm[] = {
-    0xFF, 0x09, 0x3F, 0x00, 0x57, 0x79, 0x2D, 0x00, 0x61, 0x73, 0x6D, 0x0D,
-    0x00, 0x00, 0x00, 0x01, 0x06, 0x01, 0x60, 0x01, 0x7F, 0x01, 0x7F, 0x03,
-    0x02, 0x01, 0x00, 0x07, 0x0D, 0x01, 0x09, 0x69, 0x6E, 0x63, 0x72, 0x65,
-    0x6D, 0x65, 0x6E, 0x74, 0x00, 0x00, 0x0A, 0x08, 0x01, 0x06, 0x00, 0x20,
-    0x00, 0x41, 0x01, 0x6A, 0xF8, 0x04, 0xA1, 0x06, 0xDE, 0xC0, 0xC6, 0x44,
-    0x3C, 0x29, 0x00, 0x00, 0x00, 0x00, 0x1F, 0x02, 0x00, 0x00, 0x81, 0x4E,
-    0xCE, 0x7C, 0x05, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x30, 0x02,
-    0x00, 0x00, 0xB0, 0x25, 0x30, 0xE3, 0xF2, 0xDB, 0x2E, 0x48, 0x00, 0x00,
-    0x00, 0x80, 0xE8, 0x00, 0x00, 0x80, 0xE0, 0x01, 0x00, 0x80, 0x00, 0x00,
-    0x00, 0x80, 0x00, 0x00, 0x00, 0x80, 0x07, 0x08, 0x00, 0x00, 0x09, 0x04,
-    0x10, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01, 0x3C, 0x8C, 0xC0, 0x00, 0x00,
-    0x00, 0x00, 0x0D, 0x00, 0x00, 0x00, 0x01, 0x10, 0x8C, 0xC0, 0x00, 0x00,
-    0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02, 0x70, 0x94, 0x01, 0x0C, 0x8B,
-    0xC1, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x25, 0xDC, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x9E, 0x01, 0x10, 0x8C, 0xC0, 0x00, 0x00,
-    0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x84, 0xC0, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x05, 0x7D, 0x01, 0x1A, 0xE1, 0x02, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x23, 0x88, 0x42, 0x32, 0x03,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x3E, 0x00, 0x00, 0x00, 0x04, 0x00,
-    0x00, 0x02, 0xA1, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF,
-    0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x49, 0x3B, 0xA5, 0x60, 0x0C, 0x00,
-    0x00, 0x0F, 0x86, 0x04, 0x00, 0x00, 0x00, 0x83, 0xC0, 0x01, 0xC3, 0x55,
-    0x48, 0x89, 0xE5, 0x49, 0xBA, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00,
-    0x00, 0x41, 0x52, 0x48, 0x83, 0xEC, 0x08, 0x48, 0x89, 0x45, 0xF0, 0x48,
-    0xBB, 0xB0, 0x67, 0xC6, 0x00, 0x00, 0x00, 0x00, 0x00, 0x33, 0xC0, 0x48,
-    0xBE, 0xE1, 0x57, 0x81, 0x85, 0xF6, 0x14, 0x00, 0x00, 0xE8, 0xFC, 0x3C,
-    0xEA, 0xFF, 0x48, 0x8B, 0x45, 0xF0, 0x48, 0x8B, 0xE5, 0x5D, 0xEB, 0xBF,
-    0x66, 0x90, 0x01, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x44, 0x00,
-    0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x0F, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x0F, 0x20, 0x84, 0x0F, 0x7D, 0x01, 0x0D, 0x00, 0x0F, 0x04,
-    0x6D, 0x08, 0x0F, 0xF0, 0x02, 0x80, 0x94, 0x01, 0x0C, 0x8B, 0xC1, 0x00,
-    0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0xED, 0xA9, 0x2D, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x9E, 0xE0, 0x38, 0x1A, 0x61, 0x03, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x11, 0x23, 0x88, 0x42, 0x32, 0x03, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x9A, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x4E, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
-    0x02, 0xF9, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF,
-    0xFF, 0x00, 0x00, 0x00, 0x00, 0x55, 0x48, 0x89, 0xE5, 0x56, 0x57, 0x48,
-    0x8B, 0x45, 0x10, 0xE8, 0x11, 0xED, 0xED, 0xFF, 0xA8, 0x01, 0x0F, 0x85,
-    0x2D, 0x00, 0x00, 0x00, 0x48, 0xC1, 0xE8, 0x20, 0xC5, 0xF9, 0x57, 0xC0,
-    0xC5, 0xFB, 0x2A, 0xC0, 0xC4, 0xE1, 0xFB, 0x2C, 0xC0, 0x48, 0x83, 0xF8,
-    0x01, 0x0F, 0x80, 0x34, 0x00, 0x00, 0x00, 0x8B, 0xC0, 0xE8, 0x27, 0xFE,
-    0xFF, 0xFF, 0x48, 0xC1, 0xE0, 0x20, 0x48, 0x8B, 0xE5, 0x5D, 0xC2, 0x10,
-    0x00, 0x49, 0x39, 0x45, 0xA0, 0x0F, 0x84, 0x07, 0x00, 0x00, 0x00, 0xC5,
-    0xFB, 0x10, 0x40, 0x07, 0xEB, 0xCE, 0x49, 0xBA, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0xF8, 0x7F, 0xC4, 0xC1, 0xF9, 0x6E, 0xC2, 0xEB, 0xBD, 0x48,
-    0x83, 0xEC, 0x08, 0xC5, 0xFB, 0x11, 0x04, 0x24, 0xE8, 0xCC, 0xFE, 0xFF,
-    0xFF, 0x48, 0x83, 0xC4, 0x08, 0xEB, 0xB8, 0x66, 0x90, 0x02, 0x00, 0x00,
-    0x00, 0x03, 0x00, 0x00, 0x00, 0x0F, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF,
-    0x0F, 0x39, 0x00, 0x00, 0x00, 0xFF, 0xFF, 0xFF, 0x0F, 0xFF, 0xFF, 0x00,
-    0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0F, 0x20, 0x84,
-    0x0F, 0xCC, 0x6E, 0x7D, 0x01, 0x72, 0x98, 0x00, 0x0F, 0xDC, 0x6D, 0x0C,
-    0x0F, 0xB0, 0x84, 0x0D, 0x04, 0x84, 0xE3, 0xC0, 0x00, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x84, 0xE0, 0x84, 0x84, 0x18, 0x2F, 0x2F, 0x2F,
-    0x2F, 0x2F};
-
-TEST_F(ValueSerializerTestWithWasm, DecodeWasmModule) {
-  if ((true)) return;  // TODO(mtrofin): fix this test
-  std::vector<uint8_t> raw(
-      kSerializedIncrementerWasm,
-      kSerializedIncrementerWasm + sizeof(kSerializedIncrementerWasm));
-  Local<Value> value = DecodeTest(raw);
-  ASSERT_TRUE(value->IsWebAssemblyCompiledModule());
-  ExpectScriptTrue(
-      "new WebAssembly.Instance(result).exports.increment(8) === 9");
-}
-
-// As above, but with empty compiled data. Should work due to fallback to wire
-// data.
-const unsigned char kSerializedIncrementerWasmWithInvalidCompiledData[] = {
-    0xFF, 0x09, 0x3F, 0x00, 0x57, 0x79, 0x2D, 0x00, 0x61, 0x73, 0x6D,
-    0x0D, 0x00, 0x00, 0x00, 0x01, 0x06, 0x01, 0x60, 0x01, 0x7F, 0x01,
-    0x7F, 0x03, 0x02, 0x01, 0x00, 0x07, 0x0D, 0x01, 0x09, 0x69, 0x6E,
-    0x63, 0x72, 0x65, 0x6D, 0x65, 0x6E, 0x74, 0x00, 0x00, 0x0A, 0x08,
-    0x01, 0x06, 0x00, 0x20, 0x00, 0x41, 0x01, 0x6A, 0x00};
-
-TEST_F(ValueSerializerTestWithWasm, DecodeWasmModuleWithInvalidCompiledData) {
-  if ((true)) return;  // TODO(titzer): regenerate this test
-  std::vector<uint8_t> raw(
-      kSerializedIncrementerWasmWithInvalidCompiledData,
-      kSerializedIncrementerWasmWithInvalidCompiledData +
-          sizeof(kSerializedIncrementerWasmWithInvalidCompiledData));
-  Local<Value> value = DecodeTest(raw);
-  ASSERT_TRUE(value->IsWebAssemblyCompiledModule());
-  ExpectScriptTrue(
-      "new WebAssembly.Instance(result).exports.increment(8) === 9");
-}
-
-// As above, but also with empty wire data. Should fail.
-const unsigned char kSerializedIncrementerWasmInvalid[] = {
-    0xFF, 0x09, 0x3F, 0x00, 0x57, 0x79, 0x00, 0x00};
-
-TEST_F(ValueSerializerTestWithWasm,
-       DecodeWasmModuleWithInvalidCompiledAndWireData) {
-  std::vector<uint8_t> raw(kSerializedIncrementerWasmInvalid,
-                           kSerializedIncrementerWasmInvalid +
-                               sizeof(kSerializedIncrementerWasmInvalid));
-  InvalidDecodeTest(raw);
-}
-
-TEST_F(ValueSerializerTestWithWasm, DecodeWasmModuleWithInvalidDataLength) {
-  InvalidDecodeTest({0xFF, 0x09, 0x3F, 0x00, 0x57, 0x79, 0x7F, 0x00});
-  InvalidDecodeTest({0xFF, 0x09, 0x3F, 0x00, 0x57, 0x79, 0x00, 0x7F});
 }
 
 class ValueSerializerTestWithLimitedMemory : public ValueSerializerTest {

@@ -278,4 +278,81 @@ public class InteropByteBufferTest {
             assertThrows(() -> jsBuffer.setArrayElement(0, 42), e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
         }
     }
+
+    @Test
+    public void testDetachedInteropArrayBuffer() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).allowExperimentalOptions(true).option("js.debug-builtin", "true").option("js.v8-compat", "true").build()) {
+            ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
+            context.getBindings("js").putMember("buffer", buffer);
+            Value byteLength = context.eval(ID, "" +
+                            "var arrayBuffer = new ArrayBuffer(buffer);\n" +
+                            "Debug.typedArrayDetachBuffer(arrayBuffer);\n" +
+                            "arrayBuffer.byteLength;");
+            assertEquals(0, byteLength.asInt());
+        }
+    }
+
+    @Test
+    public void testAtomics() {
+        ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3, 4, 5});
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
+            context.getBindings("js").putMember("buffer", buffer);
+            context.eval(ID, "const buff = new Int8Array(buffer);");
+            Value loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(3, loaded.asInt());
+            Value stored = context.eval(ID, "Atomics.store(buff, 2, 42);");
+            assertEquals(42, stored.asInt());
+            Value added = context.eval(ID, "Atomics.add(buff, 2, 2);");
+            assertEquals(42, added.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(44, loaded.asInt());
+            Value subbed = context.eval(ID, "Atomics.sub(buff, 2, 2);");
+            assertEquals(44, subbed.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(42, loaded.asInt());
+            Value compexed = context.eval(ID, "Atomics.compareExchange(buff, 2, 42, 24);");
+            assertEquals(42, compexed.asInt());
+            Value exed = context.eval(ID, "Atomics.exchange(buff, 2, 42);");
+            assertEquals(24, exed.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 2);");
+            assertEquals(42, loaded.asInt());
+            Value ored = context.eval(ID, "Atomics.or(buff, 4, 2);");
+            assertEquals(5, ored.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 4);");
+            assertEquals(7, loaded.asInt());
+            Value xored = context.eval(ID, "Atomics.xor(buff, 4, 2);");
+            assertEquals(7, xored.asInt());
+            loaded = context.eval(ID, "Atomics.load(buff, 4);");
+            assertEquals(5, loaded.asInt());
+        }
+    }
+
+    @Test
+    public void testLargeInteropBuffer() {
+        HostAccess hostAccess = HostAccess.newBuilder().allowBufferAccess(true).build();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
+            int maxByteLength = JSContextOptions.MAX_TYPED_ARRAY_LENGTH.getDefaultValue();
+            ByteBuffer buffer = ByteBuffer.allocate(maxByteLength);
+            context.getBindings(ID).putMember("buffer", buffer);
+
+            Value byteLength = context.eval(ID, "new Uint8Array(buffer).byteLength");
+            assertEquals(maxByteLength, byteLength.asInt());
+
+            if (maxByteLength % 8 != 0) {
+                maxByteLength -= (maxByteLength % 8);
+                buffer = ByteBuffer.allocate(maxByteLength);
+                context.getBindings(ID).putMember("buffer", buffer);
+            }
+            byteLength = context.eval(ID, "new Float64Array(buffer).byteLength");
+            assertEquals(maxByteLength, byteLength.asInt());
+
+            int maxByteLengthPlusOne = JSContextOptions.MAX_TYPED_ARRAY_LENGTH.getDefaultValue() + 1;
+            buffer = ByteBuffer.allocate(maxByteLengthPlusOne);
+            context.getBindings(ID).putMember("buffer", buffer);
+            Value rangeErrorThrown = context.eval(ID, "try { new Uint8Array(buffer); false; } catch (e) { e instanceof RangeError; }");
+            assertTrue(rangeErrorThrown.asBoolean());
+        }
+    }
+
 }

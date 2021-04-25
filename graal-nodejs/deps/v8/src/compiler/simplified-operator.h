@@ -106,7 +106,9 @@ struct FieldAccess {
         write_barrier_kind(write_barrier_kind),
         load_sensitivity(load_sensitivity),
         const_field_info(const_field_info),
-        is_store_in_literal(is_store_in_literal) {}
+        is_store_in_literal(is_store_in_literal) {
+    DCHECK_GE(offset, 0);
+  }
 
   int tag() const { return base_is_tagged == kTaggedBase ? kHeapObjectTag : 0; }
 };
@@ -218,19 +220,24 @@ std::ostream& operator<<(std::ostream&, CheckParameters const&);
 
 CheckParameters const& CheckParametersOf(Operator const*) V8_WARN_UNUSED_RESULT;
 
+enum class CheckBoundsFlag : uint8_t {
+  kConvertStringAndMinusZero = 1 << 0,  // instead of deopting on such inputs
+  kAbortOnOutOfBounds = 1 << 1,         // instead of deopting if input is OOB
+};
+using CheckBoundsFlags = base::Flags<CheckBoundsFlag>;
+DEFINE_OPERATORS_FOR_FLAGS(CheckBoundsFlags)
+
 class CheckBoundsParameters final {
  public:
-  enum Mode { kAbortOnOutOfBounds, kDeoptOnOutOfBounds };
+  CheckBoundsParameters(const FeedbackSource& feedback, CheckBoundsFlags flags)
+      : check_parameters_(feedback), flags_(flags) {}
 
-  CheckBoundsParameters(const FeedbackSource& feedback, Mode mode)
-      : check_parameters_(feedback), mode_(mode) {}
-
-  Mode mode() const { return mode_; }
+  CheckBoundsFlags flags() const { return flags_; }
   const CheckParameters& check_parameters() const { return check_parameters_; }
 
  private:
   CheckParameters check_parameters_;
-  Mode mode_;
+  CheckBoundsFlags flags_;
 };
 
 bool operator==(CheckBoundsParameters const&, CheckBoundsParameters const&);
@@ -299,6 +306,9 @@ bool operator==(CheckFloat64HoleParameters const&,
                 CheckFloat64HoleParameters const&);
 bool operator!=(CheckFloat64HoleParameters const&,
                 CheckFloat64HoleParameters const&);
+
+// Parameter for CheckClosure node.
+Handle<FeedbackCell> FeedbackCellOf(const Operator* op);
 
 enum class CheckTaggedInputMode : uint8_t {
   kNumber,
@@ -372,10 +382,9 @@ size_t hash_value(const CheckMinusZeroParameters& params);
 bool operator==(CheckMinusZeroParameters const&,
                 CheckMinusZeroParameters const&);
 
-// Flags for map checks.
 enum class CheckMapsFlag : uint8_t {
   kNone = 0u,
-  kTryMigrateInstance = 1u << 0,  // Try instance migration.
+  kTryMigrateInstance = 1u << 0,
 };
 using CheckMapsFlags = base::Flags<CheckMapsFlag>;
 
@@ -580,6 +589,30 @@ DeoptimizeReason DeoptimizeReasonOf(const Operator* op) V8_WARN_UNUSED_RESULT;
 
 int NewArgumentsElementsMappedCountOf(const Operator* op) V8_WARN_UNUSED_RESULT;
 
+class FastApiCallParameters {
+ public:
+  explicit FastApiCallParameters(const CFunctionInfo* signature,
+                                 FeedbackSource const& feedback)
+      : signature_(signature), feedback_(feedback) {}
+
+  const CFunctionInfo* signature() const { return signature_; }
+  FeedbackSource const& feedback() const { return feedback_; }
+
+ private:
+  const CFunctionInfo* signature_;
+  const FeedbackSource feedback_;
+};
+
+FastApiCallParameters const& FastApiCallParametersOf(const Operator* op)
+    V8_WARN_UNUSED_RESULT;
+
+V8_EXPORT_PRIVATE std::ostream& operator<<(std::ostream&,
+                                           FastApiCallParameters const&);
+
+size_t hash_value(FastApiCallParameters const&);
+
+bool operator==(FastApiCallParameters const&, FastApiCallParameters const&);
+
 // Interface for building simplified operators, which represent the
 // medium-level operations of V8, including adding numbers, allocating objects,
 // indexing into objects and arrays, etc.
@@ -666,6 +699,7 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* NumberSilenceNaN();
 
   const Operator* BigIntAdd();
+  const Operator* BigIntSubtract();
   const Operator* BigIntNegate();
 
   const Operator* SpeculativeSafeIntegerAdd(NumberOperationHint hint);
@@ -688,6 +722,7 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* SpeculativeNumberEqual(NumberOperationHint hint);
 
   const Operator* SpeculativeBigIntAdd(BigIntOperationHint hint);
+  const Operator* SpeculativeBigIntSubtract(BigIntOperationHint hint);
   const Operator* SpeculativeBigIntNegate(BigIntOperationHint hint);
   const Operator* BigIntAsUintN(int bits);
 
@@ -725,7 +760,6 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* PlainPrimitiveToWord32();
   const Operator* PlainPrimitiveToFloat64();
 
-  const Operator* ChangeCompressedSignedToInt32();
   const Operator* ChangeTaggedSignedToInt32();
   const Operator* ChangeTaggedSignedToInt64();
   const Operator* ChangeTaggedToInt32();
@@ -733,9 +767,6 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* ChangeTaggedToUint32();
   const Operator* ChangeTaggedToFloat64();
   const Operator* ChangeTaggedToTaggedSigned();
-  const Operator* ChangeCompressedToTaggedSigned();
-  const Operator* ChangeTaggedToCompressedSigned();
-  const Operator* ChangeInt31ToCompressedSigned();
   const Operator* ChangeInt31ToTaggedSigned();
   const Operator* ChangeInt32ToTagged();
   const Operator* ChangeInt64ToTagged();
@@ -756,7 +787,14 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* CompareMaps(ZoneHandleSet<Map>);
   const Operator* MapGuard(ZoneHandleSet<Map> maps);
 
-  const Operator* CheckBounds(const FeedbackSource& feedback);
+  const Operator* CheckBounds(const FeedbackSource& feedback,
+                              CheckBoundsFlags flags = {});
+  const Operator* CheckedUint32Bounds(const FeedbackSource& feedback,
+                                      CheckBoundsFlags flags);
+  const Operator* CheckedUint64Bounds(const FeedbackSource& feedback,
+                                      CheckBoundsFlags flags);
+
+  const Operator* CheckClosure(const Handle<FeedbackCell>& feedback_cell);
   const Operator* CheckEqualsInternalizedString();
   const Operator* CheckEqualsSymbol();
   const Operator* CheckFloat64Hole(CheckFloat64HoleMode, FeedbackSource const&);
@@ -783,8 +821,6 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* CheckedInt32Mod();
   const Operator* CheckedInt32Mul(CheckForMinusZeroMode);
   const Operator* CheckedInt32Sub();
-  const Operator* CheckedInt32ToCompressedSigned(
-      const FeedbackSource& feedback);
   const Operator* CheckedInt32ToTaggedSigned(const FeedbackSource& feedback);
   const Operator* CheckedInt64ToInt32(const FeedbackSource& feedback);
   const Operator* CheckedInt64ToTaggedSigned(const FeedbackSource& feedback);
@@ -793,28 +829,18 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
                                          const FeedbackSource& feedback);
   const Operator* CheckedTaggedToInt32(CheckForMinusZeroMode,
                                        const FeedbackSource& feedback);
+  const Operator* CheckedTaggedToArrayIndex(const FeedbackSource& feedback);
   const Operator* CheckedTaggedToInt64(CheckForMinusZeroMode,
                                        const FeedbackSource& feedback);
   const Operator* CheckedTaggedToTaggedPointer(const FeedbackSource& feedback);
   const Operator* CheckedTaggedToTaggedSigned(const FeedbackSource& feedback);
   const Operator* CheckBigInt(const FeedbackSource& feedback);
-  const Operator* CheckedCompressedToTaggedPointer(
-      const FeedbackSource& feedback);
-  const Operator* CheckedCompressedToTaggedSigned(
-      const FeedbackSource& feedback);
-  const Operator* CheckedTaggedToCompressedPointer(
-      const FeedbackSource& feedback);
-  const Operator* CheckedTaggedToCompressedSigned(
-      const FeedbackSource& feedback);
   const Operator* CheckedTruncateTaggedToWord32(CheckTaggedInputMode,
                                                 const FeedbackSource& feedback);
   const Operator* CheckedUint32Div();
   const Operator* CheckedUint32Mod();
-  const Operator* CheckedUint32Bounds(const FeedbackSource& feedback,
-                                      CheckBoundsParameters::Mode mode);
   const Operator* CheckedUint32ToInt32(const FeedbackSource& feedback);
   const Operator* CheckedUint32ToTaggedSigned(const FeedbackSource& feedback);
-  const Operator* CheckedUint64Bounds(const FeedbackSource& feedback);
   const Operator* CheckedUint64ToInt32(const FeedbackSource& feedback);
   const Operator* CheckedUint64ToTaggedSigned(const FeedbackSource& feedback);
 
@@ -876,12 +902,18 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
       Type type, AllocationType allocation = AllocationType::kYoung,
       AllowLargeObjects allow_large_objects = AllowLargeObjects::kFalse);
 
+  const Operator* LoadMessage();
+  const Operator* StoreMessage();
+
   const Operator* LoadFieldByIndex();
   const Operator* LoadField(FieldAccess const&);
   const Operator* StoreField(FieldAccess const&);
 
   // load-element [base + index]
   const Operator* LoadElement(ElementAccess const&);
+
+  // load-stack-argument [base + index]
+  const Operator* LoadStackArgument();
 
   // store-element [base + index], value
   const Operator* StoreElement(ElementAccess const&);
@@ -924,6 +956,10 @@ class V8_EXPORT_PRIVATE SimplifiedOperatorBuilder final
   const Operator* AssertType(Type type);
 
   const Operator* DateNow();
+
+  // Stores the signature and feedback of a fast C call
+  const Operator* FastApiCall(const CFunctionInfo* signature,
+                              FeedbackSource const& feedback);
 
  private:
   Zone* zone() const { return zone_; }

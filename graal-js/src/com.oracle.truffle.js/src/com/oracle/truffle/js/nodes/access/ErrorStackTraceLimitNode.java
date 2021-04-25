@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,28 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
+import com.oracle.truffle.js.nodes.cast.IsNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     private final JSContext context;
-    @Child private PropertyGetNode getStackTraceLimit;
-    @Child private JSToIntegerAsIntNode toInteger;
+    @Child private DynamicObjectLibrary getStackTraceLimit;
+    @Child private IsNumberNode isNumber;
+    @Child private JSToIntegerAsLongNode toInteger;
 
     protected ErrorStackTraceLimitNode(JSContext context) {
         this.context = context;
-        this.getStackTraceLimit = PropertyGetNode.create(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, false, context);
-        this.toInteger = JSToIntegerAsIntNode.create();
+        this.getStackTraceLimit = JSObjectUtil.createDispatched(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME);
+        this.isNumber = IsNumberNode.create();
+        this.toInteger = JSToIntegerAsLongNode.create();
     }
 
     public static ErrorStackTraceLimitNode create(JSContext context) {
@@ -66,7 +73,14 @@ public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
     @Specialization
     public int doInt() {
         DynamicObject errorConstructor = context.getRealm().getErrorConstructor(JSErrorType.Error);
-        return Math.max(0, toInteger.executeInt(getStackTraceLimit.getValue(errorConstructor)));
+        if (JSProperty.isData(getStackTraceLimit.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
+            Object value = getStackTraceLimit.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
+            if (isNumber.execute(value)) {
+                long limit = toInteger.executeLong(value);
+                return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
+            }
+        }
+        return 0;
     }
 
     public abstract int executeInt();

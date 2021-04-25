@@ -24,6 +24,7 @@
 const {
   Boolean,
   Error,
+  ErrorCaptureStackTrace,
   MathMin,
   NumberIsNaN,
   ObjectCreate,
@@ -35,6 +36,7 @@ const {
   PromiseResolve,
   ReflectApply,
   ReflectOwnKeys,
+  String,
   Symbol,
   SymbolFor,
   SymbolAsyncIterator
@@ -278,8 +280,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     if (er instanceof Error) {
       try {
         const capture = {};
-        // eslint-disable-next-line no-restricted-syntax
-        Error.captureStackTrace(capture, EventEmitter.prototype.emit);
+        ErrorCaptureStackTrace(capture, EventEmitter.prototype.emit);
         ObjectDefineProperty(er, kEnhanceStackBeforeInspector, {
           value: enhanceStackTrace.bind(this, er, capture),
           configurable: true
@@ -623,44 +624,20 @@ function unwrapListeners(arr) {
 
 function once(emitter, name) {
   return new Promise((resolve, reject) => {
-    if (
-      typeof emitter.addEventListener === 'function' &&
-      typeof emitter.on !== 'function'
-    ) {
-      // EventTarget does not have `error` event semantics like Node
-      // EventEmitters, we do not listen to `error` events here.
-      emitter.addEventListener(
-        name,
-        (...args) => { resolve(args); },
-        { once: true }
-      );
-      return;
-    }
-
-    const eventListener = (...args) => {
-      if (errorListener !== undefined) {
+    const errorListener = (err) => {
+      emitter.removeListener(name, resolver);
+      reject(err);
+    };
+    const resolver = (...args) => {
+      if (typeof emitter.removeListener === 'function') {
         emitter.removeListener('error', errorListener);
       }
       resolve(args);
     };
-    let errorListener;
-
-    // Adding an error listener is not optional because
-    // if an error is thrown on an event emitter we cannot
-    // guarantee that the actual event we are waiting will
-    // be fired. The result could be a silent way to create
-    // memory or file descriptor leaks, which is something
-    // we should avoid.
+    eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
     if (name !== 'error') {
-      errorListener = (err) => {
-        emitter.removeListener(name, eventListener);
-        reject(err);
-      };
-
-      emitter.once('error', errorListener);
+      addErrorHandlerIfEventEmitter(emitter, errorListener, { once: true });
     }
-
-    emitter.once(name, eventListener);
   });
 }
 
@@ -669,6 +646,38 @@ const AsyncIteratorPrototype = ObjectGetPrototypeOf(
 
 function createIterResult(value, done) {
   return { value, done };
+}
+
+function addErrorHandlerIfEventEmitter(emitter, handler, flags) {
+  if (typeof emitter.on === 'function') {
+    eventTargetAgnosticAddListener(emitter, 'error', handler, flags);
+  }
+}
+
+function eventTargetAgnosticRemoveListener(emitter, name, listener, flags) {
+  if (typeof emitter.removeListener === 'function') {
+    emitter.removeListener(name, listener);
+  } else if (typeof emitter.removeEventListener === 'function') {
+    emitter.removeEventListener(name, listener, flags);
+  } else {
+    throw new ERR_INVALID_ARG_TYPE('emitter', 'EventEmitter', emitter);
+  }
+}
+
+function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
+  if (typeof emitter.on === 'function') {
+    if (flags && flags.once) {
+      emitter.once(name, listener);
+    } else {
+      emitter.on(name, listener);
+    }
+  } else if (typeof emitter.addEventListener === 'function') {
+    // EventTarget does not have `error` event semantics like Node
+    // EventEmitters, we do not listen to `error` events here.
+    emitter.addEventListener(name, (arg) => { listener(arg); }, flags);
+  } else {
+    throw new ERR_INVALID_ARG_TYPE('emitter', 'EventEmitter', emitter);
+  }
 }
 
 function on(emitter, event) {
@@ -707,8 +716,8 @@ function on(emitter, event) {
     },
 
     return() {
-      emitter.removeListener(event, eventHandler);
-      emitter.removeListener('error', errorHandler);
+      eventTargetAgnosticRemoveListener(emitter, event, eventHandler);
+      eventTargetAgnosticRemoveListener(emitter, 'error', errorHandler);
       finished = true;
 
       for (const promise of unconsumedPromises) {
@@ -724,8 +733,8 @@ function on(emitter, event) {
                                        'Error', err);
       }
       error = err;
-      emitter.removeListener(event, eventHandler);
-      emitter.removeListener('error', errorHandler);
+      eventTargetAgnosticRemoveListener(emitter, event, eventHandler);
+      eventTargetAgnosticRemoveListener(emitter, 'error', errorHandler);
     },
 
     [SymbolAsyncIterator]() {
@@ -733,8 +742,11 @@ function on(emitter, event) {
     }
   }, AsyncIteratorPrototype);
 
-  emitter.on(event, eventHandler);
-  emitter.on('error', errorHandler);
+  eventTargetAgnosticAddListener(emitter, event, eventHandler);
+  if (event !== 'error') {
+    addErrorHandlerIfEventEmitter(emitter, errorHandler);
+  }
+
 
   return iterator;
 

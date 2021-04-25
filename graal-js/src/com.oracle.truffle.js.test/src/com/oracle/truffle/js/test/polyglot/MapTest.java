@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,13 +97,13 @@ public class MapTest {
         }
     }
 
-    @Test
     /**
-     * Regression test for github.com/graalvm/graaljs/issues/203.
+     * Regression test for https://github.com/oracle/graaljs/issues/203.
      *
      * According to issue, iteration over a Java HashMap returns wrong value. Actually, the problem
-     * is that the property access is not mapped to Map.get().
+     * was that the property access was not mapped to Map.get().
      */
+    @Test
     public void testMapIterationContext() {
         String source = "var HashMap = Java.type('java.util.HashMap'); \n" +
                         "var map = new HashMap();\n" +
@@ -117,7 +117,7 @@ public class MapTest {
                         "}; str;";
         try (Context context = JSTest.newContextBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(c -> true).build()) {
             Value result = context.eval("js", source);
-            Assert.assertEquals("1undefinedA", result.asString());
+            Assert.assertEquals("1AA", result.asString());
         }
     }
 

@@ -2,22 +2,23 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypePush,
+  ArrayPrototypeShift,
   Boolean,
-  Map,
+  SafeMap,
 } = primordials;
 
 const assert = require('internal/assert');
 const net = require('net');
 const { sendHelper } = require('internal/cluster/utils');
-const uv = internalBinding('uv');
 const { constants } = internalBinding('tcp_wrap');
 
 module.exports = RoundRobinHandle;
 
 function RoundRobinHandle(key, address, { port, fd, flags }) {
   this.key = key;
-  this.all = new Map();
-  this.free = new Map();
+  this.all = new SafeMap();
+  this.free = new SafeMap();
   this.handles = [];
   this.handle = null;
   this.server = net.createServer(assert.fail);
@@ -65,10 +66,7 @@ RoundRobinHandle.prototype.add = function(worker, send) {
   // Still busy binding.
   this.server.once('listening', done);
   this.server.once('error', (err) => {
-    // Hack: translate 'EADDRINUSE' error string back to numeric error code.
-    // It works but ideally we'd have some backchannel between the net and
-    // cluster modules for stuff like this.
-    send(uv[`UV_${err.errno}`], null);
+    send(err.errno, null);
   });
 };
 
@@ -94,7 +92,7 @@ RoundRobinHandle.prototype.remove = function(worker) {
 };
 
 RoundRobinHandle.prototype.distribute = function(err, handle) {
-  this.handles.push(handle);
+  ArrayPrototypePush(this.handles, handle);
   const [ workerEntry ] = this.free;
 
   if (ArrayIsArray(workerEntry)) {
@@ -109,7 +107,7 @@ RoundRobinHandle.prototype.handoff = function(worker) {
     return;  // Worker is closing (or has closed) the server.
   }
 
-  const handle = this.handles.shift();
+  const handle = ArrayPrototypeShift(this.handles);
 
   if (handle === undefined) {
     this.free.set(worker.id, worker);  // Add to ready queue again.

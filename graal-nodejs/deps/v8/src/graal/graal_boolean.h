@@ -64,4 +64,3 @@ private:
 };
 
 #endif /* GRAAL_BOOLEAN_H_ */
-

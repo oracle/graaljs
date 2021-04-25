@@ -68,4 +68,3 @@ private:
 };
 
 #endif /* GRAAL_FUNCTION_TEMPLATE_H_ */
-

@@ -36,19 +36,19 @@ assert.strictEqual(util.inspect(false), 'false');
 assert.strictEqual(util.inspect(''), "''");
 assert.strictEqual(util.inspect('hello'), "'hello'");
 assert.strictEqual(util.inspect(function abc() {}), '[Function: abc]');
-assert.strictEqual(util.inspect(() => {}), '[Function]');
+assert.strictEqual(util.inspect(() => {}), '[Function (anonymous)]');
 assert.strictEqual(
   util.inspect(async function() {}),
-  '[AsyncFunction]'
+  '[AsyncFunction (anonymous)]'
 );
-assert.strictEqual(util.inspect(async () => {}), '[AsyncFunction]');
+assert.strictEqual(util.inspect(async () => {}), '[AsyncFunction (anonymous)]');
 
 // Special function inspection.
 {
   const fn = (() => function*() {})();
   assert.strictEqual(
     util.inspect(fn),
-    '[GeneratorFunction]'
+    '[GeneratorFunction (anonymous)]'
   );
   assert.strictEqual(
     util.inspect(async function* abc() {}),
@@ -57,7 +57,7 @@ assert.strictEqual(util.inspect(async () => {}), '[AsyncFunction]');
   Object.setPrototypeOf(fn, Object.getPrototypeOf(async () => {}));
   assert.strictEqual(
     util.inspect(fn),
-    '[GeneratorFunction] AsyncFunction'
+    '[GeneratorFunction (anonymous)] AsyncFunction'
   );
   Object.defineProperty(fn, 'name', { value: 5, configurable: true });
   assert.strictEqual(
@@ -92,10 +92,11 @@ assert.strictEqual(
   new Date('2010-02-14T12:48:40+01:00').toISOString()
 );
 assert.strictEqual(util.inspect(new Date('')), (new Date('')).toString());
-assert.strictEqual(util.inspect('\n\u0001'), "'\\n\\u0001'");
+assert.strictEqual(util.inspect('\n\x01'), "'\\n\\x01'");
 assert.strictEqual(
-  util.inspect(`${Array(75).fill(1)}'\n\u001d\n\u0003`),
-  `"${Array(75).fill(1)}'\\n" +\n  '\\u001d\\n' +\n  '\\u0003'`
+  util.inspect(`${Array(75).fill(1)}'\n\x1d\n\x03\x85\x7f\x7e\x9f\xa0`),
+  // eslint-disable-next-line no-irregular-whitespace
+  `"${Array(75).fill(1)}'\\n" +\n  '\\x1D\\n' +\n  '\\x03\\x85\\x7F~\\x9F '`
 );
 assert.strictEqual(util.inspect([]), '[]');
 assert.strictEqual(util.inspect(Object.create([])), 'Array {}');
@@ -359,7 +360,7 @@ assert.strictEqual(
 
   const value = {};
   value.a = value;
-  assert.strictEqual(util.inspect(value), '{ a: [Circular] }');
+  assert.strictEqual(util.inspect(value), '<ref *1> { a: [Circular *1] }');
   const getterFn = {
     get one() {
       return null;
@@ -500,7 +501,7 @@ assert.strictEqual(
   value.aprop = 42;
   assert.strictEqual(
     util.inspect(value),
-    '[Function] { aprop: 42 }'
+    '[Function (anonymous)] { aprop: 42 }'
   );
 }
 
@@ -582,10 +583,10 @@ assert.strictEqual(util.inspect(-5e-324), '-5e-324');
 {
   let obj = vm.runInNewContext('(function(){return {}})()', {});
   assert.strictEqual(util.inspect(obj), '{}');
-  obj = vm.runInNewContext('var m=new Map();m.set(1,2);m', {});
-  assert.strictEqual(util.inspect(obj), 'Map { 1 => 2 }');
-  obj = vm.runInNewContext('var s=new Set();s.add(1);s.add(2);s', {});
-  assert.strictEqual(util.inspect(obj), 'Set { 1, 2 }');
+  obj = vm.runInNewContext('const m=new Map();m.set(1,2);m', {});
+  assert.strictEqual(util.inspect(obj), 'Map(1) { 1 => 2 }');
+  obj = vm.runInNewContext('const s=new Set();s.add(1);s.add(2);s', {});
+  assert.strictEqual(util.inspect(obj), 'Set(2) { 1, 2 }');
   obj = vm.runInNewContext('fn=function(){};new Promise(fn,fn)', {});
   assert.strictEqual(util.inspect(obj), 'Promise { <pending> }');
 }
@@ -1096,13 +1097,13 @@ if (typeof Symbol !== 'undefined') {
 
 // Test Set.
 {
-  assert.strictEqual(util.inspect(new Set()), 'Set {}');
-  assert.strictEqual(util.inspect(new Set([1, 2, 3])), 'Set { 1, 2, 3 }');
+  assert.strictEqual(util.inspect(new Set()), 'Set(0) {}');
+  assert.strictEqual(util.inspect(new Set([1, 2, 3])), 'Set(3) { 1, 2, 3 }');
   const set = new Set(['foo']);
   set.bar = 42;
   assert.strictEqual(
     util.inspect(set, { showHidden: true }),
-    "Set { 'foo', [size]: 1, bar: 42 }"
+    "Set(1) { 'foo', bar: 42 }"
   );
 }
 
@@ -1110,33 +1111,39 @@ if (typeof Symbol !== 'undefined') {
 {
   const set = new Set();
   set.add(set);
-  assert.strictEqual(util.inspect(set), 'Set { [Circular] }');
+  assert.strictEqual(util.inspect(set), '<ref *1> Set(1) { [Circular *1] }');
 }
 
 // Test Map.
 {
-  assert.strictEqual(util.inspect(new Map()), 'Map {}');
+  assert.strictEqual(util.inspect(new Map()), 'Map(0) {}');
   assert.strictEqual(util.inspect(new Map([[1, 'a'], [2, 'b'], [3, 'c']])),
-                     "Map { 1 => 'a', 2 => 'b', 3 => 'c' }");
+                     "Map(3) { 1 => 'a', 2 => 'b', 3 => 'c' }");
   const map = new Map([['foo', null]]);
   map.bar = 42;
   assert.strictEqual(util.inspect(map, true),
-                     "Map { 'foo' => null, [size]: 1, bar: 42 }");
+                     "Map(1) { 'foo' => null, bar: 42 }");
 }
 
 // Test circular Map.
 {
   const map = new Map();
   map.set(map, 'map');
-  assert.strictEqual(inspect(map), "Map { [Circular] => 'map' }");
+  assert.strictEqual(
+    inspect(map),
+    "<ref *1> Map(1) { [Circular *1] => 'map' }"
+  );
   map.set(map, map);
   assert.strictEqual(
     inspect(map),
-    'Map { [Circular] => [Circular] }'
+    '<ref *1> Map(1) { [Circular *1] => [Circular *1] }'
   );
   map.delete(map);
   map.set('map', map);
-  assert.strictEqual(inspect(map), "Map { 'map' => [Circular] }");
+  assert.strictEqual(
+    inspect(map),
+    "<ref *1> Map(1) { 'map' => [Circular *1] }"
+  );
 }
 
 // Test multiple circular references.
@@ -1149,7 +1156,10 @@ if (typeof Symbol !== 'undefined') {
 
   assert.strictEqual(
     inspect(obj),
-    '{ a: [ [Circular] ], b: { inner: [Circular], obj: [Circular] } }'
+    '<ref *1> {\n' +
+    '  a: [ [Circular *1] ],\n' +
+    '  b: <ref *2> { inner: [Circular *2], obj: [Circular *1] }\n' +
+    '}'
   );
 }
 
@@ -1299,10 +1309,10 @@ if (typeof Symbol !== 'undefined') {
   });
 
   checkAlignment(obj, '{', "  'X': null", '}');
-  checkAlignment(new Set(bigArray), 'Set {', '  X', '}');
+  checkAlignment(new Set(bigArray), 'Set(100) {', '  X', '}');
   checkAlignment(
     new Map(bigArray.map((number) => [number, null])),
-    'Map {', '  X => null', '}'
+    'Map(100) {', '  X => null', '}'
   );
 }
 
@@ -1322,9 +1332,9 @@ if (typeof Symbol !== 'undefined') {
   assert.strictEqual(util.inspect(new ArraySubclass(1, 2, 3)),
                      'ArraySubclass(3) [ 1, 2, 3 ]');
   assert.strictEqual(util.inspect(new SetSubclass([1, 2, 3])),
-                     'SetSubclass [Set] { 1, 2, 3 }');
+                     'SetSubclass(3) [Set] { 1, 2, 3 }');
   assert.strictEqual(util.inspect(new MapSubclass([['foo', 42]])),
-                     "MapSubclass [Map] { 'foo' => 42 }");
+                     "MapSubclass(1) [Map] { 'foo' => 42 }");
   assert.strictEqual(util.inspect(new PromiseSubclass(() => {})),
                      'PromiseSubclass [Promise] { <pending> }');
   assert.strictEqual(
@@ -1348,9 +1358,9 @@ if (typeof Symbol !== 'undefined') {
   arr[0][0][0] = { a: 2 };
   assert.strictEqual(util.inspect(arr), '[ [ [ [Object] ] ] ]');
   arr[0][0][0] = arr;
-  assert.strictEqual(util.inspect(arr), '[ [ [ [Circular] ] ] ]');
+  assert.strictEqual(util.inspect(arr), '<ref *1> [ [ [ [Circular *1] ] ] ]');
   arr[0][0][0] = arr[0][0];
-  assert.strictEqual(util.inspect(arr), '[ [ [ [Circular] ] ] ]');
+  assert.strictEqual(util.inspect(arr), '[ [ <ref *1> [ [Circular *1] ] ] ]');
 }
 
 // Corner cases.
@@ -1583,7 +1593,7 @@ util.inspect(process);
     "         'test',",
     "         'foo' ] ],",
     '     4 ],',
-    "  b: Map { 'za' => 1, 'zb' => 'test' } }",
+    "  b: Map(2) { 'za' => 1, 'zb' => 'test' } }",
   ].join('\n');
   assert.strictEqual(out, expect);
 
@@ -1604,7 +1614,7 @@ util.inspect(process);
     '    ],',
     '    4',
     '  ],',
-    '  b: Map {',
+    '  b: Map(2) {',
     "    'za' => 1,",
     "    'zb' => 'test'",
     '  }',
@@ -1639,7 +1649,7 @@ util.inspect(process);
   out = util.inspect(o, { compact: false, breakLength: 3 });
   expect = [
     '{',
-    '  a: [Function],',
+    '  a: [Function (anonymous)],',
     '  b: [Number: 3]',
     '}'
   ].join('\n');
@@ -1648,7 +1658,7 @@ util.inspect(process);
   out = util.inspect(o, { compact: false, breakLength: 3, showHidden: true });
   expect = [
     '{',
-    '  a: [Function] {',
+    '  a: [Function (anonymous)] {',
     '    [length]: 0,',
     "    [name]: ''",
     '  },',
@@ -1684,18 +1694,17 @@ util.inspect(process);
 
   let out = util.inspect(map, { compact: false, showHidden: true, depth: 9 });
   let expected = [
-    'Map {',
+    'Map(2) {',
     '  Promise {',
     '    [',
     '      [',
     '        1,',
-    '        Set {',
+    '        Set(1) {',
     '          [',
     '            1,',
     '            2,',
     '            [length]: 2',
-    '          ],',
-    '          [size]: 1',
+    '          ]',
     '        },',
     '        [length]: 2',
     '      ],',
@@ -1718,7 +1727,7 @@ util.inspect(process);
     '      [length]: 2',
     '    ],',
     "    [Symbol(Symbol.toStringTag)]: 'Set Iterator'",
-    '  } => [Map Iterator] {',
+    '  } => <ref *1> [Map Iterator] {',
     '    Uint8Array(0) [',
     '      [BYTES_PER_ELEMENT]: 1,',
     '      [length]: 0,',
@@ -1729,10 +1738,9 @@ util.inspect(process);
     '        foo: true',
     '      }',
     '    ],',
-    '    [Circular],',
+    '    [Circular *1],',
     "    [Symbol(Symbol.toStringTag)]: 'Map Iterator'",
-    '  },',
-    '  [size]: 2',
+    '  }',
     '}'
   ].join('\n');
 
@@ -1741,12 +1749,12 @@ util.inspect(process);
   out = util.inspect(map, { compact: 2, showHidden: true, depth: 9 });
 
   expected = [
-    'Map {',
+    'Map(2) {',
     '  Promise {',
     '    [',
     '      [',
     '        1,',
-    '        Set { [ 1, 2, [length]: 2 ], [size]: 1 },',
+    '        Set(1) { [ 1, 2, [length]: 2 ] },',
     '        [length]: 2',
     '      ],',
     '      [length]: 1',
@@ -1761,7 +1769,7 @@ util.inspect(process);
     '  [Set Iterator] {',
     '    [ 1, 2, [length]: 2 ],',
     "    [Symbol(Symbol.toStringTag)]: 'Set Iterator'",
-    '  } => [Map Iterator] {',
+    '  } => <ref *1> [Map Iterator] {',
     '    Uint8Array(0) [',
     '      [BYTES_PER_ELEMENT]: 1,',
     '      [length]: 0,',
@@ -1769,10 +1777,9 @@ util.inspect(process);
     '      [byteOffset]: 0,',
     '      [buffer]: ArrayBuffer { byteLength: 0, foo: true }',
     '    ],',
-    '    [Circular],',
+    '    [Circular *1],',
     "    [Symbol(Symbol.toStringTag)]: 'Map Iterator'",
-    '  },',
-    '  [size]: 2',
+    '  }',
     '}'
   ].join('\n');
 
@@ -1782,14 +1789,13 @@ util.inspect(process);
     showHidden: true, depth: 9, breakLength: 4, compact: true
   });
   expected = [
-    'Map {',
+    'Map(2) {',
     '  Promise {',
     '    [ [ 1,',
-    '        Set {',
+    '        Set(1) {',
     '          [ 1,',
     '            2,',
-    '            [length]: 2 ],',
-    '          [size]: 1 },',
+    '            [length]: 2 ] },',
     '        [length]: 2 ],',
     '      [length]: 1 ] } => Uint8Array(0) [',
     '    [BYTES_PER_ELEMENT]: 1,',
@@ -1804,7 +1810,7 @@ util.inspect(process);
     '      2,',
     '      [length]: 2 ],',
     '    [Symbol(Symbol.toStringTag)]:',
-    "     'Set Iterator' } => [Map Iterator] {",
+    "     'Set Iterator' } => <ref *1> [Map Iterator] {",
     '    Uint8Array(0) [',
     '      [BYTES_PER_ELEMENT]: 1,',
     '      [length]: 0,',
@@ -1813,10 +1819,9 @@ util.inspect(process);
     '      [buffer]: ArrayBuffer {',
     '        byteLength: 0,',
     '        foo: true } ],',
-    '    [Circular],',
+    '    [Circular *1],',
     '    [Symbol(Symbol.toStringTag)]:',
-    "     'Map Iterator' },",
-    '  [size]: 2 }'
+    "     'Map Iterator' } }"
   ].join('\n');
 
   assert.strict.equal(out, expected);
@@ -2057,13 +2062,13 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
   [new Number(55), '[Number: 55]'],
   [Object(BigInt(55)), '[BigInt: 55n]'],
   [Object(Symbol('foo')), '[Symbol: Symbol(foo)]'],
-  [function() {}, '[Function]'],
-  [() => {}, '[Function]'],
+  [function() {}, '[Function (anonymous)]'],
+  [() => {}, '[Function (anonymous)]'],
   [[1, 2], '[ 1, 2 ]'],
   [[, , 5, , , , ], '[ <2 empty items>, 5, <3 empty items> ]'],
   [{ a: 5 }, '{ a: 5 }'],
-  [new Set([1, 2]), 'Set { 1, 2 }'],
-  [new Map([[1, 2]]), 'Map { 1 => 2 }'],
+  [new Set([1, 2]), 'Set(2) { 1, 2 }'],
+  [new Map([[1, 2]]), 'Map(1) { 1 => 2 }'],
   [new Set([1, 2]).entries(), '[Set Entries] { [ 1, 1 ], [ 2, 2 ] }'],
   [new Map([[1, 2]]).keys(), '[Map Iterator] { 1 }'],
   [new Date(2000), '1970-01-01T00:00:02.000Z'],
@@ -2094,8 +2099,8 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
 // Verify that having no prototype still produces nice results.
 [
   [[1, 3, 4], '[Array(3): null prototype] [ 1, 3, 4 ]'],
-  [new Set([1, 2]), '[Set: null prototype] { 1, 2 }'],
-  [new Map([[1, 2]]), '[Map: null prototype] { 1 => 2 }'],
+  [new Set([1, 2]), '[Set(2): null prototype] { 1, 2 }'],
+  [new Map([[1, 2]]), '[Map(1): null prototype] { 1 => 2 }'],
   [new Promise((resolve) => setTimeout(resolve, 10)),
    '[Promise: null prototype] { <pending> }'],
   [new WeakSet(), '[WeakSet: null prototype] { <items unknown> }'],
@@ -2286,11 +2291,11 @@ assert.strictEqual(
   Object.setPrototypeOf(obj, value);
   assert.strictEqual(
     util.inspect(obj),
-    'Object <[Function (null prototype)]> { a: true }'
+    'Object <[Function (null prototype) (anonymous)]> { a: true }'
   );
   assert.strictEqual(
     util.inspect(obj, { colors: true }),
-    'Object <\u001b[36m[Function (null prototype)]\u001b[39m> ' +
+    'Object <\u001b[36m[Function (null prototype) (anonymous)]\u001b[39m> ' +
       '{ a: \u001b[33mtrue\u001b[39m }'
   );
 
@@ -2345,7 +2350,7 @@ assert.strictEqual(
     value: iterator,
     configurable: true
   });
-  assert.strictEqual(util.inspect(obj), '[Set: null prototype] { 1, 2 }');
+  assert.strictEqual(util.inspect(obj), '[Set(2): null prototype] { 1, 2 }');
   Object.defineProperty(obj, Symbol.iterator, {
     value: true,
     configurable: true
@@ -2357,7 +2362,7 @@ assert.strictEqual(
   });
   assert.strictEqual(
     util.inspect(obj),
-    '[Set: null prototype] { 1, 2, size: NaN }'
+    '[Set(2): null prototype] { 1, 2, size: NaN }'
   );
 }
 
@@ -2390,7 +2395,7 @@ assert.strictEqual(
   getset.foo = new Set([[{ a: true }, 2, {}], 'foobar', { x: 1 }]);
   assert.strictEqual(
     inspect(getset, { getters: true }),
-    '{\n  foo: [Getter/Setter] Set { [ [Object], 2, {} ], ' +
+    '{\n  foo: [Getter/Setter] Set(3) { [ [Object], 2, {} ], ' +
       "'foobar', { x: 1 } },\n  inc: [Getter: NaN]\n}");
 }
 
@@ -2638,24 +2643,23 @@ assert.strictEqual(
     'unescape', 'eval', 'isFinite',
     'isNaN', 'SharedArrayBuffer', 'Atomics',
     'globalThis', 'WebAssembly', 'global',
-    'process', 'GLOBAL', 'root',
-    'Buffer', 'URL', 'URLSearchParams',
-    'TextEncoder', 'TextDecoder', 'clearInterval',
-    'clearTimeout', 'setInterval', 'setTimeout',
-    'queueMicrotask', 'clearImmediate', 'setImmediate',
-    'module', 'require', 'assert',
-    'async_hooks', 'buffer', 'child_process',
-    'cluster', 'crypto', 'dgram',
-    'dns', 'domain', 'events',
-    'fs', 'http', 'http2',
-    'https', 'inspector', 'net',
-    'os', 'path', 'perf_hooks',
-    'punycode', 'querystring', 'readline',
-    'repl', 'stream', 'string_decoder',
-    'tls', 'trace_events', 'tty',
-    'url', 'v8', 'vm',
-    'worker_threads', 'zlib', '_',
-    '_error', 'util'
+    'process', 'Buffer', 'URL',
+    'URLSearchParams', 'TextEncoder', 'TextDecoder',
+    'clearInterval', 'clearTimeout', 'setInterval',
+    'setTimeout', 'queueMicrotask', 'clearImmediate',
+    'setImmediate', 'module', 'require',
+    'assert', 'async_hooks', 'buffer',
+    'child_process', 'cluster', 'crypto',
+    'dgram', 'dns', 'domain',
+    'events', 'fs', 'http',
+    'http2', 'https', 'inspector',
+    'net', 'os', 'path',
+    'perf_hooks', 'punycode', 'querystring',
+    'readline', 'repl', 'stream',
+    'string_decoder', 'tls', 'trace_events',
+    'tty', 'url', 'v8',
+    'vm', 'worker_threads', 'zlib',
+    '_', '_error', 'util'
   ];
 
   out = util.inspect(
@@ -2664,44 +2668,43 @@ assert.strictEqual(
   );
   expected = [
     '[',
-    "  'Object',         'Function',           'Array',",
-    "  'Number',         'parseFloat',         'parseInt',",
-    "  'Infinity',       'NaN',                'undefined',",
-    "  'Boolean',        'String',             'Symbol',",
-    "  'Date',           'Promise',            'RegExp',",
-    "  'Error',          'EvalError',          'RangeError',",
-    "  'ReferenceError', 'SyntaxError',        'TypeError',",
-    "  'URIError',       'JSON',               'Math',",
-    "  'console',        'Intl',               'ArrayBuffer',",
-    "  'Uint8Array',     'Int8Array',          'Uint16Array',",
-    "  'Int16Array',     'Uint32Array',        'Int32Array',",
-    "  'Float32Array',   'Float64Array',       'Uint8ClampedArray',",
-    "  'BigUint64Array', 'BigInt64Array',      'DataView',",
-    "  'Map',            'BigInt',             'Set',",
-    "  'WeakMap',        'WeakSet',            'Proxy',",
-    "  'Reflect',        'decodeURI',          'decodeURIComponent',",
-    "  'encodeURI',      'encodeURIComponent', 'escape',",
-    "  'unescape',       'eval',               'isFinite',",
-    "  'isNaN',          'SharedArrayBuffer',  'Atomics',",
-    "  'globalThis',     'WebAssembly',        'global',",
-    "  'process',        'GLOBAL',             'root',",
-    "  'Buffer',         'URL',                'URLSearchParams',",
-    "  'TextEncoder',    'TextDecoder',        'clearInterval',",
-    "  'clearTimeout',   'setInterval',        'setTimeout',",
-    "  'queueMicrotask', 'clearImmediate',     'setImmediate',",
-    "  'module',         'require',            'assert',",
-    "  'async_hooks',    'buffer',             'child_process',",
-    "  'cluster',        'crypto',             'dgram',",
-    "  'dns',            'domain',             'events',",
-    "  'fs',             'http',               'http2',",
-    "  'https',          'inspector',          'net',",
-    "  'os',             'path',               'perf_hooks',",
-    "  'punycode',       'querystring',        'readline',",
-    "  'repl',           'stream',             'string_decoder',",
-    "  'tls',            'trace_events',       'tty',",
-    "  'url',            'v8',                 'vm',",
-    "  'worker_threads', 'zlib',               '_',",
-    "  '_error',         'util'",
+    "  'Object',          'Function',           'Array',",
+    "  'Number',          'parseFloat',         'parseInt',",
+    "  'Infinity',        'NaN',                'undefined',",
+    "  'Boolean',         'String',             'Symbol',",
+    "  'Date',            'Promise',            'RegExp',",
+    "  'Error',           'EvalError',          'RangeError',",
+    "  'ReferenceError',  'SyntaxError',        'TypeError',",
+    "  'URIError',        'JSON',               'Math',",
+    "  'console',         'Intl',               'ArrayBuffer',",
+    "  'Uint8Array',      'Int8Array',          'Uint16Array',",
+    "  'Int16Array',      'Uint32Array',        'Int32Array',",
+    "  'Float32Array',    'Float64Array',       'Uint8ClampedArray',",
+    "  'BigUint64Array',  'BigInt64Array',      'DataView',",
+    "  'Map',             'BigInt',             'Set',",
+    "  'WeakMap',         'WeakSet',            'Proxy',",
+    "  'Reflect',         'decodeURI',          'decodeURIComponent',",
+    "  'encodeURI',       'encodeURIComponent', 'escape',",
+    "  'unescape',        'eval',               'isFinite',",
+    "  'isNaN',           'SharedArrayBuffer',  'Atomics',",
+    "  'globalThis',      'WebAssembly',        'global',",
+    "  'process',         'Buffer',             'URL',",
+    "  'URLSearchParams', 'TextEncoder',        'TextDecoder',",
+    "  'clearInterval',   'clearTimeout',       'setInterval',",
+    "  'setTimeout',      'queueMicrotask',     'clearImmediate',",
+    "  'setImmediate',    'module',             'require',",
+    "  'assert',          'async_hooks',        'buffer',",
+    "  'child_process',   'cluster',            'crypto',",
+    "  'dgram',           'dns',                'domain',",
+    "  'events',          'fs',                 'http',",
+    "  'http2',           'https',              'inspector',",
+    "  'net',             'os',                 'path',",
+    "  'perf_hooks',      'punycode',           'querystring',",
+    "  'readline',        'repl',               'stream',",
+    "  'string_decoder',  'tls',                'trace_events',",
+    "  'tty',             'url',                'v8',",
+    "  'vm',              'worker_threads',     'zlib',",
+    "  '_',               '_error',             'util'",
     ']'
   ].join('\n');
 
@@ -2801,12 +2804,11 @@ assert.strictEqual(
 
   assert.strictEqual(
     inspect(bar),
-    'Bar [Map] { prop: true, prop2: true, abc: true }'
+    'Bar(0) [Map] { prop: true, prop2: true, abc: true }'
   );
   assert.strictEqual(
     inspect(bar, { showHidden: true, getters: true, colors: false }),
-    'Bar [Map] {\n' +
-    '  [size]: 0,\n' +
+    'Bar(0) [Map] {\n' +
     '  prop: true,\n' +
     '  prop2: true,\n' +
     '  abc: true,\n' +
@@ -2816,8 +2818,7 @@ assert.strictEqual(
   );
   assert.strictEqual(
     inspect(bar, { showHidden: true, getters: false, colors: true }),
-    'Bar [Map] {\n' +
-    '  [size]: \x1B[33m0\x1B[39m,\n' +
+    'Bar(0) [Map] {\n' +
     '  prop: \x1B[33mtrue\x1B[39m,\n' +
     '  prop2: \x1B[33mtrue\x1B[39m,\n' +
     '  abc: \x1B[33mtrue\x1B[39m,\n' +
@@ -2832,6 +2833,48 @@ assert.strictEqual(
     '{ \x1B[2mabc: \x1B[33mtrue\x1B[39m\x1B[22m, ' +
       '\x1B[2mdef: \x1B[33m5\x1B[39m\x1B[22m }'
   );
+
+  assert.strictEqual(
+    inspect(Object.getPrototypeOf(bar), { showHidden: true, getters: true }),
+    '<ref *1> Foo [Map] {\n' +
+    '    [constructor]: [class Bar extends Foo] {\n' +
+    '      [length]: 0,\n' +
+    '      [prototype]: [Circular *1],\n' +
+    "      [name]: 'Bar',\n" +
+    '      [Symbol(Symbol.species)]: [Getter: <Inspection threw ' +
+      "(Symbol.prototype.toString requires that 'this' be a Symbol)>]\n" +
+    '    },\n' +
+    "    [xyz]: [Getter: 'YES!'],\n" +
+    '    [Symbol(nodejs.util.inspect.custom)]: ' +
+      '[Function: [nodejs.util.inspect.custom]] {\n' +
+    '      [length]: 0,\n' +
+    "      [name]: '[nodejs.util.inspect.custom]'\n" +
+    '    },\n' +
+    '    [abc]: [Getter: true],\n' +
+    '    [def]: [Getter/Setter: false]\n' +
+    '  }'
+  );
+
+  assert.strictEqual(
+    inspect(Object.getPrototypeOf(bar)),
+    'Foo [Map] {}'
+  );
+
+  assert.strictEqual(
+    inspect(Object.getPrototypeOf(new Foo())),
+    'Map {}'
+  );
+}
+
+// Check that prototypes with a null prototype are inspectable.
+// Regression test for https://github.com/nodejs/node/issues/35730
+{
+  function Func() {}
+  Func.prototype = null;
+  const object = {};
+  object.constructor = Func;
+
+  assert.strictEqual(util.inspect(object), '{ constructor: [Function: Func] }');
 }
 
 // Test changing util.inspect.colors colors and aliases.
@@ -2873,6 +2916,7 @@ assert.strictEqual(
     util.inspect(x, { maxStringLength: 4 }),
     "'aaaa'... 999996 more characters"
   );
+  assert.match(util.inspect(x, { maxStringLength: null }), /a'$/);
 }
 
 {

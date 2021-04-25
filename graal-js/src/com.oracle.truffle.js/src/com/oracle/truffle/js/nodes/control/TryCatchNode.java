@@ -290,7 +290,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 return ((UserScriptException) ex).getErrorObject();
             } else if (ex instanceof StackOverflowError) {
                 CompilerDirectives.transferToInterpreter();
-                JSException rangeException = Errors.createRangeErrorStackOverflow(this);
+                JSException rangeException = Errors.createRangeErrorStackOverflow(ex, this);
                 return doJSException(rangeException);
             } else {
                 truffleExceptionBranch.enter();

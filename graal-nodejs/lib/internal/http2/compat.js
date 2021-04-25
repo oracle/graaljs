@@ -181,6 +181,11 @@ function resumeStream(stream) {
 }
 
 const proxySocketHandler = {
+  has(stream, prop) {
+    const ref = stream.session !== undefined ? stream.session[kSocket] : stream;
+    return (prop in stream) || (prop in ref);
+  },
+
   get(stream, prop) {
     switch (prop) {
       case 'on':
@@ -282,7 +287,7 @@ function onStreamTimeout(kind) {
 
 class Http2ServerRequest extends Readable {
   constructor(stream, headers, options, rawHeaders) {
-    super(options);
+    super({ autoDestroy: false, ...options });
     this[kState] = {
       closed: false,
       didRead: false,

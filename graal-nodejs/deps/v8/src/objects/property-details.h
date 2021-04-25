@@ -8,8 +8,8 @@
 #include "include/v8.h"
 #include "src/utils/allocation.h"
 // TODO(bmeurer): Remove once FLAG_modify_field_representation_inplace is gone.
+#include "src/base/bit-field.h"
 #include "src/flags/flags.h"
-#include "src/utils/utils.h"
 
 namespace v8 {
 namespace internal {
@@ -112,7 +112,19 @@ class Representation {
     // smi and tagged values. Doubles, however, would require a box allocation.
     if (IsNone()) return !other.IsDouble();
     if (!FLAG_modify_field_representation_inplace) return false;
-    return (IsSmi() || IsHeapObject()) && other.IsTagged();
+    return (IsSmi() || (!FLAG_unbox_double_fields && IsDouble()) ||
+            IsHeapObject()) &&
+           other.IsTagged();
+  }
+
+  // Return the most generic representation that this representation can be
+  // changed to in-place. If in-place representation changes are disabled, then
+  // this will return the current representation.
+  Representation MostGenericInPlaceChange() const {
+    if (!FLAG_modify_field_representation_inplace) return *this;
+    // Everything but unboxed doubles can be in-place changed to Tagged.
+    if (FLAG_unbox_double_fields && IsDouble()) return Representation::Double();
+    return Representation::Tagged();
   }
 
   bool is_more_general_than(const Representation& other) const {
@@ -310,7 +322,7 @@ class PropertyDetails {
 
   // Bit fields in value_ (type, shift, size). Must be public so the
   // constants can be embedded in generated code.
-  using KindField = BitField<PropertyKind, 0, 1>;
+  using KindField = base::BitField<PropertyKind, 0, 1>;
   using LocationField = KindField::Next<PropertyLocation, 1>;
   using ConstnessField = LocationField::Next<PropertyConstness, 1>;
   using AttributesField = ConstnessField::Next<PropertyAttributes, 3>;

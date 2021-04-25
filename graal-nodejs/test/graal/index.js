@@ -74,7 +74,7 @@ Mocha.interfaces['graal'] = function (suite) {
                 context.it.skip(title, fn);
             } else {
                 return context.it(title, fn);
-            }            
+            }
         };
         context.it.skipOnGraal = function (title, fn) {
             return itSkip(isGraalJS, title, fn);

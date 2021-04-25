@@ -26,10 +26,12 @@ void Isolate::set_context(Context context) {
 }
 
 Handle<NativeContext> Isolate::native_context() {
+  DCHECK(!context().is_null());
   return handle(context().native_context(), this);
 }
 
 NativeContext Isolate::raw_native_context() {
+  DCHECK(!context().is_null());
   return context().native_context();
 }
 
@@ -81,6 +83,18 @@ bool Isolate::is_catchable_by_javascript(Object exception) {
   return exception != ReadOnlyRoots(heap()).termination_exception();
 }
 
+bool Isolate::is_catchable_by_wasm(Object exception) {
+  if (!is_catchable_by_javascript(exception)) return false;
+  if (!exception.IsJSObject()) return true;
+  // We don't allocate, but the LookupIterator interface expects a handle.
+  DisallowHeapAllocation no_gc;
+  HandleScope handle_scope(this);
+  LookupIterator it(this, handle(JSReceiver::cast(exception), this),
+                    factory()->wasm_uncatchable_symbol(),
+                    LookupIterator::OWN_SKIP_INTERCEPTOR);
+  return !JSReceiver::HasProperty(&it).FromJust();
+}
+
 void Isolate::FireBeforeCallEnteredCallback() {
   for (auto& callback : before_call_entered_callbacks_) {
     callback(reinterpret_cast<v8::Isolate*>(this));
@@ -112,61 +126,6 @@ Isolate::ExceptionScope::~ExceptionScope() {
   }
 NATIVE_CONTEXT_FIELDS(NATIVE_CONTEXT_FIELD_ACCESSOR)
 #undef NATIVE_CONTEXT_FIELD_ACCESSOR
-
-bool Isolate::IsArrayConstructorIntact() {
-  Cell array_constructor_cell =
-      Cell::cast(root(RootIndex::kArrayConstructorProtector));
-  return array_constructor_cell.value() == Smi::FromInt(kProtectorValid);
-}
-
-bool Isolate::IsTypedArraySpeciesLookupChainIntact() {
-  PropertyCell species_cell =
-      PropertyCell::cast(root(RootIndex::kTypedArraySpeciesProtector));
-  return species_cell.value().IsSmi() &&
-         Smi::ToInt(species_cell.value()) == kProtectorValid;
-}
-
-bool Isolate::IsPromiseSpeciesLookupChainIntact() {
-  PropertyCell species_cell =
-      PropertyCell::cast(root(RootIndex::kPromiseSpeciesProtector));
-  return species_cell.value().IsSmi() &&
-         Smi::ToInt(species_cell.value()) == kProtectorValid;
-}
-
-bool Isolate::IsStringLengthOverflowIntact() {
-  Cell string_length_cell = Cell::cast(root(RootIndex::kStringLengthProtector));
-  return string_length_cell.value() == Smi::FromInt(kProtectorValid);
-}
-
-bool Isolate::IsArrayBufferDetachingIntact() {
-  PropertyCell buffer_detaching =
-      PropertyCell::cast(root(RootIndex::kArrayBufferDetachingProtector));
-  return buffer_detaching.value() == Smi::FromInt(kProtectorValid);
-}
-
-bool Isolate::IsArrayIteratorLookupChainIntact() {
-  PropertyCell array_iterator_cell =
-      PropertyCell::cast(root(RootIndex::kArrayIteratorProtector));
-  return array_iterator_cell.value() == Smi::FromInt(kProtectorValid);
-}
-
-bool Isolate::IsMapIteratorLookupChainIntact() {
-  PropertyCell map_iterator_cell =
-      PropertyCell::cast(root(RootIndex::kMapIteratorProtector));
-  return map_iterator_cell.value() == Smi::FromInt(kProtectorValid);
-}
-
-bool Isolate::IsSetIteratorLookupChainIntact() {
-  PropertyCell set_iterator_cell =
-      PropertyCell::cast(root(RootIndex::kSetIteratorProtector));
-  return set_iterator_cell.value() == Smi::FromInt(kProtectorValid);
-}
-
-bool Isolate::IsStringIteratorLookupChainIntact() {
-  PropertyCell string_iterator_cell =
-      PropertyCell::cast(root(RootIndex::kStringIteratorProtector));
-  return string_iterator_cell.value() == Smi::FromInt(kProtectorValid);
-}
 
 }  // namespace internal
 }  // namespace v8

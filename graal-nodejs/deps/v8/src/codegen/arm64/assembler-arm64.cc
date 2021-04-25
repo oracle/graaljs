@@ -63,18 +63,16 @@ void CpuFeatures::PrintFeatures() {}
 // CPURegList utilities.
 
 CPURegister CPURegList::PopLowestIndex() {
-  DCHECK(IsValid());
   if (IsEmpty()) {
     return NoCPUReg;
   }
-  int index = CountTrailingZeros(list_, kRegListSizeInBits);
+  int index = base::bits::CountTrailingZeros(list_);
   DCHECK((1LL << index) & list_);
   Remove(index);
   return CPURegister::Create(index, size_, type_);
 }
 
 CPURegister CPURegList::PopHighestIndex() {
-  DCHECK(IsValid());
   if (IsEmpty()) {
     return NoCPUReg;
   }
@@ -83,18 +81,6 @@ CPURegister CPURegList::PopHighestIndex() {
   DCHECK((1LL << index) & list_);
   Remove(index);
   return CPURegister::Create(index, size_, type_);
-}
-
-void CPURegList::RemoveCalleeSaved() {
-  if (type() == CPURegister::kRegister) {
-    Remove(GetCalleeSaved(RegisterSizeInBits()));
-  } else if (type() == CPURegister::kVRegister) {
-    Remove(GetCalleeSavedV(RegisterSizeInBits()));
-  } else {
-    DCHECK_EQ(type(), CPURegister::kNoRegister);
-    DCHECK(IsEmpty());
-    // The list must already be empty, so do nothing.
-  }
 }
 
 void CPURegList::Align() {
@@ -111,7 +97,7 @@ void CPURegList::Align() {
 }
 
 CPURegList CPURegList::GetCalleeSaved(int size) {
-  return CPURegList(CPURegister::kRegister, size, 19, 29);
+  return CPURegList(CPURegister::kRegister, size, 19, 28);
 }
 
 CPURegList CPURegList::GetCalleeSavedV(int size) {
@@ -120,9 +106,8 @@ CPURegList CPURegList::GetCalleeSavedV(int size) {
 
 CPURegList CPURegList::GetCallerSaved(int size) {
   // x18 is the platform register and is reserved for the use of platform ABIs.
-  // Registers x0-x17 and lr (x30) are caller-saved.
+  // Registers x0-x17 are caller-saved.
   CPURegList list = CPURegList(CPURegister::kRegister, size, 0, 17);
-  list.Combine(lr);
   return list;
 }
 
@@ -130,34 +115,6 @@ CPURegList CPURegList::GetCallerSavedV(int size) {
   // Registers d0-d7 and d16-d31 are caller-saved.
   CPURegList list = CPURegList(CPURegister::kVRegister, size, 0, 7);
   list.Combine(CPURegList(CPURegister::kVRegister, size, 16, 31));
-  return list;
-}
-
-// This function defines the list of registers which are associated with a
-// safepoint slot. Safepoint register slots are saved contiguously on the stack.
-// MacroAssembler::SafepointRegisterStackIndex handles mapping from register
-// code to index in the safepoint register slots. Any change here can affect
-// this mapping.
-CPURegList CPURegList::GetSafepointSavedRegisters() {
-  CPURegList list = CPURegList::GetCalleeSaved();
-  list.Combine(
-      CPURegList(CPURegister::kRegister, kXRegSizeInBits, kJSCallerSaved));
-
-  // Note that unfortunately we can't use symbolic names for registers and have
-  // to directly use register codes. This is because this function is used to
-  // initialize some static variables and we can't rely on register variables
-  // to be initialized due to static initialization order issues in C++.
-
-  // Drop ip0 and ip1 (i.e. x16 and x17), as they should not be expected to be
-  // preserved outside of the macro assembler.
-  list.Remove(16);
-  list.Remove(17);
-
-  // x18 is the platform register and is reserved for the use of platform ABIs.
-
-  // Add the link register (x30) to the safepoint list.
-  list.Combine(30);
-
   return list;
 }
 
@@ -183,7 +140,9 @@ bool RelocInfo::IsCodedSpecially() {
 
 bool RelocInfo::IsInConstantPool() {
   Instruction* instr = reinterpret_cast<Instruction*>(pc_);
-  return instr->IsLdrLiteralX();
+  DCHECK_IMPLIES(instr->IsLdrLiteralW(), COMPRESS_POINTERS_BOOL);
+  return instr->IsLdrLiteralX() ||
+         (COMPRESS_POINTERS_BOOL && instr->IsLdrLiteralW());
 }
 
 uint32_t RelocInfo::wasm_call_tag() const {
@@ -218,7 +177,7 @@ bool AreAliased(const CPURegister& reg1, const CPURegister& reg2,
       number_of_valid_fpregs++;
       unique_fpregs |= regs[i].bit();
     } else {
-      DCHECK(!regs[i].IsValid());
+      DCHECK(!regs[i].is_valid());
     }
   }
 
@@ -238,44 +197,44 @@ bool AreSameSizeAndType(const CPURegister& reg1, const CPURegister& reg2,
                         const CPURegister& reg3, const CPURegister& reg4,
                         const CPURegister& reg5, const CPURegister& reg6,
                         const CPURegister& reg7, const CPURegister& reg8) {
-  DCHECK(reg1.IsValid());
+  DCHECK(reg1.is_valid());
   bool match = true;
-  match &= !reg2.IsValid() || reg2.IsSameSizeAndType(reg1);
-  match &= !reg3.IsValid() || reg3.IsSameSizeAndType(reg1);
-  match &= !reg4.IsValid() || reg4.IsSameSizeAndType(reg1);
-  match &= !reg5.IsValid() || reg5.IsSameSizeAndType(reg1);
-  match &= !reg6.IsValid() || reg6.IsSameSizeAndType(reg1);
-  match &= !reg7.IsValid() || reg7.IsSameSizeAndType(reg1);
-  match &= !reg8.IsValid() || reg8.IsSameSizeAndType(reg1);
+  match &= !reg2.is_valid() || reg2.IsSameSizeAndType(reg1);
+  match &= !reg3.is_valid() || reg3.IsSameSizeAndType(reg1);
+  match &= !reg4.is_valid() || reg4.IsSameSizeAndType(reg1);
+  match &= !reg5.is_valid() || reg5.IsSameSizeAndType(reg1);
+  match &= !reg6.is_valid() || reg6.IsSameSizeAndType(reg1);
+  match &= !reg7.is_valid() || reg7.IsSameSizeAndType(reg1);
+  match &= !reg8.is_valid() || reg8.IsSameSizeAndType(reg1);
   return match;
 }
 
 bool AreSameFormat(const VRegister& reg1, const VRegister& reg2,
                    const VRegister& reg3, const VRegister& reg4) {
-  DCHECK(reg1.IsValid());
-  return (!reg2.IsValid() || reg2.IsSameFormat(reg1)) &&
-         (!reg3.IsValid() || reg3.IsSameFormat(reg1)) &&
-         (!reg4.IsValid() || reg4.IsSameFormat(reg1));
+  DCHECK(reg1.is_valid());
+  return (!reg2.is_valid() || reg2.IsSameFormat(reg1)) &&
+         (!reg3.is_valid() || reg3.IsSameFormat(reg1)) &&
+         (!reg4.is_valid() || reg4.IsSameFormat(reg1));
 }
 
 bool AreConsecutive(const VRegister& reg1, const VRegister& reg2,
                     const VRegister& reg3, const VRegister& reg4) {
-  DCHECK(reg1.IsValid());
-  if (!reg2.IsValid()) {
-    DCHECK(!reg3.IsValid() && !reg4.IsValid());
+  DCHECK(reg1.is_valid());
+  if (!reg2.is_valid()) {
+    DCHECK(!reg3.is_valid() && !reg4.is_valid());
     return true;
   } else if (reg2.code() != ((reg1.code() + 1) % kNumberOfVRegisters)) {
     return false;
   }
 
-  if (!reg3.IsValid()) {
-    DCHECK(!reg4.IsValid());
+  if (!reg3.is_valid()) {
+    DCHECK(!reg4.is_valid());
     return true;
   } else if (reg3.code() != ((reg2.code() + 1) % kNumberOfVRegisters)) {
     return false;
   }
 
-  if (!reg4.IsValid()) {
+  if (!reg4.is_valid()) {
     return true;
   } else if (reg4.code() != ((reg3.code() + 1) % kNumberOfVRegisters)) {
     return false;
@@ -292,31 +251,6 @@ bool Operand::NeedsRelocation(const Assembler* assembler) const {
   }
 
   return !RelocInfo::IsNone(rmode);
-}
-
-MemOperand::PairResult MemOperand::AreConsistentForPair(
-    const MemOperand& operandA, const MemOperand& operandB,
-    int access_size_log2) {
-  DCHECK_GE(access_size_log2, 0);
-  DCHECK_LE(access_size_log2, 3);
-  // Step one: check that they share the same base, that the mode is Offset
-  // and that the offset is a multiple of access size.
-  if (!operandA.base().Is(operandB.base()) || (operandA.addrmode() != Offset) ||
-      (operandB.addrmode() != Offset) ||
-      ((operandA.offset() & ((1 << access_size_log2) - 1)) != 0)) {
-    return kNotPair;
-  }
-  // Step two: check that the offsets are contiguous and that the range
-  // is OK for ldp/stp.
-  if ((operandB.offset() == operandA.offset() + (1LL << access_size_log2)) &&
-      is_int7(operandA.offset() >> access_size_log2)) {
-    return kPairAB;
-  }
-  if ((operandA.offset() == operandB.offset() + (1LL << access_size_log2)) &&
-      is_int7(operandB.offset() >> access_size_log2)) {
-    return kPairBA;
-  }
-  return kNotPair;
 }
 
 // Assembler
@@ -369,8 +303,9 @@ void Assembler::AllocateAndInstallRequestedHeapObjects(Isolate* isolate) {
     Address pc = reinterpret_cast<Address>(buffer_start_) + request.offset();
     switch (request.kind()) {
       case HeapObjectRequest::kHeapNumber: {
-        Handle<HeapObject> object = isolate->factory()->NewHeapNumber(
-            request.heap_number(), AllocationType::kOld);
+        Handle<HeapObject> object =
+            isolate->factory()->NewHeapNumber<AllocationType::kOld>(
+                request.heap_number());
         EmbeddedObjectIndex index = AddEmbeddedObject(object);
         set_embedded_object_index_referenced_from(pc, index);
         break;
@@ -753,7 +688,7 @@ void Assembler::blr(const Register& xn) {
   DCHECK(xn.Is64Bits());
   // The pattern 'blr xzr' is used as a guard to detect when execution falls
   // through the constant pool. It should not be emitted.
-  DCHECK(!xn.Is(xzr));
+  DCHECK_NE(xn, xzr);
   Emit(BLR | Rn(xn));
 }
 
@@ -1185,6 +1120,30 @@ void Assembler::autia1716() { Emit(AUTIA1716); }
 void Assembler::paciasp() { Emit(PACIASP); }
 void Assembler::autiasp() { Emit(AUTIASP); }
 
+void Assembler::bti(BranchTargetIdentifier id) {
+  SystemHint op;
+  switch (id) {
+    case BranchTargetIdentifier::kBti:
+      op = BTI;
+      break;
+    case BranchTargetIdentifier::kBtiCall:
+      op = BTI_c;
+      break;
+    case BranchTargetIdentifier::kBtiJump:
+      op = BTI_j;
+      break;
+    case BranchTargetIdentifier::kBtiJumpCall:
+      op = BTI_jc;
+      break;
+    case BranchTargetIdentifier::kNone:
+    case BranchTargetIdentifier::kPaciasp:
+      // We always want to generate a BTI instruction here, so disallow
+      // skipping its generation or generating a PACIASP instead.
+      UNREACHABLE();
+  }
+  hint(op);
+}
+
 void Assembler::ldp(const CPURegister& rt, const CPURegister& rt2,
                     const MemOperand& src) {
   LoadStorePair(rt, rt2, src, LoadPairOpFor(rt, rt2));
@@ -1210,7 +1169,7 @@ void Assembler::ldpsw(const Register& rt, const Register& rt2,
 void Assembler::LoadStorePair(const CPURegister& rt, const CPURegister& rt2,
                               const MemOperand& addr, LoadStorePairOp op) {
   // 'rt' and 'rt2' can only be aliased for stores.
-  DCHECK(((op & LoadStorePairLBit) == 0) || !rt.Is(rt2));
+  DCHECK(((op & LoadStorePairLBit) == 0) || rt != rt2);
   DCHECK(AreSameSizeAndType(rt, rt2));
   DCHECK(IsImmLSPair(addr.offset(), CalcLSPairDataSize(op)));
   int offset = static_cast<int>(addr.offset());
@@ -1223,8 +1182,8 @@ void Assembler::LoadStorePair(const CPURegister& rt, const CPURegister& rt2,
     addrmodeop = LoadStorePairOffsetFixed;
   } else {
     // Pre-index and post-index modes.
-    DCHECK(!rt.Is(addr.base()));
-    DCHECK(!rt2.Is(addr.base()));
+    DCHECK_NE(rt, addr.base());
+    DCHECK_NE(rt2, addr.base());
     DCHECK_NE(addr.offset(), 0);
     if (addr.IsPreIndex()) {
       addrmodeop = LoadStorePairPreIndexFixed;
@@ -1338,7 +1297,7 @@ void Assembler::stlr(const Register& rt, const Register& rn) {
 void Assembler::stlxr(const Register& rs, const Register& rt,
                       const Register& rn) {
   DCHECK(rn.Is64Bits());
-  DCHECK(!rs.Is(rt) && !rs.Is(rn));
+  DCHECK(rs != rt && rs != rn);
   LoadStoreAcquireReleaseOp op = rt.Is32Bits() ? STLXR_w : STLXR_x;
   Emit(op | Rs(rs) | Rt2(x31) | RnSP(rn) | Rt(rt));
 }
@@ -1366,7 +1325,7 @@ void Assembler::stlxrb(const Register& rs, const Register& rt,
   DCHECK(rs.Is32Bits());
   DCHECK(rt.Is32Bits());
   DCHECK(rn.Is64Bits());
-  DCHECK(!rs.Is(rt) && !rs.Is(rn));
+  DCHECK(rs != rt && rs != rn);
   Emit(STLXR_b | Rs(rs) | Rt2(x31) | RnSP(rn) | Rt(rt));
 }
 
@@ -1393,7 +1352,7 @@ void Assembler::stlxrh(const Register& rs, const Register& rt,
   DCHECK(rs.Is32Bits());
   DCHECK(rt.Is32Bits());
   DCHECK(rn.Is64Bits());
-  DCHECK(!rs.Is(rt) && !rs.Is(rn));
+  DCHECK(rs != rt && rs != rn);
   Emit(STLXR_h | Rs(rs) | Rt2(x31) | RnSP(rn) | Rt(rt));
 }
 
@@ -2283,7 +2242,7 @@ void Assembler::LoadStoreStructVerify(const VRegister& vt,
       default:
         UNREACHABLE();
     }
-    DCHECK(!addr.regoffset().Is(NoReg) || addr.offset() == offset);
+    DCHECK(addr.regoffset() != NoReg || addr.offset() == offset);
   }
 #else
   USE(vt);
@@ -3655,7 +3614,6 @@ void Assembler::EmitStringData(const char* string) {
 }
 
 void Assembler::debug(const char* message, uint32_t code, Instr params) {
-#ifdef USE_SIMULATOR
   if (options().enable_simulator_code) {
     // The arguments to the debug marker need to be contiguous in memory, so
     // make sure we don't try to emit pools.
@@ -3677,12 +3635,6 @@ void Assembler::debug(const char* message, uint32_t code, Instr params) {
 
     return;
   }
-  // Fall through if Serializer is enabled.
-#else
-  // Make sure we haven't dynamically enabled simulator code when there is no
-  // simulator built in.
-  DCHECK(!options().enable_simulator_code);
-#endif
 
   if (params & BREAK) {
     brk(0);
@@ -3948,7 +3900,7 @@ void Assembler::LoadStore(const CPURegister& rt, const MemOperand& addr,
          ExtendMode(ext) | ImmShiftLS((shift_amount > 0) ? 1 : 0));
   } else {
     // Pre-index and post-index modes.
-    DCHECK(!rt.Is(addr.base()));
+    DCHECK_NE(rt, addr.base());
     if (IsImmLSUnscaled(addr.offset())) {
       int offset = static_cast<int>(addr.offset());
       if (addr.IsPreIndex()) {
@@ -3967,19 +3919,24 @@ void Assembler::LoadStore(const CPURegister& rt, const MemOperand& addr,
 bool Assembler::IsImmLSUnscaled(int64_t offset) { return is_int9(offset); }
 
 bool Assembler::IsImmLSScaled(int64_t offset, unsigned size) {
-  bool offset_is_size_multiple = (((offset >> size) << size) == offset);
+  bool offset_is_size_multiple =
+      (static_cast<int64_t>(static_cast<uint64_t>(offset >> size) << size) ==
+       offset);
   return offset_is_size_multiple && is_uint12(offset >> size);
 }
 
 bool Assembler::IsImmLSPair(int64_t offset, unsigned size) {
-  bool offset_is_size_multiple = (((offset >> size) << size) == offset);
+  bool offset_is_size_multiple =
+      (static_cast<int64_t>(static_cast<uint64_t>(offset >> size) << size) ==
+       offset);
   return offset_is_size_multiple && is_int7(offset >> size);
 }
 
 bool Assembler::IsImmLLiteral(int64_t offset) {
   int inst_size = static_cast<int>(kInstrSizeLog2);
   bool offset_is_inst_multiple =
-      (((offset >> inst_size) << inst_size) == offset);
+      (static_cast<int64_t>(static_cast<uint64_t>(offset >> inst_size)
+                            << inst_size) == offset);
   DCHECK_GT(offset, 0);
   offset >>= kLoadLiteralScaleLog2;
   return offset_is_inst_multiple && is_intn(offset, ImmLLiteral_width);
@@ -4178,9 +4135,9 @@ bool Assembler::IsImmLogical(uint64_t value, unsigned width, unsigned* n,
   //    1110ss     4    UInt(ss)
   //    11110s     2    UInt(s)
   //
-  // So we 'or' (-d << 1) with our computed s to form imms.
+  // So we 'or' (-d * 2) with our computed s to form imms.
   *n = out_n;
-  *imm_s = ((-d << 1) | (s - 1)) & 0x3F;
+  *imm_s = ((-d * 2) | (s - 1)) & 0x3F;
   *imm_r = r;
 
   return true;

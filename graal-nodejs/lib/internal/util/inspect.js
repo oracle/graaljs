@@ -12,9 +12,12 @@ const {
   DatePrototypeToString,
   ErrorPrototypeToString,
   Float32Array,
+  Float64Array,
   FunctionPrototypeCall,
   FunctionPrototypeToString,
+  Int8Array,
   Int16Array,
+  Int32Array,
   JSONStringify,
   Map,
   MapPrototype,
@@ -26,6 +29,8 @@ const {
   MathSqrt,
   Number,
   NumberIsNaN,
+  NumberParseFloat,
+  NumberParseInt,
   NumberPrototypeValueOf,
   Object,
   ObjectAssign,
@@ -41,11 +46,13 @@ const {
   ObjectPrototypePropertyIsEnumerable,
   ObjectSeal,
   ObjectSetPrototypeOf,
+  ReflectApply,
   RegExp,
   RegExpPrototypeToString,
   Set,
   SetPrototype,
   SetPrototypeValues,
+  String,
   StringPrototypeValueOf,
   SymbolPrototypeToString,
   SymbolPrototypeValueOf,
@@ -168,10 +175,10 @@ const kArrayType = 1;
 const kArrayExtrasType = 2;
 
 /* eslint-disable no-control-regex */
-const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c]/;
-const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c]/g;
-const strEscapeSequencesRegExpSingle = /[\x00-\x1f\x5c]/;
-const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c]/g;
+const strEscapeSequencesRegExp = /[\x00-\x1f\x27\x5c\x7f-\x9f]/;
+const strEscapeSequencesReplacer = /[\x00-\x1f\x27\x5c\x7f-\x9f]/g;
+const strEscapeSequencesRegExpSingle = /[\x00-\x1f\x5c\x7f-\x9f]/;
+const strEscapeSequencesReplacerSingle = /[\x00-\x1f\x5c\x7f-\x9f]/g;
 /* eslint-enable no-control-regex */
 
 const keyStrRegExp = /^[a-zA-Z_][a-zA-Z_0-9]*$/;
@@ -191,21 +198,23 @@ const kWeak = 0;
 const kIterator = 1;
 const kMapEntries = 2;
 
-// Escaped special characters. Use empty strings to fill up unused entries.
+// Escaped control characters (plus the single quote and the backslash). Use
+// empty strings to fill up unused entries.
 const meta = [
-  '\\u0000', '\\u0001', '\\u0002', '\\u0003', '\\u0004',
-  '\\u0005', '\\u0006', '\\u0007', '\\b', '\\t',
-  '\\n', '\\u000b', '\\f', '\\r', '\\u000e',
-  '\\u000f', '\\u0010', '\\u0011', '\\u0012', '\\u0013',
-  '\\u0014', '\\u0015', '\\u0016', '\\u0017', '\\u0018',
-  '\\u0019', '\\u001a', '\\u001b', '\\u001c', '\\u001d',
-  '\\u001e', '\\u001f', '', '', '',
-  '', '', '', '', "\\'", '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '', '', '',
-  '', '', '', '', '', '', '', '\\\\'
+  '\\x00', '\\x01', '\\x02', '\\x03', '\\x04', '\\x05', '\\x06', '\\x07', // x07
+  '\\b', '\\t', '\\n', '\\x0B', '\\f', '\\r', '\\x0E', '\\x0F',           // x0F
+  '\\x10', '\\x11', '\\x12', '\\x13', '\\x14', '\\x15', '\\x16', '\\x17', // x17
+  '\\x18', '\\x19', '\\x1A', '\\x1B', '\\x1C', '\\x1D', '\\x1E', '\\x1F', // x1F
+  '', '', '', '', '', '', '', "\\'", '', '', '', '', '', '', '', '',      // x2F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',         // x3F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',         // x4F
+  '', '', '', '', '', '', '', '', '', '', '', '', '\\\\', '', '', '',     // x5F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '',         // x6F
+  '', '', '', '', '', '', '', '', '', '', '', '', '', '', '', '\\x7F',    // x7F
+  '\\x80', '\\x81', '\\x82', '\\x83', '\\x84', '\\x85', '\\x86', '\\x87', // x87
+  '\\x88', '\\x89', '\\x8A', '\\x8B', '\\x8C', '\\x8D', '\\x8E', '\\x8F', // x8F
+  '\\x90', '\\x91', '\\x92', '\\x93', '\\x94', '\\x95', '\\x96', '\\x97', // x97
+  '\\x98', '\\x99', '\\x9A', '\\x9B', '\\x9C', '\\x9D', '\\x9E', '\\x9F', // x9F
 ];
 
 // Regex used for ansi escape code splitting
@@ -488,7 +497,10 @@ function strEscape(str) {
   const lastIndex = str.length;
   for (let i = 0; i < lastIndex; i++) {
     const point = str.charCodeAt(i);
-    if (point === singleQuote || point === 92 || point < 32) {
+    if (point === singleQuote ||
+        point === 92 ||
+        point < 32 ||
+        (point > 126 && point < 160)) {
       if (last === i) {
         result += meta[point];
       } else {
@@ -523,6 +535,14 @@ function getEmptyFormatArray() {
   return [];
 }
 
+function isInstanceof(object, proto) {
+  try {
+    return object instanceof proto;
+  } catch {
+    return false;
+  }
+}
+
 function getConstructorName(obj, ctx, recurseTimes, protoProps) {
   let firstProto;
   const tmp = obj;
@@ -530,7 +550,8 @@ function getConstructorName(obj, ctx, recurseTimes, protoProps) {
     const descriptor = ObjectGetOwnPropertyDescriptor(obj, 'constructor');
     if (descriptor !== undefined &&
         typeof descriptor.value === 'function' &&
-        descriptor.value.name !== '') {
+        descriptor.value.name !== '' &&
+        isInstanceof(tmp, descriptor.value)) {
       if (protoProps !== undefined &&
          (firstProto !== obj ||
          !builtInObjects.has(descriptor.value.name))) {
@@ -616,7 +637,7 @@ function addPrototypeProperties(ctx, main, obj, recurseTimes, output) {
         continue;
       }
       const value = formatProperty(
-        ctx, obj, recurseTimes, key, kObjectType, desc);
+        ctx, obj, recurseTimes, key, kObjectType, desc, main);
       if (ctx.colors) {
         // Faint!
         output.push(`\u001b[2m${value}\u001b[22m`);
@@ -632,7 +653,7 @@ function addPrototypeProperties(ctx, main, obj, recurseTimes, output) {
 
 function getPrefix(constructor, tag, fallback, size = '') {
   if (constructor === null) {
-    if (tag !== '') {
+    if (tag !== '' && fallback !== tag) {
       return `[${fallback}${size}: null prototype] [${tag}] `;
     }
     return `[${fallback}${size}: null prototype] `;
@@ -785,7 +806,7 @@ function formatValue(ctx, value, recurseTimes, typedArray) {
         ctx.circular.set(value, index);
       }
     }
-    return ctx.stylize('[Circular]', 'special');
+    return ctx.stylize(`[Circular *${index}]`, 'special');
   }
 
   return formatRaw(ctx, value, recurseTimes, typedArray);
@@ -843,21 +864,21 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       formatter = formatArray;
     } else if (isSet(value)) {
       const size = setSizeGetter(value);
-      const prefix = getPrefix(constructor, tag, 'Set');
+      const prefix = getPrefix(constructor, tag, 'Set', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
-        formatSet.bind(null, value, size) :
-        formatSet.bind(null, SetPrototypeValues(value), size);
+        formatSet.bind(null, value) :
+        formatSet.bind(null, SetPrototypeValues(value));
       if (size === 0 && keys.length === 0 && protoProps === undefined)
         return `${prefix}{}`;
       braces = [`${prefix}{`, '}'];
     } else if (isMap(value)) {
       const size = mapSizeGetter(value);
-      const prefix = getPrefix(constructor, tag, 'Map');
+      const prefix = getPrefix(constructor, tag, 'Map', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
-        formatMap.bind(null, value, size) :
-        formatMap.bind(null, MapPrototypeEntries(value), size);
+        formatMap.bind(null, value) :
+        formatMap.bind(null, MapPrototypeEntries(value));
       if (size === 0 && keys.length === 0 && protoProps === undefined)
         return `${prefix}{}`;
       braces = [`${prefix}{`, '}'];
@@ -966,7 +987,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       braces[0] = `${getPrefix(constructor, tag, 'WeakMap')}{`;
       formatter = ctx.showHidden ? formatWeakMap : formatWeakCollection;
     } else if (isModuleNamespaceObject(value)) {
-      braces[0] = `[${tag}] {`;
+      braces[0] = `${getPrefix(constructor, tag, 'Module')}{`;
       // Special handle keys for namespace objects.
       formatter = formatNamespaceObject.bind(null, keys);
     } else if (isBoxedPrimitive(value)) {
@@ -1014,11 +1035,12 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
   if (ctx.circular !== undefined) {
     const index = ctx.circular.get(value);
     if (index !== undefined) {
+      const reference = ctx.stylize(`<ref *${index}>`, 'special');
       // Add reference always to the very beginning of the output.
       if (ctx.compact !== true) {
-        base = base === '' ? '' : `${base}`;
+        base = base === '' ? reference : `${reference} ${base}`;
       } else {
-        braces[0] = `${braces[0]}`;
+        braces[0] = `${reference} ${braces[0]}`;
       }
     }
   }
@@ -1145,7 +1167,9 @@ function getFunctionBase(value, constructor, tag) {
   if (constructor === null) {
     base += ' (null prototype)';
   }
-  if (value.name !== '') {
+  if (value.name === '') {
+    base += ' (anonymous)';
+  } else {
     base += `: ${value.name}`;
   }
   base += ']';
@@ -1539,22 +1563,17 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
   return output;
 }
 
-function formatSet(value, size, ctx, ignored, recurseTimes) {
+function formatSet(value, ctx, ignored, recurseTimes) {
   const output = [];
   ctx.indentationLvl += 2;
   for (const v of value) {
     output.push(formatValue(ctx, v, recurseTimes));
   }
   ctx.indentationLvl -= 2;
-  // With `showHidden`, `length` will display as a hidden property for
-  // arrays. For consistency's sake, do the same for `size`, even though this
-  // property isn't selected by ObjectGetOwnPropertyNames().
-  if (ctx.showHidden)
-    output.push(`[size]: ${ctx.stylize(`${size}`, 'number')}`);
   return output;
 }
 
-function formatMap(value, size, ctx, ignored, recurseTimes) {
+function formatMap(value, ctx, ignored, recurseTimes) {
   const output = [];
   ctx.indentationLvl += 2;
   for (const [k, v] of value) {
@@ -1562,9 +1581,6 @@ function formatMap(value, size, ctx, ignored, recurseTimes) {
                 formatValue(ctx, v, recurseTimes));
   }
   ctx.indentationLvl -= 2;
-  // See comment in formatSet
-  if (ctx.showHidden)
-    output.push(`[size]: ${ctx.stylize(`${size}`, 'number')}`);
   return output;
 }
 
@@ -1671,7 +1687,8 @@ function formatPromise(ctx, value, recurseTimes) {
   return output;
 }
 
-function formatProperty(ctx, value, recurseTimes, key, type, desc) {
+function formatProperty(ctx, value, recurseTimes, key, type, desc,
+                        original = value) {
   let name, str;
   let extra = ' ';
   desc = desc || ObjectGetOwnPropertyDescriptor(value, key) ||
@@ -1692,7 +1709,7 @@ function formatProperty(ctx, value, recurseTimes, key, type, desc) {
           (ctx.getters === 'get' && desc.set === undefined) ||
           (ctx.getters === 'set' && desc.set !== undefined))) {
       try {
-        const tmp = value[key];
+        const tmp = ReflectApply(desc.get, original, []);
         ctx.indentationLvl += 2;
         if (tmp === null) {
           str = `${s(`[${label}:`, sp)} ${s('null', 'null')}${s(']', sp)}`;
@@ -1815,10 +1832,6 @@ function reduceToSingleString(
   return `${braces[0]}${ln}${join(output, `,\n${indentation}  `)} ${braces[1]}`;
 }
 
-function format(...args) {
-  return formatWithOptions(undefined, ...args);
-}
-
 function hasBuiltInToString(value) {
   // Prevent triggering proxy traps.
   const getFullProxy = false;
@@ -1873,7 +1886,19 @@ function tryStringify(arg) {
   }
 }
 
+function format(...args) {
+  return formatWithOptionsInternal(undefined, ...args);
+}
+
 function formatWithOptions(inspectOptions, ...args) {
+  if (typeof inspectOptions !== 'object' || inspectOptions === null) {
+    throw new ERR_INVALID_ARG_TYPE(
+      'inspectOptions', 'object', inspectOptions);
+  }
+  return formatWithOptionsInternal(inspectOptions, ...args);
+}
+
+function formatWithOptionsInternal(inspectOptions, ...args) {
   const first = args[0];
   let a = 0;
   let str = '';
@@ -1941,7 +1966,8 @@ function formatWithOptions(inspectOptions, ...args) {
               } else if (typeof tempInteger === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor, parseInt(tempInteger));
+                tempStr = formatNumber(stylizeNoColor,
+                                       NumberParseInt(tempInteger));
               }
               break;
             case 102: // 'f'
@@ -1949,7 +1975,8 @@ function formatWithOptions(inspectOptions, ...args) {
               if (typeof tempFloat === 'symbol') {
                 tempStr = 'NaN';
               } else {
-                tempStr = formatNumber(stylizeNoColor, parseFloat(tempFloat));
+                tempStr = formatNumber(stylizeNoColor,
+                                       NumberParseFloat(tempFloat));
               }
               break;
             case 99: // 'c'

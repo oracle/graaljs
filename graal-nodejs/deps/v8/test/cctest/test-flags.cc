@@ -203,15 +203,8 @@ TEST(FlagsJitlessImplications) {
     // definition order in flag-definitions.h.
     CHECK(!FLAG_opt);
     CHECK(!FLAG_validate_asm);
-    CHECK(FLAG_wasm_interpret_all);
     CHECK(!FLAG_asm_wasm_lazy_compilation);
     CHECK(!FLAG_wasm_lazy_compilation);
-  }
-}
-
-TEST(FlagsRegexpInterpretAllImplications) {
-  if (FLAG_regexp_interpret_all) {
-    CHECK(!FLAG_regexp_tier_up);
   }
 }
 

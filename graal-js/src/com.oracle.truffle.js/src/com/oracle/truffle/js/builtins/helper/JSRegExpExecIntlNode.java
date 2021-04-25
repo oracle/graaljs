@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -278,6 +278,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final ConditionProfile invalidLastIndex = ConditionProfile.createBinaryProfile();
         private final ConditionProfile match = ConditionProfile.createCountingProfile();
         private final ConditionProfile stickyProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.createBinaryProfile();
         private final int ecmaScriptVersion;
 
         @Child protected IsJSClassNode isJSRegExpNode;
@@ -342,7 +343,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
                 JSRealm thisRealm = context.getRealm();
                 if (thisRealm == JSRegExp.getRealm(regExp)) {
-                    if (JSRegExp.getLegacyFeaturesEnabled(regExp)) {
+                    if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
                     } else {
                         thisRealm.invalidateStaticRegexResult();

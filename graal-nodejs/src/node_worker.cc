@@ -51,7 +51,6 @@ Worker::Worker(Environment* env,
       per_isolate_opts_(per_isolate_opts),
       exec_argv_(exec_argv),
       platform_(env->isolate_data()->platform()),
-      array_buffer_allocator_(ArrayBufferAllocator::Create()),
       thread_id_(AllocateEnvironmentThreadId()),
       env_vars_(env_vars) {
   Debug(this, "Creating new worker instance with thread id %llu",
@@ -91,10 +90,6 @@ bool Worker::is_stopped() const {
   if (env_ != nullptr)
     return env_->is_stopping();
   return stopped_;
-}
-
-std::shared_ptr<ArrayBufferAllocator> Worker::array_buffer_allocator() {
-  return array_buffer_allocator_;
 }
 
 void Worker::UpdateResourceConstraints(ResourceConstraints* constraints) {
@@ -142,9 +137,11 @@ class WorkerThreadData {
     loop_init_failed_ = false;
     uv_loop_configure(&loop_, UV_METRICS_IDLE_TIME);
 
+    std::shared_ptr<ArrayBufferAllocator> allocator =
+        ArrayBufferAllocator::Create();
     Isolate::CreateParams params;
     SetIsolateCreateParamsForNode(&params);
-    params.array_buffer_allocator = w->array_buffer_allocator_.get();
+    params.array_buffer_allocator_shared = allocator;
 
     w->UpdateResourceConstraints(&params.constraints);
 
@@ -173,7 +170,7 @@ class WorkerThreadData {
       isolate_data_.reset(CreateIsolateData(isolate,
                                             &loop_,
                                             w_->platform_,
-                                            w->array_buffer_allocator_.get()));
+                                            allocator.get()));
       CHECK(isolate_data_);
       if (w_->per_isolate_opts_)
         isolate_data_->set_options(std::move(w_->per_isolate_opts_));
@@ -692,7 +689,10 @@ void Worker::GetResourceLimits(const FunctionCallbackInfo<Value>& args) {
 
 Local<Float64Array> Worker::GetResourceLimits(Isolate* isolate) const {
   Local<ArrayBuffer> ab = ArrayBuffer::New(isolate, sizeof(resource_limits_));
-  memcpy(ab->GetContents().Data(), resource_limits_, sizeof(resource_limits_));
+
+  memcpy(ab->GetBackingStore()->Data(),
+         resource_limits_,
+         sizeof(resource_limits_));
   return Float64Array::New(ab, 0, kTotalResourceLimitCount);
 }
 

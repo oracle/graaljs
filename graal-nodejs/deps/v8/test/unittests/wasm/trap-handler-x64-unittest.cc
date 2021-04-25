@@ -4,7 +4,7 @@
 
 #include "include/v8config.h"
 
-#if V8_OS_LINUX
+#if V8_OS_LINUX || V8_OS_FREEBSD
 #include <signal.h>
 #include <ucontext.h>
 #elif V8_OS_MACOSX
@@ -25,11 +25,11 @@
 #include "src/codegen/assembler-inl.h"
 #include "src/codegen/macro-assembler-inl.h"
 #include "src/execution/simulator.h"
+#include "src/objects/backing-store.h"
 #include "src/trap-handler/trap-handler.h"
 #include "src/utils/allocation.h"
 #include "src/utils/vector.h"
 #include "src/wasm/wasm-engine.h"
-#include "src/wasm/wasm-memory.h"
 
 #include "test/common/assembler-tester.h"
 #include "test/unittests/test-utils.h"
@@ -41,7 +41,7 @@ namespace wasm {
 namespace {
 constexpr Register scratch = r10;
 bool g_test_handler_executed = false;
-#if V8_OS_LINUX || V8_OS_MACOSX
+#if V8_OS_LINUX || V8_OS_MACOSX || V8_OS_FREEBSD
 struct sigaction g_old_segv_action;
 struct sigaction g_old_fpe_action;
 struct sigaction g_old_bus_action;  // We get SIGBUS on Mac sometimes.
@@ -80,26 +80,20 @@ class TrapHandlerTest : public TestWithIsolate,
                         public ::testing::WithParamInterface<TrapHandlerStyle> {
  protected:
   void SetUp() override {
-    void* base = nullptr;
-    size_t length = 0;
-    accessible_memory_start_ =
-        i_isolate()
-            ->wasm_engine()
-            ->memory_tracker()
-            ->TryAllocateBackingStoreForTesting(
-                i_isolate()->heap(), 1 * kWasmPageSize, &base, &length);
-    memory_buffer_ =
-        base::AddressRegion(reinterpret_cast<Address>(base), length);
-
-    // The allocated memory buffer ends with a guard page.
-    crash_address_ = memory_buffer_.end() - 32;
+    backing_store_ = BackingStore::AllocateWasmMemory(i_isolate(), 1, 1,
+                                                      SharedFlag::kNotShared);
+    CHECK(backing_store_);
+    CHECK(backing_store_->has_guard_regions());
+    // The allocated backing store ends with a guard page.
+    crash_address_ = reinterpret_cast<Address>(backing_store_->buffer_start()) +
+                     backing_store_->byte_length() + 32;
     // Allocate a buffer for the generated code.
-    buffer_ = AllocateAssemblerBuffer(AssemblerBase::kMinimalBufferSize,
+    buffer_ = AllocateAssemblerBuffer(AssemblerBase::kDefaultBufferSize,
                                       GetRandomMmapAddr());
 
     InitRecoveryCode();
 
-#if V8_OS_LINUX || V8_OS_MACOSX
+#if V8_OS_LINUX || V8_OS_MACOSX || V8_OS_FREEBSD
     // Set up a signal handler to recover from the expected crash.
     struct sigaction action;
     action.sa_sigaction = SignalHandler;
@@ -122,15 +116,12 @@ class TrapHandlerTest : public TestWithIsolate,
     CHECK(!GetThreadInWasmFlag());
     buffer_.reset();
     recovery_buffer_.reset();
-
-    // Free the allocated backing store.
-    i_isolate()->wasm_engine()->memory_tracker()->FreeBackingStoreForTesting(
-        memory_buffer_, accessible_memory_start_);
+    backing_store_.reset();
 
     // Clean up the trap handler
     trap_handler::RemoveTrapHandler();
     if (!g_test_handler_executed) {
-#if V8_OS_LINUX || V8_OS_MACOSX
+#if V8_OS_LINUX || V8_OS_MACOSX || V8_OS_FREEBSD
       // The test handler cleans up the signal handler setup in the test. If the
       // test handler was not called, we have to do the cleanup ourselves.
       CHECK_EQ(0, sigaction(SIGSEGV, &g_old_segv_action, nullptr));
@@ -147,7 +138,7 @@ class TrapHandlerTest : public TestWithIsolate,
     // Create a code snippet where we can jump to to recover from a signal or
     // exception. The code snippet only consists of a return statement.
     recovery_buffer_ = AllocateAssemblerBuffer(
-        AssemblerBase::kMinimalBufferSize, GetRandomMmapAddr());
+        AssemblerBase::kDefaultBufferSize, GetRandomMmapAddr());
 
     MacroAssembler masm(nullptr, AssemblerOptions{}, CodeObjectRequired::kNo,
                         recovery_buffer_->CreateView());
@@ -161,7 +152,7 @@ class TrapHandlerTest : public TestWithIsolate,
         reinterpret_cast<Address>(desc.buffer + recovery_offset);
   }
 
-#if V8_OS_LINUX || V8_OS_MACOSX
+#if V8_OS_LINUX || V8_OS_MACOSX || V8_OS_FREEBSD
   static void SignalHandler(int signal, siginfo_t* info, void* context) {
     if (g_use_as_first_chance_handler) {
       if (v8::TryHandleWebAssemblyTrapPosix(signal, info, context)) {
@@ -180,8 +171,12 @@ class TrapHandlerTest : public TestWithIsolate,
     ucontext_t* uc = reinterpret_cast<ucontext_t*>(context);
 #if V8_OS_LINUX
     uc->uc_mcontext.gregs[REG_RIP] = g_recovery_address;
-#else  // V8_OS_MACOSX
+#elif V8_OS_MACOSX
     uc->uc_mcontext->__ss.__rip = g_recovery_address;
+#elif V8_OS_FREEBSD
+    uc->uc_mcontext.mc_rip = g_recovery_address;
+#else
+#error Unsupported platform
 #endif
   }
 #endif
@@ -252,14 +247,12 @@ class TrapHandlerTest : public TestWithIsolate,
 
   bool test_handler_executed() { return g_test_handler_executed; }
 
-  // Allocated memory which corresponds to wasm memory with guard regions.
-  base::AddressRegion memory_buffer_;
+  // The backing store used for testing the trap handler.
+  std::unique_ptr<BackingStore> backing_store_;
+
   // Address within the guard region of the wasm memory. Accessing this memory
   // address causes a signal or exception.
   Address crash_address_;
-  // The start of the accessible region in the allocated memory. This pointer is
-  // needed to de-register the memory from the wasm memory tracker again.
-  void* accessible_memory_start_;
 
   // Buffer for generated code.
   std::unique_ptr<TestingAssemblerBuffer> buffer_;
@@ -267,6 +260,10 @@ class TrapHandlerTest : public TestWithIsolate,
   std::unique_ptr<TestingAssemblerBuffer> recovery_buffer_;
 };
 
+// TODO(almuthanna): These tests were skipped because they cause a crash when
+// they are ran on Fuchsia. This issue should be solved later on
+// Ticket: https://crbug.com/1028617
+#if !defined(V8_TARGET_OS_FUCHSIA)
 TEST_P(TrapHandlerTest, TestTrapHandlerRecovery) {
   // Test that the wasm trap handler can recover a memory access violation in
   // wasm code (we fake the wasm code and the access violation).
@@ -424,6 +421,7 @@ TEST_P(TrapHandlerTest, TestCrashInWasmWrongCrashType) {
     *trap_handler::GetThreadInWasmThreadLocalAddress() = 0;
   }
 }
+#endif
 
 class CodeRunner : public v8::base::Thread {
  public:
@@ -437,6 +435,10 @@ class CodeRunner : public v8::base::Thread {
   TestingAssemblerBuffer* buffer_;
 };
 
+// TODO(almuthanna): This test was skipped because it causes a crash when it is
+// ran on Fuchsia. This issue should be solved later on
+// Ticket: https://crbug.com/1028617
+#if !defined(V8_TARGET_OS_FUCHSIA)
 TEST_P(TrapHandlerTest, TestCrashInOtherThread) {
   // Test setup:
   // The current thread enters wasm land (sets the thread_in_wasm flag)
@@ -471,8 +473,9 @@ TEST_P(TrapHandlerTest, TestCrashInOtherThread) {
   // Reset the thread-in-wasm flag.
   *trap_handler::GetThreadInWasmThreadLocalAddress() = 0;
 }
+#endif
 
-INSTANTIATE_TEST_SUITE_P(/* no prefix */, TrapHandlerTest,
+INSTANTIATE_TEST_SUITE_P(Traps, TrapHandlerTest,
                          ::testing::Values(kDefault, kCallback),
                          PrintTrapHandlerTestParam);
 

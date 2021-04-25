@@ -14,7 +14,7 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_OPT_VALUE
 } = require('internal/errors').codes;
-const { validateString } = require('internal/validators');
+const { validateEncoding, validateString } = require('internal/validators');
 
 const {
   preparePrivateKey,
@@ -151,7 +151,9 @@ Cipher.prototype.update = function update(data, inputEncoding, outputEncoding) {
   inputEncoding = inputEncoding || encoding;
   outputEncoding = outputEncoding || encoding;
 
-  if (typeof data !== 'string' && !isArrayBufferView(data)) {
+  if (typeof data === 'string') {
+    validateEncoding(data, inputEncoding);
+  } else if (!isArrayBufferView(data)) {
     throw new ERR_INVALID_ARG_TYPE(
       'data', ['string', 'Buffer', 'TypedArray', 'DataView'], data);
   }

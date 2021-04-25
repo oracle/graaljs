@@ -35,7 +35,7 @@ const net = require('net');
 const { Duplex } = require('stream');
 const tls = require('tls');
 const { URL } = require('url');
-const { setImmediate } = require('timers');
+const { setImmediate, setTimeout, clearTimeout } = require('timers');
 
 const { kIncomingMessage } = require('_http_common');
 const { kServerResponse } = require('_http_server');
@@ -157,7 +157,6 @@ const { _connectionListener: httpConnectionListener } = http;
 let debug = require('internal/util/debuglog').debuglog('http2', (fn) => {
   debug = fn;
 });
-const { getOptionValue } = require('internal/options');
 
 // TODO(addaleax): See if this can be made more efficient by figuring out
 // whether debugging is enabled before we perform any further steps. Currently,
@@ -168,7 +167,9 @@ function debugStream(id, sessionType, message, ...args) {
 }
 
 function debugStreamObj(stream, message, ...args) {
-  debugStream(stream[kID], stream[kSession][kType], message, ...args);
+  const session = stream[kSession];
+  const type = session ? session[kType] : undefined;
+  debugStream(stream[kID], type, message, ...args);
 }
 
 function debugSession(sessionType, message, ...args) {
@@ -215,14 +216,7 @@ const kState = Symbol('state');
 const kType = Symbol('type');
 const kWriteGeneric = Symbol('write-generic');
 
-const kDefaultHttpServerTimeout =
-  getOptionValue('--http-server-default-timeout');
-
 const {
-  paddingBuffer,
-  PADDING_BUF_FRAME_LENGTH,
-  PADDING_BUF_MAX_PAYLOAD_LENGTH,
-  PADDING_BUF_RETURN_VALUE,
   kBitfield,
   kSessionPriorityListenerCount,
   kSessionFrameErrorListenerCount,
@@ -653,20 +647,6 @@ function onGoawayData(code, lastStreamID, buf) {
   }
 }
 
-// Returns the padding to use per frame. The selectPadding callback is set
-// on the options. It is invoked with two arguments, the frameLen, and the
-// maxPayloadLen. The method must return a numeric value within the range
-// frameLen <= n <= maxPayloadLen.
-function onSelectPadding() {
-  const session = this[kOwner];
-  if (session.destroyed)
-    return;
-  const fn = session[kSelectPadding];
-  const frameLen = paddingBuffer[PADDING_BUF_FRAME_LENGTH];
-  const maxFramePayloadLen = paddingBuffer[PADDING_BUF_MAX_PAYLOAD_LENGTH];
-  paddingBuffer[PADDING_BUF_RETURN_VALUE] = fn(frameLen, maxFramePayloadLen);
-}
-
 // When a ClientHttp2Session is first created, the socket may not yet be
 // connected. If request() is called during this time, the actual request
 // will be deferred until the socket is ready to go.
@@ -1050,7 +1030,7 @@ function finishSessionClose(session, error) {
   if (socket && !socket.destroyed) {
     // Always wait for writable side to finish.
     socket.end((err) => {
-      debugSessionObj(session, 'finishSessionClose socket end', err);
+      debugSessionObj(session, 'finishSessionClose socket end', err, error);
       // Due to the way the underlying stream is handled in Http2Session we
       // won't get graceful Readable end from the other side even if it was sent
       // as the stream is already considered closed and will neither be read
@@ -1068,7 +1048,7 @@ function finishSessionClose(session, error) {
 }
 
 function closeSession(session, code, error) {
-  debugSessionObj(session, 'start closing/destroying');
+  debugSessionObj(session, 'start closing/destroying', error);
 
   const state = session[kState];
   state.flags |= SESSION_FLAGS_DESTROYED;
@@ -1140,6 +1120,8 @@ class Http2Session extends EventEmitter {
     if (!socket._handle || !socket._handle.isStreamBase) {
       socket = new JSStreamSocket(socket);
     }
+    socket.on('error', socketOnError);
+    socket.on('close', socketOnClose);
 
     // No validation is performed on the input parameters because this
     // constructor is not exported directly for users.
@@ -1732,7 +1714,7 @@ function shutdownWritable(callback) {
   if (!handle) return callback();
   const state = this[kState];
   if (state.shutdownWritableCalled) {
-    // Backport v12.x: Session required for debugging stream object
+    // Backport v14.x: Session required for debugging stream object
     // debugStreamObj(this, 'shutdownWritable() already called');
     return callback();
   }
@@ -1821,6 +1803,7 @@ class Http2Stream extends Duplex {
   constructor(session, options) {
     options.allowHalfOpen = true;
     options.decodeStrings = false;
+    options.autoDestroy = false;
     super(options);
     this[async_id_symbol] = -1;
 
@@ -2036,12 +2019,10 @@ class Http2Stream extends Duplex {
     process.nextTick(() => {
       if (writeCallbackErr ||
         !this._writableState.ending ||
-        // Backport v12.x: _writableState.buffered does not exist
-        // this._writableState.buffered.length ||
-        this._writableState.bufferedRequest ||
+        this._writableState.buffered.length ||
         (this[kState].flags & STREAM_FLAGS_HAS_TRAILERS))
         return endCheckCallback();
-      // Backport v12.x: Session required for debugging stream object
+      // Backport v14.x: Session required for debugging stream object
       // debugStreamObj(this, 'shutting down writable on last write');
       shutdownWritable.call(this, endCheckCallback);
     });
@@ -2067,7 +2048,7 @@ class Http2Stream extends Duplex {
       this.once('ready', () => this._final(cb));
       return;
     }
-    // Backport v12.x: Session required for debugging stream object
+    // Backport v14.x: Session required for debugging stream object
     // debugStreamObj(this, 'shutting down writable on _final');
     shutdownWritable.call(this, cb);
   }
@@ -2829,14 +2810,14 @@ function handleHeaderContinue(headers) {
     this.emit('continue');
 }
 
-const setTimeout = {
+const setTimeoutValue = {
   configurable: true,
   enumerable: true,
   writable: true,
   value: setStreamTimeout
 };
-ObjectDefineProperty(Http2Stream.prototype, 'setTimeout', setTimeout);
-ObjectDefineProperty(Http2Session.prototype, 'setTimeout', setTimeout);
+ObjectDefineProperty(Http2Stream.prototype, 'setTimeout', setTimeoutValue);
+ObjectDefineProperty(Http2Session.prototype, 'setTimeout', setTimeoutValue);
 
 
 // When the socket emits an error, destroy the associated Http2Session and
@@ -2896,6 +2877,22 @@ function connectionListener(socket) {
     debug('Unknown protocol from %s:%s',
           socket.remoteAddress, socket.remotePort);
     if (!this.emit('unknownProtocol', socket)) {
+      debug('Unknown protocol timeout:  %s', options.unknownProtocolTimeout);
+      // Install a timeout if the socket was not successfully closed, then
+      // destroy the socket to ensure that the underlying resources are
+      // released.
+      const timer = setTimeout(() => {
+        if (!socket.destroyed) {
+          debug('UnknownProtocol socket timeout, destroy socket');
+          socket.destroy();
+        }
+      }, options.unknownProtocolTimeout);
+      // Un-reference the timer to avoid blocking of application shutdown and
+      // clear the timeout if the socket was successfully closed.
+      timer.unref();
+
+      socket.once('close', () => clearTimeout(timer));
+
       // We don't know what to do, so let's just tell the other side what's
       // going on in a format that they *might* understand.
       socket.end('HTTP/1.0 403 Forbidden\r\n' +
@@ -2907,9 +2904,6 @@ function connectionListener(socket) {
     }
     return;
   }
-
-  socket.on('error', socketOnError);
-  socket.on('close', socketOnClose);
 
   // Set up the Session
   const session = new ServerHttp2Session(options, socket, this);
@@ -2944,6 +2938,13 @@ function initializeOptions(options) {
     );
   }
 
+  if (options.unknownProtocolTimeout !== undefined)
+    validateUint32(options.unknownProtocolTimeout, 'unknownProtocolTimeout');
+  else
+    // TODO(danbev): is this a good default value?
+    options.unknownProtocolTimeout = 10000;
+
+
   // Used only with allowHTTP1
   options.Http1IncomingMessage = options.Http1IncomingMessage ||
     http.IncomingMessage;
@@ -2977,7 +2978,7 @@ class Http2SecureServer extends TLSServer {
     options = initializeTLSOptions(options);
     super(options, connectionListener);
     this[kOptions] = options;
-    this.timeout = kDefaultHttpServerTimeout;
+    this.timeout = 0;
     this.on('newListener', setupCompat);
     if (typeof requestListener === 'function')
       this.on('request', requestListener);
@@ -3000,7 +3001,7 @@ class Http2Server extends NETServer {
     options = initializeOptions(options);
     super(options, connectionListener);
     this[kOptions] = options;
-    this.timeout = kDefaultHttpServerTimeout;
+    this.timeout = 0;
     this.on('newListener', setupCompat);
     if (typeof requestListener === 'function')
       this.on('request', requestListener);
@@ -3119,9 +3120,6 @@ function connect(authority, options, listener) {
     }
   }
 
-  socket.on('error', socketOnError);
-  socket.on('close', socketOnClose);
-
   const session = new ClientHttp2Session(options, socket);
 
   session[kAuthority] = `${options.servername || host}:${port}`;
@@ -3129,6 +3127,22 @@ function connect(authority, options, listener) {
 
   if (typeof listener === 'function')
     session.once('connect', listener);
+
+  // Process data on the next tick - a remoteSettings handler may be attached.
+  // https://github.com/nodejs/node/issues/35981
+  process.nextTick(() => {
+    debug('Http2Session connect', options.createConnection);
+    // Socket already has some buffered data - emulate receiving it
+    // https://github.com/nodejs/node/issues/35475
+    if (socket && socket.readableLength) {
+      let buf;
+      while ((buf = socket.read()) !== null) {
+        debug(`Http2Session connect: ${buf.length} bytes already in buffer`);
+        session[kHandle].receive(buf);
+      }
+    }
+  });
+
   return session;
 }
 
@@ -3217,7 +3231,6 @@ binding.setCallbackFunctions(
   onGoawayData,
   onAltSvc,
   onOrigin,
-  onSelectPadding,
   onStreamTrailers,
   onStreamClose
 );

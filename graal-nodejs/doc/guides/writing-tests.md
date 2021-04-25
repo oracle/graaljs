@@ -209,6 +209,11 @@ const server = http.createServer(common.mustCall((req, res) => {
 
 ```
 
+**Note:** Many functions invoke their callback with an `err` value as the first
+argument. It is not a good idea to simply pass `common.mustCall()` to those
+because `common.mustCall()` will ignore the error. Use `common.mustSucceed()`
+instead.
+
 #### Countdown Module
 
 The common [Countdown module](https://github.com/nodejs/node/tree/master/test/common#countdown-module)
@@ -413,7 +418,7 @@ $ make cctest GTEST_FILTER=EnvironmentTest.AtExitWithArgument
 `cctest` can also be run directly which can be useful when debugging:
 
 ```console
-$ out/Release/cctest --gtest_filter=EnvironmentTest.AtExit*
+$ out/Release/cctest --gtest_filter=EnvironmentTest.AtExit\*
 ```
 
 ### Node.js test fixture
@@ -439,4 +444,4 @@ Nightly coverage reports for the Node.js master branch are available at
 [all maintained branches]: https://github.com/nodejs/lts
 [directory structure overview]: https://github.com/nodejs/node/blob/master/test/README.md#test-directories
 [node.green]: https://node.green/
-[test fixture]: https://github.com/google/googletest/blob/master/googletest/docs/Primer.md#test-fixtures-using-the-same-data-configuration-for-multiple-tests
+[test fixture]: https://github.com/google/googletest/blob/master/googletest/docs/primer.md#test-fixtures-using-the-same-data-configuration-for-multiple-tests-same-data-multiple-tests

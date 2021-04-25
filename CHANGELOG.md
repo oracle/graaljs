@@ -3,12 +3,21 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 
+## Version 21.2.0
+* Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
+* Added the `js.unhandled-rejections` option to track unhandled promise rejections in a polyglot `Context`. By default, the option is set to `none`, and unhandled promise rejections are not tracked.
+* Implemented the [New Set Methods](https://github.com/tc39/proposal-set-methods) proposal. It is available behind an experimental flag (`--js.new-set-methods`).
+
 ## Version 21.1.0
+* Updated Node.js to version 14.16.1.
 * Prototype of WebAssembly JavaScript Interface implemented. It is available behind the `--js.webassembly` flag.
 * Implemented iterator interop support, enabling foreign objects that have an iterator to be used where JS expects iterables, as well as JS iterables to be used in other languages and via the [Value](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Value.html#getIterator--) API.
 * Adopted new buffer interop support, allowing foreign buffers to be used with typed arrays and `DataView`, without copying. Likewise enables `ArrayBuffer` to be used in other languages.
 * Experimental option `js.array-sort-inherited` was removed. Values visible through holes in array(-like) object are always sorted according to the latest version of ECMAScript specification.
 * Updated ICU4J library to version 68.2.
+* Implemented the [Atomics.waitAsync](https://github.com/tc39/proposal-atomics-wait-async) proposal. It is available in ECMAScript 2022 mode (`--js.ecmascript-version=2022`).
+* Implemented hash map interop support. Allows foreign hash maps to be iterated using `for in/of` loops, `new Map(hash)`, `Array.from(hash)`, etc. If the `--js.foreign-hash-properties` option is enabled (default), foreign hash maps can also be accessed using `hash[key]`, `hash.key`, and used in `{...hash}`. If the `--js.foreign-object-prototype` option is enabled, foreign hash maps also have `Map.prototype` methods.
+* Moved GraalVM-Node.js to a separate installable component. In a GraalVM distribution it needs to be manually installed with `$GRAALVM/bin/gu install nodejs`.
 
 ## Version 21.0.0
 * ECMAScript 2021 mode/features enabled by default.

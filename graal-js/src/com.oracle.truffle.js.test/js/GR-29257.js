@@ -25,3 +25,4 @@ parse("[...[]]");
 parse("(function() {})(...x)");
 parse("(function*() { yield* []})");
 parse("`${42}`");
+parse("String.raw`../${42}\..`");

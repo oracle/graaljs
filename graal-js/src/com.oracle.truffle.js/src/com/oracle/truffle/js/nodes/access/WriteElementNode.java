@@ -58,6 +58,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -428,6 +429,10 @@ public class WriteElementNode extends JSTargetableNode {
         executeWithTargetAndIndexAndValue(target, index, value, target);
     }
 
+    public final void executeWithTargetAndIndexAndValue(Object target, long index, Object value) {
+        executeWithTargetAndIndexAndValue(target, index, value, target);
+    }
+
     @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, Object index, Object value, Object receiver) {
         for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
@@ -444,6 +449,20 @@ public class WriteElementNode extends JSTargetableNode {
 
     @ExplodeLoop
     public final void executeWithTargetAndIndexAndValue(Object target, int index, Object value, Object receiver) {
+        for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
+            boolean guard = c.guard(target);
+            if (guard) {
+                c.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+                return;
+            }
+        }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        WriteElementTypeCacheNode specialization = specialize(target);
+        specialization.executeWithTargetAndIndexUnguarded(target, index, value, receiver, this);
+    }
+
+    @ExplodeLoop
+    public final void executeWithTargetAndIndexAndValue(Object target, long index, Object value, Object receiver) {
         for (WriteElementTypeCacheNode c = typeCacheNode; c != null; c = c.typeCacheNext) {
             boolean guard = c.guard(target);
             if (guard) {
@@ -514,6 +533,8 @@ public class WriteElementNode extends JSTargetableNode {
 
         protected abstract void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root);
 
+        protected abstract void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root);
+
         public abstract boolean guard(Object target);
     }
 
@@ -567,7 +588,25 @@ public class WriteElementNode extends JSTargetableNode {
             if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
                 ScriptArray array = JSObject.getArray(targetObject);
 
-                if (intOrStringIndexProfile.profile(index >= 0)) {
+                if (intOrStringIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
+                    if (!executeSetArray(targetObject, array, index, value, root)) {
+                        setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
+                    }
+                } else {
+                    setPropertyGenericEvaluatedStringOrSymbol(targetObject, Boundaries.stringValueOf(index), value, receiver, root);
+                }
+            } else {
+                setPropertyGeneric(targetObject, index, value, receiver, root);
+            }
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
+            JSDynamicObject targetObject = ((JSDynamicObject) target);
+            if (arrayProfile.profile(isArrayNode.execute(targetObject))) {
+                ScriptArray array = JSObject.getArray(targetObject);
+
+                if (intOrStringIndexProfile.profile(JSRuntime.isArrayIndex(index))) {
                     if (!executeSetArray(targetObject, array, index, value, root)) {
                         setPropertyGenericEvaluatedIndex(targetObject, index, value, receiver, root);
                     }
@@ -689,6 +728,10 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
         }
 
         @Override
@@ -1011,18 +1054,18 @@ public class WriteElementNode extends JSTargetableNode {
                 return false;
             }
             int iIndex = (int) index;
-            if (inBoundsFastCondition.profile(intArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(intArray, index))) {
+            if (inBoundsFastCondition.profile(intArray.isInBoundsFast(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setInBoundsFast(target, iIndex, intValue);
                 return true;
-            } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, index))) {
+            } else if (inBoundsCondition.profile(intArray.isInBounds(target, iIndex) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setInBounds(target, iIndex, intValue, profile);
                 return true;
-            } else if (supportedNonZeroCondition.profile(intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, index))) {
+            } else if (supportedNonZeroCondition.profile(intArray.isSupported(target, index) && !mightTransferToNonContiguous(intArray, target, index))) {
                 intArray.setSupported(target, iIndex, intValue, profile);
                 return true;
             } else {
                 ScriptArray toArrayType;
-                if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, index) && intArray.isSupported(target, index))) {
+                if (supportedZeroCondition.profile(mightTransferToNonContiguous(intArray, target, index) && intArray.isSupported(target, index))) {
                     toArrayType = intArray.toNonContiguous(target, iIndex, intValue, profile);
                 } else if (supportedContiguousCondition.profile(!(intArray instanceof AbstractContiguousIntArray) && intArray.isSupportedContiguous(target, index))) {
                     toArrayType = intArray.toContiguous(target, index, intValue);
@@ -1036,8 +1079,8 @@ public class WriteElementNode extends JSTargetableNode {
             }
         }
 
-        private static boolean mightTransferToNonContiguous(AbstractIntArray intArray, long index) {
-            return intArray instanceof ContiguousIntArray && index == 0;
+        private static boolean mightTransferToNonContiguous(AbstractIntArray intArray, DynamicObject target, long index) {
+            return intArray instanceof ContiguousIntArray && index == 0 && intArray.firstElementIndex(target) == 1;
         }
     }
 
@@ -1616,6 +1659,11 @@ public class WriteElementNode extends JSTargetableNode {
             }
             return indexToPropertyKeyNode.execute(index);
         }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+            executeWithTargetAndIndexUnguarded(target, (long) index, value, receiver, root);
+        }
     }
 
     private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
@@ -1648,7 +1696,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             if (isImmutable.profile(index >= 0 && index < JSRuntime.length(charSequence))) {
                 // cannot set characters of immutable strings
@@ -1682,7 +1730,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) target;
             JSObject.setWithReceiver(JSNumber.create(root.context, number), index, value, target, root.isStrict, classProfile, root);
         }
@@ -1705,7 +1753,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
             JSObject.setWithReceiver(JSBoolean.create(root.context, bool), index, value, target, root.isStrict, classProfile, root);
         }
@@ -1731,7 +1779,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             if (root.isStrict) {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
@@ -1757,7 +1805,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @Override
-        protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
             JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), index, value, target, root.isStrict, classProfile, root);
         }
@@ -1776,6 +1824,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private ExportValueNode exportKey;
         @Child private ExportValueNode exportValue;
         @Child private JSToStringNode toStringNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
@@ -1804,7 +1853,15 @@ public class WriteElementNode extends JSTargetableNode {
                 } catch (InvalidArrayIndexException e) {
                     // do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                }
+            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+                try {
+                    interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
+                } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);
@@ -1818,6 +1875,7 @@ public class WriteElementNode extends JSTargetableNode {
                 } catch (UnknownIdentifierException e) {
                     // do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+                    errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                 }
             }
@@ -1825,6 +1883,11 @@ public class WriteElementNode extends JSTargetableNode {
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, int index, Object value, Object receiver, WriteElementNode root) {
+            executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver, root);
+        }
+
+        @Override
+        protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             executeWithTargetAndIndexUnguarded(target, (Object) index, value, receiver, root);
         }
 

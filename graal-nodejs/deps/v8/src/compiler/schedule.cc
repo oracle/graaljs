@@ -50,6 +50,10 @@ void BasicBlock::AddPredecessor(BasicBlock* predecessor) {
   predecessors_.push_back(predecessor);
 }
 
+void BasicBlock::RemovePredecessor(size_t index) {
+  predecessors_.erase(predecessors_.begin() + index);
+}
+
 void BasicBlock::AddNode(Node* node) { nodes_.push_back(node); }
 
 void BasicBlock::set_control(Control control) { control_ = control; }
@@ -73,6 +77,19 @@ void BasicBlock::set_loop_end(BasicBlock* loop_end) { loop_end_ = loop_end; }
 
 void BasicBlock::set_loop_header(BasicBlock* loop_header) {
   loop_header_ = loop_header;
+}
+
+void BasicBlock::TrimNodes(iterator new_end) { nodes_.erase(new_end, end()); }
+
+void BasicBlock::ResetRPOInfo() {
+  loop_number_ = -1;
+  rpo_number_ = -1;
+  dominator_depth_ = -1;
+  dominator_ = nullptr;
+  rpo_next_ = nullptr;
+  loop_header_ = nullptr;
+  loop_end_ = nullptr;
+  loop_depth_ = 0;
 }
 
 // static
@@ -201,7 +218,7 @@ void Schedule::AddNode(BasicBlock* block, Node* node) {
 }
 
 void Schedule::AddGoto(BasicBlock* block, BasicBlock* succ) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   block->set_control(BasicBlock::kGoto);
   AddSuccessor(block, succ);
 }
@@ -226,7 +243,7 @@ bool IsPotentiallyThrowingCall(IrOpcode::Value opcode) {
 
 void Schedule::AddCall(BasicBlock* block, Node* call, BasicBlock* success_block,
                        BasicBlock* exception_block) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   DCHECK(IsPotentiallyThrowingCall(call->opcode()));
   block->set_control(BasicBlock::kCall);
   AddSuccessor(block, success_block);
@@ -236,7 +253,7 @@ void Schedule::AddCall(BasicBlock* block, Node* call, BasicBlock* success_block,
 
 void Schedule::AddBranch(BasicBlock* block, Node* branch, BasicBlock* tblock,
                          BasicBlock* fblock) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   DCHECK_EQ(IrOpcode::kBranch, branch->opcode());
   block->set_control(BasicBlock::kBranch);
   AddSuccessor(block, tblock);
@@ -246,7 +263,7 @@ void Schedule::AddBranch(BasicBlock* block, Node* branch, BasicBlock* tblock,
 
 void Schedule::AddSwitch(BasicBlock* block, Node* sw, BasicBlock** succ_blocks,
                          size_t succ_count) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   DCHECK_EQ(IrOpcode::kSwitch, sw->opcode());
   block->set_control(BasicBlock::kSwitch);
   for (size_t index = 0; index < succ_count; ++index) {
@@ -256,28 +273,28 @@ void Schedule::AddSwitch(BasicBlock* block, Node* sw, BasicBlock** succ_blocks,
 }
 
 void Schedule::AddTailCall(BasicBlock* block, Node* input) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   block->set_control(BasicBlock::kTailCall);
   SetControlInput(block, input);
   if (block != end()) AddSuccessor(block, end());
 }
 
 void Schedule::AddReturn(BasicBlock* block, Node* input) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   block->set_control(BasicBlock::kReturn);
   SetControlInput(block, input);
   if (block != end()) AddSuccessor(block, end());
 }
 
 void Schedule::AddDeoptimize(BasicBlock* block, Node* input) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   block->set_control(BasicBlock::kDeoptimize);
   SetControlInput(block, input);
   if (block != end()) AddSuccessor(block, end());
 }
 
 void Schedule::AddThrow(BasicBlock* block, Node* input) {
-  DCHECK_EQ(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, block->control());
   block->set_control(BasicBlock::kThrow);
   SetControlInput(block, input);
   if (block != end()) AddSuccessor(block, end());
@@ -285,8 +302,8 @@ void Schedule::AddThrow(BasicBlock* block, Node* input) {
 
 void Schedule::InsertBranch(BasicBlock* block, BasicBlock* end, Node* branch,
                             BasicBlock* tblock, BasicBlock* fblock) {
-  DCHECK_NE(BasicBlock::kNone, block->control());
-  DCHECK_EQ(BasicBlock::kNone, end->control());
+  CHECK_NE(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, end->control());
   end->set_control(block->control());
   block->set_control(BasicBlock::kBranch);
   MoveSuccessors(block, end);
@@ -300,8 +317,8 @@ void Schedule::InsertBranch(BasicBlock* block, BasicBlock* end, Node* branch,
 
 void Schedule::InsertSwitch(BasicBlock* block, BasicBlock* end, Node* sw,
                             BasicBlock** succ_blocks, size_t succ_count) {
-  DCHECK_NE(BasicBlock::kNone, block->control());
-  DCHECK_EQ(BasicBlock::kNone, end->control());
+  CHECK_NE(BasicBlock::kNone, block->control());
+  CHECK_EQ(BasicBlock::kNone, end->control());
   end->set_control(block->control());
   block->set_control(BasicBlock::kSwitch);
   MoveSuccessors(block, end);

@@ -43,15 +43,19 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidBufferOffsetException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -485,22 +489,27 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     /**
      * ArrayBuffer backed by Interop Buffer.
      */
-    @ExportLibrary(value = InteropLibrary.class, delegateTo = "interopBuffer")
+    @ImportStatic(JSConfig.class)
+    @ExportLibrary(value = InteropLibrary.class)
     public static final class Interop extends JSArrayBufferObject {
-        final Object interopBuffer;
+        Object interopBuffer;
 
         protected Interop(Shape shape, Object interopBuffer) {
             super(shape);
             this.interopBuffer = interopBuffer;
         }
 
-        @Override
-        public int getByteLength() {
+        public int getByteLength(InteropLibrary interop) {
             try {
-                return Math.toIntExact(InteropLibrary.getUncached(interopBuffer).getBufferSize(interopBuffer));
+                return isDetached() ? 0 : Math.toIntExact(interop.getBufferSize(interopBuffer));
             } catch (UnsupportedMessageException | ArithmeticException e) {
                 return 0;
             }
+        }
+
+        @Override
+        public int getByteLength() {
+            return isDetached() ? 0 : getByteLength(InteropLibrary.getUncached(interopBuffer));
         }
 
         public Object getInteropBuffer() {
@@ -509,12 +518,136 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @Override
         public boolean isDetached() {
-            return false;
+            return (interopBuffer == null);
         }
 
         @Override
         public void detachArrayBuffer() {
-            throw Errors.unsupported("Foreign ArrayBuffer cannot be detached");
+            interopBuffer = null;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        boolean hasBufferElements() {
+            return true;
+        }
+
+        @ExportMessage
+        long getBufferSize() {
+            return isDetached() ? 0 : getByteLength();
+        }
+
+        @ExportMessage
+        byte readBufferByte(long byteOffset,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+            return interop.readBufferByte(interopBuffer, byteOffset);
+        }
+
+        @ExportMessage
+        short readBufferShort(ByteOrder order, long byteOffset,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+            return interop.readBufferShort(interopBuffer, order, byteOffset);
+        }
+
+        @ExportMessage
+        int readBufferInt(ByteOrder order, long byteOffset,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+            return interop.readBufferInt(interopBuffer, order, byteOffset);
+        }
+
+        @ExportMessage
+        long readBufferLong(ByteOrder order, long byteOffset,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+            return interop.readBufferLong(interopBuffer, order, byteOffset);
+        }
+
+        @ExportMessage
+        float readBufferFloat(ByteOrder order, long byteOffset,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+            return interop.readBufferFloat(interopBuffer, order, byteOffset);
+        }
+
+        @ExportMessage
+        double readBufferDouble(ByteOrder order, long byteOffset,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+            return interop.readBufferDouble(interopBuffer, order, byteOffset);
+        }
+
+        @ExportMessage
+        boolean isBufferWritable(@CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException {
+            return interop.isBufferWritable(interopBuffer);
+        }
+
+        @ExportMessage
+        void writeBufferByte(long byteOffset, byte value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
+            }
+            interop.writeBufferByte(interopBuffer, byteOffset, value);
+        }
+
+        @ExportMessage
+        void writeBufferShort(ByteOrder order, long byteOffset, short value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
+            }
+            interop.writeBufferShort(interopBuffer, order, byteOffset, value);
+        }
+
+        @ExportMessage
+        void writeBufferInt(ByteOrder order, long byteOffset, int value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
+            }
+            interop.writeBufferInt(interopBuffer, order, byteOffset, value);
+        }
+
+        @ExportMessage
+        void writeBufferLong(ByteOrder order, long byteOffset, long value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
+            }
+            interop.writeBufferLong(interopBuffer, order, byteOffset, value);
+        }
+
+        @ExportMessage
+        void writeBufferFloat(ByteOrder order, long byteOffset, float value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
+            }
+            interop.writeBufferFloat(interopBuffer, order, byteOffset, value);
+        }
+
+        @ExportMessage
+        void writeBufferDouble(ByteOrder order, long byteOffset, double value,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
+            }
+            interop.writeBufferDouble(interopBuffer, order, byteOffset, value);
         }
     }
 

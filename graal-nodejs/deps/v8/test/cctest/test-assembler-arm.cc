@@ -1335,12 +1335,12 @@ TEST(15) {
     __ add(r4, r0, Operand(static_cast<int32_t>(offsetof(T, vmovl_s32))));
     __ vst1(Neon8, NeonListOperand(q3), NeonMemOperand(r4));
     // Narrow what we widened.
-    __ vqmovn(NeonU16, d0, q2);
+    __ vqmovn(NeonU16, NeonU16, d0, q2);
     __ vstr(d0, r0, offsetof(T, vqmovn_u16));
     __ vmov(d1, d0);
-    __ vqmovn(NeonS8, d2, q0);
+    __ vqmovn(NeonS8, NeonS8, d2, q0);
     __ vstr(d2, r0, offsetof(T, vqmovn_s8));
-    __ vqmovn(NeonS32, d4, q3);
+    __ vqmovn(NeonS32, NeonS32, d4, q3);
     __ vstr(d4, r0, offsetof(T, vqmovn_s32));
 
     // ARM core register to scalar.
@@ -3391,7 +3391,9 @@ TEST(ARMv8_vminmax_f32) {
 
 template <typename T, typename Inputs, typename Results>
 static GeneratedCode<F_ppiii> GenerateMacroFloatMinMax(
-    MacroAssembler& assm) {  // NOLINT(runtime/references)
+    MacroAssembler* assm_ptr) {
+  MacroAssembler& assm = *assm_ptr;
+
   T a = T::from_code(0);  // d0/s0
   T b = T::from_code(1);  // d1/s1
   T c = T::from_code(2);  // d2/s2
@@ -3509,7 +3511,7 @@ TEST(macro_float_minmax_f64) {
     double max_aba_;
   };
 
-  auto f = GenerateMacroFloatMinMax<DwVfpRegister, Inputs, Results>(assm);
+  auto f = GenerateMacroFloatMinMax<DwVfpRegister, Inputs, Results>(&assm);
 
 #define CHECK_MINMAX(left, right, min, max)                                  \
   do {                                                                       \
@@ -3574,7 +3576,7 @@ TEST(macro_float_minmax_f32) {
     float max_aba_;
   };
 
-  auto f = GenerateMacroFloatMinMax<SwVfpRegister, Inputs, Results>(assm);
+  auto f = GenerateMacroFloatMinMax<SwVfpRegister, Inputs, Results>(&assm);
 
 #define CHECK_MINMAX(left, right, min, max)                                  \
   do {                                                                       \

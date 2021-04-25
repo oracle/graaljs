@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,17 @@ package com.oracle.truffle.js.test.builtins;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
+
+import java.io.ByteArrayOutputStream;
+import java.util.Iterator;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
@@ -85,6 +90,42 @@ public class EvalTest {
             } catch (PolyglotException e) {
                 assertThat(e.getPolyglotStackTrace().iterator().next().getSourceLocation().getSource().getName(), containsString("test.js:2"));
             }
+        }
+    }
+
+    @Test
+    public void testDirectEvalCallSourceLocation() {
+        testEvalCallSourceLocation(true);
+    }
+
+    @Test
+    public void testIndirectEvalCallSourceLocation() {
+        testEvalCallSourceLocation(false);
+    }
+
+    private static void testEvalCallSourceLocation(boolean directEval) {
+        ByteArrayOutputStream err = new ByteArrayOutputStream();
+        try (Context context = JSTest.newContextBuilder().err(err).build()) {
+            try {
+                String eval = directEval ? "eval" : "(0, eval)";
+                context.eval(Source.newBuilder(JavaScriptLanguage.ID, "" +
+                                "try {\n" +
+                                "    " + eval + "('causeerror')\n" +
+                                "} catch(e) {\n" +
+                                "    console.error(e.stack)\n" +
+                                "    throw e\n" +
+                                "}", "test.js").buildLiteral());
+            } catch (PolyglotException e) {
+                Iterator<PolyglotException.StackFrame> iterator = e.getPolyglotStackTrace().iterator();
+                assertThat(iterator.next().getSourceLocation().getSource().getName(), containsString("eval"));
+                SourceSection sourceLocation = iterator.next().getSourceLocation();
+                assertNotNull(sourceLocation);
+                assertEquals("test.js", sourceLocation.getSource().getName());
+                assertEquals(2, sourceLocation.getStartLine());
+                assertEquals(2, sourceLocation.getEndLine());
+            }
+            String errorLog = err.toString();
+            assertThat(errorLog, containsString("test.js:2"));
         }
     }
 

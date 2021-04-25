@@ -1,8 +1,9 @@
 {
   'variables': {
     'v8_use_siphash%': 0,
-    'v8_use_snapshot%': 0,
     'v8_trace_maps%': 0,
+    'v8_enable_pointer_compression%': 0,
+    'v8_enable_31bit_smis_on_64bit_arch%': 0,
     'node_use_dtrace%': 'false',
     'node_use_etw%': 'false',
     'node_no_browser_globals%': 'false',
@@ -53,6 +54,7 @@
       'lib/domain.js',
       'lib/events.js',
       'lib/fs.js',
+      'lib/fs/promises.js',
       'lib/http.js',
       'lib/http2.js',
       'lib/_http_agent.js',
@@ -130,6 +132,7 @@
       'lib/internal/encoding.js',
       'lib/internal/errors.js',
       'lib/internal/error_serdes.js',
+      'lib/internal/event_target.js',
       'lib/internal/fixed_queue.js',
       'lib/internal/freelist.js',
       'lib/internal/freeze_intrinsics.js',
@@ -223,11 +226,15 @@
       'lib/internal/worker/js_transferable.js',
       'lib/internal/watchdog.js',
       'lib/internal/streams/lazy_transform.js',
-      'lib/internal/streams/async_iterator.js',
       'lib/internal/streams/buffer_list.js',
       'lib/internal/streams/duplexpair.js',
       'lib/internal/streams/from.js',
       'lib/internal/streams/legacy.js',
+      'lib/internal/streams/readable.js',
+      'lib/internal/streams/writable.js',
+      'lib/internal/streams/duplex.js',
+      'lib/internal/streams/passthrough.js',
+      'lib/internal/streams/transform.js',
       'lib/internal/streams/destroy.js',
       'lib/internal/streams/state.js',
       'lib/internal/streams/pipeline.js',
@@ -249,7 +256,6 @@
       'deps/acorn/acorn/dist/acorn.js',
       'deps/acorn/acorn-walk/dist/walk.js',
       'deps/acorn-plugins/acorn-class-fields/index.js',
-      'deps/acorn-plugins/acorn-numeric-separator/index.js',
       'deps/acorn-plugins/acorn-private-class-elements/index.js',
       'deps/acorn-plugins/acorn-private-methods/index.js',
       'deps/acorn-plugins/acorn-static-class-features/index.js',
@@ -331,7 +337,7 @@
       'target_name': 'node_text_start',
       'type': 'none',
       'conditions': [
-        [ 'OS in "linux freebsd" and '
+        [ 'OS in "linux freebsd solaris" and '
           'target_arch=="x64"', {
           'type': 'static_library',
           'sources': [
@@ -383,6 +389,12 @@
       'msvs_disabled_warnings!': [4244],
 
       'conditions': [
+        [ 'error_on_warn=="true"', {
+          'cflags': ['-Werror'],
+          'xcode_settings': {
+            'WARNING_CFLAGS': [ '-Werror' ],
+          },
+        }],
         [ 'node_intermediate_lib_type=="static_library" and '
             'node_shared=="true" and OS=="aix"', {
           # For AIX, shared lib is linked by static lib and .exp. In the
@@ -587,8 +599,7 @@
         'src/node_env_var.cc',
         'src/node_errors.cc',
         'src/node_file.cc',
-        'src/node_http_parser_llhttp.cc',
-        'src/node_http_parser_traditional.cc',
+        'src/node_http_parser.cc',
         'src/node_http2.cc',
         'src/node_i18n.cc',
         'src/node_main_instance.cc',
@@ -623,7 +634,6 @@
         'src/node_zlib.cc',
         'src/pipe_wrap.cc',
         'src/process_wrap.cc',
-        'src/sharedarraybuffer_metadata.cc',
         'src/signal_wrap.cc',
         'src/spawn_sync.cc',
         'src/stream_base.cc',
@@ -644,11 +654,16 @@
         'src/uv.cc',
         # headers to make for a more pleasant IDE experience
         'src/aliased_buffer.h',
+        'src/aliased_struct.h',
+        'src/aliased_struct-inl.h',
+        'src/allocated_buffer.h',
+        'src/allocated_buffer-inl.h',
         'src/async_wrap.h',
         'src/async_wrap-inl.h',
         'src/base_object.h',
         'src/base_object-inl.h',
         'src/base64.h',
+        'src/base64-inl.h',
         'src/callback_queue.h',
         'src/callback_queue-inl.h',
         'src/connect_wrap.h',
@@ -660,7 +675,6 @@
         'src/handle_wrap.h',
         'src/histogram.h',
         'src/histogram-inl.h',
-        'src/http_parser_adaptor.h',
         'src/js_stream.h',
         'src/json_utils.h',
         'src/large_pages/node_large_page.cc',
@@ -680,7 +694,8 @@
         'src/node_errors.h',
         'src/node_file.h',
         'src/node_file-inl.h',
-        'src/node_http_parser_impl.h',
+        'src/node_http_common.h',
+        'src/node_http_common-inl.h',
         'src/node_http2.h',
         'src/node_http2_state.h',
         'src/node_i18n.h',
@@ -716,7 +731,6 @@
         'src/pipe_wrap.h',
         'src/req_wrap.h',
         'src/req_wrap-inl.h',
-        'src/sharedarraybuffer_metadata.h',
         'src/spawn_sync.h',
         'src/stream_base.h',
         'src/stream_base-inl.h',
@@ -738,7 +752,6 @@
         'src/util.h',
         'src/util-inl.h',
         # Dependency headers
-        'deps/http_parser/http_parser.h',
         'deps/v8/include/v8.h',
         # javascript files to make for an even more pleasant IDE experience
         '<@(library_files)',
@@ -788,6 +801,12 @@
           'defines': [
             'NODE_OPENSSL_DEFAULT_CIPHER_LIST="<(openssl_default_cipher_list)"'
            ]
+        }],
+        [ 'error_on_warn=="true"', {
+          'cflags': ['-Werror'],
+          'xcode_settings': {
+            'WARNING_CFLAGS': [ '-Werror' ],
+          },
         }],
         [ 'node_builtin_modules_path!=""', {
           'defines': [ 'NODE_BUILTIN_MODULES_PATH="<(node_builtin_modules_path)"' ]
@@ -909,7 +928,7 @@
             'src/tls_wrap.h'
           ],
         }],
-        [ 'OS in "linux freebsd mac" and '
+        [ 'OS in "linux freebsd mac solaris" and '
           'target_arch=="x64" and '
           'node_target_type=="executable"', {
           'defines': [ 'NODE_ENABLE_LARGE_CODE_PAGES=1' ],

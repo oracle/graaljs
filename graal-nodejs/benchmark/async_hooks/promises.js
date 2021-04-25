@@ -2,10 +2,37 @@
 const common = require('../common.js');
 const { createHook } = require('async_hooks');
 
+let hook;
+const tests = {
+  disabled() {
+    hook = createHook({
+      promiseResolve() {}
+    });
+  },
+  enabled() {
+    hook = createHook({
+      promiseResolve() {}
+    }).enable();
+  },
+  enabledWithDestroy() {
+    hook = createHook({
+      promiseResolve() {},
+      destroy() {}
+    }).enable();
+  },
+  enabledWithInitOnly() {
+    hook = createHook({
+      init() {}
+    }).enable();
+  }
+};
+
 const bench = common.createBenchmark(main, {
   n: [1e6],
   asyncHooks: [
     'enabled',
+    'enabledWithDestroy',
+    'enabledWithInitOnly',
     'disabled',
   ]
 });
@@ -20,10 +47,8 @@ async function run(n) {
 }
 
 function main({ n, asyncHooks }) {
-  const hook = createHook({ promiseResolve() {} });
-  if (asyncHooks !== 'disabled') {
-    hook.enable();
-  }
+  if (hook) hook.disable();
+  tests[asyncHooks]();
   bench.start();
   run(n).then(() => {
     bench.end(n);

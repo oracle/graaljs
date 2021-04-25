@@ -443,10 +443,16 @@ describe('Value - Is*()', function () {
             });
             typedArrays.forEach(function (valueType) {
                 var expectedResult = valueType === type;
-                var value = new this[valueType];
+                var value = new global[valueType];
                 it('should return ' + expectedResult + ' for ' + valueType, function () {
                     assert.strictEqual(testedFunction(value), expectedResult);
                 });
+                if (typeof java !== 'undefined') {
+                    it('should return ' + expectedResult + ' for interop ' + valueType, function () {
+                        var interopTypedArray = new (global[valueType])(java.nio.ByteBuffer.allocate(8));
+                        assert.strictEqual(testedFunction(interopTypedArray), expectedResult);
+                    });                    
+                }
             });
         });
     });
@@ -641,35 +647,6 @@ describe('Value - *Value()', function () {
             assert.strictEqual(module.Value_BooleanValue(3.1415), true);
         });
     });
-    describe('BooleanValue(Context)', function () {
-        it('should return false for undefined', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(undefined), false);
-        });
-        it('should return false for null', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(null), false);
-        });
-        it('should return true for "1234"', function () {
-            assert.strictEqual(module.Value_BooleanValueContext("1234"), true);
-        });
-        it('should return true for true', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(true), true);
-        });
-        it('should return false for false', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(false), false);
-        });
-        it('should return false for {}', function () {
-            assert.strictEqual(isNaN(module.Value_BooleanValueContext({})), false);
-        });
-        it('should return true for "1234.5"', function () {
-            assert.strictEqual(module.Value_BooleanValueContext("1234.5"), true);
-        });
-        it('should return false for 0', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(0), false);
-        });
-        it('should return true for 3.1415', function () {
-            assert.strictEqual(module.Value_BooleanValueContext(3.1415), true);
-        });
-    });
     describe('Int32Value()', function () {
         it('should return 0 for undefined', function () {
             assert.strictEqual(module.Value_Int32Value(undefined), 0);
@@ -856,9 +833,11 @@ describe('Value - To*()', function () {
             assert.strictEqual(module.Value_ToInteger(NaN), 0);
             assert.strictEqual(module.Value_ToInteger(undefined), 0);
         });
-        it('should not convert corner cases', function () {
+        it('should return 0 for positive/negative zero', function () {
             assert.strictEqual(module.Value_ToInteger(0), 0);
-            assert.strictEqual(module.Value_ToInteger(-0.0), -0.0);
+            assert.strictEqual(module.Value_ToInteger(-0.0), 0);
+        });
+        it('should not convert corner cases', function () {
             assert.strictEqual(module.Value_ToInteger(Number.POSITIVE_INFINITY), Number.POSITIVE_INFINITY);
             assert.strictEqual(module.Value_ToInteger(Number.NEGATIVE_INFINITY), Number.NEGATIVE_INFINITY);
             assert.strictEqual(module.Value_ToInteger(0xFFFFFFFF), 0xFFFFFFFF);

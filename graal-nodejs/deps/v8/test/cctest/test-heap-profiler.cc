@@ -46,6 +46,7 @@
 #include "src/profiler/heap-snapshot-generator-inl.h"
 #include "test/cctest/cctest.h"
 #include "test/cctest/collector.h"
+#include "test/cctest/heap/heap-utils.h"
 
 using i::AllocationTraceNode;
 using i::AllocationTraceTree;
@@ -838,13 +839,24 @@ TEST(HeapSnapshotEphemeron) {
   const v8::HeapGraphNode* key = GetProperty(
       env->GetIsolate(), global, v8::HeapGraphEdge::kProperty, "key");
   CHECK(key);
+  const v8::HeapGraphNode* weakmap = GetProperty(
+      env->GetIsolate(), global, v8::HeapGraphEdge::kProperty, "wm");
+  CHECK(weakmap);
+  const v8::HeapGraphNode* weakmap_table = GetProperty(
+      env->GetIsolate(), weakmap, v8::HeapGraphEdge::kInternal, "table");
+  CHECK(weakmap_table);
   bool success = false;
   for (int i = 0, count = key->GetChildrenCount(); i < count; ++i) {
     const v8::HeapGraphEdge* edge = key->GetChild(i);
     const v8::HeapGraphNode* child = edge->GetToNode();
     if (!strcmp("ValueClass", GetName(child))) {
       v8::String::Utf8Value edge_name(CcTest::isolate(), edge->GetName());
-      CHECK(EndsWith(*edge_name, " / key KeyClass in WeakMap"));
+      std::stringstream end_of_label;
+      end_of_label << "/ part of key (KeyClass @" << key->GetId()
+                   << ") -> value (ValueClass @" << child->GetId()
+                   << ") pair in WeakMap (table @" << weakmap_table->GetId()
+                   << ")";
+      CHECK(EndsWith(*edge_name, end_of_label.str().c_str()));
       success = true;
       break;
     }
@@ -1693,6 +1705,154 @@ TEST(HeapSnapshotRetainedObjectInfo) {
   CHECK_EQ(native_group_ccc, GetChildByName(n_CCC, "ccc-group"));
 }
 
+namespace {
+
+class EmbedderGraphBuilderForNativeSnapshotObjectId final {
+ public:
+  class RegularNode : public v8::EmbedderGraph::Node {
+   public:
+    RegularNode(v8::NativeObject native_object, const char* name, size_t size,
+                Node* wrapper_node)
+        : name_(name),
+          size_(size),
+          native_object_(native_object),
+          wrapper_node_(wrapper_node) {}
+    // v8::EmbedderGraph::Node
+    const char* Name() override { return name_; }
+    size_t SizeInBytes() override { return size_; }
+    Node* WrapperNode() override { return wrapper_node_; }
+    v8::NativeObject GetNativeObject() override {
+      return native_object_ ? native_object_ : this;
+    }
+
+   private:
+    const char* name_;
+    size_t size_;
+    v8::NativeObject native_object_;
+    Node* wrapper_node_;
+  };
+
+  class RootNode : public RegularNode {
+   public:
+    explicit RootNode(const char* name)
+        : RegularNode(nullptr, name, 0, nullptr) {}
+    // v8::EmbedderGraph::EmbedderNode
+    bool IsRootNode() override { return true; }
+  };
+
+  struct BuildParameter {
+    v8::Persistent<v8::String>* wrapper;
+    void* native1;
+    void* native2;
+  };
+
+  static void BuildEmbedderGraph(v8::Isolate* isolate, v8::EmbedderGraph* graph,
+                                 void* data) {
+    BuildParameter* parameter = reinterpret_cast<BuildParameter*>(data);
+    v8::Local<v8::String> local_str =
+        v8::Local<v8::String>::New(isolate, *(parameter->wrapper));
+    auto* v8_node = graph->V8Node(local_str);
+    CHECK(!v8_node->IsEmbedderNode());
+    auto* root_node =
+        graph->AddNode(std::unique_ptr<RootNode>(new RootNode("root")));
+    auto* non_merged_node = graph->AddNode(std::unique_ptr<RegularNode>(
+        new RegularNode(parameter->native1, "non-merged", 0, nullptr)));
+    auto* merged_node = graph->AddNode(std::unique_ptr<RegularNode>(
+        new RegularNode(parameter->native2, "merged", 0, v8_node)));
+    graph->AddEdge(root_node, non_merged_node);
+    graph->AddEdge(root_node, merged_node);
+  }
+};
+
+}  // namespace
+
+TEST(NativeSnapshotObjectId) {
+  LocalContext env;
+  v8::Isolate* isolate = env->GetIsolate();
+  v8::HandleScope scope(isolate);
+  v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
+
+  v8::Persistent<v8::String> wrapper(isolate, v8_str("wrapper"));
+  int native1;
+  int native2;
+
+  EmbedderGraphBuilderForNativeSnapshotObjectId::BuildParameter parameter{
+      &wrapper, &native1, &native2};
+  heap_profiler->AddBuildEmbedderGraphCallback(
+      EmbedderGraphBuilderForNativeSnapshotObjectId::BuildEmbedderGraph,
+      &parameter);
+  const v8::HeapSnapshot* snapshot = heap_profiler->TakeHeapSnapshot();
+  CHECK(ValidateSnapshot(snapshot));
+
+  v8::SnapshotObjectId non_merged_id = heap_profiler->GetObjectId(&native1);
+  CHECK_NE(v8::HeapProfiler::kUnknownObjectId, non_merged_id);
+  v8::SnapshotObjectId merged_id = heap_profiler->GetObjectId(&native2);
+  CHECK_NE(v8::HeapProfiler::kUnknownObjectId, merged_id);
+  CHECK_NE(non_merged_id, merged_id);
+  const v8::HeapGraphNode* non_merged_node =
+      snapshot->GetNodeById(non_merged_id);
+  CHECK_NOT_NULL(non_merged_node);
+  const v8::HeapGraphNode* merged_node = snapshot->GetNodeById(merged_id);
+  CHECK_NOT_NULL(merged_node);
+
+  heap_profiler->ClearObjectIds();
+  CHECK_EQ(v8::HeapProfiler::kUnknownObjectId,
+           heap_profiler->GetObjectId(&native1));
+  CHECK_EQ(v8::HeapProfiler::kUnknownObjectId,
+           heap_profiler->GetObjectId(&native2));
+}
+
+TEST(NativeSnapshotObjectIdMoving) {
+  // Required to allow moving specific objects.
+  i::FLAG_manual_evacuation_candidates_selection = true;
+
+  LocalContext env;
+  v8::Isolate* isolate = env->GetIsolate();
+  v8::HandleScope scope(isolate);
+  v8::HeapProfiler* heap_profiler = isolate->GetHeapProfiler();
+  heap_profiler->StartTrackingHeapObjects(true);
+
+  v8::Persistent<v8::String> wrapper(isolate, v8_str("wrapper"));
+  int native1;
+  int native2;
+
+  EmbedderGraphBuilderForNativeSnapshotObjectId::BuildParameter parameter{
+      &wrapper, &native1, &native2};
+  heap_profiler->AddBuildEmbedderGraphCallback(
+      EmbedderGraphBuilderForNativeSnapshotObjectId::BuildEmbedderGraph,
+      &parameter);
+  const v8::HeapSnapshot* snapshot = heap_profiler->TakeHeapSnapshot();
+  CHECK(ValidateSnapshot(snapshot));
+
+  v8::SnapshotObjectId non_merged_id = heap_profiler->GetObjectId(&native1);
+  CHECK_NE(v8::HeapProfiler::kUnknownObjectId, non_merged_id);
+  v8::SnapshotObjectId merged_id = heap_profiler->GetObjectId(&native2);
+  CHECK_NE(v8::HeapProfiler::kUnknownObjectId, merged_id);
+  CHECK_NE(non_merged_id, merged_id);
+  const v8::HeapGraphNode* non_merged_node =
+      snapshot->GetNodeById(non_merged_id);
+  CHECK_NOT_NULL(non_merged_node);
+  const v8::HeapGraphNode* merged_node = snapshot->GetNodeById(merged_id);
+  CHECK_NOT_NULL(merged_node);
+
+  {
+    v8::HandleScope scope(isolate);
+    auto local = v8::Local<v8::String>::New(isolate, wrapper);
+    i::Handle<i::String> internal = i::Handle<i::String>::cast(
+        v8::Utils::OpenHandle(*v8::Local<v8::String>::Cast(local)));
+    i::heap::ForceEvacuationCandidate(i::Page::FromHeapObject(*internal));
+  }
+  CcTest::CollectAllGarbage();
+
+  non_merged_id = heap_profiler->GetObjectId(&native1);
+  CHECK_NE(v8::HeapProfiler::kUnknownObjectId, non_merged_id);
+  merged_id = heap_profiler->GetObjectId(&native2);
+  CHECK_NE(v8::HeapProfiler::kUnknownObjectId, merged_id);
+  CHECK_NE(non_merged_id, merged_id);
+
+  heap_profiler->StopTrackingHeapObjects();
+}
+
 TEST(DeleteAllHeapSnapshots) {
   LocalContext env;
   v8::HandleScope scope(env->GetIsolate());
@@ -2431,7 +2591,7 @@ TEST(ManyLocalsInSharedContext) {
       env->GetIsolate(), ok_object, v8::HeapGraphEdge::kInternal, "context");
   CHECK(context_object);
   // Check the objects are not duplicated in the context.
-  CHECK_EQ(v8::internal::Context::MIN_CONTEXT_SLOTS + num_objects - 1,
+  CHECK_EQ(v8::internal::Context::MIN_CONTEXT_EXTENDED_SLOTS + num_objects - 1,
            context_object->GetChildrenCount());
   // Check all the objects have got their names.
   // ... well check just every 15th because otherwise it's too slow in debug.
@@ -2563,7 +2723,7 @@ TEST(CheckCodeNames) {
   CHECK(ValidateSnapshot(snapshot));
 
   const char* builtin_path1[] = {"::(GC roots)", "::(Builtins)",
-                                 "::(KeyedLoadIC_Slow builtin)"};
+                                 "::(KeyedLoadIC_PolymorphicName builtin)"};
   const v8::HeapGraphNode* node = GetNodeByPath(
       env->GetIsolate(), snapshot, builtin_path1, arraysize(builtin_path1));
   CHECK(node);
@@ -2878,16 +3038,12 @@ TEST(ArrayBufferSharedBackingStore) {
 
   v8::Local<v8::ArrayBuffer> ab = v8::ArrayBuffer::New(isolate, 1024);
   CHECK_EQ(1024, static_cast<int>(ab->ByteLength()));
-  CHECK(!ab->IsExternal());
-  v8::ArrayBuffer::Contents ab_contents = ab->Externalize();
-  CHECK(ab->IsExternal());
+  std::shared_ptr<v8::BackingStore> backing_store = ab->GetBackingStore();
 
-  CHECK_EQ(1024, static_cast<int>(ab_contents.ByteLength()));
-  void* data = ab_contents.Data();
+  CHECK_EQ(1024, static_cast<int>(backing_store->ByteLength()));
+  void* data = backing_store->Data();
   CHECK_NOT_NULL(data);
-  v8::Local<v8::ArrayBuffer> ab2 =
-      v8::ArrayBuffer::New(isolate, data, ab_contents.ByteLength());
-  CHECK(ab2->IsExternal());
+  v8::Local<v8::ArrayBuffer> ab2 = v8::ArrayBuffer::New(isolate, backing_store);
   env->Global()->Set(env.local(), v8_str("ab1"), ab).FromJust();
   env->Global()->Set(env.local(), v8_str("ab2"), ab2).FromJust();
 
@@ -2913,7 +3069,6 @@ TEST(ArrayBufferSharedBackingStore) {
   CHECK(ab2_data);
   CHECK_EQ(ab1_data, ab2_data);
   CHECK_EQ(2, GetRetainersCount(snapshot, ab1_data));
-  free(data);
 }
 
 
@@ -3428,10 +3583,9 @@ TEST(AddressToTraceMap) {
 }
 
 static const v8::AllocationProfile::Node* FindAllocationProfileNode(
-    v8::Isolate* isolate,
-    v8::AllocationProfile& profile,  // NOLINT(runtime/references)
+    v8::Isolate* isolate, v8::AllocationProfile* profile,
     const Vector<const char*>& names) {
-  v8::AllocationProfile::Node* node = profile.GetRootNode();
+  v8::AllocationProfile::Node* node = profile->GetRootNode();
   for (int i = 0; node != nullptr && i < names.length(); ++i) {
     const char* name = names[i];
     auto children = node->children;
@@ -3501,7 +3655,7 @@ TEST(SamplingHeapProfiler) {
     CHECK(profile);
 
     const char* names[] = {"", "foo", "bar"};
-    auto node_bar = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node_bar = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                               ArrayVector(names));
     CHECK(node_bar);
 
@@ -3525,12 +3679,12 @@ TEST(SamplingHeapProfiler) {
     CHECK(profile);
 
     const char* names1[] = {"", "start", "f_0_0", "f_0_1", "f_0_2"};
-    auto node1 = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node1 = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                            ArrayVector(names1));
     CHECK(node1);
 
     const char* names2[] = {"", "generateFunctions"};
-    auto node2 = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node2 = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                            ArrayVector(names2));
     CHECK(node2);
 
@@ -3588,11 +3742,11 @@ TEST(SamplingHeapProfilerRateAgnosticEstimates) {
     CHECK(profile);
 
     const char* path_to_foo[] = {"", "foo"};
-    auto node_foo = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node_foo = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                               ArrayVector(path_to_foo));
     CHECK(node_foo);
     const char* path_to_bar[] = {"", "foo", "bar"};
-    auto node_bar = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node_bar = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                               ArrayVector(path_to_bar));
     CHECK(node_bar);
 
@@ -3612,11 +3766,11 @@ TEST(SamplingHeapProfilerRateAgnosticEstimates) {
     CHECK(profile);
 
     const char* path_to_foo[] = {"", "foo"};
-    auto node_foo = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node_foo = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                               ArrayVector(path_to_foo));
     CHECK(node_foo);
     const char* path_to_bar[] = {"", "foo", "bar"};
-    auto node_bar = FindAllocationProfileNode(env->GetIsolate(), *profile,
+    auto node_bar = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                               ArrayVector(path_to_bar));
     CHECK(node_bar);
 
@@ -3655,7 +3809,7 @@ TEST(SamplingHeapProfilerApiAllocation) {
       heap_profiler->GetAllocationProfile());
   CHECK(profile);
   const char* names[] = {"(V8 API)"};
-  auto node = FindAllocationProfileNode(env->GetIsolate(), *profile,
+  auto node = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                         ArrayVector(names));
   CHECK(node);
 
@@ -3795,7 +3949,7 @@ TEST(SamplingHeapProfilerPretenuredInlineAllocations) {
   heap_profiler->StopSamplingHeapProfiler();
 
   const char* names[] = {"f"};
-  auto node_f = FindAllocationProfileNode(env->GetIsolate(), *profile,
+  auto node_f = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                           ArrayVector(names));
   CHECK(node_f);
 
@@ -3825,7 +3979,7 @@ TEST(SamplingHeapProfilerLargeInterval) {
       heap_profiler->GetAllocationProfile());
   CHECK(profile);
   const char* names[] = {"(EXTERNAL)"};
-  auto node = FindAllocationProfileNode(env->GetIsolate(), *profile,
+  auto node = FindAllocationProfileNode(env->GetIsolate(), profile.get(),
                                         ArrayVector(names));
   CHECK(node);
 
@@ -3899,10 +4053,9 @@ TEST(WeakReference) {
 
   // Create a FeedbackVector.
   v8::Local<v8::Script> script =
-      v8::Script::Compile(isolate->GetCurrentContext(),
-                          v8::String::NewFromUtf8(isolate, "function foo() {}",
-                                                  v8::NewStringType::kNormal)
-                              .ToLocalChecked())
+      v8::Script::Compile(
+          isolate->GetCurrentContext(),
+          v8::String::NewFromUtf8Literal(isolate, "function foo() {}"))
           .ToLocalChecked();
   v8::MaybeLocal<v8::Value> value = script->Run(isolate->GetCurrentContext());
   CHECK(!value.IsEmpty());
@@ -3972,4 +4125,41 @@ TEST(Bug8373_2) {
   }
 
   heap_profiler->StopTrackingHeapObjects();
+}
+
+TEST(HeapSnapshotDeleteDuringTakeSnapshot) {
+  // Check that a heap snapshot can be deleted during GC while another one
+  // is being taken.
+
+  LocalContext env;
+  v8::HandleScope scope(env->GetIsolate());
+  v8::HeapProfiler* heap_profiler = env->GetIsolate()->GetHeapProfiler();
+  int gc_calls = 0;
+  v8::Global<v8::Object> handle;
+
+  {
+    struct WeakData {
+      const v8::HeapSnapshot* snapshot;
+      int* gc_calls;
+      v8::Global<v8::Object>* handle;
+    };
+    WeakData* data =
+        new WeakData{heap_profiler->TakeHeapSnapshot(), &gc_calls, &handle};
+
+    v8::HandleScope scope(env->GetIsolate());
+    handle.Reset(env->GetIsolate(), v8::Object::New(env->GetIsolate()));
+    handle.SetWeak(
+        data,
+        [](const v8::WeakCallbackInfo<WeakData>& data) {
+          std::unique_ptr<WeakData> weakdata{data.GetParameter()};
+          const_cast<v8::HeapSnapshot*>(weakdata->snapshot)->Delete();
+          ++*weakdata->gc_calls;
+          weakdata->handle->Reset();
+        },
+        v8::WeakCallbackType::kParameter);
+  }
+  CHECK_EQ(gc_calls, 0);
+
+  CHECK(ValidateSnapshot(heap_profiler->TakeHeapSnapshot()));
+  CHECK_EQ(gc_calls, 1);
 }

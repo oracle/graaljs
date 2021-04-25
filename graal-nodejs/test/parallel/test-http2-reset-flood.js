@@ -69,10 +69,11 @@ const worker = new Worker(__filename).on('message', common.mustCall((port) => {
       h2header.writeIntBE(streamId, 5, 4);  // Stream ID
       streamId += 2;
       // 0x88 = :status: 200
-      if (conn.writable)
-        conn.write(Buffer.concat([h2header, Buffer.from([0x88])]));
+      if (!conn.write(Buffer.concat([h2header, Buffer.from([0x88])]))) {
+        break;
+      }
     }
-    if (conn.writable && !gotError)
+    if (!gotError)
       setImmediate(writeRequests);
   }
 

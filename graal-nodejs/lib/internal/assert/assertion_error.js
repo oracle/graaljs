@@ -1,12 +1,20 @@
 'use strict';
 
 const {
+  ArrayPrototypeJoin,
+  ArrayPrototypePop,
   Error,
+  ErrorCaptureStackTrace,
   MathMax,
   ObjectCreate,
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectKeys,
+  String,
+  StringPrototypeEndsWith,
+  StringPrototypeRepeat,
+  StringPrototypeSlice,
+  StringPrototypeSplit,
 } = primordials;
 
 const { inspect } = require('internal/util/inspect');
@@ -77,8 +85,8 @@ function createErrDiff(actual, expected, operator) {
   let end = '';
   let skipped = false;
   const actualInspected = inspectValue(actual);
-  const actualLines = actualInspected.split('\n');
-  const expectedLines = inspectValue(expected).split('\n');
+  const actualLines = StringPrototypeSplit(actualInspected, '\n');
+  const expectedLines = StringPrototypeSplit(inspectValue(expected), '\n');
 
   let i = 0;
   let indicator = '';
@@ -125,7 +133,7 @@ function createErrDiff(actual, expected, operator) {
         if (i > 2) {
           // Add position indicator for the first mismatch in case it is a
           // single line and the input length is less than the column length.
-          indicator = `\n  ${' '.repeat(i)}^`;
+          indicator = `\n  ${StringPrototypeRepeat(' ', i)}^`;
           i = 0;
         }
       }
@@ -142,8 +150,8 @@ function createErrDiff(actual, expected, operator) {
     } else {
       other = a;
     }
-    actualLines.pop();
-    expectedLines.pop();
+    ArrayPrototypePop(actualLines);
+    ArrayPrototypePop(expectedLines);
     if (actualLines.length === 0 || expectedLines.length === 0)
       break;
     a = actualLines[actualLines.length - 1];
@@ -155,18 +163,19 @@ function createErrDiff(actual, expected, operator) {
   // E.g., assert.deepStrictEqual({ a: Symbol() }, { a: Symbol() })
   if (maxLines === 0) {
     // We have to get the result again. The lines were all removed before.
-    const actualLines = actualInspected.split('\n');
+    const actualLines = StringPrototypeSplit(actualInspected, '\n');
 
     // Only remove lines in case it makes sense to collapse those.
     // TODO: Accept env to always show the full error.
     if (actualLines.length > 50) {
       actualLines[46] = `${blue}...${white}`;
       while (actualLines.length > 47) {
-        actualLines.pop();
+        ArrayPrototypePop(actualLines);
       }
     }
 
-    return `${kReadableOperator.notIdentical}\n\n${actualLines.join('\n')}\n`;
+    return `${kReadableOperator.notIdentical}\n\n` +
+           `${ArrayPrototypeJoin(actualLines, '\n')}\n`;
   }
 
   // There were at least five identical lines at the end. Mark a couple of
@@ -233,9 +242,10 @@ function createErrDiff(actual, expected, operator) {
       // If the lines diverge, specifically check for lines that only diverge by
       // a trailing comma. In that case it is actually identical and we should
       // mark it as such.
-      let divergingLines = actualLine !== expectedLine &&
-                           (!actualLine.endsWith(',') ||
-                            actualLine.slice(0, -1) !== expectedLine);
+      let divergingLines =
+        actualLine !== expectedLine &&
+        (!StringPrototypeEndsWith(actualLine, ',') ||
+         StringPrototypeSlice(actualLine, 0, -1) !== expectedLine);
       // If the expected line has a trailing comma but is otherwise identical,
       // add a comma at the end of the actual line. Otherwise the output could
       // look weird as in:
@@ -246,8 +256,8 @@ function createErrDiff(actual, expected, operator) {
       //   ]
       //
       if (divergingLines &&
-          expectedLine.endsWith(',') &&
-          expectedLine.slice(0, -1) === actualLine) {
+          StringPrototypeEndsWith(expectedLine, ',') &&
+          StringPrototypeSlice(expectedLine, 0, -1) === actualLine) {
         divergingLines = false;
         actualLine += ',';
       }
@@ -360,7 +370,7 @@ class AssertionError extends Error {
         // In case the objects are equal but the operator requires unequal, show
         // the first object and say A equals B
         let base = kReadableOperator[operator];
-        const res = inspectValue(actual).split('\n');
+        const res = StringPrototypeSplit(inspectValue(actual), '\n');
 
         // In case "actual" is an object or a function, it should not be
         // reference equal.
@@ -375,7 +385,7 @@ class AssertionError extends Error {
         if (res.length > 50) {
           res[46] = `${blue}...${white}`;
           while (res.length > 47) {
-            res.pop();
+            ArrayPrototypePop(res);
           }
         }
 
@@ -383,7 +393,7 @@ class AssertionError extends Error {
         if (res.length === 1) {
           super(`${base}${res[0].length > 5 ? '\n\n' : ' '}${res[0]}`);
         } else {
-          super(`${base}\n\n${res.join('\n')}\n`);
+          super(`${base}\n\n${ArrayPrototypeJoin(res, '\n')}\n`);
         }
       } else {
         let res = inspectValue(actual);
@@ -392,15 +402,15 @@ class AssertionError extends Error {
         if (operator === 'notDeepEqual' && res === other) {
           res = `${knownOperator}\n\n${res}`;
           if (res.length > 1024) {
-            res = `${res.slice(0, 1021)}...`;
+            res = `${StringPrototypeSlice(res, 0, 1021)}...`;
           }
           super(res);
         } else {
           if (res.length > 512) {
-            res = `${res.slice(0, 509)}...`;
+            res = `${StringPrototypeSlice(res, 0, 509)}...`;
           }
           if (other.length > 512) {
-            other = `${other.slice(0, 509)}...`;
+            other = `${StringPrototypeSlice(other, 0, 509)}...`;
           }
           if (operator === 'deepEqual') {
             res = `${knownOperator}\n\n${res}\n\nshould loosely deep-equal\n\n`;
@@ -443,8 +453,7 @@ class AssertionError extends Error {
       this.expected = expected;
       this.operator = operator;
     }
-    // eslint-disable-next-line no-restricted-syntax
-    Error.captureStackTrace(this, stackStartFn || stackStartFunction);
+    ErrorCaptureStackTrace(this, stackStartFn || stackStartFunction);
     // Create error message including the error code in the name.
     this.stack;
     // Reset the name.
@@ -462,12 +471,12 @@ class AssertionError extends Error {
 
     for (const name of ['actual', 'expected']) {
       if (typeof this[name] === 'string') {
-        const lines = this[name].split('\n');
+        const lines = StringPrototypeSplit(this[name], '\n');
         if (lines.length > 10) {
           lines.length = 10;
-          this[name] = `${lines.join('\n')}\n...`;
+          this[name] = `${ArrayPrototypeJoin(lines, '\n')}\n...`;
         } else if (this[name].length > 512) {
-          this[name] = `${this[name].slice(512)}...`;
+          this[name] = `${StringPrototypeSlice(this[name], 512)}...`;
         }
       }
     }

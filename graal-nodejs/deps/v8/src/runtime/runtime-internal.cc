@@ -14,6 +14,7 @@
 #include "src/execution/frames-inl.h"
 #include "src/execution/isolate-inl.h"
 #include "src/execution/messages.h"
+#include "src/execution/runtime-profiler.h"
 #include "src/handles/maybe-handles.h"
 #include "src/init/bootstrapper.h"
 #include "src/logging/counters.h"
@@ -197,13 +198,40 @@ RUNTIME_FUNCTION(Runtime_ThrowAccessedUninitializedVariable) {
       NewReferenceError(MessageTemplate::kAccessedUninitializedVariable, name));
 }
 
-RUNTIME_FUNCTION(Runtime_NewTypeError) {
+RUNTIME_FUNCTION(Runtime_NewError) {
   HandleScope scope(isolate);
   DCHECK_EQ(2, args.length());
   CONVERT_INT32_ARG_CHECKED(template_index, 0);
   CONVERT_ARG_HANDLE_CHECKED(Object, arg0, 1);
   MessageTemplate message_template = MessageTemplateFromInt(template_index);
-  return *isolate->factory()->NewTypeError(message_template, arg0);
+  return *isolate->factory()->NewError(message_template, arg0);
+}
+
+RUNTIME_FUNCTION(Runtime_NewTypeError) {
+  HandleScope scope(isolate);
+  DCHECK_LE(args.length(), 4);
+  DCHECK_GE(args.length(), 1);
+  CONVERT_INT32_ARG_CHECKED(template_index, 0);
+  MessageTemplate message_template = MessageTemplateFromInt(template_index);
+
+  Handle<Object> arg0;
+  if (args.length() >= 2) {
+    CHECK(args[1].IsObject());
+    arg0 = args.at<Object>(1);
+  }
+
+  Handle<Object> arg1;
+  if (args.length() >= 3) {
+    CHECK(args[2].IsObject());
+    arg1 = args.at<Object>(2);
+  }
+  Handle<Object> arg2;
+  if (args.length() >= 4) {
+    CHECK(args[3].IsObject());
+    arg2 = args.at<Object>(3);
+  }
+
+  return *isolate->factory()->NewTypeError(message_template, arg0, arg1, arg2);
 }
 
 RUNTIME_FUNCTION(Runtime_NewReferenceError) {
@@ -283,6 +311,21 @@ RUNTIME_FUNCTION(Runtime_StackGuard) {
   return isolate->stack_guard()->HandleInterrupts();
 }
 
+RUNTIME_FUNCTION(Runtime_StackGuardWithGap) {
+  SealHandleScope shs(isolate);
+  DCHECK_EQ(args.length(), 1);
+  CONVERT_UINT32_ARG_CHECKED(gap, 0);
+  TRACE_EVENT0("v8.execute", "V8.StackGuard");
+
+  // First check if this is a real stack overflow.
+  StackLimitCheck check(isolate);
+  if (check.JsHasOverflowed(gap)) {
+    return isolate->StackOverflow();
+  }
+
+  return isolate->stack_guard()->HandleInterrupts();
+}
+
 RUNTIME_FUNCTION(Runtime_BytecodeBudgetInterrupt) {
   HandleScope scope(isolate);
   DCHECK_EQ(1, args.length());
@@ -296,10 +339,11 @@ RUNTIME_FUNCTION(Runtime_BytecodeBudgetInterrupt) {
     function->feedback_vector().set_invocation_count(1);
     return ReadOnlyRoots(isolate).undefined_value();
   }
-  // Handle interrupts.
   {
     SealHandleScope shs(isolate);
-    return isolate->stack_guard()->HandleInterrupts();
+    isolate->counters()->runtime_profiler_ticks()->Increment();
+    isolate->runtime_profiler()->MarkCandidatesForOptimization();
+    return ReadOnlyRoots(isolate).undefined_value();
   }
 }
 
@@ -381,6 +425,15 @@ RUNTIME_FUNCTION(Runtime_ThrowIteratorError) {
   DCHECK_EQ(1, args.length());
   CONVERT_ARG_HANDLE_CHECKED(Object, object, 0);
   return isolate->Throw(*ErrorUtils::NewIteratorError(isolate, object));
+}
+
+RUNTIME_FUNCTION(Runtime_ThrowSpreadArgError) {
+  HandleScope scope(isolate);
+  DCHECK_EQ(2, args.length());
+  CONVERT_SMI_ARG_CHECKED(message_id_smi, 0);
+  MessageTemplate message_id = MessageTemplateFromInt(message_id_smi);
+  CONVERT_ARG_HANDLE_CHECKED(Object, object, 1);
+  return ErrorUtils::ThrowSpreadArgError(isolate, message_id, object);
 }
 
 RUNTIME_FUNCTION(Runtime_ThrowCalledNonCallable) {
@@ -545,19 +598,21 @@ RUNTIME_FUNCTION(Runtime_GetTemplateObject) {
       isolate, native_context, description, shared_info, slot_id);
 }
 
-RUNTIME_FUNCTION(Runtime_ReportMessage) {
+RUNTIME_FUNCTION(Runtime_ReportMessageFromMicrotask) {
   // Helper to report messages and continue JS execution. This is intended to
-  // behave similarly to reporting exceptions which reach the top-level in
-  // Execution.cc, but allow the JS code to continue. This is useful for
-  // implementing algorithms such as RunMicrotasks in JS.
+  // behave similarly to reporting exceptions which reach the top-level, but
+  // allow the JS code to continue.
   HandleScope scope(isolate);
   DCHECK_EQ(1, args.length());
 
-  CONVERT_ARG_HANDLE_CHECKED(Object, message_obj, 0);
+  CONVERT_ARG_HANDLE_CHECKED(Object, exception, 0);
 
   DCHECK(!isolate->has_pending_exception());
-  isolate->set_pending_exception(*message_obj);
-  isolate->ReportPendingMessagesFromJavaScript();
+  isolate->set_pending_exception(*exception);
+  MessageLocation* no_location = nullptr;
+  Handle<JSMessageObject> message =
+      isolate->CreateMessageOrAbort(exception, no_location);
+  MessageHandler::ReportMessage(isolate, no_location, message);
   isolate->clear_pending_exception();
   return ReadOnlyRoots(isolate).undefined_value();
 }
@@ -571,5 +626,18 @@ RUNTIME_FUNCTION(Runtime_GetInitializerFunction) {
   Handle<Object> initializer = JSReceiver::GetDataProperty(constructor, key);
   return *initializer;
 }
+
+RUNTIME_FUNCTION(Runtime_DoubleToStringWithRadix) {
+  HandleScope scope(isolate);
+  DCHECK_EQ(2, args.length());
+  CONVERT_DOUBLE_ARG_CHECKED(number, 0);
+  CONVERT_INT32_ARG_CHECKED(radix, 1);
+
+  char* const str = DoubleToRadixCString(number, radix);
+  Handle<String> result = isolate->factory()->NewStringFromAsciiChecked(str);
+  DeleteArray(str);
+  return *result;
+}
+
 }  // namespace internal
 }  // namespace v8

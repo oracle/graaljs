@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,16 +71,16 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
     protected static DynamicObject getArrayBuffer(DynamicObject target) {
         assert JSArrayBufferView.isJSArrayBufferView(target) : "Target object must be a JSArrayBufferView";
         DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer) || JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer) : "Target buffer must be a DirectArrayBuffer";
         return arrayBuffer;
     }
 
     protected static ByteBuffer getDirectByteBuffer(DynamicObject arrayBuffer) {
         if (JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer)) {
             return JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
-        } else {
-            assert JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer);
+        } else if (JSSharedArrayBuffer.isJSSharedArrayBuffer(arrayBuffer)) {
             return JSSharedArrayBuffer.getDirectByteBuffer(arrayBuffer);
+        } else {
+            return null;
         }
     }
 

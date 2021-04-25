@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.test.sdk.tck;
 
+import static org.graalvm.polyglot.tck.TypeDescriptor.ANY;
+
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -49,19 +51,18 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.tck.InlineSnippet;
-import org.graalvm.polyglot.tck.Snippet;
-import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.graalvm.polyglot.tck.LanguageProvider;
 import org.graalvm.polyglot.tck.ResultVerifier;
+import org.graalvm.polyglot.tck.Snippet;
+import org.graalvm.polyglot.tck.TypeDescriptor;
 import org.junit.Assert;
-
-import static org.graalvm.polyglot.tck.TypeDescriptor.ANY;
 
 public class JavaScriptTCKLanguageProvider implements LanguageProvider {
     private static final String ID = "js";
@@ -143,8 +144,14 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                                         "    apply: function(target, thisArg, argumentsList) {}\n" +
                                         "});",
                         TypeDescriptor.intersection(
+                                        TypeDescriptor.ITERABLE,
                                         TypeDescriptor.EXECUTABLE,
                                         TypeDescriptor.OBJECT)));
+        // Map
+        vals.add(createValueConstructor(context, "new Map([['name', 'test']])", TypeDescriptor.intersection(
+                        TypeDescriptor.OBJECT,
+                        TypeDescriptor.HASH,
+                        TypeDescriptor.ITERABLE)));
         return Collections.unmodifiableList(vals);
     }
 
@@ -155,21 +162,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
                         TypeDescriptor.NUMBER,
                         TypeDescriptor.BOOLEAN,
                         TypeDescriptor.NULL);
-        final TypeDescriptor noType = TypeDescriptor.intersection();
-        final TypeDescriptor nonNumeric = TypeDescriptor.union(
-                        TypeDescriptor.STRING,
-                        TypeDescriptor.OBJECT,
-                        TypeDescriptor.ARRAY,
-                        TypeDescriptor.EXECUTABLE_ANY,
-                        TypeDescriptor.TIME,
-                        TypeDescriptor.DATE,
-                        TypeDescriptor.DURATION,
-                        TypeDescriptor.TIME_ZONE,
-                        TypeDescriptor.META_OBJECT,
-                        TypeDescriptor.ITERATOR,
-                        TypeDescriptor.ITERABLE,
-                        TypeDescriptor.HASH,
-                        noType);
+        final TypeDescriptor nonNumeric = ANY.subtract(numericAndNull);
         // +
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.NUMBER, numericAndNull, numericAndNull));
         ops.add(createBinaryOperator(context, "+", TypeDescriptor.STRING, nonNumeric, ANY, JavaScriptVerifier.numericVerifier(null)));
@@ -273,12 +266,8 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // for of
         res.add(createStatement(context, "for-of", "for (let v of {1});",
                         TypeDescriptor.NULL,
-                        JavaScriptVerifier.foreignOrHasIteratorVerifier(context, null),
-                        TypeDescriptor.union(
-                                        TypeDescriptor.STRING,
-                                        TypeDescriptor.OBJECT,
-                                        TypeDescriptor.ARRAY,
-                                        TypeDescriptor.ITERABLE)));
+                        TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.ARRAY, TypeDescriptor.ITERABLE, TypeDescriptor.HASH)));
+
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",
                         TypeDescriptor.NULL,
@@ -535,36 +524,6 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         @Override
         public void accept(SnippetRun snippetRun) throws PolyglotException {
             next.accept(snippetRun);
-        }
-
-        /**
-         * Creates a {@link ResultVerifier} ignoring errors caused by missing iterator method. Use
-         * this verifier in case the operator accepts arbitrary foreign Objects for iteration but
-         * requires iterator for JSObject.
-         *
-         * @param next the next {@link ResultVerifier} to be called, null for last one
-         * @return the {@link ResultVerifier}
-         */
-        static ResultVerifier foreignOrHasIteratorVerifier(final Context context, ResultVerifier next) {
-            return new JavaScriptVerifier(next) {
-                @Override
-                public void accept(SnippetRun snippetRun) throws PolyglotException {
-                    if (snippetRun.getException() != null) {
-                        final Value param = snippetRun.getParameters().get(0);
-                        final boolean jsObject = context.eval(ID, "Object").isMetaInstance(param);
-                        boolean hasIterator = false;
-                        try {
-                            hasIterator = !context.eval(ID, "(function(a) {return a[Symbol.iterator];})").execute(param).isNull();
-                        } catch (Exception e) {
-                        }
-                        if (jsObject && !hasIterator) {
-                            // Expected for not iterable
-                            return;
-                        }
-                    }
-                    super.accept(snippetRun);
-                }
-            };
         }
 
         /**

@@ -11,6 +11,7 @@ import re
 import shlex
 import subprocess
 import shutil
+import bz2
 import io
 
 from distutils.spawn import find_executable as which
@@ -115,6 +116,11 @@ parser.add_option('--dest-os',
     dest='dest_os',
     choices=valid_os,
     help='operating system to build for ({0})'.format(', '.join(valid_os)))
+
+parser.add_option('--error-on-warn',
+    action='store_true',
+    dest='error_on_warn',
+    help='Turn compiler warnings into errors for node core sources.')
 
 parser.add_option('--gdb',
     action='store_true',
@@ -396,6 +402,11 @@ parser.add_option('--enable-trace-maps',
     dest='trace_maps',
     help='Enable the --trace-maps flag in V8 (use at your own risk)')
 
+parser.add_option('--experimental-enable-pointer-compression',
+    action='store_true',
+    dest='enable_pointer_compression',
+    help='[Experimental] Enable V8 pointer compression (limits max heap to 4GB and breaks ABI compatibility)')
+
 parser.add_option('--v8-options',
     action='store',
     dest='v8_options',
@@ -464,10 +475,18 @@ parser.add_option('--use-largepages-script-lld',
     dest='node_use_large_pages_script_lld',
     help='This option has no effect. --use-largepages is now a runtime option.')
 
+parser.add_option('--use-section-ordering-file',
+    action='store',
+    dest='node_section_ordering_info',
+    default='',
+    help='Pass a section ordering file to the linker. This requires that ' +
+         'Node.js be linked using the gold linker. The gold linker must have ' +
+         'version 1.2 or greater.')
+
 intl_optgroup.add_option('--with-intl',
     action='store',
     dest='with_intl',
-    default='none',
+    default='full-icu',
     choices=valid_intl_modes,
     help='Intl mode (valid choices: {0}) [default: %default]'.format(
         ', '.join(valid_intl_modes)))
@@ -575,7 +594,7 @@ parser.add_option('--with-snapshot',
 
 parser.add_option('--without-snapshot',
     action='store_true',
-    dest='without_snapshot',
+    dest='unused_without_snapshot',
     help=optparse.SUPPRESS_HELP)
 
 parser.add_option('--without-siphash',
@@ -1065,6 +1084,7 @@ def configure_node(o):
   o['variables']['node_install_npm'] = b(not options.without_npm)
   o['variables']['debug_node'] = b(options.debug_node)
   o['default_configuration'] = 'Debug' if options.debug else 'Release'
+  o['variables']['error_on_warn'] = b(options.error_on_warn)
 
   o['variables']['ninja'] = 'true' if options.use_ninja else 'false'
 
@@ -1084,15 +1104,18 @@ def configure_node(o):
   cross_compiling = (options.cross_compiling
                      if options.cross_compiling is not None
                      else target_arch != host_arch)
-  want_snapshots = not options.without_snapshot
-  o['variables']['want_separate_host_toolset'] = int(
-      cross_compiling and want_snapshots)
+  if cross_compiling:
+    os.environ['GYP_CROSSCOMPILE'] = "1"
+  if options.unused_without_snapshot:
+    warn('building --without-snapshot is no longer possible')
+
+  o['variables']['want_separate_host_toolset'] = int(cross_compiling)
 
   if options.without_node_snapshot or options.node_builtin_modules_path:
     o['variables']['node_use_node_snapshot'] = 'false'
   else:
     o['variables']['node_use_node_snapshot'] = b(
-      not cross_compiling and want_snapshots and not options.shared)
+      not cross_compiling and not options.shared)
 
   if options.without_node_code_cache or options.node_builtin_modules_path:
     o['variables']['node_use_node_code_cache'] = 'false'
@@ -1313,7 +1336,8 @@ def configure_v8(o):
   o['variables']['v8_random_seed'] = 0  # Use a random seed for hash tables.
   o['variables']['v8_promise_internal_field_count'] = 1 # Add internal field to promises for async hooks.
   o['variables']['v8_use_siphash'] = 0 if options.without_siphash else 1
-  o['variables']['v8_use_snapshot'] = 0 if options.without_snapshot else 1
+  o['variables']['v8_enable_pointer_compression'] = 1 if options.enable_pointer_compression else 0
+  o['variables']['v8_enable_31bit_smis_on_64bit_arch'] = 1 if options.enable_pointer_compression else 0
   o['variables']['v8_trace_maps'] = 1 if options.trace_maps else 0
   o['variables']['node_use_v8_platform'] = b(not options.without_v8_platform)
   o['variables']['node_use_bundled_v8'] = b(not options.without_bundled_v8)
@@ -1549,7 +1573,8 @@ def configure_intl(o):
   icu_parent_path = 'deps'
 
   # The full path to the ICU source directory. Should not include './'.
-  icu_full_path = 'deps/icu'
+  icu_deps_path = 'deps/icu'
+  icu_full_path = icu_deps_path
 
   # icu-tmp is used to download and unpack the ICU tarball.
   icu_tmp_path = os.path.join(icu_parent_path, 'icu-tmp')
@@ -1557,30 +1582,26 @@ def configure_intl(o):
   # canned ICU. see tools/icu/README.md to update.
   canned_icu_dir = 'deps/icu-small'
 
+  # use the README to verify what the canned ICU is
+  canned_is_full = os.path.isfile(os.path.join(canned_icu_dir, 'README-FULL-ICU.txt'))
+  canned_is_small = os.path.isfile(os.path.join(canned_icu_dir, 'README-SMALL-ICU.txt'))
+  if canned_is_small:
+    warn('Ignoring %s - in-repo small icu is no longer supported.' % canned_icu_dir)
+
   # We can use 'deps/icu-small' - pre-canned ICU *iff*
-  # - with_intl == small-icu (the default!)
-  # - with_icu_locales == 'root,en' (the default!)
-  # - deps/icu-small exists!
+  # - canned_is_full AND
   # - with_icu_source is unset (i.e. no other ICU was specified)
-  # (Note that this is the *DEFAULT CASE*.)
   #
   # This is *roughly* equivalent to
-  # $ configure --with-intl=small-icu --with-icu-source=deps/icu-small
+  # $ configure --with-intl=full-icu --with-icu-source=deps/icu-small
   # .. Except that we avoid copying icu-small over to deps/icu.
   # In this default case, deps/icu is ignored, although make clean will
   # still harmlessly remove deps/icu.
 
-  # are we using default locales?
-  using_default_locales = ( options.with_icu_locales == icu_default_locales )
-
-  # make sure the canned ICU really exists
-  canned_icu_available = os.path.isdir(canned_icu_dir)
-
-  if (o['variables']['icu_small'] == b(True)) and using_default_locales and (not with_icu_source) and canned_icu_available:
+  if (not with_icu_source) and canned_is_full:
     # OK- we can use the canned ICU.
-    icu_config['variables']['icu_small_canned'] = 1
     icu_full_path = canned_icu_dir
-
+    icu_config['variables']['icu_full_canned'] = 1
   # --with-icu-source processing
   # now, check that they didn't pass --with-icu-source=deps/icu
   elif with_icu_source and os.path.abspath(icu_full_path) == os.path.abspath(with_icu_source):
@@ -1659,29 +1680,43 @@ def configure_intl(o):
   icu_endianness = sys.byteorder[0]
   o['variables']['icu_ver_major'] = icu_ver_major
   o['variables']['icu_endianness'] = icu_endianness
-  icu_data_file_l = 'icudt%s%s.dat' % (icu_ver_major, 'l')
+  icu_data_file_l = 'icudt%s%s.dat' % (icu_ver_major, 'l') # LE filename
   icu_data_file = 'icudt%s%s.dat' % (icu_ver_major, icu_endianness)
   # relative to configure
   icu_data_path = os.path.join(icu_full_path,
                                'source/data/in',
-                               icu_data_file_l)
+                               icu_data_file_l) # LE
+  compressed_data = '%s.bz2' % (icu_data_path)
+  if not os.path.isfile(icu_data_path) and os.path.isfile(compressed_data):
+    # unpack. deps/icu is a temporary path
+    if os.path.isdir(icu_tmp_path):
+      shutil.rmtree(icu_tmp_path)
+    os.mkdir(icu_tmp_path)
+    icu_data_path = os.path.join(icu_tmp_path, icu_data_file_l)
+    with open(icu_data_path, 'wb') as outf:
+        inf = bz2.BZ2File(compressed_data, 'rb')
+        try:
+          shutil.copyfileobj(inf, outf)
+        finally:
+          inf.close()
+    # Now, proceed..
+
   # relative to dep..
-  icu_data_in = os.path.join('..','..', icu_full_path, 'source/data/in', icu_data_file_l)
+  icu_data_in = os.path.join('..','..', icu_data_path)
   if not os.path.isfile(icu_data_path) and icu_endianness != 'l':
     # use host endianness
     icu_data_path = os.path.join(icu_full_path,
                                  'source/data/in',
-                                 icu_data_file)
-    # relative to dep..
-    icu_data_in = os.path.join('..', icu_full_path, 'source/data/in',
-                               icu_data_file)
-  # this is the input '.dat' file to use .. icudt*.dat
-  # may be little-endian if from a icu-project.org tarball
-  o['variables']['icu_data_in'] = icu_data_in
+                                 icu_data_file) # will be generated
   if not os.path.isfile(icu_data_path):
     # .. and we're not about to build it from .gyp!
     error('''ICU prebuilt data file %s does not exist.
        See the README.md.''' % icu_data_path)
+
+  # this is the input '.dat' file to use .. icudt*.dat
+  # may be little-endian if from a icu-project.org tarball
+  o['variables']['icu_data_in'] = icu_data_in
+
   # map from variable name to subdirs
   icu_src = {
     'stubdata': 'stubdata',
@@ -1698,6 +1733,31 @@ def configure_intl(o):
     var  = 'icu_src_%s' % i
     path = '../../%s/source/%s' % (icu_full_path, icu_src[i])
     icu_config['variables'][var] = glob_to_var('tools/icu', path, 'patches/%s/source/%s' % (icu_ver_major, icu_src[i]) )
+  # calculate platform-specific genccode args
+  # print("platform %s, flavor %s" % (sys.platform, flavor))
+  # if sys.platform == 'darwin':
+  #   shlib_suffix = '%s.dylib'
+  # elif sys.platform.startswith('aix'):
+  #   shlib_suffix = '%s.a'
+  # else:
+  #   shlib_suffix = 'so.%s'
+  if flavor == 'win':
+    icu_config['variables']['icu_asm_ext'] = 'obj'
+    icu_config['variables']['icu_asm_opts'] = [ '-o' ]
+  elif with_intl == 'small-icu' or options.cross_compiling:
+    icu_config['variables']['icu_asm_ext'] = 'c'
+    icu_config['variables']['icu_asm_opts'] = []
+  elif flavor == 'mac':
+    icu_config['variables']['icu_asm_ext'] = 'S'
+    icu_config['variables']['icu_asm_opts'] = [ '-a', 'gcc-darwin' ]
+  elif sys.platform.startswith('aix'):
+    icu_config['variables']['icu_asm_ext'] = 'S'
+    icu_config['variables']['icu_asm_opts'] = [ '-a', 'xlc' ]
+  else:
+    # assume GCC-compatible asm is OK
+    icu_config['variables']['icu_asm_ext'] = 'S'
+    icu_config['variables']['icu_asm_opts'] = [ '-a', 'gcc' ]
+
   # write updated icu_config.gypi with a bunch of paths
   write(icu_config_name, do_not_edit +
         pprint.pformat(icu_config, indent=2) + '\n')
@@ -1709,6 +1769,30 @@ def configure_inspector(o):
                        options.without_ssl)
   o['variables']['v8_enable_inspector'] = 0 if disable_inspector else 1
 
+def configure_section_file(o):
+  try:
+    proc = subprocess.Popen(['ld.gold'] + ['-v'], stdin = subprocess.PIPE,
+                            stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+  except OSError:
+    if options.node_section_ordering_info != "":
+      warn('''No acceptable ld.gold linker found!''')
+    return 0
+
+  match = re.match(r"^GNU gold.*([0-9]+)\.([0-9]+)$",
+                   proc.communicate()[0].decode("utf-8"))
+
+  if match:
+    gold_major_version = match.group(1)
+    gold_minor_version = match.group(2)
+    if int(gold_major_version) == 1 and int(gold_minor_version) <= 1:
+      error('''GNU gold version must be greater than 1.2 in order to use section
+            reordering''')
+
+  if options.node_section_ordering_info != "":
+    o['variables']['node_section_ordering_info'] = os.path.realpath(
+      str(options.node_section_ordering_info))
+  else:
+    o['variables']['node_section_ordering_info'] = ""
 
 def make_bin_override():
   if sys.platform == 'win32':
@@ -1774,6 +1858,7 @@ configure_openssl(output)
 configure_intl(output)
 configure_static(output)
 configure_inspector(output)
+configure_section_file(output)
 
 # Forward OSS-Fuzz settings
 output['variables']['ossfuzz'] = b(options.ossfuzz)

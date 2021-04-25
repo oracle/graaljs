@@ -73,22 +73,25 @@ void CompileCurrentAst(TorqueCompilerOptions options) {
   ImplementationVisitor implementation_visitor;
   implementation_visitor.SetDryRun(output_directory.length() == 0);
 
+  implementation_visitor.GenerateInstanceTypes(output_directory);
   implementation_visitor.BeginCSAFiles();
 
   implementation_visitor.VisitAllDeclarables();
 
   ReportAllUnusedMacros();
 
-  implementation_visitor.GenerateBuiltinDefinitions(output_directory);
+  implementation_visitor.GenerateBuiltinDefinitionsAndInterfaceDescriptors(
+      output_directory);
   implementation_visitor.GenerateClassFieldOffsets(output_directory);
+  implementation_visitor.GenerateBitFields(output_directory);
   implementation_visitor.GeneratePrintDefinitions(output_directory);
   implementation_visitor.GenerateClassDefinitions(output_directory);
   implementation_visitor.GenerateClassVerifiers(output_directory);
   implementation_visitor.GenerateClassDebugReaders(output_directory);
+  implementation_visitor.GenerateEnumVerifiers(output_directory);
+  implementation_visitor.GenerateBodyDescriptors(output_directory);
   implementation_visitor.GenerateExportedMacrosAssembler(output_directory);
   implementation_visitor.GenerateCSATypes(output_directory);
-  implementation_visitor.GenerateInstanceTypes(output_directory);
-  implementation_visitor.GenerateCppForInternalClasses(output_directory);
 
   implementation_visitor.EndCSAFiles();
   implementation_visitor.GenerateImplementation(output_directory);

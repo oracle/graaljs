@@ -375,8 +375,14 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static class InteropInt8Array extends TypedIntArray {
+    public static class InteropInt8Array extends InteropOneByteIntArray {
         InteropInt8Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
+        }
+    }
+
+    public static class InteropOneByteIntArray extends TypedIntArray {
+        InteropOneByteIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
@@ -475,7 +481,7 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static final class InteropUint8Array extends InteropInt8Array {
+    public static final class InteropUint8Array extends InteropOneByteIntArray {
         InteropUint8Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }
@@ -509,7 +515,7 @@ public abstract class TypedArray extends ScriptArray {
         }
 
         public static int toInt(double value) {
-            return (int) JSRuntime.mathRint(value);
+            return (int) Math.rint(value);
         }
 
         @Override
@@ -650,8 +656,14 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static class InteropInt16Array extends TypedIntArray {
+    public static class InteropInt16Array extends InteropTwoByteIntArray {
         InteropInt16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
+        }
+    }
+
+    public static class InteropTwoByteIntArray extends TypedIntArray {
+        InteropTwoByteIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
@@ -750,7 +762,7 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static final class InteropUint16Array extends InteropInt16Array {
+    public static final class InteropUint16Array extends InteropTwoByteIntArray {
         InteropUint16Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }
@@ -1094,8 +1106,14 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static class InteropBigInt64Array extends TypedBigIntArray {
+    public static class InteropBigInt64Array extends InteropBigIntArray {
         InteropBigInt64Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset);
+        }
+    }
+
+    public static class InteropBigIntArray extends TypedBigIntArray {
+        InteropBigIntArray(TypedArrayFactory factory, boolean offset) {
             super(factory, offset, BUFFER_TYPE_INTEROP);
         }
 
@@ -1214,7 +1232,7 @@ public abstract class TypedArray extends ScriptArray {
         }
     }
 
-    public static final class InteropBigUint64Array extends InteropBigInt64Array {
+    public static final class InteropBigUint64Array extends InteropBigIntArray {
         InteropBigUint64Array(TypedArrayFactory factory, boolean offset) {
             super(factory, offset);
         }

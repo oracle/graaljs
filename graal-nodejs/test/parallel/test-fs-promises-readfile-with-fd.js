@@ -1,9 +1,7 @@
 'use strict';
 
-/*
- * This test makes sure that `readFile()` always reads from the current
- * position of the file, instead of reading from the beginning of the file.
- */
+// This test makes sure that `readFile()` always reads from the current
+// position of the file, instead of reading from the beginning of the file.
 
 const common = require('../common');
 const assert = require('assert');
@@ -28,6 +26,8 @@ async function readFileTest() {
 
   /* readFile() should read from position five, instead of zero. */
   assert.deepStrictEqual((await handle.readFile()).toString(), ' World');
+
+  await handle.close();
 }
 
 

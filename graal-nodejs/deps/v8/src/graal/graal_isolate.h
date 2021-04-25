@@ -161,6 +161,7 @@ enum GraalAccessMethod {
     array_length,
     array_buffer_new,
     array_buffer_new_buffer,
+    array_buffer_new_backing_store,
     array_buffer_get_contents,
     array_buffer_view_buffer,
     array_buffer_view_byte_length,
@@ -214,6 +215,7 @@ enum GraalAccessMethod {
     isolate_exit,
     isolate_enqueue_microtask,
     isolate_schedule_pause_on_next_statement,
+    isolate_measure_memory,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -357,6 +359,7 @@ enum GraalAccessMethod {
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
     script_compiler_compile_function_in_context,
+    backing_store_register_callback,
 
     count // Should be the last item of GraalAccessMethod
 };
@@ -672,8 +675,9 @@ public:
         }
     }
 
-    static void SetMode(int mode) {
+    static void SetMode(int mode, bool polyglot) {
         GraalIsolate::mode = mode;
+        GraalIsolate::polyglot = polyglot;
     }
 
     static void InitThreadLocals();
@@ -687,7 +691,7 @@ public:
 private:
     // Slots accessed by v8::Isolate::Get/SetData
     // They must be the first field of GraalIsolate
-    void* slot[22] = {};
+    void* slot[30] = {};
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
@@ -723,7 +727,7 @@ private:
     v8::MessageCallback message_listener_;
     bool sending_message_;
     v8::Isolate::AbortOnUncaughtExceptionCallback abort_on_uncaught_exception_callback_;
-    v8::ArrayBuffer::Allocator* array_buffer_allocator_;
+    std::shared_ptr<v8::ArrayBuffer::Allocator> array_buffer_allocator_;
     int try_catch_count_;
     int function_template_count_;
     bool stack_check_enabled_;
@@ -764,6 +768,7 @@ private:
     static int argc;
     static char** argv;
     static int mode;
+    static bool polyglot;
     static bool use_classpath_env_var;
     friend v8::V8;
 
@@ -836,4 +841,3 @@ void GraalIsolate::WriteDoubleToSharedBuffer(double number) {
 }
 
 #endif /* GRAAL_ISOLATE_H_ */
-

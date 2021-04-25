@@ -4,11 +4,14 @@
 
 const {
   ArrayIsArray,
+  Float64Array,
+  JSONStringify,
   MathMax,
   ObjectCreate,
   ObjectEntries,
   Promise,
   PromiseResolve,
+  String,
   Symbol,
   SymbolFor,
   Uint32Array,
@@ -101,7 +104,7 @@ class Worker extends EventEmitter {
       argv = options.argv.map(String);
     }
 
-    let url;
+    let url, doEval;
     if (options.eval) {
       if (typeof filename !== 'string') {
         throw new ERR_INVALID_ARG_VALUE(
@@ -111,7 +114,13 @@ class Worker extends EventEmitter {
         );
       }
       url = null;
+      doEval = 'classic';
+    } else if (isURLInstance(filename) && filename.protocol === 'data:') {
+      url = null;
+      doEval = 'module';
+      filename = `import ${JSONStringify(`${filename}`)}`;
     } else {
+      doEval = false;
       if (isURLInstance(filename)) {
         url = filename;
         filename = fileURLToPath(filename);
@@ -202,7 +211,7 @@ class Worker extends EventEmitter {
       argv,
       type: messageTypes.LOAD_SCRIPT,
       filename,
-      doEval: !!options.eval,
+      doEval,
       cwdCounter: cwdCounter || workerIo.sharedCwdCounter,
       workerData: options.workerData,
       publicPort: port2,

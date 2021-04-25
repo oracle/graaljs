@@ -10,7 +10,7 @@ Addons provide an interface between JavaScript and C/C++ libraries.
 There are three options for implementing addons: N-API, nan, or direct
 use of internal V8, libuv and Node.js libraries. Unless there is a need for
 direct access to functionality which is not exposed by N-API, use N-API.
-Refer to [C/C++ addons with N-API](n-api.html) for more information on N-API.
+Refer to [C/C++ addons with N-API](n-api.md) for more information on N-API.
 
 When not using N-API, implementing addons is complicated,
 involving knowledge of several components and APIs:
@@ -65,7 +65,6 @@ namespace demo {
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -73,7 +72,7 @@ using v8::Value;
 void Method(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   args.GetReturnValue().Set(String::NewFromUtf8(
-      isolate, "world", NewStringType::kNormal).ToLocalChecked());
+      isolate, "world").ToLocalChecked());
 }
 
 void Initialize(Local<Object> exports) {
@@ -155,25 +154,26 @@ they were created.
 
 The context-aware addon can be structured to avoid global static data by
 performing the following steps:
+
 * Define a class which will hold per-addon-instance data and which has a static
-member of the form
+  member of the form
   ```cpp
   static void DeleteInstance(void* data) {
     // Cast `data` to an instance of the class and delete it.
   }
   ```
 * Heap-allocate an instance of this class in the addon initializer. This can be
-accomplished using the `new` keyword.
+  accomplished using the `new` keyword.
 * Call `node::AddEnvironmentCleanupHook()`, passing it the above-created
-instance and a pointer to `DeleteInstance()`. This will ensure the instance is
-deleted when the environment is torn down.
+  instance and a pointer to `DeleteInstance()`. This will ensure the instance is
+  deleted when the environment is torn down.
 * Store the instance of the class in a `v8::External`, and
 * Pass the `v8::External` to all methods exposed to JavaScript by passing it
-to `v8::FunctionTemplate::New()` or `v8::Function::New()` which creates the
-native-backed JavaScript functions. The third parameter of
-`v8::FunctionTemplate::New()` or `v8::Function::New()`  accepts the
-`v8::External` and makes it available in the native callback using the
-`v8::FunctionCallbackInfo::Data()` method.
+  to `v8::FunctionTemplate::New()` or `v8::Function::New()` which creates the
+  native-backed JavaScript functions. The third parameter of
+  `v8::FunctionTemplate::New()` or `v8::Function::New()`  accepts the
+  `v8::External` and makes it available in the native callback using the
+  `v8::FunctionCallbackInfo::Data()` method.
 
 This will ensure that the per-addon-instance data reaches each binding that can
 be called from JavaScript. The per-addon-instance data must also be passed into
@@ -226,8 +226,7 @@ NODE_MODULE_INIT(/* exports, module, context */) {
   // per-addon-instance data we created above by passing `external` as the
   // third parameter to the `FunctionTemplate` constructor.
   exports->Set(context,
-               String::NewFromUtf8(isolate, "method", NewStringType::kNormal)
-                  .ToLocalChecked(),
+               String::NewFromUtf8(isolate, "method").ToLocalChecked(),
                FunctionTemplate::New(isolate, Method, external)
                   ->GetFunction(context).ToLocalChecked()).FromJust();
 }
@@ -236,7 +235,7 @@ NODE_MODULE_INIT(/* exports, module, context */) {
 #### Worker support
 <!-- YAML
 changes:
-  - version: v12.19.0
+  - version: v14.8.0
     pr-url: https://github.com/nodejs/node/pull/34572
     description: Cleanup hooks may now be asynchronous.
 -->
@@ -271,9 +270,9 @@ The following `addon.cc` uses `AddEnvironmentCleanupHook`:
 
 ```cpp
 // addon.cc
+#include <node.h>
 #include <assert.h>
 #include <stdlib.h>
-#include <node.h>
 
 using node::AddEnvironmentCleanupHook;
 using v8::HandleScope;
@@ -397,14 +396,14 @@ the appropriate headers automatically. However, there are a few caveats to be
 aware of:
 
 * When `node-gyp` runs, it will detect the specific release version of Node.js
-and download either the full source tarball or just the headers. If the full
-source is downloaded, addons will have complete access to the full set of
-Node.js dependencies. However, if only the Node.js headers are downloaded, then
-only the symbols exported by Node.js will be available.
+  and download either the full source tarball or just the headers. If the full
+  source is downloaded, addons will have complete access to the full set of
+  Node.js dependencies. However, if only the Node.js headers are downloaded,
+  then only the symbols exported by Node.js will be available.
 
 * `node-gyp` can be run using the `--nodedir` flag pointing at a local Node.js
-source image. Using this option, the addon will have access to the full set of
-dependencies.
+  source image. Using this option, the addon will have access to the full set of
+  dependencies.
 
 ### Loading addons using `require()`
 
@@ -454,7 +453,7 @@ in the N-API are used.
 
 Creating and maintaining an addon that benefits from the ABI stability
 provided by N-API carries with it certain
-[implementation considerations](n-api.html#n_api_implications_of_abi_stability).
+[implementation considerations](n-api.md#n_api_implications_of_abi_stability).
 
 To use N-API in the above "Hello world" example, replace the content of
 `hello.cc` with the following. All other instructions remain the same.
@@ -492,7 +491,7 @@ NAPI_MODULE(NODE_GYP_MODULE_NAME, init)
 ```
 
 The functions available and how to use them are documented in
-[C/C++ addons with N-API](n-api.html).
+[C/C++ addons with N-API](n-api.md).
 
 ## Addon examples
 
@@ -549,7 +548,6 @@ using v8::Exception;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Number;
 using v8::Object;
 using v8::String;
@@ -566,8 +564,7 @@ void Add(const FunctionCallbackInfo<Value>& args) {
     // Throw an Error that is passed back to JavaScript
     isolate->ThrowException(Exception::TypeError(
         String::NewFromUtf8(isolate,
-                            "Wrong number of arguments",
-                            NewStringType::kNormal).ToLocalChecked()));
+                            "Wrong number of arguments").ToLocalChecked()));
     return;
   }
 
@@ -575,8 +572,7 @@ void Add(const FunctionCallbackInfo<Value>& args) {
   if (!args[0]->IsNumber() || !args[1]->IsNumber()) {
     isolate->ThrowException(Exception::TypeError(
         String::NewFromUtf8(isolate,
-                            "Wrong arguments",
-                            NewStringType::kNormal).ToLocalChecked()));
+                            "Wrong arguments").ToLocalChecked()));
     return;
   }
 
@@ -625,7 +621,6 @@ using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Null;
 using v8::Object;
 using v8::String;
@@ -638,8 +633,7 @@ void RunCallback(const FunctionCallbackInfo<Value>& args) {
   const unsigned argc = 1;
   Local<Value> argv[argc] = {
       String::NewFromUtf8(isolate,
-                          "hello world",
-                          NewStringType::kNormal).ToLocalChecked() };
+                          "hello world").ToLocalChecked() };
   cb->Call(context, Null(isolate), argc, argv).ToLocalChecked();
 }
 
@@ -687,7 +681,6 @@ using v8::Context;
 using v8::FunctionCallbackInfo;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -699,8 +692,7 @@ void CreateObject(const FunctionCallbackInfo<Value>& args) {
   Local<Object> obj = Object::New(isolate);
   obj->Set(context,
            String::NewFromUtf8(isolate,
-                               "msg",
-                               NewStringType::kNormal).ToLocalChecked(),
+                               "msg").ToLocalChecked(),
                                args[0]->ToString(context).ToLocalChecked())
            .FromJust();
 
@@ -745,7 +737,6 @@ using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -753,7 +744,7 @@ using v8::Value;
 void MyFunction(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = args.GetIsolate();
   args.GetReturnValue().Set(String::NewFromUtf8(
-      isolate, "hello world", NewStringType::kNormal).ToLocalChecked());
+      isolate, "hello world").ToLocalChecked());
 }
 
 void CreateFunction(const FunctionCallbackInfo<Value>& args) {
@@ -765,7 +756,7 @@ void CreateFunction(const FunctionCallbackInfo<Value>& args) {
 
   // omit this to make it anonymous
   fn->SetName(String::NewFromUtf8(
-      isolate, "theFunction", NewStringType::kNormal).ToLocalChecked());
+      isolate, "theFunction").ToLocalChecked());
 
   args.GetReturnValue().Set(fn);
 }
@@ -861,7 +852,6 @@ using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Number;
 using v8::Object;
 using v8::ObjectTemplate;
@@ -885,8 +875,7 @@ void MyObject::Init(Local<Object> exports) {
 
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New, addon_data);
-  tpl->SetClassName(String::NewFromUtf8(
-      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked());
+  tpl->SetClassName(String::NewFromUtf8(isolate, "MyObject").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
@@ -895,8 +884,8 @@ void MyObject::Init(Local<Object> exports) {
   Local<Function> constructor = tpl->GetFunction(context).ToLocalChecked();
   addon_data->SetInternalField(0, constructor);
   exports->Set(context, String::NewFromUtf8(
-      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked(),
-               constructor).FromJust();
+      isolate, "MyObject").ToLocalChecked(),
+      constructor).FromJust();
 }
 
 void MyObject::New(const FunctionCallbackInfo<Value>& args) {
@@ -1066,7 +1055,6 @@ using v8::FunctionTemplate;
 using v8::Global;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Number;
 using v8::Object;
 using v8::String;
@@ -1085,8 +1073,7 @@ MyObject::~MyObject() {
 void MyObject::Init(Isolate* isolate) {
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(
-      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked());
+  tpl->SetClassName(String::NewFromUtf8(isolate, "MyObject").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   // Prototype
@@ -1290,7 +1277,6 @@ using v8::FunctionTemplate;
 using v8::Global;
 using v8::Isolate;
 using v8::Local;
-using v8::NewStringType;
 using v8::Object;
 using v8::String;
 using v8::Value;
@@ -1308,8 +1294,7 @@ MyObject::~MyObject() {
 void MyObject::Init(Isolate* isolate) {
   // Prepare constructor template
   Local<FunctionTemplate> tpl = FunctionTemplate::New(isolate, New);
-  tpl->SetClassName(String::NewFromUtf8(
-      isolate, "MyObject", NewStringType::kNormal).ToLocalChecked());
+  tpl->SetClassName(String::NewFromUtf8(isolate, "MyObject").ToLocalChecked());
   tpl->InstanceTemplate()->SetInternalFieldCount(1);
 
   Local<Context> context = isolate->GetCurrentContext();
@@ -1372,16 +1357,16 @@ console.log(result);
 // Prints: 30
 ```
 
-[`Worker`]: worker_threads.html#worker_threads_class_worker
 [Electron]: https://electronjs.org/
 [Embedder's Guide]: https://github.com/v8/v8/wiki/Embedder's%20Guide
 [Linking to libraries included with Node.js]: #addons_linking_to_libraries_included_with_node_js
 [Native Abstractions for Node.js]: https://github.com/nodejs/nan
+[`Worker`]: worker_threads.md#worker_threads_class_worker
 [bindings]: https://github.com/TooTallNate/node-bindings
 [download]: https://github.com/nodejs/node-addon-examples
 [examples]: https://github.com/nodejs/nan/tree/master/examples/
 [installation instructions]: https://github.com/nodejs/node-gyp#installation
 [libuv]: https://github.com/libuv/libuv
 [node-gyp]: https://github.com/nodejs/node-gyp
-[require]: modules.html#modules_require_id
+[require]: modules.md#modules_require_id
 [v8-docs]: https://v8docs.nodesource.com/

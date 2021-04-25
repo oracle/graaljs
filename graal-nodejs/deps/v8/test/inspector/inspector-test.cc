@@ -70,8 +70,7 @@ std::vector<uint8_t> ToBytes(v8::Isolate* isolate, v8::Local<v8::String> str) {
 }
 
 v8::Local<v8::String> ToV8String(v8::Isolate* isolate, const char* str) {
-  return v8::String::NewFromUtf8(isolate, str, v8::NewStringType::kNormal)
-      .ToLocalChecked();
+  return v8::String::NewFromUtf8(isolate, str).ToLocalChecked();
 }
 
 v8::Local<v8::String> ToV8String(v8::Isolate* isolate,
@@ -378,7 +377,7 @@ class UtilsExtension : public IsolateData::SetupGlobalTask {
       v8::Local<v8::String> str_obj;
 
       if (arg->IsSymbol()) {
-        arg = v8::Local<v8::Symbol>::Cast(arg)->Name();
+        arg = v8::Local<v8::Symbol>::Cast(arg)->Description();
       }
       if (!arg->ToString(args.GetIsolate()->GetCurrentContext())
                .ToLocal(&str_obj)) {
@@ -968,8 +967,8 @@ class InspectorExtension : public IsolateData::SetupGlobalTask {
         data->StoreCurrentStackTrace(description_view);
     v8::Local<v8::ArrayBuffer> buffer =
         v8::ArrayBuffer::New(isolate, sizeof(id));
-    *static_cast<v8_inspector::V8StackTraceId*>(buffer->GetContents().Data()) =
-        id;
+    *static_cast<v8_inspector::V8StackTraceId*>(
+        buffer->GetBackingStore()->Data()) = id;
     args.GetReturnValue().Set(buffer);
   }
 
@@ -983,7 +982,7 @@ class InspectorExtension : public IsolateData::SetupGlobalTask {
     IsolateData* data = IsolateData::FromContext(context);
     v8_inspector::V8StackTraceId* id =
         static_cast<v8_inspector::V8StackTraceId*>(
-            args[0].As<v8::ArrayBuffer>()->GetContents().Data());
+            args[0].As<v8::ArrayBuffer>()->GetBackingStore()->Data());
     data->ExternalAsyncTaskStarted(*id);
   }
 
@@ -997,7 +996,7 @@ class InspectorExtension : public IsolateData::SetupGlobalTask {
     IsolateData* data = IsolateData::FromContext(context);
     v8_inspector::V8StackTraceId* id =
         static_cast<v8_inspector::V8StackTraceId*>(
-            args[0].As<v8::ArrayBuffer>()->GetContents().Data());
+            args[0].As<v8::ArrayBuffer>()->GetBackingStore()->Data());
     data->ExternalAsyncTaskFinished(*id);
   }
 
@@ -1071,7 +1070,6 @@ int main(int argc, char* argv[]) {
       printf("Embedding script '%s'\n", argv[i]);
       startup_data = i::CreateSnapshotDataBlobInternal(
           v8::SnapshotCreator::FunctionCodeHandling::kClear, argv[i], nullptr);
-      v8::internal::ReadOnlyHeap::ClearSharedHeapForTest();
       argv[i] = nullptr;
     }
   }

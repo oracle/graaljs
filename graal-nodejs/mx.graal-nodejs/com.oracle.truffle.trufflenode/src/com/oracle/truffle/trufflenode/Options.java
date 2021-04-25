@@ -85,7 +85,7 @@ public final class Options {
         String javaHome = System.getProperty("java.home");
         String truffleNodePath = System.getenv("TRUFFLENODE_JAR_PATH");
         if (truffleNodePath == null) {
-            truffleNodePath = javaHome + "/languages/js/trufflenode.jar";
+            truffleNodePath = javaHome + "/languages/nodejs/trufflenode.jar";
         }
         String launcherCommonPath = System.getenv("LAUNCHER_COMMON_JAR_PATH");
         if (launcherCommonPath == null) {
@@ -135,6 +135,9 @@ public final class Options {
                         "harmony-weak-refs",
                         "lazy",
                         "log-timer-events",
+                        "no-concurrent-array-buffer-freeing",
+                        "no-concurrent-array-buffer-sweeping",
+                        "no-harmony-top-level-await",
                         "nolazy",
                         "nouse-idle-notification",
                         "stack-size",
@@ -167,6 +170,7 @@ public final class Options {
         protected List<String> preprocessArguments(List<String> arguments, Map<String, String> polyglotOptions) {
             // Node.js-specific defaults, may be overridden by command line arguments.
             polyglotOptions.put("js.print", "false");
+            polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
 
             List<String> unprocessedArguments = new ArrayList<>();
             for (String arg : arguments) {
@@ -193,6 +197,10 @@ public final class Options {
                 // Convert --harmony-sharedarraybuffer of V8 to --js.shared-array-buffer of Graal.js
                 if ("harmony-sharedarraybuffer".equals(normalizedKey)) {
                     polyglotOptions.put("js.shared-array-buffer", "true");
+                    continue;
+                }
+                if ("harmony-top-level-await".equals(normalizedKey)) {
+                    polyglotOptions.put("js.top-level-await", "true");
                     continue;
                 }
                 // Convert -h to --help

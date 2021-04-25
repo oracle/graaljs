@@ -1874,11 +1874,45 @@ TEST_(system_msr) {
 
 
 TEST_(system_nop) {
-  SET_UP_ASM();
+  {
+    SET_UP_ASM();
+    COMPARE(nop(), "nop");
+    CLEANUP();
+  }
+  {
+    SET_UP_MASM();
+    COMPARE(Nop(), "nop");
+    CLEANUP();
+  }
+}
 
-  COMPARE(nop(), "nop");
+TEST_(bti) {
+  {
+    SET_UP_ASM();
 
-  CLEANUP();
+    COMPARE(bti(BranchTargetIdentifier::kBti), "bti");
+    COMPARE(bti(BranchTargetIdentifier::kBtiCall), "bti c");
+    COMPARE(bti(BranchTargetIdentifier::kBtiJump), "bti j");
+    COMPARE(bti(BranchTargetIdentifier::kBtiJumpCall), "bti jc");
+    COMPARE(hint(BTI), "bti");
+    COMPARE(hint(BTI_c), "bti c");
+    COMPARE(hint(BTI_j), "bti j");
+    COMPARE(hint(BTI_jc), "bti jc");
+
+    CLEANUP();
+  }
+
+  {
+    SET_UP_MASM();
+
+    Label dummy1, dummy2, dummy3, dummy4;
+    COMPARE(Bind(&dummy1, BranchTargetIdentifier::kBti), "bti");
+    COMPARE(Bind(&dummy2, BranchTargetIdentifier::kBtiCall), "bti c");
+    COMPARE(Bind(&dummy3, BranchTargetIdentifier::kBtiJump), "bti j");
+    COMPARE(Bind(&dummy4, BranchTargetIdentifier::kBtiJumpCall), "bti jc");
+
+    CLEANUP();
+  }
 }
 
 TEST(system_pauth) {
@@ -1888,6 +1922,8 @@ TEST(system_pauth) {
   COMPARE(paciasp(), "paciasp");
   COMPARE(autia1716(), "autia1716");
   COMPARE(autiasp(), "autiasp");
+
+  CLEANUP();
 }
 
 TEST_(debug) {

@@ -161,11 +161,11 @@ import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.RecordNode;
 import com.oracle.js.parser.ir.RecordPropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
-import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
 import com.oracle.js.parser.ir.SwitchNode;
 import com.oracle.js.parser.ir.Symbol;
+import com.oracle.js.parser.ir.TemplateLiteralNode;
 import com.oracle.js.parser.ir.TernaryNode;
 import com.oracle.js.parser.ir.ThrowNode;
 import com.oracle.js.parser.ir.TryNode;
@@ -181,7 +181,7 @@ import com.oracle.js.parser.ir.visitor.NodeVisitor;
 @SuppressWarnings("fallthrough")
 public class Parser extends AbstractParser {
     /** The arguments variable name. */
-    private static final String ARGUMENTS_NAME = "arguments";
+    static final String ARGUMENTS_NAME = "arguments";
     /** The eval function variable name. */
     private static final String EVAL_NAME = "eval";
     private static final String CONSTRUCTOR_NAME = "constructor";
@@ -1969,6 +1969,7 @@ public class Parser extends AbstractParser {
                 initializer = setAnonymousFunctionName(initializer, ((PropertyKey) propertyName).getPropertyName());
             } else {
                 isAnonymousFunctionDefinition = true;
+                initializer = new UnaryNode(Token.recast(initializer.getToken(), TokenType.NAMEDEVALUATION), initializer);
             }
         }
 
@@ -2398,7 +2399,8 @@ public class Parser extends AbstractParser {
             } else {
                 Scope parentScope = scope.getParent();
                 if (parentScope != null && (parentScope.isCatchParameterScope() || parentScope.isFunctionParameterScope())) {
-                    if (parentScope.getExistingSymbol(varName) != null) {
+                    existingSymbol = parentScope.getExistingSymbol(varName);
+                    if (existingSymbol != null && !existingSymbol.isArguments()) {
                         return true;
                     }
                 }
@@ -4607,7 +4609,7 @@ public class Parser extends AbstractParser {
 
                     final List<Expression> arguments = templateLiteralArgumentList(yield, await);
 
-                    lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, arguments, false, optionalChain);
+                    lhs = CallNode.forTaggedTemplateLiteral(callLine, callToken, lhs.getStart(), finish, lhs, arguments);
 
                     break;
                 }
@@ -6388,7 +6390,7 @@ public class Parser extends AbstractParser {
     private Expression templateLiteral(boolean yield, boolean await) {
         assert type == TEMPLATE || type == TEMPLATE_HEAD;
         final boolean noSubstitutionTemplate = type == TEMPLATE;
-        long lastLiteralToken = token;
+        final long startToken = token;
         boolean previousPauseOnRightBrace = lexer.pauseOnRightBrace;
         try {
             lexer.pauseOnRightBrace = true;
@@ -6397,18 +6399,17 @@ public class Parser extends AbstractParser {
                 return literal;
             }
 
-            Expression concat = literal;
+            List<Expression> expressions = new ArrayList<>();
+            expressions.add(literal);
             TokenType lastLiteralType;
             do {
                 Expression expression = templateLiteralExpression(yield, await);
-                expression = new RuntimeNode(Token.recast(expression.getToken(), VOID), expression.getFinish(), RuntimeNode.Request.TO_STRING, expression);
-                concat = new BinaryNode(Token.recast(lastLiteralToken, TokenType.ADD), concat, expression);
+                expressions.add(expression);
                 lastLiteralType = type;
-                lastLiteralToken = token;
                 literal = getLiteral();
-                concat = new BinaryNode(Token.recast(lastLiteralToken, TokenType.ADD), concat, literal);
+                expressions.add(literal);
             } while (lastLiteralType == TEMPLATE_MIDDLE);
-            return concat;
+            return TemplateLiteralNode.newUntagged(startToken, literal.getFinish(), expressions);
         } finally {
             lexer.pauseOnRightBrace = previousPauseOnRightBrace;
         }
@@ -6459,9 +6460,7 @@ public class Parser extends AbstractParser {
                 } while (lastLiteralType == TEMPLATE_MIDDLE);
             }
 
-            final LiteralNode<Expression[]> rawStringArray = LiteralNode.newInstance(templateToken, finish, rawStrings);
-            final LiteralNode<Expression[]> cookedStringArray = LiteralNode.newInstance(templateToken, finish, cookedStrings);
-            final RuntimeNode templateObject = new RuntimeNode(templateToken, finish, RuntimeNode.Request.GET_TEMPLATE_OBJECT, rawStringArray, cookedStringArray);
+            final Expression templateObject = TemplateLiteralNode.newTagged(templateToken, rawStrings.get(rawStrings.size() - 1).getFinish(), rawStrings, cookedStrings);
             argumentList.set(0, templateObject);
             return optimizeList(argumentList);
         } finally {

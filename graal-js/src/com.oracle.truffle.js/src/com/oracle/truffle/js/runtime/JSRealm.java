@@ -843,12 +843,18 @@ public class JSRealm {
     }
 
     public final void setGlobalObject(DynamicObject global) {
+        context.getGlobalObjectPristineAssumption().invalidate();
         this.globalObject = global;
         this.topScope = createTopScope();
     }
 
     private TopScopeObject createTopScope() {
         return new TopScopeObject(new Object[]{scriptEngineImportScope, new DynamicScopeWrapper(globalScope), globalObject});
+    }
+
+    public final void dispose() {
+        this.globalObject = Undefined.instance;
+        this.topScope = TopScopeObject.empty();
     }
 
     public final DynamicObject getObjectConstructor() {
@@ -1418,6 +1424,7 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
+
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
@@ -1795,6 +1802,9 @@ public class JSRealm {
         DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putToStringTag(obj, ATOMICS_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
+        if (context.isWaitAsyncEnabled()) {
+            JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.WAIT_ASYNC_BUILTIN);
+        }
         return obj;
     }
 

@@ -84,10 +84,10 @@ import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
 import com.oracle.js.parser.ir.RecordNode;
 import com.oracle.js.parser.ir.RecordPropertyNode;
-import com.oracle.js.parser.ir.RuntimeNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
 import com.oracle.js.parser.ir.Symbol;
+import com.oracle.js.parser.ir.TemplateLiteralNode;
 import com.oracle.js.parser.ir.TernaryNode;
 import com.oracle.js.parser.ir.TryNode;
 import com.oracle.js.parser.ir.UnaryNode;
@@ -1426,7 +1426,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     @Override
     public JavaScriptNode enterLiteralNode(LiteralNode<?> literalNode) {
         if (literalNode instanceof LiteralNode.ArrayLiteralNode) {
-            return tagExpression(enterLiteralArrayNode((LiteralNode.ArrayLiteralNode) literalNode), literalNode);
+            return tagExpression(createArrayLiteral(((LiteralNode.ArrayLiteralNode) literalNode).getElementExpressions()), literalNode);
         } else if (literalNode instanceof LiteralNode.TupleLiteralNode) {
             return tagExpression(enterLiteralTupleNode((LiteralNode.TupleLiteralNode) literalNode), literalNode);
         } else {
@@ -1452,8 +1452,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return factory.createConstant(value);
     }
 
-    private JavaScriptNode enterLiteralArrayNode(LiteralNode.ArrayLiteralNode arrayLiteralNode) {
-        List<Expression> elementExpressions = arrayLiteralNode.getElementExpressions();
+    private JavaScriptNode createArrayLiteral(List<? extends Expression> elementExpressions) {
         JavaScriptNode[] elements = javaScriptNodeArray(elementExpressions.size());
         boolean hasSpread = false;
         for (int i = 0; i < elementExpressions.size(); i++) {
@@ -2018,6 +2017,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 return tagExpression(createYieldNode(unaryNode), unaryNode);
             case AWAIT:
                 return tagExpression(translateAwaitNode(unaryNode), unaryNode);
+            case NAMEDEVALUATION:
+                return enterNamedEvaluation(unaryNode);
             default:
                 throw new UnsupportedOperationException(unaryNode.tokenType().toString());
         }
@@ -2143,6 +2144,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             default:
                 throw new UnsupportedOperationException(tokenType.toString());
         }
+    }
+
+    private JavaScriptNode enterNamedEvaluation(UnaryNode unaryNode) {
+        return factory.createNamedEvaluation(transform(unaryNode.getExpression()), factory.createAccessArgument(0));
     }
 
     private JavaScriptNode enterDelete(UnaryNode unaryNode) {
@@ -3259,19 +3264,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     @Override
-    public JavaScriptNode enterRuntimeNode(RuntimeNode runtimeNode) {
-        if (runtimeNode.getRequest() == RuntimeNode.Request.REFERENCE_ERROR) {
-            String msg = com.oracle.js.parser.ECMAErrors.getMessage("parser.error.invalid.lvalue");
-            return factory.createThrowError(JSErrorType.ReferenceError, error(msg, runtimeNode.getToken(), lc));
-        } else if (runtimeNode.getRequest() == RuntimeNode.Request.GET_TEMPLATE_OBJECT) {
-            JavaScriptNode rawStrings = transform(runtimeNode.getArgs().get(0));
-            JavaScriptNode cookedStrings = transform(runtimeNode.getArgs().get(1));
-            return tagExpression(factory.createTemplateObject(context, rawStrings, cookedStrings), runtimeNode);
-        } else if (runtimeNode.getRequest() == RuntimeNode.Request.TO_STRING) {
-            JavaScriptNode value = transform(runtimeNode.getArgs().get(0));
-            return tagExpression(factory.createToString(value), runtimeNode);
+    public JavaScriptNode enterTemplateLiteralNode(TemplateLiteralNode templateLiteralNode) {
+        JavaScriptNode result = null;
+        if (templateLiteralNode instanceof TemplateLiteralNode.TaggedTemplateLiteralNode) {
+            TemplateLiteralNode.TaggedTemplateLiteralNode tagged = (TemplateLiteralNode.TaggedTemplateLiteralNode) templateLiteralNode;
+            result = factory.createTemplateObject(context, createArrayLiteral(tagged.getRawStrings()), createArrayLiteral(tagged.getCookedStrings()));
+        } else {
+            List<Expression> expressions = ((TemplateLiteralNode.UntaggedTemplateLiteralNode) templateLiteralNode).getExpressions();
+            for (int i = 0; i < expressions.size(); i++) {
+                JavaScriptNode expr = transform(expressions.get(i));
+                assert i % 2 != 0 || expr instanceof JSConstantNode : expr;
+                if (i % 2 != 0) {
+                    expr = factory.createToString(expr);
+                }
+                result = result == null ? expr : factory.createBinary(context, BinaryOperation.ADD, result, expr);
+            }
         }
-        throw new UnsupportedOperationException(runtimeNode.toString());
+        return tagExpression(result, templateLiteralNode);
     }
 
     @Override

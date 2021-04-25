@@ -29,14 +29,9 @@ const cmd = `cat ${filename} | ${node} ${f} child`;
 exec(
   cmd,
   { maxBuffer: 1000000 },
-  common.mustCall(function(err, stdout, stderr) {
-    assert.ifError(err);
+  common.mustSucceed((stdout, stderr) => {
     assert.strictEqual(stdout, dataExpected);
     assert.strictEqual(stderr, '');
     console.log('ok');
   })
 );
-
-process.on('exit', function() {
-  fs.unlinkSync(filename);
-});

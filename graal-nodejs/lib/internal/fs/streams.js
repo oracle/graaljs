@@ -13,6 +13,7 @@ const {
   ERR_OUT_OF_RANGE,
   ERR_STREAM_DESTROYED
 } = require('internal/errors').codes;
+const { deprecate } = require('internal/util');
 const { validateInteger } = require('internal/validators');
 const fs = require('fs');
 const { Buffer } = require('buffer');
@@ -57,9 +58,8 @@ function ReadStream(path, options) {
   if (options.highWaterMark === undefined)
     options.highWaterMark = 64 * 1024;
 
-  // For backwards compat do not emit close on destroy.
-  if (options.emitClose === undefined) {
-    options.emitClose = false;
+  if (options.autoDestroy === undefined) {
+    options.autoDestroy = false;
   }
 
   this[kFs] = options.fs || fs;
@@ -116,7 +116,7 @@ function ReadStream(path, options) {
   }
 
   if (typeof this.fd !== 'number')
-    this.open();
+    _openReadFs(this);
 
   this.on('end', function() {
     if (this.autoClose) {
@@ -127,23 +127,34 @@ function ReadStream(path, options) {
 ObjectSetPrototypeOf(ReadStream.prototype, Readable.prototype);
 ObjectSetPrototypeOf(ReadStream, Readable);
 
-ReadStream.prototype.open = function() {
-  this[kFs].open(this.path, this.flags, this.mode, (er, fd) => {
+const openReadFs = deprecate(function() {
+  _openReadFs(this);
+}, 'ReadStream.prototype.open() is deprecated', 'DEP0135');
+ReadStream.prototype.open = openReadFs;
+
+function _openReadFs(stream) {
+  // Backwards compat for overriden open.
+  if (stream.open !== openReadFs) {
+    stream.open();
+    return;
+  }
+
+  stream[kFs].open(stream.path, stream.flags, stream.mode, (er, fd) => {
     if (er) {
-      if (this.autoClose) {
-        this.destroy();
+      if (stream.autoClose) {
+        stream.destroy();
       }
-      this.emit('error', er);
+      stream.emit('error', er);
       return;
     }
 
-    this.fd = fd;
-    this.emit('open', fd);
-    this.emit('ready');
+    stream.fd = fd;
+    stream.emit('open', fd);
+    stream.emit('ready');
     // Start the flow of data.
-    this.read();
+    stream.read();
   });
-};
+}
 
 ReadStream.prototype._read = function(n) {
   if (typeof this.fd !== 'number') {
@@ -239,12 +250,8 @@ ReadStream.prototype._destroy = function(err, cb) {
 
 function closeFsStream(stream, cb, err) {
   stream[kFs].close(stream.fd, (er) => {
-    er = er || err;
-    cb(er);
     stream.closed = true;
-    const s = stream._writableState || stream._readableState;
-    if (!er && !s.emitClose)
-      stream.emit('close');
+    cb(er || err);
   });
 
   stream.fd = null;
@@ -269,9 +276,9 @@ function WriteStream(path, options) {
   // Only buffers are supported.
   options.decodeStrings = true;
 
-  // For backwards compat do not emit close on destroy.
-  if (options.emitClose === undefined) {
-    options.emitClose = false;
+  if (options.autoDestroy === undefined) {
+    options.autoDestroy = options.autoClose === undefined ?
+      true : (options.autoClose || false);
   }
 
   this[kFs] = options.fs || fs;
@@ -317,7 +324,7 @@ function WriteStream(path, options) {
   this.mode = options.mode === undefined ? 0o666 : options.mode;
 
   this.start = options.start;
-  this.autoClose = options.autoClose === undefined ? true : !!options.autoClose;
+  this.autoClose = options.autoDestroy;
   this.pos = undefined;
   this.bytesWritten = 0;
   this.closed = false;
@@ -333,7 +340,7 @@ function WriteStream(path, options) {
     this.setDefaultEncoding(options.encoding);
 
   if (typeof this.fd !== 'number')
-    this.open();
+    _openWriteFs(this);
 }
 ObjectSetPrototypeOf(WriteStream.prototype, Writable.prototype);
 ObjectSetPrototypeOf(WriteStream, Writable);
@@ -345,28 +352,35 @@ WriteStream.prototype._final = function(callback) {
     });
   }
 
-  if (this.autoClose) {
-    this.destroy();
-  }
-
   callback();
 };
 
-WriteStream.prototype.open = function() {
-  this[kFs].open(this.path, this.flags, this.mode, (er, fd) => {
+const openWriteFs = deprecate(function() {
+  _openWriteFs(this);
+}, 'WriteStream.prototype.open() is deprecated', 'DEP0135');
+WriteStream.prototype.open = openWriteFs;
+
+function _openWriteFs(stream) {
+  // Backwards compat for overriden open.
+  if (stream.open !== openWriteFs) {
+    stream.open();
+    return;
+  }
+
+  stream[kFs].open(stream.path, stream.flags, stream.mode, (er, fd) => {
     if (er) {
-      if (this.autoClose) {
-        this.destroy();
+      if (stream.autoClose) {
+        stream.destroy();
       }
-      this.emit('error', er);
+      stream.emit('error', er);
       return;
     }
 
-    this.fd = fd;
-    this.emit('open', fd);
-    this.emit('ready');
+    stream.fd = fd;
+    stream.emit('open', fd);
+    stream.emit('ready');
   });
-};
+}
 
 
 WriteStream.prototype._write = function(data, encoding, cb) {
@@ -388,9 +402,6 @@ WriteStream.prototype._write = function(data, encoding, cb) {
     }
 
     if (er) {
-      if (this.autoClose) {
-        this.destroy();
-      }
       return cb(er);
     }
     this.bytesWritten += bytes;
@@ -433,7 +444,7 @@ WriteStream.prototype._writev = function(data, cb) {
 
     if (er) {
       if (this.autoClose) {
-        this.destroy();
+        this.destroy(er);
       }
       return cb(er);
     }

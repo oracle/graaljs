@@ -110,6 +110,8 @@ RegExpMacroAssemblerARM::RegExpMacroAssemblerARM(Isolate* isolate, Zone* zone,
       success_label_(),
       backtrack_label_(),
       exit_label_() {
+  masm_->set_root_array_available(false);
+
   DCHECK_EQ(0, registers_to_save % 2);
   __ jmp(&entry_label_);   // We'll write the entry code later.
   __ bind(&start_label_);  // And then continue from here.
@@ -154,6 +156,19 @@ void RegExpMacroAssemblerARM::AdvanceRegister(int reg, int by) {
 
 void RegExpMacroAssemblerARM::Backtrack() {
   CheckPreemption();
+  if (has_backtrack_limit()) {
+    Label next;
+    __ ldr(r0, MemOperand(frame_pointer(), kBacktrackCount));
+    __ add(r0, r0, Operand(1));
+    __ str(r0, MemOperand(frame_pointer(), kBacktrackCount));
+    __ cmp(r0, Operand(backtrack_limit()));
+    __ b(ne, &next);
+
+    // Exceeded limits are treated as a failed match.
+    Fail();
+
+    __ bind(&next);
+  }
   // Pop Code offset from backtrack stack, add Code and jump to location.
   Pop(r0);
   __ add(pc, r0, Operand(code_pointer()));
@@ -208,9 +223,8 @@ void RegExpMacroAssemblerARM::CheckGreedyLoop(Label* on_equal) {
   BranchOrBacktrack(eq, on_equal);
 }
 
-
 void RegExpMacroAssemblerARM::CheckNotBackReferenceIgnoreCase(
-    int start_reg, bool read_backward, bool unicode, Label* on_no_match) {
+    int start_reg, bool read_backward, Label* on_no_match) {
   Label fallthrough;
   __ ldr(r0, register_location(start_reg));  // Index of start of capture
   __ ldr(r1, register_location(start_reg + 1));  // Index of end of capture
@@ -302,7 +316,7 @@ void RegExpMacroAssemblerARM::CheckNotBackReferenceIgnoreCase(
     //   r0: Address byte_offset1 - Address captured substring's start.
     //   r1: Address byte_offset2 - Address of current character position.
     //   r2: size_t byte_length - length of capture in bytes(!)
-    //   r3: Isolate* isolate or 0 if unicode flag.
+    //   r3: Isolate* isolate.
 
     // Address of start of capture.
     __ add(r0, r0, Operand(end_of_input_address()));
@@ -316,14 +330,7 @@ void RegExpMacroAssemblerARM::CheckNotBackReferenceIgnoreCase(
       __ sub(r1, r1, r4);
     }
     // Isolate.
-#ifdef V8_INTL_SUPPORT
-    if (unicode) {
-      __ mov(r3, Operand(0));
-    } else  // NOLINT
-#endif      // V8_INTL_SUPPORT
-    {
-      __ mov(r3, Operand(ExternalReference::isolate_address(isolate())));
-    }
+    __ mov(r3, Operand(ExternalReference::isolate_address(isolate())));
 
     {
       AllowExternalCallThatCantCauseGC scope(masm_);
@@ -346,7 +353,6 @@ void RegExpMacroAssemblerARM::CheckNotBackReferenceIgnoreCase(
 
   __ bind(&fallthrough);
 }
-
 
 void RegExpMacroAssemblerARM::CheckNotBackReference(int start_reg,
                                                     bool read_backward,
@@ -642,9 +648,16 @@ Handle<HeapObject> RegExpMacroAssemblerARM::GetCode(Handle<String> source) {
   // Set frame pointer in space for it if this is not a direct call
   // from generated code.
   __ add(frame_pointer(), sp, Operand(4 * kPointerSize));
+
+  STATIC_ASSERT(kSuccessfulCaptures == kInputString - kSystemPointerSize);
   __ mov(r0, Operand::Zero());
   __ push(r0);  // Make room for success counter and initialize it to 0.
+  STATIC_ASSERT(kStringStartMinusOne ==
+                kSuccessfulCaptures - kSystemPointerSize);
   __ push(r0);  // Make room for "string start - 1" constant.
+  STATIC_ASSERT(kBacktrackCount == kStringStartMinusOne - kSystemPointerSize);
+  __ push(r0);  // The backtrack counter.
+
   // Check if we have space on the stack for registers.
   Label stack_limit_hit;
   Label stack_ok;
@@ -891,7 +904,7 @@ Handle<HeapObject> RegExpMacroAssemblerARM::GetCode(Handle<String> source) {
                           .set_self_reference(masm_->CodeObject())
                           .Build();
   PROFILE(masm_->isolate(),
-          RegExpCodeCreateEvent(AbstractCode::cast(*code), *source));
+          RegExpCodeCreateEvent(Handle<AbstractCode>::cast(code), source));
   return Handle<HeapObject>::cast(code);
 }
 
@@ -932,25 +945,6 @@ RegExpMacroAssembler::IrregexpImplementation
   return kARMImplementation;
 }
 
-void RegExpMacroAssemblerARM::LoadCurrentCharacterImpl(int cp_offset,
-                                                       Label* on_end_of_input,
-                                                       bool check_bounds,
-                                                       int characters,
-                                                       int eats_at_least) {
-  // It's possible to preload a small number of characters when each success
-  // path requires a large number of characters, but not the reverse.
-  DCHECK_GE(eats_at_least, characters);
-
-  DCHECK(cp_offset < (1<<30));  // Be sane! (And ensure negation works)
-  if (check_bounds) {
-    if (cp_offset >= 0) {
-      CheckPosition(cp_offset + eats_at_least - 1, on_end_of_input);
-    } else {
-      CheckPosition(cp_offset, on_end_of_input);
-    }
-  }
-  LoadCurrentCharacterUnchecked(cp_offset, characters);
-}
 
 void RegExpMacroAssemblerARM::PopCurrentPosition() {
   Pop(current_input_offset());
@@ -1073,17 +1067,10 @@ void RegExpMacroAssemblerARM::CallCheckStackGuardState() {
       ExternalReference::re_check_stack_guard_state(isolate());
   __ mov(ip, Operand(stack_guard_check));
 
-  if (FLAG_embedded_builtins) {
-    EmbeddedData d = EmbeddedData::FromBlob();
-    CHECK(Builtins::IsIsolateIndependent(Builtins::kDirectCEntry));
-    Address entry = d.InstructionStartOfBuiltin(Builtins::kDirectCEntry);
-    __ mov(lr, Operand(entry, RelocInfo::OFF_HEAP_TARGET));
-  } else {
-    // TODO(v8:8519): Remove this once embedded builtins are on unconditionally.
-    Handle<Code> code = BUILTIN_CODE(isolate(), DirectCEntry);
-    __ mov(lr, Operand(reinterpret_cast<intptr_t>(code.location()),
-                       RelocInfo::CODE_TARGET));
-  }
+  EmbeddedData d = EmbeddedData::FromBlob();
+  CHECK(Builtins::IsIsolateIndependent(Builtins::kDirectCEntry));
+  Address entry = d.InstructionStartOfBuiltin(Builtins::kDirectCEntry);
+  __ mov(lr, Operand(entry, RelocInfo::OFF_HEAP_TARGET));
   __ Call(lr);
 
   // Drop the return address from the stack.

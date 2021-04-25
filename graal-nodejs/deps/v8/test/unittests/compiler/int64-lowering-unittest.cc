@@ -816,10 +816,8 @@ TEST_F(Int64LoweringTest, I64Ror) {
   Matcher<Node*> shift_matcher =
       IsWord32And(IsParameter(0), IsInt32Constant(0x1F));
 
-  Matcher<Node*> bit_mask_matcher = IsWord32Shl(
-      IsWord32Sar(IsInt32Constant(std::numeric_limits<int32_t>::min()),
-                  shift_matcher),
-      IsInt32Constant(1));
+  Matcher<Node*> bit_mask_matcher = IsWord32Xor(
+      IsWord32Shr(IsInt32Constant(-1), shift_matcher), IsInt32Constant(-1));
 
   Matcher<Node*> inv_mask_matcher =
       IsWord32Xor(bit_mask_matcher, IsInt32Constant(-1));
@@ -1015,11 +1013,9 @@ TEST_F(Int64LoweringTest, WasmBigIntSpecialCaseBigIntToI64) {
           Operator::kNoProperties,         // properties
           StubCallMode::kCallCodeObject);  // stub call mode
 
-  auto lowering_special_case = base::make_unique<Int64LoweringSpecialCase>();
-  lowering_special_case->bigint_to_i64_call_descriptor =
-      bigint_to_i64_call_descriptor;
-  lowering_special_case->bigint_to_i32_pair_call_descriptor =
-      bigint_to_i32_pair_call_descriptor;
+  auto lowering_special_case = std::make_unique<Int64LoweringSpecialCase>();
+  lowering_special_case->replacements.insert(
+      {bigint_to_i64_call_descriptor, bigint_to_i32_pair_call_descriptor});
 
   Node* call_node =
       graph()->NewNode(common()->Call(bigint_to_i64_call_descriptor), target,
@@ -1063,11 +1059,9 @@ TEST_F(Int64LoweringTest, WasmBigIntSpecialCaseI64ToBigInt) {
           Operator::kNoProperties,         // properties
           StubCallMode::kCallCodeObject);  // stub call mode
 
-  auto lowering_special_case = base::make_unique<Int64LoweringSpecialCase>();
-  lowering_special_case->i64_to_bigint_call_descriptor =
-      i64_to_bigint_call_descriptor;
-  lowering_special_case->i32_pair_to_bigint_call_descriptor =
-      i32_pair_to_bigint_call_descriptor;
+  auto lowering_special_case = std::make_unique<Int64LoweringSpecialCase>();
+  lowering_special_case->replacements.insert(
+      {i64_to_bigint_call_descriptor, i32_pair_to_bigint_call_descriptor});
 
   Node* call = graph()->NewNode(common()->Call(i64_to_bigint_call_descriptor),
                                 target, i64, start(), start());

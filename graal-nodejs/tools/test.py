@@ -98,6 +98,7 @@ class ProgressIndicator(object):
 
   def __init__(self, cases, flaky_tests_mode):
     self.cases = cases
+    self.serial_id = 0
     self.flaky_tests_mode = flaky_tests_mode
     self.parallel_queue = Queue(len(cases))
     self.sequential_queue = Queue(len(cases))
@@ -167,6 +168,8 @@ class ProgressIndicator(object):
       case = test
       case.thread_id = thread_id
       self.lock.acquire()
+      case.serial_id = self.serial_id
+      self.serial_id += 1
       self.AboutToRun(case)
       self.lock.release()
       try:
@@ -525,6 +528,7 @@ class TestCase(object):
     self.mode = mode
     self.parallel = False
     self.disable_core_files = False
+    self.serial_id = 0
     self.thread_id = 0
 
   def IsNegative(self):
@@ -556,6 +560,7 @@ class TestCase(object):
   def Run(self):
     try:
       result = self.RunCommand(self.GetCommand(), {
+        "TEST_SERIAL_ID": "%d" % self.serial_id,
         "TEST_THREAD_ID": "%d" % self.thread_id,
         "TEST_PARALLEL" : "%d" % self.parallel
       })

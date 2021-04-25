@@ -234,10 +234,10 @@ EXPORT_TO_JS(GetRealNamedPropertyAttributes) {
     Local<Context> context = args.GetIsolate()->GetCurrentContext();
     Local<Object> obj = args[0].As<Object>();
     Local<String> key = args[1].As<String>();
-    
+
     Maybe<PropertyAttribute> attrs = obj->GetRealNamedPropertyAttributes(context, key);
     int result = attrs.IsJust() ? static_cast<int> (attrs.FromJust()) : -1;
-    
+
     args.GetReturnValue().Set(result);
 }
 

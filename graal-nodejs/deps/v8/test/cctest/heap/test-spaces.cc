@@ -30,6 +30,8 @@
 #include "src/base/bounded-page-allocator.h"
 #include "src/base/platform/platform.h"
 #include "src/heap/factory.h"
+#include "src/heap/large-spaces.h"
+#include "src/heap/memory-chunk.h"
 #include "src/heap/spaces-inl.h"
 #include "src/heap/spaces.h"
 #include "src/objects/free-space.h"
@@ -290,13 +292,13 @@ TEST(OldSpace) {
   delete s;
 }
 
-TEST(LargeObjectSpace) {
+TEST(OldLargeObjectSpace) {
   // This test does not initialize allocated objects, which confuses the
   // incremental marker.
   FLAG_incremental_marking = false;
   v8::V8::Initialize();
 
-  LargeObjectSpace* lo = CcTest::heap()->lo_space();
+  OldLargeObjectSpace* lo = CcTest::heap()->lo_space();
   CHECK_NOT_NULL(lo);
 
   int lo_size = Page::kPageSize;
@@ -350,7 +352,7 @@ TEST(SizeOfInitialHeap) {
 // snapshot.
 // In PPC the page size is 64K, causing more internal fragmentation
 // hence requiring a larger limit.
-#if V8_OS_LINUX && V8_HOST_ARCH_PPC
+#if V8_OS_LINUX && (V8_HOST_ARCH_PPC || V8_HOST_ARCH_PPC64)
   const size_t kMaxInitialSizePerSpace = 3 * MB;
 #else
   const size_t kMaxInitialSizePerSpace = 2 * MB;
@@ -406,7 +408,7 @@ static HeapObject AllocateUnaligned(PagedSpace* space, int size) {
   return filler;
 }
 
-static HeapObject AllocateUnaligned(LargeObjectSpace* space, int size) {
+static HeapObject AllocateUnaligned(OldLargeObjectSpace* space, int size) {
   AllocationResult allocation = space->AllocateRaw(size);
   CHECK(!allocation.IsRetry());
   HeapObject filler;
@@ -512,8 +514,8 @@ UNINITIALIZED_TEST(AllocationObserver) {
     // classes inheriting from PagedSpace.
     testAllocationObserver<PagedSpace>(i_isolate,
                                        i_isolate->heap()->old_space());
-    testAllocationObserver<LargeObjectSpace>(i_isolate,
-                                             i_isolate->heap()->lo_space());
+    testAllocationObserver<OldLargeObjectSpace>(i_isolate,
+                                                i_isolate->heap()->lo_space());
   }
   isolate->Dispose();
 }
@@ -568,7 +570,7 @@ HEAP_TEST(Regress777177) {
 
   {
     // Ensure a new linear allocation area on a fresh page.
-    AlwaysAllocateScope always_allocate(isolate);
+    AlwaysAllocateScopeForTesting always_allocate(heap);
     heap::SimulateFullSpace(old_space);
     AllocationResult result = old_space->AllocateRaw(filler_size, kWordAligned);
     HeapObject obj = result.ToObjectChecked();

@@ -27,6 +27,7 @@ CAST_ACCESSOR(StackFrameInfo)
 SMI_ACCESSORS(StackFrameInfo, line_number, kLineNumberOffset)
 SMI_ACCESSORS(StackFrameInfo, column_number, kColumnNumberOffset)
 SMI_ACCESSORS(StackFrameInfo, script_id, kScriptIdOffset)
+SMI_ACCESSORS(StackFrameInfo, wasm_function_index, kWasmFunctionIndexOffset)
 SMI_ACCESSORS(StackFrameInfo, promise_all_index, kPromiseAllIndexOffset)
 SMI_ACCESSORS_CHECKED(StackFrameInfo, function_offset, kPromiseAllIndexOffset,
                       is_wasm())
@@ -51,9 +52,6 @@ BOOL_ACCESSORS(StackFrameInfo, flag, is_promise_all, kIsPromiseAllBit)
 
 TQ_OBJECT_CONSTRUCTORS_IMPL(StackTraceFrame)
 NEVER_READ_ONLY_SPACE_IMPL(StackTraceFrame)
-
-TQ_SMI_ACCESSORS(StackTraceFrame, frame_index)
-TQ_SMI_ACCESSORS(StackTraceFrame, id)
 
 }  // namespace internal
 }  // namespace v8
