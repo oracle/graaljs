@@ -1599,6 +1599,11 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Override
         protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
+            return executeWithTargetAndIndexUnchecked(target, (long)index, receiver, defaultValue, root);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
             Tuple tuple = (Tuple) target;
             return JSObject.getOrDefault(JSTuple.create(root.context, tuple), index, receiver, defaultValue, jsclassProfile, root);
         }

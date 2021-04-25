@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -379,6 +380,8 @@ public class JSRealm {
     private final DynamicObject foreignIterablePrototype;
 
     /** Record and Tuple support. */
+    private final DynamicObject recordConstructor;
+    private final DynamicObject recordPrototype;
     private final DynamicObject tupleConstructor;
     private final DynamicObject tuplePrototype;
 
@@ -763,10 +766,15 @@ public class JSRealm {
         // TODO: Associate with the correct ECMAScript Version
         boolean es13 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         if (es13) {
+            ctor = JSRecord.createConstructor(this);
+            this.recordConstructor = ctor.getFunctionObject();
+            this.recordPrototype = ctor.getPrototype();
             ctor = JSTuple.createConstructor(this);
             this.tupleConstructor = ctor.getFunctionObject();
             this.tuplePrototype = ctor.getPrototype();
         } else {
+            this.recordConstructor = null;
+            this.recordPrototype = null;
             this.tupleConstructor = null;
             this.tuplePrototype= null;
         }
@@ -2466,6 +2474,14 @@ public class JSRealm {
 
     public DynamicObject getForeignIterablePrototype() {
         return foreignIterablePrototype;
+    }
+
+    public DynamicObject getRecordConstructor() {
+        return recordConstructor;
+    }
+
+    public DynamicObject getRecordPrototype() {
+        return recordPrototype;
     }
 
     public DynamicObject getTupleConstructor() {

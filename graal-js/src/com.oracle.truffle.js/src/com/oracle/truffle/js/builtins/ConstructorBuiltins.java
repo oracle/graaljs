@@ -331,6 +331,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         JavaImporter(1),
 
         // Record and Tuple proposal
+        Record(0),
         Tuple(0);
 
         private final int length;
@@ -630,6 +631,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                 : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
+            case Record:
+                throw new RuntimeException("TODO"); // TODO
             case Tuple:
                 return construct ? ConstructTupleNodeGen.create(context, builtin, args().createArgumentNodes(context))
                         : CallTupleNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));

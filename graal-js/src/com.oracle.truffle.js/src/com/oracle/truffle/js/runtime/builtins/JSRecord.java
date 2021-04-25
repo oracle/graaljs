@@ -43,11 +43,14 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.RecordFunctionBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -112,8 +115,11 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        // TODO: return realm.getRecordPrototype();
-        return null;
+        return realm.getRecordPrototype();
+    }
+
+    public static JSConstructor createConstructor(JSRealm realm) {
+        return INSTANCE.createConstructorAndPrototype(realm, RecordFunctionBuiltins.BUILTINS);
     }
 
     /**
@@ -126,9 +132,20 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
      */
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        return JSShape.newBuilder(context, INSTANCE, prototype)
+        Shape initialShape = Shape.newBuilder()
+                .layout(JSShape.getLayout(INSTANCE))
+                .dynamicType(INSTANCE)
+                .addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0)
                 .shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG)
                 .build();
+
+        assert !JSShape.isExtensible(initialShape);
+        return initialShape;
+
+        // TODO: remove commented out code below
+        // return JSShape.newBuilder(context, INSTANCE, prototype)
+        //         .shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG)
+        //         .build();
     }
 
     /**
