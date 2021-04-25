@@ -574,8 +574,13 @@ public class JSContext {
         this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
-        this.recordFactory = builder.create(JSRecord.INSTANCE);
-        this.tupleFactory = builder.create(JSTuple.INSTANCE);
+        if (isRecordAndTupleEnabled()) {
+            this.recordFactory = builder.create(JSRecord.INSTANCE);
+            this.tupleFactory = builder.create(JSTuple.INSTANCE);
+        } else {
+            this.recordFactory = null;
+            this.tupleFactory = null;
+        }
 
         this.factoryCount = builder.finish();
 
@@ -1730,6 +1735,11 @@ public class JSContext {
     }
 
     public boolean isWaitAsyncEnabled() {
+        return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+    }
+
+    public boolean isRecordAndTupleEnabled() {
+        // TODO: Associate with the correct ECMAScript Version
         return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
     }
 }

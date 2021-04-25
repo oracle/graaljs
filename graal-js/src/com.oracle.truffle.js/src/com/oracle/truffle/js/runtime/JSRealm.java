@@ -763,9 +763,7 @@ public class JSRealm {
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
 
-        // TODO: Associate with the correct ECMAScript Version
-        boolean es13 = context.getContextOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
-        if (es13) {
+        if (context.isRecordAndTupleEnabled()) {
             ctor = JSRecord.createConstructor(this);
             this.recordConstructor = ctor.getFunctionObject();
             this.recordPrototype = ctor.getPrototype();
@@ -1436,7 +1434,8 @@ public class JSRealm {
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
-        if (context.getEcmaScriptVersion() >= 13) { // TODO: Associate with the correct ECMAScript Version
+        if (context.isRecordAndTupleEnabled()) {
+            putGlobalProperty(JSRecord.CLASS_NAME, getRecordConstructor());
             putGlobalProperty(JSTuple.CLASS_NAME, getTupleConstructor());
         }
     }
