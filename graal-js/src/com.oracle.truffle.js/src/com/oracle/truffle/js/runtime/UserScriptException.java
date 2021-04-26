@@ -63,24 +63,29 @@ public final class UserScriptException extends GraalJSException {
     private static final long serialVersionUID = -6624166672101791072L;
     final Object exceptionObject;
 
-    private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit, int truffleStackTraceLimit) {
-        super(getMessage(exceptionObject), originatingNode, stackTraceLimit, truffleStackTraceLimit);
+    private UserScriptException(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
+        super(getMessage(exceptionObject), originatingNode, stackTraceLimit);
         this.exceptionObject = exceptionObject;
     }
 
-    private UserScriptException(Throwable exception, Node originatingNode, int stackTraceLimit, int truffleStackTraceLimit) {
-        super(exception.toString(), exception, originatingNode, stackTraceLimit, truffleStackTraceLimit);
+    private UserScriptException(Throwable exception, Node originatingNode, int stackTraceLimit) {
+        super(exception.toString(), exception, originatingNode, stackTraceLimit);
         this.exceptionObject = exception;
     }
 
     @TruffleBoundary
     public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean customSkip) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit, truffleStackTraceLimit(stackTraceLimit, customSkip)), skipFramesUpTo, true);
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), true, skipFramesUpTo, customSkip);
+    }
+
+    @TruffleBoundary
+    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
+        return createCapture(exceptionObject, originatingNode, stackTraceLimit, Undefined.instance, false);
     }
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit, stackTraceLimit), Undefined.instance, false);
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), false);
     }
 
     @TruffleBoundary
