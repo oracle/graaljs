@@ -153,7 +153,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("createNew()") JSFunctionCallNode functionCallNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             DynamicObject durationLike = JSTemporalDuration.toPartialDuration(temporalDurationLike,
-                            getContext().getRealm(), isObjectNode, toInt);
+                            getContext(), isObjectNode, toInt);
 
             long years = getLong(durationLike, YEARS, duration.getYears());
             long months = getLong(durationLike, MONTHS, duration.getMonths());
@@ -224,7 +224,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
-                            getContext().getRealm(), isObject, toString, toInt);
+                            getContext(), isObject, toString, toInt);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
             DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
@@ -241,7 +241,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(otherDuration, MILLISECONDS),
                             getLong(otherDuration, MICROSECONDS),
                             getLong(otherDuration, NANOSECONDS),
-                            relativeTo, getContext().getRealm());
+                            relativeTo, getContext());
             return JSTemporalDuration.createTemporalDurationFromInstance(
                             getLong(result, YEARS),
                             getLong(result, MONTHS),
@@ -272,7 +272,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             DynamicObject otherDuration = JSTemporalDuration.toLimitedTemporalDuration(other, Collections.emptySet(),
-                            getContext().getRealm(), isObject, toString, toInt);
+                            getContext(), isObject, toString, toInt);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
             DynamicObject result = JSTemporalDuration.addDuration(duration.getYears(), duration.getMonths(),
@@ -289,7 +289,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             -getLong(otherDuration, MILLISECONDS),
                             -getLong(otherDuration, MICROSECONDS),
                             -getLong(otherDuration, NANOSECONDS),
-                            relativeTo, getContext().getRealm());
+                            relativeTo, getContext());
             return JSTemporalDuration.createTemporalDurationFromInstance(
                             getLong(result, YEARS),
                             getLong(result, MONTHS),
@@ -357,7 +357,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
             DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
                             duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit, relativeTo,
-                            getContext().getRealm());
+                            getContext());
             DynamicObject roundResult = JSTemporalDuration.roundDuration(
                             getLong(unbalanceResult, YEARS, 0),
                             getLong(unbalanceResult, MONTHS, 0),
@@ -365,7 +365,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(unbalanceResult, DAYS, 0),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
-                            roundingMode, relativeTo, getContext().getRealm());
+                            roundingMode, relativeTo, getContext());
             DynamicObject adjustResult = JSTemporalDuration.adjustRoundedDurationDays(
                             getLong(roundResult, YEARS, 0),
                             getLong(roundResult, MONTHS, 0),
@@ -377,13 +377,13 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(roundResult, MILLISECONDS, 0),
                             getLong(roundResult, MICROSECONDS, 0),
                             getLong(roundResult, NANOSECONDS, 0),
-                            (long) roundingIncrement, smallestUnit, roundingMode, relativeTo, getContext().getRealm());
+                            (long) roundingIncrement, smallestUnit, roundingMode, relativeTo, getContext());
             DynamicObject balanceResult = JSTemporalDuration.balanceDurationRelative(
                             getLong(adjustResult, YEARS, 0),
                             getLong(adjustResult, MONTHS, 0),
                             getLong(adjustResult, WEEKS, 0),
                             getLong(adjustResult, DAYS, 0),
-                            largestUnit, relativeTo, getContext().getRealm());
+                            largestUnit, relativeTo, getContext());
             // TODO: Check if relativeTo has InitializedTemporalZonedDateTime 7.3.22.22
             DynamicObject result = JSTemporalDuration.balanceDuration(
                             getLong(balanceResult, DAYS, 0),
@@ -393,7 +393,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(adjustResult, MILLISECONDS, 0),
                             getLong(adjustResult, MICROSECONDS, 0),
                             getLong(adjustResult, NANOSECONDS, 0),
-                            largestUnit, relativeTo, getContext().getRealm());
+                            largestUnit, relativeTo, getContext());
             return JSTemporalDuration.createTemporalDurationFromInstance(
                             getLong(balanceResult, YEARS, 0),
                             getLong(balanceResult, MONTHS, 0),
@@ -430,7 +430,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
                             duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo,
-                            getContext().getRealm());
+                            getContext());
             DynamicObject intermediate = null;
             // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes
             // intermediate
@@ -443,7 +443,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(unbalanceResult, MILLISECONDS, 0),
                             getLong(unbalanceResult, MICROSECONDS, 0),
                             getLong(unbalanceResult, NANOSECONDS, 0),
-                            unit, intermediate, getContext().getRealm());
+                            unit, intermediate, getContext());
             DynamicObject roundResult = JSTemporalDuration.roundDuration(
                             getLong(unbalanceResult, YEARS, 0),
                             getLong(unbalanceResult, MONTHS, 0),
@@ -455,7 +455,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(balanceResult, MILLISECONDS, 0),
                             getLong(balanceResult, MICROSECONDS, 0),
                             getLong(balanceResult, NANOSECONDS, 0),
-                            1, unit, "trunc", relativeTo, getContext().getRealm());
+                            1, unit, "trunc", relativeTo, getContext());
             long whole = 0;
             if (unit.equals(YEARS)) {
                 whole = getLong(roundResult, YEARS, 0);

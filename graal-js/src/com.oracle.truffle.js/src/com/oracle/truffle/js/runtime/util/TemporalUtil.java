@@ -268,43 +268,43 @@ public final class TemporalUtil {
 
     // 13.19
     public static DynamicObject toSecondsStringPrecision(DynamicObject options, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toStringNode,
-                    JSToNumberNode toNumberNode, JSRealm realm) {
+                    JSToNumberNode toNumberNode, JSContext ctx) {
         String smallestUnit = (String) getOption(options, "smallestUnit", "string", toSet(MINUTE, SECOND,
                         MILLISECOND, MICROSECOND, NANOSECOND, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS),
                         null, isObject, toBoolean, toStringNode);
         if (pluralUnits.contains(smallestUnit)) {
             smallestUnit = pluralToSingular.get(smallestUnit);
         }
-        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
         if (smallestUnit != null) {
             if (smallestUnit.equals(MINUTE)) {
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", MINUTE);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MINUTE);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                JSObjectUtil.putDataProperty(ctx, record, "precision", MINUTE);
+                JSObjectUtil.putDataProperty(ctx, record, "unit", MINUTE);
+                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
                 return record;
             }
             if (smallestUnit.equals(SECOND)) {
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 0);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", SECOND);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                JSObjectUtil.putDataProperty(ctx, record, "precision", 0);
+                JSObjectUtil.putDataProperty(ctx, record, "unit", SECOND);
+                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
                 return record;
             }
             if (smallestUnit.equals(MILLISECOND)) {
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 3);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MILLISECOND);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                JSObjectUtil.putDataProperty(ctx, record, "precision", 3);
+                JSObjectUtil.putDataProperty(ctx, record, "unit", MILLISECOND);
+                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
                 return record;
             }
             if (smallestUnit.equals(MICROSECOND)) {
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 6);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MICROSECOND);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                JSObjectUtil.putDataProperty(ctx, record, "precision", 6);
+                JSObjectUtil.putDataProperty(ctx, record, "unit", MICROSECOND);
+                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
                 return record;
             }
             if (smallestUnit.equals(NANOSECOND)) {
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 9);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
-                JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+                JSObjectUtil.putDataProperty(ctx, record, "precision", 9);
+                JSObjectUtil.putDataProperty(ctx, record, "unit", NANOSECOND);
+                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
                 return record;
             }
         }
@@ -312,33 +312,33 @@ public final class TemporalUtil {
         Object digits = getStringOrNumberOption(options, "fractionalSecondDigits",
                         Collections.singleton("auto"), 0, 9, "auto", isObject, toNumberNode, toStringNode);
         if (digits.equals("auto")) {
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", "auto");
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+            JSObjectUtil.putDataProperty(ctx, record, "precision", "auto");
+            JSObjectUtil.putDataProperty(ctx, record, "unit", NANOSECOND);
+            JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
             return record;
         }
         if (digits.equals(0)) {
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", 0);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", SECOND);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", 1);
+            JSObjectUtil.putDataProperty(ctx, record, "precision", 0);
+            JSObjectUtil.putDataProperty(ctx, record, "unit", SECOND);
+            JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
             return record;
         }
         if (digits.equals(1) || digits.equals(2) || digits.equals(3)) {
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", digits);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MILLISECOND);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", Math.pow(10, 3 - (long) digits));
+            JSObjectUtil.putDataProperty(ctx, record, "precision", digits);
+            JSObjectUtil.putDataProperty(ctx, record, "unit", MILLISECOND);
+            JSObjectUtil.putDataProperty(ctx, record, "increment", Math.pow(10, 3 - (long) digits));
             return record;
         }
         if (digits.equals(4) || digits.equals(5) || digits.equals(6)) {
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", digits);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", MICROSECOND);
-            JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", Math.pow(10, 6 - (long) digits));
+            JSObjectUtil.putDataProperty(ctx, record, "precision", digits);
+            JSObjectUtil.putDataProperty(ctx, record, "unit", MICROSECOND);
+            JSObjectUtil.putDataProperty(ctx, record, "increment", Math.pow(10, 6 - (long) digits));
             return record;
         }
         assert digits.equals(7) || digits.equals(8) || digits.equals(9);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, "precision", digits);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, "unit", NANOSECOND);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, "increment", Math.pow(10, 9 - (long) digits));
+        JSObjectUtil.putDataProperty(ctx, record, "precision", digits);
+        JSObjectUtil.putDataProperty(ctx, record, "unit", NANOSECOND);
+        JSObjectUtil.putDataProperty(ctx, record, "increment", Math.pow(10, 9 - (long) digits));
         return record;
     }
 
@@ -433,11 +433,11 @@ public final class TemporalUtil {
             }
             calendar = TemporalUtil.getOptionalTemporalCalendar((DynamicObject) value, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, ctx);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields((DynamicObject) value, fieldNames, new HashSet<>(), ctx.getRealm());
+            DynamicObject fields = TemporalUtil.prepareTemporalFields((DynamicObject) value, fieldNames, new HashSet<>(), ctx);
 
             DynamicObject dateOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
             JSObjectUtil.putDataProperty(ctx, dateOptions, OVERFLOW, CONSTRAIN);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, ctx.getRealm());
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, dateOptions, ctx);
             offset = JSObject.get((DynamicObject) value, OFFSET);
             timeZone = JSObject.get((DynamicObject) value, TIME_ZONE);
         } else {
@@ -691,8 +691,8 @@ public final class TemporalUtil {
     }
 
     // 13.52
-    public static DynamicObject prepareTemporalFields(DynamicObject fields, Set<String> fieldNames, Set<String> requiredFields, JSRealm realm) {
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+    public static DynamicObject prepareTemporalFields(DynamicObject fields, Set<String> fieldNames, Set<String> requiredFields, JSContext ctx) {
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
         for (String property : fieldNames) {
             Object value = JSObject.get(fields, property);
             if (value == null || value == Undefined.instance) { // TODO (CW) null is probably wrong
@@ -709,7 +709,7 @@ public final class TemporalUtil {
                     value = conversion.apply(value);
                 }
             }
-            JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
+            JSObjectUtil.putDataProperty(ctx, result, property, value);
         }
         return result;
     }
@@ -726,20 +726,20 @@ public final class TemporalUtil {
         return map;
     }
 
-    public static DynamicObject regulateISOYearMonth(long year, long month, String overflow, JSRealm realm) {
+    public static DynamicObject regulateISOYearMonth(long year, long month, String overflow, JSContext ctx) {
         assert isInteger(year);
         assert isInteger(month);
         assert CONSTRAIN.equals(overflow) || REJECT.equals(overflow);
 
         if (CONSTRAIN.equals(overflow)) {
-            return constrainISOYearMonth(year, month, realm);
+            return constrainISOYearMonth(year, month, ctx);
         } else if (REJECT.equals(overflow)) {
             if (!validateISOYearMonth(year, month)) {
                 throw Errors.createRangeError("validation of year and month failed");
             }
         }
 
-        return createRecordYearMonth(year, month, realm);
+        return createRecordYearMonth(year, month, ctx);
     }
 
     private static boolean validateISOYearMonth(long year, long month) {
@@ -748,19 +748,19 @@ public final class TemporalUtil {
         return (1 <= month) && (month <= 12);
     }
 
-    private static DynamicObject constrainISOYearMonth(long year, long month, JSRealm realm) {
+    private static DynamicObject constrainISOYearMonth(long year, long month, JSContext ctx) {
         assert isInteger(year);
         assert isInteger(month);
 
         long monthPrepared = constrainToRange(month, 1, 12);
 
-        return createRecordYearMonth(year, monthPrepared, realm);
+        return createRecordYearMonth(year, monthPrepared, ctx);
     }
 
-    private static DynamicObject createRecordYearMonth(long year, long monthPrepared, JSRealm realm) {
-        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, MONTH, monthPrepared);
-        JSObjectUtil.putDataProperty(realm.getContext(), record, YEAR, year);
+    private static DynamicObject createRecordYearMonth(long year, long monthPrepared, JSContext ctx) {
+        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+        JSObjectUtil.putDataProperty(ctx, record, MONTH, monthPrepared);
+        JSObjectUtil.putDataProperty(ctx, record, YEAR, year);
         return record;
     }
 
@@ -798,7 +798,7 @@ public final class TemporalUtil {
         return JSRuntime.longIsRepresentableAsInt(l);
     }
 
-    public static DynamicObject balanceISOYearMonth(long year, long month, JSRealm realm) {
+    public static DynamicObject balanceISOYearMonth(long year, long month, JSContext ctx) {
         assert isInteger(year);
         assert isInteger(month);
 
@@ -808,7 +808,7 @@ public final class TemporalUtil {
 
         long yearPrepared = year + (long) Math.floor((month - 1) / 12);
         long monthPrepared = (long) nonNegativeModulo(month - 1, 12) + 1;
-        return createRecordYearMonth(yearPrepared, monthPrepared, realm);
+        return createRecordYearMonth(yearPrepared, monthPrepared, ctx);
     }
 
     // helper method. According to spec, this already is an integer value
@@ -1061,8 +1061,8 @@ public final class TemporalUtil {
         return value;
     }
 
-    public static DynamicObject interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options, JSRealm realm) {
-        DynamicObject timeResult = toTemporalTimeRecord(fields, realm);
+    public static DynamicObject interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options, JSContext ctx) {
+        DynamicObject timeResult = toTemporalTimeRecord(fields, ctx);
         DynamicObject temporalDate = dateFromFields(calendar, fields, options);
         String overflow = toTemporalOverflow(options);
         timeResult = TemporalUtil.regulateTime(
@@ -1072,9 +1072,9 @@ public final class TemporalUtil {
                         getLong(timeResult, MILLISECOND),
                         getLong(timeResult, MICROSECOND),
                         getLong(timeResult, NANOSECOND),
-                        overflow, realm);
+                        overflow, ctx);
 
-        return JSTemporalPlainDateTime.createTemporalDateTime(realm.getContext(),
+        return JSTemporalPlainDateTime.createTemporalDateTime(ctx,
                         getLong(temporalDate, YEAR),
                         getLong(temporalDate, MONTH),
                         getLong(temporalDate, DAY),
@@ -1088,53 +1088,52 @@ public final class TemporalUtil {
     }
 
     public static DynamicObject regulateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds, String overflow, JSRealm realm) {
+                    long nanoseconds, String overflow, JSContext ctx) {
         assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
         if (overflow.equals(CONSTRAIN)) {
-            return constrainTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, realm);
+            return constrainTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, ctx);
         } else {
             if (!TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
                 throw Errors.createRangeError("Given time outside the range.");
             }
 
-            DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, DAYS, 0);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, HOUR, hours);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, MINUTE, minutes);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, SECOND, seconds);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, MILLISECOND, milliseconds);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECOND, microseconds);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECOND, nanoseconds);
+            DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+            JSObjectUtil.putDataProperty(ctx, result, DAYS, 0);
+            JSObjectUtil.putDataProperty(ctx, result, HOUR, hours);
+            JSObjectUtil.putDataProperty(ctx, result, MINUTE, minutes);
+            JSObjectUtil.putDataProperty(ctx, result, SECOND, seconds);
+            JSObjectUtil.putDataProperty(ctx, result, MILLISECOND, milliseconds);
+            JSObjectUtil.putDataProperty(ctx, result, MICROSECOND, microseconds);
+            JSObjectUtil.putDataProperty(ctx, result, NANOSECOND, nanoseconds);
 
             return result;
         }
     }
 
     public static DynamicObject constrainTime(long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, JSRealm realm) {
-
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putDataProperty(realm.getContext(), result, HOUR, TemporalUtil.constrainToRange(hours, 0, 23));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, MINUTE, TemporalUtil.constrainToRange(minutes, 0, 59));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, SECOND, TemporalUtil.constrainToRange(seconds, 0, 59));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, MILLISECOND, TemporalUtil.constrainToRange(milliseconds, 0, 999));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, MICROSECOND, TemporalUtil.constrainToRange(microseconds, 0, 999));
-        JSObjectUtil.putDataProperty(realm.getContext(), result, NANOSECOND, TemporalUtil.constrainToRange(nanoseconds, 0, 999));
+                    long microseconds, long nanoseconds, JSContext ctx) {
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+        JSObjectUtil.putDataProperty(ctx, result, HOUR, TemporalUtil.constrainToRange(hours, 0, 23));
+        JSObjectUtil.putDataProperty(ctx, result, MINUTE, TemporalUtil.constrainToRange(minutes, 0, 59));
+        JSObjectUtil.putDataProperty(ctx, result, SECOND, TemporalUtil.constrainToRange(seconds, 0, 59));
+        JSObjectUtil.putDataProperty(ctx, result, MILLISECOND, TemporalUtil.constrainToRange(milliseconds, 0, 999));
+        JSObjectUtil.putDataProperty(ctx, result, MICROSECOND, TemporalUtil.constrainToRange(microseconds, 0, 999));
+        JSObjectUtil.putDataProperty(ctx, result, NANOSECOND, TemporalUtil.constrainToRange(nanoseconds, 0, 999));
 
         return result;
     }
 
     public static DynamicObject toTemporalTimeRecord(DynamicObject temporalTimeLike,
-                    JSRealm realm) {
+                    JSContext ctx) {
         assert JSRuntime.isObject(temporalTimeLike);
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
         for (String property : TIME_LIKE_PROPERTIES) {
             Object value = JSObject.get(temporalTimeLike, property);
             if (value == null) {
                 throw Errors.createTypeError(String.format("Property %s should not be undefined.", property));
             }
             value = toIntegerOrInfinity(value);
-            JSObjectUtil.putDataProperty(realm.getContext(), result, property, value);
+            JSObjectUtil.putDataProperty(ctx, result, property, value);
         }
         return result;
     }

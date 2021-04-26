@@ -124,7 +124,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                                 duration.getMicroseconds(), duration.getNanoseconds(), isConstructor, callNode);
             }
-            return JSTemporalDuration.toTemporalDuration(item, constructor, getContext().getRealm(), isObject,
+            return JSTemporalDuration.toTemporalDuration(item, constructor, getContext(), isObject,
                             toInt, toString, isConstructor, callNode);
         }
     }
@@ -142,9 +142,9 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, null, getContext().getRealm(), isObject,
+            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, null, getContext(), isObject,
                             toInt, toString, isConstructor, callNode);
-            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, null, getContext().getRealm(), isObject,
+            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, null, getContext(), isObject,
                             toInt, toString, isConstructor, callNode);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
@@ -181,13 +181,13 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                                 getLong(one, MONTHS, 0),
                                 getLong(one, WEEKS, 0),
                                 getLong(one, DAYS, 0),
-                                DAYS, relativeTo, getContext().getRealm());
+                                DAYS, relativeTo, getContext());
                 DynamicObject balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
                                 getLong(two, YEARS, 0),
                                 getLong(two, MONTHS, 0),
                                 getLong(two, WEEKS, 0),
                                 getLong(two, DAYS, 0),
-                                DAYS, relativeTo, getContext().getRealm());
+                                DAYS, relativeTo, getContext());
                 days1 = getLong(balanceResult1, DAYS, 0);
                 days2 = getLong(balanceResult2, DAYS, 0);
             } else {

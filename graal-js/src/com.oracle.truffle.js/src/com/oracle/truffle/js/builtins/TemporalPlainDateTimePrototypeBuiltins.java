@@ -178,7 +178,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalPlainDateTimeObject temporalDT = (JSTemporalPlainDateTimeObject) thisObj;
             DynamicObject duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), getContext().getRealm(), isObject, toString, toInt);
+                            Collections.emptySet(), getContext(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             getLong(duration, YEARS),
                             getLong(duration, MONTHS),
@@ -207,7 +207,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             getLong(duration, MICROSECONDS),
                             getLong(duration, NANOSECONDS),
                             options,
-                            getContext().getRealm());
+                            getContext());
 
             return JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
                             getInt(result, YEAR),
@@ -237,7 +237,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalPlainDateTimeObject temporalDT = (JSTemporalPlainDateTimeObject) thisObj;
             DynamicObject duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), getContext().getRealm(), isObject, toString, toInt);
+                            Collections.emptySet(), getContext(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             getLong(duration, YEARS),
                             getLong(duration, MONTHS),
@@ -266,7 +266,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             -getLong(duration, MICROSECONDS),
                             -getLong(duration, NANOSECONDS),
                             options,
-                            getContext().getRealm());
+                            getContext());
 
             return JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
                             getInt(result, YEAR),

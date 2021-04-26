@@ -119,7 +119,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                                 timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
                                 timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
             }
-            return JSTemporalPlainTime.toTemporalTime(item, constructor, overflow, getContext().getRealm(),
+            return JSTemporalPlainTime.toTemporalTime(item, constructor, overflow, getContext(),
                             isObject, toInt, toString, isConstructor, callNode);
         }
 

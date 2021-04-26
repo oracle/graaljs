@@ -303,8 +303,8 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
             DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar((DynamicObject) item, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "hour", "microsecond", "millisecond", "minute",
                             "month", "monthCode", "nanosecond", "second", "year"}, ctx);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields((DynamicObject) item, fieldNames, new HashSet<>(), ctx.getRealm());
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, ctx.getRealm());
+            DynamicObject fields = TemporalUtil.prepareTemporalFields((DynamicObject) item, fieldNames, new HashSet<>(), ctx);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, ctx);
         } else {
             TemporalUtil.toTemporalOverflow(options);
             String string = JSRuntime.toString(item);
@@ -337,13 +337,13 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
 
     public static DynamicObject addDateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, DynamicObject calendar, long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, DynamicObject options, JSRealm realm) {
-        DynamicObject timeResult = JSTemporalPlainTime.addTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, realm);
-        DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(realm.getContext(), year, month, day, calendar);
-        DynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(years, months, weeks, days + getLong(timeResult, TemporalConstants.DAYS), 0l, 0l, 0l, 0l, 0l, 0l, realm);
+                    long microseconds, long nanoseconds, DynamicObject options, JSContext ctx) {
+        DynamicObject timeResult = JSTemporalPlainTime.addTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, ctx);
+        DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(ctx, year, month, day, calendar);
+        DynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(years, months, weeks, days + getLong(timeResult, TemporalConstants.DAYS), 0l, 0l, 0l, 0l, 0l, 0l, ctx);
 
         DynamicObject addedDate = TemporalUtil.dateAdd(calendar, datePart, dateDuration, options);
-        return JSTemporalPlainDateTime.createTemporalDateTime(realm.getContext(),
+        return JSTemporalPlainDateTime.createTemporalDateTime(ctx,
                         getLong(addedDate, YEAR),
                         getLong(addedDate, MONTH),
                         getLong(addedDate, DAY),
