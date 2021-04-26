@@ -46,6 +46,13 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
+/**
+ * A Record object is an exotic object that encapsulates a Record value.
+ * This class implements this wrapper and thus serves as adapter from a primitive Record value to an object type.
+ *
+ * @see JSRecord
+ * @see Record
+ */
 public final class JSRecordObject extends JSNonProxyObject {
 
     private final Record value;

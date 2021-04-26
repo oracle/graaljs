@@ -60,9 +60,11 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Implementation of Record Exotic Object
+ * Implementation of the Record (exotic) object internal methods and properties.
+ * See <a href="https://tc39.es/proposal-record-tuple/#record-exotic-object">Records & Tuples Proposal: 5.1.1 Record Exotic Objects</a>
  *
- * @see <a href="https://tc39.es/proposal-record-tuple/#record-exotic-object">5.1.1 Record Exotic Objects</a>
+ * @see JSRecordObject
+ * @see Record
  */
 public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -123,6 +125,8 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
 
     /**
      * Records aren't extensible, thus [[IsExtensible]] must always return false.
+     *
+     * https://tc39.es/ecma262/#sec-immutable-prototype-exotic-objects
      *
      * TODO: see Ref below for ideas
      * @see JSModuleNamespace#makeInitialShape(com.oracle.truffle.js.runtime.JSContext)

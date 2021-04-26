@@ -15,6 +15,12 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+/**
+ * Implementation of the Tuple (primitive) type which is an ordered sequence of ECMAScript primitive values.
+ * Since a Tuple value is completely immutable and will not change over time, you will not find a setter-method here.
+ *
+ * @see com.oracle.truffle.js.runtime.builtins.JSTupleObject
+ */
 @ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class Tuple implements TruffleObject {

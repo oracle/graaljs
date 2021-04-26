@@ -49,6 +49,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeMap;
 
+/**
+ * Implementation of the Record (primitive) type which is a mapping from Strings to ECMAScript primitive values.
+ * Since a Record value is completely immutable and will not change over time, you will not find a setter-method here.
+ *
+ * @see com.oracle.truffle.js.runtime.builtins.JSRecordObject
+ */
 @ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class Record implements TruffleObject {

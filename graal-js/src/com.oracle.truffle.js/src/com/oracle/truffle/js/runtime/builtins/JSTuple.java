@@ -19,6 +19,13 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putDataProperty;
 
+/**
+ * Implementation of the Tuple (exotic) object internal methods and properties.
+ * See <a href="https://tc39.es/proposal-record-tuple/#tuple-exotic-object">Records & Tuples Proposal: 5.1.2 Tuple Exotic Objects</a>
+ *
+ * @see JSTupleObject
+ * @see Tuple
+ */
 public final class JSTuple extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final String TYPE_NAME = "tuple";
