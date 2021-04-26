@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,13 +74,18 @@ public final class UserScriptException extends GraalJSException {
     }
 
     @TruffleBoundary
-    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), skipFramesUpTo, true);
+    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit, DynamicObject skipFramesUpTo, boolean customSkip) {
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), true, skipFramesUpTo, customSkip);
+    }
+
+    @TruffleBoundary
+    public static UserScriptException createCapture(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
+        return createCapture(exceptionObject, originatingNode, stackTraceLimit, Undefined.instance, false);
     }
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject, Node originatingNode, int stackTraceLimit) {
-        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), Undefined.instance, false);
+        return fillInStackTrace(new UserScriptException(exceptionObject, originatingNode, stackTraceLimit), false);
     }
 
     @TruffleBoundary

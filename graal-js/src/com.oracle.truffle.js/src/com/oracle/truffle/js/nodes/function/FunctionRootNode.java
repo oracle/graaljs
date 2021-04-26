@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.function;
 import java.util.Map;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -68,6 +69,8 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     private final JSFunctionData functionData;
     private String internalFunctionName;
+
+    private static final ThreadLocal<JSFunctionData> OMIT_FROM_STACK_TRACE = new ThreadLocal<>();
 
     protected FunctionRootNode(AbstractBodyNode body, FrameDescriptor frameDescriptor, JSFunctionData functionData, SourceSection sourceSection, String internalFunctionName) {
         super(functionData.getContext().getLanguage(), sourceSection, frameDescriptor);
@@ -162,6 +165,31 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
     @Override
     public boolean isFunction() {
         return true;
+    }
+
+    @Override
+    protected boolean countsTowardsStackTraceLimit() {
+        // Always called from a TruffleBoundary method when omitting stack trace elements.
+        if (CompilerDirectives.inInterpreter()) {
+            JSFunctionData omitUntil = OMIT_FROM_STACK_TRACE.get();
+            if (omitUntil != null) {
+                if (omitUntil == this.functionData) {
+                    OMIT_FROM_STACK_TRACE.set(null);
+                }
+                return false;
+            }
+        } else {
+            assert OMIT_FROM_STACK_TRACE.get() == null;
+        }
+        if (body instanceof JSBuiltinNode) {
+            return ((JSBuiltinNode) body).countsTowardsStackTraceLimit();
+        } else {
+            return !isInternal();
+        }
+    }
+
+    public static void setOmitFromStackTrace(JSFunctionData until) {
+        OMIT_FROM_STACK_TRACE.set(until);
     }
 
     @Override

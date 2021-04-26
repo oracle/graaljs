@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -182,7 +182,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 DynamicObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
                 String message = null;
                 DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
-                GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, aggregateErrorObject, realm, stackTraceLimit, errorFunction);
+                GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, aggregateErrorObject, realm, stackTraceLimit, errorFunction, false);
                 initErrorObjectNode.execute(aggregateErrorObject, exception, message, errorsArray);
                 return aggregateErrorObject;
             }
