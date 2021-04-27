@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
@@ -188,13 +189,18 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     }
 
     @Specialization
-    protected final int doTuple(@SuppressWarnings("unused") Tuple value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
+    protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
     @Specialization
-    protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
+    protected int doRecord(@SuppressWarnings("unused") Record value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
+    }
+
+    @Specialization
+    protected int doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     @Specialization(guards = "isJSObject(value)")

@@ -492,10 +492,12 @@ public final class JSRuntime {
             return stringToNumber(value.toString());
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
-        } else if (value instanceof Tuple) {
-            throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value");
         } else if (value instanceof BigInt) {
             throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
+        } else if (value instanceof Record) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a Record value");
+        } else if (value instanceof Tuple) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value");
         } else if (value instanceof Number) {
             assert isJavaPrimitive(value) : value.getClass().getName();
             return (Number) value;
@@ -926,10 +928,12 @@ public final class JSRuntime {
             return numberToString((Number) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
-        } else if (value instanceof Tuple) {
-            return value.toString();
         } else if (value instanceof BigInt) {
             return value.toString();
+        } else if (value instanceof Record) {
+            return recordToString((Record) value);
+        } else if (value instanceof Tuple) {
+            return tupleToString((Tuple) value);
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (value instanceof TruffleObject) {
@@ -981,10 +985,12 @@ public final class JSRuntime {
             return JSObject.toDisplayString((DynamicObject) value, depth, allowSideEffects);
         } else if (value instanceof Symbol) {
             return value.toString();
-        } else if (value instanceof Tuple) {
-            return value.toString();
         } else if (value instanceof BigInt) {
             return value.toString() + 'n';
+        } else if (value instanceof Record) {
+            return recordToString((Record) value);
+        } else if (value instanceof Tuple) {
+            return tupleToString((Tuple) value);
         } else if (isNumber(value)) {
             Number number = (Number) value;
             if (JSRuntime.isNegativeZero(number.doubleValue())) {
@@ -1328,6 +1334,21 @@ public final class JSRuntime {
 
     public static String booleanToString(boolean value) {
         return value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME;
+    }
+
+    /**
+     * Record & Tuple Proposal 2.1.1.1 RecordToString
+     */
+    public static String recordToString(@SuppressWarnings("unused") Record value) {
+        return JSRecord.STRING_NAME;
+    }
+
+    /**
+     * Record & Tuple Proposal 2.1.2.1 TupleToString
+     */
+    public static String tupleToString(Tuple value) {
+        // TODO: Return ? Call(%Array.prototype.join%, argument, « »).
+        return value.toString();
     }
 
     public static String toString(DynamicObject value) {

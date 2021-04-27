@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -163,9 +164,13 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
+    protected String doRecord(Record value) {
+        return JSRuntime.recordToString(value);
+    }
+
+    @Specialization
     protected String doTuple(Tuple value) {
-        // TODO: abstract operation "TupleToString" ?
-        return value.toString();
+        return JSRuntime.tupleToString(value);
     }
 
     @Specialization(guards = {"isForeignObject(object)"})

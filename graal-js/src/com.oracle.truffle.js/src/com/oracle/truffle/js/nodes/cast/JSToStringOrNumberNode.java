@@ -47,6 +47,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
@@ -112,11 +113,6 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
-    @Specialization
-    protected String doTuple(Tuple value, @Cached("create()") JSToStringNode toStringNode) {
-        return toStringNode.executeString(value);
-    }
-
     @Specialization(guards = "isUndefined(value)")
     protected double doUndefined(@SuppressWarnings("unused") Object value) {
         return Double.NaN;
@@ -125,5 +121,15 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected static BigInt doBigInt(BigInt value) {
         return value;
+    }
+
+    @Specialization
+    protected String doRecord(Record value, @Cached("create()") JSToStringNode toStringNode) {
+        return toStringNode.executeString(value);
+    }
+
+    @Specialization
+    protected String doTuple(Tuple value, @Cached("create()") JSToStringNode toStringNode) {
+        return toStringNode.executeString(value);
     }
 }

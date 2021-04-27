@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
@@ -151,13 +152,22 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected final Number doTuple(@SuppressWarnings("unused") Tuple value) {
-        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
+    protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
+        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
+    }
+
+    // TODO: Notes:
+    // TODO: Why isn't this class implemented like JSToUInt16Node?
+    // TODO: We could remove the duplicated code by calling JSToNumberNode in a doGeneric Specification.
+    // TODO: See also https://tc39.es/ecma262/#sec-touint32
+    @Specialization
+    protected final Number doRecord(@SuppressWarnings("unused") Record value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
     }
 
     @Specialization
-    protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
-        throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
+    protected final Number doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     @Specialization(guards = "isJSObject(value)")

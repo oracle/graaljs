@@ -77,27 +77,28 @@ assertSame(false, b.age.configurable);
  */
 // TODO: Not sure if [[DefineOwnProperty]] is reachable according to proposal and ecma262 specs
 // TODO: Code below should work according to polyfill, but shouldn't according to specs
-// a = #{ age: 22 };
-// Object.defineProperty(a, "age", { value: 22 });
-// Object.defineProperty(a, "age", { value: 22, writable: false, enumerable: true, configurable: false });
-// assertThrows(function() {
-//     eval(`Object.defineProperty(a, "age", { value: 21 });`); // value must be the same
-// }, TypeError);
-// assertThrows(function() {
-//     eval(`Object.defineProperty(a, "age", { writable: false, enumerable: true, configurable: false });`); // value must be provided
-// }, TypeError);
-// assertThrows(function() {
-//     eval(`Object.defineProperty(a, "age", { value: 22, writable: true });`); // writeable must always be false
-// }, TypeError);
-// assertThrows(function() {
-//     eval(`Object.defineProperty(a, "age", { value: 22, enumerable: false });`); // enumerable must always be true
-// }, TypeError);
-// assertThrows(function() {
-//     eval(`Object.defineProperty(a, "age", { value: 22, configurable: true });`); // configurable must always be false
-// }, TypeError);
-// assertThrows(function() {
-//     eval(`Object.defineProperty(a, Symbol("42"), { value: 22 });`); // Symbols are not allowed
-// }, TypeError);
+a = #{ age: 22 };
+a = Object(a); // TODO: This workaround allows testing [[DefineOwnProperty]]
+Object.defineProperty(a, "age", { value: 22 });
+Object.defineProperty(a, "age", { value: 22, writable: false, enumerable: true, configurable: false });
+assertThrows(function() {
+    eval(`Object.defineProperty(a, "age", { value: 21 });`); // value must be the same
+}, TypeError);
+assertThrows(function() {
+    eval(`Object.defineProperty(a, "age", { writable: false, enumerable: true, configurable: false });`); // value must be provided
+}, TypeError);
+assertThrows(function() {
+    eval(`Object.defineProperty(a, "age", { value: 22, writable: true });`); // writeable must always be false
+}, TypeError);
+assertThrows(function() {
+    eval(`Object.defineProperty(a, "age", { value: 22, enumerable: false });`); // enumerable must always be true
+}, TypeError);
+assertThrows(function() {
+    eval(`Object.defineProperty(a, "age", { value: 22, configurable: true });`); // configurable must always be false
+}, TypeError);
+assertThrows(function() {
+    eval(`Object.defineProperty(a, Symbol("42"), { value: 22 });`); // Symbols are not allowed
+}, TypeError);
 
 /*
  * Test 9:
@@ -107,3 +108,47 @@ a = #{ age: 22 };
 assertSame(false, delete a.age);
 assertSame(true, delete a.unknown);
 assertSame(true, delete a[Symbol("test")]);
+
+/*
+ * Test 10:
+ * Type Conversion
+ */
+a = #{ age: 22 };
+// 3.1.1 ToBoolean
+assertSame(true, !!a); // JSToBigIntNode
+if (a) { // JSToBooleanUnaryNode
+    // ok
+} else {
+    fail("#{ age: 22 } should be true")
+}
+// 3.1.2 ToNumber
+assertThrows(function() {
+    eval("a + 1"); // JSToNumberNode
+}, TypeError);
+assertThrows(function() {
+    eval("Math.abs(a)"); // JSToDoubleNode
+}, TypeError);
+assertThrows(function() {
+    eval("parseInt(\"1\", a)"); // JSToInt32Node
+}, TypeError);
+assertThrows(function() {
+    eval("'ABC'.codePointAt(a)"); // JSToIntegerAsIntNode
+}, TypeError);
+assertThrows(function() {
+    eval("[1].at(a)"); // JSToIntegerAsLongNode
+}, TypeError);
+assertThrows(function() {
+    eval("'ABC'.split('', a);"); // JSToUInt32Node
+}, TypeError);
+// 3.1.3 ToBigInt
+assertThrows(function() {
+    eval("BigInt.asIntN(64, a)");
+}, TypeError);
+// 3.1.4 ToString
+assertSame("[object Record]", a + ""); // JSToStringNode
+assertSame(false, a < #{}); // JSToStringOrNumberNode
+assertSame(true, a <= #{});
+assertSame(true, a >= #{});
+assertSame(false, a > #{});
+// 3.1.5 ToObject
+assertSame("object", typeof Object(a)); // JSToObjectNode

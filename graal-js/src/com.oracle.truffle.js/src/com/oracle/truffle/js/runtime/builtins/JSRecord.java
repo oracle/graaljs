@@ -71,6 +71,7 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
     public static final String TYPE_NAME = "record";
     public static final String CLASS_NAME = "Record";
     public static final String PROTOTYPE_NAME = "Record.prototype";
+    public static final String STRING_NAME = "[object Record]";
 
     public static final JSRecord INSTANCE = new JSRecord();
 

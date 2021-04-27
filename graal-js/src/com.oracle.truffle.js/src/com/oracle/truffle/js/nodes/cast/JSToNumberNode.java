@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
 
@@ -60,6 +61,7 @@ import java.util.Set;
 /**
  * This implements ECMA 9.3 ToNumber.
  *
+ * @see JSToDoubleNode
  */
 public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
@@ -128,6 +130,11 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
+    }
+
+    @Specialization
+    protected final Number doRecord(@SuppressWarnings("unused") Record value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
     }
 
     @Specialization
