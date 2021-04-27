@@ -43,6 +43,8 @@ package com.oracle.truffle.js.nodes.function;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -57,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class DefineMethodNode extends JavaScriptBaseNode {
 
@@ -64,14 +67,14 @@ public class DefineMethodNode extends JavaScriptBaseNode {
     @Child private FunctionCreateNode functionCreateNode;
     @Child private PropertySetNode makeMethodNode;
 
-    protected DefineMethodNode(JSContext context, JSFunctionData functionData) {
+    protected DefineMethodNode(JSContext context, JSFunctionData functionData, FrameSlot blockScopeSlot) {
         this.functionData = functionData;
-        this.functionCreateNode = FunctionCreateNode.create(context, functionData);
+        this.functionCreateNode = FunctionCreateNode.create(context, functionData, blockScopeSlot);
         this.makeMethodNode = PropertySetNode.createSetHidden(JSFunction.HOME_OBJECT_ID, context);
     }
 
-    public static DefineMethodNode create(JSContext context, JSFunctionExpressionNode functionExpressionNode) {
-        return new DefineMethodNode(context, functionExpressionNode.functionData);
+    public static DefineMethodNode create(JSContext context, JSFunctionExpressionNode functionExpressionNode, FrameSlot blockScopeSlot) {
+        return new DefineMethodNode(context, functionExpressionNode.functionData, blockScopeSlot);
     }
 
     public JSFunctionData getFunctionData() {
@@ -86,18 +89,24 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         return closure;
     }
 
+    FrameSlot getBlockScopeSlot() {
+        return functionCreateNode.blockScopeSlot;
+    }
+
     protected abstract static class FunctionCreateNode extends JavaScriptBaseNode {
         private final JSFunctionData functionData;
         @Child private InitFunctionNode initFunctionNode;
+        final FrameSlot blockScopeSlot;
 
-        protected FunctionCreateNode(JSContext context, JSFunctionData functionData) {
+        protected FunctionCreateNode(JSContext context, JSFunctionData functionData, FrameSlot blockScopeSlot) {
             assert context == functionData.getContext();
             this.functionData = functionData;
             this.initFunctionNode = InitFunctionNode.create(functionData);
+            this.blockScopeSlot = blockScopeSlot;
         }
 
-        public static FunctionCreateNode create(JSContext context, JSFunctionData functionData) {
-            return FunctionCreateNodeGen.create(context, functionData);
+        public static FunctionCreateNode create(JSContext context, JSFunctionData functionData, FrameSlot blockScopeSlot) {
+            return FunctionCreateNodeGen.create(context, functionData, blockScopeSlot);
         }
 
         public abstract DynamicObject executeWithPrototype(VirtualFrame frame, Object prototype);
@@ -133,7 +142,17 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         }
 
         protected final DynamicObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, DynamicObject prototype) {
-            MaterializedFrame enclosingFrame = functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME;
+            MaterializedFrame enclosingFrame;
+            if (functionData.needsParentFrame()) {
+                if (blockScopeSlot != null) {
+                    Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                    enclosingFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : frame.materialize();
+                } else {
+                    enclosingFrame = frame.materialize();
+                }
+            } else {
+                enclosingFrame = JSFrameUtil.NULL_MATERIALIZED_FRAME;
+            }
             JSRealm realm = getRealm();
             DynamicObject function = factory.createWithPrototype(functionData, enclosingFrame, JSFunction.CLASS_PROTOTYPE_PLACEHOLDER, realm, prototype);
             initFunctionNode.execute(function);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -406,7 +406,13 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     final Object getScope(Frame frame, boolean nodeEnter,
                     @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node block) throws UnsupportedMessageException {
         if (hasScope(frame)) {
-            return new ScopeVariables(frame, nodeEnter, block);
+            Frame scopeFrame;
+            if (block instanceof BlockScopeNode) {
+                scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) frame);
+            } else {
+                scopeFrame = frame;
+            }
+            return new ScopeVariables(scopeFrame, nodeEnter, block, frame);
         } else {
             throw UnsupportedMessageException.create();
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
+    public static final Object BLOCK_SCOPE_IDENTIFIER = "<blockscope>";
     public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
     public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
 
@@ -64,16 +66,19 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     }
 
     public static ScopeFrameNode create(int frameLevel) {
-        return create(frameLevel, 0, EMPTY_FRAME_SLOT_ARRAY);
+        return create(frameLevel, 0, EMPTY_FRAME_SLOT_ARRAY, null);
     }
 
-    public static ScopeFrameNode create(int frameLevel, int scopeLevel, FrameSlot[] parentSlots) {
+    public static ScopeFrameNode create(int frameLevel, int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
         assert scopeLevel == parentSlots.length;
         if (frameLevel == 0) {
             if (scopeLevel == 0) {
+                if (blockScopeSlot != null) {
+                    return new CurrentBlockScopeFrameNode(blockScopeSlot);
+                }
                 return CurrentFrameNode.instance();
             }
-            return new EnclosingScopeFrameNode(scopeLevel, parentSlots);
+            return new EnclosingScopeFrameNode(scopeLevel, parentSlots, blockScopeSlot);
         } else if (scopeLevel == 0) {
             assert frameLevel > 0;
             return EnclosingFunctionFrameNode.instance(frameLevel);
@@ -130,20 +135,36 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         }
     }
 
+    @NodeInfo(cost = NodeCost.NONE)
+    private static final class CurrentBlockScopeFrameNode extends ScopeFrameNode {
+        private final FrameSlot blockScopeSlot;
+
+        private CurrentBlockScopeFrameNode(FrameSlot blockScopeSlot) {
+            this.blockScopeSlot = blockScopeSlot;
+        }
+
+        @Override
+        public Frame executeFrame(Frame frame) {
+            return JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+        }
+    }
+
     private static final class EnclosingScopeFrameNode extends ScopeFrameNode {
         private final int scopeLevel;
         @CompilationFinal(dimensions = 1) private final FrameSlot[] parentSlots;
+        private final FrameSlot blockScopeSlot;
 
-        EnclosingScopeFrameNode(int scopeLevel, FrameSlot[] parentSlots) {
+        EnclosingScopeFrameNode(int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
             assert scopeLevel >= 1;
             this.scopeLevel = scopeLevel;
             this.parentSlots = parentSlots;
+            this.blockScopeSlot = Objects.requireNonNull(blockScopeSlot);
         }
 
         @Override
         @ExplodeLoop
         public Frame executeFrame(Frame frame) {
-            Frame retFrame = frame;
+            Frame retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
             for (int i = 0; i < scopeLevel; i++) {
                 retFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(retFrame, parentSlots[i]));
             }

@@ -99,10 +99,10 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
             JavaScriptNode getterNode = null;
             JavaScriptNode setterNode = null;
             if (pair.getFirst() != null) {
-                getterNode = ObjectLiteralNode.MakeMethodNode.createWithKey(context, JSFunctionExpressionNode.create(pair.getFirst(), null), GraalJSAccess.HOLDER_KEY);
+                getterNode = ObjectLiteralNode.MakeMethodNode.createWithKey(context, JSFunctionExpressionNode.create(pair.getFirst()), GraalJSAccess.HOLDER_KEY);
             }
             if (pair.getSecond() != null) {
-                setterNode = ObjectLiteralNode.MakeMethodNode.createWithKey(context, JSFunctionExpressionNode.create(pair.getSecond(), null), GraalJSAccess.HOLDER_KEY);
+                setterNode = ObjectLiteralNode.MakeMethodNode.createWithKey(context, JSFunctionExpressionNode.create(pair.getSecond()), GraalJSAccess.HOLDER_KEY);
             }
             members.add(ObjectLiteralNode.newAccessorMember(accessor.getName(), false, accessor.getAttributes(), getterNode, setterNode));
         }

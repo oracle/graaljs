@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,11 +92,13 @@ public final class ScopeVariables implements TruffleObject {
     final Frame frame;
     final boolean nodeEnter;
     final Node blockOrRoot; // FrameBlockScopeNode or RootNode
+    final Frame functionFrame;
 
-    public ScopeVariables(Frame frame, boolean nodeEnter, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot) {
+    public ScopeVariables(Frame frame, boolean nodeEnter, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot, Frame functionFrame) {
         this.frame = frame;
         this.nodeEnter = nodeEnter;
         this.blockOrRoot = blockOrRoot;
+        this.functionFrame = functionFrame;
     }
 
     /**
@@ -134,13 +136,14 @@ public final class ScopeVariables implements TruffleObject {
                 return false;
             }
             if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                return true;
+                return getParentFrame() != null;
             }
             Frame parentFrame = JSFrameUtil.getParentFrame(frame);
             return parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
+        } else {
+            Node parentNode = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
+            return parentNode != null && (frame == null || getParentFrame() != null);
         }
-        Node parentNode = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
-        return parentNode != null && (frame == null || getParentFrame() != null);
     }
 
     @ExportMessage
@@ -150,12 +153,15 @@ public final class ScopeVariables implements TruffleObject {
             if (frame != null) {
                 // For closures, we don't have any outer block nodes, only the RootNode.
                 if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                    return new ScopeVariables(ScopeFrameNode.getBlockScopeParentFrame(frame), true, blockOrRoot);
+                    Frame parentBlockScope = getParentFrame();
+                    if (parentBlockScope != null) {
+                        return new ScopeVariables(parentBlockScope, true, blockOrRoot, null);
+                    }
                 }
                 Frame parentFrame = JSFrameUtil.getParentFrame(frame);
                 if (parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
                     RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(JSFrameUtil.getFunctionObject(parentFrame))).getRootNode();
-                    return new ScopeVariables(parentFrame, true, rootNode);
+                    return new ScopeVariables(parentFrame, true, rootNode, null);
                 }
             }
         } else {
@@ -170,7 +176,7 @@ public final class ScopeVariables implements TruffleObject {
                 } else {
                     enclosingFrame = null;
                 }
-                return new ScopeVariables(enclosingFrame, true, parentBlock);
+                return new ScopeVariables(enclosingFrame, true, parentBlock, functionFrame);
             }
         }
         throw UnsupportedMessageException.create();
@@ -180,7 +186,12 @@ public final class ScopeVariables implements TruffleObject {
     private Frame getParentFrame() {
         FrameSlot parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
         if (parentSlot != null) {
-            return (Frame) FrameUtil.getObjectSafe(frame, parentSlot);
+            Object parent = FrameUtil.getObjectSafe(frame, parentSlot);
+            if (parent instanceof Frame) {
+                return (Frame) parent;
+            } else {
+                return functionFrame;
+            }
         } else {
             return null;
         }
@@ -195,7 +206,7 @@ public final class ScopeVariables implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new ScopeMembers(frame, blockOrRoot);
+        return new ScopeMembers(frame, blockOrRoot, functionFrame);
     }
 
     @ExportMessage
@@ -218,7 +229,7 @@ public final class ScopeVariables implements TruffleObject {
         @Specialization(guards = {"!RECEIVER_MEMBER.equals(member)"}, replaces = "doCached")
         @TruffleBoundary
         static boolean doGeneric(ScopeVariables receiver, String member) {
-            return hasSlot(member, receiver.frame, receiver.blockOrRoot);
+            return hasSlot(member, receiver);
         }
     }
 
@@ -242,7 +253,7 @@ public final class ScopeVariables implements TruffleObject {
         @Specialization(guards = {"!RECEIVER_MEMBER.equals(member)"}, replaces = "doCached")
         @TruffleBoundary
         static boolean doGeneric(ScopeVariables receiver, String member) {
-            ResolvedSlot slot = findSlot(member, receiver.frame, receiver.blockOrRoot);
+            ResolvedSlot slot = findSlot(member, receiver);
             return slot != null && slot.isModifiable();
         }
     }
@@ -264,14 +275,14 @@ public final class ScopeVariables implements TruffleObject {
         static Object doCached(ScopeVariables receiver, @SuppressWarnings("unused") String member,
                         @Cached("member") String cachedMember,
                         // We cache the member's read node for fast-path access
-                        @Cached(value = "findReadNode(member, receiver.frame, receiver.blockOrRoot)") JavaScriptNode readNode) throws UnknownIdentifierException {
+                        @Cached(value = "findReadNode(member, receiver)") JavaScriptNode readNode) throws UnknownIdentifierException {
             return doRead(receiver, cachedMember, readNode);
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static Object doGeneric(ScopeVariables receiver, String member) throws UnknownIdentifierException {
-            JavaScriptNode readNode = findReadNode(member, receiver.frame, receiver.blockOrRoot);
+            JavaScriptNode readNode = findReadNode(member, receiver);
             return doRead(receiver, member, readNode);
         }
 
@@ -294,14 +305,14 @@ public final class ScopeVariables implements TruffleObject {
         static void doCached(ScopeVariables receiver, @SuppressWarnings("unused") String member, Object value,
                         @Cached("member") String cachedMember,
                         // We cache the member's write node for fast-path access
-                        @Cached(value = "findWriteNode(member, receiver.frame, receiver.blockOrRoot)") WriteNode writeNode) throws UnknownIdentifierException {
+                        @Cached(value = "findWriteNode(member, receiver)") WriteNode writeNode) throws UnknownIdentifierException {
             doWrite(receiver, cachedMember, value, writeNode);
         }
 
         @Specialization(replaces = "doCached")
         @TruffleBoundary
         static void doGeneric(ScopeVariables receiver, String member, Object value) throws UnknownIdentifierException {
-            WriteNode writeNode = findWriteNode(member, receiver.frame, receiver.blockOrRoot);
+            WriteNode writeNode = findWriteNode(member, receiver);
             doWrite(receiver, member, value, writeNode);
         }
 
@@ -369,14 +380,14 @@ public final class ScopeVariables implements TruffleObject {
             if (slot == null) {
                 return JSConstantNode.createUndefined();
             }
-            return JSReadFrameSlotNode.create(slot, frameLevel, scopeLevel, parentSlots, JSFrameUtil.hasTemporalDeadZone(slot));
+            return JSReadFrameSlotNode.create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, null), JSFrameUtil.hasTemporalDeadZone(slot));
         }
 
         WriteNode createWriteNode() {
             if (slot == null) {
                 return null;
             }
-            return JSWriteFrameSlotNode.create(slot, frameLevel, scopeLevel, descriptor, parentSlots, null, JSFrameUtil.hasTemporalDeadZone(slot));
+            return JSWriteFrameSlotNode.create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, null), null, descriptor, JSFrameUtil.hasTemporalDeadZone(slot));
         }
 
         public boolean isModifiable() {
@@ -457,14 +468,16 @@ public final class ScopeVariables implements TruffleObject {
         }
     }
 
-    static ResolvedSlot findSlot(String member, Frame frame, Node blockOrRootNode) {
+    static ResolvedSlot findSlot(String member, ScopeVariables receiver) {
         CompilerAsserts.neverPartOfCompilation();
-        if (frame == null) {
-            return findSlotWithoutFrame(member, blockOrRootNode);
+        if (receiver.frame == null) {
+            return findSlotWithoutFrame(member, receiver.blockOrRoot);
         }
-        Frame outerFrame = frame;
+
+        Frame outerFrame = receiver.frame;
         for (int frameLevel = 0;; frameLevel++) {
             Frame outerScope = outerFrame;
+
             List<FrameSlot> parentSlotList = new ArrayList<>();
             for (int scopeLevel = 0;; scopeLevel++) {
                 FrameDescriptor frameDescriptor = outerScope.getFrameDescriptor();
@@ -522,12 +535,12 @@ public final class ScopeVariables implements TruffleObject {
         return null;
     }
 
-    static boolean hasSlot(String member, Frame frame, Node blockOrRoot) {
-        return findSlot(member, frame, blockOrRoot) != null;
+    static boolean hasSlot(String member, ScopeVariables receiver) {
+        return findSlot(member, receiver) != null;
     }
 
-    static JavaScriptNode findReadNode(String member, Frame frame, Node blockOrRoot) {
-        ResolvedSlot slot = findSlot(member, frame, blockOrRoot);
+    static JavaScriptNode findReadNode(String member, ScopeVariables receiver) {
+        ResolvedSlot slot = findSlot(member, receiver);
         if (slot != null) {
             return slot.createReadNode();
         } else {
@@ -535,11 +548,11 @@ public final class ScopeVariables implements TruffleObject {
         }
     }
 
-    static WriteNode findWriteNode(String member, Frame frame, Node blockOrRoot) {
+    static WriteNode findWriteNode(String member, ScopeVariables receiver) {
         if (RECEIVER_MEMBER.equals(member)) {
             return null;
         }
-        ResolvedSlot slot = findSlot(member, frame, blockOrRoot);
+        ResolvedSlot slot = findSlot(member, receiver);
         if (slot != null && slot.isModifiable()) {
             return slot.createWriteNode();
         } else {

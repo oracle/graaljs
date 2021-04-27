@@ -43,6 +43,9 @@ package com.oracle.truffle.js.nodes.function;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
@@ -57,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class JSFunctionExpressionNode extends JavaScriptNode implements FunctionNameHolder {
 
@@ -68,16 +72,25 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         this.functionNode = functionNode;
     }
 
-    public static JSFunctionExpressionNode create(JSFunctionData function, FunctionRootNode functionNode) {
+    public static JSFunctionExpressionNode create(JSFunctionData function) {
+        assert !function.needsParentFrame();
+        return new AutonomousFunctionExpressionNode(function, null);
+    }
+
+    public static JSFunctionExpressionNode create(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot) {
         if (function.needsParentFrame()) {
-            return new DefaultFunctionExpressionNode(function, functionNode);
+            return new ClosureFunctionExpressionNode(function, functionNode, blockScopeSlot);
         } else {
             return new AutonomousFunctionExpressionNode(function, functionNode);
         }
     }
 
-    public static JSFunctionExpressionNode createLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JavaScriptNode thisNode) {
-        return new LexicalThisFunctionExpressionNode(function, functionNode, thisNode);
+    public static JSFunctionExpressionNode createLexicalThis(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+        if (function.needsParentFrame()) {
+            return new LexicalThisClosureFunctionExpressionNode(function, functionNode, blockScopeSlot, thisNode);
+        } else {
+            return new LexicalThisAutonomousFunctionExpressionNode(function, functionNode, thisNode);
+        }
     }
 
     public static JSFunctionExpressionNode createEmpty(JSContext context, int length, String sourceName) {
@@ -139,19 +152,29 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         functionData.setName(name);
     }
 
-    private static final class DefaultFunctionExpressionNode extends JSFunctionExpressionNode {
-        protected DefaultFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode) {
+    private static final class ClosureFunctionExpressionNode extends JSFunctionExpressionNode {
+        private final FrameSlot blockScopeSlot;
+
+        protected ClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, FrameSlot blockScopeSlot) {
             super(functionData, functionNode);
+            this.blockScopeSlot = blockScopeSlot;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return JSFunction.create(getRealm(), functionData, frame.materialize());
+            MaterializedFrame closureFrame;
+            if (blockScopeSlot != null) {
+                Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                closureFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : frame.materialize();
+            } else {
+                closureFrame = frame.materialize();
+            }
+            return JSFunction.create(getRealm(), functionData, closureFrame);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new DefaultFunctionExpressionNode(functionData, functionNode);
+            return new ClosureFunctionExpressionNode(functionData, functionNode, blockScopeSlot);
         }
     }
 
@@ -174,23 +197,50 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
     }
 
-    private static final class LexicalThisFunctionExpressionNode extends JSFunctionExpressionNode {
+    private static final class LexicalThisClosureFunctionExpressionNode extends JSFunctionExpressionNode {
+        @Child private JavaScriptNode thisNode;
+        private final FrameSlot blockScopeSlot;
+
+        protected LexicalThisClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, FrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+            super(functionData, functionNode);
+            this.blockScopeSlot = blockScopeSlot;
+            this.thisNode = thisNode;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            MaterializedFrame closureFrame;
+            if (blockScopeSlot != null) {
+                Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                closureFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : frame.materialize();
+            } else {
+                closureFrame = frame.materialize();
+            }
+            return JSFunction.createLexicalThis(getRealm(), functionData, closureFrame, thisNode.execute(frame));
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new LexicalThisClosureFunctionExpressionNode(functionData, functionNode, blockScopeSlot, cloneUninitialized(thisNode, materializedTags));
+        }
+    }
+
+    private static final class LexicalThisAutonomousFunctionExpressionNode extends JSFunctionExpressionNode {
         @Child private JavaScriptNode thisNode;
 
-        protected LexicalThisFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, JavaScriptNode thisNode) {
+        protected LexicalThisAutonomousFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, JavaScriptNode thisNode) {
             super(functionData, functionNode);
             this.thisNode = thisNode;
         }
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return JSFunction.createLexicalThis(getRealm(), functionData, functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME,
-                            thisNode.execute(frame));
+            return JSFunction.createLexicalThis(getRealm(), functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, thisNode.execute(frame));
         }
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new LexicalThisFunctionExpressionNode(functionData, functionNode, cloneUninitialized(thisNode, materializedTags));
+            return new LexicalThisAutonomousFunctionExpressionNode(functionData, functionNode, cloneUninitialized(thisNode, materializedTags));
         }
     }
 }

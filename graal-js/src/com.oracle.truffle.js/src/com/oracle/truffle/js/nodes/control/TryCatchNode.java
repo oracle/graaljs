@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.UserScriptException;
@@ -186,35 +185,37 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
     }
 
     private Object executeCatch(VirtualFrame frame, Throwable ex) {
-        VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
+        if (blockScope != null) {
+            blockScope.appendScopeFrame(frame);
+        }
         try {
-            return executeCatchInner(catchFrame, ex);
+            if (prepareCatch(frame, ex)) {
+                return catchBlock.execute(frame);
+            } else {
+                throw JSRuntime.rethrow(ex);
+            }
         } finally {
             if (blockScope != null) {
-                blockScope.exitScope(catchFrame);
+                blockScope.exitScope(frame);
             }
         }
     }
 
-    private Object executeCatchInner(VirtualFrame catchFrame, Throwable ex) {
+    private boolean prepareCatch(VirtualFrame frame, Throwable ex) {
         if (writeErrorVar != null) {
             if (getErrorObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getErrorObjectNode = insert(GetErrorObjectNode.create(context));
             }
             Object exceptionObject = getErrorObjectNode.execute(ex);
-            writeErrorVar.executeWrite(catchFrame, exceptionObject);
+            writeErrorVar.executeWrite(frame, exceptionObject);
 
             if (destructuring != null) {
-                destructuring.execute(catchFrame);
+                destructuring.execute(frame);
             }
         }
 
-        if (conditionExpression == null || executeConditionAsBoolean(catchFrame, conditionExpression)) {
-            return catchBlock.execute(catchFrame);
-        } else {
-            throw JSRuntime.rethrow(ex);
-        }
+        return conditionExpression == null || executeConditionAsBoolean(frame, conditionExpression);
     }
 
     @Override
@@ -227,28 +228,28 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
                 throw cfe;
             } catch (Throwable ex) {
                 if (shouldCatch(ex, exceptions())) {
-                    VirtualFrame catchFrame = blockScope == null ? frame : blockScope.appendScopeFrame(frame);
-                    try {
-                        return executeCatchInner(catchFrame, ex);
-                    } catch (YieldException e) {
-                        setState(frame, catchFrame.materialize());
-                        throw e;
-                    } finally {
-                        if (blockScope != null) {
-                            blockScope.exitScope(catchFrame);
-                        }
+                    if (blockScope != null) {
+                        blockScope.appendScopeFrame(frame);
                     }
+                    if (!prepareCatch(frame, ex)) {
+                        throw JSRuntime.rethrow(ex);
+                    }
+                    // fall through to execute catch block
                 } else {
                     throw ex;
                 }
             }
-        } else {
-            VirtualFrame catchFrame = JSFrameUtil.castMaterializedFrame(state);
-            try {
-                return catchBlock.execute(catchFrame);
-            } catch (YieldException e) {
-                setState(frame, catchFrame);
-                throw e;
+        }
+        boolean yielded = false;
+        try {
+            return catchBlock.execute(frame);
+        } catch (YieldException e) {
+            yielded = true;
+            setState(frame, 1);
+            throw e;
+        } finally {
+            if (blockScope != null && !yielded) {
+                blockScope.exitScope(frame);
             }
         }
     }

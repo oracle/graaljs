@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,11 +77,13 @@ final class ScopeMembers implements TruffleObject {
     private final Frame frame;
     /** FrameBlockScopeNode or RootNode. */
     private final Node blockOrRoot;
+    private final Frame functionFrame;
     private Object[] members;
 
-    ScopeMembers(Frame frame, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot) {
+    ScopeMembers(Frame frame, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot, Frame functionFrame) {
         this.frame = frame;
         this.blockOrRoot = blockOrRoot;
+        this.functionFrame = functionFrame;
     }
 
     @SuppressWarnings("static-method")
@@ -168,8 +170,15 @@ final class ScopeMembers implements TruffleObject {
                         }
                         break;
                     }
-                    outerScope = (Frame) FrameUtil.getObjectSafe(outerScope, parentSlot);
 
+                    Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
+                    if (parent instanceof Frame) {
+                        outerScope = (Frame) parent;
+                    } else if (functionFrame != null) {
+                        outerScope = functionFrame;
+                    } else {
+                        break;
+                    }
                     if (descNode != null) {
                         descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
                     }

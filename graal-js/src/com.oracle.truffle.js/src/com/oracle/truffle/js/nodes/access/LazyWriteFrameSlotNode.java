@@ -96,6 +96,32 @@ public abstract class LazyWriteFrameSlotNode extends JavaScriptNode implements W
 
             Frame outerFrame = frame;
             for (int frameLevel = 0;; frameLevel++) {
+                FrameSlot blockScopeSlot = outerFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
+                if (blockScopeSlot != null) {
+                    Object blockScopeMaybe = FrameUtil.getObjectSafe(outerFrame, blockScopeSlot);
+                    if (blockScopeMaybe instanceof Frame) {
+                        Frame outerScope = (Frame) blockScopeMaybe;
+                        List<FrameSlot> parentSlotList = new ArrayList<>();
+                        for (int scopeLevel = 0;; scopeLevel++) {
+                            FrameDescriptor outerFrameDescriptor = outerScope.getFrameDescriptor();
+                            FrameSlot slot = outerFrameDescriptor.findFrameSlot(identifier);
+                            if (slot != null) {
+                                FrameSlot[] parentSlots = parentSlotList.toArray(ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY);
+                                ScopeFrameNode scopeFrameNode = ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, blockScopeSlot);
+                                JSWriteFrameSlotNode resolved = JSWriteFrameSlotNode.create(slot, scopeFrameNode, rhs, outerFrameDescriptor, JSFrameUtil.hasTemporalDeadZone(slot));
+                                return this.replace(resolved).executeWrite(frame, value);
+                            }
+
+                            FrameSlot parentSlot = outerFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
+                            if (parentSlot == null) {
+                                break;
+                            }
+                            outerScope = (Frame) FrameUtil.getObjectSafe(outerScope, parentSlot);
+                            parentSlotList.add(parentSlot);
+                        }
+                    }
+                }
+
                 Frame outerScope = outerFrame;
                 List<FrameSlot> parentSlotList = new ArrayList<>();
                 for (int scopeLevel = 0;; scopeLevel++) {
@@ -103,7 +129,7 @@ public abstract class LazyWriteFrameSlotNode extends JavaScriptNode implements W
                     FrameSlot slot = outerFrameDescriptor.findFrameSlot(identifier);
                     if (slot != null) {
                         FrameSlot[] parentSlots = parentSlotList.toArray(ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY);
-                        ScopeFrameNode scopeFrameNode = ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots);
+                        ScopeFrameNode scopeFrameNode = ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, null);
                         JSWriteFrameSlotNode resolved = JSWriteFrameSlotNode.create(slot, scopeFrameNode, rhs, outerFrameDescriptor, JSFrameUtil.hasTemporalDeadZone(slot));
                         return this.replace(resolved).executeWrite(frame, value);
                     }

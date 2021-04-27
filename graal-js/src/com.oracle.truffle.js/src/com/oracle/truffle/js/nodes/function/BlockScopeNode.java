@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -68,8 +69,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         this.block = block;
     }
 
-    public static BlockScopeNode create(FrameDescriptor frameDescriptor, FrameSlot parentSlot, JavaScriptNode block) {
-        return new FrameBlockScopeNode(block, frameDescriptor, parentSlot);
+    public static BlockScopeNode create(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot) {
+        return new FrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot);
     }
 
     @Override
@@ -94,6 +95,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
     public abstract void exitScope(VirtualFrame frame);
 
+    public abstract Object getBlockScope(VirtualFrame frame);
+
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
         try {
@@ -113,11 +116,13 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
     }
 
     public static class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
+        protected final FrameSlot blockScopeSlot;
         protected final FrameDescriptor frameDescriptor;
         protected final FrameSlot parentSlot;
 
-        protected FrameBlockScopeNode(JavaScriptNode block, FrameDescriptor frameDescriptor, FrameSlot parentSlot) {
+        protected FrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot) {
             super(block);
+            this.blockScopeSlot = blockScopeSlot;
             this.frameDescriptor = frameDescriptor;
             this.parentSlot = parentSlot;
         }
@@ -125,7 +130,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         @Override
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
-                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags), frameDescriptor, parentSlot, getSourceSection());
+                JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags),
+                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection());
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -135,24 +141,22 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public VirtualFrame appendScopeFrame(VirtualFrame frame) {
-            VirtualFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor);
-            scopeFrame.setObject(parentSlot, frame.materialize());
-            return scopeFrame;
+            Object parentScopeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+            if (parentScopeFrame == Undefined.instance) {
+                parentScopeFrame = frame.materialize();
+            }
+            MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
+            scopeFrame.setObject(parentSlot, parentScopeFrame);
+            frame.setObject(blockScopeSlot, scopeFrame);
+            return frame;
         }
 
         @Override
         public void exitScope(VirtualFrame frame) {
-            assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(frame);
-        }
-
-        @Override
-        public Object execute(VirtualFrame frame) {
-            return block.execute(appendScopeFrame(frame));
-        }
-
-        @Override
-        public void executeVoid(VirtualFrame frame) {
-            block.executeVoid(appendScopeFrame(frame));
+            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            Object parentScopeFrame = FrameUtil.getObjectSafe(blockScopeFrame, parentSlot);
+            frame.setObject(blockScopeSlot, parentScopeFrame);
+            assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame);
         }
 
         @Override
@@ -162,20 +166,41 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public Object resume(VirtualFrame frame) {
-            Object savedScopeFrame = getStateAndReset(frame);
-            // Always materialize the frame here to avoid having to duplicate the block code.
-            MaterializedFrame scopeFrame = savedScopeFrame == Undefined.instance ? appendScopeFrame(frame).materialize() : JSFrameUtil.castMaterializedFrame(savedScopeFrame);
+            // Q: Why do we exit the scope when we yield even though we resume back into it anyway?
+            // A: This is in order to allow (side-effect-free) uses of outer block frame slots
+            // during resumption before we reach this block scope again.
+            // A simple example would be an assignment that checks the frame slot type before it
+            // executes/resumes the right hand side, e.g.:
+            // `let C = <scope> class C { [await](){} } </scope>;`
+            Object state = getStateAndReset(frame);
+            if (state == Undefined.instance) {
+                appendScopeFrame(frame);
+            } else {
+                setBlockScope(frame, state);
+            }
             try {
-                return block.execute(scopeFrame);
+                return block.execute(frame);
             } catch (YieldException e) {
-                setState(frame, scopeFrame);
+                setState(frame, getBlockScope(frame));
                 throw e;
+            } finally {
+                exitScope(frame);
             }
         }
 
         @Override
+        public Object getBlockScope(VirtualFrame frame) {
+            return FrameUtil.getObjectSafe(frame, blockScopeSlot);
+        }
+
+        public void setBlockScope(VirtualFrame frame, Object state) {
+            assert state instanceof MaterializedFrame;
+            frame.setObject(blockScopeSlot, state);
+        }
+
+        @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), frameDescriptor, parentSlot);
+            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot);
         }
     }
 }

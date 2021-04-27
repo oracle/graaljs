@@ -129,18 +129,34 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
     @Override
     public void executeVoid(VirtualFrame frame) {
-        loop.execute(copy.execute(frame));
+        VirtualFrame prevFrame = copy.execute(frame);
+        try {
+            loop.execute(frame);
+        } finally {
+            copy.exitScope(frame, prevFrame);
+        }
     }
 
     @Override
     public Object resume(VirtualFrame frame) {
         Object state = getStateAndReset(frame);
-        MaterializedFrame loopFrame = state == Undefined.instance ? copy.execute(frame).materialize() : JSFrameUtil.castMaterializedFrame(state);
+        VirtualFrame prevFrame;
+        if (state == Undefined.instance) {
+            prevFrame = copy.execute(frame);
+        } else {
+            prevFrame = JSFrameUtil.castMaterializedFrame(state);
+        }
+        boolean yielded = false;
         try {
-            loop.execute(loopFrame);
+            loop.execute(frame);
         } catch (YieldException e) {
-            setState(frame, loopFrame);
+            yielded = true;
+            setState(frame, prevFrame);
             throw e;
+        } finally {
+            if (!yielded) {
+                copy.exitScope(frame, prevFrame);
+            }
         }
         return EMPTY;
     }
@@ -207,13 +223,13 @@ public final class ForNode extends StatementNode implements ResumableNode {
 
         @Override
         public boolean executeRepeating(VirtualFrame frame) {
-            VirtualFrame iterationFrame = copy.execute(frame);
+            VirtualFrame prevFrame = copy.execute(frame);
             if (notFirstIteration(frame)) {
-                modify.executeVoid(iterationFrame);
+                modify.executeVoid(frame);
             }
-            if (executeCondition(iterationFrame)) {
-                executeBody(iterationFrame);
-                copy.executeCopy(frame, iterationFrame);
+            if (executeCondition(frame)) {
+                executeBody(frame);
+                copy.executeCopy(frame, prevFrame);
                 return true;
             }
             return false;
@@ -230,42 +246,42 @@ public final class ForNode extends StatementNode implements ResumableNode {
         @Override
         public Object resume(VirtualFrame frame) {
             Object state = getStateAndReset(frame);
-            MaterializedFrame iterationFrame;
+            MaterializedFrame prevFrame;
             int index; // resume into: 0:modify, 1:condition, 2:body
             if (state == Undefined.instance) {
-                iterationFrame = copy.execute(frame).materialize();
+                prevFrame = copy.execute(frame).materialize();
                 index = 0;
             } else {
                 @SuppressWarnings("unchecked")
                 Pair<VirtualFrame, Integer> statePair = (Pair<VirtualFrame, Integer>) state;
-                iterationFrame = JSFrameUtil.castMaterializedFrame(statePair.getFirst());
+                prevFrame = JSFrameUtil.castMaterializedFrame(statePair.getFirst());
                 index = statePair.getSecond();
             }
             if (index <= 0 && notFirstIteration(frame)) {
                 try {
-                    modify.executeVoid(iterationFrame);
+                    modify.executeVoid(frame);
                 } catch (YieldException e) {
-                    setState(frame, new Pair<>(iterationFrame, 0));
+                    setState(frame, new Pair<>(prevFrame, 0));
                     throw e;
                 }
             }
             boolean condition = true;
             if (index <= 1) {
                 try {
-                    condition = executeCondition(iterationFrame);
+                    condition = executeCondition(frame);
                 } catch (YieldException e) {
-                    setState(frame, new Pair<>(iterationFrame, 1));
+                    setState(frame, new Pair<>(prevFrame, 1));
                     throw e;
                 }
             }
             if (condition) {
                 try {
-                    executeBody(iterationFrame);
+                    executeBody(frame);
                 } catch (YieldException e) {
-                    setState(frame, new Pair<>(iterationFrame, 2));
+                    setState(frame, new Pair<>(prevFrame, 2));
                     throw e;
                 }
-                copy.executeCopy(frame, iterationFrame);
+                copy.executeCopy(frame, prevFrame);
                 return true;
             }
             return false;

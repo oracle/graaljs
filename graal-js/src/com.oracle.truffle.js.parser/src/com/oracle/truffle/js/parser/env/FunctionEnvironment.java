@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,6 +78,7 @@ public class FunctionEnvironment extends Environment {
     private FrameSlot superSlot;
     private FrameSlot newTargetSlot;
     private FrameSlot dynamicScopeSlot;
+    private FrameSlot blockScopeSlot;
 
     private String functionName = "";
     private String internalFunctionName = "";
@@ -196,6 +197,17 @@ public class FunctionEnvironment extends Environment {
             dynamicScopeSlot = declareLocalVar(DYNAMIC_SCOPE_IDENTIFIER);
         }
         return dynamicScopeSlot;
+    }
+
+    public FrameSlot getBlockScopeSlot() {
+        if (blockScopeSlot == null) {
+            blockScopeSlot = declareLocalVar(ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
+        }
+        return blockScopeSlot;
+    }
+
+    public FrameSlot getBlockScopeSlotOpt() {
+        return blockScopeSlot;
     }
 
     public boolean isEval() {
