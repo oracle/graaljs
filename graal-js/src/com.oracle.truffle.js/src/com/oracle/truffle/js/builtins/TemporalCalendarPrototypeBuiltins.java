@@ -48,14 +48,11 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import com.oracle.truffle.api.dsl.Cached;
@@ -100,6 +97,8 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -209,10 +208,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
-            DynamicObject result = JSTemporalCalendar.isoDateFromFields(fields, options, getContext(),
+            JSTemporalPlainDateTimeRecord result = JSTemporalCalendar.isoDateFromFields(fields, options, getContext(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
 
-            return JSTemporalPlainDate.createTemporalDate(getContext(), getLong(result, YEAR), getLong(result, MONTH), getLong(result, DAY), calendar);
+            return JSTemporalPlainDate.createTemporalDate(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
     }
 
@@ -297,11 +296,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             durationObj, null, getContext(), isObject, toInt, toString, isConstructor, callNode);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
-            DynamicObject result = JSTemporalPlainDate.addISODate(date.getYear(), date.getMonth(), date.getDay(),
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow,
-                            getContext());
+            JSTemporalPlainDateTimeRecord result = JSTemporalPlainDate.addISODate(date.getYear(), date.getMonth(), date.getDay(),
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
 
-            return JSTemporalPlainDate.createTemporalDate(getContext(), getLong(result, YEAR, 0L), getLong(result, MONTH, 0L), getLong(result, DAY, 0L), calendar);
+            return JSTemporalPlainDate.createTemporalDate(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
     }
 
@@ -329,16 +327,11 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                             MILLISECONDS, MICROSECONDS,
                                             NANOSECONDS),
                             DAYS, isObject, toBoolean, toString);
-            DynamicObject result = JSTemporalPlainDate.differenceISODate(
+            JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
-                            largestUnit, getContext());
+                            largestUnit);
             return JSTemporalDuration.createTemporalDuration(
-                            getLong(result, YEARS),
-                            getLong(result, MONTHS),
-                            getLong(result, WEEKS),
-                            getLong(result, DAYS),
-                            0, 0, 0, 0, 0, 0,
-                            getContext());
+                            result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0, getContext());
         }
     }
 

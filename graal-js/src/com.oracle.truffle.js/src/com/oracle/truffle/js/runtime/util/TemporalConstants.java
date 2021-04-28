@@ -85,6 +85,10 @@ public final class TemporalConstants {
     public static final String REFERENCE_ISO_DAY = "referenceIsoDay";
     public static final String REFERENCE_ISO_YEAR = "referenceIsoYear";
 
+    public static final String ISO_YEAR = "ISOYear";
+    public static final String ISO_MONTH = "ISOMonth";
+    public static final String ISO_DAY = "ISODay";
+
     public static final String CONSTRAIN = "constrain";
     public static final String REJECT = "reject";
     public static final String OVERFLOW = "overflow";
@@ -96,5 +100,9 @@ public final class TemporalConstants {
 
     public static final String DATE_UNTIL = "dateUntil";
     public static final String DATE_ADD = "dateAdd";
+
+    public static final String PRECISION = "Precision";
+    public static final String INCREMENT = "Increment";
+    public static final String UNIT = "Unit";
 
 }

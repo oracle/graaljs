@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -446,7 +447,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
     }
 
     // 12.1.39
-    public static DynamicObject isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
+    public static JSTemporalPlainDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
                     JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber,
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
@@ -458,7 +459,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         }
         Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
         Object day = JSObject.get(preparedFields, DAY);
-        return JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow, ctx);
+        return JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
     }
 
     // 12.1.40
@@ -500,15 +501,15 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
             throw Errors.createTypeError("Day not present.");
         }
         long referenceISOYear = 1972;
-        DynamicObject result = null;
+        JSTemporalPlainDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
-            result = JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow, ctx);
+            result = JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
         } else {
-            result = JSTemporalPlainDate.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow, ctx);
+            result = JSTemporalPlainDate.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow);
         }
         DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-        JSObjectUtil.putDataProperty(ctx, record, MONTH, JSObject.get(result, MONTH));
-        JSObjectUtil.putDataProperty(ctx, record, DAY, JSObject.get(result, DAY));
+        JSObjectUtil.putDataProperty(ctx, record, MONTH, result.getMonth());
+        JSObjectUtil.putDataProperty(ctx, record, DAY, result.getDay());
         JSObjectUtil.putDataProperty(ctx, record, REFERENCE_ISO_YEAR, referenceISOYear);
         return record;
     }

@@ -47,7 +47,6 @@ import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltinsFactory.J
 import com.oracle.truffle.js.builtins.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -107,7 +106,6 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") IsConstructorNode isConstructor,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options,
@@ -120,7 +118,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                                 timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
             }
             return JSTemporalPlainTime.toTemporalTime(item, constructor, overflow, getContext(),
-                            isObject, toInt, toString, isConstructor, callNode);
+                            isObject, toString, isConstructor, callNode);
         }
 
     }

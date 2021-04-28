@@ -338,8 +338,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testDurationCreation() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
-            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 35, 520,
-                            450, 860);
+            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 35, 520, 450, 860);
         }
     }
 
@@ -348,8 +347,7 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = Temporal.Duration.from({ years: 0, months: 0, weeks: 0, days: 0," +
                             " hours: 12, minutes: 45, seconds: 35, milliseconds: 520, microseconds: 450, nanoseconds: 860 });");
-            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 35, 520,
-                            450, 860);
+            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 35, 520, 450, 860);
         }
     }
 
@@ -385,8 +383,7 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
             ctx.eval(ID, "duration = duration.with({ years: 8 })");
-            validateDuration(ctx, 8, 0, 0, 0, 12, 45, 35, 520,
-                            450, 860);
+            validateDuration(ctx, 8, 0, 0, 0, 12, 45, 35, 520, 450, 860);
         }
     }
 
@@ -395,8 +392,7 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
             ctx.eval(ID, "duration = duration.add({ seconds: 20 });");
-            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 55, 520,
-                            450, 860);
+            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 55, 520, 450, 860);
         }
     }
 
@@ -405,8 +401,7 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
             ctx.eval(ID, "duration = duration.subtract({ seconds: 20 });");
-            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 15, 520,
-                            450, 860);
+            validateDuration(ctx, 0, 0, 0, 0, 12, 45, 15, 520, 450, 860);
         }
     }
 
@@ -433,8 +428,7 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = new Temporal.Duration(0, 0, 0, 0, 12, 45, 35, 520, 450, 860);");
             ctx.eval(ID, "duration = duration.round({ smallestUnit: 'hours' });");
-            validateDuration(ctx, 0, 0, 0, 0, 13, 0, 0, 0,
-                            0, 0);
+            validateDuration(ctx, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0);
         }
     }
 
