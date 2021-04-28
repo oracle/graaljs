@@ -101,24 +101,23 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object from(DynamicObject item, DynamicObject options,
+        protected Object from(Object item, DynamicObject options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") IsConstructorNode isConstructor,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options,
-                            getContext().getRealm(), isObject);
+
+            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, isObject, toBoolean, toString);
             if (isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
+                DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
                 return JSTemporalPlainTime.createTemporalTimeFromStatic(constructor,
                                 timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
                                 timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
             }
-            return JSTemporalPlainTime.toTemporalTime(item, constructor, overflow, getContext(),
-                            isObject, toString, isConstructor, callNode);
+            return JSTemporalPlainTime.toTemporalTime(item, overflow, getContext(), isObject, toString, isConstructor, callNode);
         }
 
     }

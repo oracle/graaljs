@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
                 PrototypeSupplier {
@@ -68,7 +69,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     public static DynamicObject create(JSContext context, long isoMonth, long isoDay, JSTemporalCalendarObject calendar,
                     long referenceISOYear) {
-        if (!JSTemporalPlainDate.validateISODate(referenceISOYear, isoMonth, isoDay)) {
+        if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
             throw Errors.createRangeError("Not a valid date.");
         }
 

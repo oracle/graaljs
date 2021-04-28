@@ -140,4 +140,8 @@ public class JSTemporalPlainDateTimePluralRecord {
         return remainder;
     }
 
+    public static JSTemporalPlainDateTimePluralRecord create(JSTemporalPlainDateTimeRecord r) {
+        return create(r.getYear(), r.getMonth(), r.getDay(), r.getHour(), r.getMinute(), r.getSecond(), r.getMillisecond(), r.getMicrosecond(), r.getNanosecond());
+    }
+
 }

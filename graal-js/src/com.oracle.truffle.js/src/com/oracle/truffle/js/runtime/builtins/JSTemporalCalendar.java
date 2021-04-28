@@ -459,7 +459,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         }
         Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
         Object day = JSObject.get(preparedFields, DAY);
-        return JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
+        return TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
     }
 
     // 12.1.40
@@ -503,9 +503,9 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         long referenceISOYear = 1972;
         JSTemporalPlainDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
-            result = JSTemporalPlainDate.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
+            result = TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
         } else {
-            result = JSTemporalPlainDate.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow);
+            result = TemporalUtil.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow);
         }
         DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
         JSObjectUtil.putDataProperty(ctx, record, MONTH, result.getMonth());

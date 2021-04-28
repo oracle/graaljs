@@ -43,11 +43,11 @@ package com.oracle.truffle.js.runtime.builtins;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
                 PrototypeSupplier {
@@ -78,7 +79,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
 
     public static DynamicObject create(JSContext context, long isoYear, long isoMonth, JSTemporalCalendarObject calendar,
                     long referenceISODay) {
-        if (!JSTemporalPlainDate.validateISODate(isoYear, isoMonth, referenceISODay)) {
+        if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
             throw Errors.createRangeError("Not a valid date.");
         }
         if (!validateISOYearMonthRange(isoYear, isoMonth)) {

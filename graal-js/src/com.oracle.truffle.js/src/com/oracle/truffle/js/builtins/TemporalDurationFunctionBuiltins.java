@@ -66,6 +66,8 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction> {
@@ -142,9 +144,9 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, null, getContext(), isObject,
+            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, Undefined.instance, getContext(), isObject,
                             toInt, toString, isConstructor, callNode);
-            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, null, getContext(), isObject,
+            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, Undefined.instance, getContext(), isObject,
                             toInt, toString, isConstructor, callNode);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
@@ -176,20 +178,20 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             if (getLong(one, YEARS, 0) != 0 || getLong(two, YEARS, 0) != 0 ||
                             getLong(one, MONTHS, 0) != 0 || getLong(two, MONTHS, 0) != 0 ||
                             getLong(one, WEEKS, 0) != 0 || getLong(two, WEEKS, 0) != 0) {
-                DynamicObject balanceResult1 = JSTemporalDuration.unbalanceDurationRelative(
+                JSTemporalPlainDateTimePluralRecord balanceResult1 = JSTemporalDuration.unbalanceDurationRelative(
                                 getLong(one, YEARS, 0),
                                 getLong(one, MONTHS, 0),
                                 getLong(one, WEEKS, 0),
                                 getLong(one, DAYS, 0),
                                 DAYS, relativeTo, getContext());
-                DynamicObject balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
+                JSTemporalPlainDateTimePluralRecord balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
                                 getLong(two, YEARS, 0),
                                 getLong(two, MONTHS, 0),
                                 getLong(two, WEEKS, 0),
                                 getLong(two, DAYS, 0),
                                 DAYS, relativeTo, getContext());
-                days1 = getLong(balanceResult1, DAYS, 0);
-                days2 = getLong(balanceResult2, DAYS, 0);
+                days1 = balanceResult1.getDays();
+                days2 = balanceResult2.getDays();
             } else {
                 days1 = getLong(one, DAYS, 0);
                 days2 = getLong(two, DAYS, 0);

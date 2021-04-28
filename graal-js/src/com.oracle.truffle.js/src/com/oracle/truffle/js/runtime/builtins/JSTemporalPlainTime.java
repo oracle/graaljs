@@ -213,10 +213,9 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     // 4.5.2
-    public static Object toTemporalTime(DynamicObject item, DynamicObject varConstructor, String varOverflow,
+    public static Object toTemporalTime(Object item, String varOverflow,
                     JSContext ctx, IsObjectNode isObject, JSToStringNode toString,
                     IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
-        DynamicObject constructor = varConstructor == null ? ctx.getRealm().getTemporalPlainTimeConstructor() : varConstructor;
         String overflow = varOverflow == null ? TemporalConstants.CONSTRAIN : varOverflow;
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
         JSTemporalPlainDateTimePluralRecord result2 = null;
@@ -225,15 +224,15 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                 return item;
             }
             // TODO: 4.c Calendar
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(item);
+            JSTemporalPlainDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
             result2 = TemporalUtil.regulateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond(),
                             overflow);
         } else {
             String string = toString.executeString(item);
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string, ctx);
-            if (TemporalUtil.validateTime(
+            JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
+            if (!TemporalUtil.validateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond())) {
                 throw Errors.createRangeError("Given time outside the range.");
@@ -241,7 +240,9 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
             if (result.hasCalendar() && !result.getCalendar().equals(TemporalConstants.ISO8601)) {
                 throw Errors.createRangeError("Wrong calendar.");
             }
+            result2 = JSTemporalPlainDateTimePluralRecord.create(result);
         }
+        DynamicObject constructor = ctx.getRealm().getTemporalPlainTimeConstructor();
         return createTemporalTimeFromStatic(
                         constructor,
                         result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(),

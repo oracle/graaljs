@@ -72,8 +72,13 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -94,6 +99,8 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTimeObject;
@@ -174,7 +181,7 @@ public final class TemporalUtil {
         } else if (type.equals("string")) {
             value = toStringNode.executeString(value);
         }
-        if (values != null && !values.contains(value)) {
+        if (values != Undefined.instance && !values.contains(value)) {
             throw Errors.createRangeError(
                             String.format("Given options value: %s is not contained in values: %s", value, values));
         }
@@ -219,7 +226,7 @@ public final class TemporalUtil {
             return Math.floor(numberValue);
         }
         value = toStringNode.executeString(value);
-        if (stringValues != null && !stringValues.contains(value)) {
+        if (stringValues != Undefined.instance && !stringValues.contains(value)) {
             throw Errors.createRangeError("Given string value is not in string values");
         }
         return value;
@@ -487,8 +494,13 @@ public final class TemporalUtil {
     }
 
     private static JSTemporalPlainDateTimeRecord parseISODateTime(String string) {
-        // TODO Auto-generated method stub
-        throw Errors.unsupported("TODO");
+        try {
+            java.util.Date d = Date.from(Instant.parse(string));
+            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+        } catch (Exception e) {
+            throw Errors.createRangeError("cannot parse the ISO date time string");
+        }
+
     }
 
     // 13.27
@@ -877,13 +889,13 @@ public final class TemporalUtil {
         return result;
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalDateString(String string, JSContext context) {
+    public static JSTemporalPlainDateTimeRecord parseTemporalDateString(String string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
         JSTemporalPlainDateTimeRecord result = parseISODateTime(string);
         return JSTemporalPlainDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalTimeString(String string, JSContext context) {
+    public static JSTemporalPlainDateTimeRecord parseTemporalTimeString(String string) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
         JSTemporalPlainDateTimeRecord result = parseISODateTime(string);
         return JSTemporalPlainDateTimeRecord.create(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
@@ -1156,6 +1168,147 @@ public final class TemporalUtil {
             incrementNs = increment * 1_000l;
         }
         return (long) roundNumberToIncrement(ns, incrementNs, roundingMode);
+    }
+
+    public static DynamicObject toTemporalDate(Object itemParam, DynamicObject optionsParam, JSContext ctx) {
+        DynamicObject options = optionsParam != null ? optionsParam : JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+        if (JSRuntime.isObject(itemParam)) {
+            DynamicObject item = (DynamicObject) itemParam;
+            if (JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
+                return item;
+            }
+            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, ctx);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"}, ctx);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(item, fieldNames, TemporalUtil.toSet(), ctx);
+            return TemporalUtil.dateFromFields(calendar, fields, options);
+        }
+        String overflows = TemporalUtil.toTemporalOverflow(options);
+        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(JSRuntime.toString(itemParam));
+        if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
+            throw Errors.createRangeError("Given date is not valid.");
+        }
+        DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(result.getCalendar(), ctx);
+        result = regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
+
+        return JSTemporalPlainDate.createTemporalDate(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
+    }
+
+    // 3.5.8
+    public static boolean validateISODate(long year, long month, long day) {
+        if (month < 1 || month > 12) {
+            return false;
+        }
+        long daysInMonth = JSTemporalCalendar.isoDaysInMonth(year, month);
+        if (day < 1 || day > daysInMonth) {
+            return false;
+        }
+        return true;
+    }
+
+    // 3.5.6
+    public static DynamicObject toTemporalDateFields(DynamicObject temporalDateLike, Set<String> fieldNames, JSContext ctx) {
+        return TemporalUtil.prepareTemporalFields(temporalDateLike, fieldNames, Collections.emptySet(), ctx);
+    }
+
+    // 3.5.7
+    public static JSTemporalPlainDateTimeRecord regulateISODate(long year, long month, long day, String overflow) {
+        assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
+        if (overflow.equals(REJECT)) {
+            rejectISODate(year, month, day);
+            return JSTemporalPlainDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
+        }
+        if (overflow.equals(CONSTRAIN)) {
+            return constrainISODate(year, month, day);
+        }
+        throw new RuntimeException("This should never have happened.");
+    }
+
+    // 3.5.9
+    public static void rejectISODate(long year, long month, long day) {
+        if (!validateISODate(year, month, day)) {
+            throw Errors.createRangeError("Given date is not valid.");
+        }
+    }
+
+    // 3.5.10
+    public static JSTemporalPlainDateTimeRecord constrainISODate(long year, long month, long day) {
+        long monthPrepared = TemporalUtil.constrainToRange(month, 1, 12);
+        long dayPrepared = TemporalUtil.constrainToRange(day, 1, TemporalUtil.isoDaysInMonth(year, month));
+        return JSTemporalPlainDateTimeRecord.create(year, monthPrepared, dayPrepared, 0, 0, 0, 0, 0, 0);
+    }
+
+    // 3.5.11
+    public static JSTemporalPlainDateTimeRecord balanceISODate(long yearParam, long monthParam, long dayParam) {
+        JSTemporalPlainDateTimeRecord balancedYearMonth = TemporalUtil.balanceISOYearMonth(yearParam, monthParam);
+        long month = balancedYearMonth.getMonth();
+        long year = balancedYearMonth.getYear();
+        long day = dayParam;
+        long testYear;
+        if (month > 2) {
+            testYear = year;
+        } else {
+            testYear = year - 1;
+        }
+        while (day < -1 * JSTemporalCalendar.isoDaysInYear(testYear)) {
+            day = day + JSTemporalCalendar.isoDaysInYear(testYear);
+            year = year - 1;
+            testYear = testYear - 1;
+        }
+        testYear = year + 1;
+        while (day > JSTemporalCalendar.isoDaysInYear(testYear)) {
+            day = day - JSTemporalCalendar.isoDaysInYear(testYear);
+            year = year + 1;
+            testYear = testYear + 1;
+        }
+        while (day < 1) {
+            balancedYearMonth = TemporalUtil.balanceISOYearMonth(year, month - 1);
+            year = balancedYearMonth.getYear();
+            month = balancedYearMonth.getMonth();
+            day = day + JSTemporalCalendar.isoDaysInMonth(year, month);
+        }
+        while (day > JSTemporalCalendar.isoDaysInMonth(year, month)) {
+            day = day - JSTemporalCalendar.isoDaysInMonth(year, month);
+            balancedYearMonth = TemporalUtil.balanceISOYearMonth(year, month + 1);
+            year = balancedYearMonth.getYear();
+            month = balancedYearMonth.getMonth();
+        }
+        return JSTemporalPlainDate.toRecord(year, month, day);
+    }
+
+    // 3.5.14
+    public static JSTemporalPlainDateTimeRecord addISODate(long year, long month, long day, long years, long months, long weeks,
+                    long days, String overflow) {
+        assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
+        long y = year + years;
+        long m = month + months;
+        JSTemporalPlainDateTimeRecord intermediate = TemporalUtil.balanceISOYearMonth(y, m);
+        intermediate = regulateISODate(intermediate.getYear(), intermediate.getMonth(), day, overflow);
+        long d = intermediate.getDay() + (days + (7 * weeks));
+        intermediate = balanceISODate(intermediate.getYear(), intermediate.getMonth(), d);
+        return regulateISODate(intermediate.getYear(), intermediate.getMonth(), intermediate.getDay(), overflow);
+    }
+
+    // 3.5.15
+    public static int compareISODate(long y1, long m1, long d1, long y2, long m2, long d2) {
+        if (y1 > y2) {
+            return 1;
+        }
+        if (y1 < y2) {
+            return -1;
+        }
+        if (m1 > m2) {
+            return 1;
+        }
+        if (m1 < m2) {
+            return -1;
+        }
+        if (d1 > d2) {
+            return 1;
+        }
+        if (d1 < d2) {
+            return -1;
+        }
+        return 0;
     }
 
 }

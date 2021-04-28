@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
@@ -50,6 +49,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
@@ -292,7 +292,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                     IsObjectNode isObject, JSToIntegerAsLongNode toInt,
                     JSToStringNode toString, IsConstructorNode isConstructor,
                     JSFunctionCallNode callNode) {
-        DynamicObject constructor = constr != null ? constr : ctx.getRealm().getTemporalDurationConstructor();
+        DynamicObject constructor = constr != Undefined.instance ? constr : ctx.getRealm().getTemporalDurationConstructor();
         DynamicObject result;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalDuration(item)) {
@@ -341,7 +341,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         boolean any = false;
         for (String property : PROPERTIES) {
             Object val = JSObject.get(temporalDurationLike, property);
-            if (!val.equals(Null.instance)) { // TODO or Undefined?
+            if (!val.equals(Undefined.instance)) {
                 any = true;
             }
             val = toInt.executeLong(val);
@@ -692,10 +692,9 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.13
     public static JSTemporalPlainDateTimePluralRecord balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, String largestUnit,
-                    DynamicObject relativeTo) {
+                    long microseconds, long nanoseconds, String largestUnit, DynamicObject relativeTo) {
         long ns;
-        if (relativeTo != null) {    // TODO: Check if is temporal zoned date time
+        if (relativeTo != Undefined.instance) {    // TODO: Check if is temporal zoned date time
             ns = nanoseconds;
         } else {
             ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
@@ -753,7 +752,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     // 7.5.14
-    public static DynamicObject unbalanceDurationRelative(long y, long m, long w, long d,
+    public static JSTemporalPlainDateTimePluralRecord unbalanceDurationRelative(long y, long m, long w, long d,
                     String largestUnit, DynamicObject relTo, JSContext ctx) {
         long years = y;
         long months = m;
@@ -761,11 +760,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         long days = d;
         DynamicObject relativeTo = relTo;
         if (largestUnit.equals(YEARS) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
-            DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-            JSObjectUtil.putDataProperty(ctx, record, YEARS, years);
-            JSObjectUtil.putDataProperty(ctx, record, MONTHS, months);
-            JSObjectUtil.putDataProperty(ctx, record, WEEKS, weeks);
-            JSObjectUtil.putDataProperty(ctx, record, DAYS, days);
+            return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         }
         long sign = JSTemporalDuration.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
@@ -773,7 +768,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
         DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, ctx);
         DynamicObject calendar = Undefined.instance;
-        if (relativeTo != null) {
+        if (relativeTo != Undefined.instance) {
             assert JSObject.hasProperty(relativeTo, CALENDAR);
             calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
         }
@@ -781,13 +776,16 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             if (calendar == Undefined.instance) {
                 throw Errors.createRangeError("No calender provided.");
             }
-            // TODO: Get function dateAdd
-            // TODO: Get function dateUntil
-            DynamicObject untilOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-            JSObjectUtil.putDataProperty(ctx, untilOptions, "largestUnit", MONTHS);
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject dateUntil = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_UNTIL);
+
             while (Math.abs(years) > 0) {
-                DynamicObject newRelativeTo = null; // TODO: Call dateAdd
-                DynamicObject untilResult = null; // TODO: call dateUntil
+                DynamicObject addOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+                DynamicObject newRelativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, oneYear, addOptions, dateAdd);
+
+                DynamicObject untilOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+                JSObjectUtil.putDataProperty(ctx, untilOptions, "largestUnit", MONTHS);
+                DynamicObject untilResult = TemporalUtil.calendarDateUntil(calendar, relativeTo, newRelativeTo, untilOptions, dateUntil);
                 long oneYearMonths = getLong(untilResult, MONTHS, 0);
                 relativeTo = newRelativeTo;
                 years = years - sign;
@@ -799,7 +797,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             }
             while (Math.abs(years) > 0) {
                 DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
-                relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo", null);
+                relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo");
                 long oneYearDays = getLong(moveResult, DAYS, 0);
                 years = years - sign;
                 days = days + oneYearDays;
@@ -818,33 +816,28 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 }
                 while (Math.abs(years) > 0) {
                     DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
-                    relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo", null);
+                    relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo");
                     long oneYearDays = getLong(moveResult, DAYS, 0);
                     years = years - sign;
                     days = days + oneYearDays;
                 }
                 while (Math.abs(months) > 0) {
                     DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
-                    relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo", null);
+                    relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo");
                     long oneMonthDays = getLong(moveResult, DAYS, 0);
                     months = months - sign;
                     days = days + oneMonthDays;
                 }
                 while (Math.abs(weeks) > 0) {
                     DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, ctx);
-                    relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo", null);
+                    relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo");
                     long oneWeekDays = getLong(moveResult, DAYS, 0);
                     weeks = weeks - sign;
                     days = days + oneWeekDays;
                 }
             }
         }
-        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-        JSObjectUtil.putDataProperty(ctx, record, YEARS, years);
-        JSObjectUtil.putDataProperty(ctx, record, MONTHS, months);
-        JSObjectUtil.putDataProperty(ctx, record, WEEKS, weeks);
-        JSObjectUtil.putDataProperty(ctx, record, DAYS, days);
-        return record;
+        return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
     // 7.5.15
@@ -916,7 +909,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         } else if (largestUnit.equals(MONTHS)) {
             DynamicObject moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
             relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo");
-            long oneMonthDays = getLong(moveResult, DAYS, null);
+            long oneMonthDays = getLong(moveResult, DAYS);
             while (Math.abs(days) >= Math.abs(oneMonthDays)) {
                 days = days - oneMonthDays;
                 months = months + sign;
@@ -953,7 +946,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
             }
             JSTemporalPlainDateTimePluralRecord result = balanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2,
-                            ns1 + ns2, largestUnit, null);
+                            ns1 + ns2, largestUnit, Undefined.instance);
             years = 0;
             months = 0;
             weeks = 0;
@@ -965,6 +958,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             microseconds = result.getMicroseconds();
             nanoseconds = result.getNanoseconds();
         } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
+            DynamicObject calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
             DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(ctx,
                             getLong(relativeTo, "ISOYear", 0L),
                             getLong(relativeTo, "ISOMonth", 0L),
@@ -972,19 +966,24 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                             (DynamicObject) JSObject.get(relativeTo, "Calendar"));
             DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, ctx);
             DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, ctx);
-            // TODO: Get dateAdd function of calendar
-            // TODO: Call dateAdd function
-            // TODO: Call dateAdd function
+
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject firstAddOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+            DynamicObject intermediate = TemporalUtil.calendarDateAdd(calendar, datePart, dateDuration1, firstAddOptions, dateAdd);
+
+            DynamicObject secondAddOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+            DynamicObject end = TemporalUtil.calendarDateAdd(calendar, intermediate, dateDuration2, secondAddOptions, dateAdd);
+
             String dateLargestUnit = TemporalUtil.largerOfTwoTemporalDurationUnits("days", largestUnit);
-            // TODO: Get dateUntil function of calendar
-            DynamicObject differenceOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+
+            DynamicObject differenceOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
             JSObjectUtil.putDataProperty(ctx, differenceOptions, "largestUnit", dateLargestUnit);
-            DynamicObject dateDifference = null; // TODO: Call dateUntil function
+            DynamicObject dateDifference = TemporalUtil.calendarDateUntil(calendar, datePart, end, differenceOptions, Undefined.instance);
             JSTemporalPlainDateTimePluralRecord result = JSTemporalDuration.balanceDuration(getLong(dateDifference, DAYS, 0L),
-                            h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, null);
-            years = result.getYears();
-            months = result.getMonths();
-            weeks = 0; // result.getWeeks(); balanceDuration does not set [[Weeks]]
+                            h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, Undefined.instance);
+            years = getLong(dateDifference, YEARS);
+            months = getLong(dateDifference, MONTHS);
+            weeks = getLong(dateDifference, WEEKS);
             days = result.getDays();
             hours = result.getHours();
             minutes = result.getMinutes();
@@ -1053,7 +1052,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS)) {
             nanoseconds = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
             DynamicObject intermediate = Undefined.instance;
-            if (zonedRelativeTo != null) {
+            if (zonedRelativeTo != Undefined.instance) {
                 // TODO: intermediate = moveRelativeZonedDateTime
             }
             JSTemporalNanosecondsDaysRecord result = nanosecondsToDays(nanoseconds, intermediate);
@@ -1095,7 +1094,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                 years = years + sign;
                 days = days - oneYearDays;
                 moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
-                relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo", null);
+                relativeTo = (DynamicObject) JSObject.get(moveResult, "relativeTo");
                 oneYearDays = getLong(moveResult, DAYS, 0);
             }
             double fractionalYears = years + ((double) days / Math.abs(oneYearDays));
@@ -1234,7 +1233,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         JSTemporalPlainDateTimePluralRecord add = addDuration(years, months, weeks, days, 0, 0, 0, 0,
                         0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
                         relativeTo, ctx);
-        JSTemporalPlainDateTimePluralRecord atd = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", null);
+        JSTemporalPlainDateTimePluralRecord atd = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", Undefined.instance);
 
         return JSTemporalPlainDateTimePluralRecord.createWeeks(add.getYears(), add.getMonths(), add.getWeeks(), add.getDays(),
                         atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds());

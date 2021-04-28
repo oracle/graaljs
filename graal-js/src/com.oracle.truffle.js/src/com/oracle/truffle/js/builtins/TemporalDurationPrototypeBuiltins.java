@@ -347,14 +347,14 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options,
                             maximum, false, isObject, toNumber);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
-            DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
+            JSTemporalPlainDateTimePluralRecord unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
                             duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit, relativeTo,
                             getContext());
             JSTemporalPlainDateTimePluralRecord roundResult = JSTemporalDuration.roundDuration(
-                            getLong(unbalanceResult, YEARS, 0),
-                            getLong(unbalanceResult, MONTHS, 0),
-                            getLong(unbalanceResult, WEEKS, 0),
-                            getLong(unbalanceResult, DAYS, 0),
+                            unbalanceResult.getYears(),
+                            unbalanceResult.getMonths(),
+                            unbalanceResult.getWeeks(),
+                            unbalanceResult.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
                             roundingMode, relativeTo, getContext());
@@ -398,26 +398,24 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (unit == null) {
                 throw Errors.createRangeError("Unit not defined.");
             }
-            DynamicObject unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
-                            duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo,
-                            getContext());
-            DynamicObject intermediate = null;
+            JSTemporalPlainDateTimePluralRecord unbalanceResult = JSTemporalDuration.unbalanceDurationRelative(duration.getYears(),
+                            duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo, getContext());
+            DynamicObject intermediate = Undefined.instance;
             // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes
-            // intermediate
-            // = moveRelativeZonedDateTime()
+            // intermediate = moveRelativeZonedDateTime()
             JSTemporalPlainDateTimePluralRecord balanceResult = JSTemporalDuration.balanceDuration(
-                            getLong(unbalanceResult, DAYS, 0),
-                            getLong(unbalanceResult, HOURS, 0),
-                            getLong(unbalanceResult, MINUTES, 0),
-                            getLong(unbalanceResult, SECONDS, 0),
-                            getLong(unbalanceResult, MILLISECONDS, 0),
-                            getLong(unbalanceResult, MICROSECONDS, 0),
-                            getLong(unbalanceResult, NANOSECONDS, 0),
+                            unbalanceResult.getDays(),
+                            unbalanceResult.getHours(),
+                            unbalanceResult.getMinutes(),
+                            unbalanceResult.getSeconds(),
+                            unbalanceResult.getMilliseconds(),
+                            unbalanceResult.getMicroseconds(),
+                            unbalanceResult.getNanoseconds(),
                             unit, intermediate);
             JSTemporalPlainDateTimePluralRecord roundResult = JSTemporalDuration.roundDuration(
-                            getLong(unbalanceResult, YEARS, 0),
-                            getLong(unbalanceResult, MONTHS, 0),
-                            getLong(unbalanceResult, WEEKS, 0),
+                            unbalanceResult.getYears(),
+                            unbalanceResult.getMonths(),
+                            unbalanceResult.getWeeks(),
                             balanceResult.getDays(),
                             balanceResult.getHours(),
                             balanceResult.getMinutes(),

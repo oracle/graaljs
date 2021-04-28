@@ -263,7 +263,7 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testPlainTimeSincePlainTimeLikeObject() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = new Temporal.PlainTime(12, 45, 35);" +
-                            "let duration = plainTime.until({ hour: 12, minute: 45, second: 15 });");
+                            "let duration = plainTime.until({ hour: 12, minute: 45, second: 55 });");
             validateDuration(ctx, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0);
         }
     }
@@ -433,6 +433,7 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 
     @Test
+    // TODO (CW) I believe the test is wrong, total does only support year/month/weeks/days
     public void testDurationTotal() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = Temporal.Duration.from({ hours: 130, minutes: 20 });");

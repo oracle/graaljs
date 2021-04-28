@@ -341,7 +341,7 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
 
     public static int compareISODateTime(long year, long month, long day, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds, long year2, long month2,
                     long day2, long hours2, long minutes2, long seconds2, long milliseconds2, long microseconds2, long nanoseconds2) {
-        int date = JSTemporalPlainDate.compareISODate(year, month, day, year2, month2, day2);
+        int date = TemporalUtil.compareISODate(year, month, day, year2, month2, day2);
         if (date == 0) {
             return JSTemporalPlainTime.compareTemporalTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, hours2, minutes2, seconds2, milliseconds2, microseconds2, nanoseconds2);
         }
