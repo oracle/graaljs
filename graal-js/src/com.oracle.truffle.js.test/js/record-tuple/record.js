@@ -152,3 +152,10 @@ assertSame(true, a >= #{});
 assertSame(false, a > #{});
 // 3.1.5 ToObject
 assertSame("object", typeof Object(a)); // JSToObjectNode
+
+/*
+ * Test 11:
+ * typeof
+ */
+assertSame("record", typeof #{id: 1});
+assertSame("record", typeof #{});

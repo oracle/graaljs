@@ -58,8 +58,10 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -111,6 +113,14 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static void doBigInt(@SuppressWarnings("unused") BigInt value) {
+    }
+
+    @Specialization
+    protected static void doRecord(@SuppressWarnings("unused") Record value) {
+    }
+
+    @Specialization
+    protected static void doTuple(@SuppressWarnings("unused") Tuple value) {
     }
 
     @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")

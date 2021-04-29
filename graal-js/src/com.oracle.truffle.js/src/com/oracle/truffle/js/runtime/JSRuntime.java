@@ -228,6 +228,8 @@ public final class JSRuntime {
             return JSBoolean.TYPE_NAME;
         } else if (value instanceof Symbol) {
             return JSSymbol.TYPE_NAME;
+        } else if (value instanceof Record) {
+            return JSRecord.TYPE_NAME;
         } else if (value instanceof Tuple) {
             return JSTuple.TYPE_NAME;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
