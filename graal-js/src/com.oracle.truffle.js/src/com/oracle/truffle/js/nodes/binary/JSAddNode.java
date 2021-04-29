@@ -218,7 +218,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     // *) Operation nodes that run into ordinary JS objects without overloaded operators get two
     // sets of HasOverloadedOperatorsNodes, one on the overloaded specialization and one on the
     // generic specialization, with both of them being executed (with the compiler possibly
-    // optmizing the second set of redundant shape checks away). Sharing the nodes between the
+    // optimizing the second set of redundant shape checks away). Sharing the nodes between the
     // two specializations would introduce two new pointer fields to every operation node. This
     // generic case is expected to be much rarer than the common case when an operation is used
     // only on primitives or objects with overloaded operators.

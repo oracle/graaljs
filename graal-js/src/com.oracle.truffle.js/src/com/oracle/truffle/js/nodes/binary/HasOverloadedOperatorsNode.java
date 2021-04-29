@@ -41,14 +41,13 @@
 package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
+import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
@@ -73,9 +72,9 @@ public abstract class HasOverloadedOperatorsNode extends JavaScriptBaseNode {
     public abstract boolean execute(Object operand);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!realm.getContext().getContextOptions().isOperatorOverloading()"})
+    @Specialization(guards = {"!language.getJSContext().getContextOptions().isOperatorOverloading()"})
     protected boolean doDisabled(Object operand,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm) {
+                    @CachedLanguage JavaScriptLanguage language) {
         return false;
     }
 

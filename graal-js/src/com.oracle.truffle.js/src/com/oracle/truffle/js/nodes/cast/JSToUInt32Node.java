@@ -78,7 +78,7 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     /**
      * If {@link #unsignedRightShift} is {@code true}, this value stores the amount {@code n} by
      * which the argument is to be shifted to the right. If we encounter an object with overloaded
-     * unsingned right shift, this is the value that we will pass to the overload.
+     * unsigned right shift, this is the value that we will pass to the overload.
      */
     private final int shiftValue;
 
