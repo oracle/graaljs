@@ -13,7 +13,6 @@ import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * Implementation of the Tuple (primitive) type which is an ordered sequence of ECMAScript primitive values.
@@ -25,7 +24,7 @@ import java.util.stream.IntStream;
 @ValueType
 public final class Tuple implements TruffleObject {
 
-    public static final Tuple EMPTY_TUPLE = new Tuple(new Object[]{}); // TODO: create a tuple sub-class for empty tuples
+    public static final Tuple EMPTY_TUPLE = new Tuple(new Object[]{});
 
     private final Object[] value;
 
@@ -38,24 +37,10 @@ public final class Tuple implements TruffleObject {
     }
 
     public static Tuple create(Object[] v) {
+        if (v == null || v.length == 0) {
+            return EMPTY_TUPLE;
+        }
         return new Tuple(v);
-    }
-
-    public static Tuple create(byte[] v) {
-        // TODO: create a tuple sub-class for byte arrays
-        return new Tuple(
-                IntStream.range(0, v.length).mapToObj(i -> (int) v[i]).toArray()
-        );
-    }
-
-    public static Tuple create(int[] v) {
-        // TODO: create a tuple sub-class for int arrays
-        return new Tuple(Arrays.stream(v).boxed().toArray());
-    }
-
-    public static Tuple create(double[] v) {
-        // TODO: create a tuple sub-class for double arrays
-        return new Tuple(Arrays.stream(v).boxed().toArray());
     }
 
     @Override
@@ -80,9 +65,6 @@ public final class Tuple implements TruffleObject {
     }
 
     public boolean equals(Tuple other) {
-        if (value == null || value.length == 0) {
-            return other.value == null || other.value.length == 0;
-        }
         if (value.length != other.value.length) {
             return false;
         }

@@ -2766,34 +2766,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return Tuple.create();
         }
 
-        // TODO: maybe use @Fallback here
         @Specialization(guards = {"args.length != 0"})
-        protected Object constructTuple(Object[] args,
-                                               @Cached("create()") BranchProfile isByteCase,
-                                               @Cached("create()") BranchProfile isIntegerCase,
-                                               @Cached("create()") BranchProfile isDoubleCase,
-                                               @Cached("create()") BranchProfile isObjectCase) {
+        protected Object constructTuple(Object[] args) {
             for (Object element : args) {
                 if (!JSRuntime.isJSPrimitive(element)) {
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
             }
-            // TODO: maybe use JSToPrimitiveNode as CallBigIntNode does
-            // TODO: Tuples cannot contain holes, thus ArrayLiteralNode.identifyPrimitiveContentType might not be the best method for classifying the array content
-            ArrayContentType type = ArrayLiteralNode.identifyPrimitiveContentType(args, true);
-            if (type == ArrayContentType.Byte) {
-                isByteCase.enter();
-                return Tuple.create(ArrayLiteralNode.createByteArray(args));
-            } else if (type == ArrayContentType.Integer) {
-                isIntegerCase.enter();
-                return Tuple.create(ArrayLiteralNode.createIntArray(args));
-            } else if (type == ArrayContentType.Double) {
-                isDoubleCase.enter();
-                return Tuple.create(ArrayLiteralNode.createDoubleArray(args));
-            } else {
-                isObjectCase.enter();
-                return Tuple.create(args);
-            }
+            return Tuple.create(args);
         }
     }
 

@@ -17,7 +17,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Tuple;
-import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -92,77 +91,12 @@ public abstract class TupleLiteralNode extends JavaScriptNode {
     }
 
     private static Tuple createTuple(Object[] array) {
-        Tuple tuple;
-        TupleContentType type = identifyPrimitiveContentType(array);
-        if (type == TupleContentType.Byte) {
-            tuple = Tuple.create(createByteArray(array));
-        } else if (type == TupleContentType.Integer) {
-            tuple = Tuple.create(createIntArray(array));
-        } else if (type == TupleContentType.Double) {
-            tuple = Tuple.create(createDoubleArray(array));
-        } else {
-            for (Object element : array) {
-                if (!JSRuntime.isJSPrimitive(element)) {
-                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
-                }
-            }
-            tuple = Tuple.create(array);
-        }
-        return tuple;
-    }
-
-    public static TupleContentType identifyPrimitiveContentType(Object[] values) {
-        boolean bytes = true;
-        boolean integers = true;
-
-        for (int i = 0; i < values.length; i++) {
-            Object value = values[i];
-            if (integers && value instanceof Integer) {
-                bytes = bytes && ScriptArray.valueIsByte((int) value);
-            } else if (value instanceof Double) {
-                bytes = false;
-                integers = false;
-            } else if (!(value instanceof Integer)) {
-                return TupleContentType.Object;
+        for (Object element : array) {
+            if (!JSRuntime.isJSPrimitive(element)) {
+                throw Errors.createTypeError("Tuples cannot contain non-primitive values");
             }
         }
-
-        if (bytes) {
-            return TupleContentType.Byte;
-        } else if (integers) {
-            return TupleContentType.Integer;
-        } else {
-            return TupleContentType.Double;
-        }
-    }
-
-    public static double[] createDoubleArray(Object[] values) {
-        double[] doubleArray = new double[values.length];
-        for (int i = 0; i < values.length; i++) {
-            Object oValue = values[i];
-            if (oValue instanceof Double) {
-                doubleArray[i] = (double) oValue;
-            } else if (oValue instanceof Integer) {
-                doubleArray[i] = (int) oValue;
-            }
-        }
-        return doubleArray;
-    }
-
-    public static int[] createIntArray(Object[] values) {
-        int[] intArray = new int[values.length];
-        for (int i = 0; i < values.length; i++) {
-            intArray[i] = (int) values[i];
-        }
-        return intArray;
-    }
-
-    public static byte[] createByteArray(Object[] values) {
-        byte[] byteArray = new byte[values.length];
-        for (int i = 0; i < values.length; i++) {
-            byteArray[i] = (byte) ((int) values[i]);
-        }
-        return byteArray;
+        return Tuple.create(array);
     }
 
     private static class DefaultTupleLiteralNode extends TupleLiteralNode {
@@ -181,7 +115,7 @@ public abstract class TupleLiteralNode extends JavaScriptNode {
             for (int i = 0; i < elements.length; i++) {
                 values[i] = elements[i].execute(frame);
             }
-            return TupleLiteralNode.createTuple(values);
+            return createTuple(values);
         }
 
         @Override
@@ -213,7 +147,7 @@ public abstract class TupleLiteralNode extends JavaScriptNode {
                     evaluatedElements.add(elements[i].execute(frame), growProfile);
                 }
             }
-            return TupleLiteralNode.createTuple(evaluatedElements.toArray());
+            return createTuple(evaluatedElements.toArray());
         }
 
         @Override
