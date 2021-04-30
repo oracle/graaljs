@@ -201,6 +201,9 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let plainTime = Temporal.PlainTime.from({ hour: 12, minute: 45, second: 35, millisecond: 520, microsecond: 450, nanosecond: 860 });");
             validatePlainTime(ctx, 12, 45, 35, 520, 450, 860);
+
+            ctx.eval(ID, "plainTime = Temporal.PlainTime.from('11:12:13.123456789')");
+            validatePlainTime(ctx, 11, 12, 13, 123, 456, 789);
         }
     }
 
@@ -668,6 +671,15 @@ public class TemporalBuiltinsTest extends JSTest {
             validatePlainDate(ctx, 2021, 4, 22);
         }
     }
+
+    @Test
+    public void testPlainDateFrom() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let plainDate = Temporal.PlainDate.from('1982-11-26')");
+            validatePlainDate(ctx, 1982, 11, 26);
+        }
+    }
+
 // endregion
 
     // region PlainDateTime Tests
