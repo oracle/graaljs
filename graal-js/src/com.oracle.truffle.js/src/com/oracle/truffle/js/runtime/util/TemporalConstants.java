@@ -105,4 +105,6 @@ public final class TemporalConstants {
     public static final String INCREMENT = "Increment";
     public static final String UNIT = "Unit";
 
+    public static final String AUTO = "auto";
+
 }

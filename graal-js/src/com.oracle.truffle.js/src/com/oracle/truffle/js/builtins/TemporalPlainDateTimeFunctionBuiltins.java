@@ -53,7 +53,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -105,7 +105,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                         @Cached("create()") JSToStringNode toString) {
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             if (isObject.executeBoolean(item) && JSTemporalPlainDateTime.isJSTemporalDateTime(item)) {
-                JSTemporalPlainDateTimeObject dtItem = (JSTemporalPlainDateTimeObject) item;
+                TemporalDateTime dtItem = (TemporalDateTime) item;
                 TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
                 return JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
@@ -125,8 +125,8 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            JSTemporalPlainDateTimeObject one = (JSTemporalPlainDateTimeObject) JSTemporalPlainDateTime.toTemporalDateTime(obj1, Undefined.instance, getContext());
-            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) JSTemporalPlainDateTime.toTemporalDateTime(obj2, Undefined.instance, getContext());
+            TemporalDateTime one = (TemporalDateTime) JSTemporalPlainDateTime.toTemporalDateTime(obj1, Undefined.instance, getContext());
+            TemporalDateTime two = (TemporalDateTime) JSTemporalPlainDateTime.toTemporalDateTime(obj2, Undefined.instance, getContext());
             return JSTemporalPlainDateTime.compareISODateTime(
                             one.getYear(), one.getMonth(), one.getDay(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),

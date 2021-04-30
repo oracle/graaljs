@@ -81,9 +81,8 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationPrototypeBuiltins.TemporalDurationPrototype> {
@@ -138,9 +137,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalDurationTotalNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toJSON:
             case toLocaleString:
-                return JSTemporalDurationToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalDurationToLocaleStringNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case toString:
-                return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return JSTemporalDurationToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case valueOf:
                 return JSTemporalDurationValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -487,7 +486,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToStringNode toString) {
             TemporalUtil.requireInternalSlot(duration, "InitializedTemporalDuration");
             DynamicObject options = TemporalUtil.getOptionsObject(opt, getContext());
-            DynamicObject precision = JSTemporalDuration.toDurationSecondsStringPrecision(options);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toDurationSecondsStringPrecision(options);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);
             JSTemporalPlainDateTimePluralRecord result = JSTemporalDuration.roundDuration(
                             getLong(duration, YEARS),
@@ -500,7 +499,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             getLong(duration, MILLISECONDS),
                             getLong(duration, MICROSECONDS),
                             getLong(duration, MILLISECONDS),
-                            getLong(precision, TemporalConstants.INCREMENT), (String) JSObject.get(precision, TemporalConstants.UNIT), roundingMode, Undefined.instance, getContext());
+                            (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance, getContext());
             return JSTemporalDuration.temporalDurationToString(result.getYears(),
                             result.getMonths(),
                             result.getWeeks(),
@@ -511,7 +510,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             result.getMilliseconds(),
                             result.getMicroseconds(),
                             result.getNanoseconds(),
-                            (String) JSObject.get(precision, TemporalConstants.PRECISION));
+                            precision.getPrecision());
         }
     }
 

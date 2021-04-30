@@ -1280,7 +1280,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // 7.5.23
     public static String temporalDurationToString(long yearsP, long monthsP, long weeksP, long daysP, long hoursP, long minutesP, long secondsP, long millisecondsP, long microsecondsP,
-                    long nanosecondsP, String precision) {
+                    long nanosecondsP, Object precision) {
         long years = yearsP;
         long months = monthsP;
         long weeks = weeksP;
@@ -1359,9 +1359,4 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return result.toString();
     }
     // endregion
-
-    public static DynamicObject toDurationSecondsStringPrecision(DynamicObject options) {
-        // TODO Auto-generated method stub
-        return null;
-    }
 }

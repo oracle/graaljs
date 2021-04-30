@@ -85,6 +85,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -157,8 +158,8 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
-                    if (JSTemporalPlainDate.isJSTemporalPlainDate(obj)) {
-                        JSTemporalPlainDateObject temporalDate = (JSTemporalPlainDateObject) obj;
+                    if (obj instanceof TemporalDate) {
+                        TemporalDate temporalDate = (TemporalDate) obj;
                         switch (property) {
                             case YEAR:
                                 return temporalDate.getYear();
@@ -318,7 +319,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         String overflows = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
-        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item));
+        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
         if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
             throw Errors.createRangeError("Given date is not valid.");
         }

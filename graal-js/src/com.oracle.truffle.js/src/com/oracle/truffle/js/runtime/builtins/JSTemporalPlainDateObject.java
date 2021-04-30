@@ -42,9 +42,10 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainDateObject extends JSNonProxyObject {
+public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalDate {
 
     private final int year;
     private final int month;
@@ -67,18 +68,22 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject {
         this.calendar = calendar;
     }
 
+    @Override
     public int getYear() {
         return year;
     }
 
+    @Override
     public int getMonth() {
         return month;
     }
 
+    @Override
     public int getDay() {
         return day;
     }
 
+    @Override
     public DynamicObject getCalendar() {
         return calendar;
     }

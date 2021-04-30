@@ -75,10 +75,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.TemporalPlainDateTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltins;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -86,6 +83,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -136,8 +135,8 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
-                    if (JSTemporalPlainDateTime.isJSTemporalDateTime(obj)) {
-                        JSTemporalPlainDateTimeObject temporalDT = (JSTemporalPlainDateTimeObject) obj;
+                    if (obj instanceof TemporalDateTime) {
+                        TemporalDateTime temporalDT = (TemporalDateTime) obj;
                         switch (property) {
                             case HOUR:
                                 return temporalDT.getHours();
@@ -237,7 +236,7 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
-        return realm.getTemporalPlainTimePrototype();
+        return realm.getTemporalPlainDateTimePrototype();
     }
 
     @Override
@@ -251,36 +250,6 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
 
     public static boolean isJSTemporalDateTime(Object obj) {
         return obj instanceof JSTemporalPlainDateTimeObject;
-    }
-
-    // 4.5.9
-    public static JSTemporalPlainTimeObject createTemporalTimeFromInstance(long hour, long minute, long second,
-                    long millisecond, long microsecond,
-                    long nanosecond, JSRealm realm,
-                    JSFunctionCallNode callNode) {
-        assert TemporalUtil.validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
-        DynamicObject constructor = realm.getTemporalPlainTimeConstructor();
-        Object[] ctorArgs = new Object[]{hour, minute, second, millisecond, microsecond, nanosecond};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        return (JSTemporalPlainTimeObject) callNode.executeCall(args);
-    }
-
-    // 4.5.10
-    public static Object createTemporalTimeFromStatic(DynamicObject constructor, long hours, long minutes,
-                    long seconds, long milliseconds, long microseconds,
-                    long nanoseconds,
-                    IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        assert TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        if (!isConstructor.executeBoolean(constructor)) {
-            throw Errors.createTypeError("Given constructor is not an constructor.");
-        }
-        Object[] ctorArgs = new Object[]{hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        Object result = callNode.executeCall(args);
-        return result;
     }
 
     public static DynamicObject toTemporalDateTime(Object item, DynamicObject optParam, JSContext ctx) {
@@ -300,7 +269,7 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
             // item.[[Calendar]]).
             // }
             if (item instanceof JSTemporalPlainDateObject) {
-                JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) item;
+                TemporalDate date = (TemporalDate) item;
                 return createTemporalDateTime(ctx, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar((DynamicObject) item, ctx);
@@ -311,7 +280,7 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
         } else {
             TemporalUtil.toTemporalOverflow(options);
             String string = JSRuntime.toString(item);
-            result = TemporalUtil.parseTemporalDateTimeString(string);
+            result = TemporalUtil.parseTemporalDateTimeString(string, ctx);
             if (!TemporalUtil.validateISODateTime(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond())) {
                 throw TemporalErrors.createRangeErrorInvalidPlainDateTime();

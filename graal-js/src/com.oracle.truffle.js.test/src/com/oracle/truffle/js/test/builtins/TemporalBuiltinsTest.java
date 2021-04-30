@@ -202,6 +202,15 @@ public class TemporalBuiltinsTest extends JSTest {
             ctx.eval(ID, "let plainTime = Temporal.PlainTime.from({ hour: 12, minute: 45, second: 35, millisecond: 520, microsecond: 450, nanosecond: 860 });");
             validatePlainTime(ctx, 12, 45, 35, 520, 450, 860);
 
+            ctx.eval(ID, "plainTime = Temporal.PlainTime.from('10:23:45')");
+            validatePlainTime(ctx, 10, 23, 45, 0, 0, 0);
+
+            ctx.eval(ID, "plainTime = Temporal.PlainTime.from('01:02:03.4')");
+            validatePlainTime(ctx, 1, 2, 3, 4, 0, 0);
+
+            ctx.eval(ID, "plainTime = Temporal.PlainTime.from('01:02:03.004')");
+            validatePlainTime(ctx, 1, 2, 3, 4, 0, 0);
+
             ctx.eval(ID, "plainTime = Temporal.PlainTime.from('11:12:13.123456789')");
             validatePlainTime(ctx, 11, 12, 13, 123, 456, 789);
         }
@@ -456,6 +465,15 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testDurationToLocaleString() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "let duration = Temporal.Duration.from({ years: 1, days: 1 });");
+            Value toString = ctx.eval(ID, "duration.toLocaleString();");
+            assertEquals("P1Y1D", toString.asString());
+        }
+    }
+
+    @Test
+    public void testDurationToString() {
         try (Context ctx = getJSContext()) {
             ctx.eval(ID, "let duration = Temporal.Duration.from({ years: 1, days: 1 });");
             Value toString = ctx.eval(ID, "duration.toString();");

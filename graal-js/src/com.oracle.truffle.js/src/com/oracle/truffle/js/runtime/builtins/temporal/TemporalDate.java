@@ -38,91 +38,16 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements TemporalDateTime {
+public interface TemporalDate {
+    public int getYear();
 
-    // from time
-    private final long hours;
-    private final long minutes;
-    private final long seconds;
-    private final long milliseconds;
-    private final long microseconds;
-    private final long nanoseconds;
-    // from date
-    private final int year;
-    private final int month;
-    private final int day;
-    private final DynamicObject calendar;
+    public int getMonth();
 
-    protected JSTemporalPlainDateTimeObject(Shape shape, long year, long month, long day, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, DynamicObject calendar) {
-        super(shape);
-        this.hours = hours;
-        this.minutes = minutes;
-        this.seconds = seconds;
-        this.milliseconds = milliseconds;
-        this.microseconds = microseconds;
-        this.nanoseconds = nanoseconds;
+    public int getDay();
 
-        this.year = (int) year;
-        this.month = (int) month;
-        this.day = (int) day;
-        this.calendar = calendar;
-    }
-
-    @Override
-    public long getHours() {
-        return hours;
-    }
-
-    @Override
-    public long getMinutes() {
-        return minutes;
-    }
-
-    @Override
-    public long getSeconds() {
-        return seconds;
-    }
-
-    @Override
-    public long getMilliseconds() {
-        return milliseconds;
-    }
-
-    @Override
-    public long getMicroseconds() {
-        return microseconds;
-    }
-
-    @Override
-    public long getNanoseconds() {
-        return nanoseconds;
-    }
-
-    @Override
-    public int getYear() {
-        return year;
-    }
-
-    @Override
-    public int getMonth() {
-        return month;
-    }
-
-    @Override
-    public int getDay() {
-        return day;
-    }
-
-    @Override
-    public DynamicObject getCalendar() {
-        return calendar;
-    }
+    public DynamicObject getCalendar();
 }

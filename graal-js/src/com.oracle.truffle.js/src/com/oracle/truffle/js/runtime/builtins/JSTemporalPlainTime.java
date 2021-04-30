@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -115,8 +116,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
-                    if (JSTemporalPlainTime.isJSTemporalTime(obj)) {
-                        JSTemporalPlainTimeObject temporalTime = (JSTemporalPlainTimeObject) obj;
+                    if (obj instanceof TemporalTime) {
+                        TemporalTime temporalTime = (TemporalTime) obj;
                         switch (property) {
                             case HOUR:
                                 return temporalTime.getHours();
@@ -231,7 +232,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                             overflow);
         } else {
             String string = toString.executeString(item);
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
+            JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string, ctx);
             if (!TemporalUtil.validateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond())) {

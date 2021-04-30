@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
@@ -48,9 +49,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
@@ -73,7 +71,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
 import java.text.DateFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Arrays;
@@ -106,6 +103,10 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -212,20 +213,20 @@ public final class TemporalUtil {
 
     // 13.5
     public static Object getStringOrNumberOption(DynamicObject options, String property, Set<String> stringValues,
-                    double minimum, double maximum, Object fallback, IsObjectNode isObject, JSToNumberNode toNumber, JSToStringNode toStringNode) {
-        assert isObject.executeBoolean(options);
+                    double minimum, double maximum, Object fallback) {
+        assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (value == Undefined.instance) {
             return fallback;
         }
         if (value instanceof Number) {
-            double numberValue = toNumber.executeNumber(value).doubleValue();
+            double numberValue = ((Number) value).doubleValue();
             if (numberValue == Double.NaN || numberValue < minimum || numberValue > maximum) {
                 throw Errors.createRangeError("Numeric value out of range.");
             }
             return Math.floor(numberValue);
         }
-        value = toStringNode.executeString(value);
+        value = JSRuntime.toString(value);
         if (stringValues != Undefined.instance && !stringValues.contains(value)) {
             throw Errors.createRangeError("Given string value is not in string values");
         }
@@ -275,80 +276,53 @@ public final class TemporalUtil {
         return increment;
     }
 
-    // 13.19
-    public static DynamicObject toSecondsStringPrecision(DynamicObject options, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toStringNode,
-                    JSToNumberNode toNumberNode, JSContext ctx) {
-        String smallestUnit = (String) getOption(options, "smallestUnit", "string", toSet(MINUTE, SECOND,
-                        MILLISECOND, MICROSECOND, NANOSECOND, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS),
-                        null, isObject, toBoolean, toStringNode);
-        if (pluralUnits.contains(smallestUnit)) {
-            smallestUnit = pluralToSingular.get(smallestUnit);
+    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options) {
+        return toSecondsStringPrecisionIntl(options, true, false);
+    }
+
+    public static JSTemporalPrecisionRecord toDurationSecondsStringPrecision(DynamicObject options) {
+        return toSecondsStringPrecisionIntl(options, false, true);
+    }
+
+    private static JSTemporalPrecisionRecord toSecondsStringPrecisionIntl(DynamicObject options, boolean supportMinutes, boolean plural) {
+        Set<Object> set = TemporalUtil.toSet(SECONDS, MILLISECONDS, MICROSECONDS, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
+        if (supportMinutes) {
+            set.add(MINUTE);
+            set.add(MINUTES);
         }
-        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-        if (smallestUnit != null) {
-            if (smallestUnit.equals(MINUTE)) {
-                JSObjectUtil.putDataProperty(ctx, record, "precision", MINUTE);
-                JSObjectUtil.putDataProperty(ctx, record, "unit", MINUTE);
-                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-                return record;
-            }
-            if (smallestUnit.equals(SECOND)) {
-                JSObjectUtil.putDataProperty(ctx, record, "precision", 0);
-                JSObjectUtil.putDataProperty(ctx, record, "unit", SECOND);
-                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-                return record;
-            }
-            if (smallestUnit.equals(MILLISECOND)) {
-                JSObjectUtil.putDataProperty(ctx, record, "precision", 3);
-                JSObjectUtil.putDataProperty(ctx, record, "unit", MILLISECOND);
-                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-                return record;
-            }
-            if (smallestUnit.equals(MICROSECOND)) {
-                JSObjectUtil.putDataProperty(ctx, record, "precision", 6);
-                JSObjectUtil.putDataProperty(ctx, record, "unit", MICROSECOND);
-                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-                return record;
-            }
-            if (smallestUnit.equals(NANOSECOND)) {
-                JSObjectUtil.putDataProperty(ctx, record, "precision", 9);
-                JSObjectUtil.putDataProperty(ctx, record, "unit", NANOSECOND);
-                JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-                return record;
-            }
+        Object smallestUnit = TemporalUtil.getOption(options, "smallestUnit", "string", set, Undefined.instance);
+
+        smallestUnit = TemporalUtil.toPlural(smallestUnit);
+
+        if (supportMinutes && MINUTES.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(MINUTE, plural ? MINUTES : MINUTE, 1);
+        } else if (SECONDS.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(0, plural ? SECONDS : SECOND, 1);
+        } else if (MILLISECONDS.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(3, plural ? MILLISECONDS : MILLISECOND, 1);
+        } else if (MICROSECONDS.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(6, plural ? MICROSECONDS : MICROSECOND, 1);
+        } else if (NANOSECONDS.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(9, plural ? NANOSECONDS : NANOSECOND, 1);
         }
-        assert smallestUnit == null;
-        Object digits = getStringOrNumberOption(options, "fractionalSecondDigits",
-                        Collections.singleton("auto"), 0, 9, "auto", isObject, toNumberNode, toStringNode);
-        if (digits.equals("auto")) {
-            JSObjectUtil.putDataProperty(ctx, record, "precision", "auto");
-            JSObjectUtil.putDataProperty(ctx, record, "unit", NANOSECOND);
-            JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-            return record;
+
+        assert smallestUnit == Undefined.instance;
+
+        Object digits = TemporalUtil.getStringOrNumberOption(options, "fractionalSecondDigits", TemporalUtil.toSet(AUTO), 0, 9, AUTO);
+        if (digits.equals(AUTO)) {
+            return JSTemporalPrecisionRecord.create(AUTO, plural ? NANOSECONDS : NANOSECOND, 1);
         }
         if (digits.equals(0)) {
-            JSObjectUtil.putDataProperty(ctx, record, "precision", 0);
-            JSObjectUtil.putDataProperty(ctx, record, "unit", SECOND);
-            JSObjectUtil.putDataProperty(ctx, record, "increment", 1);
-            return record;
+            return JSTemporalPrecisionRecord.create(0, plural ? SECONDS : SECONDS, 1);
         }
         if (digits.equals(1) || digits.equals(2) || digits.equals(3)) {
-            JSObjectUtil.putDataProperty(ctx, record, "precision", digits);
-            JSObjectUtil.putDataProperty(ctx, record, "unit", MILLISECOND);
-            JSObjectUtil.putDataProperty(ctx, record, "increment", Math.pow(10, 3 - (long) digits));
-            return record;
+            return JSTemporalPrecisionRecord.create(digits, plural ? MILLISECONDS : MILLISECOND, Math.pow(10, 3 - (long) digits));
         }
         if (digits.equals(4) || digits.equals(5) || digits.equals(6)) {
-            JSObjectUtil.putDataProperty(ctx, record, "precision", digits);
-            JSObjectUtil.putDataProperty(ctx, record, "unit", MICROSECOND);
-            JSObjectUtil.putDataProperty(ctx, record, "increment", Math.pow(10, 6 - (long) digits));
-            return record;
+            return JSTemporalPrecisionRecord.create(digits, plural ? MICROSECONDS : MICROSECOND, Math.pow(10, 6 - (long) digits));
         }
         assert digits.equals(7) || digits.equals(8) || digits.equals(9);
-        JSObjectUtil.putDataProperty(ctx, record, "precision", digits);
-        JSObjectUtil.putDataProperty(ctx, record, "unit", NANOSECOND);
-        JSObjectUtil.putDataProperty(ctx, record, "increment", Math.pow(10, 9 - (long) digits));
-        return record;
+        return JSTemporalPrecisionRecord.create(digits, plural ? NANOSECONDS : NANOSECOND, Math.pow(10, 9 - (long) digits));
     }
 
     // 13.21
@@ -451,7 +425,7 @@ public final class TemporalUtil {
             timeZone = JSObject.get((DynamicObject) value, TIME_ZONE);
         } else {
             String string = JSRuntime.toString(value);
-            result = parseISODateTime(string);
+            result = parseISODateTime(string, ctx);
             calendar = toOptionalTemporalCalendar(result.getCalendar(), ctx);
             offset = result.getTimeZoneOffset();
             timeZone = result.getTimeZoneIANAName();
@@ -493,14 +467,123 @@ public final class TemporalUtil {
         throw Errors.unsupported("TODO");
     }
 
-    private static JSTemporalPlainDateTimeRecord parseISODateTime(String string) {
+    private static JSTemporalPlainDateTimeRecord parseISODateTime(String string, JSContext ctx) {
+        JSTemporalPlainDateTimeRecord jsDate = tryJSDateParser(string, ctx);
+        if (jsDate != null) {
+            return jsDate;
+        }
+        JSTemporalPlainDateTimeRecord instant = tryParseInstant(string);
+        if (instant != null) {
+            return instant;
+        }
+        JSTemporalPlainDateTimeRecord date = tryParseDate(string);
+        if (date != null) {
+            return date;
+        }
+        JSTemporalPlainDateTimeRecord date2 = tryParseDate2(string);
+        if (date2 != null) {
+            return date2;
+        }
+        JSTemporalPlainDateTimeRecord time = tryParseTime(string);
+        if (time != null) {
+            return time;
+        }
+        JSTemporalPlainDateTimeRecord time2 = tryParseTime2(string);
+        if (time2 != null) {
+            return time2;
+        }
+        throw Errors.createRangeError("cannot parse the ISO date time string");
+    }
+
+    private static JSTemporalPlainDateTimeRecord tryJSDateParser(String string, JSContext ctx) {
+        Integer[] f = ctx.getEvaluator().parseDate(ctx.getRealm(), string);
+        if (f != null) {
+            int millis = get(f, 6);
+            int ms = 0;
+            int mics = 0;
+            int ns = 0;
+            if (millis < 1000) {
+                ms = millis;
+            } else if (1000 <= millis && millis < 1_000_000) {
+                if (millis < 10_000) {
+                    millis *= 100;
+                } else if (millis < 100_000) {
+                    millis *= 10;
+                }
+                mics = millis % 1000;
+                ms = (millis - mics) / 1000;
+            } else {
+                if (millis < 10_000_000) {
+                    millis *= 100;
+                } else if (millis < 100_000_000) {
+                    millis *= 10;
+                }
+                ns = millis % 1000;
+                millis /= 1000;
+                mics = millis % 1000;
+                millis /= 1000;
+                ms = millis;
+            }
+
+            int month = get(f, 1) + 1; // +1 !
+            return JSTemporalPlainDateTimeRecord.create(get(f, 0), month, get(f, 2), get(f, 3), get(f, 4), get(f, 5), ms, mics, ns);
+        }
+        return null;
+    }
+
+    private static int get(Integer[] f, int i) {
+        return (f.length > i && f[i] != null) ? f[i] : 0;
+    }
+
+    private static JSTemporalPlainDateTimeRecord tryParseInstant(String string) {
         try {
             java.util.Date d = Date.from(Instant.parse(string));
             return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
-            throw Errors.createRangeError("cannot parse the ISO date time string");
+            return null;
         }
+    }
 
+    private static JSTemporalPlainDateTimeRecord tryParseDate(String string) {
+        try {
+            DateFormat df = new SimpleDateFormat();
+            java.util.Date d = df.parse(string);
+            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static JSTemporalPlainDateTimeRecord tryParseDate2(String string) {
+        try {
+            DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
+            java.util.Date d = df.parse(string);
+            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static JSTemporalPlainDateTimeRecord tryParseTime(String string) {
+        try {
+            DateFormat df = new SimpleDateFormat("hh:mm:ss.SSS");
+            df.setLenient(true);
+            java.util.Date d = df.parse(string);
+            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static JSTemporalPlainDateTimeRecord tryParseTime2(String string) {
+        try {
+            DateFormat df = new SimpleDateFormat("hh:mm:ss");
+            df.setLenient(true);
+            java.util.Date d = df.parse(string);
+            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     // 13.27
@@ -883,21 +966,21 @@ public final class TemporalUtil {
         return date;
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalDateTimeString(String string) {
+    public static JSTemporalPlainDateTimeRecord parseTemporalDateTimeString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalPlainDateTimeRecord result = parseISODateTime(string);
+        JSTemporalPlainDateTimeRecord result = parseISODateTime(string, ctx);
         return result;
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalDateString(String string) {
+    public static JSTemporalPlainDateTimeRecord parseTemporalDateString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalPlainDateTimeRecord result = parseISODateTime(string);
+        JSTemporalPlainDateTimeRecord result = parseISODateTime(string, ctx);
         return JSTemporalPlainDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalTimeString(String string) {
+    public static JSTemporalPlainDateTimeRecord parseTemporalTimeString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalPlainDateTimeRecord result = parseISODateTime(string);
+        JSTemporalPlainDateTimeRecord result = parseISODateTime(string, ctx);
         return JSTemporalPlainDateTimeRecord.create(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
     }
 
@@ -937,10 +1020,9 @@ public final class TemporalUtil {
         throw Errors.unsupported("TODO");
     }
 
-    public static DynamicObject createTemporalDateTime(int year, int month, int day, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds,
-                    DynamicObject calendar) {
-        // TODO Auto-generated method stub
-        throw Errors.unsupported("TODO"); // probably JSTemporalPlainDateTime.create ....
+    public static DynamicObject createTemporalDateTime(int year, int month, int day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+                    DynamicObject calendar, JSContext context) {
+        return JSTemporalPlainDateTime.createTemporalDateTime(context, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
     }
 
     public static DynamicObject builtinTimeZoneGetInstantFor(DynamicObject timeZone, DynamicObject temporalDateTime, String string) {
@@ -1063,12 +1145,14 @@ public final class TemporalUtil {
     public static JSTemporalPlainDateTimeRecord interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options, JSContext ctx) {
         JSTemporalPlainDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         DynamicObject temporalDate = dateFromFields(calendar, fields, options);
+        TemporalDate date = (TemporalDate) temporalDate;
         String overflow = toTemporalOverflow(options);
         JSTemporalPlainDateTimePluralRecord timeResult2 = TemporalUtil.regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
                         overflow);
 
-        return JSTemporalPlainDateTimeRecord.create(getLong(temporalDate, ISO_YEAR), getLong(temporalDate, ISO_MONTH), getLong(temporalDate, ISO_DAY),
+        return JSTemporalPlainDateTimeRecord.create(
+                        date.getYear(), date.getMonth(), date.getDay(),
                         timeResult2.getHours(), timeResult2.getMinutes(), timeResult2.getSeconds(),
                         timeResult2.getMilliseconds(), timeResult2.getMicroseconds(), timeResult2.getNanoseconds());
     }
@@ -1183,11 +1267,11 @@ public final class TemporalUtil {
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         String overflows = TemporalUtil.toTemporalOverflow(options);
-        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(JSRuntime.toString(itemParam));
+        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(JSRuntime.toString(itemParam), ctx);
         if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
             throw Errors.createRangeError("Given date is not valid.");
         }
-        DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(result.getCalendar(), ctx);
+        DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
         result = regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
 
         return JSTemporalPlainDate.createTemporalDate(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -1309,6 +1393,42 @@ public final class TemporalUtil {
             return -1;
         }
         return 0;
+    }
+
+    public static TemporalTime requireTemporalTime(DynamicObject obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalTime");
+        if (!(obj instanceof TemporalTime)) {
+            throw Errors.createTypeError("InitializedTemporalTime expected");
+        }
+        return (TemporalTime) obj;
+    }
+
+    public static TemporalDateTime requireTemporalDateTime(DynamicObject obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalDateTime");
+        if (!(obj instanceof TemporalDateTime)) {
+            throw Errors.createTypeError("InitializedTemporalDateTime expected");
+        }
+        return (TemporalDateTime) obj;
+    }
+
+    public static Object toPlural(Object u) {
+        if (u == Undefined.instance) {
+            return u;
+        }
+        if (HOUR.equals(u)) {
+            return HOURS;
+        } else if (MINUTE.equals(u)) {
+            return MINUTES;
+        } else if (SECOND.equals(u)) {
+            return SECONDS;
+        } else if (MILLISECOND.equals(u)) {
+            return MILLISECONDS;
+        } else if (MICROSECOND.equals(u)) {
+            return MICROSECONDS;
+        } else if (NANOSECOND.equals(u)) {
+            return NANOSECONDS;
+        }
+        throw Errors.createTypeError("cannot convert Unit to plural");
     }
 
 }

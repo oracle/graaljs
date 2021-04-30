@@ -38,59 +38,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+public interface TemporalDateTime extends TemporalDate, TemporalTime {
 
-public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalTime {
-
-    private final long hours;
-    private final long minutes;
-    private final long seconds;
-    private final long milliseconds;
-    private final long microseconds;
-    private final long nanoseconds;
-
-    protected JSTemporalPlainTimeObject(Shape shape, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds) {
-        super(shape);
-        this.hours = hours;
-        this.minutes = minutes;
-        this.seconds = seconds;
-        this.milliseconds = milliseconds;
-        this.microseconds = microseconds;
-        this.nanoseconds = nanoseconds;
-    }
-
-    @Override
-    public long getHours() {
-        return hours;
-    }
-
-    @Override
-    public long getMinutes() {
-        return minutes;
-    }
-
-    @Override
-    public long getSeconds() {
-        return seconds;
-    }
-
-    @Override
-    public long getMilliseconds() {
-        return milliseconds;
-    }
-
-    @Override
-    public long getMicroseconds() {
-        return microseconds;
-    }
-
-    @Override
-    public long getNanoseconds() {
-        return nanoseconds;
-    }
 }
