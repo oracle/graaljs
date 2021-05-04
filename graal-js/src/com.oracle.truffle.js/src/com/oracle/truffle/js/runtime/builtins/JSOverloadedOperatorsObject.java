@@ -40,20 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
 /**
  * This is the type of JavaScript objects that have overloaded operator semantics. This class
- * replicates JSOrdinaryObject, while adding an internal slot for the operator information.
- *
- * @see JSOverloadedOperators
+ * replicates JSOrdinaryObject.DefaultLayout, while adding an internal slot for the operator
+ * information.
  */
-public final class JSOverloadedOperatorsObject extends JSNonProxyObject implements JSCopyableObject {
+public final class JSOverloadedOperatorsObject extends JSOrdinaryObject {
 
     @DynamicField Object o0;
     @DynamicField Object o1;
@@ -86,25 +84,9 @@ public final class JSOverloadedOperatorsObject extends JSNonProxyObject implemen
         return value instanceof JSOverloadedOperatorsObject;
     }
 
-    public static JSOverloadedOperatorsObject create(Shape shape, OperatorSet operatorSet) {
-        return new JSOverloadedOperatorsObject(shape, operatorSet);
-    }
-
-    @Override
-    public String getClassName() {
-        return JSOrdinary.CLASS_NAME;
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    @Override
-    public Object getValue(long index) {
-        // convert index only once
-        return getValue(String.valueOf(index));
-    }
-
-    @Override
-    public boolean hasOnlyShapeProperties() {
-        return true;
+    public static JSOverloadedOperatorsObject create(JSContext context, Shape shape, OperatorSet operatorSet) {
+        JSOverloadedOperatorsObject object = new JSOverloadedOperatorsObject(shape, operatorSet);
+        return context.trackAllocation(object);
     }
 
     @Override

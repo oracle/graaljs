@@ -84,7 +84,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperators;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -199,33 +199,33 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
             CompilerAsserts.neverPartOfCompilation();
             if (JSGuards.isJSObject(prototype)) {
                 JSObject jsproto = (JSObject) prototype;
-                return JSObjectUtil.getProtoChildShape(jsproto, JSOverloadedOperators.INSTANCE, getContext());
+                return JSObjectUtil.getProtoChildShape(jsproto, JSOrdinary.OVERLOADED_OPERATORS_INSTANCE, getContext());
             }
             return null;
         }
 
         protected Shape getShapeWithoutProto() {
             CompilerAsserts.neverPartOfCompilation();
-            return JSObjectUtil.getProtoChildShape(null, JSOverloadedOperators.INSTANCE, getContext());
+            return JSObjectUtil.getProtoChildShape(null, JSOrdinary.OVERLOADED_OPERATORS_INSTANCE, getContext());
         }
 
         protected Shape getShapeWithDefaultProto(JSRealm realm) {
             CompilerAsserts.neverPartOfCompilation();
-            return JSObjectUtil.getProtoChildShape(realm.getObjectPrototype(), JSOverloadedOperators.INSTANCE, getContext());
+            return JSObjectUtil.getProtoChildShape(realm.getObjectPrototype(), JSOrdinary.OVERLOADED_OPERATORS_INSTANCE, getContext());
         }
 
         @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "getContext().getPropertyCacheLimit()")
         protected JSOverloadedOperatorsObject doCachedProto(@SuppressWarnings("unused") Object prototype,
                         @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                         @Cached("getProtoChildShape(prototype)") Shape cachedShape) {
-            return JSOverloadedOperators.create(getContext(), cachedShape, operatorSet);
+            return JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
         }
 
         @Specialization
         protected JSOverloadedOperatorsObject createWithProto(JSObject prototype,
                         @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode,
                         @Cached("getShapeWithoutProto()") Shape cachedShape) {
-            JSOverloadedOperatorsObject object = JSOverloadedOperators.create(getContext(), cachedShape, operatorSet);
+            JSOverloadedOperatorsObject object = JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
             setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
@@ -234,7 +234,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         public JSOverloadedOperatorsObject createDefaultProto(@SuppressWarnings("unused") Object prototype,
                         @CachedContext(JavaScriptLanguage.class) @SuppressWarnings("unused") JSRealm realm,
                         @Cached("getShapeWithDefaultProto(realm)") Shape cachedShape) {
-            return JSOverloadedOperators.create(getContext(), cachedShape, operatorSet);
+            return JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
         }
     }
 
