@@ -111,10 +111,8 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
         return a.or(b);
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected Object doOverloaded(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
@@ -123,11 +121,9 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
         return "|";
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger",
-                    "doDouble", "doBigInt"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger",
+                    "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,
                     @Cached("createInner()") JSBitwiseOrNode or,

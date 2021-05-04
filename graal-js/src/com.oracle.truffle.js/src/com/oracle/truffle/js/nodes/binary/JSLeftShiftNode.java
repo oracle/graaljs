@@ -111,10 +111,8 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
         }
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected Object doOverloaded(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
@@ -123,10 +121,8 @@ public abstract class JSLeftShiftNode extends JSBinaryNode {
         return "<<";
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntegerDouble", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSLeftShiftNode leftShift,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("create()") JSToNumericNode rightToNumeric,

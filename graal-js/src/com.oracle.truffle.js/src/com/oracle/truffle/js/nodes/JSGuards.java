@@ -64,6 +64,7 @@ import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
@@ -467,5 +468,9 @@ public final class JSGuards {
 
     public static boolean isArrayIndexLengthInRange(String str) {
         return JSRuntime.arrayIndexLengthInRange(str);
+    }
+
+    public static boolean hasOverloadedOperators(Object value) {
+        return JSOverloadedOperatorsObject.hasOverloadedOperators(value);
     }
 }

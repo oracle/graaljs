@@ -212,10 +212,8 @@ public abstract class JSEqualNode extends JSCompareNode {
         return isNullish(a, aInterop);
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected boolean doOverloaded(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode) {
         if (a == b) {
@@ -229,9 +227,8 @@ public abstract class JSEqualNode extends JSCompareNode {
         return "==";
     }
 
-    @Specialization(guards = {"isObject(a)", "!isObject(b)", "!aHasOverloadedOperatorsNode.execute(a)"}, limit = "1")
+    @Specialization(guards = {"isObject(a)", "!isObject(b)", "!hasOverloadedOperators(a)"})
     protected boolean doJSObject(DynamicObject a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
@@ -241,9 +238,8 @@ public abstract class JSEqualNode extends JSCompareNode {
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
-    @Specialization(guards = {"!isObject(a)", "isObject(b)", "!bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"!isObject(a)", "isObject(b)", "!hasOverloadedOperators(b)"})
     protected boolean doJSObject(Object a, DynamicObject b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("equal") @Cached JSEqualNode nestedEqualNode) {

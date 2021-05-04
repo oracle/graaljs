@@ -74,6 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -1583,9 +1584,8 @@ public final class JSRuntime {
             return equal(a, booleanToNumber((Boolean) b));
         } else if (isObject(a)) {
             assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
-            DynamicObject dynA = (DynamicObject) a;
-            if (OperatorSet.hasOverloadedOperators(dynA)) {
-                if (isObject(b) && !OperatorSet.hasOverloadedOperators((DynamicObject) b)) {
+            if (JSOverloadedOperatorsObject.hasOverloadedOperators(a)) {
+                if (isObject(b) && !JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
                     return equal(a, JSObject.toPrimitive((DynamicObject) b));
                 }
                 if (isObject(b) || isNumber(b) || isBigInt(b) || isString(b)) {
@@ -1594,20 +1594,19 @@ public final class JSRuntime {
                     return false;
                 }
             } else {
-                return equal(JSObject.toPrimitive(dynA), b);
+                return equal(JSObject.toPrimitive((DynamicObject) a), b);
             }
         } else if (isObject(b)) {
             assert a != Undefined.instance && a != Null.instance; // covered by (DynOb, DynOb)
             assert !isObject(a);
-            DynamicObject dynB = (DynamicObject) b;
-            if (OperatorSet.hasOverloadedOperators(dynB)) {
+            if (JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
                 if (isNumber(a) || isBigInt(a) || isString(a)) {
                     return equalOverloaded(a, b);
                 } else {
                     return false;
                 }
             } else {
-                return equal(a, JSObject.toPrimitive(dynB));
+                return equal(a, JSObject.toPrimitive((DynamicObject) b));
             }
         } else if (isForeignObject(a) || isForeignObject(b)) {
             return equalInterop(a, b);

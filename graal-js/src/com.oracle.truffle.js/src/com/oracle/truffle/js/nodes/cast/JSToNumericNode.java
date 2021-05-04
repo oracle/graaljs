@@ -41,19 +41,17 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNodeGen.JSToNumericWrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -132,16 +130,14 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return toPrimitive(value);
     }
 
-    @Specialization(guards = {"isToNumericOperand()", "hasOverloadedOperatorsNode.execute(arg)"}, limit = "1")
-    protected Object doOverloaded(DynamicObject arg,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode) {
+    @Specialization(guards = {"isToNumericOperand()"})
+    protected Object doOverloaded(JSOverloadedOperatorsObject arg) {
         checkOverloadedOperatorsAllowed(arg, this);
         return arg;
     }
 
-    @Specialization(guards = {"isToNumericOperand()", "!isJSBigInt(value)", "!hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
-    protected Object doToNumericOperandOther(Object value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode) {
+    @Specialization(guards = {"isToNumericOperand()", "!isJSBigInt(value)", "!hasOverloadedOperators(value)"})
+    protected Object doToNumericOperandOther(Object value) {
         Object primValue = toPrimitive(value);
         if (JSRuntime.isBigInt(primValue)) {
             return primValue;

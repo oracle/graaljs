@@ -44,16 +44,15 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -115,9 +114,8 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return a.negate();
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
-    protected Object doOverloaded(DynamicObject a,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a);
     }
@@ -126,9 +124,8 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
         return "neg";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(a)"})
     protected static Object doGeneric(Object a,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode toNumericNode,
                     @Cached("create()") JSUnaryMinusNode recursiveUnaryMinus) {
         Object value = toNumericNode.execute(a);

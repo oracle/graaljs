@@ -149,10 +149,8 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         throw Errors.createTypeError("BigInts have no unsigned right shift, use >> instead");
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected Object doOverloaded(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
@@ -161,10 +159,8 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         return ">>>";
     }
 
-    @Specialization(guards = {"!lvalHasOverloadedOperatorsNode.execute(lval)", "!rvalHasOverloadedOperatorsNode.execute(rval)", "!isHandled(lval, rval)"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(lval)", "!hasOverloadedOperators(rval)", "!isHandled(lval, rval)"})
     protected Number doGeneric(Object lval, Object rval,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode lvalHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rvalHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode lvalToNumericNode,
                     @Cached("create()") JSToNumericNode rvalToNumericNode,
                     @Cached("create()") JSUnsignedRightShiftNode innerShiftNode,

@@ -42,14 +42,14 @@ package com.oracle.truffle.js.nodes.unary;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -74,17 +74,18 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object operand);
 
-    @Specialization(guards = {"hasOverloadedOperators(operandShape)", "operandShape.check(operand)"})
-    protected Object doCached(DynamicObject operand,
-                    @Cached("operand.getShape()") @SuppressWarnings("unused") Shape operandShape,
+    @Specialization(guards = {"operand.matchesOperatorCounter(operatorCounter)"})
+    protected Object doCached(JSOverloadedOperatorsObject operand,
+                    @Cached("operand.getOperatorCounter()") @SuppressWarnings("unused") int operatorCounter,
                     @Cached("getOperatorImplementation(operand, getOverloadedOperatorName())") Object operatorImplementation,
                     @Cached("createCall()") JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(operand, this);
         return performOverloaded(callNode, operatorImplementation, operand);
     }
 
+    @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCached"})
-    protected Object doGeneric(DynamicObject operand,
+    protected Object doGeneric(JSOverloadedOperatorsObject operand,
                     @Cached("createCall()") JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(operand, this);
         Object operatorImplementation = OperatorSet.getOperatorImplementation(operand, getOverloadedOperatorName());

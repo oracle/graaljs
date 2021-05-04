@@ -123,10 +123,8 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
         }
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected Object doOverloaded(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, b);
     }
@@ -135,10 +133,8 @@ public abstract class JSMultiplyNode extends JSBinaryNode {
         return "*";
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = "doDouble", limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")
     protected Object doGeneric(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSMultiplyNode nestedMultiplyNode,
                     @Cached("create()") JSToNumericNode toNumeric1Node,
                     @Cached("create()") JSToNumericNode toNumeric2Node,

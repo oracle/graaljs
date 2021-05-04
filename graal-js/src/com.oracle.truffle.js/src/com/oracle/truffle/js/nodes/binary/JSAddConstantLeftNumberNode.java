@@ -52,7 +52,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
@@ -63,6 +62,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "+")
 public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements Truncatable {
@@ -143,9 +143,8 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         return createLazyString.executeCharSequence(leftString, right);
     }
 
-    @Specialization(guards = {"rightHasOverloadedOperatorsNode.execute(right)"}, limit = "1")
-    protected Object doOverloaded(DynamicObject right,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rightHasOverloadedOperatorsNode,
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject right,
                     @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(getLeftValue(), right);
     }
@@ -154,9 +153,8 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         return "+";
     }
 
-    @Specialization(guards = {"!rightHasOverloadedOperatorsNode.execute(right)"}, replaces = {"doInt", "doDouble", "doNumberString"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(right)"}, replaces = {"doInt", "doDouble", "doNumberString"})
     protected Object doPrimitiveConversion(Object right,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode rightHasOverloadedOperatorsNode,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,
                     @Cached("create()") JSToNumberNode toNumberB,
                     @Cached("leftValueToString()") String leftString,

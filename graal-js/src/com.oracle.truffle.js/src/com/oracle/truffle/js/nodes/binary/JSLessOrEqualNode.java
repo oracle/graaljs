@@ -161,10 +161,8 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
         return doDouble(JSRuntime.doubleValue((Number) a), JSRuntime.doubleValue((Number) b));
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a) || bHasOverloadedOperatorsNode.execute(b)"}, limit = "1")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
     protected boolean doOverloaded(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("createHintNumberRightToLeft(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode) {
         Object result = overloadedOperatorNode.execute(b, a);
@@ -179,11 +177,9 @@ public abstract class JSLessOrEqualNode extends JSCompareNode {
         return "<";
     }
 
-    @Specialization(guards = {"!aHasOverloadedOperatorsNode.execute(a)", "!bHasOverloadedOperatorsNode.execute(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
-                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doString", "doStringDouble", "doDoubleString",
+                    "doBigInt", "doBigIntAndNumber", "doNumberAndBigInt", "doJavaNumber"})
     protected boolean doGeneric(Object a, Object b,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode bHasOverloadedOperatorsNode,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber1,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitive1,
                     @Cached("create()") JSToStringOrNumberNode toStringOrNumber2,

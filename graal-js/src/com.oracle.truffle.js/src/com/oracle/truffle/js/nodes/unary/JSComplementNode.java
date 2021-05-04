@@ -47,15 +47,14 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "~")
 public abstract class JSComplementNode extends JSUnaryNode {
@@ -99,9 +98,8 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return a.not();
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(a)"}, limit = "1")
-    protected Object doOverloaded(DynamicObject a,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a);
     }
@@ -110,9 +108,8 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return "~";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(VirtualFrame frame, Object value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached JSToNumericNode toNumericNode,
                     @Cached("createInner()") JSComplementNode recursive) {
         Object number = toNumericNode.execute(value);

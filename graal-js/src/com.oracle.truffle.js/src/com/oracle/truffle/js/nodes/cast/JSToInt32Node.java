@@ -49,7 +49,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
@@ -59,6 +58,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -208,9 +208,8 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return bitwiseOr;
     }
 
-    @Specialization(guards = {"isBitwiseOr()", "hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
-    protected Object doOverloadedOperator(DynamicObject value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+    @Specialization(guards = {"isBitwiseOr()"})
+    protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(value, 0);
     }
@@ -219,9 +218,8 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         return "|";
     }
 
-    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
+    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperators(value)"})
     protected int doJSObject(DynamicObject value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToDoubleNode toDoubleNode) {
         return doubleToInt32(toDoubleNode.executeDouble(value));
     }

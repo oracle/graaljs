@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
 
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
@@ -58,7 +57,6 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
  */
 public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
-    @Child HasOverloadedOperatorsNode hasOverloadedOperatorsNode;
     @Child JSToPrimitiveNode toPrimitiveNode;
 
     protected final Hint hint;
@@ -68,7 +66,6 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
         this.hint = hint;
         this.checkOperatorAllowed = checkOperatorAllowed;
 
-        this.hasOverloadedOperatorsNode = insert(HasOverloadedOperatorsNode.create());
     }
 
     public static JSToOperandNode createHintNone() {
@@ -93,7 +90,7 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(arg)"})
+    @Specialization(guards = {"hasOverloadedOperators(arg)"})
     protected Object doOverloaded(DynamicObject arg) {
         if (checkOperatorAllowed) {
             checkOverloadedOperatorsAllowed(arg, this);

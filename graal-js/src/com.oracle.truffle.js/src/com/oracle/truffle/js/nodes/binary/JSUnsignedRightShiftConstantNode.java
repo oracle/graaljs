@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
@@ -60,6 +59,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 /**
  * 11.7.3 The Unsigned Right Shift Operator (>>>).
@@ -138,9 +138,8 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(guards = {"aHasOverloadedOperatorsNode.execute(a)"}, limit = "1")
-    protected Object doOverloaded(DynamicObject a,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode aHasOverloadedOperatorsNode,
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(a, rightValue);
     }
@@ -149,9 +148,8 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         return ">>>";
     }
 
-    @Specialization(guards = {"!lvalHasOverloadedOperatorsNode.execute(lval)", "!isHandled(lval)"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(lval)", "!isHandled(lval)"})
     protected int doGeneric(Object lval,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode lvalHasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("createInner()") JSUnsignedRightShiftConstantNode innerShiftNode) {
         Object leftOperand = leftToNumeric.execute(lval);

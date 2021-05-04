@@ -52,7 +52,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -65,7 +64,7 @@ import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.objects.OperatorSet;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
     public enum Op {
@@ -401,7 +400,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
             frame.setObject(frameSlot, op.doBigInt((BigInt) operand));
         } else {
-            assert JSRuntime.isObject(operand) && OperatorSet.hasOverloadedOperators((DynamicObject) operand);
+            assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
             frame.setObject(frameSlot, overloadedOperatorNode.execute(value));
         }
         return operand;
@@ -548,7 +547,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
             newValue = op.doBigInt((BigInt) operand);
         } else {
-            assert JSRuntime.isObject(operand) && OperatorSet.hasOverloadedOperators((DynamicObject) operand);
+            assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
             newValue = overloadedOperatorNode.execute(value);
         }
         frame.setObject(frameSlot, newValue);

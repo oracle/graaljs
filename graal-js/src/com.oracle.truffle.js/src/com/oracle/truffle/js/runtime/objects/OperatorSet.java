@@ -41,11 +41,8 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
@@ -62,8 +59,6 @@ import java.util.List;
  * that is bound to the objects' Shape).
  */
 public class OperatorSet {
-
-    public static final HiddenKey OPERATOR_SET_ID = new HiddenKey("OperatorSet");
 
     public static final EconomicSet<String> BINARY_OPERATORS;
     public static final EconomicSet<String> UNARY_OPERATORS;
@@ -120,15 +115,6 @@ public class OperatorSet {
         return operatorCounter;
     }
 
-    public static boolean hasOverloadedOperators(DynamicObject object) {
-        return hasOverloadedOperators(object.getShape());
-    }
-
-    @TruffleBoundary
-    public static boolean hasOverloadedOperators(Shape shape) {
-        return shape.hasProperty(OPERATOR_SET_ID);
-    }
-
     public static OperatorSet getOperatorSet(Object object) {
         if (JSRuntime.isNumber(object)) {
             return OperatorSet.NUMBER_OPERATOR_SET;
@@ -137,20 +123,14 @@ public class OperatorSet {
         } else if (JSRuntime.isString(object)) {
             return OperatorSet.STRING_OPERATOR_SET;
         } else {
-            assert JSRuntime.isObject(object) && hasOverloadedOperators((DynamicObject) object);
-            return getOperatorSet((DynamicObject) object);
+            assert object instanceof JSOverloadedOperatorsObject;
+            return ((JSOverloadedOperatorsObject) object).getOperatorSet();
         }
     }
 
     @TruffleBoundary
-    public static OperatorSet getOperatorSet(DynamicObject object) {
-        return (OperatorSet) DynamicObjectLibrary.getUncached().getOrDefault(object, OPERATOR_SET_ID, null);
-    }
-
-    @TruffleBoundary
-    public static Object getOperatorImplementation(DynamicObject operand, String operatorName) {
-        OperatorSet operatorSet = getOperatorSet(operand);
-        return operatorSet.selfOperatorDefinitions.get(operatorName);
+    public static Object getOperatorImplementation(JSOverloadedOperatorsObject operand, String operatorName) {
+        return operand.getOperatorSet().selfOperatorDefinitions.get(operatorName);
     }
 
     @TruffleBoundary

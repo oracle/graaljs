@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -54,6 +56,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
@@ -62,6 +65,7 @@ import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
@@ -69,7 +73,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.CreateMethodPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -81,8 +84,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperators;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import org.graalvm.collections.EconomicMap;
@@ -153,44 +159,82 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
         @TruffleBoundary
         private DynamicObject createConstructor(OperatorSet operatorSet) {
-            JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
-                @Child private SpecializedNewObjectNode newObjectNode = SpecializedNewObjectNode.create(getContext(), false, true, false, false);
-                @Child private UpdateOverloadedShapeNode updateOverloadedShapeNode = UpdateOverloadedShapeNode.create();
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+                @Child private PropertyNode getPrototypeNode = PropertyNode.createProperty(getContext(), null, JSObject.PROTOTYPE);
+                @Child private CreateOverloadedOperatorsObjectNode createOverloadedOperatorsObjectNode = CreateOverloadedOperatorsObjectNode.create(getContext(), operatorSet);
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object constructor = JSArguments.getNewTarget(frame.getArguments());
-                    DynamicObject object = newObjectNode.execute(frame, (DynamicObject) constructor);
-                    updateOverloadedShapeNode.execute(object, operatorSet);
-                    return object;
+                    Object prototype = getPrototypeNode.executeWithTarget(frame, constructor);
+                    return createOverloadedOperatorsObjectNode.execute(prototype);
                 }
-            }), 0, "");
+            });
+            JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), callTarget, 0, "");
             return JSFunction.create(getContext().getRealm(), constructorFunctionData);
         }
     }
 
-    public abstract static class UpdateOverloadedShapeNode extends Node {
+    public abstract static class CreateOverloadedOperatorsObjectNode extends JavaScriptBaseNode {
 
-        public static UpdateOverloadedShapeNode create() {
-            return OperatorsBuiltinsFactory.UpdateOverloadedShapeNodeGen.create();
+        protected final JSContext context;
+        protected final OperatorSet operatorSet;
+
+        protected CreateOverloadedOperatorsObjectNode(JSContext context, OperatorSet operatorSet) {
+            this.context = context;
+            this.operatorSet = operatorSet;
         }
 
-        public abstract DynamicObject execute(DynamicObject object, OperatorSet operatorSet);
+        public static CreateOverloadedOperatorsObjectNode create(JSContext context, OperatorSet operatorSet) {
+            return OperatorsBuiltinsFactory.CreateOverloadedOperatorsObjectNodeGen.create(context, operatorSet);
+        }
 
-        @Specialization(guards = "oldShape.check(object)", limit = "3")
-        protected DynamicObject doCached(DynamicObject object, @SuppressWarnings("unused") OperatorSet operatorSet,
-                        @CachedLibrary("object") DynamicObjectLibrary dynamicObjectLibrary,
-                        @Cached("object.getShape()") @SuppressWarnings("unused") Shape oldShape,
-                        @Cached("doGeneric(object, operatorSet, dynamicObjectLibrary).getShape()") Shape newShape) {
-            dynamicObjectLibrary.resetShape(object, newShape);
+        protected JSContext getContext() {
+            return context;
+        }
+
+        protected abstract JSOverloadedOperatorsObject execute(Object prototype);
+
+        protected Shape getProtoChildShape(Object prototype) {
+            CompilerAsserts.neverPartOfCompilation();
+            if (JSGuards.isJSObject(prototype)) {
+                JSObject jsproto = (JSObject) prototype;
+                return JSObjectUtil.getProtoChildShape(jsproto, JSOverloadedOperators.INSTANCE, getContext());
+            }
+            return null;
+        }
+
+        protected Shape getShapeWithoutProto() {
+            CompilerAsserts.neverPartOfCompilation();
+            return JSObjectUtil.getProtoChildShape(null, JSOverloadedOperators.INSTANCE, getContext());
+        }
+
+        protected Shape getShapeWithDefaultProto(JSRealm realm) {
+            CompilerAsserts.neverPartOfCompilation();
+            return JSObjectUtil.getProtoChildShape(realm.getObjectPrototype(), JSOverloadedOperators.INSTANCE, getContext());
+        }
+
+        @Specialization(guards = {"!getContext().isMultiContext()", "prototype == cachedPrototype", "isJSObject(cachedPrototype)"}, limit = "getContext().getPropertyCacheLimit()")
+        protected JSOverloadedOperatorsObject doCachedProto(@SuppressWarnings("unused") Object prototype,
+                        @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
+                        @Cached("getProtoChildShape(prototype)") Shape cachedShape) {
+            return JSOverloadedOperators.create(getContext(), cachedShape, operatorSet);
+        }
+
+        @Specialization
+        protected JSOverloadedOperatorsObject createWithProto(JSObject prototype,
+                        @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode,
+                        @Cached("getShapeWithoutProto()") Shape cachedShape) {
+            JSOverloadedOperatorsObject object = JSOverloadedOperators.create(getContext(), cachedShape, operatorSet);
+            setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
 
-        @Specialization(replaces = {"doCached"})
-        protected DynamicObject doGeneric(DynamicObject object, OperatorSet operatorSet,
-                        @CachedLibrary(limit = "0") DynamicObjectLibrary dynamicObjectLibrary) {
-            dynamicObjectLibrary.putConstant(object, OperatorSet.OPERATOR_SET_ID, operatorSet, 0);
-            return object;
+        @Specialization(guards = {"!isJSObject(prototype)"})
+        public JSOverloadedOperatorsObject createDefaultProto(@SuppressWarnings("unused") Object prototype,
+                        @CachedContext(JavaScriptLanguage.class) @SuppressWarnings("unused") JSRealm realm,
+                        @Cached("getShapeWithDefaultProto(realm)") Shape cachedShape) {
+            return JSOverloadedOperators.create(getContext(), cachedShape, operatorSet);
         }
     }
 

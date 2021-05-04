@@ -45,12 +45,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -67,9 +66,8 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
         return JSUnaryPlusNodeGen.create(operand);
     }
 
-    @Specialization(guards = {"hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
-    protected Object doOverloaded(DynamicObject value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject value,
                     @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(value);
     }
@@ -78,9 +76,8 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
         return "pos";
     }
 
-    @Specialization(guards = {"!hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
-    protected Object doDefault(Object value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode) {
+    @Specialization(guards = {"!hasOverloadedOperators(value)"})
+    protected Object doDefault(Object value) {
         if (toNumberNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toNumberNode = insert(JSToNumberNode.create());

@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantIntegerNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
-import com.oracle.truffle.js.nodes.binary.HasOverloadedOperatorsNode;
 import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32NodeGen.JSToUInt32WrapperNodeGen;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -64,6 +63,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -183,9 +183,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return unsignedRightShift;
     }
 
-    @Specialization(guards = {"isUnsignedRightShift()", "hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
-    protected Object doOverloadedOperator(DynamicObject value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
+    @Specialization(guards = {"isUnsignedRightShift()"})
+    protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
         return overloadedOperatorNode.execute(value, shiftValue);
     }
@@ -194,9 +193,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return ">>>";
     }
 
-    @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperatorsNode.execute(value)"}, limit = "1")
+    @Specialization(guards = {"isJSObject(value)", "!isUnsignedRightShift() || !hasOverloadedOperators(value)"})
     protected double doJSObject(DynamicObject value,
-                    @Cached("create()") @SuppressWarnings("unused") HasOverloadedOperatorsNode hasOverloadedOperatorsNode,
                     @Cached("create()") JSToNumberNode toNumberNode) {
         return JSRuntime.toUInt32(toNumberNode.executeNumber(value));
     }

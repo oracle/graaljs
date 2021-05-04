@@ -38,65 +38,70 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.binary;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
 /**
- * This node implements a check for whether an object features overloaded operators. The reason this
- * has its own node instead of being a simple predicate is that in non-megamorphic cases, we can
- * implement this by checking the shape of the object against a series of cached shapes, without
- * having to examine the shape any further during run-time. This is important because this check
- * will likely end up on performance-critical paths.
+ * @see JSOverloadedOperatorsObject
  */
-@ImportStatic(OperatorSet.class)
-public abstract class HasOverloadedOperatorsNode extends JavaScriptBaseNode {
+public final class JSOverloadedOperators extends JSNonProxy {
 
-    protected HasOverloadedOperatorsNode() {
-        super();
+    public static final JSOverloadedOperators INSTANCE = new JSOverloadedOperators();
+
+    private JSOverloadedOperators() {
     }
 
-    public static HasOverloadedOperatorsNode create() {
-        return HasOverloadedOperatorsNodeGen.create();
+    public static JSOverloadedOperatorsObject create(JSContext context, Shape shape, OperatorSet operatorSet) {
+        JSOverloadedOperatorsObject object = JSOverloadedOperatorsObject.create(shape, operatorSet);
+        return context.trackAllocation(object);
     }
 
-    public abstract boolean execute(Object operand);
-
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!language.getJSContext().getContextOptions().isOperatorOverloading()"})
-    protected boolean doDisabled(Object operand,
-                    @CachedLanguage JavaScriptLanguage language) {
-        return false;
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    public String getClassName(DynamicObject object) {
+        JSContext context = JSObject.getJSContext(object);
+        if (context.getEcmaScriptVersion() <= 5) {
+            Object toStringTag = get(object, Symbol.SYMBOL_TO_STRING_TAG);
+            if (JSRuntime.isString(toStringTag)) {
+                return JSRuntime.toStringIsString(toStringTag);
+            }
+        }
+        return JSOrdinary.CLASS_NAME;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"hasOverloadedOperators(operandShape)", "operandShape.check(operand)"})
-    protected boolean doCached(DynamicObject operand,
-                    @Cached("operand.getShape()") Shape operandShape) {
+    @CompilerDirectives.TruffleBoundary
+    @Override
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
+        if (context.isOptionNashornCompatibilityMode()) {
+            return defaultToString(obj);
+        } else {
+            return JSRuntime.objectToConsoleString(obj, null, depth, allowSideEffects);
+        }
+    }
+
+    @CompilerDirectives.TruffleBoundary
+    @Override
+    public Object get(DynamicObject thisObj, long index) {
+        // convert index only once
+        return get(thisObj, String.valueOf(index));
+    }
+
+    @Override
+    public boolean hasOnlyShapeProperties(DynamicObject obj) {
         return true;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"!isJSDynamicObject(operand)"})
-    protected boolean doPrimitive(Object operand) {
-        return false;
-    }
-
-    @Specialization(replaces = {"doCached", "doPrimitive"})
-    protected boolean doGeneric(Object operand) {
-        if (JSDynamicObject.isJSDynamicObject(operand)) {
-            return OperatorSet.hasOverloadedOperators((DynamicObject) operand);
-        } else {
-            return false;
-        }
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
 }
