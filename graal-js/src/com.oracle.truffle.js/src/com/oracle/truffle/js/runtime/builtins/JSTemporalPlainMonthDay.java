@@ -105,8 +105,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
                                 // TODO wrong
                                 return (int) plainMD.getISODay();
                             case MONTH_CODE:
-                                // TODO wrong
-                                return (int) plainMD.getISOMonth();
+                                DynamicObject calendar = plainMD.getCalendar();
+                                return JSTemporalCalendar.calendarMonthCode(calendar, (DynamicObject) obj);
                             case CALENDAR:
                                 return plainMD.getCalendar();
 

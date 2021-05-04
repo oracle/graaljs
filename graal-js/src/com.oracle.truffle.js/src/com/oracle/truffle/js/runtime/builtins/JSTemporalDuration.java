@@ -1213,8 +1213,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
                     long nanoseconds, long increment, String unit,
                     String roundingMode, DynamicObject relativeTo,
                     JSContext ctx) {
-        // TODO: Check for InitializedTemporalZonedDateTime internal slot
-        if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) ||
+        if (!(TemporalUtil.isTemporalZonedDateTime(relativeTo)) || unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) ||
                         (unit.equals(NANOSECONDS) && increment == 1)) {
             return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }

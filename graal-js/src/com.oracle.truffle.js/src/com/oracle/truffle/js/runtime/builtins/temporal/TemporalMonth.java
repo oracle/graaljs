@@ -38,53 +38,8 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-
-public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalDate {
-
-    private final long year;
-    private final long month;
-    private final long day;
-    private final DynamicObject calendar;
-
-    protected JSTemporalPlainDateObject(Shape shape) {
-        super(shape);
-        this.year = 0;
-        this.month = 0;
-        this.day = 0;
-        this.calendar = null;
-    }
-
-    public JSTemporalPlainDateObject(Shape shape, long year, long month, long day, DynamicObject calendar) {
-        super(shape);
-        this.year = year;
-        this.month = month;
-        this.day = day;
-        this.calendar = calendar;
-    }
-
-    @Override
-    public long getISOYear() {
-        return year;
-    }
-
-    @Override
-    public long getISOMonth() {
-        return month;
-    }
-
-    @Override
-    public long getISODay() {
-        return day;
-    }
-
-    @Override
-    public DynamicObject getCalendar() {
-        return calendar;
-    }
+public interface TemporalMonth {
+    public long getISOMonth();
 }

@@ -311,7 +311,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-            if (options == null) {
+            if (options == Undefined.instance) {
                 throw Errors.createTypeError("No options given.");
             }
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);

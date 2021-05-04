@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
@@ -58,18 +60,29 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeAddNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeGetISOFieldsNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeSinceNodeGen;
 import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeSubtractNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToStringNodeGen;
+import com.oracle.truffle.js.builtins.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeValueOfNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDateTimePrototypeBuiltins.TemporalPlainDateTimePrototype> {
@@ -82,19 +95,19 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
     public enum TemporalPlainDateTimePrototype implements BuiltinEnum<TemporalPlainDateTimePrototype> {
         add(1),
-        subtract(1);
+        subtract(1),
 // with(2),
 // until(2),
-// since(2),
+        since(2),
 // round(1),
 // equals(1),
 // toPlainDateTime(1),
 // toZonedDateTime(1),
-// getISOFields(0),
-// toString(1),
-// toLocaleString(0),
-// toJSON(0),
-// valueOf(0);
+        getISOFields(0),
+        toString(1),
+        toLocaleString(0),
+        toJSON(0),
+        valueOf(0);
 
         private final int length;
 
@@ -121,9 +134,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 // case until:
 // return JSTemporalPlainDateTimeUntilNodeGen.create(context, builtin,
 // args().withThis().fixedArgs(2).createArgumentNodes(context));
-// case since:
-// return JSTemporalPlainDateTimeSinceNodeGen.create(context, builtin,
-// args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case since:
+                return JSTemporalPlainDateTimeSinceNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(2).createArgumentNodes(context));
 // case round:
 // return JSTemporalPlainDateTimeRoundNodeGen.create(context, builtin,
 // args().withThis().fixedArgs(1).createArgumentNodes(context));
@@ -136,19 +149,19 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 // case toZonedDateTime:
 // return JSTemporalPlainDateTimeToZonedDateTimeNodeGen.create(context, builtin,
 // args().withThis().fixedArgs(1).createArgumentNodes(context));
-// case getISOFields:
-// return JSTemporalPlainDateTimeGetISOFieldsNodeGen.create(context, builtin,
-// args().withThis().createArgumentNodes(context));
-// case toString:
-// return JSTemporalPlainDateTimeToStringNodeGen.create(context, builtin,
-// args().withThis().fixedArgs(1).createArgumentNodes(context));
-// case toLocaleString:
-// case toJSON:
-// return JSTemporalPlainDateTimeToLocaleStringNodeGen.create(context, builtin,
-// args().withThis().createArgumentNodes(context));
-// case valueOf:
-// return JSTemporalPlainDateTimeValueOfNodeGen.create(context, builtin,
-// args().withThis().createArgumentNodes(context));
+            case getISOFields:
+                return JSTemporalPlainDateTimeGetISOFieldsNodeGen.create(context, builtin,
+                                args().withThis().createArgumentNodes(context));
+            case toString:
+                return JSTemporalPlainDateTimeToStringNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case toLocaleString:
+            case toJSON:
+                return JSTemporalPlainDateTimeToLocaleStringNodeGen.create(context, builtin,
+                                args().withThis().createArgumentNodes(context));
+            case valueOf:
+                return JSTemporalPlainDateTimeValueOfNodeGen.create(context, builtin,
+                                args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -181,7 +194,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             getLong(duration, NANOSECONDS));
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             JSTemporalPlainDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
+                            dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
                             dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
                             dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
                             dateTime.getCalendar(),
@@ -202,6 +215,46 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
                             result.getNanosecond(),
                             dateTime.getCalendar());
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeSince extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeSince(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject since(DynamicObject thisObj, DynamicObject other, Object optParam,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create()") JSToIntegerAsLongNode toInt) {
+            // TODO
+            return Undefined.instance;
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeGetISOFields extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeGetISOFields(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject getISOFields(Object thisObj) {
+            TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
+            DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(getContext().getRealm());
+            JSObjectUtil.putDataProperty(getContext(), obj, CALENDAR, dt.getCalendar());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoDay", dt.getISODay());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoHour", dt.getHours());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoMonth", dt.getISOMonth());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoMicrosecond", dt.getMicroseconds());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoMillisecond", dt.getMilliseconds());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoMinute", dt.getMinutes());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoNanosecond", dt.getNanoseconds());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoSecond", dt.getSeconds());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoYear", dt.getISOYear());
+            return obj;
         }
     }
 
@@ -233,7 +286,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             getLong(duration, NANOSECONDS));
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             JSTemporalPlainDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
-                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
+                            dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
                             dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
                             dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
                             dateTime.getCalendar(),
@@ -254,6 +307,64 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(),
                             result.getNanosecond(),
                             dateTime.getCalendar());
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeToString extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeToString(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected String toString(DynamicObject thisObj, DynamicObject optionsParam,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") JSToBooleanNode toBoolean,
+                        @Cached("create()") JSToStringNode toString) {
+            TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);
+            String showCalendar = TemporalUtil.toShowCalendarOption(options);
+            JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainDateTime.roundISODateTime(
+                            dt.getISOYear(), dt.getISOMonth(), dt.getISODay(),
+                            dt.getHours(), dt.getMinutes(), dt.getSeconds(),
+                            dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds(),
+                            precision.getIncrement(), precision.getUnit(), roundingMode,
+                            null);
+            return JSTemporalPlainDateTime.temporalDateTimeToString(
+                            result.getYears(), result.getMonths(), result.getDays(),
+                            result.getHours(), result.getMinutes(), result.getSeconds(),
+                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
+                            dt.getCalendar(), precision.getPrecision(), showCalendar);
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeToLocaleString extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeToLocaleString(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public String toLocaleString(DynamicObject thisObj) {
+            TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
+            return JSTemporalPlainDateTime.temporalDateTimeToString(dt.getISOYear(), dt.getISOMonth(), dt.getISODay(),
+                            dt.getHours(), dt.getMinutes(), dt.getSeconds(),
+                            dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds(),
+                            dt.getCalendar(), AUTO, AUTO);
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeValueOf extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeValueOf(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
+            throw Errors.createTypeError("Not supported.");
         }
     }
 

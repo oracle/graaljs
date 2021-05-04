@@ -108,7 +108,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                 TemporalDateTime dtItem = (TemporalDateTime) item;
                 TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
                 return JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
-                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
+                                dtItem.getISOYear(), dtItem.getISOMonth(), dtItem.getISODay(),
                                 dtItem.getHours(), dtItem.getMinutes(), dtItem.getSeconds(), dtItem.getMilliseconds(),
                                 dtItem.getMicroseconds(), dtItem.getNanoseconds(), dtItem.getCalendar());
             }
@@ -128,10 +128,10 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
             TemporalDateTime one = (TemporalDateTime) JSTemporalPlainDateTime.toTemporalDateTime(obj1, Undefined.instance, getContext());
             TemporalDateTime two = (TemporalDateTime) JSTemporalPlainDateTime.toTemporalDateTime(obj2, Undefined.instance, getContext());
             return JSTemporalPlainDateTime.compareISODateTime(
-                            one.getYear(), one.getMonth(), one.getDay(),
+                            one.getISOYear(), one.getISOMonth(), one.getISODay(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),
                             one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
-                            two.getYear(), two.getMonth(), two.getDay(),
+                            two.getISOYear(), two.getISOMonth(), two.getISODay(),
                             two.getHours(), two.getMinutes(), two.getSeconds(),
                             two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
         }

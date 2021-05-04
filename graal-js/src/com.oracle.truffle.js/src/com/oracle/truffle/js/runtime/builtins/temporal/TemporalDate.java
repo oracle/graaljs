@@ -40,14 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.object.DynamicObject;
+public interface TemporalDate extends TemporalCalendar, TemporalMonth {
+    public long getISOYear();
 
-public interface TemporalDate {
-    public int getYear();
-
-    public int getMonth();
-
-    public int getDay();
-
-    public DynamicObject getCalendar();
+    public long getISODay();
 }

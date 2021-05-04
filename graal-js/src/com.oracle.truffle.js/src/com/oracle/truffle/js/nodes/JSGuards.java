@@ -85,6 +85,8 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -327,6 +329,16 @@ public final class JSGuards {
 
     public static boolean isJSTemporalPlainYearMonth(Object value) {
         return JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(value);
+    }
+
+    public static boolean isJSTemporalDateLike(Object value) {
+        // TODO Andreas might want to optimize the shape check?
+        return value instanceof TemporalDate;
+    }
+
+    public static boolean isJSTemporalTimeLike(Object value) {
+        // TODO Andreas might want to optimize the shape check?
+        return value instanceof TemporalTime;
     }
 
     public static boolean isJSMap(Object value) {

@@ -50,8 +50,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -103,21 +101,18 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object from(Object item, DynamicObject options,
                         @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") IsConstructorNode isConstructor,
                         @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("createNew()") JSFunctionCallNode callNode) {
+                        @Cached("create()") JSToStringNode toString) {
 
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, isObject, toBoolean, toString);
             if (isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
-                DynamicObject constructor = getContext().getRealm().getTemporalPlainTimeConstructor();
-                return JSTemporalPlainTime.createTemporalTimeFromStatic(constructor,
+                return JSTemporalPlainTime.create(getContext(),
                                 timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
-                                timeItem.getMicroseconds(), timeItem.getNanoseconds(), isConstructor, callNode);
+                                timeItem.getMicroseconds(), timeItem.getNanoseconds());
             }
-            return JSTemporalPlainTime.toTemporalTime(item, overflow, getContext(), isObject, toString, isConstructor, callNode);
+            return JSTemporalPlainTime.toTemporalTime(item, overflow, getContext(), isObject, toString);
         }
 
     }

@@ -152,11 +152,11 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
                                 return temporalDT.getNanoseconds();
 
                             case YEAR:
-                                return temporalDT.getYear();
+                                return temporalDT.getISOYear();
                             case MONTH:
-                                return temporalDT.getMonth();
+                                return temporalDT.getISOMonth();
                             case DAY:
-                                return temporalDT.getDay();
+                                return temporalDT.getISODay();
                             case CALENDAR:
                                 return temporalDT.getCalendar();
                             // TODO more are missing
@@ -270,7 +270,7 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
             // }
             if (item instanceof JSTemporalPlainDateObject) {
                 TemporalDate date = (TemporalDate) item;
-                return createTemporalDateTime(ctx, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
+                return createTemporalDateTime(ctx, date.getISOYear(), date.getISOMonth(), date.getISODay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar((DynamicObject) item, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "hour", "microsecond", "millisecond", "minute",
@@ -315,6 +315,28 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
             return JSTemporalPlainTime.compareTemporalTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, hours2, minutes2, seconds2, milliseconds2, microseconds2, nanoseconds2);
         }
         return date;
+    }
+
+    public static String temporalDateTimeToString(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+                    DynamicObject calendar, Object precision, String showCalendar) {
+        String yearString = TemporalUtil.padISOYear(year);
+        String monthString = String.format("%1$2d", month).replace(" ", "0");
+        String dayString = String.format("%1$2d", day).replace(" ", "0");
+        String hourString = String.format("%1$2d", hour).replace(" ", "0");
+        String minuteString = String.format("%1$2d", minute).replace(" ", "0");
+        String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
+        String calendarID = JSRuntime.toString(calendar);
+        String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
+        return String.format("%s-%s-%sT%s:%s%s%s", yearString, monthString, dayString, hourString, minuteString, secondString, calendarString);
+    }
+
+    public static JSTemporalPlainDateTimePluralRecord roundISODateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
+                    long nanosecond, double increment, String unit, String roundingMode, Long dayLength) {
+        JSTemporalPlainDateTimePluralRecord roundedTime = JSTemporalPlainTime.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
+        JSTemporalPlainDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + roundedTime.getDays());
+        return JSTemporalPlainDateTimePluralRecord.create(br.getYear(), br.getMonth(), br.getDay(),
+                        br.getHour(), br.getMinute(), br.getSecond(),
+                        br.getMillisecond(), br.getMicrosecond(), br.getNanosecond());
     }
 
 }

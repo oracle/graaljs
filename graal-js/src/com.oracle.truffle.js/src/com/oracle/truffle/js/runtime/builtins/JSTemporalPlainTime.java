@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
@@ -214,9 +215,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     // 4.5.2
-    public static Object toTemporalTime(Object item, String varOverflow,
-                    JSContext ctx, IsObjectNode isObject, JSToStringNode toString,
-                    IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
+    public static Object toTemporalTime(Object item, String varOverflow, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
         String overflow = varOverflow == null ? TemporalConstants.CONSTRAIN : varOverflow;
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
         JSTemporalPlainDateTimePluralRecord result2 = null;
@@ -238,17 +237,13 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                             result.getMicrosecond(), result.getNanosecond())) {
                 throw Errors.createRangeError("Given time outside the range.");
             }
-            if (result.hasCalendar() && !result.getCalendar().equals(TemporalConstants.ISO8601)) {
+            if (result.hasCalendar() && !JSRuntime.toString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
                 throw Errors.createRangeError("Wrong calendar.");
             }
             result2 = JSTemporalPlainDateTimePluralRecord.create(result);
         }
-        DynamicObject constructor = ctx.getRealm().getTemporalPlainTimeConstructor();
-        return createTemporalTimeFromStatic(
-                        constructor,
-                        result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(),
-                        result2.getMicroseconds(), result2.getNanoseconds(),
-                        isConstructor, callNode);
+        return create(ctx, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(),
+                        result2.getMicroseconds(), result2.getNanoseconds());
     }
 
     // 4.5.3

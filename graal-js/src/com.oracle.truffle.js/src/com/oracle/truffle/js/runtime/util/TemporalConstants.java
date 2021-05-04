@@ -81,7 +81,7 @@ public final class TemporalConstants {
     public static final String WEEK_OF_YEAR = "weekOfYear";
 
     public static final String DATE_FROM_FIELDS = "dateFromFields";
-    public static final Object ISO8601 = "iso8601";
+    public static final String ISO8601 = "iso8601";
     public static final String REFERENCE_ISO_DAY = "referenceIsoDay";
     public static final String REFERENCE_ISO_YEAR = "referenceIsoYear";
 
@@ -106,5 +106,4 @@ public final class TemporalConstants {
     public static final String UNIT = "Unit";
 
     public static final String AUTO = "auto";
-
 }

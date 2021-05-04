@@ -41,9 +41,10 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainMonthDayObject extends JSNonProxyObject {
+public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements TemporalMonth {
 
     private final long isoMonth;
     private final long isoDay;
@@ -59,6 +60,7 @@ public class JSTemporalPlainMonthDayObject extends JSNonProxyObject {
         this.isoYear = isoYear;
     }
 
+    @Override
     public long getISOMonth() {
         return isoMonth;
     }

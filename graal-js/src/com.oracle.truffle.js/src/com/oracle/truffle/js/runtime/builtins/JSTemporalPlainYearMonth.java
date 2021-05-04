@@ -53,10 +53,8 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -118,33 +116,19 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
                             case CALENDAR:
                                 return temporalPlainYearMonth.getCalendar();
                             case YEAR:
-                                return JSTemporalCalendar.calendarYear(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarYear(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             case MONTH:
-                                return JSTemporalCalendar.calendarMonth(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarMonth(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             case MONTH_CODE:
-                                return JSTemporalCalendar.calendarMonthCode(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarMonthCode(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             case DAYS_IN_YEAR:
-                                return JSTemporalCalendar.calendarDaysInYear(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarDaysInYear(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             case DAYS_IN_MONTH:
-                                return JSTemporalCalendar.calendarDaysInMonth(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarDaysInMonth(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             case MONTHS_IN_YEAR:
-                                return JSTemporalCalendar.calendarMonthsInYear(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarMonthsInYear(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             case IN_LEAP_YEAR:
-                                return JSTemporalCalendar.calendarInLeapYear(
-                                                temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth,
-                                                DynamicObjectLibrary.getUncached(), JSFunctionCallNode.createCall());
+                                return JSTemporalCalendar.calendarInLeapYear(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             default:
                                 errorBranch.enter();
                                 throw Errors.createTypeErrorTemporalPlainMonthYearExpected();

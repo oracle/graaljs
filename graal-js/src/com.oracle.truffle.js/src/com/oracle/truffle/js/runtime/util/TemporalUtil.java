@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime.util;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
@@ -83,6 +85,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -97,6 +100,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
@@ -104,6 +108,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
@@ -113,6 +118,12 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TemporalUtil {
+
+    // TODO for every call to requireTemporalTime etc all, make sure we pass in an Object; if we are
+    // passing an DynamicObject, chances are we have an UnsupportedSpecializationException as we
+    // don't accept a non-object type
+
+    // TODO check the records we have and unify them
 
     private static final Function<Object, Object> toIntegerOrInfinity = (argument -> (long) JSToDoubleNode.create().executeDouble(argument));
     private static final Function<Object, Object> toPositiveIntegerOrInfinity = TemporalUtil::toPositiveIntegerOrInfinity;
@@ -412,7 +423,7 @@ public final class TemporalUtil {
             // }
             if (value instanceof JSTemporalPlainDateObject) {
                 JSTemporalPlainDateObject pd = (JSTemporalPlainDateObject) value;
-                return JSTemporalPlainDateTime.createTemporalDateTime(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), 0, 0, 0, 0, 0, 0, pd.getCalendar());
+                return JSTemporalPlainDateTime.createTemporalDateTime(ctx, pd.getISOYear(), pd.getISOMonth(), pd.getISODay(), 0, 0, 0, 0, 0, 0, pd.getCalendar());
             }
             calendar = TemporalUtil.getOptionalTemporalCalendar((DynamicObject) value, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, ctx);
@@ -491,6 +502,10 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeRecord time2 = tryParseTime2(string);
         if (time2 != null) {
             return time2;
+        }
+        JSTemporalPlainDateTimeRecord time3 = tryParseTime3(string);
+        if (time3 != null) {
+            return time3;
         }
         throw Errors.createRangeError("cannot parse the ISO date time string");
     }
@@ -578,6 +593,17 @@ public final class TemporalUtil {
     private static JSTemporalPlainDateTimeRecord tryParseTime2(String string) {
         try {
             DateFormat df = new SimpleDateFormat("hh:mm:ss");
+            df.setLenient(true);
+            java.util.Date d = df.parse(string);
+            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private static JSTemporalPlainDateTimeRecord tryParseTime3(String string) {
+        try {
+            DateFormat df = new SimpleDateFormat("hh:mm");
             df.setLenient(true);
             java.util.Date d = df.parse(string);
             return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
@@ -929,9 +955,26 @@ public final class TemporalUtil {
         return (DynamicObject) cal; // TODO does that hold?
     }
 
-    public static DynamicObject toTemporalCalendar(Object calendar, JSContext ctx) {
-        // TODO Auto-generated method stub
-        throw Errors.unsupported("TODO");
+    public static DynamicObject toTemporalCalendar(Object temporalCalendarLike, JSContext ctx) {
+        if (JSRuntime.isObject(temporalCalendarLike)) {
+            DynamicObject obj = (DynamicObject) temporalCalendarLike;
+            if (temporalCalendarLike instanceof TemporalCalendar) {
+                return ((TemporalCalendar) temporalCalendarLike).getCalendar();
+            }
+            if (!JSObject.hasProperty(obj, CALENDAR)) {
+                return obj;
+            }
+            Object obj2 = JSObject.get(obj, CALENDAR);
+            if (JSRuntime.isObject(obj2) && !JSObject.hasProperty((DynamicObject) obj2, CALENDAR)) {
+                return (DynamicObject) obj2;
+            }
+        }
+
+        String identifier = JSRuntime.toString(temporalCalendarLike);
+        if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
+            identifier = parseTemporalCalendarString(identifier);
+        }
+        return JSTemporalCalendar.create(ctx, identifier);
     }
 
     public static Set<String> calendarFields(DynamicObject calendar, String[] strings, JSContext ctx) {
@@ -994,6 +1037,11 @@ public final class TemporalUtil {
         return numberPart.length() >= 2 ? "M" + numberPart : "M0" + numberPart;
     }
 
+    @TruffleBoundary
+    public static Object isoMonthCode(int month) {
+        return buildISOMonthCode(String.valueOf(month));
+    }
+
     public static void requireInternalSlot(DynamicObject obj, String str) {
         // TODO ECMAScript 10.1.15
     }
@@ -1020,7 +1068,7 @@ public final class TemporalUtil {
         throw Errors.unsupported("TODO");
     }
 
-    public static DynamicObject createTemporalDateTime(int year, int month, int day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    public static DynamicObject createTemporalDateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
                     DynamicObject calendar, JSContext context) {
         return JSTemporalPlainDateTime.createTemporalDateTime(context, year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
     }
@@ -1152,7 +1200,7 @@ public final class TemporalUtil {
                         overflow);
 
         return JSTemporalPlainDateTimeRecord.create(
-                        date.getYear(), date.getMonth(), date.getDay(),
+                        date.getISOYear(), date.getISOMonth(), date.getISODay(),
                         timeResult2.getHours(), timeResult2.getMinutes(), timeResult2.getSeconds(),
                         timeResult2.getMilliseconds(), timeResult2.getMicroseconds(), timeResult2.getNanoseconds());
     }
@@ -1395,7 +1443,7 @@ public final class TemporalUtil {
         return 0;
     }
 
-    public static TemporalTime requireTemporalTime(DynamicObject obj) {
+    public static TemporalTime requireTemporalTime(Object obj) {
         // spec says RequireInternalSlot(obj, "InitializedTemporalTime");
         if (!(obj instanceof TemporalTime)) {
             throw Errors.createTypeError("InitializedTemporalTime expected");
@@ -1403,12 +1451,28 @@ public final class TemporalUtil {
         return (TemporalTime) obj;
     }
 
-    public static TemporalDateTime requireTemporalDateTime(DynamicObject obj) {
+    public static TemporalDate requireTemporalDate(Object obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalDate");
+        if (!(obj instanceof TemporalDate)) {
+            throw Errors.createTypeError("InitializedTemporalDate expected");
+        }
+        return (TemporalDate) obj;
+    }
+
+    public static TemporalDateTime requireTemporalDateTime(Object obj) {
         // spec says RequireInternalSlot(obj, "InitializedTemporalDateTime");
         if (!(obj instanceof TemporalDateTime)) {
             throw Errors.createTypeError("InitializedTemporalDateTime expected");
         }
         return (TemporalDateTime) obj;
+    }
+
+    public static JSTemporalCalendarObject requireTemporalCalendar(Object obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalCalendar");
+        if (!(obj instanceof JSTemporalCalendarObject)) {
+            throw Errors.createTypeError("InitializedTemporalCalendar expected");
+        }
+        return (JSTemporalCalendarObject) obj;
     }
 
     public static Object toPlural(Object u) {
@@ -1429,6 +1493,37 @@ public final class TemporalUtil {
             return NANOSECONDS;
         }
         throw Errors.createTypeError("cannot convert Unit to plural");
+    }
+
+    public static boolean isTemporalZonedDateTime(@SuppressWarnings("unused") DynamicObject obj) {
+        // TODO this should be an instanceof check on JSTemporalZonedDateTimeObject
+        // but that class does not exist yet :-)
+        return false;
+    }
+
+    public static String toShowCalendarOption(DynamicObject options) {
+        // TODO 1. Return ? GetOption(normalizedOptions, "calendarName", "string", « "auto",
+        // "always", "never" », "auto").
+        return "auto";
+    }
+
+    public static String padISOYear(long year) {
+        if (999 < year && year < 9999) {
+            return String.valueOf(year);
+        }
+        String sign = year >= 0 ? "+" : "-";
+        return String.format("%s%1$6d", sign, Math.abs(year)).replace(" ", "0");
+    }
+
+    @TruffleBoundary
+    public static String formatCalendarAnnotation(String id, String showCalendar) {
+        if ("never".equals(showCalendar)) {
+            return "";
+        } else if (AUTO.equals(showCalendar) && ISO8601.equals(id)) {
+            return "";
+        } else {
+            return "[u-ca=" + id + "]";
+        }
     }
 
 }
