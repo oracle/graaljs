@@ -86,8 +86,6 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableWrapperNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LazyReadFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.LazyWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.LocalVarIncNode;
 import com.oracle.truffle.js.nodes.access.NewPrivateNameNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
@@ -900,14 +898,6 @@ public class NodeFactory {
 
     public JavaScriptNode createGeneratorExprBlock(JavaScriptNode[] statements, JavaScriptNode readState, WriteNode writeState) {
         return GeneratorExprBlockNode.create(statements, readState, writeState);
-    }
-
-    public JavaScriptNode createLazyReadFrameSlot(Object identifier) {
-        return LazyReadFrameSlotNode.create(identifier);
-    }
-
-    public LazyWriteFrameSlotNode createLazyWriteFrameSlot(Object identifier, JavaScriptNode rhs) {
-        return LazyWriteFrameSlotNode.create(identifier, rhs);
     }
 
     public JavaScriptNode createBlockScope(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, FrameSlot parentSlot) {

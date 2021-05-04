@@ -1063,30 +1063,6 @@ public abstract class Environment {
         }
     }
 
-    class LazyFrameSlotVarRef extends AbstractFrameVarRef {
-        protected final FrameSlot frameSlot;
-
-        LazyFrameSlotVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
-            super(scopeLevel, frameLevel, name, current);
-            this.frameSlot = frameSlot;
-        }
-
-        @Override
-        public FrameSlot getFrameSlot() {
-            return frameSlot;
-        }
-
-        @Override
-        public JavaScriptNode createReadNode() {
-            return factory.createLazyReadFrameSlot(frameSlot.getIdentifier());
-        }
-
-        @Override
-        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createLazyWriteFrameSlot(frameSlot.getIdentifier(), rhs);
-        }
-    }
-
     class DebugVarRef extends VarRef {
         DebugVarRef(String name) {
             super(name);
