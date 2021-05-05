@@ -48,6 +48,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,6 +62,7 @@ import org.junit.Before;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.DebugScope;
 import com.oracle.truffle.api.debug.DebugStackFrame;
 import com.oracle.truffle.api.debug.DebugValue;
@@ -370,6 +372,44 @@ public class TestScope {
 
             assertEquals(ss5, tester.expectDone());
         }
+    }
+
+    @Test
+    public void testFunctionCallFromBlock() {
+        Source function = Source.newBuilder("js", "var n = 10;\n" +
+                        "\n" +
+                        "function factorial(n) {\n" +
+                        "  f = 1;\n" +
+                        "  for (let i = 2; i <= n; i++) {\n" +
+                        "    f *= i;\n" +
+                        "  }\n" +
+                        "  return f;\n" +
+                        "}\n" +
+                        "\n" +
+                        "for (let i = 0; i <= n; i++) {\n" +
+                        "  factorial(i);\n" +
+                        "}", "function.js").buildLiteral();
+        try (DebuggerSession session = tester.startSession()) {
+            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(function)).lineIs(12).build());
+            tester.startEval(function);
+
+            // Before invocation of factorial(i):
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":program", 12, "factorial(i)", new String[]{"i", "0"}, new String[]{});
+                event.prepareStepInto(1);
+            });
+            // In factorial(i):
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "factorial", 4, "f = 1", new String[]{"n", "0"});
+                // Look into the invoke frame:
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame frame = framesIterator.next();
+                checkScopes(frame.getScope(), new String[]{"i", "0"}, new String[]{});
+                event.prepareContinue();
+            });
+        }
+        tester.expectDone();
     }
 
     @Test
