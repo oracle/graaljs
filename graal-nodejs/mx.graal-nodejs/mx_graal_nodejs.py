@@ -621,23 +621,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     stability="supported",
 ))
 
-# pylint: disable=line-too-long
-# GraalVM configs to build without the Graal compiler
-mx_sdk_vm.register_vm_config('node1', ['js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node', ['bjs', 'bpolyglot', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'spolyglot', 'tfl'], _suite, env_file=False)
-# GraalVM configs to build with the Graal compiler
-mx_sdk_vm.register_vm_config('node1-ce', ['cmp', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ce', ['bjs', 'bpolyglot', 'cmp', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'spolyglot', 'tfl'], _suite, env_file=False)
-# GraalVM configs to build with the Enterprise Graal compiler
-mx_sdk_vm.register_vm_config('node1-ee', ['cmp', 'cmpee', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'stage1', 'tfl'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('node-ee', ['bjs', 'bpolyglot', 'cmp', 'cmpee', 'js', 'libpoly', 'llp', 'nfi', 'njs', 'poly', 'rgx', 'sdk', 'spolyglot', 'tfl'], _suite, env_file=False)
-# GraalVM configs to build with Native Image
-mx_sdk_vm.register_vm_config('n-ce', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'tfl', 'tflm'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('n1-ce', ['cmp', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'stage1', 'svm', 'tfl', 'tflm'], _suite, env_file=False)
-# GraalVM configs to build with Native Image Enterprise
-mx_sdk_vm.register_vm_config('n-ee', ['bjs', 'bnative-image', 'bnative-image-configure', 'bpolyglot', 'cmp', 'cmpee', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'niee', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'sjvmcicompiler', 'snative-image-agent', 'svm', 'svmee', 'tfl', 'tflm'], _suite, env_file=False)
-mx_sdk_vm.register_vm_config('n1-ee', ['cmp', 'cmpee', 'js', 'lg', 'libpoly', 'llp', 'nfi', 'ni', 'nic', 'niee', 'nil', 'njs', 'nju', 'poly', 'polynative', 'rgx', 'sdk', 'stage1', 'svm', 'svmee', 'tfl', 'tflm'], _suite, env_file=False)
-# pylint: enable=line-too-long
 
 mx.update_commands(_suite, {
     'node' : [node, ''],
