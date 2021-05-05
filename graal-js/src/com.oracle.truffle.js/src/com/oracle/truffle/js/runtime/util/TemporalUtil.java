@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.util;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
@@ -51,6 +50,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
@@ -101,6 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendarObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
@@ -1005,7 +1006,7 @@ public final class TemporalUtil {
     public static DynamicObject dateFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
         Object dateFromFields = JSObject.get(calendar, TemporalConstants.DATE_FROM_FIELDS);
         DynamicObject date = (DynamicObject) JSRuntime.call(dateFromFields, calendar, new Object[]{fields, options});
-        requireInternalSlot(date, "InitializedTemporalDate");
+        requireTemporalDate(date);
         return date;
     }
 
@@ -1040,10 +1041,6 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static Object isoMonthCode(int month) {
         return buildISOMonthCode(String.valueOf(month));
-    }
-
-    public static void requireInternalSlot(DynamicObject obj, String str) {
-        // TODO ECMAScript 10.1.15
     }
 
     public static DynamicObject toTemporalTimeZone(Object temporalTimeZoneLike) {
@@ -1253,7 +1250,7 @@ public final class TemporalUtil {
     public static DynamicObject dateAdd(DynamicObject calendar, DynamicObject datePart, DynamicObject dateDuration, DynamicObject options, DynamicObject dateUntilParam) {
         DynamicObject dateUntil = dateUntilParam == Undefined.instance ? (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_UNTIL) : dateUntilParam;
         Object duration = JSRuntime.call(dateUntil, calendar, new Object[]{datePart, dateDuration, options});
-        TemporalUtil.requireInternalSlot((DynamicObject) duration, "InitializedTemporalDuration");
+        TemporalUtil.requireTemporalDuration(duration);
         return (DynamicObject) duration;
     }
 
@@ -1267,7 +1264,7 @@ public final class TemporalUtil {
             dateAddPrepared = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
         }
         DynamicObject addedDate = (DynamicObject) JSRuntime.call(dateAddPrepared, calendar, new Object[]{date, duration, options});
-        requireInternalSlot(addedDate, "InitializedTemporalDate");
+        requireTemporalDate(addedDate);
         return addedDate;
     }
 
@@ -1277,7 +1274,7 @@ public final class TemporalUtil {
             dateUntilPrepared = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_UNTIL);
         }
         DynamicObject addedDate = (DynamicObject) JSRuntime.call(dateUntilPrepared, calendar, new Object[]{one, two, options});
-        requireInternalSlot(addedDate, "InitializedTemporalDuration");
+        requireTemporalDuration(addedDate);
         return addedDate;
     }
 
@@ -1473,6 +1470,14 @@ public final class TemporalUtil {
             throw Errors.createTypeError("InitializedTemporalCalendar expected");
         }
         return (JSTemporalCalendarObject) obj;
+    }
+
+    public static JSTemporalDurationObject requireTemporalDuration(Object obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalDuration");
+        if (!(obj instanceof JSTemporalDurationObject)) {
+            throw Errors.createTypeError("InitializedTemporalDuration expected");
+        }
+        return (JSTemporalDurationObject) obj;
     }
 
     public static Object toPlural(Object u) {

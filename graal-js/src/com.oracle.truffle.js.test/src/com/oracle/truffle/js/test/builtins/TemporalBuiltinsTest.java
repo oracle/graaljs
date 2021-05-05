@@ -57,7 +57,7 @@ import com.oracle.truffle.js.test.JSTest;
 public class TemporalBuiltinsTest extends JSTest {
 
     private static Context getJSContext() {
-        return JSTest.newContextBuilder(ID).option("js.ecmascript-version", "2022").build();
+        return JSTest.newContextBuilder(ID).option("js.temporal", "true").build();
     }
 
     // TODO PlainDateTime tests

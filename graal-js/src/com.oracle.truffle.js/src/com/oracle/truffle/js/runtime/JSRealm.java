@@ -896,33 +896,49 @@ public class JSRealm {
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
 
-        ctor = JSTemporalPlainTime.createConstructor(this);
-        this.temporalPlainTimeConstructor = ctor.getFunctionObject();
-        this.temporalPlainTimePrototype = ctor.getPrototype();
+        if (context.isOptionTemporal()) {
+            ctor = JSTemporalPlainTime.createConstructor(this);
+            this.temporalPlainTimeConstructor = ctor.getFunctionObject();
+            this.temporalPlainTimePrototype = ctor.getPrototype();
+            ctor = JSTemporalPlainDate.createConstructor(this);
+            this.temporalPlainDateConstructor = ctor.getFunctionObject();
+            this.temporalPlainDatePrototype = ctor.getPrototype();
 
-        ctor = JSTemporalPlainDate.createConstructor(this);
-        this.temporalPlainDateConstructor = ctor.getFunctionObject();
-        this.temporalPlainDatePrototype = ctor.getPrototype();
+            ctor = JSTemporalPlainDateTime.createConstructor(this);
+            this.temporalPlainDateTimeConstructor = ctor.getFunctionObject();
+            this.temporalPlainDateTimePrototype = ctor.getPrototype();
 
-        ctor = JSTemporalPlainDateTime.createConstructor(this);
-        this.temporalPlainDateTimeConstructor = ctor.getFunctionObject();
-        this.temporalPlainDateTimePrototype = ctor.getPrototype();
+            ctor = JSTemporalDuration.createConstructor(this);
+            this.temporalDurationConstructor = ctor.getFunctionObject();
+            this.temporalDurationPrototype = ctor.getPrototype();
 
-        ctor = JSTemporalDuration.createConstructor(this);
-        this.temporalDurationConstructor = ctor.getFunctionObject();
-        this.temporalDurationPrototype = ctor.getPrototype();
+            ctor = JSTemporalCalendar.createConstructor(this);
+            this.temporalCalendarConstructor = ctor.getFunctionObject();
+            this.temporalCalendarPrototype = ctor.getPrototype();
 
-        ctor = JSTemporalCalendar.createConstructor(this);
-        this.temporalCalendarConstructor = ctor.getFunctionObject();
-        this.temporalCalendarPrototype = ctor.getPrototype();
+            ctor = JSTemporalPlainYearMonth.createConstructor(this);
+            this.temporalPlainYearMonthConstructor = ctor.getFunctionObject();
+            this.temporalPlainYearMonthPrototype = ctor.getPrototype();
 
-        ctor = JSTemporalPlainYearMonth.createConstructor(this);
-        this.temporalPlainYearMonthConstructor = ctor.getFunctionObject();
-        this.temporalPlainYearMonthPrototype = ctor.getPrototype();
-
-        ctor = JSTemporalPlainMonthDay.createConstructor(this);
-        this.temporalPlainMonthDayConstructor = ctor.getFunctionObject();
-        this.temporalPlainMonthDayPrototype = ctor.getPrototype();
+            ctor = JSTemporalPlainMonthDay.createConstructor(this);
+            this.temporalPlainMonthDayConstructor = ctor.getFunctionObject();
+            this.temporalPlainMonthDayPrototype = ctor.getPrototype();
+        } else {
+            this.temporalPlainTimeConstructor = null;
+            this.temporalPlainTimePrototype = null;
+            this.temporalPlainDateConstructor = null;
+            this.temporalPlainDatePrototype = null;
+            this.temporalPlainDateTimeConstructor = null;
+            this.temporalPlainDateTimePrototype = null;
+            this.temporalDurationConstructor = null;
+            this.temporalDurationPrototype = null;
+            this.temporalCalendarConstructor = null;
+            this.temporalCalendarPrototype = null;
+            this.temporalPlainYearMonthConstructor = null;
+            this.temporalPlainYearMonthPrototype = null;
+            this.temporalPlainMonthDayConstructor = null;
+            this.temporalPlainMonthDayPrototype = null;
+        }
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1682,13 +1698,11 @@ public class JSRealm {
         if (context.getContextOptions().isOperatorOverloading()) {
             JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
         }
-
+        if (context.isOptionTemporal()) {
+            addTemporalGlobals();
+        }
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
-        }
-
-        if (isTemporalEnabled()) {
-            addTemporalGlobals();
         }
     }
 
@@ -1820,11 +1834,8 @@ public class JSRealm {
         }
     }
 
-    private boolean isTemporalEnabled() {
-        return context.getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
-    }
-
     private void addTemporalGlobals() {
+        assert context.isOptionTemporal();
         DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor());

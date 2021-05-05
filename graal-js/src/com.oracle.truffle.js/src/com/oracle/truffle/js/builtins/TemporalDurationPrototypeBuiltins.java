@@ -484,7 +484,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            TemporalUtil.requireInternalSlot(duration, "InitializedTemporalDuration");
+            TemporalUtil.requireTemporalDuration(duration);
             DynamicObject options = TemporalUtil.getOptionsObject(opt, getContext());
             JSTemporalPrecisionRecord precision = TemporalUtil.toDurationSecondsStringPrecision(options);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);

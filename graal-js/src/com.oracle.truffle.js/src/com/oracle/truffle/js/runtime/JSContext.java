@@ -1401,6 +1401,10 @@ public class JSContext {
         return contextOptions.isAtomics();
     }
 
+    public boolean isOptionTemporal() {
+        return contextOptions.isTemporal();
+    }
+
     public boolean isOptionV8CompatibilityMode() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
         return contextOptions.isV8CompatibilityMode();
