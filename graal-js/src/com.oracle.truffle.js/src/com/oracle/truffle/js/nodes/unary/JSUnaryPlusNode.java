@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -55,8 +54,6 @@ import java.util.Set;
 
 @NodeInfo(shortName = "+")
 public abstract class JSUnaryPlusNode extends JSUnaryNode {
-
-    @Child private JSToNumberNode toNumberNode;
 
     protected JSUnaryPlusNode(JavaScriptNode operand) {
         super(operand);
@@ -77,11 +74,8 @@ public abstract class JSUnaryPlusNode extends JSUnaryNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(value)"})
-    protected Object doDefault(Object value) {
-        if (toNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumberNode = insert(JSToNumberNode.create());
-        }
+    protected Object doDefault(Object value,
+                    @Cached("create()") JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(value);
     }
 
