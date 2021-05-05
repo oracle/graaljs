@@ -1,5 +1,6 @@
 package com.oracle.truffle.js.nodes.tuples;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -25,7 +26,7 @@ public abstract class IsTupleNode extends JavaScriptBaseNode {
         return true;
     }
 
-    @Specialization(guards = "!isJSTuple(object)")
+    @Fallback
     protected static boolean doNotJSTuple(@SuppressWarnings("unused") Object object) {
         return false;
     }
