@@ -60,7 +60,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.tuples.IsConcatSpreadableNode;
+import com.oracle.truffle.js.nodes.tuples.JSIsConcatSpreadableNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -656,7 +656,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private final BranchProfile growProfile = BranchProfile.create();
 
-        @Child private IsConcatSpreadableNode isConcatSpreadableNode;
+        @Child private JSIsConcatSpreadableNode isConcatSpreadableNode;
         @Child private JSHasPropertyNode hasPropertyNode;
         @Child private ReadElementNode readElementNode;
         @Child private JSGetLengthNode getLengthNode;
@@ -723,7 +723,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private boolean isConcatSpreadable(Object object) {
             if (isConcatSpreadableNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                isConcatSpreadableNode = insert(IsConcatSpreadableNode.create(getContext()));
+                isConcatSpreadableNode = insert(JSIsConcatSpreadableNode.create(getContext()));
             }
             return isConcatSpreadableNode.execute(object);
         }

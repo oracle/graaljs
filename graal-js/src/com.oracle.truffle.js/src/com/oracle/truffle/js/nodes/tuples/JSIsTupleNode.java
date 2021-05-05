@@ -7,11 +7,11 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Tuple;
 
 /**
- * Represents abstract operation IsTuple.
+ * Represents the abstract operation IsTuple.
  */
-public abstract class IsTupleNode extends JavaScriptBaseNode {
+public abstract class JSIsTupleNode extends JavaScriptBaseNode {
 
-    protected IsTupleNode() {
+    protected JSIsTupleNode() {
     }
 
     public abstract boolean execute(Object operand);
@@ -27,11 +27,11 @@ public abstract class IsTupleNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    protected static boolean doNotJSTuple(@SuppressWarnings("unused") Object object) {
+    protected static boolean doOther(@SuppressWarnings("unused") Object object) {
         return false;
     }
 
-    public static IsTupleNode create() {
-        return IsTupleNodeGen.create();
+    public static JSIsTupleNode create() {
+        return JSIsTupleNodeGen.create();
     }
 }

@@ -3,7 +3,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.tuples.IsTupleNode;
+import com.oracle.truffle.js.nodes.tuples.JSIsTupleNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTuple;
@@ -47,7 +47,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class TupleIsTupleNode extends JSBuiltinNode {
 
-        @Child private IsTupleNode isTupleNode = IsTupleNode.create();
+        @Child private JSIsTupleNode isTupleNode = JSIsTupleNode.create();
 
         public TupleIsTupleNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
