@@ -248,7 +248,7 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
         return INSTANCE.createConstructorAndPrototype(realm, TemporalPlainDateTimeFunctionBuiltins.BUILTINS);
     }
 
-    public static boolean isJSTemporalDateTime(Object obj) {
+    public static boolean isJSTemporalPlainDateTime(Object obj) {
         return obj instanceof JSTemporalPlainDateTimeObject;
     }
 

@@ -40,18 +40,20 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements TemporalMonth {
+public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements TemporalMonth, TemporalCalendar {
 
     private final long isoMonth;
     private final long isoDay;
-    private final JSTemporalCalendarObject calendar;
+    private final DynamicObject calendar;
     private final long isoYear;
 
-    protected JSTemporalPlainMonthDayObject(Shape shape, long isoMonth, long isoDay, JSTemporalCalendarObject calendar,
+    protected JSTemporalPlainMonthDayObject(Shape shape, long isoMonth, long isoDay, DynamicObject calendar,
                     long isoYear) {
         super(shape);
         this.isoMonth = isoMonth;
@@ -73,7 +75,8 @@ public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements T
         return isoYear;
     }
 
-    public JSTemporalCalendarObject getCalendar() {
+    @Override
+    public DynamicObject getCalendar() {
         return calendar;
     }
 }

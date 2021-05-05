@@ -407,8 +407,8 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
     public static Object resolveISOMonth(DynamicObject fields, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
-        if (monthCode == Undefined.instance) {
-            if (month == Undefined.instance) {
+        if (TemporalUtil.isNullish(monthCode)) {
+            if (TemporalUtil.isNullish(month)) {
                 throw Errors.createTypeError("No month or month code present.");
             }
             return month;
@@ -424,10 +424,10 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
             throw Errors.createRangeError("The last character of the monthCode should be a number.");
         }
 
-        long m1 = TemporalUtil.asLong(month);
+        long m1 = TemporalUtil.isNullish(month) ? -1 : TemporalUtil.asLong(month);
         long m2 = (long) numberPart2;
 
-        if (month != null && m1 != m2) {
+        if (!TemporalUtil.isNullish(month) && m1 != m2) {
             throw Errors.createTypeError("Month does not equal the month code.");
         }
         if (!identicalNode.executeBoolean(monthCode, TemporalUtil.buildISOMonthCode(numberPart))) {
@@ -483,7 +483,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
         Object year = JSObject.get(preparedFields, YEAR);
-        if (month != Undefined.instance && monthCode == Undefined.instance && year == Undefined.instance) {
+        if (!TemporalUtil.isNullish(month) && TemporalUtil.isNullish(monthCode) && TemporalUtil.isNullish(year)) {
             throw Errors.createTypeError("A year or a month code should be present.");
         }
         month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);

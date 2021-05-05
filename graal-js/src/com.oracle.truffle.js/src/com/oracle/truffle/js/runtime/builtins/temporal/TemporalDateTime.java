@@ -40,6 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public interface TemporalDateTime extends TemporalDate, TemporalTime {
+public interface TemporalDateTime extends TemporalDate, TemporalTime, TemporalCalendar {
 
 }

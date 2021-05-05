@@ -192,7 +192,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm, TemporalPlainTimeFunctionBuiltins.BUILTINS);
     }
 
-    public static boolean isJSTemporalTime(Object obj) {
+    public static boolean isJSTemporalPlainTime(Object obj) {
         return obj instanceof JSTemporalPlainTimeObject;
     }
 
@@ -220,7 +220,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
         JSTemporalPlainDateTimePluralRecord result2 = null;
         if (isObject.executeBoolean(item)) {
-            if (isJSTemporalTime(item)) {
+            if (isJSTemporalPlainTime(item)) {
                 return item;
             }
             // TODO: 4.c Calendar

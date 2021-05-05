@@ -104,7 +104,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
-            if (isObject.executeBoolean(item) && JSTemporalPlainDateTime.isJSTemporalDateTime(item)) {
+            if (isObject.executeBoolean(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 TemporalDateTime dtItem = (TemporalDateTime) item;
                 TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
                 return JSTemporalPlainDateTime.createTemporalDateTime(getContext(),

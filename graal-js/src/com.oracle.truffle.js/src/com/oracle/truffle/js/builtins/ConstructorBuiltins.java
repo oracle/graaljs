@@ -1256,7 +1256,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike,
                             getContext().getRealm(), toString, isObject, isConstructor, callNode);
             long ref = toInt.executeLong(referenceISOYear);
-            return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref), newTarget);
+            return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, ref, calendar), newTarget);
         }
 
         @Override

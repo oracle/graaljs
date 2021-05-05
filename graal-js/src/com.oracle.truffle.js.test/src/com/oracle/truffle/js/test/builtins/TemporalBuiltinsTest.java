@@ -751,4 +751,11 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 // endregion
 
+    @Test
+    public void testPlainMonthDayCreation2() {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, "const md1 = PlainMonthDay.from('01-22');    const md2 = PlainMonthDay.from('12-15'); md1.equals(md1); md1.equals(md2);");
+        }
+    }
+
 }

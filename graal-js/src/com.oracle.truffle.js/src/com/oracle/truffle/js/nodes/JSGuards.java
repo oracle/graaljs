@@ -324,10 +324,10 @@ public final class JSGuards {
     }
 
     public static boolean isJSTemporalTime(Object value) {
-        return JSTemporalPlainTime.isJSTemporalTime(value);
+        return JSTemporalPlainTime.isJSTemporalPlainTime(value);
     }
 
-    public static boolean isJSTemporalPlainYearMonth(Object value) {
+    public static boolean isJSTemporalYearMonth(Object value) {
         return JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(value);
     }
 

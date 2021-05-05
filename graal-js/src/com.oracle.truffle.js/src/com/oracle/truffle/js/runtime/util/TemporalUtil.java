@@ -106,6 +106,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
@@ -477,6 +478,12 @@ public final class TemporalUtil {
     private static Object parseTimeZoneOffsetString(Object offset) {
         // TODO Auto-generated method stub
         throw Errors.unsupported("TODO");
+    }
+
+    public static JSTemporalPlainDateTimeRecord parseTemporalMonthDayString(String string, JSContext ctx) {
+        JSTemporalPlainDateTimeRecord res = parseISODateTime(string, ctx);
+        // TODO this is not according to the spec, yet
+        return res;
     }
 
     private static JSTemporalPlainDateTimeRecord parseISODateTime(String string, JSContext ctx) {
@@ -1480,6 +1487,14 @@ public final class TemporalUtil {
         return (JSTemporalDurationObject) obj;
     }
 
+    public static JSTemporalPlainMonthDayObject requireTemporalMonthDay(Object obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalMonthDay");
+        if (!(obj instanceof JSTemporalPlainMonthDayObject)) {
+            throw Errors.createTypeError("InitializedTemporalMonthDay expected");
+        }
+        return (JSTemporalPlainMonthDayObject) obj;
+    }
+
     public static Object toPlural(Object u) {
         if (u == Undefined.instance) {
             return u;
@@ -1529,6 +1544,10 @@ public final class TemporalUtil {
         } else {
             return "[u-ca=" + id + "]";
         }
+    }
+
+    public static boolean isNullish(Object obj) {
+        return obj == null || obj == Undefined.instance; // TODO this might not be exactly right
     }
 
 }
