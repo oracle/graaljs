@@ -181,6 +181,7 @@ test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
 
 # Fails randomly
+test-http-outgoing-end-cork: SKIP
 test-http2-server-rst-stream: SKIP
 
 [$system==solaris]
