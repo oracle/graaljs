@@ -135,6 +135,9 @@ public class OperatorSet {
 
     @TruffleBoundary
     public static Object getOperatorImplementation(Object left, Object right, String operatorName) {
+        if (JSRuntime.isNullOrUndefined(left) || JSRuntime.isNullOrUndefined(right)) {
+            return null;
+        }
         OperatorSet leftOperatorSet = getOperatorSet(left);
         OperatorSet rightOperatorSet = getOperatorSet(right);
         if (leftOperatorSet == rightOperatorSet) {
