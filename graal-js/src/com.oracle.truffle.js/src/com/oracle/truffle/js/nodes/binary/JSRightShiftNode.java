@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,17 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
         return rightShift.execute(leftInt32.executeInt(a), rightUInt32.execute(b));
     }
 
-    @Specialization(replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return ">>";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSRightShiftNode rightShift,
                     @Cached("create()") JSToNumericNode leftToNumeric,
@@ -116,11 +126,6 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     public static JSRightShiftNode create() {
         return JSRightShiftNodeGen.create(null, null);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     @Override

@@ -85,6 +85,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
+import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
@@ -1407,6 +1408,9 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyMemoryConstructor), webAssemblyMemoryConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
+        }
+        if (context.getContextOptions().isOperatorOverloading()) {
+            JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
         }
 
         if (context.getContextOptions().isProfileTime()) {

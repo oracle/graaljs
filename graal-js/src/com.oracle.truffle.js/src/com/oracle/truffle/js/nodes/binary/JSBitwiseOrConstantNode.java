@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "|")
 public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
@@ -144,7 +145,17 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         return a.or(a);
     }
 
-    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"}, guards = "isInt")
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, isInt ? rightIntValue : rightBigIntValue);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "|";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGenericIntCase(Object a,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt,
@@ -166,7 +177,7 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
         return isInt;
     }
 
-    @Specialization(replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"}, guards = "!isInt()")
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt()"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
                     @Cached("create()") JSToNumericNode toNumeric,
                     @Cached("createBinaryProfile()") ConditionProfile profileIsBigInt) {

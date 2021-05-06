@@ -514,6 +514,11 @@ public final class JSContextOptions {
     }));
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
+    public static final String OPERATOR_OVERLOADING_NAME = JS_OPTION_PREFIX + "operator-overloading";
+    @Option(name = OPERATOR_OVERLOADING_NAME, category = OptionCategory.USER, help = "Enable operator overloading") //
+    public static final OptionKey<Boolean> OPERATOR_OVERLOADING = new OptionKey<>(false);
+    @CompilationFinal private boolean operatorOverloading;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -599,6 +604,7 @@ public final class JSContextOptions {
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
+        this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -969,6 +975,10 @@ public final class JSContextOptions {
         return newSetMethods;
     }
 
+    public boolean isOperatorOverloading() {
+        return operatorOverloading;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1021,6 +1031,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.webAssembly ? 1 : 0);
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
+        hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         return hash;
     }
 
@@ -1178,6 +1189,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.newSetMethods != other.newSetMethods) {
+            return false;
+        }
+        if (this.operatorOverloading != other.operatorOverloading) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

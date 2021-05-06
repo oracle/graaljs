@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 /**
  * 11.7.3 The Unsigned Right Shift Operator (>>>).
@@ -83,7 +84,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
         int shiftValue = rightValue & 0x1F;
         if (shiftValue == 0) {
-            return JSToUInt32WrapperNode.create(left);
+            return JSToUInt32WrapperNode.create(left, true, rightValue);
         }
         if (left instanceof JSConstantIntegerNode) {
             int leftValue = ((JSConstantIntegerNode) left).executeInt(null);
@@ -137,7 +138,17 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(guards = "!isHandled(lval)")
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, rightValue);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return ">>>";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(lval)", "!isHandled(lval)"})
     protected int doGeneric(Object lval,
                     @Cached("create()") JSToNumericNode leftToNumeric,
                     @Cached("createInner()") JSUnsignedRightShiftConstantNode innerShiftNode) {
@@ -147,11 +158,6 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     protected static boolean isHandled(Object lval) {
         return lval instanceof Integer || lval instanceof Double || lval instanceof SafeInteger || lval instanceof BigInt;
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     protected JSUnsignedRightShiftConstantNode createInner() {

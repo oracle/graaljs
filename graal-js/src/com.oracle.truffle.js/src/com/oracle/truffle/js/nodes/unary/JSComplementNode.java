@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "~")
 public abstract class JSComplementNode extends JSUnaryNode {
@@ -97,7 +98,17 @@ public abstract class JSComplementNode extends JSUnaryNode {
         return a.not();
     }
 
-    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "~";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(VirtualFrame frame, Object value,
                     @Cached JSToNumericNode toNumericNode,
                     @Cached("createInner()") JSComplementNode recursive) {

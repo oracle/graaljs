@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 /**
  * The Left Shift Operator ( << ), special-cased for the step to be a constant integer value.
@@ -130,17 +131,22 @@ public abstract class JSLeftShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
-    @Specialization(replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, shiftValue);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "<<";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected Object doGeneric(Object a,
                     @Cached("create()") JSToNumericNode leftToNumericNode,
                     @Cached("makeCopy()") JSLeftShiftConstantNode innerShiftNode) {
         Object numericLeft = leftToNumericNode.execute(a);
         return innerShiftNode.executeInt(numericLeft);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
     }
 
     protected JSLeftShiftConstantNode makeCopy() {

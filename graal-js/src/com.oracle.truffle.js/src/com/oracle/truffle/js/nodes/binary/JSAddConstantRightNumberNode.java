@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 @NodeInfo(shortName = "+")
 public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implements Truncatable {
@@ -151,7 +152,17 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         return createLazyString.executeCharSequence(a, rightString);
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doStringNumber"})
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, getRightValue());
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "+";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInt", "doDouble", "doStringNumber"})
     protected Object doPrimitiveConversion(Object a,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("create()") JSToNumberNode toNumberA,

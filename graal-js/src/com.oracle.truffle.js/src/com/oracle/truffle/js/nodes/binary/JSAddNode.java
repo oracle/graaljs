@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,6 +111,10 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return JSAddNodeGen.create(truncate, left, right);
     }
 
+    public static JSAddNode createUnoptimized() {
+        return JSAddNodeGen.create(false, null, null);
+    }
+
     public abstract Object execute(Object a, Object b);
 
     @Specialization(guards = "truncate")
@@ -194,8 +198,27 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
         return concatStringsNode.executeCharSequence(doubleToStringNode.executeString(a), b);
     }
 
-    @Specialization(replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger", "doIntSafeInteger", "doSafeIntegerInt",
-                    "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
+    /*
+     * Operators that can be overloaded use the following pattern. We introduce a specialization for
+     * the overloaded case (used when at least one of the operands features overloaded operators).
+     * This specialization is placed towards the end of the list of specializations, just before we
+     * hit the most generic case, which is usually the only case that admits ordinary JS objects as
+     * arguments. This new specialization contains within itself the added complexity of supporting
+     * overloaded operators. The only change to the rest of the node is adding guards to the generic
+     * cases which restrict them to cases that don't feature overloaded operators.
+     */
+    @Specialization(guards = "hasOverloadedOperators(a) || hasOverloadedOperators(b)")
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "+";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doIntOverflow", "doIntTruncate", "doSafeInteger",
+                    "doIntSafeInteger", "doSafeIntegerInt", "doDouble", "doBigInt", "doString", "doStringInt", "doIntString", "doStringNumber", "doNumberString"})
     protected Object doPrimitiveConversion(Object a, Object b,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveA,
                     @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveB,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,9 +60,11 @@ import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadVariableTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
+import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
     public enum Op {
@@ -86,6 +88,8 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         public abstract BigInt doBigInt(BigInt value);
 
         public abstract SafeInteger doSafeInteger(SafeInteger value);
+
+        public abstract String getOverloadedOperatorName();
     }
 
     protected static class IncOp extends LocalVarOp {
@@ -123,6 +127,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         public SafeInteger doSafeInteger(SafeInteger value) {
             return value.incrementExact();
         }
+
+        @Override
+        public String getOverloadedOperatorName() {
+            return "++";
+        }
     }
 
     protected static class DecOp extends LocalVarOp {
@@ -159,6 +168,11 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
         @Override
         public SafeInteger doSafeInteger(SafeInteger value) {
             return value.decrementExact();
+        }
+
+        @Override
+        public String getOverloadedOperatorName() {
+            return "--";
         }
     }
 
@@ -201,7 +215,7 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode, from.frameDescriptor);
 
         JavaScriptNode readOld = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
-        JavaScriptNode convert = (JavaScriptNode) JSToNumericNode.create(readOld).materializeInstrumentableNodes(materializedTags);
+        JavaScriptNode convert = (JavaScriptNode) JSToNumericNode.createToNumericOperand(readOld).materializeInstrumentableNodes(materializedTags);
         convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, frameDescriptor, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
@@ -362,25 +376,34 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         return doubleValue;
     }
 
+    protected String getOverloadedOperatorName() {
+        return op.getOverloadedOperatorName();
+    }
+
     @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
+                    @Cached("createBinaryProfile()") ConditionProfile isNumberProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
-                    @Cached("create()") JSToNumericNode toNumeric,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
+                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
                     @Cached("create()") BranchProfile deadBranch) {
         ensureObjectKind(frame);
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Object number = toNumeric.execute(value);
-        if (isBigIntProfile.profile(number instanceof BigInt)) {
-            frame.setObject(frameSlot, op.doBigInt((BigInt) number));
+        Object operand = toNumericOperand.execute(value);
+        if (isNumberProfile.profile(operand instanceof Number)) {
+            frame.setObject(frameSlot, op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
+        } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
+            frame.setObject(frameSlot, op.doBigInt((BigInt) operand));
         } else {
-            frame.setObject(frameSlot, op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile));
+            assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
+            frame.setObject(frameSlot, overloadedOperatorNode.execute(value));
         }
-        return number;
+        return operand;
     }
 
     @Specialization(guards = {"isLong(frame)", "isLongKind(frame)"}, rewriteOn = ArithmeticException.class)
@@ -499,24 +522,33 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         return newValue;
     }
 
+    protected String getOverloadedOperatorName() {
+        return op.getOverloadedOperatorName();
+    }
+
     @Specialization(guards = {"isObject(frame)"})
     public Object doObject(Frame frame,
+                    @Cached("createBinaryProfile()") ConditionProfile isNumberProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isIntegerProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBigIntProfile,
                     @Cached("createBinaryProfile()") ConditionProfile isBoundaryProfile,
-                    @Cached("create()") JSToNumericNode toNumeric,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode,
+                    @Cached("createToNumericOperand()") JSToNumericNode toNumericOperand,
                     @Cached("create()") BranchProfile deadBranch) {
         ensureObjectKind(frame);
         Object value = getObject(frame);
         if (hasTemporalDeadZone()) {
             checkNotDead(value, deadBranch);
         }
-        Object number = toNumeric.execute(value);
+        Object operand = toNumericOperand.execute(value);
         Object newValue;
-        if (isBigIntProfile.profile(number instanceof BigInt)) {
-            newValue = op.doBigInt((BigInt) number);
+        if (isNumberProfile.profile(operand instanceof Number)) {
+            newValue = op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile);
+        } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
+            newValue = op.doBigInt((BigInt) operand);
         } else {
-            newValue = op.doNumber((Number) number, isIntegerProfile, isBoundaryProfile);
+            assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
+            newValue = overloadedOperatorNode.execute(value);
         }
         frame.setObject(frameSlot, newValue);
         return newValue;

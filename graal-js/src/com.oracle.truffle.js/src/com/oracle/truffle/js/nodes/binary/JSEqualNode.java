@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -211,7 +212,22 @@ public abstract class JSEqualNode extends JSCompareNode {
         return isNullish(a, aInterop);
     }
 
-    @Specialization(guards = {"isObject(a)", "!isObject(b)"})
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
+    protected boolean doOverloaded(Object a, Object b,
+                    @Cached("createHintNone(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+        if (a == b) {
+            return true;
+        } else {
+            return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+        }
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "==";
+    }
+
+    @Specialization(guards = {"isObject(a)", "!isObject(b)", "!hasOverloadedOperators(a)"})
     protected boolean doJSObject(DynamicObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,
@@ -222,7 +238,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
-    @Specialization(guards = {"!isObject(a)", "isObject(b)"})
+    @Specialization(guards = {"!isObject(a)", "isObject(b)", "!hasOverloadedOperators(b)"})
     protected boolean doJSObject(Object a, DynamicObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintNone()") JSToPrimitiveNode toPrimitiveNode,

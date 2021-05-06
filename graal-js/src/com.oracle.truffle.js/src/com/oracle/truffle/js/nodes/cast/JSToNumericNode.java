@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,25 +51,45 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
+
+import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
 public abstract class JSToNumericNode extends JavaScriptBaseNode {
 
     @Child private JSToNumberNode toNumberNode;
     @Child private JSToPrimitiveNode toPrimitiveNode;
 
+    /**
+     * Whether this node implements the ToNumeric spec functions or the ToNumericOperand spec
+     * function from the operator overloading proposal. The latter is identical except for the case
+     * when the argument is an object with overloaded operators. In that case, it is not coerced to
+     * a numeric type, but checked for whether its operators are enabled.
+     */
+    private final boolean toNumericOperand;
+
     public abstract Object execute(Object value);
 
-    protected JSToNumericNode() {
+    protected JSToNumericNode(boolean toNumericOperand) {
         super();
+        this.toNumericOperand = toNumericOperand;
+    }
+
+    public static JSToNumericNode create(boolean toNumericOperand) {
+        return JSToNumericNodeGen.create(toNumericOperand);
     }
 
     public static JSToNumericNode create() {
-        return JSToNumericNodeGen.create();
+        return create(false);
     }
 
-    public static JavaScriptNode create(JavaScriptNode child) {
+    public static JSToNumericNode createToNumericOperand() {
+        return create(true);
+    }
+
+    public static JavaScriptNode create(JavaScriptNode child, boolean toNumericOperand) {
         if (child.isResultAlwaysOfType(Number.class) || child.isResultAlwaysOfType(int.class) || child.isResultAlwaysOfType(double.class)) {
             return child;
         }
@@ -79,7 +99,15 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
                 return JSConstantNode.create(JSRuntime.toNumeric(constantOperand));
             }
         }
-        return JSToNumericWrapperNodeGen.create(child);
+        return JSToNumericWrapperNodeGen.create(child, toNumericOperand);
+    }
+
+    public static JavaScriptNode create(JavaScriptNode child) {
+        return create(child, false);
+    }
+
+    public static JavaScriptNode createToNumericOperand(JavaScriptNode child) {
+        return create(child, true);
     }
 
     @Specialization
@@ -102,8 +130,23 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return toPrimitive(value);
     }
 
-    @Specialization(guards = "!isJSBigInt(value)")
-    protected Object doOther(Object value) {
+    @Specialization(guards = {"isToNumericOperand()"})
+    protected Object doOverloaded(JSOverloadedOperatorsObject arg) {
+        checkOverloadedOperatorsAllowed(arg, this);
+        return arg;
+    }
+
+    @Specialization(guards = {"isToNumericOperand()", "!isJSBigInt(value)", "!hasOverloadedOperators(value)"})
+    protected Object doToNumericOperandOther(Object value) {
+        Object primValue = toPrimitive(value);
+        if (JSRuntime.isBigInt(primValue)) {
+            return primValue;
+        }
+        return toNumber(primValue);
+    }
+
+    @Specialization(guards = {"!isToNumericOperand()", "!isJSBigInt(value)"})
+    protected Object doToNumericOther(Object value) {
         Object primValue = toPrimitive(value);
         if (JSRuntime.isBigInt(primValue)) {
             return primValue;
@@ -127,26 +170,33 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return toPrimitiveNode.execute(value);
     }
 
+    protected boolean isToNumericOperand() {
+        return toNumericOperand;
+    }
+
     public abstract static class JSToNumericWrapperNode extends JSUnaryNode {
 
         @Child private JSToNumericNode toNumericNode;
 
-        protected JSToNumericWrapperNode(JavaScriptNode operand) {
+        private final boolean toNumericOperand;
+
+        protected JSToNumericWrapperNode(JavaScriptNode operand, boolean toNumericOperand) {
             super(operand);
+            this.toNumericOperand = toNumericOperand;
         }
 
         @Specialization
         protected Object doDefault(Object value) {
             if (toNumericNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumericNode = insert(JSToNumericNode.create());
+                toNumericNode = insert(JSToNumericNode.create(toNumericOperand));
             }
             return toNumericNode.execute(value);
         }
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return create(cloneUninitialized(getOperand(), materializedTags));
+            return create(cloneUninitialized(getOperand(), materializedTags), toNumericOperand);
         }
 
         @Override

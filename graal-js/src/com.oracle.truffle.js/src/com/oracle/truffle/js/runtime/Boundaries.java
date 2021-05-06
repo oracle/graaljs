@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -381,6 +382,26 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> boolean economicSetContains(EconomicSet<T> economicSet, T element) {
         return economicSet.contains(element);
+    }
+
+    @TruffleBoundary
+    public static <K, V> EconomicMap<K, V> economicMapCreate() {
+        return EconomicMap.create();
+    }
+
+    @TruffleBoundary
+    public static <K, V> V economicMapPut(EconomicMap<K, V> map, K key, V value) {
+        return map.put(key, value);
+    }
+
+    @TruffleBoundary
+    public static <K, V> boolean economicMapContainsKey(EconomicMap<K, V> map, K key) {
+        return map.containsKey(key);
+    }
+
+    @TruffleBoundary
+    public static <K, V> V economicMapGet(EconomicMap<K, V> map, K key) {
+        return map.get(key);
     }
 
     @TruffleBoundary(allowInlining = true)
