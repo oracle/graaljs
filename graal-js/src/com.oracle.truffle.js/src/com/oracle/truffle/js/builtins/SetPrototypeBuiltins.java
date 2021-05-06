@@ -332,7 +332,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return target;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     call(adder, target, nextValue);
                 }
             } catch (Exception ex) {
@@ -451,7 +451,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return newSet;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.TRUE) {
                         call(adder, newSet, nextValue);
@@ -497,7 +497,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return newSet;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     call(remover, newSet, nextValue);
                 }
             } catch (Exception ex) {
@@ -547,7 +547,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return newSet;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     Object removed = call(remover, newSet, nextValue);
                     if (removed == Boolean.FALSE) {
                         call(adder, newSet, nextValue);
@@ -600,7 +600,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return Boolean.TRUE;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     Object has = call(hasCheck, otherSet, nextValue);
                     if (has == Boolean.FALSE) {
                         return Boolean.FALSE;
@@ -645,7 +645,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return Boolean.TRUE;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.FALSE) {
                         return Boolean.FALSE;
@@ -690,7 +690,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     if (next == Boolean.FALSE) {
                         return Boolean.TRUE;
                     }
-                    Object nextValue = iteratorValueNode.execute((DynamicObject) next);
+                    Object nextValue = iteratorValueNode.execute(next);
                     Object has = call(hasCheck, set, nextValue);
                     if (has == Boolean.TRUE) {
                         return Boolean.FALSE;

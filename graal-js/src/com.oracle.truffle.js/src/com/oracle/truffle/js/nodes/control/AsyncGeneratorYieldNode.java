@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -210,7 +210,7 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
             switch (state) {
                 case loopBegin: {
                     if (received.isNormal()) {
-                        DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received.getValue());
+                        Object innerResult = iteratorNextNode.execute(iteratorRecord, received.getValue());
                         awaitWithNext(frame, innerResult, normalOrThrowAwaitInnerResult);
                     } else if (received.isThrow()) {
                         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,17 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
@@ -53,6 +60,7 @@ import java.util.Set;
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
  */
+@ImportStatic({JSConfig.class})
 public abstract class IteratorValueNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode iterResultNode;
     @Child private PropertyGetNode getValueNode;
@@ -75,7 +83,16 @@ public abstract class IteratorValueNode extends JavaScriptNode {
         return getValueNode.getValue(iterResult);
     }
 
-    public abstract Object execute(DynamicObject iterResult);
+    @Specialization(guards = "isForeignObject(obj)", limit = "InteropLibraryLimit")
+    protected Object doForeignObject(Object obj, @CachedLibrary("obj") InteropLibrary interop) {
+        try {
+            return interop.readMember(obj, JSRuntime.VALUE);
+        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+            throw Errors.createTypeErrorInteropException(obj, e, JSRuntime.VALUE, this);
+        }
+    }
+
+    public abstract Object execute(Object iterResult);
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {

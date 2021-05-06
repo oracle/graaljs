@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,19 +53,19 @@ import com.oracle.truffle.js.runtime.objects.IteratorRecord;
  */
 public class IteratorNextNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsJSObjectNode isObjectNode;
+    @Child private IsObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected IteratorNextNode() {
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsJSObjectNode.create();
+        this.isObjectNode = IsObjectNode.create();
     }
 
     public static IteratorNextNode create() {
         return new IteratorNextNode();
     }
 
-    public DynamicObject execute(IteratorRecord iteratorRecord, Object value) {
+    public Object execute(IteratorRecord iteratorRecord, Object value) {
         Object nextMethod = iteratorRecord.getNextMethod();
         DynamicObject iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createOneArg(iterator, nextMethod, value));
@@ -73,10 +73,10 @@ public class IteratorNextNode extends JavaScriptBaseNode {
             errorBranch.enter();
             throw Errors.createTypeErrorIteratorResultNotObject(result, this);
         }
-        return (DynamicObject) result;
+        return result;
     }
 
-    public DynamicObject execute(IteratorRecord iteratorRecord) {
+    public Object execute(IteratorRecord iteratorRecord) {
         Object nextMethod = iteratorRecord.getNextMethod();
         DynamicObject iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, nextMethod));
@@ -84,7 +84,7 @@ public class IteratorNextNode extends JavaScriptBaseNode {
             errorBranch.enter();
             throw Errors.createTypeErrorIteratorResultNotObject(result, this);
         }
-        return (DynamicObject) result;
+        return result;
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,7 +103,7 @@ public class YieldNode extends JavaScriptNode implements ResumableNode, SuspendN
         return generatorYield(frame, iterNextObj);
     }
 
-    protected final Object generatorYield(VirtualFrame frame, DynamicObject iterNextObj) {
+    protected final Object generatorYield(VirtualFrame frame, Object iterNextObj) {
         throw generatorYieldNode.generatorYield(frame, iterNextObj);
     }
 
@@ -214,14 +214,14 @@ class YieldStarNode extends YieldNode {
     public Object execute(VirtualFrame frame) {
         IteratorRecord iteratorRecord = getIteratorNode.execute(expression.execute(frame));
         Object received = Undefined.instance;
-        DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received);
+        Object innerResult = iteratorNextNode.execute(iteratorRecord, received);
         if (iteratorCompleteNode.execute(innerResult)) {
             return iteratorValueNode.execute(innerResult);
         }
         return saveStateAndYield(frame, iteratorRecord, innerResult);
     }
 
-    private Object saveStateAndYield(VirtualFrame frame, IteratorRecord iteratorRecord, DynamicObject innerResult) {
+    private Object saveStateAndYield(VirtualFrame frame, IteratorRecord iteratorRecord, Object innerResult) {
         setState(frame, iteratorRecord);
         return generatorYield(frame, innerResult);
     }
@@ -236,7 +236,7 @@ class YieldStarNode extends YieldNode {
             IteratorRecord iteratorRecord = (IteratorRecord) state;
             Object received = yieldValue.execute(frame);
             if (!(received instanceof Completion)) {
-                DynamicObject innerResult = iteratorNextNode.execute(iteratorRecord, received);
+                Object innerResult = iteratorNextNode.execute(iteratorRecord, received);
                 if (iteratorCompleteNode.execute(innerResult)) {
                     return iteratorValueNode.execute(innerResult);
                 }

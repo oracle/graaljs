@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,7 +61,7 @@ public class IteratorCompleteNode extends JavaScriptBaseNode {
         return new IteratorCompleteNode(context);
     }
 
-    public boolean execute(DynamicObject iterResult) {
+    public boolean execute(Object iterResult) {
         return toBooleanNode.executeBoolean(getDoneNode.getValue(iterResult));
     }
 }

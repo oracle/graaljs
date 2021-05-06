@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 import java.util.Set;
 
@@ -62,11 +61,13 @@ import java.util.Set;
  */
 public class AsyncIteratorNextNode extends AwaitNode {
     @Child private JSFunctionCallNode methodCallNode;
+    @Child private IsObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected AsyncIteratorNextNode(JSContext context, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
         super(context, iterator, asyncContextNode, asyncResultNode);
         this.methodCallNode = JSFunctionCallNode.createCall();
+        this.isObjectNode = IsObjectNode.create();
     }
 
     public static AwaitNode create(JSContext context, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
@@ -91,7 +92,7 @@ public class AsyncIteratorNextNode extends AwaitNode {
         } else {
             setState(frame, 0);
             Object result = resumeAwait(frame);
-            if (!JSDynamicObject.isJSDynamicObject(result)) {
+            if (!isObjectNode.executeBoolean(result)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(result, this);
             }

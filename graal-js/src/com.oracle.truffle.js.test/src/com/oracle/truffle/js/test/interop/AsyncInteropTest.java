@@ -647,7 +647,7 @@ public class AsyncInteropTest {
         void onPromiseCreation(Value onResolve, Value onReject);
     }
 
-    private static class TestOutput extends ByteArrayOutputStream {
+    public static class TestOutput extends ByteArrayOutputStream {
 
         void write(String text) {
             try {
