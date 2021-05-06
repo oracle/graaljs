@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode.Hint;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOperatorsAllowed;
 
@@ -57,15 +56,12 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
  */
 public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
-    @Child JSToPrimitiveNode toPrimitiveNode;
-
     protected final Hint hint;
     protected final boolean checkOperatorAllowed;
 
     protected JSToOperandNode(Hint hint, boolean checkOperatorAllowed) {
         this.hint = hint;
         this.checkOperatorAllowed = checkOperatorAllowed;
-
     }
 
     public static JSToOperandNode createHintNone() {
@@ -90,24 +86,21 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
 
-    @Specialization(guards = {"hasOverloadedOperators(arg)"})
-    protected Object doOverloaded(DynamicObject arg) {
+    protected Hint getHint() {
+        return hint;
+    }
+
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject arg) {
         if (checkOperatorAllowed) {
             checkOverloadedOperatorsAllowed(arg, this);
         }
         return arg;
     }
 
-    @Fallback
-    protected Object doOther(Object arg) {
-        return toPrimitive(arg);
-    }
-
-    protected Object toPrimitive(Object arg) {
-        if (toPrimitiveNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toPrimitiveNode = insert(JSToPrimitiveNode.create(hint));
-        }
+    @Specialization(guards = "!hasOverloadedOperators(arg)")
+    protected Object doOther(Object arg,
+                    @Cached("create(getHint())") JSToPrimitiveNode toPrimitiveNode) {
         return toPrimitiveNode.execute(arg);
     }
 }
