@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -210,7 +210,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
 
         Object trapResult = JSRuntime.call(trap, handler, new Object[]{target, key, receiver}, encapsulatingNode);
-        checkProxyGetTrapInvariants(target, key, trapResult);
+        if (!(handler instanceof JSUncheckedProxyHandlerObject)) {
+            checkProxyGetTrapInvariants(target, key, trapResult);
+        }
         return trapResult;
     }
 
@@ -273,6 +275,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             } else {
                 return false;
             }
+        }
+        if (handler instanceof JSUncheckedProxyHandlerObject) {
+            return true;
         }
         return checkProxySetTrapInvariants(thisObj, key, value);
     }
@@ -420,7 +425,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return false;
             }
         }
-        if (!JSDynamicObject.isJSDynamicObject(target)) {
+        if (!JSDynamicObject.isJSDynamicObject(target) || handler instanceof JSUncheckedProxyHandlerObject) {
             return true;
         }
         PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) target, key);
@@ -673,6 +678,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             Boundaries.listAddAll(uncheckedResultKeys, trapResult);
             return uncheckedResultKeys;
         }
+        if (handler instanceof JSUncheckedProxyHandlerObject) {
+            return trapResult;
+        }
         JSContext context = JSObject.getJSContext(thisObj);
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && containsDuplicateEntries(trapResult)) {
             throw Errors.createTypeError("trap result contains duplicate entries");
@@ -769,6 +777,9 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         boolean extensibleTarget = JSObject.isExtensible((DynamicObject) target);
         PropertyDescriptor resultDesc = JSRuntime.toPropertyDescriptor(trapResultObj);
         completePropertyDescriptor(resultDesc);
+        if (handler instanceof JSUncheckedProxyHandlerObject) {
+            return resultDesc;
+        }
         boolean valid = isCompatiblePropertyDescriptor(extensibleTarget, resultDesc, targetDesc);
         if (!valid) {
             throw Errors.createTypeError("not a valid descriptor");
