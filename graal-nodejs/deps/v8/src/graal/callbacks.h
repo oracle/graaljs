@@ -104,7 +104,7 @@ void GraalExecuteAccessorSetter(JNIEnv* env, jclass nativeAccess, jlong pointer,
 
 jobject GraalExecutePropertyHandlerGetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
 
-void GraalExecutePropertyHandlerSetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
+jboolean GraalExecutePropertyHandlerSetter(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
 
 jobject GraalExecutePropertyHandlerQuery(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
 
@@ -112,7 +112,7 @@ jboolean GraalExecutePropertyHandlerDeleter(JNIEnv* env, jclass nativeAccess, jl
 
 jobject GraalExecutePropertyHandlerEnumerator(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data);
 
-void GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject value, jobject get, jobject set, int flags, jobjectArray arguments, jobject data, jboolean named);
+jobject GraalExecutePropertyHandlerDefiner(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobject value, jobject get, jobject set, int flags, jobjectArray arguments, jobject data, jboolean named);
 
 jobject GraalExecutePropertyHandlerDescriptor(JNIEnv* env, jclass nativeAccess, jlong pointer, jobject holder, jobjectArray arguments, jobject data, jboolean named);
 

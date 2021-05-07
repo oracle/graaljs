@@ -214,6 +214,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -1773,7 +1774,7 @@ public final class GraalJSAccess {
 
     @CompilerDirectives.TruffleBoundary
     public DynamicObject propertyHandlerInstantiate(JSContext context, JSRealm realm, ObjectTemplate template, DynamicObject target, boolean global) {
-        DynamicObject handler = JSOrdinary.create(context, realm);
+        DynamicObject handler = JSUncheckedProxyHandler.create(context);
         DynamicObject proxy = JSProxy.create(context, target, handler);
 
         DynamicObject getter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(

@@ -423,7 +423,7 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotRedefineProperty(Object key) {
         assert JSRuntime.isPropertyKey(key);
-        return Errors.createTypeErrorFormat("Cannot redefine property %s", key);
+        return Errors.createTypeErrorFormat("Cannot redefine property: %s", key);
     }
 
     @TruffleBoundary
