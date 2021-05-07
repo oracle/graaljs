@@ -77,4 +77,9 @@ describe('vm', function () {
         assert.strictEqual(desc.enumerable, false);
         assert.strictEqual(desc.configurable, false);
     });
+    it('should handle the pattern used in filestack-js', function () {
+        // regression test motivated by filestack-js (npm package), it used to throw TypeError
+        var result = vm.runInNewContext('Object.defineProperty(this, "console", { value: 42 }); Object.keys(this)', { console: console });
+        assert.ok(result.includes('console'));
+    });
 });
