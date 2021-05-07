@@ -283,6 +283,11 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
+        @Specialization(guards = "isNullOrUndefined(right)")
+        protected Object doOverloadedNullish(@SuppressWarnings("unused") JSOverloadedOperatorsObject left, @SuppressWarnings("unused") Object right) {
+            return missingImplementation();
+        }
+
         @Specialization(guards = {"right.matchesOperatorCounter(rightOperatorCounter)", "isNumber(left)"})
         protected Object doNumberOverloaded(Object left,
                         JSOverloadedOperatorsObject right,
@@ -310,22 +315,30 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
+        @Specialization(guards = "isNullOrUndefined(left)")
+        protected Object doNullishOverloaded(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSOverloadedOperatorsObject right) {
+            return missingImplementation();
+        }
+
         @ReportPolymorphism.Megamorphic
         @Specialization(replaces = {"doOverloadedOverloaded", "doOverloadedNumber", "doOverloadedBigInt", "doOverloadedString", "doNumberOverloaded", "doBigIntOverloaded", "doStringOverloaded"})
-        protected Object doGeneric(JSOverloadedOperatorsObject left,
-                        JSOverloadedOperatorsObject right,
+        protected Object doGeneric(Object left, Object right,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
             Object operatorImplementation = OperatorSet.getOperatorImplementation(left, right, getOverloadedOperatorName());
             return performOverloaded(callNode, operatorImplementation, left, right);
         }
 
+        private boolean missingImplementation() {
+            if (isEquality()) {
+                return false;
+            } else {
+                throw Errors.createTypeError(Boundaries.stringConcat("No overload found for ", getOverloadedOperatorName()), this);
+            }
+        }
+
         private Object performOverloaded(JSFunctionCallNode callNode, Object operatorImplementation, Object left, Object right) {
             if (operatorImplementation == null) {
-                if (isEquality()) {
-                    return false;
-                } else {
-                    throw Errors.createTypeError(Boundaries.stringConcat("No overload found for ", getOverloadedOperatorName()), this);
-                }
+                return missingImplementation();
             }
             // What should be the value of 'this' when invoking overloaded operators?
             // Currently, we set it to 'undefined'.
