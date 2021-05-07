@@ -85,6 +85,7 @@ import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
+import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -185,21 +186,6 @@ public final class GraalJSEvaluator implements JSParser {
     public ScriptNode parseDirectEval(JSContext context, Node lastNode, Source source, Object evalEnv) {
         DirectEvalContext directEval = (DirectEvalContext) evalEnv;
         return parseEval(context, lastNode, source, directEval.env.isStrictMode(), directEval);
-    }
-
-    private static JavaScriptNode parseInlineScript(JSContext context, Source source, Environment env, boolean isStrict) {
-        ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict);
-        RootCallTarget callTarget = script.getCallTarget();
-        JSFunctionData functionData = script.getFunctionData();
-        return new JavaScriptNode() {
-            @Child DirectCallNode callNode = DirectCallNode.create(callTarget);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                DynamicObject closure = JSFunction.create(getRealm(), functionData, frame.materialize());
-                return callNode.call(JSArguments.createZeroArg(JSFrameUtil.getThisObj(frame), closure));
-            }
-        };
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
@@ -981,7 +967,27 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict, Node locationNode) {
         Environment env = new DebugEnvironment(null, NodeFactory.getInstance(context), context, locationNode, lexicalContextFrame);
-        return parseInlineScript(context, source, env, isStrict);
+        ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict);
+        return createInlineScriptCallNode(script.getFunctionData(), script.getCallTarget(), locationNode);
+    }
+
+    private static JavaScriptNode createInlineScriptCallNode(JSFunctionData functionData, RootCallTarget callTarget, Node locationNode) {
+        final Node block = JavaScriptNode.findBlockScopeNode(locationNode);
+        return new JavaScriptNode() {
+            @Child private DirectCallNode callNode = DirectCallNode.create(callTarget);
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                MaterializedFrame scopeFrame;
+                if (block instanceof BlockScopeNode) {
+                    scopeFrame = (MaterializedFrame) ((BlockScopeNode) block).getBlockScope(frame);
+                } else {
+                    scopeFrame = frame.materialize();
+                }
+                DynamicObject closure = JSFunction.create(getRealm(), functionData, scopeFrame);
+                return callNode.call(JSArguments.createZeroArg(JSFrameUtil.getThisObj(frame), closure));
+            }
+        };
     }
 
     @Override
