@@ -27,8 +27,6 @@ test-cli-eval: FAIL
 test-cli-syntax-piped-bad: FAIL
 test-repl-pretty-custom-stack: FAIL
 test-repl-pretty-stack: FAIL
-# configurable expected versus 'getOwnPropertyDescriptor' on proxy: trap reported non-configurability ...
-test-vm-set-property-proxy: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
@@ -88,13 +86,6 @@ test-vm-basic: FAIL
 
 # Missing support for lineOffset and columnOffset in ScriptOrigin
 test-vm-context: FAIL
-
-# non-configurable properties of sandbox are not supported
-# (due to subtleties of their handling by Proxy - which is used
-# to implement the global object of the corresponding context)
-test-vm-getters: FAIL
-test-vm-global-property-interceptors: FAIL
-test-vm-preserves-property: FAIL
 
 # WebAssembly is not supported
 test-vm-codegen: FAIL
@@ -175,7 +166,6 @@ test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
 test-worker-error-stack-getter-throws: FAIL
 test-worker-message-port-move: FAIL
-test-worker-process-env: FAIL
 test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
