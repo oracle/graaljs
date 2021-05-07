@@ -1044,7 +1044,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     if (!inclusive && function == untilFunction) {
                         break;
                     }
-                    function.setUsesAncestorScope(true);
+                    if (!function.isProgram()) {
+                        function.setUsesAncestorScope(true);
+                    }
                     if (inclusive && function == untilFunction) {
                         break;
                     }
