@@ -420,7 +420,11 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (!trapResult) {
             if (doThrow) {
                 // path only hit in V8CompatibilityMode; see JSRuntime.definePropertyOrThrow
-                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.DEFINE_PROPERTY, key);
+                if (handler instanceof JSUncheckedProxyHandlerObject) {
+                    throw Errors.createTypeErrorCannotRedefineProperty(key);
+                } else {
+                    throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.DEFINE_PROPERTY, key);
+                }
             } else {
                 return false;
             }
@@ -786,7 +790,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         }
         if (!resultDesc.getConfigurable()) {
             if (targetDesc == null || (targetDesc.hasConfigurable() && targetDesc.getConfigurable())) {
-                throw Errors.createTypeErrorConfigurableExpected();
+                throw Errors.createTypeErrorFormat(
+                                "'getOwnPropertyDescriptor' on proxy: trap reported non-configurability for property '%s' which is either non-existent or configurable in the proxy target", key);
             }
             JSContext context = JSObject.getJSContext(thisObj);
             if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020 && resultDesc.hasWritable() && !resultDesc.getWritable() && targetDesc.getWritable()) {
