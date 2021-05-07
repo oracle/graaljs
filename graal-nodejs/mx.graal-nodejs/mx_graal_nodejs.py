@@ -573,15 +573,15 @@ def _prepare_svm_env():
     else:
         import mx_sdk_vm_impl
         graalvm_home = mx_sdk_vm_impl.graalvm_home()
-    libpolyglot_filename = mx.add_lib_suffix(mx.add_lib_prefix('polyglot'))
-    libpolyglots = [join(graalvm_home, directory, libpolyglot_filename) for directory in [join('jre', 'lib', 'polyglot'), join('lib', 'polyglot')]]
-    libpolyglot = None
-    for candidate in libpolyglots:
+    libgraal_nodejs_filename = mx.add_lib_suffix(mx.add_lib_prefix('graal-nodejs'))
+    candidates = [join(graalvm_home, directory, libgraal_nodejs_filename) for directory in [join('jre', 'languages', 'nodejs', 'lib'), join('languages', 'nodejs', 'lib')]]
+    libgraal_nodejs = None
+    for candidate in candidates:
         if exists(candidate):
-            libpolyglot = candidate
-    if libpolyglot is None:
-        mx.abort("Cannot find polyglot library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libpolyglots))
-    _setEnvVar('NODE_JVM_LIB', libpolyglot)
+            libgraal_nodejs = candidate
+    if libgraal_nodejs is None:
+        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(candidates))
+    _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
     _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
 
 def mx_post_parse_cmd_line(args):
