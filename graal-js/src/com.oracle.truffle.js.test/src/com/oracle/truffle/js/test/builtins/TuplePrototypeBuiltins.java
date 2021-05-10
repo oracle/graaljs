@@ -59,7 +59,10 @@ public class TuplePrototypeBuiltins {
     private static final String testName = "tuple-prototype-test";
 
     private static Value execute(String sourceText) {
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.INTL_402_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder()
+                .option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022")
+                .option(JSContextOptions.INTL_402_NAME, "true")
+                .build()) {
             return context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
         }
     }
@@ -69,7 +72,9 @@ public class TuplePrototypeBuiltins {
     }
 
     private static void expectError(String sourceText, String expectedMessage) {
-        try (Context context = JSTest.newContextBuilder().build()) {
+        try (Context context = JSTest.newContextBuilder()
+                .option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022")
+                .build()) {
             context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
             Assert.fail("should have thrown");
         } catch (Exception ex) {

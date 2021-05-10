@@ -43,28 +43,39 @@ package com.oracle.truffle.js.test.runtime.builtins;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.Tuple;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSTuple;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.TestHelper;
 import org.junit.Test;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
-public class JSTupleTest extends JSTest {
+public class JSRecordTest extends JSTest {
 
-    private static final Tuple EMPTY_TUPLE = Tuple.EMPTY_TUPLE;
-    private static final Tuple SIMPLE_TUPLE = Tuple.create(new Object[]{1, 2, 3});
+    private static final Record EMPTY_RECORD = Record.create(Collections.emptyMap());
+    private static final Record SIMPLE_RECORD = Record.create(mapOf("id", 1, "name", "John Doe"));
+
+    private static Map<String, Object> mapOf(Object... data) {
+        Map<String, Object> map = new HashMap<>();
+        for (int i = 1; i < data.length; i = i + 2) {
+            map.put((String) data[i - 1], data[i]);
+        }
+        return map;
+    }
 
     @Override
     public void setup() {
@@ -83,24 +94,21 @@ public class JSTupleTest extends JSTest {
     @Test
     public void testIsExtensible() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, EMPTY_TUPLE);
+        DynamicObject obj = JSRecord.create(context, EMPTY_RECORD);
         assertFalse(JSObject.isExtensible(obj));
     }
 
     @Test
     public void testGetOwnProperty() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
-        PropertyDescriptor desc = JSObject.getOwnProperty(obj, "1");
+        PropertyDescriptor desc = JSObject.getOwnProperty(obj, "id");
         assertTrue(desc.hasValue() && desc.hasWritable() && desc.hasEnumerable() && desc.hasConfigurable());
-        assertEquals(2, desc.getValue());
+        assertEquals(1, desc.getValue());
         assertFalse(desc.getWritable());
         assertTrue(desc.getEnumerable());
         assertFalse(desc.getConfigurable());
-
-        assertNull(JSObject.getOwnProperty(obj, "3"));
-        assertNull(JSObject.getOwnProperty(obj, "-0.0"));
 
         assertNull(JSObject.getOwnProperty(obj, "foo"));
         assertNull(JSObject.getOwnProperty(obj, Symbol.create("foo")));
@@ -109,34 +117,27 @@ public class JSTupleTest extends JSTest {
     @Test
     public void testDefineOwnProperty() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
-        assertTrue(JSObject.defineOwnProperty(obj, "1", PropertyDescriptor.createData(2, true, false, false)));
-        assertFalse(JSObject.defineOwnProperty(obj, "1", PropertyDescriptor.createData(2, true, true, false)));
+        assertTrue(JSObject.defineOwnProperty(obj, "id", PropertyDescriptor.createData(1, true, false, false)));
+        assertFalse(JSObject.defineOwnProperty(obj, "id", PropertyDescriptor.createData(1, true, true, false)));
 
-        assertTrue(JSObject.defineOwnProperty(obj, "1", PropertyDescriptor.createData(2)));
-        assertFalse(JSObject.defineOwnProperty(obj, "1", PropertyDescriptor.createData(0)));
-        assertFalse(JSObject.defineOwnProperty(obj, "3", PropertyDescriptor.createData(0)));
+        assertTrue(JSObject.defineOwnProperty(obj, "id", PropertyDescriptor.createData(1)));
+        assertFalse(JSObject.defineOwnProperty(obj, "id", PropertyDescriptor.createData(0)));
+
         assertFalse(JSObject.defineOwnProperty(obj, "foo", PropertyDescriptor.createData(0)));
-        assertFalse(JSObject.defineOwnProperty(obj, "-0.0", PropertyDescriptor.createData(1)));
-
         assertFalse(JSObject.defineOwnProperty(obj, Symbol.create("foo"), PropertyDescriptor.createData(0)));
 
-        assertFalse(JSObject.defineOwnProperty(obj, "1", PropertyDescriptor.createAccessor(Undefined.instance, Undefined.instance)));
+        assertFalse(JSObject.defineOwnProperty(obj, "id", PropertyDescriptor.createAccessor(Undefined.instance, Undefined.instance)));
     }
 
     @Test
     public void testHasProperty() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
-        assertTrue(JSObject.hasProperty(obj, 1L));
-        assertTrue(JSObject.hasProperty(obj, "1"));
-        assertFalse(JSObject.hasProperty(obj, 3L));
-        assertFalse(JSObject.hasProperty(obj, "3"));
-
-        assertTrue(JSObject.hasProperty(obj, "length"));
-        assertTrue(JSObject.hasProperty(obj, "with"));
+        assertTrue(JSObject.hasProperty(obj, "id"));
+        assertTrue(JSObject.hasProperty(obj, "name"));
         assertFalse(JSObject.hasProperty(obj, "foo"));
         assertFalse(JSObject.hasProperty(obj, Symbol.create("foo")));
     }
@@ -144,84 +145,65 @@ public class JSTupleTest extends JSTest {
     @Test
     public void testGet() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
-        assertEquals(1, JSObject.get(obj, 0L));
-        assertEquals(1, JSObject.get(obj, "0"));
-        assertEquals(Undefined.instance, JSObject.get(obj, "-0"));
-        assertEquals(Undefined.instance, JSObject.get(obj, "3"));
-
-        assertEquals(3L, JSObject.get(obj, "length"));
-        assertTrue(JSFunction.isJSFunction(JSObject.get(obj, "with")));
+        assertEquals(1, JSObject.get(obj, "id"));
+        assertEquals("John Doe", JSObject.get(obj, "name"));
         assertEquals(Undefined.instance, JSObject.get(obj, "foo"));
+        assertEquals(Undefined.instance, JSObject.get(obj, Symbol.create("foo")));
     }
 
     @Test
     public void testSet() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
-        assertFalse(JSObject.set(obj, 1L, Integer.valueOf(0)));
-        assertFalse(JSObject.set(obj, "1", 0));
-        assertFalse(JSObject.set(obj, "3", 0));
-
-        assertFalse(JSObject.set(obj, "length", 0));
-        assertFalse(JSObject.set(obj, "with", 0));
-        assertFalse(JSObject.set(obj, "foo", 0));
+        assertFalse(JSObject.set(obj, "id", 0));
+        assertFalse(JSObject.set(obj, "name", 0));
+        assertFalse(JSObject.set(obj, "name", "Larry Ellison"));
+        assertFalse(JSObject.set(obj, 1, Undefined.instance));
     }
 
     @Test
     public void testDelete() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
-        assertFalse(JSObject.delete(obj, 1L));
-        assertFalse(JSObject.delete(obj, "1"));
-        assertTrue(JSObject.delete(obj, 3L));
-        assertTrue(JSObject.delete(obj, "3"));
-
-        assertFalse(JSObject.delete(obj, "0"));
-        assertTrue(JSObject.delete(obj, "-0"));
-
+        assertFalse(JSObject.delete(obj, "id"));
+        assertFalse(JSObject.delete(obj, "name"));
         assertTrue(JSObject.delete(obj, "foo"));
         assertTrue(JSObject.delete(obj, Symbol.create("foo")));
+        assertTrue(JSObject.delete(obj, Symbol.create("id")));
+        assertTrue(JSObject.delete(obj, 1L));
     }
 
     @Test
     public void testOwnPropertyKeys() {
         JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSTuple.create(context, SIMPLE_TUPLE);
+        DynamicObject obj = JSRecord.create(context, SIMPLE_RECORD);
 
         List<Object> keys = JSObject.ownPropertyKeys(obj);
-        assertEquals(3, keys.size());
-        assertEquals("0", keys.get(0));
-        assertEquals("1", keys.get(1));
-        assertEquals("2", keys.get(2));
+        assertEquals(2, keys.size());
+        assertEquals("id", keys.get(0));
+        assertEquals("name", keys.get(1));
 
-        obj = JSTuple.create(context, EMPTY_TUPLE);
+        obj = JSRecord.create(context, EMPTY_RECORD);
         keys = JSObject.ownPropertyKeys(obj);
         assertEquals(0, keys.size());
     }
 
     @Test
     public void testPrototype() {
-        DynamicObject constructor = testHelper.getRealm().getTupleConstructor();
-        DynamicObject prototype = testHelper.getRealm().getTuplePrototype();
+        JSContext context = testHelper.getJSContext();
+        DynamicObject obj = JSRecord.create(context, EMPTY_RECORD);
+
+        assertEquals(Null.instance, JSObject.getPrototype(obj));
+
+        DynamicObject constructor = testHelper.getRealm().getRecordConstructor();
 
         PropertyDescriptor desc = JSObject.getOwnProperty(constructor, "prototype");
         assertFalse(desc.getWritable());
         assertFalse(desc.getEnumerable());
         assertFalse(desc.getConfigurable());
-
-        desc = JSObject.getOwnProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG);
-        assertFalse(desc.getWritable());
-        assertFalse(desc.getEnumerable());
-        assertTrue(desc.getConfigurable());
-
-        desc = JSObject.getOwnProperty(prototype, Symbol.SYMBOL_ITERATOR);
-        assertTrue(desc.getWritable());
-        assertFalse(desc.getEnumerable());
-        assertTrue(desc.getConfigurable());
-        assertEquals(JSObject.get(prototype, "values"), desc.getValue());
     }
 }

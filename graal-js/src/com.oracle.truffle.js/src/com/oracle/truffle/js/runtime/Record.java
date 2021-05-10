@@ -65,6 +65,10 @@ public final class Record implements TruffleObject {
         this.map = new TreeMap<>(map);
     }
 
+    public static Record create(Map<String, Object> map) {
+        return new Record(map);
+    }
+
     public Object get(String key) {
         return map.get(key);
     }

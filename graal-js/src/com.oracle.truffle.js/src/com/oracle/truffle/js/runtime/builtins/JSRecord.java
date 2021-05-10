@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.RecordFunctionBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -52,6 +54,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
@@ -70,7 +73,6 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
 
     public static final String TYPE_NAME = "record";
     public static final String CLASS_NAME = "Record";
-    public static final String PROTOTYPE_NAME = "Record.prototype";
     public static final String STRING_NAME = "[object Record]";
 
     public static final JSRecord INSTANCE = new JSRecord();
@@ -105,14 +107,7 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
 
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
-        JSContext context = realm.getContext();
-        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-
-        JSObjectUtil.putConstructorProperty(context, prototype, constructor);
-        // TODO: JSObjectUtil.putFunctionsFromContainer(realm, prototype, RecordPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
-
-        return prototype;
+        return Null.instance;
     }
 
     @Override
@@ -125,35 +120,36 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
     }
 
     /**
+     * Adjusted to support Null.instance prototypes.
+     */
+    @Override
+    public JSConstructor createConstructorAndPrototype(JSRealm realm, JSBuiltinsContainer functionBuiltins) {
+        JSContext ctx = realm.getContext();
+        DynamicObject constructor = createConstructorObject(realm);
+        DynamicObject prototype = createPrototype(realm, constructor);
+        JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
+        JSObjectUtil.putFunctionsFromContainer(realm, constructor, functionBuiltins);
+        fillConstructor(realm, constructor);
+        return new JSConstructor(constructor, prototype);
+    }
+
+    /**
      * Records aren't extensible, thus [[IsExtensible]] must always return false.
-     *
-     * https://tc39.es/ecma262/#sec-immutable-prototype-exotic-objects
-     *
-     * TODO: see Ref below for ideas
-     * @see JSModuleNamespace#makeInitialShape(com.oracle.truffle.js.runtime.JSContext)
-     *
      * @see JSNonProxy#isExtensible(com.oracle.truffle.api.object.DynamicObject)
      */
     @Override
     public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
-        Shape initialShape = Shape.newBuilder()
-                .layout(JSShape.getLayout(INSTANCE))
-                .dynamicType(INSTANCE)
+        Shape initialShape = JSShape.newBuilder(context, INSTANCE, prototype)
                 .addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0)
                 .shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG)
                 .build();
 
         assert !JSShape.isExtensible(initialShape);
         return initialShape;
-
-        // TODO: remove commented out code below
-        // return JSShape.newBuilder(context, INSTANCE, prototype)
-        //         .shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG)
-        //         .build();
     }
 
     /**
-     * Implementation of [[GetOwnProperty]].
+     * [[GetOwnProperty]]
      */
     @Override
     public PropertyDescriptor getOwnProperty(DynamicObject thisObj, Object key) {
@@ -170,9 +166,8 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
     }
 
     /**
-     * Implementation of [[DefineOwnProperty]].
+     * [[DefineOwnProperty]]
      */
-    // TODO: Not sure if this code is reachable according to proposal and ecma262 specs
     @Override
     public boolean defineOwnProperty(DynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
@@ -186,7 +181,9 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
         if (value == null) {
             return DefinePropertyUtil.reject(doThrow, "object is not extensible");
         }
-        assert desc.isDataDescriptor();
+        if (!desc.isDataDescriptor()) { // Note: this check should be an assert according to proposal specs
+            return DefinePropertyUtil.reject(doThrow, "object is not extensible");
+        }
         if (desc.hasValue() && JSRuntime.isSameValue(desc.getValue(), value)) {
             return true;
         }
@@ -194,10 +191,9 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
     }
 
     /**
-     * Implementation of [[HasProperty]].
-     * This methods also implements the abstract operation 5.1.1.10 RecordHasProperty (R, P).
+     * [[HasProperty]]
+     * This methods also represents the abstract operation RecordHasProperty (R, P).
      */
-    // TODO: Not sure if this code is reachable according to proposal and ecma262 specs
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
@@ -210,24 +206,19 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
     }
 
     /**
-     * Implementation of [[Get]].
-     *
-     * @return the value associated with the given key
-     * @see JSClass#get(com.oracle.truffle.api.object.DynamicObject, java.lang.Object)
+     * [[Get]]
      */
     @Override
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
         if (key instanceof Symbol) {
-            return null; // will get mapped to Undefined.instance
+            return null;
         }
         return recordGet(store, key);
     }
 
     /**
-     * Implementation of [[Set]].
-     *
-     * @return always false
+     * [[Set]]
      */
     @Override
     public boolean set(DynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
@@ -237,11 +228,11 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
 
     @Override
     public boolean set(DynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
-        return set(thisObj, String.valueOf(index), value, receiver, isStrict, encapsulatingNode);
+        return false;
     }
 
     /**
-     * Implementation of [[Delete]].
+     * [[Delete]]
      */
     @Override
     public boolean delete(DynamicObject thisObj, Object key, boolean isStrict) {
@@ -258,28 +249,24 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
     }
 
     /**
-     * Implementation of [[OwnPropertyKeys]].
+     * [[OwnPropertyKeys]]
      */
+    @TruffleBoundary
     @Override
     public List<Object> getOwnPropertyKeys(DynamicObject thisObj, boolean strings, boolean symbols) {
         if (!strings) {
             return Collections.emptyList();
         }
-        assert isJSRecord(thisObj);
         Record value = valueOf(thisObj);
         return new ArrayList<>(value.getKeys());
     }
 
-    /**
-     * Implementation of the abstract operation RecordGet.
-     *
-     * @see <a href="https://tc39.es/proposal-record-tuple/#record-exotic-object">5.1.1.11 RecordGet (R, P)</a>
-     */
-    public Object recordGet(DynamicObject object, Object key) {
+    private Object recordGet(DynamicObject object, Object key) {
+        assert isJSRecord(object);
         assert key instanceof String;
         Record record = valueOf(object);
         Object value = record.get((String) key);
-        assert JSRuntime.isJSPrimitive(value);
+        assert !JSRuntime.isObject(value);
         return value;
     }
 
