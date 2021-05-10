@@ -34,7 +34,7 @@ Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM compon
 It can be installed with the _GraalVM Updater_.
 
 ```shell
-$ $GRAALVM/bin/gu install nodejs
+$GRAALVM/bin/gu install nodejs
 ```
 
 This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
