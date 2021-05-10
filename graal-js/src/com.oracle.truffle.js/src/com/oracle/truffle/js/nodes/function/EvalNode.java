@@ -131,6 +131,9 @@ public abstract class EvalNode extends JavaScriptNode {
             return null;
         }
         SourceSection sourceSection = callNode.getEncapsulatingSourceSection();
+        if (sourceSection == null) {
+            return null;
+        }
         String sourceName = sourceSection.getSource().getName();
         String callerName = callNode.getRootNode().getName();
         if (callerName == null || callerName.startsWith(":")) {
