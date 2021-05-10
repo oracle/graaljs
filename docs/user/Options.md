@@ -1,3 +1,13 @@
+---
+layout: docs
+toc_group: js
+title: Options
+link_title: Options
+permalink: /reference-manual/js/Options/
+redirect_from: /docs/reference-manual/js/Options/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/RunOnJDK/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/NodeJSVSJavaScriptContext/
+---
 # Options
 
 Running JavaScript on GraalVM can be configured with several options.

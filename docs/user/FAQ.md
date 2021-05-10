@@ -1,3 +1,12 @@
+---
+layout: docs
+toc_group: js
+title: FAQ
+link_title: FAQ
+permalink: /reference-manual/js/FAQ/
+redirect_from: /docs/reference-manual/js/FAQ/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/ScriptEngine/
+---
 # Frequently Asked Questions
 
 Below are the most frequently asked questions and answers about JavaScript running on GraalVM.

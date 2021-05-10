@@ -1,3 +1,13 @@
+---
+layout: docs
+toc_group: js
+title: ScriptEngine Implementation
+link_title: ScriptEngine Implementation
+permalink: /reference-manual/js/ScriptEngine/
+redirect_from: /docs/reference-manual/js/ScriptEngine/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/FAQ/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/RunOnJDK/
+---
 # ScriptEngine Implementation
 
 GraalVM provides a JSR-223 compliant `javax.script.ScriptEngine` implementation for running JavaScript.

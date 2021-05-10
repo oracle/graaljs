@@ -1,3 +1,12 @@
+---
+layout: docs
+toc_group: js
+title: Operator Overloading
+link_title: Operator Overloading
+permalink: /reference-manual/js/OperatorOverloading/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/Multithreading/
+previous: /en/graalvm/enterprise/20/docs/reference-manual/js/JavaScriptCompatibility/
+---
 # Operator Overloading
 
 GraalVM JavaScript provides an early implementation of the ECMAScript [operator overloading proposal](https://github.com/tc39/proposal-operator-overloading). This lets you overload the behavior of JavaScript's operators on your JavaScript classes.

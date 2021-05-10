@@ -1,3 +1,13 @@
+---
+layout: docs
+toc_group: js
+title:  Java Interoperability
+link_title: Java Interoperability
+permalink: /reference-manual/js/JavaInteroperability/
+redirect_from: /docs/reference-manual/js/JavaInteroperability/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/JavaScriptCompatibility/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/NodeJS/
+---
 # Java Interoperability
 
 GraalVM includes a JavaScript language execution runtime and allows interoperability with Java code.

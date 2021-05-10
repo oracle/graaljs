@@ -1,3 +1,13 @@
+---
+layout: docs
+toc_group: js
+title: Differences Between Node.js and Java Embeddings
+link_title: Differences Between Node.js and Java Embeddings
+permalink: /reference-manual/js/NodeJSvsJavaScriptContext/
+redirect_from: /docs/reference-manual/js/NodeJSvsJavaScriptContext/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/Options/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/RhinoMigrationGuide/
+---
 # Differences Between Node.js and Java Embeddings
 
 GraalVM provides a fully-compliant ECMAScript 2020 JavaScript language runtime.

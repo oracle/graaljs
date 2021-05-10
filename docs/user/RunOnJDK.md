@@ -1,3 +1,13 @@
+---
+layout: docs
+toc_group: js
+title: Run GraalVM JavaScript on a Stock JDK
+link_title: Run GraalVM JavaScript on a Stock JDK
+permalink: /reference-manual/js/RunOnJDK/
+redirect_from: /docs/reference-manual/js/RunOnJDK/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/ScriptEngine/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/Options/
+---
 # Run GraalVM JavaScript on a Stock JDK
 
 GraalVM JavaScript is optimized for execution as part of GraalVM, or in an embedding scenario built on GraalVM.

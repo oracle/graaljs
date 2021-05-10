@@ -1,3 +1,12 @@
+---
+layout: docs
+toc_group: js
+title: Using JavaScript Modules and Packages
+link_title: Using JavaScript Modules and Packages
+permalink: /reference-manual/js/Modules/
+next: /en/graalvm/enterprise/21/docs/reference-manual/js/Multithreading/
+previous: /en/graalvm/enterprise/21/docs/reference-manual/js/JavaScriptCompatibility/
+---
 # Using JavaScript Modules and Packages in GraalVM JavaScript
 
 GraalVM JavaScript is compatible with the latest ECMAScript standard, and can be executed in a variety of embedding scenarios such as Java-based applications or Node.js.
