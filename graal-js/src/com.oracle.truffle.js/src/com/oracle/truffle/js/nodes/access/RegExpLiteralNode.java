@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public class RegExpLiteralNode extends JavaScriptNode {
     private final JSContext context;
@@ -61,6 +62,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     @CompilationFinal private Object regex;
 
     @Child private CreateRegExpNode createRegExpNode;
+    @Child private TRegexUtil.InteropIsNullNode isCompiledRegexNullNode;
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -90,7 +92,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         if (regex == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            regex = RegexCompilerInterface.compile(pattern, flags, context);
+            regex = RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
         }
         return getCreateRegExpNode().createRegExp(regex);
     }
@@ -101,6 +103,14 @@ public class RegExpLiteralNode extends JavaScriptNode {
             createRegExpNode = insert(CreateRegExpNode.create(context));
         }
         return createRegExpNode;
+    }
+
+    private TRegexUtil.InteropIsNullNode getIsCompiledRegexNullNode() {
+        if (isCompiledRegexNullNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isCompiledRegexNullNode = insert(TRegexUtil.InteropIsNullNode.create());
+        }
+        return isCompiledRegexNullNode;
     }
 
     @Override
