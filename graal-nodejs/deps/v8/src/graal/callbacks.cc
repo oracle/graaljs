@@ -617,18 +617,22 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
         v8::WeakCallbackInfo<void>::Callback v8_callback = reinterpret_cast<v8::WeakCallbackInfo<void>::Callback> (callback);
         void* internalFields[v8::kInternalFieldsInWeakCallback];
         v8::WeakCallbackInfo<void>::Callback second_callback = nullptr;
-        v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(v8::Isolate::GetCurrent(), (void*) data, internalFields, &second_callback);
+        v8::Isolate* isolate = v8::Isolate::GetCurrent();
+        v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(isolate, (void*) data, internalFields, &second_callback);
         v8_callback(callback_info);
         if (second_callback) {
+            v8::HandleScope scope(isolate);
             second_callback(callback_info);
         }
     } else if (type == 2) {
         v8::WeakCallbackInfo<void>::Callback v8_callback = reinterpret_cast<v8::WeakCallbackInfo<void>::Callback> (callback);
         void** internalFields = (void**) data;
         v8::WeakCallbackInfo<void>::Callback second_callback = nullptr;
-        v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(v8::Isolate::GetCurrent(), internalFields[v8::kInternalFieldsInWeakCallback], internalFields, &second_callback);
+        v8::Isolate* isolate = v8::Isolate::GetCurrent();
+        v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(isolate, internalFields[v8::kInternalFieldsInWeakCallback], internalFields, &second_callback);
         v8_callback(callback_info);
         if (second_callback) {
+            v8::HandleScope scope(isolate);
             second_callback(callback_info);
         }
         delete internalFields; // allocated in V8::MakeWeak
