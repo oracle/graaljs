@@ -54,9 +54,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class TuplePrototypeBuiltins {
+public class TuplePrototypeBuiltinsTest {
 
-    private static final String testName = "tuple-prototype-test";
+    private static final String testName = "tuple-prototype-builtins-test";
 
     private static Value execute(String sourceText) {
         try (Context context = JSTest.newContextBuilder()
