@@ -42,8 +42,10 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -76,9 +78,11 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRecordNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTupleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
@@ -103,13 +107,13 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumber
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRecordNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmenterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
-import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTupleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTupleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
@@ -128,6 +132,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -187,6 +192,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseHook;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
@@ -242,6 +248,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
  * Contains built-in constructor functions.
@@ -357,7 +364,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public int getECMAScriptVersion() {
-            if (AsyncGeneratorFunction == this) {
+            if (EnumSet.of(Record, Tuple).contains(this)) {
+                return JSConfig.ECMAScript2022; // TODO: Associate with the correct ECMAScript Version
+            } else if (AsyncGeneratorFunction == this) {
                 return JSConfig.ECMAScript2018;
             } else if (EnumSet.of(SharedArrayBuffer, AsyncFunction).contains(this)) {
                 return JSConfig.ECMAScript2017;
@@ -632,7 +641,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
             case Record:
-                throw new RuntimeException("TODO"); // TODO
+                return construct ? ConstructRecordNodeGen.create(context, builtin, args().createArgumentNodes(context))
+                        : CallRecordNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case Tuple:
                 return construct ? ConstructTupleNodeGen.create(context, builtin, args().createArgumentNodes(context))
                         : CallTupleNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
@@ -2755,25 +2765,75 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    public abstract static class CallRecordNode extends JSBuiltinNode {
+
+        @Child JSToObjectNode toObjectNode;
+        @Child EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
+        @Child ReadElementNode readElementNode;
+
+        public CallRecordNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            toObjectNode = JSToObjectNode.createToObject(context);
+            enumerableOwnPropertyNamesNode = EnumerableOwnPropertyNamesNode.createKeysValues(context);
+        }
+
+        @Specialization
+        protected Record call(Object arg) {
+            Object obj = toObjectNode.execute(arg);
+            UnmodifiableArrayList<? extends Object> props = enumerableOwnPropertyNamesNode.execute((DynamicObject) obj);
+            Map<String, Object> fields = props.stream().collect(Collectors.toMap(
+                    it -> (String) getV(it, 0),
+                    it -> {
+                        Object value = getV(it, 1);
+                        if (JSRuntime.isObject(value)) {
+                            throw Errors.createTypeError("Records cannot contain non-primitive values");
+                        }
+                        return value;
+                    }
+            ));
+            return Record.create(fields);
+        }
+
+        private Object getV(Object object, long index) {
+            if (readElementNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readElementNode = insert(ReadElementNode.create(getContext()));
+            }
+            return readElementNode.executeWithTargetAndIndex(object, index);
+        }
+    }
+
+    public abstract static class ConstructRecordNode extends JSBuiltinNode {
+
+        public ConstructRecordNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static final DynamicObject construct() {
+            throw Errors.createTypeError("Record is not a constructor");
+        }
+    }
+
     public abstract static class CallTupleNode extends JSBuiltinNode {
 
         public CallTupleNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = {"args.length == 0"})
-        protected Object constructEmptyTuple(@SuppressWarnings("unused") Object[] args) {
+        @Specialization(guards = {"items.length == 0"})
+        protected Tuple callEmpty(@SuppressWarnings("unused") Object[] items) {
             return Tuple.create();
         }
 
-        @Specialization(guards = {"args.length != 0"})
-        protected Object constructTuple(Object[] args) {
-            for (Object element : args) {
-                if (!JSRuntime.isJSPrimitive(element)) {
+        @Specialization(guards = {"items.length != 0"})
+        protected Tuple call(Object[] items) {
+            for (Object item : items) {
+                if (JSRuntime.isObject(item)) {
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
             }
-            return Tuple.create(args);
+            return Tuple.create(items);
         }
     }
 
