@@ -5,8 +5,8 @@ title: Node.js Runtime
 link_title: Node.js Runtime
 permalink: /reference-manual/js/NodeJS/
 redirect_from: /docs/reference-manual/js/NodeJS/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/JavaInteroperability/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/JavaInteroperability/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/
 ---
 # Node.js Runtime
 

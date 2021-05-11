@@ -4,8 +4,8 @@ toc_group: js
 title: Using JavaScript Modules and Packages
 link_title: Using JavaScript Modules and Packages
 permalink: /reference-manual/js/Modules/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/Multithreading/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/JavaScriptCompatibility/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Multithreading/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/JavaScriptCompatibility/
 ---
 # Using JavaScript Modules and Packages in GraalVM JavaScript
 

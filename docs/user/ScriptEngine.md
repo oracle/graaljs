@@ -5,8 +5,8 @@ title: ScriptEngine Implementation
 link_title: ScriptEngine Implementation
 permalink: /reference-manual/js/ScriptEngine/
 redirect_from: /docs/reference-manual/js/ScriptEngine/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/FAQ/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/RunOnJDK/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/FAQ/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/RunOnJDK/
 ---
 # ScriptEngine Implementation
 

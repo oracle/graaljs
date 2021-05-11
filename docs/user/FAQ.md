@@ -5,7 +5,7 @@ title: FAQ
 link_title: FAQ
 permalink: /reference-manual/js/FAQ/
 redirect_from: /docs/reference-manual/js/FAQ/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/ScriptEngine/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/ScriptEngine/
 ---
 # Frequently Asked Questions
 

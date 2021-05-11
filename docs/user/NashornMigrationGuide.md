@@ -5,8 +5,8 @@ title: Migration Guide from Nashorn to GraalVM JavaScript
 link_title: Migration Guide from Nashorn to GraalVM JavaScript
 permalink: /reference-manual/js/NashornMigrationGuide/
 redirect_from: /docs/reference-manual/js/NashornMigrationGuide/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/RhinoMigrationGuide/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/Multithreading/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/RhinoMigrationGuide/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Multithreading/
 ---
 # Migration Guide from Nashorn to GraalVM JavaScript
 

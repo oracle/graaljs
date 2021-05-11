@@ -5,8 +5,8 @@ title: Multithreading
 link_title: Multithreading
 permalink: /reference-manual/js/Multithreading/
 redirect_from: /docs/reference-manual/js/Multithreading/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/NashornMigrationGuide/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/Modules/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NashornMigrationGuide/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Modules/
 ---
 # Multithreading
 

@@ -5,8 +5,8 @@ title: Migration Guide from Rhino to GraalVM JavaScript
 link_title: Migration Guide from Rhino to GraalVM JavaScript
 permalink: /reference-manual/js/RhinoMigrationGuide/
 redirect_from: /docs/reference-manual/js/RhinoMigrationGuide/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/NodeJSVSJavaScriptContext/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/NashornMigrationGuide/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NodeJSVSJavaScriptContext/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NashornMigrationGuide/
 ---
 # Migration Guide from Rhino to GraalVM JavaScript
 

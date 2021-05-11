@@ -8,8 +8,8 @@ redirect_from: /docs/reference-manual/languages/js/
 redirect_from:
   - /docs/reference-manual/languages/js/
   - /docs/reference-manual/js/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/NodeJS/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/java/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NodeJS/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/
 ---
 # GraalVM JavaScript Implementation
 

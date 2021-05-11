@@ -5,8 +5,8 @@ title: Run GraalVM JavaScript on a Stock JDK
 link_title: Run GraalVM JavaScript on a Stock JDK
 permalink: /reference-manual/js/RunOnJDK/
 redirect_from: /docs/reference-manual/js/RunOnJDK/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/ScriptEngine/
-previous: /en/graalvm/enterprise/21/docs/reference-manual/js/Options/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/ScriptEngine/
+previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Options/
 ---
 # Run GraalVM JavaScript on a Stock JDK
 

@@ -4,7 +4,7 @@ toc_group: js
 title: Operator Overloading
 link_title: Operator Overloading
 permalink: /reference-manual/js/OperatorOverloading/
-next: /en/graalvm/enterprise/21/docs/reference-manual/js/Multithreading/
+next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Multithreading/
 previous: /en/graalvm/enterprise/20/docs/reference-manual/js/JavaScriptCompatibility/
 ---
 # Operator Overloading
