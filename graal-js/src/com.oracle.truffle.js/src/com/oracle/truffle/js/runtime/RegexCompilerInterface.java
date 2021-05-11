@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -56,14 +57,23 @@ public final class RegexCompilerInterface {
     }
 
     public static Object compile(String pattern, String flags, JSContext context) {
+        return compile(pattern, flags, context, TRegexUtil.InteropIsNullNode.getUncached());
+    }
+
+    public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
         validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
+        Object compiledRegex;
         try {
-            return context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
+            compiledRegex = context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }
+        if (isCompiledRegexNullNode.execute(compiledRegex)) {
+            throw Errors.createSyntaxError("regular expression not supported");
+        }
+        return compiledRegex;
     }
 
     @TruffleBoundary

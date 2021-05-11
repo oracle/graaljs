@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
@@ -47,11 +48,13 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
+import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 @ImportStatic(JSConfig.class)
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     private final JSContext context;
+    @Child private TRegexUtil.InteropIsNullNode isCompiledRegexNullNode;
 
     protected CompileRegexNode(JSContext context) {
         this.context = context;
@@ -93,6 +96,14 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"getCached"})
     protected Object doCompile(String pattern, String flags) {
-        return RegexCompilerInterface.compile(pattern, flags, context);
+        return RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
+    }
+
+    private TRegexUtil.InteropIsNullNode getIsCompiledRegexNullNode() {
+        if (isCompiledRegexNullNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            isCompiledRegexNullNode = insert(TRegexUtil.InteropIsNullNode.create());
+        }
+        return isCompiledRegexNullNode;
     }
 }
