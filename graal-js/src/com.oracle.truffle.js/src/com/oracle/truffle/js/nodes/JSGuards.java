@@ -65,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
@@ -141,6 +142,10 @@ public final class JSGuards {
 
     public static boolean isJSFunction(Object value) {
         return JSFunction.isJSFunction(value);
+    }
+
+    public static boolean isJSRecord(Object value) {
+        return JSRecord.isJSRecord(value);
     }
 
     public static boolean isJSTuple(Object value) {
