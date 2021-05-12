@@ -15,7 +15,7 @@ $ mx testv8 gate
 ```
 
 All test runners should result in 0 (unexpected) failures.
-Note that we maintain a blacklist of tests we know not to pass currently.
+Note that we maintain an ignore list of tests we know not to pass currently.
 A test not expected to pass typically means it tests a feature not yet supported by our engine.
 The tests runners suggest to automatically update those lists based on the tests results (add or remove known-to-fail tests from those lists).
 
