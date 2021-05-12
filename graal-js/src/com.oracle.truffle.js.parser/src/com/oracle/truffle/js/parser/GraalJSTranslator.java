@@ -369,10 +369,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 currentFunction.setNamedFunctionExpression(functionNode.isNamedFunctionExpression());
 
                 declareParameters(functionNode);
-                if (functionNode.getNumOfParams() > context.getFunctionArgumentsLimit()) {
-                    throw Errors.createSyntaxError("function has too many arguments");
-                }
-
                 List<JavaScriptNode> declarations;
                 if (functionMode) {
                     declarations = functionEnvInit(functionNode);
@@ -442,9 +438,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (!declarations.isEmpty()) {
             body = prepareDeclarations(declarations, body);
         }
-        if (currentFunction.hasArgumentsSlot() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
-            body = prepareArguments(body);
-        }
         if (currentFunction.getThisSlot() != null && !isDerivedConstructor) {
             body = prepareThis(body, functionNode);
         }
@@ -475,9 +468,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.setNeedsParentFrame(needsParentFrame);
 
             declareParameters(functionNode);
-            if (functionNode.getNumOfParams() > context.getFunctionArgumentsLimit()) {
-                throw Errors.createSyntaxError("function has too many arguments");
-            }
             functionEnvInit(functionNode);
 
             currentFunction.freeze();
@@ -808,6 +798,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (parameters.size() > 0 && parameters.get(parameters.size() - 1).isRestParameter()) {
             currentFunction.setRestParameter(true);
         }
+        if (functionNode.getNumOfParams() > context.getFunctionArgumentsLimit()) {
+            throw Errors.createSyntaxError("function has too many arguments");
+        }
     }
 
     private JavaScriptNode prepareDeclarations(List<JavaScriptNode> declarations, JavaScriptNode body) {
@@ -834,13 +827,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private void prepareParameters(List<JavaScriptNode> init) {
+        FunctionEnvironment currentFunction = currentFunction();
+        if (currentFunction.hasArgumentsSlot() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
+            init.add(prepareArguments());
+        }
         FunctionNode function = lc.getCurrentFunction();
         int parameterCount = function.getParameters().size();
         if (parameterCount == 0) {
             return;
         }
         int i = 0;
-        FunctionEnvironment currentFunction = currentFunction();
         boolean hasRestParameter = currentFunction.hasRestParameter();
         boolean hasMappedArguments = function.needsArguments() && !function.isStrict() && function.hasSimpleParameterList();
         for (int argIndex = currentFunction.getLeadingArgumentCount(); i < parameterCount; i++, argIndex++) {
@@ -899,8 +895,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             functionNode.getNumOfParams() == 0 &&
                             checkDirectArgumentsAccess(functionNode)) {
                 currentFunction.setDirectArgumentsAccess(true);
-            } else {
-                currentFunction.declareVar(Environment.ARGUMENTS_NAME);
             }
         }
 
@@ -1145,15 +1139,14 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return nodes;
     }
 
-    private JavaScriptNode prepareArguments(JavaScriptNode body) {
+    private JavaScriptNode prepareArguments() {
         VarRef argumentsVar = environment.findLocalVar(Environment.ARGUMENTS_NAME);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
         JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount(), currentFunction().getTrailingArgumentCount());
         if (!unmappedArgumentsObject) {
             argumentsObject = environment.findArgumentsVar().createWriteNode(argumentsObject);
         }
-        JavaScriptNode setArgumentsNode = argumentsVar.createWriteNode(argumentsObject);
-        return factory.createExprBlock(setArgumentsNode, body);
+        return argumentsVar.createWriteNode(argumentsObject);
     }
 
     private JavaScriptNode prepareThis(JavaScriptNode body, FunctionNode functionNode) {
@@ -1220,13 +1213,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if ((block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment)) {
                 createTemporalDeadZoneInit(block, scopeInit);
             }
-            if (block.isFunctionBody()) {
+            if (block.getScope().isFunctionTopScope()) {
                 prepareParameters(scopeInit);
             }
-            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
-            if (block.isFunctionBody() && currentFunction().isCallerContextEval()) {
-                blockNode = prependDynamicScopeBindingInit(block, blockNode);
+            if (block.isFunctionBody()) {
+                FunctionEnvironment currentFunction = currentFunction();
+                if (currentFunction.isCallerContextEval()) {
+                    prependDynamicScopeBindingInit(block, scopeInit);
+                }
             }
+            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
             result = blockEnv.wrapBlockScope(blockNode);
         }
         // Parameter initialization must precede (i.e. wrap) the (async) generator function body
@@ -1291,19 +1287,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     /**
      * Create var-declared dynamic scope bindings in the variable environment of the caller.
      */
-    private JavaScriptNode prependDynamicScopeBindingInit(Block block, JavaScriptNode blockNode) {
+    private void prependDynamicScopeBindingInit(Block block, List<JavaScriptNode> blockWithInit) {
         assert currentFunction().isCallerContextEval();
-        ArrayList<JavaScriptNode> blockWithInit = new ArrayList<>();
         for (Symbol symbol : block.getSymbols()) {
             if (symbol.isVar() && !environment.getVariableEnvironment().hasLocalVar(symbol.getName())) {
                 blockWithInit.add(createDynamicScopeBinding(symbol.getName(), true));
             }
         }
-        if (blockWithInit.isEmpty()) {
-            return blockNode;
-        }
-        blockWithInit.add(blockNode);
-        return factory.createExprBlock(blockWithInit.toArray(EMPTY_NODE_ARRAY));
     }
 
     private JavaScriptNode createDynamicScopeBinding(String varName, boolean deleteable) {
