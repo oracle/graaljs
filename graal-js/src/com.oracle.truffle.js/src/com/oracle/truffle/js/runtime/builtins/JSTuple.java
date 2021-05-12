@@ -46,7 +46,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.TupleFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TuplePrototypeBuiltins;
-import com.oracle.truffle.js.builtins.TuplePrototypeGetterBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -108,7 +107,7 @@ public final class JSTuple extends JSNonProxy implements JSConstructorFactory.De
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
 
         // Sets the Tuple.prototype.length accessor property.
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, LENGTH, realm.lookupAccessor(TuplePrototypeGetterBuiltins.BUILTINS, LENGTH), JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, LENGTH, realm.lookupAccessor(TuplePrototypeBuiltins.BUILTINS, LENGTH));
 
         // The initial value of the @@iterator property is the same function object as the initial value of the Tuple.prototype.values property.
         putDataProperty(context, prototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(prototype, "values"), JSAttributes.getDefaultNotEnumerable());

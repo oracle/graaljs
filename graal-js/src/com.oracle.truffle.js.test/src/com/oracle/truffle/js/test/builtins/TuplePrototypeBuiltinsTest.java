@@ -86,6 +86,13 @@ public class TuplePrototypeBuiltinsTest {
     }
 
     @Test
+    public void testLength() {
+        assertEquals(0, execute("#[].length").asInt());
+        assertEquals(3, execute("#[1, 2, 3].length").asInt());
+        assertEquals(3, execute("Object(#[1, 2, 3]).length").asInt());
+    }
+
+    @Test
     public void testValueOf() {
         assertTrue(execute("typeof #[].valueOf() === 'tuple'").asBoolean());
         assertTrue(execute("typeof Object(#[]).valueOf() === 'tuple'").asBoolean());

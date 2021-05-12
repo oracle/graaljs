@@ -97,6 +97,7 @@ import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTup
 import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTupleFlatMapNodeGen;
 import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTupleFlatNodeGen;
 import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTupleIteratorNodeGen;
+import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTupleLengthGetterNodeGen;
 import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTupleMapNodeGen;
 import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTuplePoppedNodeGen;
 import static com.oracle.truffle.js.builtins.TuplePrototypeBuiltinsFactory.JSTuplePushedNodeGen;
@@ -122,6 +123,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public enum TuplePrototype implements BuiltinEnum<TuplePrototype> {
+        length(0),
         valueOf(0),
         popped(0),
         pushed(1),
@@ -154,21 +156,28 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         values(0),
         with(2);
 
-        private final int length;
+        private final int len;
 
         TuplePrototype(int length) {
-            this.length = length;
+            this.len = length;
         }
 
         @Override
         public int getLength() {
-            return length;
+            return len;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == length;
         }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TuplePrototype builtinEnum) {
         switch (builtinEnum) {
+            case length:
+                return JSTupleLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
                 return JSTupleValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case popped:
@@ -233,6 +242,28 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return JSTupleWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTupleLengthGetterNode extends JSBuiltinNode {
+
+        public JSTupleLengthGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected long doTuple(Tuple thisObj) {
+            return thisObj.getArraySize();
+        }
+
+        @Specialization(guards = {"isJSTuple(thisObj)"})
+        protected long doJSTuple(DynamicObject thisObj) {
+            return JSTuple.valueOf(thisObj).getArraySize();
+        }
+
+        @Fallback
+        protected long doOther(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
     }
 
     public abstract static class JSTupleToStringNode extends JSBuiltinNode {
