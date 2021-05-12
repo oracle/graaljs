@@ -1110,4 +1110,33 @@ public abstract class Environment {
             return boxed;
         }
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        Environment current = this;
+        int frameLevel = 0;
+        int scopeLevel = 0;
+        do {
+            if (current instanceof FunctionEnvironment) {
+                sb.append("Function").append("(").append(frameLevel).append(")");
+                sb.append(current.getFunctionFrameDescriptor().getIdentifiers().toString());
+
+                frameLevel++;
+                scopeLevel = 0;
+            } else if (current instanceof BlockEnvironment) {
+                sb.append("Block").append("(").append(frameLevel).append(", ").append(scopeLevel).append(")");
+                sb.append(current.getBlockFrameDescriptor().getIdentifiers().toString());
+
+                scopeLevel++;
+            } else {
+                sb.append(current.getClass().getSimpleName());
+            }
+            current = current.getParent();
+            if (current != null) {
+                sb.append('\n');
+            }
+        } while (current != null);
+        return sb.toString();
+    }
 }
