@@ -156,7 +156,7 @@ public abstract class Environment {
         do {
             FrameSlot slot = current.findBlockFrameSlot(name);
             if (slot != null) {
-                return newFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
+                return new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
             }
             if (current instanceof FunctionEnvironment) {
                 frameLevel++;
@@ -212,14 +212,14 @@ public abstract class Environment {
     }
 
     public final VarRef findLocalVar(String name) {
-        return findVar(name, true, true, false, true);
+        return findVar(name, true, true, false, true, true);
     }
 
     public final VarRef findVar(String name, boolean skipWith) {
-        return findVar(name, skipWith, skipWith, false, false);
+        return findVar(name, skipWith, skipWith, false, false, false);
     }
 
-    public final VarRef findVar(String name, boolean skipWith, boolean skipEval, boolean skipBlockScoped, boolean skipGlobal) {
+    public final VarRef findVar(String name, boolean skipWith, boolean skipEval, boolean skipBlockScoped, boolean skipGlobal, boolean skipMapped) {
         assert !name.equals(Null.NAME);
         Environment current = this;
         int frameLevel = 0;
@@ -250,7 +250,13 @@ public abstract class Environment {
                 FrameSlot slot = current.findBlockFrameSlot(name);
                 if (slot != null) {
                     if (!skipBlockScoped || !(JSFrameUtil.isConst(slot) || JSFrameUtil.isLet(slot))) {
-                        return wrapIn(wrapClosure, wrapFrameLevel, newFrameSlotVarRef(slot, scopeLevel, frameLevel, name, current));
+                        VarRef varRef;
+                        if (!skipMapped && isMappedArgumentsParameter(slot, current)) {
+                            varRef = new MappedArgumentVarRef(slot, scopeLevel, frameLevel, name, current);
+                        } else {
+                            varRef = new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
+                        }
+                        return wrapIn(wrapClosure, wrapFrameLevel, varRef);
                     }
                 }
                 if (current instanceof FunctionEnvironment) {
@@ -423,23 +429,15 @@ public abstract class Environment {
         return getFunctionFrameDescriptor();
     }
 
-    private VarRef newFrameSlotVarRef(FrameSlot slot, int scopeLevel, int frameLevel, String name, Environment current) {
-        if (isMappedArgumentsParameter(slot, current)) {
-            return new MappedArgumentVarRef(slot, scopeLevel, frameLevel, name, current);
-        } else {
-            return new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
-        }
-    }
-
     private static boolean isMappedArgumentsParameter(FrameSlot slot, Environment current) {
         FunctionEnvironment function = current.function();
-        return function.getArgumentsSlot() != null && !function.isStrictMode() && function.hasSimpleParameterList() && function.isParam(slot);
+        return function.getArgumentsSlot() != null && !function.isStrictMode() && function.hasSimpleParameterList() && JSFrameUtil.isParam(slot);
     }
 
     private JavaScriptNode createReadParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot) {
         assert current.function().hasSimpleParameterList();
         assert !current.function().isDirectArgumentsAccess();
-        int parameterIndex = current.function().getParameterIndex(slot);
+        int parameterIndex = current.function().getMappedParameterIndex(slot);
         JavaScriptNode readArgumentsObject = createReadArgumentObject(current, frameLevel, scopeLevel);
         ReadElementNode readArgumentsObjectElement = factory.createReadElementNode(context, factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex));
         return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, readArgumentsObject, slot);
@@ -448,7 +446,7 @@ public abstract class Environment {
     private JavaScriptNode createWriteParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot, JavaScriptNode rhs) {
         assert current.function().hasSimpleParameterList();
         assert !current.function().isDirectArgumentsAccess();
-        int parameterIndex = current.function().getParameterIndex(slot);
+        int parameterIndex = current.function().getMappedParameterIndex(slot);
         JavaScriptNode readArgumentsObject = createReadArgumentObject(current, frameLevel, scopeLevel);
         WriteElementNode writeArgumentsObjectElement = factory.createWriteElementNode(factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex), null, context, false);
         return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, readArgumentsObject, rhs, slot);
@@ -594,7 +592,7 @@ public abstract class Environment {
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped) {
         for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
-            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal() && !symbol.isArguments())) {
+            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isGlobal())) {
                 addFrameSlotFromSymbol(symbol);
             }
         }

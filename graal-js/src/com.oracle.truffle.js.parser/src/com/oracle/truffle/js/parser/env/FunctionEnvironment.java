@@ -45,6 +45,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -54,6 +56,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public class FunctionEnvironment extends Environment {
     private static final String RETURN_SLOT_IDENTIFIER = "<return>";
@@ -69,7 +72,7 @@ public class FunctionEnvironment extends Environment {
 
     private final FunctionEnvironment parent;
     private final FrameDescriptor frameDescriptor;
-    private final List<FrameSlot> parameters;
+    private EconomicMap<FrameSlot, Integer> parameters;
     private final boolean isStrictMode;
 
     private FrameSlot argumentsSlot;
@@ -125,7 +128,6 @@ public class FunctionEnvironment extends Environment {
         this.parent = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFrameDescriptor();
-        this.parameters = new ArrayList<>();
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
 
@@ -325,38 +327,16 @@ public class FunctionEnvironment extends Environment {
         return directArgumentsAccess;
     }
 
-    public final int getParameterCount() {
-        return parameters.size();
-    }
-
-    public final List<FrameSlot> getParameters() {
-        return parameters;
-    }
-
-    public final void declareParameter(String name) {
-        parameters.add(declareLocalVar(name));
-    }
-
-    protected final boolean isParam(FrameSlot slot) {
-        return parameters.contains(slot);
-    }
-
-    protected final int getParameterIndex(FrameSlot slot) {
-        for (int i = parameters.size() - 1; i >= 0; --i) {
-            if (parameters.get(i) == slot) {
-                return i;
-            }
+    public void addMappedParameter(FrameSlot slot, int index) {
+        assert slot != null && JSFrameUtil.isParam(slot) : slot;
+        if (parameters == null) {
+            parameters = EconomicMap.create();
         }
-        return -1;
+        parameters.put(slot, index);
     }
 
-    public final boolean isParameter(String name) {
-        for (int i = 0; i < parameters.size(); i++) {
-            if (name.equals(parameters.get(i).getIdentifier())) {
-                return true;
-            }
-        }
-        return false;
+    protected final int getMappedParameterIndex(FrameSlot slot) {
+        return parameters.get(slot, -1);
     }
 
     public final String getFunctionName() {

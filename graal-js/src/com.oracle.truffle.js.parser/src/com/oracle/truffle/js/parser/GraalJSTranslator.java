@@ -443,9 +443,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (currentFunction.hasArgumentsSlot() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
             body = prepareArguments(body);
         }
-        if (currentFunction.getParameterCount() > 0) {
-            body = prepareParameters(body);
-        }
         if (currentFunction.getThisSlot() != null && !isDerivedConstructor) {
             body = prepareThis(body, functionNode);
         }
@@ -806,14 +803,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         FunctionEnvironment currentFunction = currentFunction();
         currentFunction.setSimpleParameterList(functionNode.hasSimpleParameterList());
         List<IdentNode> parameters = functionNode.getParameters();
-        for (int i = 0; i < parameters.size(); i++) {
-            IdentNode parameter = parameters.get(i);
-            // must be simple or rest parameter
-            currentFunction.declareParameter(parameter.getName());
-            if (parameter.isRestParameter()) {
-                assert i == parameters.size() - 1;
-                currentFunction.setRestParameter(true);
-            }
+        if (parameters.size() > 0 && parameters.get(parameters.size() - 1).isRestParameter()) {
+            currentFunction.setRestParameter(true);
         }
     }
 
@@ -840,30 +831,34 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return functionNode.getName();
     }
 
-    private JavaScriptNode prepareParameters(JavaScriptNode body) {
-        FrameSlot[] frameSlots = currentFunction().getParameters().toArray(new FrameSlot[currentFunction().getParameterCount()]);
-        return createEnterFrameBlock(frameSlots, body);
-    }
-
-    private JavaScriptNode createEnterFrameBlock(FrameSlot[] parameterSlots, JavaScriptNode body) {
-        if (parameterSlots.length != 0) {
-            JavaScriptNode[] parameterAssignment = javaScriptNodeArray(parameterSlots.length + 1);
-            int i = 0;
-            FunctionEnvironment currentFunction = currentFunction();
-            boolean hasRestParameter = currentFunction.hasRestParameter();
-            for (int argIndex = currentFunction.getLeadingArgumentCount(); i < parameterSlots.length; i++, argIndex++) {
-                final JavaScriptNode valueNode;
-                if (hasRestParameter && i == parameterSlots.length - 1) {
-                    valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction.getTrailingArgumentCount()));
-                } else {
-                    valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
-                }
-                parameterAssignment[i] = tagHiddenExpression(factory.createWriteCurrentFrameSlot(parameterSlots[i], currentFunction.getFunctionFrameDescriptor(), valueNode));
+    private void prepareParameters(List<JavaScriptNode> init) {
+        FunctionNode function = lc.getCurrentFunction();
+        int parameterCount = function.getParameters().size();
+        if (parameterCount == 0) {
+            return;
+        }
+        int i = 0;
+        FunctionEnvironment currentFunction = currentFunction();
+        boolean hasRestParameter = currentFunction.hasRestParameter();
+        boolean hasMappedArguments = function.needsArguments() && !function.isStrict() && function.hasSimpleParameterList();
+        for (int argIndex = currentFunction.getLeadingArgumentCount(); i < parameterCount; i++, argIndex++) {
+            final JavaScriptNode valueNode;
+            if (hasRestParameter && i == parameterCount - 1) {
+                valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction.getTrailingArgumentCount()));
+            } else {
+                valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
-            parameterAssignment[i] = body;
-            return factory.createExprBlock(parameterAssignment);
-        } else {
-            return body;
+            String paramName = function.getParameters().get(i).getName();
+            VarRef paramRef = environment.findLocalVar(paramName);
+            if (paramRef != null) {
+                init.add(tagHiddenExpression(paramRef.createWriteNode(valueNode)));
+                if (hasMappedArguments) {
+                    currentFunction.addMappedParameter(paramRef.getFrameSlot(), i);
+                }
+            } else {
+                // Duplicate parameter names are allowed in non-strict mode but have no binding.
+                assert !currentFunction.isStrictMode();
+            }
         }
     }
 
@@ -1218,7 +1213,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
-            List<JavaScriptNode> scopeInit = createTemporalDeadZoneInit(block);
+            List<JavaScriptNode> scopeInit = new ArrayList<>(block.getSymbolCount());
+            if ((block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment)) {
+                createTemporalDeadZoneInit(block, scopeInit);
+            }
+            if (block.isFunctionBody()) {
+                prepareParameters(scopeInit);
+            }
             JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
             if (block.isFunctionBody() && currentFunction().isCallerContextEval()) {
                 blockNode = prependDynamicScopeBindingInit(block, blockNode);
@@ -1239,12 +1240,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     /**
      * Initialize block-scoped symbols with a <i>dead</i> marker value.
      */
-    private List<JavaScriptNode> createTemporalDeadZoneInit(Block block) {
-        if ((!block.getScope().hasBlockScopedOrRedeclaredSymbols() && !block.isModuleBody()) || environment instanceof GlobalEnvironment) {
-            return Collections.emptyList();
-        }
+    private void createTemporalDeadZoneInit(Block block, List<JavaScriptNode> blockWithInit) {
+        assert (block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment);
 
-        ArrayList<JavaScriptNode> blockWithInit = new ArrayList<>(block.getSymbolCount() + 1);
         for (Symbol symbol : block.getSymbols()) {
             if (symbol.isImportBinding()) {
                 continue;
@@ -1266,7 +1264,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (block.isModuleBody()) {
             createResolveImports(lc.getCurrentFunction(), blockWithInit);
         }
-        return blockWithInit;
     }
 
     private void createResolveImports(FunctionNode functionNode, List<JavaScriptNode> declarations) {
@@ -1640,7 +1637,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 Symbol symbol = lc.getCurrentScope().getExistingSymbol(varName);
                 if (symbol.isHoistedBlockFunctionDeclaration()) {
                     assert hasVarSymbol(fn.getVarDeclarationBlock().getScope(), varName) : varName;
-                    assignment = environment.findVar(varName, true, false, true, false).withRequired(false).createWriteNode(assignment);
+                    assignment = environment.findVar(varName, true, false, true, false, false).withRequired(false).createWriteNode(assignment);
                     tagExpression(assignment, varNode);
                 }
             }

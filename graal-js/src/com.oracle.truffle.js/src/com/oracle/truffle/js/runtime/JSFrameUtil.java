@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,8 @@ public final class JSFrameUtil {
     private static final int IS_IMPORT_BINDING = Symbol.IS_IMPORT_BINDING;
     private static final int IS_PRIVATE_NAME_STATIC = Symbol.IS_PRIVATE_NAME_STATIC;
     private static final int IS_PRIVATE_METHOD_OR_ACCESSOR = Symbol.IS_PRIVATE_NAME_METHOD | Symbol.IS_PRIVATE_NAME_ACCESSOR;
-    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR;
+    private static final int IS_PARAM = Symbol.IS_PARAM;
+    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | IS_PARAM;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -116,6 +117,10 @@ public final class JSFrameUtil {
 
     public static boolean isPrivateNameStatic(FrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PRIVATE_NAME_STATIC) != 0;
+    }
+
+    public static boolean isParam(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_PARAM) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {
