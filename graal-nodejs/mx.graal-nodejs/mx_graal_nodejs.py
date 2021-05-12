@@ -279,7 +279,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
 
     def needsBuild(self, newestInput):
         localNewestInput = self.newestInput()
-        if localNewestInput.isNewerThan(newestInput):
+        if newestInput is None or localNewestInput.isNewerThan(newestInput):
             newestInput = localNewestInput
 
         sup = mx.BuildTask.needsBuild(self, newestInput)
