@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: Run GraalVM JavaScript on a Stock JDK
 permalink: /reference-manual/js/RunOnJDK/
-redirect_from: /docs/reference-manual/js/RunOnJDK/
 ---
 # Run GraalVM JavaScript on a Stock JDK
 

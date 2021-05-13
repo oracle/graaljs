@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: Multithreading
 permalink: /reference-manual/js/Multithreading/
-redirect_from: /docs/reference-manual/js/Multithreading/
 ---
 # Multithreading
 

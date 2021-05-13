@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: FAQ
 permalink: /reference-manual/js/FAQ/
-redirect_from: /docs/reference-manual/js/FAQ/
 ---
 # Frequently Asked Questions
 

@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: Node.js Runtime
 permalink: /reference-manual/js/NodeJS/
-redirect_from: /docs/reference-manual/js/NodeJS/
 ---
 # Node.js Runtime
 

@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: Java Interoperability
 permalink: /reference-manual/js/JavaInteroperability/
-redirect_from: /docs/reference-manual/js/JavaInteroperability/
 ---
 # Java Interoperability
 

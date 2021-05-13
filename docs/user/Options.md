@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: Options
 permalink: /reference-manual/js/Options/
-redirect_from: /docs/reference-manual/js/Options/
 ---
 # Options
 

@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: JavaScript and Node.js Reference
 permalink: /reference-manual/js/
-redirect_from: /docs/reference-manual/js/
 ---
 # GraalVM JavaScript Implementation
 
@@ -89,7 +88,7 @@ Type ".help" for more information.
 ```
 
 For more information about interoperability with other programming
-languages, see [Polyglot Programming](https://www.graalvm.org/docs/reference-manual/polyglot-programming/) for a general description.
+languages, see [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) for a general description.
 
 ## Interoperability with Java
 

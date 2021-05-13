@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: JavaScript Compatibility
 permalink: /reference-manual/js/JavaScriptCompatibility/
-redirect_from: /docs/reference-manual/js/JavaScriptCompatibility/
 ---
 # JavaScript Compatibility
 

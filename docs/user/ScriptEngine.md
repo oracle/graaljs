@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: ScriptEngine Implementation
 permalink: /reference-manual/js/ScriptEngine/
-redirect_from: /docs/reference-manual/js/ScriptEngine/
 ---
 # ScriptEngine Implementation
 

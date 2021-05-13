@@ -3,7 +3,6 @@ layout: docs
 toc_group: js
 link_title: Migration Guide from Nashorn to GraalVM JavaScript
 permalink: /reference-manual/js/NashornMigrationGuide/
-redirect_from: /docs/reference-manual/js/NashornMigrationGuide/
 ---
 # Migration Guide from Nashorn to GraalVM JavaScript
 
@@ -78,7 +77,7 @@ GraalVM JavaScript differs from Nashorn in some aspects that were intentional de
 GraalVM JavaScript takes a _secure by default_ approach.
 Unless explicitly permitted by the embedder, JavaScript code cannot access Java classes or access the file system, among other restrictions.
 Several features of GraalVM JavaScript, including Nashorn compatibility features, are only available when the relevant security settings are permissive enough.
-Make sure you [understand the security implications](https://www.graalvm.org/docs/security-guide/) of any change that lifts the secure default limits to your application and the host system.
+Make sure you [understand the security implications](https://www.graalvm.org/security-guide/) of any change that lifts the secure default limits to your application and the host system.
 
 For a full list of available settings, see [`Context.Builder`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html).
 Those flags can be defined when building the context with GraalVM Polyglot API.
