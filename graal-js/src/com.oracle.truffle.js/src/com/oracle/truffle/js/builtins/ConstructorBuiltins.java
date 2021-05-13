@@ -2607,6 +2607,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             try {
                 Object createMemory = getContext().getRealm().getWASMMemoryConstructor();
                 wasmMemory = InteropLibrary.getUncached(createMemory).execute(createMemory, initialInt, maximumInt);
+            } catch (AbstractTruffleException tex) {
+                throw Errors.createRangeError("WebAssembly.Memory(): could not allocate memory");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
