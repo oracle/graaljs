@@ -76,7 +76,6 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.PolyglotBuiltinTest;
 import com.oracle.truffle.js.test.suite.JSTestRunner.TestCase;
 
@@ -204,7 +203,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
 
             String[] args = parseArgs(sourceLines);
             // allowHostAccess, allowIO, allowHostReflection
-            Context engineContext = JSTest.newContextBuilder().options(options).allowAllAccess(true).arguments(ID, args).build();
+            Context engineContext = Context.newBuilder().allowExperimentalOptions(true).options(options).allowAllAccess(true).arguments(ID, args).build();
 
             engineContext.enter();
             setTestGlobals(engineContext, optionNashornCompat || USE_NASHORN_COMPAT_MODE);
