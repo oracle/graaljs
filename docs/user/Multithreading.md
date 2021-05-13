@@ -1,12 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title: Multithreading
 link_title: Multithreading
 permalink: /reference-manual/js/Multithreading/
 redirect_from: /docs/reference-manual/js/Multithreading/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NashornMigrationGuide/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Modules/
 ---
 # Multithreading
 

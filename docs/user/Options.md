@@ -1,12 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title: Options
 link_title: Options
 permalink: /reference-manual/js/Options/
 redirect_from: /docs/reference-manual/js/Options/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/RunOnJDK/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NodeJSVSJavaScriptContext/
 ---
 # Options
 

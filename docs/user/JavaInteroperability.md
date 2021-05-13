@@ -1,12 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title:  Java Interoperability
 link_title: Java Interoperability
 permalink: /reference-manual/js/JavaInteroperability/
 redirect_from: /docs/reference-manual/js/JavaInteroperability/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/JavaScriptCompatibility/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NodeJS/
 ---
 # Java Interoperability
 

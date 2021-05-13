@@ -1,12 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title: Differences Between Node.js and Java Embeddings
 link_title: Differences Between Node.js and Java Embeddings
 permalink: /reference-manual/js/NodeJSvsJavaScriptContext/
 redirect_from: /docs/reference-manual/js/NodeJSvsJavaScriptContext/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/Options/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/RhinoMigrationGuide/
 ---
 # Differences Between Node.js and Java Embeddings
 

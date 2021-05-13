@@ -1,11 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title: FAQ
 link_title: FAQ
 permalink: /reference-manual/js/FAQ/
 redirect_from: /docs/reference-manual/js/FAQ/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/ScriptEngine/
 ---
 # Frequently Asked Questions
 

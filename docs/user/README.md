@@ -1,15 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title: JavaScript and Node.js Reference
 link_title: JavaScript and Node.js Reference
 permalink: /reference-manual/js/
-redirect_from: /docs/reference-manual/languages/js/
-redirect_from:
-  - /docs/reference-manual/languages/js/
-  - /docs/reference-manual/js/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/NodeJS/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/java/
+redirect_from: /docs/reference-manual/js/
 ---
 # GraalVM JavaScript Implementation
 

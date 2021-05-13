@@ -1,12 +1,9 @@
 ---
 layout: docs
 toc_group: js
-title: JavaScript Compatibility
 link_title: JavaScript Compatibility
 permalink: /reference-manual/js/JavaScriptCompatibility/
 redirect_from: /docs/reference-manual/js/JavaScriptCompatibility/
-next: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/OperatorOverloading/
-previous: /en/graalvm/enterprise/{{ site.version }}/docs/reference-manual/js/JavaInteroperability/
 ---
 # JavaScript Compatibility
 
