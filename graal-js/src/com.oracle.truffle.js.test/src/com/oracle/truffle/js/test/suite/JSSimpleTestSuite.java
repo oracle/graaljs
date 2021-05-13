@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 
 @RunWith(JSTestRunner.class)
-@JSTestSuite({JSSimpleTestSuite.PATH_OF_RESOURCES, "js"})
+@JSTestSuite(JSSimpleTestSuite.PATH_OF_RESOURCES)
 public class JSSimpleTestSuite {
 
     public static final String PATH_OF_RESOURCES = "src/com.oracle.truffle.js.test/js";
