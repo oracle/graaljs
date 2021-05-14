@@ -249,6 +249,9 @@ public abstract class Environment {
                         VarRef varRef;
                         if (!skipMapped && isMappedArgumentsParameter(slot, current)) {
                             varRef = new MappedArgumentVarRef(slot, scopeLevel, frameLevel, name, current);
+                        } else if (JSFrameUtil.isArguments(slot)) {
+                            assert !current.function().isArrowFunction() && !current.function().isGlobal() && !current.function().isEval();
+                            varRef = new ArgumentsVarRef(slot, scopeLevel, frameLevel, name, current);
                         } else {
                             varRef = new FrameSlotVarRef(slot, scopeLevel, frameLevel, name, current);
                         }
@@ -263,14 +266,6 @@ public abstract class Environment {
                     if (!skipEval && fnEnv.isDynamicallyScoped()) {
                         wrapClosure = makeEvalWrapClosure(wrapClosure, name, frameLevel, scopeLevel, current);
                         wrapFrameLevel = frameLevel;
-                    }
-                    if (!fnEnv.isGlobal() && !fnEnv.isEval() && name.equals(ARGUMENTS_NAME)) {
-                        if (fnEnv.hasArgumentsSlot()) {
-                            return wrapIn(wrapClosure, wrapFrameLevel, new ArgumentsVarRef(scopeLevel, frameLevel, name, current));
-                        } else {
-                            assert fnEnv.isArrowFunction();
-                            // we need to go deeper
-                        }
                     }
 
                     frameLevel++;
@@ -427,29 +422,7 @@ public abstract class Environment {
 
     private static boolean isMappedArgumentsParameter(FrameSlot slot, Environment current) {
         FunctionEnvironment function = current.function();
-        return function.getArgumentsSlot() != null && !function.isStrictMode() && function.hasSimpleParameterList() && JSFrameUtil.isParam(slot);
-    }
-
-    private JavaScriptNode createReadParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot) {
-        assert current.function().hasSimpleParameterList();
-        assert !current.function().isDirectArgumentsAccess();
-        int parameterIndex = current.function().getMappedParameterIndex(slot);
-        JavaScriptNode readArgumentsObject = createReadArgumentObject(current, frameLevel, scopeLevel);
-        ReadElementNode readArgumentsObjectElement = factory.createReadElementNode(context, factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex));
-        return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, readArgumentsObject, slot);
-    }
-
-    private JavaScriptNode createWriteParameterFromMappedArguments(Environment current, int frameLevel, int scopeLevel, FrameSlot slot, JavaScriptNode rhs) {
-        assert current.function().hasSimpleParameterList();
-        assert !current.function().isDirectArgumentsAccess();
-        int parameterIndex = current.function().getMappedParameterIndex(slot);
-        JavaScriptNode readArgumentsObject = createReadArgumentObject(current, frameLevel, scopeLevel);
-        WriteElementNode writeArgumentsObjectElement = factory.createWriteElementNode(factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex), null, context, false);
-        return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, readArgumentsObject, rhs, slot);
-    }
-
-    private JavaScriptNode createReadArgumentObject(Environment current, int frameLevel, int scopeLevel) {
-        return new FrameSlotVarRef(current.function().getArgumentsSlot(), scopeLevel, frameLevel, FunctionEnvironment.ARGUMENTS_SLOT_IDENTIFIER, current).createReadNode();
+        return function.hasMappedParameters() && !function.isStrictMode() && function.hasSimpleParameterList() && JSFrameUtil.isParam(slot);
     }
 
     public final Environment getParent() {
@@ -800,20 +773,21 @@ public abstract class Environment {
     }
 
     private final class ArgumentsVarRef extends AbstractArgumentsVarRef {
-        ArgumentsVarRef(int scopeLevel, int frameLevel, String name, Environment current) {
+        private final FrameSlot frameSlot;
+
+        ArgumentsVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
             super(scopeLevel, frameLevel, name, current);
+            this.frameSlot = frameSlot;
         }
 
         @Override
         public JavaScriptNode createReadNode() {
-            assert current.function().getArgumentsSlot() != null;
-            JavaScriptNode argumentsVarNode = createReadArgumentObject(current, frameLevel, scopeLevel);
+            JavaScriptNode argumentsVarNode = factory.createReadFrameSlot(frameSlot, createScopeFrameNode());
             if (function().isDirectArgumentsAccess()) {
                 FunctionEnvironment currentFunction = current.function();
                 JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount(),
                                 currentFunction.getTrailingArgumentCount());
-                JavaScriptNode writeNode = factory.createWriteFrameSlot(currentFunction.getArgumentsSlot(), createScopeFrameNode(), currentFunction.getFunctionFrameDescriptor(),
-                                createArgumentsObjectNode);
+                JavaScriptNode writeNode = factory.createWriteFrameSlot(frameSlot, createScopeFrameNode(), current.getBlockFrameDescriptor(), createArgumentsObjectNode);
                 return factory.createAccessArgumentsArrayDirectly(writeNode, argumentsVarNode, currentFunction.getLeadingArgumentCount(), currentFunction.getTrailingArgumentCount());
             } else {
                 return argumentsVarNode;
@@ -823,27 +797,46 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
             assert !current.function().isDirectArgumentsAccess();
-            return factory.createWriteFrameSlot(current.function().getArgumentsSlot(), createScopeFrameNode(), current.getFunctionFrameDescriptor(), rhs);
+            return factory.createWriteFrameSlot(frameSlot, createScopeFrameNode(), current.getBlockFrameDescriptor(), rhs);
+        }
+
+        @Override
+        public FrameSlot getFrameSlot() {
+            return frameSlot;
         }
     }
 
     public class MappedArgumentVarRef extends AbstractArgumentsVarRef {
-        protected final FrameSlot frameSlot;
+        private final FrameSlot frameSlot;
+        private final int parameterIndex;
+        private final FrameSlot argumentsSlot;
 
         public MappedArgumentVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
             super(scopeLevel, frameLevel, name, current);
-            this.frameSlot = frameSlot;
             assert !JSFrameUtil.hasTemporalDeadZone(frameSlot);
+            assert current.function().hasSimpleParameterList();
+            assert !current.function().isDirectArgumentsAccess();
+            this.argumentsSlot = Objects.requireNonNull(current.getBlockFrameDescriptor().findFrameSlot(FunctionEnvironment.ARGUMENTS_SLOT_IDENTIFIER));
+            this.frameSlot = frameSlot;
+            this.parameterIndex = current.function().getMappedParameterIndex(frameSlot);
+        }
+
+        private JavaScriptNode createReadArgumentsObject() {
+            return factory.createReadFrameSlot(argumentsSlot, createScopeFrameNode());
         }
 
         @Override
         public JavaScriptNode createReadNode() {
-            return createReadParameterFromMappedArguments(current, frameLevel, scopeLevel, frameSlot);
+            JavaScriptNode readArgumentsObject = createReadArgumentsObject();
+            ReadElementNode readArgumentsObjectElement = factory.createReadElementNode(context, factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex));
+            return factory.createGuardDisconnectedArgumentRead(parameterIndex, readArgumentsObjectElement, readArgumentsObject, frameSlot);
         }
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return createWriteParameterFromMappedArguments(current, frameLevel, scopeLevel, frameSlot, rhs);
+            JavaScriptNode readArgumentsObject = createReadArgumentsObject();
+            WriteElementNode writeArgumentsObjectElement = factory.createWriteElementNode(factory.copy(readArgumentsObject), factory.createConstantInteger(parameterIndex), null, context, false);
+            return factory.createGuardDisconnectedArgumentWrite(parameterIndex, writeArgumentsObjectElement, readArgumentsObject, rhs, frameSlot);
         }
     }
 

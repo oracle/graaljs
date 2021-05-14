@@ -827,11 +827,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private void prepareParameters(List<JavaScriptNode> init) {
+        FunctionNode function = lc.getCurrentFunction();
         FunctionEnvironment currentFunction = currentFunction();
-        if (currentFunction.hasArgumentsSlot() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
+        if (function.needsArguments() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
+            assert !function.isArrow() && !function.isClassFieldInitializer();
             init.add(prepareArguments());
         }
-        FunctionNode function = lc.getCurrentFunction();
         int parameterCount = function.getParameters().size();
         if (parameterCount == 0) {
             return;
@@ -888,8 +889,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         if (!functionNode.isArrow() && functionNode.needsArguments()) {
-            currentFunction.reserveArgumentsSlot();
-
             if (JSConfig.OptimizeApplyArguments && functionNode.needsArguments() && functionNode.hasApplyArgumentsCall() &&
                             !functionNode.isArrow() && !functionNode.hasEval() && !functionNode.hasArrowEval() && !currentFunction.isDirectEval() &&
                             functionNode.getNumOfParams() == 0 &&
@@ -1373,8 +1372,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
              */
             if (scope.isFunctionTopScope() || scope.isEvalScope()) {
                 assert environment instanceof FunctionEnvironment;
+                FunctionNode function = lc.getCurrentFunction();
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
                 environment.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped);
+                addFunctionFrameSlots(environment, function);
                 return new EnvironmentCloseable(environment);
             } else {
                 BlockEnvironment blockEnv = new BlockEnvironment(environment, factory, context);
@@ -1383,6 +1384,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         } else {
             return new EnvironmentCloseable(environment);
+        }
+    }
+
+    private static void addFunctionFrameSlots(Environment env, FunctionNode function) {
+        if (function.needsArguments()) {
+            assert function.getBody().getScope().hasSymbol(Environment.ARGUMENTS_NAME) : function;
+            env.getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.ARGUMENTS_SLOT_IDENTIFIER);
         }
     }
 

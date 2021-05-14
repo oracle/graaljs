@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public class FunctionEnvironment extends Environment {
     private static final String RETURN_SLOT_IDENTIFIER = "<return>";
-    static final String ARGUMENTS_SLOT_IDENTIFIER = "<arguments>";
+    public static final String ARGUMENTS_SLOT_IDENTIFIER = "<arguments>";
     static final String THIS_SLOT_IDENTIFIER = "<this>";
     static final String SUPER_SLOT_IDENTIFIER = "<super>";
     static final String NEW_TARGET_SLOT_IDENTIFIER = "<new.target>";
@@ -382,12 +382,8 @@ public class FunctionEnvironment extends Environment {
         return isFrozen() && (getParentFunction() == null || getParentFunction().isDeepFrozen());
     }
 
-    public final boolean hasArgumentsSlot() {
-        return argumentsSlot != null;
-    }
-
-    protected final FrameSlot getArgumentsSlot() {
-        return argumentsSlot;
+    public final boolean hasMappedParameters() {
+        return parameters != null;
     }
 
     @Override

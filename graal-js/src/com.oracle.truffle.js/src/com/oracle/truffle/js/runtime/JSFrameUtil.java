@@ -65,7 +65,8 @@ public final class JSFrameUtil {
     private static final int IS_PRIVATE_NAME_STATIC = Symbol.IS_PRIVATE_NAME_STATIC;
     private static final int IS_PRIVATE_METHOD_OR_ACCESSOR = Symbol.IS_PRIVATE_NAME_METHOD | Symbol.IS_PRIVATE_NAME_ACCESSOR;
     private static final int IS_PARAM = Symbol.IS_PARAM;
-    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | IS_PARAM;
+    private static final int IS_ARGUMENTS = Symbol.IS_ARGUMENTS;
+    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | IS_PARAM | IS_ARGUMENTS;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -121,6 +122,10 @@ public final class JSFrameUtil {
 
     public static boolean isParam(FrameSlot frameSlot) {
         return (getFlags(frameSlot) & IS_PARAM) != 0;
+    }
+
+    public static boolean isArguments(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_ARGUMENTS) != 0;
     }
 
     public static MaterializedFrame getParentFrame(Frame frame) {
