@@ -1076,7 +1076,7 @@ public class Parser extends AbstractParser {
         }
         // If parsing with arguments, create an artificial local scope to emulate
         // function-like semantics:
-        Scope body = Scope.createFunctionBody(scope, 0);
+        Scope body = Scope.createFunctionBody(scope);
         // We have to also explicitly put parameters in the top scope, because
         // ParserContextFunctionNode will not do it automatically for script nodes.
         for (String argument : argumentNames) {
@@ -3538,7 +3538,7 @@ public class Parser extends AbstractParser {
     }
 
     private Block catchBlock(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
-        final ParserContextBlockNode catchBlock = newBlock(Scope.createCatch(lc.getCurrentScope()));
+        final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
         try {
             if (exception != null) {
                 VarNode exceptionVar = new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET);
