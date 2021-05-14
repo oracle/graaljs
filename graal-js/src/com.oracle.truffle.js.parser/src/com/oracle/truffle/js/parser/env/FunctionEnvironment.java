@@ -138,6 +138,7 @@ public class FunctionEnvironment extends Environment {
 
     @Override
     public FrameSlot declareLocalVar(Object name) {
+        assert !isFrozen() : name;
         return getFunctionFrameDescriptor().findOrAddFrameSlot(name, FrameSlotKind.Illegal);
     }
 
@@ -189,14 +190,14 @@ public class FunctionEnvironment extends Environment {
         return dynamicScopeSlot;
     }
 
-    public FrameSlot getBlockScopeSlot() {
+    public FrameSlot getOrCreateBlockScopeSlot() {
         if (blockScopeSlot == null) {
             blockScopeSlot = declareLocalVar(ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
         }
         return blockScopeSlot;
     }
 
-    public FrameSlot getBlockScopeSlotOpt() {
+    public FrameSlot getBlockScopeSlot() {
         return blockScopeSlot;
     }
 

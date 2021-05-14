@@ -342,11 +342,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         String functionName = getFunctionName(functionNode);
         JSFunctionData functionData;
         FunctionRootNode functionRoot;
+        FrameSlot blockScopeSlot;
         if (lazyTranslation) {
             assert functionMode && !functionNode.isProgram();
 
             // function needs parent frame analysis has already been done
             boolean needsParentFrame = functionNode.usesAncestorScope();
+            blockScopeSlot = needsParentFrame && currentFunction() != null ? currentFunction().getBlockScopeSlot() : null;
 
             functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                             needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
@@ -392,6 +394,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, currentFunction, declarations);
 
                 needsParentFrame = currentFunction.needsParentFrame();
+                blockScopeSlot = needsParentFrame && currentFunction.getParentFunction() != null ? currentFunction.getParentFunction().getBlockScopeSlot() : null;
                 currentFunction.freeze();
 
                 functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
@@ -407,7 +410,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
 
         JavaScriptNode functionExpression;
-        FrameSlot blockScopeSlot = functionData.needsParentFrame() && currentFunction() != null ? currentFunction().getBlockScopeSlot() : null;
         if (isArrowFunction && functionNode.needsThis() && !currentFunction().getNonArrowParentFunction().isDerivedConstructor()) {
             JavaScriptNode thisNode = createThisNode();
             functionExpression = factory.createFunctionExpressionLexicalThis(functionData, functionRoot, blockScopeSlot, thisNode);
@@ -2264,7 +2266,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             func.setNeedsParentFrame(true);
         }
         return EvalNode.create(context, function, args, createThisNodeUnchecked(), new DirectEvalContext(lc.getCurrentScope(), environment, lc.getCurrentClass()),
-                        currentFunction().getBlockScopeSlotOpt());
+                        currentFunction().getBlockScopeSlot());
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
