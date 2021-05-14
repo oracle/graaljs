@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -561,7 +561,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         // uses "arguments" or calls eval, but it does not redefine "arguments", and finally, it's
         // not a script, since for top-level scripts, "arguments" is picked up from a global
         // property instead.
-        return getFlag(MAYBE_NEEDS_ARGUMENTS) && !getFlag(DEFINES_ARGUMENTS) && !isProgram();
+        return getFlag(MAYBE_NEEDS_ARGUMENTS) && !getFlag(DEFINES_ARGUMENTS | IS_ARROW | IS_CLASS_FIELD_INITIALIZER) && !isProgram();
     }
 
     /**

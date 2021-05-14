@@ -535,6 +535,7 @@ public class Parser extends AbstractParser {
                 addFunctionDeclarations(function);
             } finally {
                 functionDeclarations = null;
+                function.finishBodyScope();
                 restoreBlock(body);
                 lc.pop(function);
             }
@@ -5311,6 +5312,7 @@ public class Parser extends AbstractParser {
                 expect(RBRACE);
             }
         } finally {
+            functionNode.finishBodyScope();
             restoreBlock(body);
         }
 

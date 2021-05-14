@@ -441,7 +441,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
                 parent.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
             }
-            parent.close();
             parameters = Collections.emptyList();
         } else {
             parent = parentScope;
@@ -483,7 +482,27 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private boolean needsArguments() {
-        return getFlag(FunctionNode.DEFINES_ARGUMENTS) == 0 && getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0;
+        return getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0 &&
+                        getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER) == 0;
+    }
+
+    public void finishBodyScope() {
+        assert !isScriptOrModule();
+        if (needsArguments()) {
+            if (hasParameterExpressions()) {
+                Scope parameterScope = getParameterScope();
+                if (!parameterScope.hasSymbol(Parser.ARGUMENTS_NAME) && !bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
+                    parameterScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+                }
+            } else {
+                if (!bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
+                    bodyScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_VAR | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+                }
+            }
+        }
+        if (hasParameterExpressions()) {
+            getParameterScope().close();
+        }
     }
 
     public String getInternalName() {
