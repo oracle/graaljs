@@ -2328,7 +2328,8 @@ public class Parser extends AbstractParser {
             int symbolFlags = varNode.getSymbolFlags() |
                             (scope.isSwitchBlockScope() ? Symbol.IS_DECLARED_IN_SWITCH_BLOCK : 0) |
                             (varNode.isFunctionDeclaration() ? Symbol.IS_BLOCK_FUNCTION_DECLARATION : 0);
-            scope.putSymbol(new Symbol(name, symbolFlags));
+            Symbol existing = scope.putSymbol(new Symbol(name, symbolFlags));
+            assert existing == null || (existing.isBlockFunctionDeclaration() && varNode.isFunctionDeclaration()) : existing;
 
             if (varNode.isFunctionDeclaration() && isAnnexB()) {
                 // B.3.3 Block-Level Function Declaration hoisting

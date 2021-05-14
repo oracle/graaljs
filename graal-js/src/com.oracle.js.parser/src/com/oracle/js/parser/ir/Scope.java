@@ -193,11 +193,11 @@ public final class Scope {
     }
 
     /**
-     * Add or overwrite an existing symbol in the block
+     * Add symbol to the scope if it does not already exist.
      */
     public Symbol putSymbol(final Symbol symbol) {
         assert !closed : "scope is closed";
-        Symbol existing = symbols.put(symbol.getName(), symbol);
+        Symbol existing = symbols.putIfAbsent(symbol.getName(), symbol);
         if (existing != null) {
             assert (existing.getFlags() & Symbol.KINDMASK) == (symbol.getFlags() & Symbol.KINDMASK) : symbol;
             return existing;
