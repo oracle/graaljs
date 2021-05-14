@@ -89,10 +89,6 @@ public abstract class Environment {
         return function().declareLocalVar(name);
     }
 
-    public FrameSlot declareVar(Object name) {
-        return function().declareVar(name);
-    }
-
     public boolean hasLocalVar(String name) {
         return getFunctionFrameDescriptor().getIdentifiers().contains(name);
     }

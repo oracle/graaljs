@@ -141,22 +141,10 @@ public class FunctionEnvironment extends Environment {
         return getFunctionFrameDescriptor().findOrAddFrameSlot(name, FrameSlotKind.Illegal);
     }
 
-    @Override
-    public FrameSlot declareVar(Object name) {
-        if (isCallerContextEval()) {
-            return getParentFunction().declareVar(name);
-        }
-        if (frozen && getFunctionFrameDescriptor().findFrameSlot(name) == null) {
-            throw errorFrozenEnv();
-        }
-        return declareLocalVar(name);
-    }
-
-    public FrameSlot reserveArgumentsSlot() {
+    public void reserveArgumentsSlot() {
         if (argumentsSlot == null) {
-            argumentsSlot = declareVar(ARGUMENTS_SLOT_IDENTIFIER);
+            argumentsSlot = declareLocalVar(ARGUMENTS_SLOT_IDENTIFIER);
         }
-        return argumentsSlot;
     }
 
     public FrameSlot getReturnSlot() {
@@ -168,13 +156,13 @@ public class FunctionEnvironment extends Environment {
 
     public void reserveThisSlot() {
         if (thisSlot == null) {
-            thisSlot = declareVar(THIS_SLOT_IDENTIFIER);
+            thisSlot = declareLocalVar(THIS_SLOT_IDENTIFIER);
         }
     }
 
     public void reserveNewTargetSlot() {
         if (newTargetSlot == null) {
-            newTargetSlot = declareVar(NEW_TARGET_SLOT_IDENTIFIER);
+            newTargetSlot = declareLocalVar(NEW_TARGET_SLOT_IDENTIFIER);
         }
     }
 
@@ -536,7 +524,7 @@ public class FunctionEnvironment extends Environment {
 
     public void reserveSuperSlot() {
         if (superSlot == null) {
-            superSlot = declareVar(SUPER_SLOT_IDENTIFIER);
+            superSlot = declareLocalVar(SUPER_SLOT_IDENTIFIER);
         }
     }
 

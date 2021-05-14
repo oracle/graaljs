@@ -902,8 +902,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
 
-        // reserve this slot if function uses this or has super(). arrow functions and direct eval
-        // in a derived class constructor must use the constructor's this slot.
+        // Reserve this slot if function uses this or has super(). Arrow functions and direct eval
+        // in a derived class constructor must use the constructor's this slot. Otherwise,
+        // non-strict direct eval uses the caller's `this` but gets it via the this argument.
         if (functionNode.needsThis() && !((functionNode.isArrow() || currentFunction.isDirectEval()) && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
             currentFunction.reserveThisSlot();
         }
