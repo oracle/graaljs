@@ -99,7 +99,7 @@ import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -425,7 +425,7 @@ public class JSRealm {
     /**
      * Used to the pass call site source location for caller sensitive built-in functions.
      */
-    private JavaScriptNode callNode;
+    private JavaScriptBaseNode callNode;
 
     /**
      * Per-realm CommonJs `require` cache.
@@ -2300,11 +2300,11 @@ public class JSRealm {
         return parentRealm;
     }
 
-    public JavaScriptNode getCallNode() {
+    public JavaScriptBaseNode getCallNode() {
         return callNode;
     }
 
-    public void setCallNode(JavaScriptNode callNode) {
+    public void setCallNode(JavaScriptBaseNode callNode) {
         this.callNode = callNode;
     }
 
