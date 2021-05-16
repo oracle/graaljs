@@ -1343,9 +1343,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public Object executeCall(Object[] arguments) {
             JSRealm realm = functionData.getContext().getRealm();
-            JavaScriptNode prev = realm.getCallNode();
+            JavaScriptBaseNode prev = realm.getCallNode();
             try {
-                realm.setCallNode((JavaScriptNode) getParent());
+                realm.setCallNode(this);
                 return callNode.call(arguments);
             } finally {
                 realm.setCallNode(prev);
