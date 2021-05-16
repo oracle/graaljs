@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -339,9 +340,15 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doTuple(Tuple a, Tuple b) {
-        // TODO: maybe compare tuples using a node tree
-        return a.equals(b);
+    protected static boolean doRecord(Record a, Record b,
+                                      @Cached("createStrictEqualityComparison()") @Shared("strictEquality") JSIdenticalNode strictEqualityNode) {
+        return strictEqualityNode.executeBoolean(a, b);
+    }
+
+    @Specialization
+    protected static boolean doTuple(Tuple a, Tuple b,
+                                     @Cached("createStrictEqualityComparison()") @Shared("strictEquality") JSIdenticalNode strictEqualityNode) {
+        return strictEqualityNode.executeBoolean(a, b);
     }
 
     @Fallback

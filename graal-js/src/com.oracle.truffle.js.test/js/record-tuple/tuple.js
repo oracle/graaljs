@@ -17,13 +17,13 @@ let a, b, c, d, e, f;
 
 /*
  * Test 1:
- * valid tuple literals
+ * valid tuple literals - simple parser syntax test
  */
-const t1a = #[];
-const t1b = #[1, 2];
-const t1c = #[1, 2, #[3]];
-// TODO: const t1d = #[1, 2, #{ a: 3 }];
-const t1e = #[...t1b, 3];
+a = #[];
+b = #[1, 2];
+c = #[1, 2, #[3]];
+d = #[1, 2, #{ a: 3 }];
+e = #[...b, 3];
 
 /*
  * Test 2:
@@ -45,8 +45,8 @@ assertSame(#[0], y);
  * Test 4:
  * typeof
  */
-const t4 = 2;
-assertSame("tuple", typeof #[t4]);
+a = 2;
+assertSame("tuple", typeof #[a]);
 assertSame("tuple", typeof #[]);
 assertSame("tuple", typeof #[#[]]);
 assertSame("tuple", typeof #[1, 2]);
@@ -75,10 +75,6 @@ assertThrows(function() {
  * Test 7:
  * Tuple function
  */
-assertSame(Tuple().toString(), #[].toString());
-assertSame(Tuple(1, 2).toString(), #[1, 2].toString());
-assertSame(Tuple(1, #[2]).toString(), #[1, #[2]].toString());
-// TODO: remove .toString() calls above / remove above
 assertSame(Tuple(), #[]);
 assertSame(Tuple(1, 2), #[1, 2]);
 assertSame(Tuple(1, Tuple(2)), #[1, #[2]]);
@@ -100,21 +96,21 @@ assertThrows(function() {
  */
 assertTrue(#[1] === #[1]);
 assertTrue(#[1, 2] === #[1, 2]);
-// TODO: assertTrue(Object(#[1, 2]) !== Object(#[1, 2]));
+assertTrue(Object(#[1, 2]) !== Object(#[1, 2]));
 
 assertTrue(#[-0] === #[+0]);
-// TODO: assertTrue(#[NaN] === #[NaN]);
+assertTrue(#[NaN] === #[NaN]);
 
 assertTrue(#[-0] == #[+0]);
-// TODO: assertTrue(#[NaN] == #[NaN]);
+assertTrue(#[NaN] == #[NaN]);
 assertTrue(#[1] != #["1"]);
 
-// TODO: assertTrue(!Object.is(#[-0], #[+0]));
-// TODO: assertTrue(Object.is(#[NaN], #[NaN]));
+assertTrue(!Object.is(#[-0], #[+0]));
+assertTrue(Object.is(#[NaN], #[NaN]));
 
 // Map keys are compared with the SameValueZero algorithm
-// TODO: assertTrue(new Map().set(#[1], true).get(#[1]));
-// TODO: assertTrue(new Map().set(#[-0], true).get(#[0]));
+assertTrue(new Map().set(#[1], true).get(#[1]));
+assertTrue(new Map().set(#[-0], true).get(#[0]));
 
 /*
  * Test 10:

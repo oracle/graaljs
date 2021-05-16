@@ -69,7 +69,7 @@ public final class Tuple implements TruffleObject {
             return false;
         }
         for (int i = 0; i < value.length; i++) {
-            if (!JSRuntime.identical(value[i], other.value[i])) {
+            if (!JSRuntime.isSameValueZero(value[i], other.value[i])) {
                 return false;
             }
         }

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -67,6 +68,7 @@ import com.oracle.truffle.js.nodes.unary.IsNullNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -82,6 +84,8 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     protected static final int SAME_VALUE_ZERO = 2;
 
     protected final int type;
+
+    @Child private JSIdenticalNode sameValueZeroNode;
 
     protected JSIdenticalNode(JavaScriptNode left, JavaScriptNode right, int type) {
         super(left, right);
@@ -287,9 +291,58 @@ public abstract class JSIdenticalNode extends JSCompareNode {
     }
 
     @Specialization
-    protected static boolean doTuple(Tuple a, Tuple b) {
-        // TODO: maybe compare tuples using a node tree
-        return a.equals(b);
+    protected boolean doRecord(Record a, Record b) {
+        String[] aKeys = a.getKeys();
+        String[] bKeys = b.getKeys();
+        if (aKeys.length != bKeys.length) {
+            return false;
+        }
+        for (int i = 0; i < aKeys.length; i++) {
+            if (!aKeys[i].equals(bKeys[i])) {
+                return false;
+            }
+            Object aValue = a.get(aKeys[i]);
+            Object bValue = b.get(aKeys[i]);
+            if (type == STRICT_EQUALITY_COMPARISON) {
+                if (!sameValueZero(aValue, bValue)) {
+                    return false;
+                }
+            } else {
+                if (!executeBoolean(aValue, bValue)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    @Specialization
+    protected boolean doTuple(Tuple a, Tuple b) {
+        if (a.getArraySize() != b.getArraySize()) {
+            return false;
+        }
+        for (long k = 0; k < a.getArraySize(); k++) {
+            Object aValue = a.getElement(k);
+            Object bValue = b.getElement(k);
+            if (type == STRICT_EQUALITY_COMPARISON) {
+                if (!sameValueZero(aValue, bValue)) {
+                    return false;
+                }
+            } else {
+                if (!executeBoolean(aValue, bValue)) {
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    private boolean sameValueZero(Object left, Object right) {
+        if (sameValueZeroNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            sameValueZeroNode = insert(JSIdenticalNode.createSameValueZero());
+        }
+        return sameValueZeroNode.executeBoolean(left, right);
     }
 
     @Specialization(guards = {"isBoolean(a) != isBoolean(b)"})

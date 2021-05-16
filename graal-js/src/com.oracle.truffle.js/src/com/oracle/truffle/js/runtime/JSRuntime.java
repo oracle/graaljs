@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -1574,6 +1575,9 @@ public final class JSRuntime {
         } else if (isNumber(x) && isNumber(y)) {
             double xd = doubleValue((Number) x);
             double yd = doubleValue((Number) y);
+            if (Double.isNaN(xd)) {
+                return Double.isNaN(yd);
+            }
             return Double.compare(xd, yd) == 0;
         } else if (isString(x) && isString(y)) {
             return x.toString().equals(y.toString());
@@ -1581,8 +1585,66 @@ public final class JSRuntime {
             return (boolean) x == (boolean) y;
         } else if (isBigInt(x) && isBigInt(y)) {
             return ((BigInt) x).compareTo((BigInt) y) == 0;
+        } else if (x instanceof Record && y instanceof Record) {
+            return recordEqual((Record) x, (Record) y, JSRuntime::isSameValue);
+        } else if (x instanceof Tuple && y instanceof Tuple) {
+            return tupleEqual((Tuple) x, (Tuple) y, JSRuntime::isSameValue);
         }
         return x == y;
+    }
+
+    private static boolean recordEqual(Record x, Record y, BiFunction<Object, Object, Boolean> elementEqual) {
+        String[] xKeys = x.getKeys();
+        String[] yKeys = y.getKeys();
+        if (xKeys.length != yKeys.length) {
+            return false;
+        }
+        for (int i = 0; i < xKeys.length; i++) {
+            Object xValue = x.get(xKeys[i]);
+            Object yValue = y.get(yKeys[i]);
+            if (!elementEqual.apply(xValue, yValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean tupleEqual(Tuple x, Tuple y, BiFunction<Object, Object, Boolean> elementEqual) {
+        if (x.getArraySize() != y.getArraySize()) {
+            return false;
+        }
+        for (long k = 0; k < x.getArraySize(); k++) {
+            Object xValue = x.getElement(k);
+            Object yValue = y.getElement(k);
+            if (!elementEqual.apply(xValue, yValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * SameValueZero differs from SameValue only in its treatment of +0 and -0,
+     * and the treatment of those values inside a Record or Tuple.
+     */
+    @TruffleBoundary
+    public static boolean isSameValueZero(Object x, Object y) {
+        if (isNumber(x) && isNumber(y)) {
+            double xd = doubleValue((Number) x);
+            double yd = doubleValue((Number) y);
+            if (Double.isNaN(xd)) {
+                return Double.isNaN(yd);
+            }
+            if (xd == 0 && yd == 0) {
+                return true;
+            }
+            return Double.compare(xd, yd) == 0;
+        } else if (x instanceof Record && y instanceof Record) {
+            return recordEqual((Record) x, (Record) y, JSRuntime::isSameValueZero);
+        } else if (x instanceof Tuple && y instanceof Tuple) {
+            return tupleEqual((Tuple) x, (Tuple) y, JSRuntime::isSameValueZero);
+        }
+        return isSameValue(x, y);
     }
 
     @TruffleBoundary
@@ -1617,8 +1679,10 @@ public final class JSRuntime {
             return equalBigIntAndNumber((BigInt) b, (Number) a);
         } else if (isBigInt(a) && isJavaNumber(b)) {
             return equalBigIntAndNumber((BigInt) a, (Number) b);
-        } else if (isTuple(a) && isTuple(b)) {
-            return a.equals(b);
+        } else if (a instanceof Record && b instanceof Record) {
+            return recordEqual((Record) a, (Record) b, JSRuntime::isSameValueZero);
+        } else if (a instanceof Tuple && b instanceof Tuple) {
+            return tupleEqual((Tuple) a, (Tuple) b, JSRuntime::isSameValueZero);
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
@@ -1708,8 +1772,11 @@ public final class JSRuntime {
         if (isBigInt(a) && isBigInt(b)) {
             return a.equals(b);
         }
-        if (isTuple(a) && isTuple(b)) {
-            return a.equals(b);
+        if (a instanceof Record && b instanceof Record) {
+            return recordEqual((Record) a, (Record) b, JSRuntime::isSameValueZero);
+        }
+        if (a instanceof Tuple && b instanceof Tuple) {
+            return tupleEqual((Tuple) a, (Tuple) b, JSRuntime::isSameValueZero);
         }
         if (isJavaNumber(a) && isJavaNumber(b)) {
             if (a instanceof Integer && b instanceof Integer) {

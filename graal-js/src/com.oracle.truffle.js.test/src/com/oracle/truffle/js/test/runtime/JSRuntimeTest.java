@@ -148,6 +148,18 @@ public class JSRuntimeTest extends JSTest {
     }
 
     @Test
+    public void testIsSameValue() {
+        assertTrue(JSRuntime.isSameValue(Double.NaN, Double.NaN));
+        assertFalse(JSRuntime.isSameValue(-0.0, 0));
+    }
+
+    @Test
+    public void testIsSameValueZero() {
+        assertTrue(JSRuntime.isSameValueZero(Double.NaN, Double.NaN));
+        assertTrue(JSRuntime.isSameValueZero(-0.0, 0));
+    }
+
+    @Test
     public void testNumberToStringWorksForSafeInteger() {
         assertEquals("42", JSRuntime.numberToString(SafeInteger.valueOf(42)));
     }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -69,15 +70,61 @@ public final class Record implements TruffleObject {
         return new Record(map);
     }
 
+    @TruffleBoundary
     public Object get(String key) {
         return map.get(key);
     }
 
+    @TruffleBoundary
     public boolean hasKey(String key) {
         return map.containsKey(key);
     }
 
-    public Set<String> getKeys() {
-        return map.keySet();
+    @TruffleBoundary
+    public String[] getKeys() {
+        return map.keySet().toArray(new String[]{});
+    }
+
+    @TruffleBoundary
+    public Set<Map.Entry<String, Object>> getEntries() {
+        return map.entrySet();
+    }
+
+    @Override
+    public int hashCode() {
+        return map.hashCode();
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        return equals((Record) obj);
+    }
+
+    @TruffleBoundary
+    public boolean equals(Record other) {
+        if (map.size() != other.map.size()) {
+            return false;
+        }
+        for (String key : map.keySet()) {
+            if (!other.map.containsKey(key)) {
+                return false;
+            }
+            if (!JSRuntime.isSameValueZero(
+                    map.get(key),
+                    other.map.get(key)
+            )) {
+                return false;
+            }
+        }
+        return true;
     }
 }
