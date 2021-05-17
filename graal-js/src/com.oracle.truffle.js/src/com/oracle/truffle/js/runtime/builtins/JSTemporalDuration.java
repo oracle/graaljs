@@ -614,18 +614,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         if (!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw Errors.createRangeError("Duration not valid.");
         }
-        DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-        JSObjectUtil.putDataProperty(ctx, obj, YEARS, years);
-        JSObjectUtil.putDataProperty(ctx, obj, MONTHS, months);
-        JSObjectUtil.putDataProperty(ctx, obj, WEEKS, weeks);
-        JSObjectUtil.putDataProperty(ctx, obj, DAYS, days);
-        JSObjectUtil.putDataProperty(ctx, obj, HOURS, hours);
-        JSObjectUtil.putDataProperty(ctx, obj, MINUTES, minutes);
-        JSObjectUtil.putDataProperty(ctx, obj, SECONDS, seconds);
-        JSObjectUtil.putDataProperty(ctx, obj, MICROSECONDS, microseconds);
-        JSObjectUtil.putDataProperty(ctx, obj, MILLISECONDS, milliseconds);
-        JSObjectUtil.putDataProperty(ctx, obj, NANOSECONDS, nanoseconds);
-        return obj;
+        return create(ctx, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
     // 7.5.9

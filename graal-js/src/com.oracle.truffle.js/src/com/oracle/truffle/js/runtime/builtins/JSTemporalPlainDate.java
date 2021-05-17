@@ -65,6 +65,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -343,7 +344,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS)) {
             long sign = TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2);
             if (sign == 0) {
-                return toRecordPlural(0, 0, 0);
+                return toRecordWeeksPlural(0, 0, 0, 0);
             }
             JSTemporalPlainDateTimeRecord start = toRecord(y1, m1, d1);
             JSTemporalPlainDateTimeRecord end = toRecord(y2, m2, d2);
@@ -352,9 +353,9 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             long midSign = TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit.equals(YEARS)) {
-                    return toRecordPlural(years, 0, 0);
+                    return toRecordWeeksPlural(years, 0, 0, 0);
                 } else {
-                    return toRecordPlural(0, years * 12, 0); // sic!
+                    return toRecordWeeksPlural(0, years * 12, 0, 0); // sic!
                 }
             }
             long months = end.getMonth() - start.getMonth();
@@ -368,7 +369,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 if (largestUnit.equals(YEARS)) {
                     return toRecordPlural(years, months, 0);
                 } else {
-                    return toRecordPlural(0, months + (years * 12), 0); // sic!
+                    return toRecordWeeksPlural(0, months + (years * 12), 0, 0); // sic!
                 }
             }
             if (midSign != sign) {
@@ -396,7 +397,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                 months = months + (years * 12);
                 years = 0;
             }
-            return toRecordPlural(years, months, days);
+            return toRecordWeeksPlural(years, months, 0, days);
         }
         if (largestUnit.equals(DAYS) || largestUnit.equals(WEEKS)) {
             JSTemporalPlainDateTimeRecord smaller;
@@ -428,7 +429,8 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             }
             return toRecordWeeksPlural(0, 0, weeks * sign, days * sign);
         }
-        return null;
+        CompilerDirectives.transferToInterpreter();
+        throw Errors.shouldNotReachHere();
     }
 
     private static JSTemporalPlainDateTimePluralRecord toRecordPlural(long year, long month, long day) {

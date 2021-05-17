@@ -42,12 +42,14 @@ package com.oracle.truffle.js.runtime.util;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CEIL;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.FLOOR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
@@ -101,6 +103,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendarObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
@@ -1603,6 +1606,25 @@ public final class TemporalUtil {
     private static DynamicObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
         Object yearMonth = JSRuntime.call("yearMonthFromFields", calendar, new Object[]{fields, options});
         return requireTemporalYearMonth(yearMonth);
+    }
+
+    public static String negateTemporalRoundingMode(String roundingMode) {
+        if (CEIL.equals(roundingMode)) {
+            return FLOOR;
+        } else if (FLOOR.equals(roundingMode)) {
+            return CEIL;
+        }
+        return roundingMode;
+    }
+
+    public static boolean calenderEquals(DynamicObject one, DynamicObject two) {
+        if (one == two) {
+            return true;
+        }
+        if (JSRuntime.toString(one).equals(JSRuntime.toString(two))) {
+            return true;
+        }
+        return false;
     }
 
 }
