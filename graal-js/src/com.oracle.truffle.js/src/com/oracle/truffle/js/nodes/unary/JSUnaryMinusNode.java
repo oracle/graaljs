@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -114,16 +115,21 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
     }
 
     @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "neg";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)"})
     protected static Object doGeneric(Object a,
                     @Cached("create()") JSToNumericNode toNumericNode,
                     @Cached("create()") JSUnaryMinusNode recursiveUnaryMinus) {
         Object value = toNumericNode.execute(a);
         return recursiveUnaryMinus.execute(value);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 
     @Override

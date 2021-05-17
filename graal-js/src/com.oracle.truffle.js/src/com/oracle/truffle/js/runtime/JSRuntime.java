@@ -75,6 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
@@ -91,6 +92,7 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Nullish;
+import com.oracle.truffle.js.runtime.objects.OperatorSet;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
@@ -1689,10 +1691,30 @@ public final class JSRuntime {
             return equal(a, booleanToNumber((Boolean) b));
         } else if (isObject(a)) {
             assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
-            return equal(JSObject.toPrimitive((DynamicObject) a), b);
+            if (JSOverloadedOperatorsObject.hasOverloadedOperators(a)) {
+                if (isObject(b) && !JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
+                    return equal(a, JSObject.toPrimitive((DynamicObject) b));
+                }
+                if (isObject(b) || isNumber(b) || isBigInt(b) || isString(b)) {
+                    return equalOverloaded(a, b);
+                } else {
+                    return false;
+                }
+            } else {
+                return equal(JSObject.toPrimitive((DynamicObject) a), b);
+            }
         } else if (isObject(b)) {
-            assert b != Undefined.instance && b != Null.instance; // covered by (DynOb, DynOb)
-            return equal(a, JSObject.toPrimitive(((DynamicObject) b)));
+            assert a != Undefined.instance && a != Null.instance; // covered by (DynOb, DynOb)
+            assert !isObject(a);
+            if (JSOverloadedOperatorsObject.hasOverloadedOperators(b)) {
+                if (isNumber(a) || isBigInt(a) || isString(a)) {
+                    return equalOverloaded(a, b);
+                } else {
+                    return false;
+                }
+            } else {
+                return equal(a, JSObject.toPrimitive((DynamicObject) b));
+            }
         } else if (isForeignObject(a) || isForeignObject(b)) {
             return equalInterop(a, b);
         } else {
@@ -1748,6 +1770,15 @@ public final class JSRuntime {
             return !Double.isNaN(numberVal) && a.compareValueTo(numberVal) == 0;
         } else {
             return a.compareValueTo(longValue(b)) == 0;
+        }
+    }
+
+    private static boolean equalOverloaded(Object a, Object b) {
+        Object operatorImplementation = OperatorSet.getOperatorImplementation(a, b, "==");
+        if (operatorImplementation == null) {
+            return false;
+        } else {
+            return toBoolean(call(operatorImplementation, Undefined.instance, new Object[]{a, b}));
         }
     }
 

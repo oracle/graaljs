@@ -5146,9 +5146,10 @@ public class Parser extends AbstractParser {
             }
 
             // mark ES6 block functions as lexically scoped
-            final int varFlags = ((topLevel && !isModule) || !useBlockScope()) ? 0 : VarNode.IS_LET;
+            Scope scope = lc.getCurrentScope();
+            final int varFlags = ((topLevel && !scope.isModuleScope()) || !useBlockScope()) ? 0 : VarNode.IS_LET;
             final VarNode varNode = new VarNode(functionLine, functionToken, finish, name, function, varFlags);
-            declareVar(lc.getCurrentScope(), varNode);
+            declareVar(scope, varNode);
             if (topLevel) {
                 functionDeclarations.add(varNode);
             } else if (useBlockScope()) {

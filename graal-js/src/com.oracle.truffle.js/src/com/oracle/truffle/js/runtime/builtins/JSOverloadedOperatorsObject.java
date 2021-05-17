@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.util;
+package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
+import com.oracle.truffle.js.runtime.objects.OperatorSet;
 
-public final class Fences {
-    private Fences() {
+/**
+ * This is the type of JavaScript objects that have overloaded operator semantics. This class
+ * replicates JSOrdinaryObject.DefaultLayout, while adding an internal slot for the operator
+ * information.
+ */
+public final class JSOverloadedOperatorsObject extends JSOrdinaryObject {
+
+    @DynamicField Object o0;
+    @DynamicField Object o1;
+    @DynamicField Object o2;
+    @DynamicField Object o3;
+    @DynamicField long p0;
+    @DynamicField long p1;
+    @DynamicField long p2;
+
+    private final OperatorSet operatorSet;
+
+    private JSOverloadedOperatorsObject(Shape shape, OperatorSet operatorSet) {
+        super(shape);
+        this.operatorSet = operatorSet;
     }
 
-    @TruffleBoundary(allowInlining = false)
-    public static void acquireFence() {
+    public OperatorSet getOperatorSet() {
+        return operatorSet;
     }
 
-    @TruffleBoundary(allowInlining = false)
-    public static void releaseFence() {
+    public int getOperatorCounter() {
+        return getOperatorSet().getOperatorCounter();
+    }
+
+    public boolean matchesOperatorCounter(int operatorCounter) {
+        return getOperatorSet().getOperatorCounter() == operatorCounter;
+    }
+
+    public static boolean hasOverloadedOperators(Object value) {
+        return value instanceof JSOverloadedOperatorsObject;
+    }
+
+    public static JSOverloadedOperatorsObject create(JSContext context, Shape shape, OperatorSet operatorSet) {
+        JSOverloadedOperatorsObject object = new JSOverloadedOperatorsObject(shape, operatorSet);
+        return context.trackAllocation(object);
+    }
+
+    @Override
+    protected JSObject copyWithoutProperties(Shape shape) {
+        return new JSOverloadedOperatorsObject(shape, operatorSet);
     }
 }

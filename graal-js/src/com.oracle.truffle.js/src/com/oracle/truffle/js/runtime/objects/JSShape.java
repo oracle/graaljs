@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
 
@@ -204,6 +205,8 @@ public final class JSShape {
             return JSOrdinaryObject.DefaultLayout.class;
         } else if (jsclass == JSOrdinary.INTERNAL_FIELD_INSTANCE) {
             return JSOrdinaryObject.InternalFieldLayout.class;
+        } else if (jsclass == JSOrdinary.OVERLOADED_OPERATORS_INSTANCE) {
+            return JSOverloadedOperatorsObject.class;
         }
         return JSDynamicObject.class;
     }

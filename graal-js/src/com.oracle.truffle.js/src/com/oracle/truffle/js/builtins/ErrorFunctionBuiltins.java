@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,11 +95,16 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
                 throw Errors.createTypeError("Cannot define property:stack, object is not extensible.");
             }
             int stackTraceLimit = stackTraceLimitNode.executeInt();
-            Object skipFramesUpTo = JSFunction.isJSFunction(skipUpTo) ? skipUpTo : JSArguments.getFunctionObject(frame.getArguments());
-            UserScriptException ex = UserScriptException.createCapture(obj, getContext().isOptionNashornCompatibilityMode() ? this : null, stackTraceLimit, (DynamicObject) skipFramesUpTo);
+            boolean customSkip = JSFunction.isJSFunction(skipUpTo);
+            DynamicObject skipFramesUpTo = customSkip ? (DynamicObject) skipUpTo : (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
+            UserScriptException ex = UserScriptException.createCapture(obj, getContext().isOptionNashornCompatibilityMode() ? this : null, stackTraceLimit, skipFramesUpTo, customSkip);
             initErrorObjectNode.execute(obj, ex, null);
             return Undefined.instance;
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 }

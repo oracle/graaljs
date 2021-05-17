@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,7 +120,18 @@ public abstract class JSModuloNode extends JSBinaryNode {
         return a.remainder(b);
     }
 
-    @Specialization(replaces = {"doInt", "doDouble", "doBigIntegerZeroDivision", "doBigInteger"})
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "%";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInt", "doDouble", "doBigIntegerZeroDivision",
+                    "doBigInteger"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSModuloNode nestedModuloNode,
                     @Cached("create()") JSToNumericNode toNumeric1Node,
@@ -130,11 +141,6 @@ public abstract class JSModuloNode extends JSBinaryNode {
         Object operandB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(operandA, operandB, mixedNumericTypes);
         return nestedModuloNode.execute(operandA, operandB);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 
     @Override

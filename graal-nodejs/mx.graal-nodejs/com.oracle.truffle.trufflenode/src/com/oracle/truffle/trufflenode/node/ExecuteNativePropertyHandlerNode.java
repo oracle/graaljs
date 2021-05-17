@@ -42,9 +42,7 @@ package com.oracle.truffle.trufflenode.node;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -58,10 +56,10 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
@@ -159,24 +157,23 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeSetter(Object holder, Object[] arguments) {
+    private boolean executeSetter(Object holder, Object[] arguments) {
         Object key = arguments[3];
+        boolean handled = false;
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null && indexedHandler.getSetter() != 0) {
-                NativeAccess.executePropertyHandlerSetter(indexedHandler.getSetter(), holder, arguments, indexedHandlerData, false);
+                handled = NativeAccess.executePropertyHandlerSetter(indexedHandler.getSetter(), holder, arguments, indexedHandlerData, false);
             }
         } else if (!(key instanceof HiddenKey) && (!stringKeysOnly || JSRuntime.isString(key))) {
             if (namedHandler != null && namedHandler.getSetter() != 0) {
-                NativeAccess.executePropertyHandlerSetter(namedHandler.getSetter(), holder, arguments, namedHandlerData, true);
+                handled = NativeAccess.executePropertyHandlerSetter(namedHandler.getSetter(), holder, arguments, namedHandlerData, true);
             }
+        }
+        if (handled) {
+            return true;
         } else {
-            JSObject.set((DynamicObject) arguments[2], key, arguments[4]);
+            return JSObject.set((DynamicObject) arguments[2], key, arguments[4]);
         }
-        PropertyDescriptor targetDesc = JSObject.getOwnProperty((DynamicObject) arguments[2], key);
-        if (targetDesc != null && targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && !targetDesc.getWritable() && !JSRuntime.isSameValue(arguments[4], targetDesc.getValue())) {
-            return Boolean.FALSE;
-        }
-        return Boolean.TRUE;
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -212,7 +209,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeDeleter(Object holder, Object[] arguments) {
+    private boolean executeDeleter(Object holder, Object[] arguments) {
         boolean success = true;
         Object key = arguments[3];
         if (JSRuntime.isArrayIndex(key)) {
@@ -276,25 +273,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeDescriptorCallback(Object holder, Object[] arguments, boolean named) {
         PropertyHandler handler = named ? namedHandler : indexedHandler;
         Object handlerData = named ? namedHandlerData : indexedHandlerData;
-        Object result = NativeAccess.executePropertyHandlerDescriptor(handler.getDescriptor(), holder, arguments, handlerData, named);
-        if (result == null) {
-            PropertyDescriptor desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
-            if (desc != null && desc.hasConfigurable() && !desc.getConfigurable()) {
-                return JSRuntime.fromPropertyDescriptor(desc, context);
-            }
-        } else {
-            if (!JSObject.hasProperty((DynamicObject) result, JSAttributes.CONFIGURABLE) || !JSRuntime.toBoolean(JSObject.get((DynamicObject) result, JSAttributes.CONFIGURABLE))) {
-                PropertyDescriptor desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
-                if (desc == null) {
-                    // target does not have a property with this key => the property
-                    // cannot be non-configurable according to Proxy invariants
-                    desc = JSRuntime.toPropertyDescriptor(result);
-                    desc.setConfigurable(true);
-                    return JSRuntime.fromPropertyDescriptor(desc, context);
-                }
-            }
-        }
-        return result;
+        return NativeAccess.executePropertyHandlerDescriptor(handler.getDescriptor(), holder, arguments, handlerData, named);
     }
 
     @CompilerDirectives.TruffleBoundary
@@ -318,16 +297,10 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
             if (desc == null) {
                 Object value = executeGetter(holder, JSArguments.create(arguments[0], arguments[1], arguments[2], arguments[3], proxy));
-                // target does not have a property with this key => the property
-                // cannot be non-configurable according to Proxy invariants
-                desc = GraalJSAccess.propertyDescriptor(makeConfigurable(((Number) attributes).intValue()), value);
+                desc = GraalJSAccess.propertyDescriptor(((Number) attributes).intValue(), value);
             }
         }
         return desc;
-    }
-
-    private static int makeConfigurable(int attributes) {
-        return attributes & (~4); // v8::PropertyAttribute::DontDelete == 4
     }
 
     private static boolean arrayContains(DynamicObject array, Object item) {
@@ -348,50 +321,18 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         }
         if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
             DynamicObject ownKeys2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
+            // indexed handler returns array of numbers but we need an array of property keys
+            long length = JSAbstractArray.arrayGetLength(ownKeys2);
+            for (long i = 0; i < length; i++) {
+                Object key = JSObject.get(ownKeys2, i);
+                JSObject.set(ownKeys2, i, JSRuntime.toString(key));
+            }
             ownKeys = concatArrays(ownKeys, ownKeys2, context);
         }
         if (ownKeys == null) {
             ownKeys = JSArray.createEmpty(context, 0);
         }
-        DynamicObject target = (DynamicObject) arguments[2];
-        fixOwnKeysInvariants(ownKeys, target);
         return ownKeys;
-    }
-
-    // There is no native call that corresponds to ownKeys trap. So, we delegate
-    // to enumerator call and try to fix the invariants required for ownKeys trap.
-    private static void fixOwnKeysInvariants(DynamicObject ownKeys, DynamicObject target) {
-        Iterable<Object> targetKeys = JSObject.ownPropertyKeys(target);
-        for (Object key : targetKeys) {
-            PropertyDescriptor desc = JSObject.getOwnProperty(target, key);
-            if (desc != null && !desc.getConfigurable()) {
-                // ES6 9.5.12 21a
-                long length = JSAbstractArray.arrayGetLength(ownKeys);
-                JSObject.set(ownKeys, length, key);
-            }
-        }
-        // ES6 9.5.12 9 + ES9 9.5.11 9
-        Set<Object> keySet = new HashSet<>();
-        int duplicates = 0;
-        long length = JSAbstractArray.arrayGetLength(ownKeys);
-        for (long i = 0; i < length; i++) {
-            Object key = JSObject.get(ownKeys, i);
-            boolean set = (duplicates != 0);
-            if (!(key instanceof String || key instanceof Symbol)) {
-                key = JSRuntime.toString(key);
-                set = true;
-            }
-            if (!keySet.add(key)) {
-                duplicates++;
-                set = false;
-            }
-            if (set) {
-                JSObject.set(ownKeys, i - duplicates, key);
-            }
-        }
-        if (duplicates != 0) {
-            JSObject.set(ownKeys, JSAbstractArray.LENGTH, length - duplicates);
-        }
     }
 
     private static DynamicObject concatArrays(DynamicObject array1, DynamicObject array2, JSContext context) {
@@ -423,19 +364,10 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                         (descriptor.hasWritable() ? (1 << 4) : 0) +
                         (descriptor.getWritable() ? (1 << 5) : 0);
         DynamicObject target = (DynamicObject) arguments[2];
-        boolean nonConfigurable = !descriptor.hasConfigurable() || !descriptor.getConfigurable();
-        PropertyDescriptor targetDesc = null;
-        if (nonConfigurable) {
-            targetDesc = JSObject.getOwnProperty(target, key);
-            if (targetDesc != null && targetDesc.hasConfigurable() && targetDesc.getConfigurable()) {
-                flags |= 1 << 1;
-                nonConfigurable = false;
-            }
-        }
-        boolean handled = false;
+        Object result = Undefined.instance;
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null && indexedHandler.getDefiner() != 0) {
-                NativeAccess.executePropertyHandlerDefiner(
+                result = NativeAccess.executePropertyHandlerDefiner(
                                 indexedHandler.getDefiner(),
                                 holder,
                                 descriptor.getValue(),
@@ -445,11 +377,10 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 arguments,
                                 indexedHandlerData,
                                 false);
-                handled = true;
             }
         } else if (!stringKeysOnly || JSRuntime.isString(key)) {
             if (namedHandler != null && namedHandler.getDefiner() != 0) {
-                NativeAccess.executePropertyHandlerDefiner(
+                result = NativeAccess.executePropertyHandlerDefiner(
                                 namedHandler.getDefiner(),
                                 holder,
                                 descriptor.getValue(),
@@ -459,19 +390,21 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 arguments,
                                 namedHandlerData,
                                 true);
-                handled = true;
             }
         }
-        if (handled) {
-            if (nonConfigurable && targetDesc == null) {
-                return JSObject.defineOwnProperty(target, key, descriptor);
+        if (result == Undefined.instance) {
+            // request not intercepted by the definer
+            PropertyDescriptor currentDesc = JSObject.getOwnProperty((DynamicObject) holder, key);
+            if (DefinePropertyUtil.isCompatiblePropertyDescriptor(JSObject.isExtensible((DynamicObject) holder), descriptor, currentDesc)) {
+                result = JSObject.defineOwnProperty(target, key, descriptor);
+                if (descriptor.hasValue()) {
+                    JSObject.set((DynamicObject) holder, key, descriptor.getValue());
+                }
             } else {
-                return true;
+                result = false;
             }
-        } else {
-            executeDeleter(holder, arguments);
-            return JSObject.defineOwnProperty(target, key, descriptor);
         }
+        return result;
     }
 
 }

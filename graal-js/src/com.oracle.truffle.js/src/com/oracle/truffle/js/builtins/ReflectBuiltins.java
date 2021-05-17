@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -218,6 +218,11 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
+
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     public abstract static class ReflectConstructNode extends ReflectOperation {
@@ -254,6 +259,11 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             Object[] args = toObjectArray.executeObjectArray(argumentsList);
             Object[] passedOnArguments = JSArguments.createWithNewTarget(JSFunction.CONSTRUCT, target, newTarget, args);
             return constructCall.executeCall(passedOnArguments);
+        }
+
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,12 +110,12 @@ public class JSTypes {
 
     @ImplicitCast
     public static String convertLazyStringFlattened(JSLazyStringFlattened value) {
-        return value.getFlattenedString(); // avoid to have flatten() in the code
+        return ((JSLazyString) value).getFlattenedString(); // avoid to have flatten() in the code
     }
 
     @ImplicitCast
     public static String convertLazyStringRaw(JSLazyStringRaw value) {
-        return value.toString();
+        return ((JSLazyString) value).toString();
     }
 
     @ImplicitCast

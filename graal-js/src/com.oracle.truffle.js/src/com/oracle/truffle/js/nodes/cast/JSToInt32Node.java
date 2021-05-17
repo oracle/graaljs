@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.binary.JSOverloadedBinaryNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -68,8 +70,15 @@ import java.util.Set;
  */
 public abstract class JSToInt32Node extends JSUnaryNode {
 
-    protected JSToInt32Node(JavaScriptNode operand) {
+    /**
+     * Whether this node is used to implement {@code x | 0}. This optimization is valid insofar as
+     * {@code x} does not overload operators.
+     */
+    protected final boolean bitwiseOr;
+
+    protected JSToInt32Node(JavaScriptNode operand, boolean bitwiseOr) {
         super(operand);
+        this.bitwiseOr = bitwiseOr;
     }
 
     @Override
@@ -97,6 +106,10 @@ public abstract class JSToInt32Node extends JSUnaryNode {
     public abstract int executeInt(Object operand);
 
     public static JavaScriptNode create(JavaScriptNode child) {
+        return create(child, false);
+    }
+
+    public static JavaScriptNode create(JavaScriptNode child, boolean bitwiseOr) {
         if (child != null) {
             if (child.isResultAlwaysOfType(int.class)) {
                 return child;
@@ -109,16 +122,16 @@ public abstract class JSToInt32Node extends JSUnaryNode {
                 }
             }
         }
-        return JSToInt32NodeGen.create(child);
+        return JSToInt32NodeGen.create(child, bitwiseOr);
     }
 
     public static JSToInt32Node create() {
-        return JSToInt32NodeGen.create(null);
+        return JSToInt32NodeGen.create(null, false);
     }
 
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == int.class;
+        return !bitwiseOr && clazz == int.class;
     }
 
     @Specialization
@@ -193,6 +206,20 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
+    public boolean isBitwiseOr() {
+        return bitwiseOr;
+    }
+
+    @Specialization(guards = {"isBitwiseOr()"})
+    protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(value, 0);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "|";
+    }
+
     @Specialization
     protected int doRecord(@SuppressWarnings("unused") Record value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
@@ -203,7 +230,7 @@ public abstract class JSToInt32Node extends JSUnaryNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
-    @Specialization(guards = "isJSObject(value)")
+    @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperators(value)"})
     protected int doJSObject(DynamicObject value,
                     @Cached("create()") JSToDoubleNode toDoubleNode) {
         return doubleToInt32(toDoubleNode.executeDouble(value));
@@ -225,6 +252,6 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return JSToInt32NodeGen.create(cloneUninitialized(getOperand(), materializedTags));
+        return JSToInt32NodeGen.create(cloneUninitialized(getOperand(), materializedTags), bitwiseOr);
     }
 }

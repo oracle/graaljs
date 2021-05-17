@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,7 +111,17 @@ public abstract class JSDivideNode extends JSBinaryNode {
         return a.divide(b);
     }
 
-    @Specialization(replaces = "doDouble")
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "/";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = "doDouble")
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSDivideNode nestedDivideNode,
                     @Cached("create()") JSToNumericNode toNumeric1Node,
@@ -121,11 +131,6 @@ public abstract class JSDivideNode extends JSBinaryNode {
         Object numericB = toNumeric2Node.execute(b);
         ensureBothSameNumericType(numericA, numericB, mixedNumericTypes);
         return nestedDivideNode.execute(numericA, numericB);
-    }
-
-    @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return clazz == Number.class;
     }
 
     @Override

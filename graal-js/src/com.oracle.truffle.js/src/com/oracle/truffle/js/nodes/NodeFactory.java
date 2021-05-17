@@ -308,8 +308,8 @@ public class NodeFactory {
         }
     }
 
-    public JavaScriptNode createToNumeric(JavaScriptNode operand) {
-        return JSToNumericNode.create(operand);
+    public JavaScriptNode createToNumericOperand(JavaScriptNode operand) {
+        return JSToNumericNode.createToNumericOperand(operand);
     }
 
     public JavaScriptNode createDual(JSContext context, JavaScriptNode left, JavaScriptNode right) {

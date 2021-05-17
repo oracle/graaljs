@@ -152,7 +152,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
             if (next == Boolean.FALSE) {
                 break;
             }
-            Object nextValue = getIteratorValueNode.execute((DynamicObject) next);
+            Object nextValue = getIteratorValueNode.execute(next);
             values.add(nextValue, growProfile);
         }
         return values;

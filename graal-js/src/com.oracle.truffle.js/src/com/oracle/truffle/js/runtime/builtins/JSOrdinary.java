@@ -70,6 +70,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     public static final JSOrdinary BARE_INSTANCE = new JSOrdinary();
     public static final JSOrdinary INTERNAL_FIELD_INSTANCE = new JSOrdinary();
+    public static final JSOrdinary OVERLOADED_OPERATORS_INSTANCE = new JSOrdinary();
 
     private JSOrdinary() {
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -186,7 +186,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
             return getPromiseNode.getValue(promiseCapability);
         }
 
-        protected final Object asyncFromSyncIteratorContinuation(DynamicObject result, PromiseCapabilityRecord promiseCapability) {
+        protected final Object asyncFromSyncIteratorContinuation(Object result, PromiseCapabilityRecord promiseCapability) {
             boolean done;
             try {
                 done = iteratorCompleteNode.execute(result);
@@ -264,7 +264,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, typeError);
                 return promiseCapability.getPromise();
             }
-            DynamicObject nextResult;
+            Object nextResult;
             IteratorRecord syncIteratorRecord = (IteratorRecord) getSyncIteratorRecordNode.getValue(thisObj);
             try {
                 if (valuePresenceProfile.profile(JSArguments.getUserArgumentCount(frame.getArguments()) == 0)) {
@@ -322,7 +322,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, Errors.createTypeErrorNotAnObject(returnResult));
                 return promiseCapability.getPromise();
             }
-            return asyncFromSyncIteratorContinuation((DynamicObject) returnResult, promiseCapability);
+            return asyncFromSyncIteratorContinuation(returnResult, promiseCapability);
         }
     }
 

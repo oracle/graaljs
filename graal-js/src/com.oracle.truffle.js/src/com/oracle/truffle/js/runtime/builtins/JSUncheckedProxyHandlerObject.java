@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,36 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.util;
+package com.oracle.truffle.js.runtime.builtins;
 
-import java.lang.reflect.Field;
-import java.security.AccessController;
-import java.security.PrivilegedAction;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-import sun.misc.Unsafe;
+public class JSUncheckedProxyHandlerObject extends JSNonProxyObject {
 
-public final class Fences {
-    private Fences() {
+    JSUncheckedProxyHandlerObject(Shape shape) {
+        super(shape);
     }
 
-    public static void acquireFence() {
-        UNSAFE.loadFence();
-    }
-
-    public static void releaseFence() {
-        UNSAFE.storeFence();
-    }
-
-    private static final Unsafe UNSAFE = AccessController.doPrivileged(new PrivilegedAction<Unsafe>() {
-        @Override
-        public Unsafe run() {
-            try {
-                Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                theUnsafeInstance.setAccessible(true);
-                return (Unsafe) theUnsafeInstance.get(Unsafe.class);
-            } catch (Exception e) {
-                throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e);
-            }
-        }
-    });
 }

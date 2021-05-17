@@ -103,6 +103,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTuple;
+import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -191,6 +192,9 @@ public class JSContext {
     private final Assumption globalObjectPristineAssumption;
 
     private volatile Map<String, Symbol> symbolRegistry;
+
+    // 0 = Number, 1 = BigInt, 2 = String
+    private int operatorCounter = 3;
 
     private final Object nodeFactory;
 
@@ -375,6 +379,7 @@ public class JSContext {
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
     private final JSObjectFactory proxyFactory;
+    private final JSObjectFactory uncheckedProxyHandlerFactory;
     private final JSObjectFactory promiseFactory;
     private final JSObjectFactory dataViewFactory;
     private final JSObjectFactory arrayBufferFactory;
@@ -521,6 +526,7 @@ public class JSContext {
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
         this.proxyFactory = builder.create(JSProxy.INSTANCE);
+        this.uncheckedProxyHandlerFactory = builder.create(JSUncheckedProxyHandler.INSTANCE);
         this.promiseFactory = builder.create(JSPromise.INSTANCE);
         this.dataViewFactory = builder.create(JSDataView.INSTANCE);
         this.arrayBufferFactory = builder.create(JSArrayBuffer.HEAP_INSTANCE);
@@ -733,6 +739,14 @@ public class JSContext {
         }
     }
 
+    public int getOperatorCounter() {
+        return operatorCounter;
+    }
+
+    public int incOperatorCounter() {
+        return operatorCounter++;
+    }
+
     /**
      * ECMA 8.4.1 EnqueueJob.
      */
@@ -893,6 +907,10 @@ public class JSContext {
 
     public final JSObjectFactory getProxyFactory() {
         return proxyFactory;
+    }
+
+    public final JSObjectFactory getUncheckedProxyHandlerFactory() {
+        return uncheckedProxyHandlerFactory;
     }
 
     public final JSObjectFactory getSharedArrayBufferFactory() {

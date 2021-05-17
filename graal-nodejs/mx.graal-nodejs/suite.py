@@ -178,6 +178,8 @@ suite = {
           },
           "dependency:trufflenodeNative/headers/include",
         ],
+        "LICENSE_GRAALNODEJS.txt" : "file:LICENSE_GRAAL_NODEJS",
+        "THIRD_PARTY_LICENSE_GRAALNODEJS.txt" : "file:LICENSE",
         "NODE_README.md" : "file:README.md",
         "native-image.properties": "file:mx.graal-nodejs/graal-nodejs-native-image.properties",
         "bin/" : [

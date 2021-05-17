@@ -1014,12 +1014,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child private PropertyGetNode getSourceNode;
         @Child private PropertyGetNode getFlagsNode;
         @Child private TRegexUtil.InteropReadStringMemberNode interopReadPatternNode;
-        @Child private TRegexUtil.InteropIsNullNode interopIsCompiledRegexNullNode;
         private final BranchProfile regexpObject = BranchProfile.create();
         private final BranchProfile regexpMatcherObject = BranchProfile.create();
         private final BranchProfile regexpNonObject = BranchProfile.create();
         private final BranchProfile regexpObjectNewFlagsBranch = BranchProfile.create();
-        private final BranchProfile regexpNotSupported = BranchProfile.create();
         private final ConditionProfile callIsRegExpProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile constructorEquivalentProfile = ConditionProfile.createBinaryProfile();
 
@@ -1080,10 +1078,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
-            if (getInteropIsCompiledRegexNullNode().execute(compiledRegex)) {
-                regexpNotSupported.enter();
-                throw Errors.createSyntaxError("regular expression not supported");
-            }
             DynamicObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
             if (getContext().getContextOptions().isTestV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
@@ -1107,14 +1101,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 interopReadPatternNode = insert(TRegexUtil.InteropReadStringMemberNode.create());
             }
             return interopReadPatternNode;
-        }
-
-        private TRegexUtil.InteropIsNullNode getInteropIsCompiledRegexNullNode() {
-            if (interopIsCompiledRegexNullNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopIsCompiledRegexNullNode = insert(TRegexUtil.InteropIsNullNode.create());
-            }
-            return interopIsCompiledRegexNullNode;
         }
 
         private CompileRegexNode getCompileRegexNode() {
@@ -1952,7 +1938,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
             DynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
 
-            GraalJSException exception = JSException.createCapture(errorType, messageOpt, errorObj, realm, stackTraceLimit, skipUntil);
+            GraalJSException exception = JSException.createCapture(errorType, messageOpt, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
             return initErrorObjectNode.execute(errorObj, exception, messageOpt);
         }
 
@@ -1961,6 +1947,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getErrorPrototype(errorType);
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     @ImportStatic(JSRuntime.class)
@@ -2000,7 +1990,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             int stackTraceLimit = stackTraceLimitNode.executeInt();
             DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);
-            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, errorFunction);
+
+            // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
+            DynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
+
+            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
             initErrorObjectNode.execute(errorObj, exception, message, errorsArray);
             return errorObj;
         }
@@ -2010,6 +2004,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return realm.getErrorPrototype(JSErrorType.AggregateError);
         }
 
+        @Override
+        public boolean countsTowardsStackTraceLimit() {
+            return false;
+        }
     }
 
     @ImportStatic({JSArrayBuffer.class, JSConfig.class})

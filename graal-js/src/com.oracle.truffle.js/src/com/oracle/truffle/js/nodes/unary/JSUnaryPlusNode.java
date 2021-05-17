@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -47,11 +48,12 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
 @NodeInfo(shortName = "+")
-public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode {
+public abstract class JSUnaryPlusNode extends JSUnaryNode {
 
     protected JSUnaryPlusNode(JavaScriptNode operand) {
         super(operand);
@@ -62,9 +64,19 @@ public abstract class JSUnaryPlusNode extends JSToNumberNode.JSToNumberUnaryNode
     }
 
     @Specialization
-    @Override
-    protected Object doDefault(Object value) {
-        return super.doDefault(value);
+    protected Object doOverloaded(JSOverloadedOperatorsObject value,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(value);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "pos";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(value)"})
+    protected Object doDefault(Object value,
+                    @Cached("create()") JSToNumberNode toNumberNode) {
+        return toNumberNode.executeNumber(value);
     }
 
     @Override

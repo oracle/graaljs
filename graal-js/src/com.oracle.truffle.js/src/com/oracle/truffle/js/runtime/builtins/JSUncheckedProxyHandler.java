@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,19 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.util;
+package com.oracle.truffle.js.runtime.builtins;
 
-import java.lang.invoke.VarHandle;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class Fences {
-    private Fences() {
+public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupplier {
+
+    public static final String CLASS_NAME = "UncheckedProxyHandler";
+    public static final JSUncheckedProxyHandler INSTANCE = new JSUncheckedProxyHandler();
+
+    public static DynamicObject create(JSContext context) {
+        JSRealm realm = context.getRealm();
+        JSObjectFactory factory = context.getUncheckedProxyHandlerFactory();
+        JSUncheckedProxyHandlerObject obj = new JSUncheckedProxyHandlerObject(factory.getShape(realm));
+        factory.initProto(obj, realm);
+        return context.trackAllocation(obj);
     }
 
-    public static void acquireFence() {
-        VarHandle.acquireFence();
+    @Override
+    public String getClassName(DynamicObject object) {
+        return CLASS_NAME;
     }
 
-    public static void releaseFence() {
-        VarHandle.releaseFence();
+    @Override
+    public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+        return realm.getObjectPrototype();
     }
+
+    @Override
+    public Shape makeInitialShape(JSContext context, DynamicObject prototype) {
+        Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
+        return initialShape;
+    }
+
 }

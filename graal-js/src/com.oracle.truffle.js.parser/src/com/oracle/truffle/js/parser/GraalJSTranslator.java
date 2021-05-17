@@ -2548,7 +2548,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 Pair<Supplier<JavaScriptNode>, UnaryOperator<JavaScriptNode>> pair = scopeVar.createCompoundAssignNode();
                 JavaScriptNode readNode = tagExpression(pair.getFirst().get(), identNode);
                 if (convertLHSToNumeric) {
-                    readNode = factory.createToNumeric(readNode);
+                    readNode = factory.createToNumericOperand(readNode);
                 }
                 VarRef prevValueTemp = null;
                 if (returnOldValue) {
@@ -2605,7 +2605,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 VarRef prevValueTemp = null;
                 JavaScriptNode readNode = tagExpression(createReadProperty(accessNode, target2), accessNode);
                 if (convertToNumeric) {
-                    readNode = factory.createToNumeric(readNode);
+                    readNode = factory.createToNumericOperand(readNode);
                 }
                 if (returnOldValue) {
                     prevValueTemp = environment.createTempVar();
@@ -2664,7 +2664,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             } else {
                 JavaScriptNode readNode = tagExpression(factory.createReadElementNode(context, target2, readIndex), indexNode);
                 if (convertToNumeric) {
-                    readNode = factory.createToNumeric(readNode);
+                    readNode = factory.createToNumericOperand(readNode);
                 }
                 VarRef prevValueTemp = null;
                 if (returnOldValue) {

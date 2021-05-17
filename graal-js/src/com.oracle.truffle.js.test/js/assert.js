@@ -24,6 +24,15 @@ function assertThrows(fn, errorType, msg) {
     throw Error('error expected for method: ' + fn);
 }
 
+function assertEqual(expected, actual) {
+    if (expected != actual) {
+        var error = 'Objects not equal - '
+                + 'expected: [' + expected + '] vs. '
+                + 'actual: [' + actual +']';
+        throw new Error(error);
+    }
+}
+
 function assertSame(expected, actual) {
     if (expected !== actual) {
         var error = 'Objects not same - '

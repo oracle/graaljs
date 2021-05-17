@@ -86,6 +86,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
+import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
@@ -99,7 +100,7 @@ import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -432,7 +433,7 @@ public class JSRealm {
     /**
      * Used to the pass call site source location for caller sensitive built-in functions.
      */
-    private JavaScriptNode callNode;
+    private JavaScriptBaseNode callNode;
 
     /**
      * Per-realm CommonJs `require` cache.
@@ -1430,6 +1431,9 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
+        if (context.getContextOptions().isOperatorOverloading()) {
+            JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
+        }
 
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
@@ -2322,11 +2326,11 @@ public class JSRealm {
         return parentRealm;
     }
 
-    public JavaScriptNode getCallNode() {
+    public JavaScriptBaseNode getCallNode() {
         return callNode;
     }
 
-    public void setCallNode(JavaScriptNode callNode) {
+    public void setCallNode(JavaScriptBaseNode callNode) {
         this.callNode = callNode;
     }
 

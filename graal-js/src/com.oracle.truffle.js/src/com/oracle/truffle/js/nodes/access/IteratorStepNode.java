@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -62,7 +61,7 @@ public class IteratorStepNode extends JavaScriptBaseNode {
     }
 
     public Object execute(IteratorRecord iteratorRecord) {
-        DynamicObject result = iteratorNextNode.execute(iteratorRecord);
+        Object result = iteratorNextNode.execute(iteratorRecord);
         Object done = iteratorCompleteNode.execute(result);
         if (done == Boolean.TRUE) {
             return false;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,15 +42,18 @@ package com.oracle.truffle.js.nodes.binary;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.Truncatable;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.unary.JSOverloadedUnaryNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
 
@@ -79,6 +82,8 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
         return JSTags.createNodeObjectDescriptor("operator", isAddition ? "++" : "--");
     }
 
+    public abstract Object execute(Object a);
+
     @Specialization(rewriteOn = ArithmeticException.class)
     protected int doInt(int a) {
         if (truncate) {
@@ -103,6 +108,16 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
     protected double doJavaNumber(Object a) {
         double doubleValue = JSRuntime.toDouble(a);
         return isAddition ? doubleValue + 1 : doubleValue - 1;
+    }
+
+    @Specialization
+    protected Object doOverloaded(JSOverloadedOperatorsObject a,
+                    @Cached("create(getOverloadedOperatorName())") JSOverloadedUnaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return isAddition ? "++" : "--";
     }
 
     @Override

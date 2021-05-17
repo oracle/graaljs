@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
         if (right instanceof JSConstantIntegerNode) {
             int rightValue = ((JSConstantIntegerNode) right).executeInt(null);
             if (rightValue == 0) {
-                return JSToInt32Node.create(left);
+                return JSToInt32Node.create(left, true);
             } else if (JSConfig.UseSuperOperations) {
                 return JSBitwiseOrConstantNode.create(left, rightValue);
             }
@@ -111,7 +111,18 @@ public abstract class JSBitwiseOrNode extends JSBinaryNode {
         return a.or(b);
     }
 
-    @Specialization(replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger", "doDouble", "doBigInt"})
+    @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
+    protected Object doOverloaded(Object a, Object b,
+                    @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
+        return overloadedOperatorNode.execute(a, b);
+    }
+
+    protected String getOverloadedOperatorName() {
+        return "|";
+    }
+
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntSafeInteger", "doSafeIntegerInt", "doSafeInteger",
+                    "doDouble", "doBigInt"})
     protected Object doGeneric(Object a, Object b,
                     @Cached("create()") JSToNumericNode leftNumeric,
                     @Cached("create()") JSToNumericNode rightNumeric,
