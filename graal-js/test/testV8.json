@@ -644,9 +644,6 @@
     "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/eval-enclosing-function-name.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/eval-stack-trace.js",
     "status" : "FAIL"
   }, {
@@ -661,9 +658,6 @@
     "filePath" : "mjsunit/function-caller.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
-    "filePath" : "mjsunit/function-name-eval-shadowed.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/function.js",
     "status" : "FAIL"
