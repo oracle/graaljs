@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
@@ -55,16 +56,19 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.builtins.TemporalPlainYearMonthFunctionBuiltins;
+import com.oracle.truffle.js.builtins.TemporalPlainYearMonthPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithSpecies,
+public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
 
     public static final JSTemporalPlainYearMonth INSTANCE = new JSTemporalPlainYearMonth();
@@ -75,7 +79,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
     private JSTemporalPlainYearMonth() {
     }
 
-    public static DynamicObject create(JSContext context, long isoYear, long isoMonth, JSTemporalCalendarObject calendar,
+    public static DynamicObject create(JSContext context, long isoYear, long isoMonth, DynamicObject calendar,
                     long referenceISODay) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
             throw Errors.createRangeError("Not a valid date.");
@@ -168,6 +172,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
         JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR,
                         createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainYearMonthInLeapYear, IN_LEAP_YEAR), Undefined.instance);
 
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainYearMonthPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.PlainYearMonth");
 
         return prototype;
@@ -185,7 +190,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {
-        return INSTANCE.createConstructorAndPrototype(realm);
+        return INSTANCE.createConstructorAndPrototype(realm, TemporalPlainYearMonthFunctionBuiltins.BUILTINS);
     }
 
     public static boolean isJSTemporalPlainYearMonth(Object obj) {
@@ -204,6 +209,22 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
             return false;
         }
         return true;
+    }
+
+    public static String temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, String showCalendar) {
+        Object year = TemporalUtil.padISOYear(ym.getISOYear());
+        String month = String.format("%1$2d", ym.getISOMonth()).replace(" ", "0");
+        String result = year + "-" + month;
+        String calendarID = JSRuntime.toString(ym.getCalendar());
+        if (!ISO8601.equals(calendarID)) {
+            String day = String.format("%1$2d", ym.getISODay()).replace(" ", "0");
+            result += "-" + day;
+        }
+        String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
+        if (!"".equals(calendarString)) {
+            result += calendarString;
+        }
+        return result;
     }
 
 }

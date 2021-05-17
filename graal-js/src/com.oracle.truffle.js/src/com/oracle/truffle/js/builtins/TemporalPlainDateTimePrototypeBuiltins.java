@@ -94,20 +94,27 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
     }
 
     public enum TemporalPlainDateTimePrototype implements BuiltinEnum<TemporalPlainDateTimePrototype> {
+
+// with(2),
+// withPlainTime(1),
+// withPlainDate(1),
+// withCalendar(1),
         add(1),
         subtract(1),
-// with(2),
 // until(2),
         since(2),
 // round(1),
 // equals(1),
-// toPlainDateTime(1),
-// toZonedDateTime(1),
-        getISOFields(0),
         toString(1),
         toLocaleString(0),
         toJSON(0),
-        valueOf(0);
+        valueOf(0),
+        // toPlainDate(0),
+        // toPlainYearMonth(0),
+        // toPlainMonthDay(0),
+        // toPlainTime(0),
+        // toZonedDateTime(1),
+        getISOFields(0);
 
         private final int length;
 

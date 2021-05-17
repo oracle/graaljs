@@ -739,6 +739,16 @@ public class TemporalBuiltinsTest extends JSTest {
             validatePlainYearMonth(ctx, 2021, 4, "M04", 365, 30, 12, false);
         }
     }
+
+    @Test
+    public void testPlainYearMonthToSTring() {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "let plainYearMonth = new Temporal.PlainYearMonth(2021, 4); plainYearMonth.toString();");
+            assertTrue(result.isString());
+            assertEquals("2021-04", result.asString());
+        }
+    }
+
 // endregion
 
 // region PlainMonthDay Tests
@@ -750,12 +760,5 @@ public class TemporalBuiltinsTest extends JSTest {
         }
     }
 // endregion
-
-    @Test
-    public void testPlainMonthDayCreation2() {
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, "const md1 = PlainMonthDay.from('01-22');    const md2 = PlainMonthDay.from('12-15'); md1.equals(md1); md1.equals(md2);");
-        }
-    }
 
 }

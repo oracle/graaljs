@@ -210,12 +210,12 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
     }
 
     // 12.1.9
-    public static long calendarYear(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarYear(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "year", dateLike);
     }
 
     // 12.1.10
-    public static long calendarMonth(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarMonth(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "month", dateLike);
     }
 
@@ -229,47 +229,47 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
     }
 
     // 12.1.12
-    public static long calendarDay(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarDay(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "day", dateLike);
     }
 
     // 12.1.13
-    public static long calendarDayOfWeek(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarDayOfWeek(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "dayOfWeek", dateLike);
     }
 
     // 12.1.14
-    public static long calendarDayOfYear(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarDayOfYear(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "dayOfYear", dateLike);
     }
 
     // 12.1.15
-    public static long calendarWeekOfYear(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarWeekOfYear(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "weekOfYear", dateLike);
     }
 
     // 12.1.16
-    public static long calendarDaysInWeek(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarDaysInWeek(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "daysInWeek", dateLike);
     }
 
     // 12.1.17
-    public static long calendarDaysInMonth(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarDaysInMonth(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "daysInMonth", dateLike);
     }
 
     // 12.1.18
-    public static long calendarDaysInYear(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarDaysInYear(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "daysInYear", dateLike);
     }
 
     // 12.1.19
-    public static long calendarMonthsInYear(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static long calendarMonthsInYear(DynamicObject calendar, DynamicObject dateLike) {
         return (long) executeFunction(calendar, "monthsInYear", dateLike);
     }
 
     // 12.1.20
-    public static boolean calendarInLeapYear(JSTemporalCalendarObject calendar, DynamicObject dateLike) {
+    public static boolean calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
         return (boolean) executeFunction(calendar, "inLeapYear", dateLike);
     }
 

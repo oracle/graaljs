@@ -106,7 +106,10 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainMonthDayObject;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
@@ -481,6 +484,12 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalPlainDateTimeRecord parseTemporalMonthDayString(String string, JSContext ctx) {
+        JSTemporalPlainDateTimeRecord res = parseISODateTime(string, ctx);
+        // TODO this is not according to the spec, yet
+        return res;
+    }
+
+    private static JSTemporalPlainDateTimeRecord parseTemporalYearMonthString(String string, JSContext ctx) {
         JSTemporalPlainDateTimeRecord res = parseISODateTime(string, ctx);
         // TODO this is not according to the spec, yet
         return res;
@@ -1495,6 +1504,14 @@ public final class TemporalUtil {
         return (JSTemporalPlainMonthDayObject) obj;
     }
 
+    public static JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj) {
+        // spec says RequireInternalSlot(obj, "InitializedTemporalYearMonth");
+        if (!(obj instanceof JSTemporalPlainYearMonthObject)) {
+            throw Errors.createTypeError("InitializedTemporalYearMonth expected");
+        }
+        return (JSTemporalPlainYearMonthObject) obj;
+    }
+
     public static Object toPlural(Object u) {
         if (u == Undefined.instance) {
             return u;
@@ -1548,6 +1565,44 @@ public final class TemporalUtil {
 
     public static boolean isNullish(Object obj) {
         return obj == null || obj == Undefined.instance; // TODO this might not be exactly right
+    }
+
+    public static DynamicObject toTemporalYearMonth(Object item, DynamicObject optParam, JSContext ctx) {
+        DynamicObject options = optParam;
+        if (optParam == Undefined.instance) {
+            options = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+        }
+        if (JSRuntime.isObject(item)) {
+            DynamicObject itemObj = (DynamicObject) item;
+            if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {
+                return itemObj;
+            }
+            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(itemObj, ctx);
+
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH, MONTH_CODE, YEAR}, ctx);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, new HashSet<>(), ctx);
+            return yearMonthFromFields(calendar, fields, options);
+        }
+        TemporalUtil.toTemporalOverflow(options);
+
+        String string = JSRuntime.toString(item);
+        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string, ctx);
+        DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
+        if (result.getYear() == 0) { // TODO Check for undefined here!
+            if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), 1)) {
+                throw Errors.createRangeError("invalid date");
+            }
+            // TODO year should be undefined!
+            return JSTemporalPlainYearMonth.create(ctx, result.getYear(), result.getMonth(), calendar, 0);
+        }
+        DynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
+        DynamicObject canonicalYearMonthOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+        return yearMonthFromFields(calendar, result2, canonicalYearMonthOptions);
+    }
+
+    private static DynamicObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+        Object yearMonth = JSRuntime.call("yearMonthFromFields", calendar, new Object[]{fields, options});
+        return requireTemporalYearMonth(yearMonth);
     }
 
 }

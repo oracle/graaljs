@@ -94,16 +94,18 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public enum TemporalPlainDatePrototype implements BuiltinEnum<TemporalPlainDatePrototype> {
+        // toPlainYearMonth(1),
+        // toPlainMonthDay(1),
+        getISOFields(0),
         add(1),
         // subtract(1);
         // with(2),
+        // withCalendar(1),
         // until(2),
         // since(2),
-        // round(1),
         // equals(1),
         toPlainDateTime(1),
-        // toZonedDate(1),
-        getISOFields(0),
+        // toZonedDateTime(1),
         toString(1),
         toLocaleString(0),
         toJSON(0),
