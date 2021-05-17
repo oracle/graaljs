@@ -217,6 +217,7 @@ public class JSTupleTest extends JSTest {
         assertFalse(desc.getWritable());
         assertFalse(desc.getEnumerable());
         assertTrue(desc.getConfigurable());
+        assertEquals(desc.getValue(), "Tuple");
 
         desc = JSObject.getOwnProperty(prototype, Symbol.SYMBOL_ITERATOR);
         assertTrue(desc.getWritable());

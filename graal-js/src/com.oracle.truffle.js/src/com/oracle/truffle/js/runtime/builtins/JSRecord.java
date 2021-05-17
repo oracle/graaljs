@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -258,7 +258,7 @@ public class JSRecord extends JSNonProxy implements JSConstructorFactory.Default
             return Collections.emptyList();
         }
         Record value = valueOf(thisObj);
-        return new ArrayList<>(value.getKeys());
+        return Arrays.asList(value.getKeys());
     }
 
     private Object recordGet(DynamicObject object, Object key) {

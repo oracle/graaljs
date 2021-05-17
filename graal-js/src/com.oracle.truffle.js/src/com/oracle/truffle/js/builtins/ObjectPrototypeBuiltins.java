@@ -80,6 +80,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
@@ -368,6 +369,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected String doBigInt(BigInt thisObj) {
+            return JSObject.defaultToString(toJSObject(thisObj));
+        }
+
+        @Specialization
+        protected String doRecord(Record thisObj) {
             return JSObject.defaultToString(toJSObject(thisObj));
         }
 
