@@ -68,7 +68,7 @@ public class FunctionEnvironment extends Environment {
     static final String ASYNC_CONTEXT_SLOT_IDENTIFIER = "<asynccontext>";
     static final String ASYNC_RESULT_SLOT_IDENTIFIER = "<asyncresult>";
     private static final String YIELD_RESULT_SLOT_IDENTIFIER = "<yieldresult>";
-    static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
+    public static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
 
     private final FunctionEnvironment parent;
     private final FrameDescriptor frameDescriptor;

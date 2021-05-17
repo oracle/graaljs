@@ -242,6 +242,11 @@ public abstract class Environment {
                 } else if (!globalEnv.hasVarDeclaration(name) && !GlobalEnvironment.isGlobalObjectConstant(name)) {
                     wrapClosure = makeGlobalWrapClosure(wrapClosure, name);
                 }
+            } else if (current instanceof DebugEnvironment) {
+                if (((DebugEnvironment) current).hasMember(name)) {
+                    wrapClosure = makeDebugWrapClosure(wrapClosure, name);
+                    wrapFrameLevel = frameLevel;
+                }
             } else {
                 FrameSlot slot = current.findBlockFrameSlot(name);
                 if (slot != null) {
@@ -258,25 +263,22 @@ public abstract class Environment {
                         return wrapIn(wrapClosure, wrapFrameLevel, varRef);
                     }
                 }
+
+                if (!skipEval && current.function().isDynamicallyScoped() && current.findBlockFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER) != null) {
+                    wrapClosure = makeEvalWrapClosure(wrapClosure, name, frameLevel, scopeLevel, current);
+                    wrapFrameLevel = frameLevel;
+                }
+
                 if (current instanceof FunctionEnvironment) {
                     FunctionEnvironment fnEnv = current.function();
                     if (fnEnv.isNamedFunctionExpression() && fnEnv.getFunctionName().equals(name)) {
                         return wrapIn(wrapClosure, wrapFrameLevel, new FunctionCalleeVarRef(scopeLevel, frameLevel, name, current));
-                    }
-                    if (!skipEval && fnEnv.isDynamicallyScoped()) {
-                        wrapClosure = makeEvalWrapClosure(wrapClosure, name, frameLevel, scopeLevel, current);
-                        wrapFrameLevel = frameLevel;
                     }
 
                     frameLevel++;
                     scopeLevel = 0;
                 } else if (current instanceof BlockEnvironment) {
                     scopeLevel++;
-                } else if (current instanceof DebugEnvironment) {
-                    if (((DebugEnvironment) current).hasMember(name)) {
-                        wrapClosure = makeDebugWrapClosure(wrapClosure, name);
-                        wrapFrameLevel = frameLevel;
-                    }
                 }
             }
             current = current.getParent();

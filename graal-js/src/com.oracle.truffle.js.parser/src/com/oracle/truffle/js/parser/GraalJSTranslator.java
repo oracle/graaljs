@@ -924,7 +924,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         if (functionNode.needsDynamicScope() && !currentFunction.isDirectEval()) {
             currentFunction.setIsDynamicallyScoped(true);
-            currentFunction.reserveDynamicScopeSlot();
         }
 
         return Collections.emptyList();
@@ -1215,10 +1214,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (block.getScope().isFunctionTopScope()) {
                 prepareParameters(scopeInit);
             }
-            if (block.isFunctionBody()) {
+            if (block.isParameterBlock() || block.isFunctionBody()) {
+                // If there is a parameter scope, we declare a dynamic eval scope in both.
+                // This is intentional: eval in parameter expressions share a common var scope that
+                // is separate from the function body.
+                // Tracking eval separately for parameter and body blocks would allow us to be more
+                // precise w.r.t. dynamic eval scope bindings but probably not worth it since eval
+                // in parameter expressions is rare and there's little cost in an unused frame slot.
                 FunctionEnvironment currentFunction = currentFunction();
-                if (currentFunction.isCallerContextEval()) {
-                    prependDynamicScopeBindingInit(block, scopeInit);
+                if (!currentFunction.isGlobal() && currentFunction.isDynamicallyScoped()) {
+                    environment.getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
+                }
+                if (block.isFunctionBody()) {
+                    if (currentFunction.isCallerContextEval()) {
+                        prependDynamicScopeBindingInit(block, scopeInit);
+                    }
                 }
             }
             JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
