@@ -62,7 +62,7 @@ public final class Record implements TruffleObject {
 
     private final TreeMap<String, Object> map;
 
-    public Record(Map<String, Object> map) {
+    private Record(Map<String, Object> map) {
         this.map = new TreeMap<>(map);
     }
 

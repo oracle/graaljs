@@ -44,9 +44,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.builtins.helper.ListGetNode;
+import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
@@ -59,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
 import java.util.List;
 import java.util.Map;
@@ -71,35 +74,22 @@ public class RecordLiteralNode extends JavaScriptNode {
 
     @Children protected final AbstractRecordLiteralMemberNode[] elements;
 
-    protected RecordLiteralNode(JSContext context, AbstractRecordLiteralMemberNode[] elements) {
+    private RecordLiteralNode(JSContext context, AbstractRecordLiteralMemberNode[] elements) {
         this.context = context;
         this.elements = elements;
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Record execute(VirtualFrame frame) {
         Map<String, Object> entries = new TreeMap<>();
         for (AbstractRecordLiteralMemberNode element : elements) {
             element.evaluate(frame, entries, context);
         }
-        return new Record(entries);
+        assert entries.values().stream().noneMatch(JSRuntime::isObject);
+        return Record.create(entries);
     }
 
-    @Override
-    public boolean hasTag(Class<? extends Tag> tag) {
-        if (tag == LiteralTag.class) {
-            return true;
-        } else {
-            return super.hasTag(tag);
-        }
-    }
-
-    @Override
-    public Object getNodeObject() {
-        return JSTags.createNodeObjectDescriptor(LiteralTag.TYPE, LiteralTag.Type.RecordLiteral.name());
-    }
-
-    public static JavaScriptNode create(JSContext context, AbstractRecordLiteralMemberNode[] elements) {
+    public static RecordLiteralNode create(JSContext context, AbstractRecordLiteralMemberNode[] elements) {
         return new RecordLiteralNode(context, elements);
     }
 
@@ -117,34 +107,23 @@ public class RecordLiteralNode extends JavaScriptNode {
 
     public abstract static class AbstractRecordLiteralMemberNode extends JavaScriptBaseNode {
 
+        /**
+         * Runtime Semantics: RecordPropertyDefinitionEvaluation
+         */
         public abstract void evaluate(VirtualFrame frame, Map<String, Object> entries, JSContext context);
 
         /**
-         * Records & Tuples Proposal: 3.3.1 AddPropertyIntoRecordEntriesList
-         *
-         * <pre>
-         * 1. Assert: Type(entries) is List.
-         * 2. Assert: IsProperyKey(propName) is true.
-         * 3. If Type(propName) is Symbol, throw a TypeError exception.
-         * 4. If Type(value) is Object, throw a TypeError exception.
-         * 5. Add { [[Key]]: propType, [[Value]]: value } to entries.
-         * 6. Return entries.
-         * </pre>
+         * Abstract operation AddPropertyIntoRecordEntriesList ( entries, propName, value )
          */
-        protected final void addEntry(Map<String, Object> entries, Object key, Object value) {
+        protected final void addPropertyIntoRecordEntriesList(Map<String, Object> entries, Object key, Object value) {
             assert JSRuntime.isPropertyKey(key);
             if (key instanceof Symbol) {
                 throw Errors.createTypeError("Record may only have string as keys");
             }
-            assert key instanceof String;
-            if (!JSRuntime.isJSPrimitive(value)) {
+            if (JSRuntime.isObject(value)) {
                 throw Errors.createTypeError("Record may only contain primitive values");
             }
             entries.put((String) key, value);
-        }
-
-        protected boolean isAnonymousFunctionDefinition(JavaScriptNode expression) {
-            return expression instanceof FunctionNameHolder && ((FunctionNameHolder) expression).isAnonymous();
         }
 
         protected abstract AbstractRecordLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
@@ -158,6 +137,11 @@ public class RecordLiteralNode extends JavaScriptNode {
         }
     }
 
+    /**
+     * RecordPropertyDefinition :
+     *      IdentifierReference
+     *      LiteralPropertyName : AssignmentExpression
+     */
     private static class RecordLiteralMemberNode extends AbstractRecordLiteralMemberNode {
 
         protected final Object name;
@@ -169,13 +153,10 @@ public class RecordLiteralNode extends JavaScriptNode {
             this.valueNode = valueNode;
         }
 
-        /**
-         * Records & Tuples Proposal: 7.1.1.4 Runtime Semantics: RecordPropertyDefinitionEvaluation
-         */
         @Override
         public void evaluate(VirtualFrame frame, Map<String, Object> entries, JSContext context) {
             Object value = valueNode.execute(frame);
-            addEntry(entries, name, value);
+            addPropertyIntoRecordEntriesList(entries, name, value);
         }
 
         @Override
@@ -184,6 +165,9 @@ public class RecordLiteralNode extends JavaScriptNode {
         }
     }
 
+    /**
+     * RecordPropertyDefinition : ComputedPropertyName : AssignmentExpression
+     */
     private static class ComputedRecordLiteralMemberNode extends AbstractRecordLiteralMemberNode {
 
         @Child private JavaScriptNode keyNode;
@@ -196,9 +180,10 @@ public class RecordLiteralNode extends JavaScriptNode {
             this.setFunctionName = isAnonymousFunctionDefinition(valueNode) ? SetFunctionNameNode.create() : null;
         }
 
-        /**
-         * Records & Tuples Proposal: 7.1.1.4 Runtime Semantics: RecordPropertyDefinitionEvaluation
-         */
+        private static boolean isAnonymousFunctionDefinition(JavaScriptNode expression) {
+            return expression instanceof FunctionNameHolder && ((FunctionNameHolder) expression).isAnonymous();
+        }
+
         @Override
         public void evaluate(VirtualFrame frame, Map<String, Object> entries, JSContext context) {
             Object key = keyNode.execute(frame);
@@ -206,7 +191,7 @@ public class RecordLiteralNode extends JavaScriptNode {
             if (setFunctionName != null) {
                 setFunctionName.execute(value, key); // NamedEvaluation
             }
-            addEntry(entries, key, value);
+            addPropertyIntoRecordEntriesList(entries, key, value);
         }
 
         @Override
@@ -218,65 +203,39 @@ public class RecordLiteralNode extends JavaScriptNode {
         }
     }
 
+    /**
+     * RecordPropertyDefinition : ... AssignmentExpression
+     */
     private static class SpreadRecordLiteralMemberNode extends AbstractRecordLiteralMemberNode {
 
         @Child private JavaScriptNode valueNode;
         @Child private JSToObjectNode toObjectNode;
         @Child private ReadElementNode readElementNode;
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode;
+        @Child private ListGetNode listGet = ListGetNode.create();
+        @Child private ListSizeNode listSize = ListSizeNode.create();
 
         SpreadRecordLiteralMemberNode(JavaScriptNode valueNode) {
             this.valueNode = valueNode;
         }
 
-        /**
-         * Records & Tuples Proposal: 7.1.1.4 Runtime Semantics: RecordPropertyDefinitionEvaluation
-         *
-         * <pre>
-         * RecordPropertyDefinition: ...AssignmentExpression
-         *
-         * 1. Let exprValue be the result of evaluating AssignmentExpression.
-         * 2. Let source be ? GetValue(exprValue).
-         * 3. If source is undefined or null, return entries.
-         * 4. Let from be ! ToObject(source).
-         * 5. Let keys be ? from.[[OwnPropertyKeys]]().
-         * 6. For each element nextKey of keys in List order, do
-         * 7. Let value be from.[[Get]](nextKey).
-         * 9. Perform ? AddPropertyIntoRecordEntriesList(entries, nextKey, value).
-         * 10. Return entries.
-         * </pre>
-         */
         @Override
         public void evaluate(VirtualFrame frame, Map<String, Object> entries, JSContext context) {
             Object source = valueNode.execute(frame);
-            if (JSGuards.isNullOrUndefined(source)) {
+            if (JSRuntime.isNullOrUndefined(source)) {
                 return;
             }
-            Object from = toObject(source, context);
-
-            List<Object> keys = JSObject.ownPropertyKeys((DynamicObject) from);
-            // TODO: Why is ListSizeNode used for getting list.size() ?
-            // TODO: Also ListGetNode for list.get(...) ?
-            // TODO: see com.oracle.truffle.js.nodes.access.CopyDataPropertiesNode.copyDataProperties
-            for (Object key : keys) {
+            DynamicObject from = (DynamicObject) toObject(source, context);
+            List<Object> keys = JSObject.ownPropertyKeys(from);
+            int size = listSize.execute(keys);
+            for (int i = 0; i < size; i++) {
+                Object key = listGet.execute(keys, i);
                 assert JSRuntime.isPropertyKey(key);
-                Object value = get(from, key, context);
-                addEntry(entries, key, value);
-
-                // TODO: when spreading members in object literals, [[Enumerable]] gets checked before adding it
-                // TODO: see com.oracle.truffle.js.nodes.access.CopyDataPropertiesNode.copyDataProperties
-                // TODO: see sample implementation below
-                // PropertyDescriptor desc = getOwnProperty.execute(source, key);
-                // if (desc != null && desc.getEnumerable()) {
-                //     Object value = get(from, key, context);
-                //     addMember(entries, key, value);
-                // }
-                // TODO: see test case below
-                // let a = [42];
-                // let b = {...a}
-                // let c = #{...a}
-                // console.log(a.length); // "1"
-                // console.log(b.length); // "undefined"
-                // console.log(c.length); // "1" according to proposal spec BUT "undefined" according to proposal polyfill
+                PropertyDescriptor desc = getOwnProperty(from, key);
+                if (desc != null && desc.getEnumerable()) {
+                    Object value = get(from, key, context);
+                    addPropertyIntoRecordEntriesList(entries, key, value);
+                }
             }
         }
 
@@ -286,6 +245,14 @@ public class RecordLiteralNode extends JavaScriptNode {
                 toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(context));
             }
             return toObjectNode.execute(obj);
+        }
+
+        private PropertyDescriptor getOwnProperty(DynamicObject object, Object key) {
+            if (getOwnPropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getOwnPropertyNode = insert(JSGetOwnPropertyNode.create(false, true, false, false, true));
+            }
+            return getOwnPropertyNode.execute(object, key);
         }
 
         private Object get(Object obj, Object key, JSContext context) {
@@ -302,5 +269,29 @@ public class RecordLiteralNode extends JavaScriptNode {
                     JavaScriptNode.cloneUninitialized(valueNode, materializedTags)
             );
         }
+    }
+
+    @Override
+    public boolean isResultAlwaysOfType(Class<?> clazz) {
+        return clazz == Record.class;
+    }
+
+    @Override
+    public boolean hasTag(Class<? extends Tag> tag) {
+        if (tag == LiteralTag.class) {
+            return true;
+        } else {
+            return super.hasTag(tag);
+        }
+    }
+
+    @Override
+    public Object getNodeObject() {
+        return JSTags.createNodeObjectDescriptor(LiteralTag.TYPE, LiteralTag.Type.RecordLiteral.name());
+    }
+
+    @Override
+    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+        return new RecordLiteralNode(context, AbstractRecordLiteralMemberNode.cloneUninitialized(elements, materializedTags));
     }
 }
