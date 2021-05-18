@@ -337,9 +337,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         JSAdapter(1),
         JavaImporter(1),
 
-        // Record and Tuple proposal
-        Record(0),
-        Tuple(0);
+        // Record & Tuple Proposal
+        Record(1),
+        Tuple(1);
 
         private final int length;
 

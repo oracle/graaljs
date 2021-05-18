@@ -81,7 +81,7 @@ public final class RecordFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public enum RecordFunction implements BuiltinEnum<RecordFunction> {
         fromEntries(1),
-        isRecord (1);
+        isRecord(1);
 
         private final int length;
 

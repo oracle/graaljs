@@ -55,7 +55,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.Tuple;
 
 /**
  * General meta objects for JS values and foreign objects through {@link JavaScriptLanguageView}.
@@ -88,7 +87,6 @@ public final class JSMetaType implements TruffleObject {
     public static final JSMetaType JS_UNDEFINED = new JSMetaType("undefined", (l, v) -> JSGuards.isUndefined(v));
     public static final JSMetaType JS_BIGINT = new JSMetaType("bigint", (l, v) -> v instanceof BigInt);
     public static final JSMetaType JS_SYMBOL = new JSMetaType("symbol", (l, v) -> v instanceof Symbol);
-    public static final JSMetaType JS_TUPLE = new JSMetaType("tuple", (l, v) -> v instanceof Tuple);
     public static final JSMetaType JS_PROXY = new JSMetaType("Proxy", (l, v) -> JSGuards.isJSProxy(v));
 
     private final String typeName;

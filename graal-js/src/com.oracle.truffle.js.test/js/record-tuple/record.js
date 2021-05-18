@@ -75,10 +75,8 @@ assertSame(false, b.age.configurable);
  * Test 8:
  * [[DefineOwnProperty]]
  */
-// TODO: Not sure if [[DefineOwnProperty]] is reachable according to proposal and ecma262 specs
-// TODO: Code below should work according to polyfill, but shouldn't according to specs
 a = #{ age: 22 };
-a = Object(a); // TODO: This workaround allows testing [[DefineOwnProperty]]
+a = Object(a);
 Object.defineProperty(a, "age", { value: 22 });
 Object.defineProperty(a, "age", { value: 22, writable: false, enumerable: true, configurable: false });
 assertThrows(function() {

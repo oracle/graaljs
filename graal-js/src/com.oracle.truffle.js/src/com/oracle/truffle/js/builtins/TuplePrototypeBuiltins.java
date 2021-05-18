@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -688,12 +687,10 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile growProfile = BranchProfile.create();
 
         @Child private JSIsConcatSpreadableNode isConcatSpreadableNode;
+        @Child private JSToObjectNode toObjectNode;
         @Child private JSHasPropertyNode hasPropertyNode;
         @Child private ReadElementNode readElementNode;
         @Child private JSGetLengthNode getLengthNode;
-        @Child private JSArrayFirstElementIndexNode firstElementIndexNode;
-        @Child private JSArrayLastElementIndexNode lastElementIndexNode;
-        @Child private JSArrayNextElementIndexNode nextElementIndexNode;
 
         public JSTupleConcatNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -710,44 +707,28 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Tuple.create(list.toArray());
         }
 
-        private void concatElement(Object el, SimpleArrayList<Object> list) {
-            if (isConcatSpreadable(el)) {
-                long len = getLength(el);
-                if (len > 0) {
-                    concatSpreadable(el, len, list);
-                }
-            } else {
-                if (!JSRuntime.isJSPrimitive(el)) {
-                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
-                }
-                list.add(el, growProfile);
-            }
-        }
+        private void concatElement(Object e, SimpleArrayList<Object> list) {
+            if (isConcatSpreadable(e)) {
 
-        private void concatSpreadable(Object el, long len, SimpleArrayList<Object> list) {
-            if (JSRuntime.isTuple(el)) {
-                Tuple tuple = (Tuple) el;
-                for (long k = 0; k < tuple.getArraySize(); k++) {
-                    list.add(tuple.getElement(k), growProfile);
-                }
-            } else if (JSProxy.isJSProxy(el) || !JSDynamicObject.isJSDynamicObject(el)) {
-                // strictly to the standard implementation; traps could expose optimizations!
+                // TODO: re-evaluate, check proposal for changes
+                // The ToObject(e) call is not according to current proposal spec, but it wouldn't work otherwise.
+                e = toObject(e);
+
+                long len = getLengthOfArrayLike(e);
                 for (long k = 0; k < len; k++) {
-                    if (hasProperty(el, k)) {
-                        list.add(get(el, k), growProfile);
+                    if (hasProperty(e, k)) {
+                        Object subElement = get(e, k);
+                        if (JSRuntime.isObject(subElement)) {
+                            throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                        }
+                        list.add(subElement, growProfile);
                     }
                 }
-            } else if (len == 1) {
-                // fastpath for 1-element entries
-                if (hasProperty(el, 0)) {
-                    list.add(get(el, 0), growProfile);
-                }
             } else {
-                long k = firstElementIndex((DynamicObject) el, len);
-                long lastI = lastElementIndex((DynamicObject) el, len);
-                for (; k <= lastI; k = nextElementIndex(el, k, len)) {
-                    list.add(get(el, k), growProfile);
+                if (JSRuntime.isObject(e)) {
+                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
+                list.add(e, growProfile);
             }
         }
 
@@ -757,6 +738,22 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 isConcatSpreadableNode = insert(JSIsConcatSpreadableNode.create(getContext()));
             }
             return isConcatSpreadableNode.execute(object);
+        }
+
+        private Object toObject(Object object) {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObjectNoCheck(getContext()));
+            }
+            return toObjectNode.execute(object);
+        }
+
+        private long getLengthOfArrayLike(Object obj) {
+            if (getLengthNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getLengthNode = insert(JSGetLengthNode.create(getContext()));
+            }
+            return getLengthNode.executeLong(obj);
         }
 
         private boolean hasProperty(Object obj, long idx) {
@@ -777,38 +774,6 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 return readElementNode.executeWithTargetAndIndex(target, (double) index);
             }
-        }
-
-        private long firstElementIndex(DynamicObject target, long length) {
-            if (firstElementIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                firstElementIndexNode = insert(JSArrayFirstElementIndexNode.create(getContext()));
-            }
-            return firstElementIndexNode.executeLong(target, length);
-        }
-
-        private long lastElementIndex(DynamicObject target, long length) {
-            if (lastElementIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                lastElementIndexNode = insert(JSArrayLastElementIndexNode.create(getContext()));
-            }
-            return lastElementIndexNode.executeLong(target, length);
-        }
-
-        private long nextElementIndex(Object target, long currentIndex, long length) {
-            if (nextElementIndexNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                nextElementIndexNode = insert(JSArrayNextElementIndexNode.create(getContext()));
-            }
-            return nextElementIndexNode.executeLong(target, currentIndex, length);
-        }
-
-        private long getLength(Object obj) {
-            if (getLengthNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getLengthNode = insert(JSGetLengthNode.create(getContext()));
-            }
-            return getLengthNode.executeLong(obj);
         }
     }
 

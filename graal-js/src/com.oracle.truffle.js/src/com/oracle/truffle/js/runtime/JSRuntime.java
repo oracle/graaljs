@@ -1352,7 +1352,6 @@ public final class JSRuntime {
      * Record & Tuple Proposal 2.1.2.1 TupleToString
      */
     public static String tupleToString(Tuple value) {
-        // TODO: Return ? Call(%Array.prototype.join%, argument, « »).
         return value.toString();
     }
 
@@ -1595,6 +1594,9 @@ public final class JSRuntime {
         return x == y;
     }
 
+    /**
+     * Abstract operation RecordEqual ( x, y, elementEqual )
+     */
     private static boolean recordEqual(Record x, Record y, BiFunction<Object, Object, Boolean> elementEqual) {
         String[] xKeys = x.getKeys();
         String[] yKeys = y.getKeys();
@@ -1611,6 +1613,9 @@ public final class JSRuntime {
         return true;
     }
 
+    /**
+     * Abstract operation TupleEqual ( x, y, elementEqual )
+     */
     private static boolean tupleEqual(Tuple x, Tuple y, BiFunction<Object, Object, Boolean> elementEqual) {
         if (x.getArraySize() != y.getArraySize()) {
             return false;

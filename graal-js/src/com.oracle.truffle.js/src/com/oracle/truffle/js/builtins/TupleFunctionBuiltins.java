@@ -165,6 +165,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
             Object usingIterator = getIteratorMethod(items);
             if (usingIterableProfile.profile(usingIterator != Undefined.instance)) {
+                // TODO: re-evaluate, check proposal for changes
                 // NOTE: Proposal spec would not work as intended...
                 // For this reason I replaced the AddEntriesFromIterable(...) call
                 // with the corresponding code of https://tc39.es/ecma262/#sec-array.from.

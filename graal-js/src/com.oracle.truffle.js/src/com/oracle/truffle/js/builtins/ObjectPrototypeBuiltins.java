@@ -253,6 +253,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
+        protected DynamicObject valueOfRecord(Record thisObj) {
+            return toJSObject(thisObj);
+        }
+
+        @Specialization
         protected DynamicObject valueOfTuple(Tuple thisObj) {
             return toJSObject(thisObj);
         }

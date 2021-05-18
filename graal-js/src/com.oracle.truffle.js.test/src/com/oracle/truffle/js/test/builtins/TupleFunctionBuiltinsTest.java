@@ -47,6 +47,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -87,7 +88,7 @@ public class TupleFunctionBuiltinsTest {
     }
 
     @Test
-    public void testFrom() {
+    public void testFrom_Polyfill() {
         assertTrue(execute("Tuple.from('foo') === #['f', 'o', 'o']").asBoolean());
         assertTrue(execute("Tuple.from([1, 2, 3], x => x + x) === #[2, 4, 6]").asBoolean());
         assertTrue(execute("Tuple.from([1, 2, 3], function (x) { return x + this}, 10) === #[11, 12, 13]").asBoolean());
@@ -97,6 +98,16 @@ public class TupleFunctionBuiltinsTest {
         expectError("Tuple.from([], 10)", "mapping function");
         expectError("Tuple.from([{}])", "non-primitive values");
         expectError("Tuple.from({0: {}, length: 1})", "non-primitive values");
+    }
+
+    // TODO: re-evaluate, check proposal for changes
+    // NOTE: Proposal spec would not work as intended...
+    // For this reason I replaced the AddEntriesFromIterable(...) call
+    // with the corresponding code of https://tc39.es/ecma262/#sec-array.from.
+    @Ignore
+    @Test
+    public void testFrom_Spec() {
+        expectError("Tuple.from([1])", "is not an object");
     }
 
     @Test

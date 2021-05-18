@@ -528,8 +528,6 @@ public abstract class LiteralNode<T> extends Expression {
 
         /**
          * Returns a list of tuple element expressions.
-         *
-         * @return a list of tuple element expressions.
          */
         @Override
         public List<Expression> getElementExpressions() {

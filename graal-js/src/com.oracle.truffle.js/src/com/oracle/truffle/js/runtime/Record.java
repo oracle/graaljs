@@ -56,7 +56,6 @@ import java.util.TreeMap;
  *
  * @see com.oracle.truffle.js.runtime.builtins.JSRecordObject
  */
-@ExportLibrary(InteropLibrary.class)
 @ValueType
 public final class Record implements TruffleObject {
 

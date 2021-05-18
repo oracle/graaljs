@@ -4309,7 +4309,7 @@ public class Parser extends AbstractParser {
      *      RecordPropertyDefinitionList[?Yield, ?Await] , RecordPropertyDefinition[?Yield, ?Await]
      * </pre>
      *
-     * @return Expression node.
+     * @return Record node.
      */
     private RecordNode recordLiteral(boolean yield, boolean await) {
         // Capture HASH_LBRACE token.
@@ -4428,7 +4428,7 @@ public class Parser extends AbstractParser {
      *      TupleElementList[?Yield, ?Await] , SpreadElement[?Yield, ?Await]
      * </pre>
      *
-     * @return Expression node.
+     * @return Literal node.
      */
     private LiteralNode tupleLiteral(boolean yield, boolean await) {
         final long tupleToken = token; // Capture HASH_BRACKET token.

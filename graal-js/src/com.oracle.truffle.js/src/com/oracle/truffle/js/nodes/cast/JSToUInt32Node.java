@@ -181,10 +181,6 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
-    // TODO: Notes:
-    // TODO: Why isn't this class implemented like JSToUInt16Node?
-    // TODO: We could remove the duplicated code by calling JSToNumberNode in a doGeneric Specification.
-    // TODO: See also https://tc39.es/ecma262/#sec-touint32
     @Specialization
     protected final Number doRecord(@SuppressWarnings("unused") Record value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
