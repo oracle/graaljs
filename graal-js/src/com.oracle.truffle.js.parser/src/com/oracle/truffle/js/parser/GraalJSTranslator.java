@@ -1248,9 +1248,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
                 assert block.isFunctionBody();
-                assert environment.getScopeLevel() == 1;
+                assert environment.getScopeLevel() >= 1;
                 JavaScriptNode outerVar = factory.createReadFrameSlot(environment.getParent().findLocalVar(symbol.getName()).getFrameSlot(),
-                                factory.createScopeFrame(0, 1, environment.getParentSlots(), environment.function().getBlockScopeSlot()));
+                                factory.createScopeFrame(0, 1, environment.getParentSlots(0, 1), environment.function().getBlockScopeSlot()));
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
