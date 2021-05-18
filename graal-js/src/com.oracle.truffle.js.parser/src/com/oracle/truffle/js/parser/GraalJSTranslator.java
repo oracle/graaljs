@@ -888,13 +888,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             markTerminalReturnNodes(functionNode.getBody());
         }
 
-        if (!functionNode.isArrow() && functionNode.needsArguments()) {
-            if (JSConfig.OptimizeApplyArguments && functionNode.needsArguments() && functionNode.hasApplyArgumentsCall() &&
-                            !functionNode.isArrow() && !functionNode.hasEval() && !functionNode.hasArrowEval() && !currentFunction.isDirectEval() &&
-                            functionNode.getNumOfParams() == 0 &&
-                            checkDirectArgumentsAccess(functionNode)) {
-                currentFunction.setDirectArgumentsAccess(true);
-            }
+        if (JSConfig.OptimizeApplyArguments && functionNode.needsArguments() && functionNode.hasApplyArgumentsCall() &&
+                        !functionNode.isArrow() && !functionNode.hasEval() && !functionNode.hasArrowEval() && !currentFunction.isDirectEval() &&
+                        functionNode.getNumOfParams() == 0 &&
+                        checkDirectArgumentsAccess(functionNode)) {
+            currentFunction.setDirectArgumentsAccess(true);
         }
 
         if (functionNode.needsDynamicScope() && !currentFunction.isDirectEval()) {
