@@ -62,8 +62,9 @@ public final class DeclareTagProvider {
         return new MaterializedFunctionBodyNode(body, sourceSection, frameDescriptor);
     }
 
-    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection) {
-        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection);
+    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection,
+                    boolean functionFrame) {
+        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionFrame);
     }
 
     public static boolean isMaterializedFrameProvider(JavaScriptNode node) {
@@ -104,8 +105,9 @@ public final class DeclareTagProvider {
 
         @Children private JavaScriptNode[] declarations;
 
-        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection) {
-            super(block, blockScopeSlot, frameDescriptor, parentSlot);
+        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection,
+                        boolean captureFunctionFrame) {
+            super(block, blockScopeSlot, frameDescriptor, parentSlot, captureFunctionFrame);
             this.declarations = initDeclarations(frameDescriptor, sourceSection);
         }
 
@@ -130,7 +132,8 @@ public final class DeclareTagProvider {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, getSourceSection());
+            return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags),
+                            blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), captureFunctionFrame);
         }
     }
 

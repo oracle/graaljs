@@ -3273,6 +3273,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private EnvironmentCloseable enterWithEnvironment(String withVarName) {
+        currentFunction().setHasWith(true);
         return new EnvironmentCloseable(new WithEnvironment(environment, factory, context, withVarName));
     }
 
@@ -3439,7 +3440,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 wrappedInBlockScopeNode++;
                 if (newEnv instanceof BlockEnvironment) {
                     BlockEnvironment blockEnv = (BlockEnvironment) newEnv;
-                    return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor(), blockEnv.getParentSlot());
+                    return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor(), blockEnv.getParentSlot(),
+                                    blockEnv.function().hasWith() || blockEnv.function().isGeneratorFunction());
                 }
             }
             return block;

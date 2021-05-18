@@ -900,8 +900,8 @@ public class NodeFactory {
         return GeneratorExprBlockNode.create(statements, readState, writeState);
     }
 
-    public JavaScriptNode createBlockScope(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, FrameSlot parentSlot) {
-        return BlockScopeNode.create(block, blockScopeSlot, blockFrameDescriptor, parentSlot);
+    public JavaScriptNode createBlockScope(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor blockFrameDescriptor, FrameSlot parentSlot, boolean functionFrame) {
+        return BlockScopeNode.create(block, blockScopeSlot, blockFrameDescriptor, parentSlot, functionFrame);
     }
 
     public JavaScriptNode createTemplateObject(JSContext context, JavaScriptNode rawStrings, JavaScriptNode cookedStrings) {
