@@ -53,7 +53,9 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONParseNodeGen;
+import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONParseImmutableNodeGen;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONStringifyNodeGen;
+import com.oracle.truffle.js.builtins.helper.JSONBuildImmutablePropertyNode;
 import com.oracle.truffle.js.builtins.helper.JSONData;
 import com.oracle.truffle.js.builtins.helper.JSONStringifyStringNode;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
@@ -65,6 +67,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -92,7 +95,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
     public enum JSON implements BuiltinEnum<JSON> {
         parse(2),
-        stringify(3);
+        stringify(3),
+
+        // Record & Tuple Proposal
+        parseImmutable(2);
 
         private final int length;
 
@@ -104,6 +110,14 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == parseImmutable) {
+                return JSConfig.ECMAScript2022; // TODO: Associate with the correct ECMAScript Version
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -113,6 +127,8 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                 return JSONParseNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case stringify:
                 return JSONStringifyNodeGen.create(context, builtin, args().fixedArgs(3).createArgumentNodes(context));
+            case parseImmutable:
+                return JSONParseImmutableNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -346,6 +362,25 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                 toNumberNode = insert(JSToNumberNode.create());
             }
             return toNumberNode.executeNumber(target);
+        }
+    }
+
+    public abstract static class JSONParseImmutableNode extends JSONOperation {
+
+        public JSONParseImmutableNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "1")
+        protected Object parseUnfiltered(String text, Object reviver,
+                                         @Cached("create(getContext())") JSONBuildImmutablePropertyNode buildImmutableProperty) {
+            Object unfiltered = parseIntl(toString(text));
+            return buildImmutableProperty.execute(unfiltered, "", reviver);
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        private Object parseIntl(String jsonString) {
+            return new TruffleJSONParser(getContext()).parse(jsonString);
         }
     }
 }
