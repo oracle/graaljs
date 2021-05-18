@@ -97,9 +97,17 @@ public abstract class Environment {
         return findInternalSlot(FunctionEnvironment.THIS_SLOT_IDENTIFIER, true);
     }
 
+    public void reserveThisSlot() {
+        getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.THIS_SLOT_IDENTIFIER);
+    }
+
     public VarRef findSuperVar() {
         assert !function().isGlobal();
         return findInternalSlot(FunctionEnvironment.SUPER_SLOT_IDENTIFIER);
+    }
+
+    public void reserveSuperSlot() {
+        getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.SUPER_SLOT_IDENTIFIER);
     }
 
     public VarRef findArgumentsVar() {
@@ -107,9 +115,17 @@ public abstract class Environment {
         return findInternalSlot(FunctionEnvironment.ARGUMENTS_SLOT_IDENTIFIER);
     }
 
+    public void reserveArgumentsSlot() {
+        getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.ARGUMENTS_SLOT_IDENTIFIER);
+    }
+
     public VarRef findNewTargetVar() {
         assert !function().isGlobal();
         return findInternalSlot(FunctionEnvironment.NEW_TARGET_SLOT_IDENTIFIER);
+    }
+
+    public void reserveNewTargetSlot() {
+        getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.NEW_TARGET_SLOT_IDENTIFIER);
     }
 
     public VarRef findAsyncContextVar() {
@@ -135,6 +151,11 @@ public abstract class Environment {
     public VarRef findDynamicScopeVar() {
         assert !function().isGlobal();
         return findInternalSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
+    }
+
+    public void reserveDynamicScopeSlot() {
+        assert !function().isGlobal();
+        getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
     }
 
     public final JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel) {

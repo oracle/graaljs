@@ -60,7 +60,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public class FunctionEnvironment extends Environment {
     private static final String RETURN_SLOT_IDENTIFIER = "<return>";
-    public static final String ARGUMENTS_SLOT_IDENTIFIER = "<arguments>";
+    static final String ARGUMENTS_SLOT_IDENTIFIER = "<arguments>";
     static final String THIS_SLOT_IDENTIFIER = "<this>";
     static final String SUPER_SLOT_IDENTIFIER = "<super>";
     static final String NEW_TARGET_SLOT_IDENTIFIER = "<new.target>";
@@ -75,12 +75,7 @@ public class FunctionEnvironment extends Environment {
     private EconomicMap<FrameSlot, Integer> parameters;
     private final boolean isStrictMode;
 
-    private FrameSlot argumentsSlot;
     private FrameSlot returnSlot;
-    private FrameSlot thisSlot;
-    private FrameSlot superSlot;
-    private FrameSlot newTargetSlot;
-    private FrameSlot dynamicScopeSlot;
     private FrameSlot blockScopeSlot;
 
     private String functionName = "";
@@ -110,6 +105,7 @@ public class FunctionEnvironment extends Environment {
     private boolean hasRestParameter;
     private boolean simpleParameterList = true;
     private boolean isDynamicallyScoped;
+    private boolean needsNewTarget;
     private final boolean inDirectEval;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
@@ -142,29 +138,11 @@ public class FunctionEnvironment extends Environment {
         return getFunctionFrameDescriptor().findOrAddFrameSlot(name, FrameSlotKind.Illegal);
     }
 
-    public void reserveArgumentsSlot() {
-        if (argumentsSlot == null) {
-            argumentsSlot = declareLocalVar(ARGUMENTS_SLOT_IDENTIFIER);
-        }
-    }
-
     public FrameSlot getReturnSlot() {
         if (returnSlot == null) {
             returnSlot = declareLocalVar(RETURN_SLOT_IDENTIFIER);
         }
         return returnSlot;
-    }
-
-    public void reserveThisSlot() {
-        if (thisSlot == null) {
-            thisSlot = declareLocalVar(THIS_SLOT_IDENTIFIER);
-        }
-    }
-
-    public void reserveNewTargetSlot() {
-        if (newTargetSlot == null) {
-            newTargetSlot = declareLocalVar(NEW_TARGET_SLOT_IDENTIFIER);
-        }
     }
 
     public FrameSlot getAsyncResultSlot() {
@@ -177,17 +155,6 @@ public class FunctionEnvironment extends Environment {
 
     public FrameSlot getYieldResultSlot() {
         return declareLocalVar(YIELD_RESULT_SLOT_IDENTIFIER);
-    }
-
-    public FrameSlot getThisSlot() {
-        return thisSlot;
-    }
-
-    public FrameSlot reserveDynamicScopeSlot() {
-        if (dynamicScopeSlot == null) {
-            dynamicScopeSlot = declareLocalVar(DYNAMIC_SCOPE_IDENTIFIER);
-        }
-        return dynamicScopeSlot;
     }
 
     public FrameSlot getOrCreateBlockScopeSlot() {
@@ -519,18 +486,8 @@ public class FunctionEnvironment extends Environment {
         return inDirectEval;
     }
 
-    public void reserveSuperSlot() {
-        if (superSlot == null) {
-            superSlot = declareLocalVar(SUPER_SLOT_IDENTIFIER);
-        }
-    }
-
-    public FrameSlot getSuperSlot() {
-        return superSlot;
-    }
-
-    public FrameSlot getNewTargetSlot() {
-        return newTargetSlot;
+    public void setNeedsNewTarget(boolean needsNewTarget) {
+        this.needsNewTarget = needsNewTarget;
     }
 
     public void setRestParameter(boolean restParameter) {
@@ -550,7 +507,7 @@ public class FunctionEnvironment extends Environment {
     }
 
     public int getLeadingArgumentCount() {
-        return getNewTargetSlot() != null ? 1 : 0;
+        return needsNewTarget ? 1 : 0;
     }
 
     public int getTrailingArgumentCount() {

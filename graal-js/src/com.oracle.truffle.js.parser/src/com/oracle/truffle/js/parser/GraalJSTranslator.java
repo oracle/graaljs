@@ -358,7 +358,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             functionData.setLazyInit(fd -> {
                 GraalJSTranslator translator = newTranslator(parentEnv, savedLC);
                 translator.translateFunctionOnDemand(functionNode, fd, isStrict, isArrowFunction, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, isGlobal,
-                                needsNewTarget, needsParentFrame, functionName, hasSyntheticArguments);
+                                needsParentFrame, functionName, hasSyntheticArguments);
             });
             functionRoot = null;
         } else {
@@ -387,7 +387,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 boolean needsParentFrame = functionNode.usesAncestorScope();
                 currentFunction.setNeedsParentFrame(needsParentFrame);
 
-                JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, currentFunction, declarations);
+                JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, declarations);
 
                 needsParentFrame = currentFunction.needsParentFrame();
                 blockScopeSlot = needsParentFrame && currentFunction.getParentFunction() != null ? currentFunction.getParentFunction().getBlockScopeSlot() : null;
@@ -421,44 +421,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return functionExpression;
     }
 
-    JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isGeneratorFunction, boolean isAsyncFunction, boolean isDerivedConstructor, boolean needsNewTarget,
-                    FunctionEnvironment currentFunction, List<JavaScriptNode> declarations) {
+    JavaScriptNode translateFunctionBody(FunctionNode functionNode, boolean isGeneratorFunction, boolean isAsyncFunction, List<JavaScriptNode> declarations) {
         JavaScriptNode body = transform(functionNode.getBody());
 
-        if (!isGeneratorFunction) {
-            // finishGeneratorBody has already taken care of this for (async) generator functions
-            body = handleFunctionReturn(functionNode, body);
-
-            if (isAsyncFunction) {
-                ensureHasSourceSection(body, functionNode);
-                body = handleAsyncFunctionBody(body);
-            }
+        if (isAsyncFunction && !isGeneratorFunction) {
+            ensureHasSourceSection(body, functionNode);
+            body = handleAsyncFunctionBody(body);
         }
 
         if (!declarations.isEmpty()) {
             body = prepareDeclarations(declarations, body);
-        }
-        if (currentFunction.getThisSlot() != null && !isDerivedConstructor) {
-            body = prepareThis(body, functionNode);
-        }
-        if (currentFunction.getSuperSlot() != null) {
-            body = prepareSuper(body);
-        }
-        if (needsNewTarget) {
-            body = prepareNewTarget(body);
-        }
-
-        if (isDerivedConstructor) {
-            JavaScriptNode getThisBinding = checkThisBindingInitialized(
-                            (functionNode.hasDirectSuper() || functionNode.hasEval() || functionNode.hasArrowEval()) ? environment.findThisVar().createReadNode() : factory.createConstantUndefined());
-            body = factory.createDerivedConstructorResult(body, getThisBinding);
         }
 
         return body;
     }
 
     private FunctionRootNode translateFunctionOnDemand(FunctionNode functionNode, JSFunctionData functionData, boolean isStrict, boolean isArrowFunction, boolean isGeneratorFunction,
-                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean isGlobal, boolean needsNewTarget, boolean needsParentFrame, String functionName, boolean hasSyntheticArguments) {
+                    boolean isAsyncFunction, boolean isDerivedConstructor, boolean isGlobal, boolean needsParentFrame, String functionName, boolean hasSyntheticArguments) {
         try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal, hasSyntheticArguments)) {
             FunctionEnvironment currentFunction = currentFunction();
             currentFunction.setFunctionName(functionName);
@@ -473,7 +452,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             currentFunction.freeze();
             assert currentFunction.isDeepFrozen();
 
-            JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, isDerivedConstructor, needsNewTarget, currentFunction, Collections.emptyList());
+            JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, Collections.emptyList());
             return createFunctionRoot(functionNode, functionData, currentFunction, body);
         }
     }
@@ -498,6 +477,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         System.out.printf(new PrintVisitor(functionNode).toString());
     }
 
+    private JavaScriptNode finishDerivedConstructorBody(FunctionNode function, JavaScriptNode body) {
+        JavaScriptNode getThisBinding = (function.hasDirectSuper() || function.hasEval() || function.hasArrowEval()) ? environment.findThisVar().createReadNode() : factory.createConstantUndefined();
+        getThisBinding = checkThisBindingInitialized(getThisBinding);
+        return factory.createDerivedConstructorResult(body, getThisBinding);
+    }
+
     /**
      * Async function parse-time AST modifications.
      *
@@ -519,9 +504,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
      *
      * @return instrumented function body
      */
-    private JavaScriptNode finishGeneratorBody(JavaScriptNode bodyBlock) {
-        JavaScriptNode body = handleFunctionReturn(lc.getCurrentFunction(), bodyBlock);
+    private JavaScriptNode finishGeneratorBody(JavaScriptNode body) {
         // Note: parameter initialization must precede (i.e. wrap) the (async) generator body
+        assert lc.getCurrentBlock().isFunctionBody();
         if (currentFunction().isAsyncGeneratorFunction()) {
             return handleAsyncGeneratorBody(body);
         } else {
@@ -829,10 +814,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private void prepareParameters(List<JavaScriptNode> init) {
         FunctionNode function = lc.getCurrentFunction();
         FunctionEnvironment currentFunction = currentFunction();
+
+        if (needsThisSlot(function, currentFunction) && !function.isDerivedConstructor()) {
+            // Derived constructor: `this` binding is initialized after super() call.
+            assert environment.findThisVar() != null;
+            init.add(prepareThis(function));
+        }
+        if (function.needsSuper()) {
+            assert function.isMethod();
+            init.add(prepareSuper());
+        }
+        if (function.needsNewTarget()) {
+            init.add(prepareNewTarget());
+        }
+
         if (function.needsArguments() && !currentFunction.isDirectArgumentsAccess() && !currentFunction.isDirectEval()) {
             assert !function.isArrow() && !function.isClassFieldInitializer();
             init.add(prepareArguments());
         }
+
         int parameterCount = function.getParameters().size();
         if (parameterCount == 0) {
             return;
@@ -897,33 +897,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
         }
 
-        // Reserve this slot if function uses this or has super(). Arrow functions and direct eval
-        // in a derived class constructor must use the constructor's this slot. Otherwise,
-        // non-strict direct eval uses the caller's `this` but gets it via the this argument.
-        if (functionNode.needsThis() && !((functionNode.isArrow() || currentFunction.isDirectEval()) && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
-            currentFunction.reserveThisSlot();
-        }
-        if (functionNode.needsSuper()) {
-            // arrow functions need to access [[HomeObject]] from outer non-arrow scope
-            // note: an arrow function using <super> also needs <this> access
-            assert !functionNode.isArrow();
-
-            currentFunction.reserveThisSlot();
-            currentFunction.reserveSuperSlot();
-        }
-        if (functionNode.needsNewTarget()) {
-            currentFunction.reserveNewTargetSlot();
-        }
-
-        if (functionNode.isClassConstructor() && (lc.getCurrentClass().hasInstanceFields() || lc.getCurrentClass().hasPrivateInstanceMethods())) {
-            // Allocate the this slot to ensure InitializeInstanceElements is performed
-            // regardless of whether the class constructor itself uses `this`.
-            // Note: the this slot could be elided in this case.
-            currentFunction.reserveThisSlot();
-        }
-
         if (functionNode.needsDynamicScope() && !currentFunction.isDirectEval()) {
             currentFunction.setIsDynamicallyScoped(true);
+        }
+        if (functionNode.needsNewTarget()) {
+            currentFunction.setNeedsNewTarget(true);
         }
 
         return Collections.emptyList();
@@ -1147,7 +1125,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return argumentsVar.createWriteNode(argumentsObject);
     }
 
-    private JavaScriptNode prepareThis(JavaScriptNode body, FunctionNode functionNode) {
+    private JavaScriptNode prepareThis(FunctionNode functionNode) {
         // In a derived class constructor, we cannot get the this value from the arguments.
         assert !currentFunction().getNonArrowParentFunction().isDerivedConstructor();
         VarRef thisVar = environment.findThisVar();
@@ -1159,20 +1137,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (functionNode.isClassConstructor()) {
             getThisNode = initializeInstanceElements(getThisNode);
         }
-        JavaScriptNode setThisNode = thisVar.createWriteNode(getThisNode);
-        return factory.createExprBlock(setThisNode, body);
+        return thisVar.createWriteNode(getThisNode);
     }
 
-    private JavaScriptNode prepareSuper(JavaScriptNode body) {
+    private JavaScriptNode prepareSuper() {
         JavaScriptNode getHomeObject = factory.createAccessHomeObject(context);
-        JavaScriptNode setSuperNode = environment.findSuperVar().createWriteNode(getHomeObject);
-        return factory.createExprBlock(setSuperNode, body);
+        return environment.findSuperVar().createWriteNode(getHomeObject);
     }
 
-    private JavaScriptNode prepareNewTarget(JavaScriptNode body) {
+    private JavaScriptNode prepareNewTarget() {
         JavaScriptNode getNewTarget = factory.createAccessNewTarget();
-        JavaScriptNode setNewTarget = environment.findNewTargetVar().createWriteNode(getNewTarget);
-        return factory.createExprBlock(setNewTarget, body);
+        return environment.findNewTargetVar().createWriteNode(getNewTarget);
     }
 
     @Override
@@ -1204,6 +1179,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     @Override
     public JavaScriptNode enterBlock(Block block) {
+        FunctionEnvironment currentFunction = currentFunction();
         JavaScriptNode result;
         try (EnvironmentCloseable blockEnv = enterBlockEnvironment(block)) {
             List<Statement> blockStatements = block.getStatements();
@@ -1211,7 +1187,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if ((block.getScope().hasBlockScopedOrRedeclaredSymbols() || block.isModuleBody()) && !(environment instanceof GlobalEnvironment)) {
                 createTemporalDeadZoneInit(block, scopeInit);
             }
-            if (block.getScope().isFunctionTopScope()) {
+            if (block.getScope().isFunctionTopScope() || block.getScope().isEvalScope()) {
                 prepareParameters(scopeInit);
             }
             if (block.isParameterBlock() || block.isFunctionBody()) {
@@ -1221,9 +1197,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 // Tracking eval separately for parameter and body blocks would allow us to be more
                 // precise w.r.t. dynamic eval scope bindings but probably not worth it since eval
                 // in parameter expressions is rare and there's little cost in an unused frame slot.
-                FunctionEnvironment currentFunction = currentFunction();
                 if (!currentFunction.isGlobal() && currentFunction.isDynamicallyScoped()) {
-                    environment.getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
+                    environment.reserveDynamicScopeSlot();
                 }
                 if (block.isFunctionBody()) {
                     if (currentFunction.isCallerContextEval()) {
@@ -1231,15 +1206,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     }
                 }
             }
+
             JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
+
+            if (block.isFunctionBody()) {
+                FunctionNode function = lc.getCurrentFunction();
+                blockNode = handleFunctionReturn(function, blockNode);
+                if (currentFunction.isDerivedConstructor()) {
+                    blockNode = finishDerivedConstructorBody(function, blockNode);
+                }
+                tagBody(blockNode, block);
+            }
+
             result = blockEnv.wrapBlockScope(blockNode);
         }
         // Parameter initialization must precede (i.e. wrap) the (async) generator function body
         if (block.isFunctionBody()) {
-            if (currentFunction().isGeneratorFunction()) {
+            if (currentFunction.isGeneratorFunction()) {
                 result = finishGeneratorBody(result);
             }
-            tagBody(result, block);
         }
         ensureHasSourceSection(result, block);
         return result;
@@ -1374,7 +1359,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private EnvironmentCloseable enterBlockEnvironment(Scope scope) {
-        if (scope != null && (scope.hasDeclarations() || JSConfig.ManyBlockScopes)) {
+        if (scope != null) {
             /*
              * The function environment is filled with top-level vars from the function body, unless
              * the function has parameter expressions, then the function body gets a separate scope
@@ -1387,21 +1372,58 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 environment.addFrameSlotsFromSymbols(scope.getSymbols(), onlyBlockScoped);
                 addFunctionFrameSlots(environment, function);
                 return new EnvironmentCloseable(environment);
-            } else {
+            } else if (scope.hasDeclarations() || JSConfig.ManyBlockScopes) {
                 BlockEnvironment blockEnv = new BlockEnvironment(environment, factory, context);
                 blockEnv.addFrameSlotsFromSymbols(scope.getSymbols());
                 return new EnvironmentCloseable(blockEnv);
             }
-        } else {
-            return new EnvironmentCloseable(environment);
+        }
+        return new EnvironmentCloseable(environment);
+    }
+
+    private void addFunctionFrameSlots(Environment env, FunctionNode function) {
+        if (function.needsArguments()) {
+            assert function.getBody().getScope().hasSymbol(Environment.ARGUMENTS_NAME) : function;
+            env.reserveArgumentsSlot();
+        }
+
+        FunctionEnvironment currentFunction = env.function();
+        if (needsThisSlot(function, currentFunction)) {
+            env.reserveThisSlot();
+        }
+        if (function.needsSuper()) {
+            // arrow functions need to access [[HomeObject]] from outer non-arrow scope
+            // note: an arrow function using <super> also needs <this> access
+            assert function.isMethod();
+            env.reserveSuperSlot();
+        }
+        if (function.needsNewTarget()) {
+            env.reserveNewTargetSlot();
         }
     }
 
-    private static void addFunctionFrameSlots(Environment env, FunctionNode function) {
-        if (function.needsArguments()) {
-            assert function.getBody().getScope().hasSymbol(Environment.ARGUMENTS_NAME) : function;
-            env.getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.ARGUMENTS_SLOT_IDENTIFIER);
+    private boolean needsThisSlot(FunctionNode function, FunctionEnvironment currentFunction) {
+        if (currentFunction.isGlobal()) {
+            return false;
         }
+        // Reserve this slot if function uses this or has super(). Arrow functions and direct eval
+        // in a derived class constructor must use the constructor's this slot. Otherwise,
+        // non-strict direct eval uses the caller's `this` but gets it via the this argument.
+        if (function.needsThis() && !((function.isArrow() || currentFunction.isDirectEval()) && currentFunction.getNonArrowParentFunction().isDerivedConstructor())) {
+            return true;
+        }
+        if (function.needsSuper()) {
+            assert function.isMethod();
+            // A method using `super` also needs `this`.
+            return true;
+        }
+        if (function.isClassConstructor() && (lc.getCurrentClass().hasInstanceFields() || lc.getCurrentClass().hasPrivateInstanceMethods())) {
+            // Allocate the this slot to ensure InitializeInstanceElements is performed
+            // regardless of whether the class constructor itself uses `this`.
+            // Note: the this slot could be elided in this case.
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -1511,11 +1533,19 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createThisNode() {
-        return currentFunction().isGlobal() ? factory.createAccessThis() : checkThisBindingInitialized(environment.findThisVar().createReadNode());
+        if (currentFunction().isGlobal()) {
+            return factory.createAccessThis();
+        } else {
+            return checkThisBindingInitialized(environment.findThisVar().createReadNode());
+        }
     }
 
     private JavaScriptNode createThisNodeUnchecked() {
-        return currentFunction().isGlobal() ? factory.createAccessThis() : environment.findThisVar().createReadNode();
+        if (currentFunction().isGlobal()) {
+            return factory.createAccessThis();
+        } else {
+            return environment.findThisVar().createReadNode();
+        }
     }
 
     private JavaScriptNode checkThisBindingInitialized(JavaScriptNode accessThisNode) {
