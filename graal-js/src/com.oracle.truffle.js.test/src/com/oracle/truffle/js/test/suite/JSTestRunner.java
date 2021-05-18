@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.FileVisitResult;
@@ -77,7 +76,6 @@ import org.junit.runners.ParentRunner;
 import org.junit.runners.model.InitializationError;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.polyglot.PolyglotBuiltinTest;
 import com.oracle.truffle.js.test.suite.JSTestRunner.TestCase;
 
@@ -132,24 +130,11 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
             throw new InitializationError(String.format("@%s annotation required on class '%s' to run with '%s'.", JSTestSuite.class.getSimpleName(), c.getName(), JSTestRunner.class.getSimpleName()));
         }
 
-        String[] paths = suite.value();
-
-        Path root = null;
-        boolean pathExists = false;
-        for (String path : paths) {
-            root = Paths.get(path);
-            if (Files.exists(root)) {
-                pathExists = true;
-                break;
-            }
-        }
+        Path root = Paths.get(suite.value());
+        boolean pathExists = Files.exists(root);
 
         if (!pathExists) {
             return new ArrayList<>();
-        }
-
-        if (root == null && paths.length > 0) {
-            throw new FileNotFoundException(paths[0]);
         }
 
         final List<TestCase> foundCases = new ArrayList<>();
@@ -218,7 +203,7 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
 
             String[] args = parseArgs(sourceLines);
             // allowHostAccess, allowIO, allowHostReflection
-            Context engineContext = JSTest.newContextBuilder().options(options).allowAllAccess(true).arguments(ID, args).build();
+            Context engineContext = Context.newBuilder().allowExperimentalOptions(true).options(options).allowAllAccess(true).arguments(ID, args).build();
 
             engineContext.enter();
             setTestGlobals(engineContext, optionNashornCompat || USE_NASHORN_COMPAT_MODE);

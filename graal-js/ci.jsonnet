@@ -47,6 +47,7 @@ local common = import '../common.jsonnet';
     run+: [
       ['mx', '--dynamicimports', '/wasm', 'build'],
       ['mx', '--dynamicimports', '/wasm', 'testv8', 'gate', 'polyglot'],
+      ['mx', '--dynamicimports', '/wasm', 'gate', '--tags', 'webassembly'],
     ],
     timelimit: '30:00',
   },

@@ -64,9 +64,15 @@ def _graal_js_gate_runner(args, tasks):
         if t:
             js(['-Dpolyglot.js.profile-time=true', '-e', '""'])
 
+    webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
     with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all]) as t:
         if t:
-            unittest(['--enable-timing', '--very-verbose', '--suite', _suite.name])
+            noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
+            unittest(['--regex', noWebAssemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
+
+    with Task('WebAssemblyTests', tasks, tags=['webassembly', GraalJsDefaultTags.all]) as t:
+        if t:
+            unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
