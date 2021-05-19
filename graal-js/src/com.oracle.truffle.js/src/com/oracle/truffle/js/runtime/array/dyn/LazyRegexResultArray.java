@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -158,13 +158,6 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     @Override
     public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
         return createWriteableObject(object, start, null, ProfileHolder.empty()).removeRangeImpl(object, start, end);
-    }
-
-    @Override
-    public Object[] toArray(DynamicObject object) {
-        return TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(
-                        arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), lengthInt(object),
-                        arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached()));
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.array.dyn;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArray;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArray;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.object.DynamicObject;
@@ -109,21 +108,6 @@ public final class ConstantObjectArray extends AbstractConstantArray {
     @Override
     public int lengthInt(DynamicObject object) {
         return getArray(object).length;
-    }
-
-    @Override
-    public Object[] toArray(DynamicObject object) {
-        if (hasHoles(object)) {
-            Object[] array = getArray(object);
-            Object[] newArray = new Object[array.length];
-            for (int i = 0; i < array.length; i++) {
-                newArray[i] = array[i] == null ? Undefined.instance : array[i];
-            }
-            return newArray;
-        } else {
-            Object[] array = getArray(object);
-            return Arrays.copyOf(array, array.length);
-        }
     }
 
     @Override

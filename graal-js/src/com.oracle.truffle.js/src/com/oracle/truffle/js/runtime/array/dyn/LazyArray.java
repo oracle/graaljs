@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,17 +150,6 @@ public class LazyArray extends AbstractConstantArray {
     @Override
     public ScriptArray addRangeImpl(DynamicObject object, long offset, int size) {
         return createWriteableObject(object, offset, null, ProfileHolder.empty()).addRangeImpl(object, offset, size);
-    }
-
-    @Override
-    public Object[] toArray(DynamicObject object) {
-        // enumerate the whole array
-        int len = lengthInt(object);
-        Object[] array = new Object[len];
-        for (int i = 0; i < len; i++) {
-            array[i] = getElementInBounds(object, i);
-        }
-        return array;
     }
 
     @Override

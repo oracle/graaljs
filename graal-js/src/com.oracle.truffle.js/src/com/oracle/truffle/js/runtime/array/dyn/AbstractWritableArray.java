@@ -579,23 +579,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
-    @Override
-    public Object[] toArray(DynamicObject object) {
-        long len = length(object);
-        assert JSRuntime.longIsRepresentableAsInt(len);
-        Object[] objectArray = new Object[(int) len];
-        long firstElement = firstElementIndex(object);
-        long lastElement = lastElementIndex(object);
-        for (int i = 0; i < len; i++) {
-            if (i >= firstElement && i <= lastElement) {
-                objectArray[i] = getInBoundsFast(object, i);
-            } else {
-                objectArray[i] = Undefined.instance;
-            }
-        }
-        return objectArray;
-    }
-
     protected final Object[] toArrayZeroBased(DynamicObject object) {
         int newLength = getUsedLength(object);
         Object[] newArray = new Object[newLength];

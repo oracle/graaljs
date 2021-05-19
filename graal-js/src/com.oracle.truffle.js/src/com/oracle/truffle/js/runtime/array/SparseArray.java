@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetLength;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -180,19 +179,6 @@ public final class SparseArray extends DynamicArray {
     public long previousElementIndex(DynamicObject object, long index) {
         Long nextIndex = arrayMap(object).lowerKey(index);
         return nextIndex != null ? nextIndex.longValue() : -1;
-    }
-
-    @Override
-    public Object[] toArray(DynamicObject object) {
-        assert length(object) <= Integer.MAX_VALUE;
-        Object[] newArray = new Object[(int) length(object)];
-        Arrays.fill(newArray, Undefined.instance);
-        for (long i = firstElementIndex(object); i <= lastElementIndex(object); i = nextElementIndex(object, i)) {
-            if (i >= 0) {
-                newArray[(int) i] = this.getElement(object, i);
-            }
-        }
-        return newArray;
     }
 
     @Override

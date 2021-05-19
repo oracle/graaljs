@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.TestHelper.ParsedFunction;
@@ -82,7 +83,7 @@ public class TestHelperTest extends JSTest {
     public void testTestHelperArray() {
         DynamicObject arr = testHelper.runJSArray("[1,2,3]");
         assertTrue(JSArray.isJSArray(arr));
-        Object[] javaArr = JSArray.toArray(arr);
+        Object[] javaArr = JSObject.getArray(arr).toArray(arr);
         assertEquals(3, javaArr.length);
         assertEquals(1, javaArr[0]);
         assertEquals(2, javaArr[1]);

@@ -116,16 +116,6 @@ public abstract class TypedArray extends ScriptArray {
     }
 
     @Override
-    public final Object[] toArray(DynamicObject object) {
-        int length = lengthInt(object);
-        Object[] result = new Object[length];
-        for (int i = 0; i < length; i++) {
-            result[i] = getElement(object, i);
-        }
-        return result;
-    }
-
-    @Override
     public final ScriptArray deleteElementImpl(DynamicObject object, long index, boolean strict) {
         return this;
     }
