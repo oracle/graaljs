@@ -141,12 +141,18 @@ final class ScopeMembers implements TruffleObject {
         } else {
             Node descNode = blockOrRoot;
             Frame outerFrame = frame;
+            Frame currentFunctionFrame = functionFrame;
             for (;;) { // frameLevel
                 Frame outerScope = outerFrame;
+                boolean seenThis = false;
                 for (;;) { // scopeLevel
                     FrameDescriptor frameDescriptor = outerScope.getFrameDescriptor();
                     for (FrameSlot slot : frameDescriptor.getSlots()) {
                         if (JSFrameUtil.isInternal(slot)) {
+                            if (JSFrameUtil.isThisSlot(slot)) {
+                                membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
+                                seenThis = true;
+                            }
                             continue;
                         }
                         if (isUnsetFrameSlot(outerScope, slot)) {
@@ -157,8 +163,6 @@ final class ScopeMembers implements TruffleObject {
 
                     FrameSlot parentSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
-                        membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
-
                         // insert direct eval scope variables
                         FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
                         if (evalScopeSlot != null) {
@@ -174,8 +178,8 @@ final class ScopeMembers implements TruffleObject {
                     Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
                     if (parent instanceof Frame) {
                         outerScope = (Frame) parent;
-                    } else if (functionFrame != null) {
-                        outerScope = functionFrame;
+                    } else if (currentFunctionFrame != null && currentFunctionFrame != outerScope) {
+                        outerScope = currentFunctionFrame;
                     } else {
                         break;
                     }
@@ -184,7 +188,12 @@ final class ScopeMembers implements TruffleObject {
                     }
                 }
 
+                if (!seenThis) {
+                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
+                }
+
                 outerFrame = JSArguments.getEnclosingFrame(outerFrame.getArguments());
+                currentFunctionFrame = null;
                 if (outerFrame == JSFrameUtil.NULL_MATERIALIZED_FRAME) {
                     break;
                 }

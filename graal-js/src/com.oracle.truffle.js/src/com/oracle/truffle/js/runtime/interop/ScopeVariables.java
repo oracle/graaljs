@@ -136,7 +136,9 @@ public final class ScopeVariables implements TruffleObject {
                 return false;
             }
             if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                return getParentFrame() != null;
+                if (getParentFrame() != null) {
+                    return true;
+                }
             }
             Frame parentFrame = JSFrameUtil.getParentFrame(frame);
             return parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
@@ -189,12 +191,11 @@ public final class ScopeVariables implements TruffleObject {
             Object parent = FrameUtil.getObjectSafe(frame, parentSlot);
             if (parent instanceof Frame) {
                 return (Frame) parent;
-            } else {
+            } else if (functionFrame != frame) {
                 return functionFrame;
             }
-        } else {
-            return null;
         }
+        return null;
     }
 
     @ExportMessage
@@ -500,11 +501,16 @@ public final class ScopeVariables implements TruffleObject {
                             return new DynamicScopeResolvedSlot(member, evalScopeSlot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
                         }
                     }
-
                     break;
                 }
-                outerScope = (Frame) FrameUtil.getObjectSafe(outerScope, parentSlot);
-                parentSlotList.add(parentSlot);
+
+                Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
+                if (parent instanceof Frame) {
+                    outerScope = (Frame) parent;
+                    parentSlotList.add(parentSlot);
+                } else {
+                    break;
+                }
             }
 
             outerFrame = JSArguments.getEnclosingFrame(outerFrame.getArguments());
