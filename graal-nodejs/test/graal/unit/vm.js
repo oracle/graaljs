@@ -82,4 +82,10 @@ describe('vm', function () {
         var result = vm.runInNewContext('Object.defineProperty(this, "console", { value: 42 }); Object.keys(this)', { console: console });
         assert.ok(result.includes('console'));
     });
+    it('should handle a script whose name clashes with the name of a core module', function () {
+        assert.throws(function() {
+            new vm.Script('!', { filename: 'vm.js' });
+        }, SyntaxError);
+        assert.strictEqual(new vm.Script('6*7', { filename: 'vm.js' }).runInThisContext(), 42);
+    });
 });
