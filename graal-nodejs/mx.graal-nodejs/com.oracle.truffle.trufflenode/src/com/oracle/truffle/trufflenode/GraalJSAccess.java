@@ -2152,13 +2152,6 @@ public final class GraalJSAccess {
 
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
 
-        if (USE_SNAPSHOTS && fileNameStr != null && UnboundScript.isCoreModule(fileNameStr)) {
-            ByteBuffer snapshotBinary = getCoreModuleBinarySnapshot(fileNameStr);
-            if (snapshotBinary != null) {
-                return new UnboundScript(source, snapshotBinary);
-            }
-        }
-
         // Needed to generate potential syntax errors, see node --check
         FunctionNode functionNode = parseSource(source, mainJSContext);
 
