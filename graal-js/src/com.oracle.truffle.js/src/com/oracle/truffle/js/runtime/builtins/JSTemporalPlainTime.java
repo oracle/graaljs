@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
@@ -69,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -92,10 +95,11 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         if (!TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw Errors.createRangeError("Given time outside the range.");
         }
+        DynamicObject calendar = TemporalUtil.getISO8601Calendar(context);
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
-                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);
+                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
         return context.trackAllocation(obj);
     }
 
@@ -120,6 +124,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                     if (obj instanceof TemporalTime) {
                         TemporalTime temporalTime = (TemporalTime) obj;
                         switch (property) {
+                            case CALENDAR:
+                                return temporalTime.getCalendar();
                             case HOUR:
                                 return temporalTime.getHours();
                             case MINUTE:
@@ -154,6 +160,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR,
+                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeCalendar, CALENDAR), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, HOUR,
                         createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeHour, HOUR), Undefined.instance);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, MINUTE,
@@ -215,15 +223,23 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     // 4.5.2
-    public static Object toTemporalTime(Object item, String varOverflow, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
-        String overflow = varOverflow == null ? TemporalConstants.CONSTRAIN : varOverflow;
+    public static Object toTemporalTime(Object item, String overflowParam, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
+        String overflow = overflowParam == null ? TemporalConstants.CONSTRAIN : overflowParam;
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
         JSTemporalPlainDateTimePluralRecord result2 = null;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalPlainTime(item)) {
                 return item;
             }
-            // TODO: 4.c Calendar
+            // TODO 3.b If item has an [[InitializedTemporalZonedDateTime]] internal slot, then
+            if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
+                TemporalDateTime dt = (TemporalDateTime) item;
+                return TemporalUtil.createTemporalTime(ctx, dt.getHours(), dt.getMinutes(), dt.getSeconds(), dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds());
+            }
+            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, ctx);
+            if (!JSRuntime.toString(calendar).equals(TemporalConstants.ISO8601)) {
+                throw Errors.createRangeError("iso8601 expected");
+            }
             JSTemporalPlainDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
             result2 = TemporalUtil.regulateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
@@ -305,7 +321,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         String hourString = String.format("%1$2d", hour).replace(" ", "0");
         String minuteString = String.format("%1$2d", minute).replace(" ", "0");
         String secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
-        return String.format("%s:%s:%s", hourString, minuteString, secondString);
+        return String.format("%s:%s%s", hourString, minuteString, secondString);
     }
 
     // 4.5.13
@@ -365,50 +381,49 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
                         ((double) milliseconds / 1_000) + seconds;
         double quantity;
-        if (unit.equals("day")) {
+        if (unit.equals(DAY)) {
             long dayLengthNs = dayLengthNsParam == null ? 86_300_000_000_000L : (long) dayLengthNsParam;
             quantity = ((double) (((((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds)) / dayLengthNs;
-        } else if (unit.equals("hour")) {
+        } else if (unit.equals(HOUR)) {
             quantity = (fractionalSecond / 60 + minutes) / 60 + hours;
-        } else if (unit.equals("minute")) {
+        } else if (unit.equals(MINUTE)) {
             quantity = fractionalSecond / 60 + minutes;
-        } else if (unit.equals("second")) {
+        } else if (unit.equals(SECOND)) {
             quantity = fractionalSecond;
-        } else if (unit.equals("millisecond")) {
+        } else if (unit.equals(MILLISECOND)) {
             quantity = ((double) nanoseconds / 1_000_000) + ((double) microseconds / 1_000) + milliseconds;
-        } else if (unit.equals("microsecond")) {
+        } else if (unit.equals(MICROSECOND)) {
             quantity = ((double) nanoseconds / 1_000) + microseconds;
         } else {
-            assert unit.equals("nanosecond");
+            assert unit.equals(NANOSECOND);
             quantity = nanoseconds;
         }
-        double result = TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
-        if (unit.equals("day")) {
+        long result = (long) TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
+        if (unit.equals(DAY)) {
             return JSTemporalPlainDateTimePluralRecord.create(0, 0, (long) result, 0, 0, 0, 0, 0, 0);
         }
-        if (unit.equals("hour")) {
+        if (unit.equals(HOUR)) {
             return balanceTime(result, 0, 0, 0, 0, 0);
         }
-        if (unit.equals("minute")) {
+        if (unit.equals(MINUTE)) {
             return balanceTime(hours, result, 0, 0, 0, 0);
         }
-        if (unit.equals("second")) {
+        if (unit.equals(SECOND)) {
             return balanceTime(hours, minutes, result, 0, 0, 0);
         }
-        if (unit.equals("millisecond")) {
+        if (unit.equals(MILLISECOND)) {
             return balanceTime(hours, minutes, seconds, result, 0, 0);
         }
-        if (unit.equals("microsecond")) {
+        if (unit.equals(MICROSECOND)) {
             return balanceTime(hours, minutes, seconds, milliseconds, result, 0);
         }
-        assert unit.equals("nanosecond");
+        assert unit.equals(NANOSECOND);
         return balanceTime(hours, minutes, seconds, milliseconds, microseconds, result);
     }
     // endregion
 
     // 4.5.6
-    public static JSTemporalPlainDateTimePluralRecord balanceTime(double h, double min, double sec, double mils,
-                    double mics, double ns) {
+    public static JSTemporalPlainDateTimePluralRecord balanceTime(long h, long min, long sec, long mils, long mics, long ns) {
         if (h == Double.POSITIVE_INFINITY || h == Double.NEGATIVE_INFINITY ||
                         min == Double.POSITIVE_INFINITY || min == Double.NEGATIVE_INFINITY ||
                         sec == Double.POSITIVE_INFINITY || sec == Double.NEGATIVE_INFINITY ||
@@ -417,24 +432,24 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                         ns == Double.POSITIVE_INFINITY || ns == Double.NEGATIVE_INFINITY) {
             throw Errors.createRangeError("Time is infinite");
         }
-        double microseconds = mics;
-        double milliseconds = mils;
-        double nanoseconds = ns;
-        double seconds = sec;
-        double minutes = min;
-        double hours = h;
-        microseconds = microseconds + Math.floor(nanoseconds / 1000);
-        nanoseconds = TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
-        milliseconds = milliseconds + Math.floor(microseconds / 1000);
-        microseconds = TemporalUtil.nonNegativeModulo(microseconds, 1000);
-        seconds = seconds + Math.floor(milliseconds / 1000);
-        milliseconds = TemporalUtil.nonNegativeModulo(milliseconds, 1000);
-        minutes = minutes + Math.floor(seconds / 60);
-        seconds = TemporalUtil.nonNegativeModulo(seconds, 60);
-        hours = hours + Math.floor(minutes / 60);
-        minutes = TemporalUtil.nonNegativeModulo(minutes, 60);
-        double days = Math.floor(hours / 24);
-        hours = TemporalUtil.nonNegativeModulo(hours, 24);
+        long microseconds = mics;
+        long milliseconds = mils;
+        long nanoseconds = ns;
+        long seconds = sec;
+        long minutes = min;
+        long hours = h;
+        microseconds = microseconds + (long) Math.floor(nanoseconds / 1000.0);
+        nanoseconds = (long) TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
+        milliseconds = milliseconds + (long) Math.floor(microseconds / 1000.0);
+        microseconds = (long) TemporalUtil.nonNegativeModulo(microseconds, 1000);
+        seconds = seconds + (long) Math.floor(milliseconds / 1000.0);
+        milliseconds = (long) TemporalUtil.nonNegativeModulo(milliseconds, 1000);
+        minutes = minutes + (long) Math.floor(seconds / 60.0);
+        seconds = (long) TemporalUtil.nonNegativeModulo(seconds, 60);
+        hours = hours + (long) Math.floor(minutes / 60.0);
+        minutes = (long) TemporalUtil.nonNegativeModulo(minutes, 60);
+        long days = (long) Math.floor(hours / 24.0);
+        hours = (long) TemporalUtil.nonNegativeModulo(hours, 24);
 
         // TODO [[Days]] is plural, rest is singular WTF
         return JSTemporalPlainDateTimePluralRecord.create(0, 0, (long) days, (long) hours, (long) minutes, (long) seconds, (long) milliseconds,

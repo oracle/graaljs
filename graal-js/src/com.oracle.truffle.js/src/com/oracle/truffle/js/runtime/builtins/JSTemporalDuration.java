@@ -55,6 +55,8 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -68,16 +70,17 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalNanosecondsDaysRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -288,69 +291,201 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
 
     // region Abstract methods
     // 7.2.1
-    public static Object toTemporalDuration(DynamicObject item, DynamicObject constr, JSContext ctx,
-                    IsObjectNode isObject, JSToIntegerAsLongNode toInt,
-                    JSToStringNode toString, IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        DynamicObject constructor = constr != Undefined.instance ? constr : ctx.getRealm().getTemporalDurationConstructor();
-        DynamicObject result;
+    public static Object toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSToStringNode toString) {
+        JSTemporalPlainDateTimeRecord result;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalDuration(item)) {
                 return item;
             }
-            result = toTemporalDurationRecord(item, ctx, isObject, toInt);
+            result = toTemporalDurationRecord((DynamicObject) item, isObject, toInt);
         } else {
             String string = toString.executeString(item);
-            result = null;      // TODO:
-                                // https://tc39.es/proposal-temporal/#sec-temporal-parsetemporaldurationstring
+            result = parseTemporalDurationString(string);
         }
-        return createTemporalDurationFromStatic(
-                        constructor,
-                        getLong(result, YEARS, 0),
-                        getLong(result, MONTHS, 0),
-                        getLong(result, WEEKS, 0),
-                        getLong(result, DAYS, 0),
-                        getLong(result, HOURS, 0),
-                        getLong(result, MINUTES, 0),
-                        getLong(result, SECONDS, 0),
-                        getLong(result, MILLISECONDS, 0),
-                        getLong(result, MICROSECONDS, 0),
-                        getLong(result, NANOSECONDS, 0),
-                        isConstructor, callNode);
+        return createTemporalDuration(result.getYear(), result.getMonth(), result.getWeeks(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
+                        result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), ctx);
+    }
+
+    private static JSTemporalPlainDateTimeRecord parseTemporalDurationString(String string) {
+
+        // PT1H10M29.876543211S
+        // P1Y1M1W1DT1H1M1.123456789S
+
+        // Pattern regex =
+        // Pattern.compile("^([\\+-])+[Pp]([Tt]((\\d+)[Hh])?((\\d+)[Mm])?((\\d+)[Ss])?)$");
+
+        long year = 0;
+        long month = 0;
+        long day = 0;
+        long week = 0;
+        double second = 0;
+        double hour = 0;
+        double minute = 0;
+        double millisecond = 0;
+        double microsecond = 0;
+        double nanosecond = 0;
+        double fHour = 0;
+        double fMinute = 0;
+        double fSecond = 0;
+
+        // (\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?
+        Pattern regex = Pattern.compile("^([\\+-]?)[Pp]([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
+        Matcher matcher = regex.matcher(string);
+        if (matcher.matches()) {
+            String sign = matcher.group(1);
+
+            int count = 1;
+            boolean datePart = true;
+            while (++count < matcher.groupCount()) {
+                String val = matcher.group(count);
+                if (val == null) {
+                    // why?
+                } else if (val.startsWith("T") || val.startsWith("t")) {
+                    datePart = false;
+                } else {
+                    char id = val.charAt(val.length() - 1);
+                    String numstr = val.substring(0, val.length() - 1);
+
+                    if (id == 'Y' || id == 'y') {
+                        year = Long.parseLong(numstr);
+                    } else if (id == 'M' || id == 'm') {
+                        if (datePart) {
+                            month = Long.parseLong(numstr);
+                        } else {
+                            minute = Double.parseDouble(numstr);
+                        }
+                    } else if (id == 'D' || id == 'd') {
+                        day = Long.parseLong(numstr);
+                    } else if (id == 'W' || id == 'w') {
+                        week = Long.parseLong(numstr);
+                    } else if (id == 'H' || id == 'h') {
+                        hour = Double.parseDouble(numstr);
+                    } else if (id == 'S' || id == 's') {
+                        second = Double.parseDouble(numstr);
+                    } else {
+                        throw Errors.createTypeError("malformed Duration");
+                    }
+                }
+            }
+
+            int factor = (sign.equals("-") || sign.equals("\u2212")) ? -1 : 1;
+
+            year = year * factor;
+            month = month * factor;
+            week = week * factor;
+            day = day * factor;
+            hour = hour * factor;
+            minute = minute * factor;
+            second = second * factor;
+            if (hasFraction(second)) {
+                double fpart = fractionPart(second) * 1000;
+                millisecond = factor * (fpart % 1000);
+                fpart *= 1000;
+                microsecond = factor * (fpart % 1000);
+                fpart *= 1000;
+                nanosecond = factor * (fpart % 1000);
+            } else {
+                millisecond = 0;
+                microsecond = 0;
+                nanosecond = 0;
+            }
+            if (hasFraction(hour)) {
+                double fpart = fractionPart(hour);
+                fHour = factor * fpart;
+                // b. Set fHours to ! ToIntegerOrInfinity(fraction) × factor / 10 raised to the
+                // power of the length of fHours.
+            } else {
+                fHour = 0;
+            }
+            if (hasFraction(minute)) {
+                double fpart = fractionPart(minute);
+                fMinute = factor * fpart;
+                // b. Set fMinutes to ! ToIntegerOrInfinity(fraction) × factor / 10 raised to the
+                // power of the length of fMinutes.
+            } else {
+                fMinute = 0;
+            }
+            JSTemporalPlainDateTimeRecord result = TemporalUtil.durationHandleFractions(fHour, minute, fMinute, second, 0, millisecond, 0, microsecond, 0, nanosecond, 0);
+            return JSTemporalPlainDateTimeRecord.createWeeks(year, month, week, day, (long) hour,
+                            result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
+        }
+        throw Errors.createTypeError("malformed Duration");
+    }
+
+    private static double fractionPart(double second) {
+        return second - ((int) second);
+    }
+
+    private static boolean hasFraction(double val) {
+        return !JSRuntime.doubleIsRepresentableAsInt(val);
     }
 
     // 7.5.2
-    public static DynamicObject toTemporalDurationRecord(DynamicObject temporalDurationLike, JSContext ctx,
-                    IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
+    public static JSTemporalPlainDateTimeRecord toTemporalDurationRecord(DynamicObject temporalDurationLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
         assert isObject.executeBoolean(temporalDurationLike);
         if (isJSTemporalDuration(temporalDurationLike)) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) temporalDurationLike;
-            DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
-            JSObjectUtil.putDataProperty(ctx, result, YEARS, duration.getYears());
-            JSObjectUtil.putDataProperty(ctx, result, MONTHS, duration.getMonths());
-            JSObjectUtil.putDataProperty(ctx, result, WEEKS, duration.getWeeks());
-            JSObjectUtil.putDataProperty(ctx, result, DAYS, duration.getDays());
-            JSObjectUtil.putDataProperty(ctx, result, HOURS, duration.getHours());
-            JSObjectUtil.putDataProperty(ctx, result, MINUTES, duration.getMinutes());
-            JSObjectUtil.putDataProperty(ctx, result, SECONDS, duration.getSeconds());
-            JSObjectUtil.putDataProperty(ctx, result, MICROSECONDS, duration.getMicroseconds());
-            JSObjectUtil.putDataProperty(ctx, result, MILLISECONDS, duration.getMilliseconds());
-            JSObjectUtil.putDataProperty(ctx, result, NANOSECONDS, duration.getNanoseconds());
+            JSTemporalDurationObject d = (JSTemporalDurationObject) temporalDurationLike;
+            return JSTemporalPlainDateTimeRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
+                            d.getMicroseconds(), d.getNanoseconds());
         }
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
         boolean any = false;
+        long year = 0;
+        long month = 0;
+        long week = 0;
+        long day = 0;
+        long hour = 0;
+        long minute = 0;
+        long second = 0;
+        long millis = 0;
+        long micros = 0;
+        long nanos = 0;
         for (String property : PROPERTIES) {
             Object val = JSObject.get(temporalDurationLike, property);
             if (!val.equals(Undefined.instance)) {
                 any = true;
             }
-            val = toInt.executeLong(val);
-            JSObjectUtil.putDataProperty(ctx, result, property, val);
+            long lVal = toInt.executeLong(val);
+            // TODO check for integer property before converting!
+            switch (property) {
+                case YEARS:
+                    year = lVal;
+                    break;
+                case MONTHS:
+                    month = lVal;
+                    break;
+                case WEEKS:
+                    week = lVal;
+                    break;
+                case DAYS:
+                    day = lVal;
+                    break;
+                case HOURS:
+                    hour = lVal;
+                    break;
+                case MINUTES:
+                    minute = lVal;
+                    break;
+                case SECONDS:
+                    second = lVal;
+                    break;
+                case MILLISECONDS:
+                    millis = lVal;
+                    break;
+                case MICROSECONDS:
+                    micros = lVal;
+                    break;
+                case NANOSECONDS:
+                    nanos = lVal;
+                    break;
+
+                default:
+                    throw Errors.unsupported("wrong type");
+            }
         }
         if (!any) {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
-        return result;
+        return JSTemporalPlainDateTimeRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
     // 7.5.3
@@ -647,23 +782,6 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
         return offsetAfter - offsetBefore;
     }
 
-    // 7.5.10
-    public static Object createTemporalDurationFromStatic(DynamicObject constructor, long years, long months,
-                    long weeks, long days, long hours, long minutes,
-                    long seconds, long milliseconds, long microseconds,
-                    long nanoseconds, IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        assert validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        if (!isConstructor.executeBoolean(constructor)) {
-            throw Errors.createTypeError("Given constructor is not an constructor.");
-        }
-        Object[] ctorArgs = new Object[]{years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        Object result = callNode.executeCall(args);
-        return result;
-    }
-
     // 7.5.12
     public static long totalDurationNanoseconds(long days, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds, long offsetShift) {
@@ -683,7 +801,8 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     public static JSTemporalPlainDateTimePluralRecord balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds, String largestUnit, DynamicObject relativeTo) {
         long ns;
-        if (relativeTo != Undefined.instance) {    // TODO: Check if is temporal zoned date time
+        if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+            // TODO implement that branch
             ns = nanoseconds;
         } else {
             ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
@@ -1055,7 +1174,7 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
             microseconds = 0;
             nanoseconds = 0;
         } else {
-            fractionalSeconds = (nanoseconds * 0.000_000_000_1) + (microseconds * 0.000_000_1) + (milliseconds * 0.000_1);
+            fractionalSeconds = (nanoseconds * 0.000_000_001) + (microseconds * 0.000_001) + (milliseconds * 0.001) + seconds;
         }
         double remainder = 0;
         if (unit.equals(YEARS)) {
@@ -1228,38 +1347,29 @@ public class JSTemporalDuration extends JSNonProxy implements JSConstructorFacto
     }
 
     // 7.5.22
-    public static DynamicObject toLimitedTemporalDuration(DynamicObject temporalDurationLike,
+    public static JSTemporalPlainDateTimeRecord toLimitedTemporalDuration(Object temporalDurationLike,
                     Set<String> disallowedFields, JSContext ctx,
                     IsObjectNode isObject, JSToStringNode toString,
                     JSToIntegerAsLongNode toInt) {
-        DynamicObject duration;
+        JSTemporalPlainDateTimeRecord d;
         if (!isObject.executeBoolean(temporalDurationLike)) {
             String str = toString.executeString(temporalDurationLike);
-            duration = null; // TODO: parse duration of string
+            d = parseTemporalDurationString(str);
         } else {
-            duration = toTemporalDurationRecord(temporalDurationLike, ctx, isObject, toInt);
+            d = toTemporalDurationRecord((DynamicObject) temporalDurationLike, isObject, toInt);
         }
-        if (!validateTemporalDuration(
-                        getLong(duration, YEARS, 0L),
-                        getLong(duration, MONTHS, 0L),
-                        getLong(duration, WEEKS, 0L),
-                        getLong(duration, DAYS, 0L),
-                        getLong(duration, HOURS, 0L),
-                        getLong(duration, MINUTES, 0L),
-                        getLong(duration, SECONDS, 0L),
-                        getLong(duration, MILLISECONDS, 0L),
-                        getLong(duration, MICROSECONDS, 0L),
-                        getLong(duration, NANOSECONDS, 0L))) {
+        if (!validateTemporalDuration(d.getYear(), d.getMonth(), d.getWeeks(), d.getDay(), d.getHour(), d.getMinute(), d.getSecond(), d.getMillisecond(),
+                        d.getMicrosecond(), d.getNanosecond())) {
             throw Errors.createRangeError("Given duration outside range.");
         }
 
         for (String property : PROPERTIES) {
-            long value = getLong(duration, property, 0L);
+            long value = TemporalUtil.getPropertyFromRecord(d, property);
             if (value > 0 && disallowedFields.contains(property)) {
                 throw createRangeErrorDisallowedField(property);
             }
         }
-        return duration;
+        return d;
     }
 
     private static JSException createRangeErrorDisallowedField(String property) {

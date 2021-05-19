@@ -312,6 +312,7 @@ public class JSContext {
         WebAssemblySourceInstantiation,
         FinishImportModuleDynamicallyReject,
         FinishImportModuleDynamicallyResolve,
+        TemporalTimeCalendar,
         TemporalTimeHour,
         TemporalTimeMinute,
         TemporalTimeSecond,

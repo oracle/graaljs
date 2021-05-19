@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public interface TemporalTime {
+public interface TemporalTime extends TemporalCalendar {
     public long getHours();
 
     public long getMinutes();

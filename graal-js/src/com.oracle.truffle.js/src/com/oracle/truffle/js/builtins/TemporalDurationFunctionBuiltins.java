@@ -60,14 +60,11 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction> {
@@ -112,22 +109,18 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object from(DynamicObject item,
+        protected Object from(Object item,
                         @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") IsConstructorNode isConstructor,
                         @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject constructor = getContext().getRealm().getTemporalDurationConstructor();
+                        @Cached("create()") JSToStringNode toString) {
             if (isObject.executeBoolean(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
-                return JSTemporalDuration.createTemporalDurationFromStatic(constructor, duration.getYears(),
+                return JSTemporalDuration.create(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds(), isConstructor, callNode);
+                                duration.getMicroseconds(), duration.getNanoseconds());
             }
-            return JSTemporalDuration.toTemporalDuration(item, constructor, getContext(), isObject,
-                            toInt, toString, isConstructor, callNode);
+            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObject, toInt, toString);
         }
     }
 
@@ -138,16 +131,12 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected int compare(DynamicObject oneParam, DynamicObject twoParam, DynamicObject optionsParam,
+        protected int compare(Object oneParam, Object twoParam, Object optionsParam,
                         @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") IsConstructorNode isConstructor,
                         @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, Undefined.instance, getContext(), isObject,
-                            toInt, toString, isConstructor, callNode);
-            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, Undefined.instance, getContext(), isObject,
-                            toInt, toString, isConstructor, callNode);
+                        @Cached("create()") JSToStringNode toString) {
+            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toInt, toString);
+            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
             long shift1 = JSTemporalDuration.calculateOffsetShift(relativeTo,

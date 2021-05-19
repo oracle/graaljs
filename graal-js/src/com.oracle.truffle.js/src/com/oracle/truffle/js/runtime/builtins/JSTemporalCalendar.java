@@ -511,7 +511,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSToIntegerAsLongNode toInt) {
         if (!isObject.executeBoolean(dateOrDateTime) || !JSObject.hasProperty(dateOrDateTime, YEAR)) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                            dateOrDateTime, null, ctx, isObject, toBoolean, toString);
+                            dateOrDateTime, Undefined.instance, ctx, isObject, toBoolean, toString);
             return date.getISOYear();
         }
         return toInt.executeLong(getLong(dateOrDateTime, YEAR));
@@ -522,7 +522,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSToBooleanNode toBoolean, JSToStringNode toString, JSToIntegerAsLongNode toInt) {
         if (!isObject.executeBoolean(dateOrDateTime) || !JSObject.hasProperty(dateOrDateTime, MONTH)) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                            dateOrDateTime, null, ctx, isObject, toBoolean, toString);
+                            dateOrDateTime, Undefined.instance, ctx, isObject, toBoolean, toString);
             return date.getISOMonth();
         }
         return toInt.executeLong(getLong(dateOrDateTime, MONTH, 0L));
@@ -550,7 +550,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSToBooleanNode toBoolean, JSToStringNode toString, JSToIntegerAsLongNode toInt) {
         if (!isObject.executeBoolean(dateOrDateTime) || !JSObject.hasProperty(dateOrDateTime, MONTH)) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                            dateOrDateTime, null, ctx, isObject, toBoolean, toString);
+                            dateOrDateTime, Undefined.instance, ctx, isObject, toBoolean, toString);
             return date.getISODay();
         }
         return toInt.executeLong(getLong(dateOrDateTime, DAY, 0L));

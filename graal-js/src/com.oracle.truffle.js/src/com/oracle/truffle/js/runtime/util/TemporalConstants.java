@@ -110,4 +110,6 @@ public final class TemporalConstants {
     public static final String FLOOR = "floor";
     public static final String CEIL = "ceil";
     public static final String TRUNC = "trunc";
+
+    public static final String HALF_EXPAND = "halfExpand";
 }

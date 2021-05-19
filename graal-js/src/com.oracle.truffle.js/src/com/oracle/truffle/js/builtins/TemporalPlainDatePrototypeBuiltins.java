@@ -47,13 +47,9 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import java.util.Collections;
 import java.util.Set;
@@ -86,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -184,35 +181,22 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject add(DynamicObject thisObj, DynamicObject temporalDurationLike, Object optParam,
+        public DynamicObject add(DynamicObject thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) thisObj;
-            DynamicObject duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
+            JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), getContext(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
-                            getLong(duration, YEARS),
-                            getLong(duration, MONTHS),
-                            getLong(duration, WEEKS),
-                            getLong(duration, DAYS),
-                            getLong(duration, HOURS),
-                            getLong(duration, MINUTES),
-                            getLong(duration, SECONDS),
-                            getLong(duration, MILLISECONDS),
-                            getLong(duration, MICROSECONDS),
-                            getLong(duration, NANOSECONDS));
+                            duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
+                            duration.getHour(), duration.getMinute(), duration.getSecond(),
+                            duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond());
             JSTemporalPlainDateTimePluralRecord balanceResult = JSTemporalDuration.balanceDuration(
-                            getLong(duration, DAYS),
-                            getLong(duration, HOURS),
-                            getLong(duration, MINUTES),
-                            getLong(duration, SECONDS),
-                            getLong(duration, MILLISECONDS),
-                            getLong(duration, MICROSECONDS),
-                            getLong(duration, NANOSECONDS), "days", Undefined.instance);
-            DynamicObject balancedDuration = JSTemporalDuration.createTemporalDuration(getLong(duration, YEARS),
-                            getLong(duration, MONTHS),
-                            getLong(duration, WEEKS),
+                            duration.getDay(),
+                            duration.getHour(), duration.getMinute(), duration.getSecond(),
+                            duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond(), "days", Undefined.instance);
+            DynamicObject balancedDuration = JSTemporalDuration.createTemporalDuration(duration.getYear(), duration.getMonth(), duration.getWeeks(),
                             balanceResult.getDays(), 0, 0, 0, 0, 0, 0, getContext());
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             return TemporalUtil.calendarDateAdd(date.getCalendar(), thisObj, balancedDuration, options, Undefined.instance);
@@ -232,14 +216,14 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToNumberNode toNumber) {
             TemporalDate temporalDate = TemporalUtil.requireTemporalDate(thisObj);
-            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(otherObj, null, getContext(), isObject, toBoolean, toString);
+            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(otherObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             if (!TemporalUtil.calenderEquals(temporalDate.getCalendar(), other.getCalendar())) {
                 throw Errors.createRangeError("identical calendar expected");
             }
 
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             Set<String> disallowedUnits = TemporalUtil.toSet(HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS);
-            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, DAYS, disallowedUnits, isObject, toBoolean, toString);
+            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, disallowedUnits, DAYS, isObject, toBoolean, toString);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, disallowedUnits, DAYS, isObject, toBoolean, toString);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, isObject, toBoolean, toString);
@@ -273,14 +257,14 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToNumberNode toNumber) {
             TemporalDate temporalDate = TemporalUtil.requireTemporalDate(thisObj);
-            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(otherObj, null, getContext(), isObject, toBoolean, toString);
+            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(otherObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             if (!TemporalUtil.calenderEquals(temporalDate.getCalendar(), other.getCalendar())) {
                 throw Errors.createRangeError("identical calendar expected");
             }
 
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
             Set<String> disallowedUnits = TemporalUtil.toSet(HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS);
-            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, DAYS, disallowedUnits, isObject, toBoolean, toString);
+            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, disallowedUnits, DAYS, isObject, toBoolean, toString);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, disallowedUnits, DAYS, isObject, toBoolean, toString);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, isObject, toBoolean, toString);

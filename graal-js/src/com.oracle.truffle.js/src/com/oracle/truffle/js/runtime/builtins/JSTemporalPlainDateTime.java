@@ -159,6 +159,10 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
                                 return temporalDT.getISODay();
                             case CALENDAR:
                                 return temporalDT.getCalendar();
+                            case DAY_OF_WEEK:
+                                return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), (DynamicObject) temporalDT);
+                            case DAY_OF_YEAR:
+                                return TemporalUtil.dayOfYear(temporalDT.getCalendar(), (DynamicObject) temporalDT);
                             // TODO more are missing
                             // TODO according 3.3.4 this might be more complex
                             default:
@@ -332,11 +336,11 @@ public class JSTemporalPlainDateTime extends JSNonProxy implements JSConstructor
 
     public static JSTemporalPlainDateTimePluralRecord roundISODateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, double increment, String unit, String roundingMode, Long dayLength) {
-        JSTemporalPlainDateTimePluralRecord roundedTime = JSTemporalPlainTime.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
-        JSTemporalPlainDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + roundedTime.getDays());
+        JSTemporalPlainDateTimePluralRecord rt = JSTemporalPlainTime.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
+        JSTemporalPlainDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + rt.getDays());
         return JSTemporalPlainDateTimePluralRecord.create(br.getYear(), br.getMonth(), br.getDay(),
-                        br.getHour(), br.getMinute(), br.getSecond(),
-                        br.getMillisecond(), br.getMicrosecond(), br.getNanosecond());
+                        rt.getHours(), rt.getMinutes(), rt.getSeconds(),
+                        rt.getMilliseconds(), rt.getMicroseconds(), rt.getNanoseconds());
     }
 
 }

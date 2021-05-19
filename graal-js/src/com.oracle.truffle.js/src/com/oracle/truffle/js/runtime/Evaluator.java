@@ -73,7 +73,7 @@ public interface Evaluator {
      */
     ScriptNode parseDirectEval(JSContext context, Node lastNode, Source source, Object currEnv);
 
-    Integer[] parseDate(JSRealm realm, String date);
+    Integer[] parseDate(JSRealm realm, String date, boolean extraLenient);
 
     String parseToJSON(JSContext context, String code, String name, boolean includeLoc);
 

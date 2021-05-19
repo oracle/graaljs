@@ -50,7 +50,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
@@ -99,7 +98,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object from(Object item, DynamicObject options,
+        protected Object from(Object item, Object options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
@@ -123,20 +122,17 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isJSTemporalTime(obj1)", "isJSTemporalTime(obj2)"})
-        protected int compare(DynamicObject obj1, DynamicObject obj2) {
-            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) obj1;
-            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) obj2;
+        @Specialization
+        protected int compare(Object obj1, Object obj2,
+                        @Cached("create()") IsObjectNode isObject,
+                        @Cached("create()") JSToStringNode toString) {
+            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(obj1, null, getContext(), isObject, toString);
+            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(obj2, null, getContext(), isObject, toString);
             return JSTemporalPlainTime.compareTemporalTime(
                             time1.getHours(), time1.getMinutes(), time1.getSeconds(),
                             time1.getMilliseconds(), time1.getMicroseconds(), time1.getNanoseconds(),
                             time2.getHours(), time2.getMinutes(), time2.getSeconds(),
                             time2.getMilliseconds(), time2.getMicroseconds(), time2.getNanoseconds());
-        }
-
-        @Specialization(guards = "!isJSTemporalTime(obj1) || !isJSTemporalTime(obj2)")
-        protected int cantCompare(@SuppressWarnings("unused") Object obj1, @SuppressWarnings("unused") Object obj2) {
-            throw Errors.createTypeErrorTemporalTimeExpected();
         }
 
     }

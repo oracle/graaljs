@@ -308,26 +308,23 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     }
 
     // 3.5.4
-    public static DynamicObject toTemporalDate(DynamicObject item, DynamicObject optionsParam,
+    public static DynamicObject toTemporalDate(Object item, Object optionsParam,
                     JSContext ctx, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString) {
-        DynamicObject options = optionsParam != null ? optionsParam : JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+        DynamicObject options = optionsParam != Undefined.instance ? (DynamicObject) optionsParam : JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
         if (isObject.executeBoolean(item)) {
+            DynamicObject itemObj = (DynamicObject) item;
             if (isJSTemporalPlainDate(item)) {
-                return item;
+                return itemObj;
             }
-            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, ctx);
+            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(itemObj, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"}, ctx);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(item, fieldNames, TemporalUtil.toSet(), ctx);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, TemporalUtil.toSet(), ctx);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
-        String overflows = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
+        TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
         JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
-        if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
-            throw Errors.createRangeError("Given date is not valid.");
-        }
-        DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, ctx);
-        result = TemporalUtil.regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
-
+        assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
+        DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(result.getCalendar(), ctx);
         return createTemporalDate(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
