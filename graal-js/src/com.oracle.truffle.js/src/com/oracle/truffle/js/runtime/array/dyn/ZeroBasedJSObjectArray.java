@@ -160,7 +160,10 @@ public final class ZeroBasedJSObjectArray extends AbstractJSObjectArray {
     public ScriptArray removeRangeImpl(DynamicObject object, long start, long end) {
         JSDynamicObject[] array = getArray(object);
         int usedLength = getUsedLength(object);
-        System.arraycopy(array, (int) end, array, (int) start, Math.max(0, (int) (usedLength - end)));
+        long moveLength = usedLength - end;
+        if (moveLength > 0) {
+            System.arraycopy(array, (int) end, array, (int) start, (int) moveLength);
+        }
         return this;
     }
 
