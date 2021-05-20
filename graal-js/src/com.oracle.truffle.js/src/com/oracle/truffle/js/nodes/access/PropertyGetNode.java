@@ -1838,4 +1838,33 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected GetCacheNode createTruffleObjectPropertyNode() {
         return new ForeignPropertyGetNode(key, isMethod(), isGlobal(), context);
     }
+
+    @Override
+    protected boolean canCombineShapeCheck(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
+        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
+            if (!JSProperty.isAccessor(property) && !JSProperty.isProxy(property)) {
+                return !property.getLocation().isFinal() && !property.getLocation().isAssumedFinal();
+            }
+        }
+        return false;
+    }
+
+    @Override
+    protected GetCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        CombinedShapeCheckNode receiverCheck = new CombinedShapeCheckNode(parentShape, cacheShape);
+
+        if (property.getLocation() instanceof IntLocation) {
+            return new IntPropertyGetNode(property, receiverCheck);
+        } else if (property.getLocation() instanceof DoubleLocation) {
+            return new DoublePropertyGetNode(property, receiverCheck);
+        } else if (property.getLocation() instanceof BooleanLocation) {
+            return new BooleanPropertyGetNode(property, receiverCheck);
+        } else if (property.getLocation() instanceof LongLocation) {
+            return new LongPropertyGetNode(property, receiverCheck);
+        } else {
+            assert !JSProperty.isProxy(property);
+            return new ObjectPropertyGetNode(property, receiverCheck);
+        }
+    }
 }

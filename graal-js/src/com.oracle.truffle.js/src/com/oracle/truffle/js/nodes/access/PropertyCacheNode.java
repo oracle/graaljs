@@ -58,6 +58,7 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -132,6 +133,32 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public final NodeCost getCost() {
             return NodeCost.NONE;
+        }
+    }
+
+    /**
+     * Checks whether the receiver is compatible with one of the two shapes. Assumes shapes with
+     * compatible layout.
+     */
+    protected static class CombinedShapeCheckNode extends ReceiverCheckNode {
+
+        private final Shape shape1;
+        private final Shape shape2;
+
+        CombinedShapeCheckNode(Shape shape1, Shape shape2) {
+            assert shape1.getLayoutClass() == shape2.getLayoutClass();
+            this.shape1 = shape1;
+            this.shape2 = shape2;
+        }
+
+        @Override
+        public boolean accept(Object thisObj) {
+            return shape1.getLayoutClass().isInstance(thisObj) && (shape1.check((DynamicObject) thisObj) || shape2.check((DynamicObject) thisObj));
+        }
+
+        @Override
+        public DynamicObject getStore(Object thisObj) {
+            return shape1.getLayoutClass().cast(thisObj);
         }
     }
 
@@ -234,7 +261,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     /**
      * Check the object shape by identity comparison.
      */
-    protected static final class ShapeCheckNode extends AbstractShapeCheckNode {
+    public static final class ShapeCheckNode extends AbstractShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
 
@@ -1097,6 +1124,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected abstract T createTruffleObjectPropertyNode();
 
+    protected abstract boolean canCombineShapeCheck(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property);
+
+    protected abstract T createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property);
+
     @TruffleBoundary
     protected T specialize(Object thisObj) {
         return specialize(thisObj, null);
@@ -1204,6 +1235,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
 
             Property property = cacheShape.getProperty(key);
+
+            if (JSConfig.MergeCompatibleLocations && cachedCount == 1 && depth == 0) {
+                if (!(currentHead.receiverCheck instanceof CombinedShapeCheckNode)) {
+                    Shape existingShape = currentHead.receiverCheck.getShape();
+                    if (existingShape != null && property != null && shapesHaveCommonLayoutForKey(existingShape, cacheShape) &&
+                                    canCombineShapeCheck(existingShape, cacheShape, thisObj, depth, value, property)) {
+                        return rewriteToCombinedIC(existingShape, cacheShape, thisObj, depth, value, property);
+                    }
+                }
+            }
+
             if (property != null) {
                 specialized = createCachedPropertyNode(property, thisObj, depth, value, currentHead);
                 if (specialized == null) {
@@ -1232,6 +1274,32 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
 
         return insertCached(specialized, currentHead, cachedCount);
+    }
+
+    private T rewriteToCombinedIC(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        // replace the entire cache with a combined IC case
+        assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
+        T newNode = createCombinedIcPropertyNode(parentShape, cacheShape, thisObj, depth, value, property);
+        assert newNode != null;
+        invalidateCache();
+        insert(newNode);
+        this.cacheNode = newNode;
+        return newNode;
+    }
+
+    protected final boolean shapesHaveCommonLayoutForKey(Shape shape1, Shape shape2) {
+        Class<? extends DynamicObject> cachedType = shape1.getLayoutClass();
+        Class<? extends DynamicObject> incomingType = shape2.getLayoutClass();
+        if (cachedType == incomingType) {
+            Property cachedProperty = shape1.getProperty(key);
+            Property incomingProperty = shape2.getProperty(key);
+            if (incomingProperty != null && incomingProperty.equals(cachedProperty)) {
+                Location cachedLocation = cachedProperty.getLocation();
+                Location incomingLocation = incomingProperty.getLocation();
+                return incomingLocation.equals(cachedLocation);
+            }
+        }
+        return false;
     }
 
     protected static boolean alwaysUseStore(DynamicObject store, Object key) {

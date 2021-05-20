@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -363,5 +364,20 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     @Override
     protected HasCacheNode createTruffleObjectPropertyNode() {
         return new ForeignHasPropertyCacheNode();
+    }
+
+    @Override
+    protected boolean canCombineShapeCheck(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
+        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
+            assert depth == 0;
+            return !isGlobal();
+        }
+        return false;
+    }
+
+    @Override
+    protected HasCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        return new PresentHasPropertyCacheNode(new PropertyGetNode.CombinedShapeCheckNode(parentShape, cacheShape));
     }
 }
