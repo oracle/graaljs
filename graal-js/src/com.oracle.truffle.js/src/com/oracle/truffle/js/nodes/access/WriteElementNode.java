@@ -1851,7 +1851,11 @@ public class WriteElementNode extends JSTargetableNode {
                 try {
                     interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
                 } catch (InvalidArrayIndexException e) {
-                    // do nothing
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorNotWritableProperty(convertedKey, truffleObject, this);
+                    }
+                    // non-strict mode: do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
@@ -1873,7 +1877,11 @@ public class WriteElementNode extends JSTargetableNode {
                 try {
                     interop.writeMember(truffleObject, propertyKey, exportedValue);
                 } catch (UnknownIdentifierException e) {
-                    // do nothing
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorNotWritableProperty(convertedKey, truffleObject, this);
+                    }
+                    // non-strict mode: do nothing
                 } catch (UnsupportedTypeException | UnsupportedMessageException e) {
                     errorBranch.enter();
                     throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
