@@ -60,8 +60,7 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
         this(shape, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
     }
 
-    public JSTemporalDurationObject(Shape shape, long years, long months, long weeks, long days, long hours,
-                                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+    public JSTemporalDurationObject(Shape shape, long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         super(shape);
         this.years = years;
         this.months = months;

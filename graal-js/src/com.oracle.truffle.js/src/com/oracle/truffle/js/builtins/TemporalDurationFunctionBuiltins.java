@@ -137,7 +137,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToStringNode toString) {
             DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toInt, toString);
             DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
             long shift1 = JSTemporalDuration.calculateOffsetShift(relativeTo,
                             getLong(one, YEARS, 0),
@@ -163,7 +163,8 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                             getLong(two, MICROSECONDS, 0),
                             getLong(two, NANOSECONDS, 0),
                             isObject);
-            long days1, days2;
+            long days1;
+            long days2;
             if (getLong(one, YEARS, 0) != 0 || getLong(two, YEARS, 0) != 0 ||
                             getLong(one, MONTHS, 0) != 0 || getLong(two, MONTHS, 0) != 0 ||
                             getLong(one, WEEKS, 0) != 0 || getLong(two, WEEKS, 0) != 0) {

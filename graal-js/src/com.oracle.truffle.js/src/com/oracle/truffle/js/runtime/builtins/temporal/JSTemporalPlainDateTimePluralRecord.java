@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 //TODO check whether we really need that in addition to the singular version.
-public class JSTemporalPlainDateTimePluralRecord {
+public final class JSTemporalPlainDateTimePluralRecord {
     private final long years;
     private final long months;
     private final long days;

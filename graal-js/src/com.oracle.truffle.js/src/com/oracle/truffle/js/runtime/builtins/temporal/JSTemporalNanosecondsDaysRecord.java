@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public class JSTemporalNanosecondsDaysRecord {
+public final class JSTemporalNanosecondsDaysRecord {
     private final long days;
     private final long nanoseconds;
     private final long dayLength;

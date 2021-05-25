@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
@@ -64,6 +66,106 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createTypeErrorFieldsNotAnObject() {
         return Errors.createTypeError("Given fields is not an object.");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorRelativeToNotUndefined(String unit) {
+        return Errors.createRangeError(String.format("RelativeTo object should be not undefined if unit is %s.", unit));
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorDisallowedField(String property) {
+        return Errors.createRangeError(String.format("Property %s is a disallowed field and not 0.", property));
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorOptionsNotContained(Set<?> values, Object value) {
+        return Errors.createRangeError(String.format("Given options value: %s is not contained in values: %s", value, values));
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorPropertyRequired(String property) {
+        return Errors.createTypeError(String.format("Property %s is required.", property));
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorPropertyNotUndefined(String property) {
+        return Errors.createTypeError(String.format("Property %s should not be undefined.", property));
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorTimeOutsideRange() {
+        return Errors.createRangeError("Given Time outside the range.");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorDateOutsideRange() {
+        return Errors.createRangeError("Given Date outside the range.");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorDateTimeOutsideRange() {
+        return Errors.createRangeError("Given DateTime outside the range.");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorYearMonthOutsideRange() {
+        return Errors.createRangeError("Given YearMonth outside the range.");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalTimeExpected() {
+        return Errors.createTypeError("Temporal.PlainTime expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalDateExpected() {
+        return Errors.createTypeError("Temporal.PlainDate expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalDateTimeExpected() {
+        return Errors.createTypeError("Temporal.PlainDateTime expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalDurationExpected() {
+        return Errors.createTypeError("Temporal.Duration expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalCalenderExpected() {
+        return Errors.createTypeError("Temporal.Calendar expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalPlainMonthYearExpected() {
+        return Errors.createTypeError("Temporal.PlainMonthYear expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalPlainMonthDayExpected() {
+        return Errors.createTypeError("Temporal.PlainMonthDay expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalISO8601Expected() {
+        return Errors.createTypeError("iso8601 expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalTimePropertyExpected() {
+        return Errors.createTypeError("No Temporal.Time property found in given object.");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorConstructorExpected() {
+        return Errors.createTypeError("Constructor expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorCalendarNotSupported() {
+        return Errors.createRangeError("Given calendar id not supported.");
     }
 
 }

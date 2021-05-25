@@ -103,8 +103,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
 
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
-            String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, isObject, toBoolean, toString);
+            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+            String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, toBoolean, toString);
             if (isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),

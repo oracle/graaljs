@@ -81,6 +81,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateObject;
@@ -181,7 +182,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
             JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), getContext(), isObject, toString, toInt);
+                            Collections.emptySet(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
                             duration.getHour(), duration.getMinute(), duration.getSecond(),
@@ -215,7 +216,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("createNew()") JSFunctionCallNode callNode) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
             JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), getContext(), isObject, toString, toInt);
+                            Collections.emptySet(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
                             duration.getHour(), duration.getMinute(), duration.getSecond(),
@@ -263,10 +264,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeError("Unexpected timeZone property");
             }
             DynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObject, toInt, getContext());
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(),
-                            isObject);
-            String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, isObject, toBoolean, toString);
-            long hour, minute, second, millisecond, microsecond, nanosecond;
+            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+            String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, toBoolean, toString);
+            long hour;
+            long minute;
+            long second;
+            long millisecond;
+            long microsecond;
+            long nanosecond;
             Object tempValue = JSObject.get(partialTime, HOUR);
             if (tempValue != Undefined.instance) {
                 hour = toInt.executeLong(tempValue);
@@ -326,11 +331,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToNumberNode toNumber) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj, null, getContext(), isObject, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
-            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, TemporalUtil.setYMWD, NANOSECONDS, isObject, toBoolean, toString);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, HOURS, isObject, toBoolean, toString);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, TemporalUtil.setYMWD, NANOSECONDS, toBoolean, toString);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, HOURS, toBoolean, toString);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", toBoolean, toString);
             double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObject, toNumber);
             JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainTime.differenceTime(
@@ -367,11 +372,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToNumberNode toNumber) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj, null, getContext(), isObject, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
-            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, TemporalUtil.setYMWD, NANOSECONDS, isObject, toBoolean, toString);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, HOURS, isObject, toBoolean, toString);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            String smallestUnit = TemporalUtil.toSmallestTemporalDurationUnit(options, TemporalUtil.setYMWD, NANOSECONDS, toBoolean, toString);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, HOURS, toBoolean, toString);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", toBoolean, toString);
             Double max = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double maximum = max == null ? Double.POSITIVE_INFINITY : max.doubleValue();
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObject, toNumber);
@@ -412,10 +417,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (options == Undefined.instance) {
                 throw Errors.createTypeError("Options should not be null.");
             }
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext().getRealm(), isObject);
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, Collections.singleton("day"),
-                            isObject, toBoolean, toString);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, HALF_EXPAND, isObject, toBoolean, toString);
+            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, Collections.singleton("day"), toBoolean, toString);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, HALF_EXPAND, toBoolean, toString);
             int maximum;
             if (smallestUnit.equals(HOUR)) {
                 maximum = 24;
@@ -548,9 +552,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected DynamicObject getISOFields(Object thisObj) {
             TemporalTime time = TemporalUtil.requireTemporalTime(thisObj);
-            DynamicObject fields = JSObjectUtil.createOrdinaryPrototypeObject(getContext().getRealm());
-            // TODO JSObjectUtil.putDataProperty(getContext(), fields, CALENDAR,
-            // time.getCalendar());
+            DynamicObject fields = JSOrdinary.create(getContext());
+            JSObjectUtil.putDataProperty(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
             JSObjectUtil.putDataProperty(getContext(), fields, "isoHour", time.getHours());
             JSObjectUtil.putDataProperty(getContext(), fields, "isoMinute", time.getMinutes());
             JSObjectUtil.putDataProperty(getContext(), fields, "isoSecond", time.getSeconds());
@@ -574,9 +577,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToBooleanNode toBoolean) {
             TemporalTime time = TemporalUtil.requireTemporalTime(thisObj);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TemporalConstants.TRUNC, isObject, toBoolean, toString);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TemporalConstants.TRUNC, toBoolean, toString);
             JSTemporalPlainDateTimePluralRecord roundResult = JSTemporalPlainTime.roundTime(
                             time.getHours(), time.getMinutes(), time.getSeconds(),
                             time.getMilliseconds(), time.getMicroseconds(), time.getNanoseconds(),

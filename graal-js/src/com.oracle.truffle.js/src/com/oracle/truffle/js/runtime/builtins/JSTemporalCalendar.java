@@ -41,8 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import static com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey.TemporalCalendarId;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_DAY;
@@ -51,6 +52,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -64,10 +66,7 @@ import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -77,9 +76,10 @@ import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
+public final class JSTemporalCalendar extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
 
     public static final JSTemporalCalendar INSTANCE = new JSTemporalCalendar();
@@ -95,9 +95,8 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     public static DynamicObject create(JSContext context, String id) {
         if (!isBuiltinCalendar(id)) {
-            throw Errors.createRangeError("Given calendar id not supported.");
+            throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalCalendarFactory();
         DynamicObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
@@ -127,7 +126,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                         return temporalCalendar.getId();
                     } else {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorTemporalCalenderExpected();
+                        throw TemporalErrors.createTypeErrorTemporalCalenderExpected();
                     }
                 }
             });
@@ -169,39 +168,22 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         return obj instanceof JSTemporalCalendarObject;
     }
 
-    // 12.1.1
-    public static Object createTemporalCalendarFromStatic(DynamicObject constructor, String id,
-                    IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        assert isBuiltinCalendar(id);
-        if (!isConstructor.executeBoolean(constructor)) {
-            throw Errors.createTypeError("Given constructor is not an constructor.");
-        }
-        Object[] ctorArgs = new Object[]{id};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        Object result = callNode.executeCall(args);
-        return result;
-    }
-
     // 12.1.2
     public static boolean isBuiltinCalendar(String id) {
         return id.equals(ISO8601);
     }
 
     // 12.1.3
-    public static JSTemporalCalendarObject getBuiltinCalendar(String id, DynamicObject constructor, IsConstructorNode isConstructorNode,
-                    JSFunctionCallNode callNode) {
+    public static JSTemporalCalendarObject getBuiltinCalendar(String id, JSContext ctx) {
         if (!isBuiltinCalendar(id)) {
-            throw Errors.createRangeError("Given calender identifier is not a builtin.");
+            throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-        return (JSTemporalCalendarObject) createTemporalCalendarFromStatic(constructor, id, isConstructorNode, callNode);
+        return (JSTemporalCalendarObject) create(ctx, id);
     }
 
     // 12.1.4
-    public static JSTemporalCalendarObject getISO8601Calender(JSRealm realm, IsConstructorNode isConstructorNode,
-                    JSFunctionCallNode callNode) {
-        return getBuiltinCalendar(ISO8601, realm.getTemporalCalendarConstructor(), isConstructorNode, callNode);
+    public static JSTemporalCalendarObject getISO8601Calender(JSContext ctx) {
+        return getBuiltinCalendar(ISO8601, ctx);
     }
 
     private static Object executeFunction(DynamicObject obj, String fnName, Object... funcArgs) {
@@ -275,34 +257,30 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.21
     // TODO (CW) not sure this is correct, looks different than the spec
-    public static Object toTemporalCalendar(Object temporalCalendarLike, JSRealm realm, IsObjectNode isObjectNode, JSToStringNode toStringNode,
-                    IsConstructorNode isConstructorNode, JSFunctionCallNode callNode) {
+    public static Object toTemporalCalendar(Object temporalCalendarLike, JSContext ctx, IsObjectNode isObjectNode, JSToStringNode toStringNode) {
         if (isObjectNode.executeBoolean(temporalCalendarLike)) {
             return temporalCalendarLike;
         }
-        return calendarFrom(temporalCalendarLike, realm.getTemporalCalendarConstructor(), isObjectNode, toStringNode,
-                        isConstructorNode, callNode);
+        return calendarFrom(temporalCalendarLike, isObjectNode, toStringNode, ctx);
     }
 
     // 12.1.22
-    public static Object toOptionalTemporalCalendar(Object temporalCalendarLike, JSRealm realm, JSToStringNode toString, IsObjectNode isObject, IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        if (Undefined.instance.equals(temporalCalendarLike) || temporalCalendarLike == Undefined.instance) {
-            return getISO8601Calender(realm, isConstructor, callNode);
+    public static Object toOptionalTemporalCalendar(Object temporalCalendarLike, JSContext ctx, JSToStringNode toString, IsObjectNode isObject) {
+        if (temporalCalendarLike == Undefined.instance || temporalCalendarLike == null) {
+            return getISO8601Calender(ctx);
         }
-        return toTemporalCalendar(temporalCalendarLike, realm, isObject, toString, isConstructor, callNode);
+        return toTemporalCalendar(temporalCalendarLike, ctx, isObject, toString);
     }
 
     // 12.1.24
-    public static Object calendarFrom(Object itemParam, DynamicObject constructor, IsObjectNode isObject, JSToStringNode toString,
-                    IsConstructorNode isConstructor, JSFunctionCallNode callNode) {
+    public static Object calendarFrom(Object itemParam, IsObjectNode isObject, JSToStringNode toString, JSContext ctx) {
         Object item = itemParam;
         if (isObject.executeBoolean(item)) {
-            if (!JSObject.hasProperty((DynamicObject) item, "calendar")) {
+            if (!JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
                 return item;
             }
-            item = JSObject.get((DynamicObject) item, "calendar");
-            if (isObject.executeBoolean(item) && !JSObject.hasProperty((DynamicObject) item, "calendar")) {
+            item = JSObject.get((DynamicObject) item, CALENDAR);
+            if (isObject.executeBoolean(item) && !JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
                 return item;
             }
         }
@@ -310,7 +288,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         if (!isBuiltinCalendar(string)) {
             string = TemporalUtil.parseTemporalCalendarString(string);
         }
-        return createTemporalCalendarFromStatic(constructor, string, isConstructor, callNode);
+        return create(ctx, string);
     }
 
     // 12.1.32
@@ -442,7 +420,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber,
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
+        String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), ctx);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
@@ -459,7 +437,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
                     JSToStringNode toString, JSStringToNumberNode stringToNumber,
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
+        String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), ctx);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
@@ -474,11 +452,9 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
 
     // 12.1.41
     public static DynamicObject isoMonthDayFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean,
-                    JSToStringNode toString, JSStringToNumberNode stringToNumber,
-                    JSIdenticalNode identicalNode) {
+                    JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
-        String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
+        String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), ctx);
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
@@ -498,7 +474,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         } else {
             result = TemporalUtil.regulateISODate(referenceISOYear, (Long) month, (Long) day, overflow);
         }
-        DynamicObject record = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+        DynamicObject record = JSOrdinary.create(ctx);
         JSObjectUtil.putDataProperty(ctx, record, MONTH, result.getMonth());
         JSObjectUtil.putDataProperty(ctx, record, DAY, result.getDay());
         JSObjectUtil.putDataProperty(ctx, record, REFERENCE_ISO_YEAR, referenceISOYear);
@@ -540,6 +516,7 @@ public class JSTemporalCalendar extends JSNonProxy implements JSConstructorFacto
         return buildISOMonthCode(month);
     }
 
+    @TruffleBoundary
     private static String buildISOMonthCode(long month) {
         String monthCode = String.format("%1$2d", month).replace(" ", "0");
         return "M".concat(monthCode);

@@ -43,5 +43,5 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import com.oracle.truffle.api.object.DynamicObject;
 
 public interface TemporalCalendar {
-    public DynamicObject getCalendar();
+    DynamicObject getCalendar();
 }

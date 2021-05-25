@@ -66,6 +66,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -76,10 +77,7 @@ import com.oracle.truffle.js.builtins.TemporalPlainDatePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -89,11 +87,11 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePl
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
+public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
 
     public static final JSTemporalPlainDate INSTANCE = new JSTemporalPlainDate();
@@ -175,11 +173,11 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
                             // TODO according 3.3.4 this might be more complex
                             default:
                                 errorBranch.enter();
-                                throw Errors.createTypeErrorTemporalDateExpected();
+                                throw TemporalErrors.createTypeErrorTemporalDateExpected();
                         }
                     } else {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorTemporalDateExpected();
+                        throw TemporalErrors.createTypeErrorTemporalDateExpected();
                     }
                 }
             });
@@ -211,7 +209,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
     public static DynamicObject createTemporalDate(JSContext context, long y, long m, long d, DynamicObject calendar) {
         rejectDate(y, m, d);
         if (!dateTimeWithinLimits(y, m, d, 12, 0, 0, 0, 0, 0)) {
-            throw Errors.createRangeError("Date is not within range.");
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
@@ -222,7 +220,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
 
     private static void rejectDate(long year, long month, long day) {
         if (!validateDate(year, month, day)) {
-            throw Errors.createRangeError("Given date outside the range.");
+            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
     }
 
@@ -292,25 +290,10 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         return !(Double.isNaN(d) || Double.isInfinite(d));
     }
 
-    // 3.5.3
-    public static Object createTemporalDateFromStatic(DynamicObject constructor, long isoYear, long isoMonth, long isoDay,
-                    DynamicObject calendar, IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        assert TemporalUtil.validateISODate(isoYear, isoMonth, isoDay);
-        if (!isConstructor.executeBoolean(constructor)) {
-            throw Errors.createTypeError("Given constructor is not an constructor.");
-        }
-        Object[] ctorArgs = new Object[]{isoYear, isoMonth, isoDay, calendar};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        Object result = callNode.executeCall(args);
-        return result;
-    }
-
     // 3.5.4
     public static DynamicObject toTemporalDate(Object item, Object optionsParam,
                     JSContext ctx, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString) {
-        DynamicObject options = optionsParam != Undefined.instance ? (DynamicObject) optionsParam : JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+        DynamicObject options = optionsParam != Undefined.instance ? (DynamicObject) optionsParam : JSOrdinary.createWithNullPrototype(ctx);
         if (isObject.executeBoolean(item)) {
             DynamicObject itemObj = (DynamicObject) item;
             if (isJSTemporalPlainDate(item)) {
@@ -321,7 +304,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
             DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, TemporalUtil.toSet(), ctx);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
-        TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
+        TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
         JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
         assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
         DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(result.getCalendar(), ctx);
@@ -442,6 +425,7 @@ public class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFact
         return JSTemporalPlainDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
     }
 
+    @TruffleBoundary
     public static String temporalDateToString(TemporalDate date, String showCalendar) {
         String yearString = TemporalUtil.padISOYear(date.getISOYear());
         String monthString = String.format("%1$2d", date.getISOMonth()).replace(" ", "0");

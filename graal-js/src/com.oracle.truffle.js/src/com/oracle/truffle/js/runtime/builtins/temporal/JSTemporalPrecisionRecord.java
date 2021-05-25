@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public class JSTemporalPrecisionRecord {
+public final class JSTemporalPrecisionRecord {
     private final Object precision; // number, or String "auto"
     private final String unit;
     private final double increment;

@@ -50,6 +50,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -61,7 +62,6 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -77,9 +77,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
+public final class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
 
     public static final JSTemporalPlainTime INSTANCE = new JSTemporalPlainTime();
@@ -93,7 +94,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     public static DynamicObject create(JSContext context, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds) {
         if (!TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
-            throw Errors.createRangeError("Given time outside the range.");
+            throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
         DynamicObject calendar = TemporalUtil.getISO8601Calendar(context);
         JSRealm realm = context.getRealm();
@@ -140,11 +141,11 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
                                 return temporalTime.getNanoseconds();
                             default:
                                 errorBranch.enter();
-                                throw Errors.createTypeErrorTemporalTimeExpected();
+                                throw TemporalErrors.createTypeErrorTemporalTimeExpected();
                         }
                     } else {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorTemporalTimeExpected();
+                        throw TemporalErrors.createTypeErrorTemporalTimeExpected();
                     }
                 }
             });
@@ -238,7 +239,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
             }
             DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, ctx);
             if (!JSRuntime.toString(calendar).equals(TemporalConstants.ISO8601)) {
-                throw Errors.createRangeError("iso8601 expected");
+                throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
             }
             JSTemporalPlainDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
             result2 = TemporalUtil.regulateTime(
@@ -251,10 +252,10 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
             if (!TemporalUtil.validateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond())) {
-                throw Errors.createRangeError("Given time outside the range.");
+                throw TemporalErrors.createRangeErrorTimeOutsideRange();
             }
             if (result.hasCalendar() && !JSRuntime.toString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
-                throw Errors.createRangeError("Wrong calendar.");
+                throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
             }
             result2 = JSTemporalPlainDateTimePluralRecord.create(result);
         }
@@ -263,12 +264,11 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
     }
 
     // 4.5.3
-    public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, IsObjectNode isObject,
-                    JSToIntegerAsLongNode toInt, JSContext ctx) {
+    public static DynamicObject toPartialTime(DynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSContext ctx) {
         if (!isObject.executeBoolean(temporalTimeLike)) {
-            throw Errors.createTypeError("Temporal.Time like object expected.");
+            throw TemporalErrors.createTypeErrorTemporalTimeExpected();
         }
-        DynamicObject result = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm());
+        DynamicObject result = JSOrdinary.create(ctx);
         boolean any = false;
         for (String property : TemporalUtil.TIME_LIKE_PROPERTIES) {
             Object value = JSObject.get(temporalTimeLike, property);
@@ -279,8 +279,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
             }
         }
         if (!any) {
-
-            throw Errors.createTypeError("No Temporal.Time property found in given object.");
+            throw TemporalErrors.createTypeErrorTemporalTimePropertyExpected();
         }
         return result;
     }
@@ -298,24 +297,8 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         return (JSTemporalPlainTimeObject) callNode.executeCall(args);
     }
 
-    // 4.5.10
-    public static Object createTemporalTimeFromStatic(DynamicObject constructor, long hours, long minutes,
-                    long seconds, long milliseconds, long microseconds,
-                    long nanoseconds,
-                    IsConstructorNode isConstructor,
-                    JSFunctionCallNode callNode) {
-        assert TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        if (!isConstructor.executeBoolean(constructor)) {
-            throw Errors.createTypeError("Given constructor is not an constructor.");
-        }
-        Object[] ctorArgs = new Object[]{hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        Object result = callNode.executeCall(args);
-        return result;
-    }
-
     // 4.5.12
+    @TruffleBoundary
     public static String temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, Object precision) {
         String hourString = String.format("%1$2d", hour).replace(" ", "0");
@@ -400,7 +383,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         }
         long result = (long) TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
         if (unit.equals(DAY)) {
-            return JSTemporalPlainDateTimePluralRecord.create(0, 0, (long) result, 0, 0, 0, 0, 0, 0);
+            return JSTemporalPlainDateTimePluralRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
         }
         if (unit.equals(HOUR)) {
             return balanceTime(result, 0, 0, 0, 0, 0);
@@ -452,8 +435,7 @@ public class JSTemporalPlainTime extends JSNonProxy implements JSConstructorFact
         hours = (long) TemporalUtil.nonNegativeModulo(hours, 24);
 
         // TODO [[Days]] is plural, rest is singular WTF
-        return JSTemporalPlainDateTimePluralRecord.create(0, 0, (long) days, (long) hours, (long) minutes, (long) seconds, (long) milliseconds,
-                        (long) microseconds, (long) nanoseconds);
+        return JSTemporalPlainDateTimePluralRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
 
     }
 }

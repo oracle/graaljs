@@ -42,14 +42,11 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.TemporalCalendarFunctionBuiltinsFactory.JSTemporalCalendarFromNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalCalendar;
@@ -95,11 +92,8 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected Object from(Object item,
                         @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") IsConstructorNode isConstructor,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("createNew()") JSFunctionCallNode callNode) {
-            DynamicObject constructor = getContext().getRealm().getTemporalCalendarConstructor();
-            return JSTemporalCalendar.calendarFrom(item, constructor, isObject, toString, isConstructor, callNode);
+                        @Cached("create()") JSToStringNode toString) {
+            return JSTemporalCalendar.calendarFrom(item, isObject, toString, getContext());
         }
 
     }

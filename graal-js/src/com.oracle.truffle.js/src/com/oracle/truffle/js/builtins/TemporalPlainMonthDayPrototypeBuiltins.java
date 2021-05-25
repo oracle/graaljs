@@ -123,7 +123,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         protected String toString(Object thisObj, DynamicObject optParam,
                         @Cached("create()") IsObjectNode isObject) {
             JSTemporalPlainMonthDayObject md = TemporalUtil.requireTemporalMonthDay(thisObj);
-            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext(), isObject);
             String showCalendar = TemporalUtil.toShowCalendarOption(options);
             return JSTemporalPlainMonthDay.temporalMonthDayToString(md, showCalendar);
         }

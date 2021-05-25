@@ -69,8 +69,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRe
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
@@ -83,7 +83,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     public static DynamicObject create(JSContext context, long isoMonth, long isoDay, long referenceISOYear, DynamicObject calendar) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
-            throw Errors.createRangeError("Not a valid date.");
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
 
         JSRealm realm = context.getRealm();
@@ -125,11 +125,11 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
                             default:
                                 errorBranch.enter();
-                                throw Errors.createTypeErrorTemporalPlainMonthDayExpected();
+                                throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
                         }
                     } else {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorTemporalPlainMonthDayExpected();
+                        throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
                     }
                 }
             });
@@ -177,10 +177,11 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         return obj instanceof JSTemporalPlainMonthDayObject;
     }
 
+    @TruffleBoundary
     public static DynamicObject toTemporalMonthDay(Object item, DynamicObject optParam, JSContext ctx) {
         DynamicObject options = optParam;
         if (optParam == Undefined.instance) {
-            options = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+            options = JSOrdinary.createWithNullPrototype(ctx);
         }
         long referenceISOYear = 1972;
         if (JSRuntime.isObject(item)) {
@@ -223,7 +224,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             return JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), 0, calendar);
         }
         DynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, result.getMonth(), result.getDay(), referenceISOYear, calendar);
-        DynamicObject canonicalMonthDayOptions = JSObjectUtil.createOrdinaryPrototypeObject(ctx.getRealm(), Null.instance);
+        DynamicObject canonicalMonthDayOptions = JSOrdinary.createWithNullPrototype(ctx);
         return monthDayFromFields(calendar, result2, canonicalMonthDayOptions);
     }
 

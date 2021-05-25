@@ -70,6 +70,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
@@ -185,7 +186,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             TemporalDateTime dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
             JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), getContext(), isObject, toString, toInt);
+                            Collections.emptySet(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
                             duration.getHour(), duration.getMinute(), duration.getSecond(),
@@ -215,6 +216,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             super(context, builtin);
         }
 
+        @SuppressWarnings("unused")
         @Specialization
         public DynamicObject since(DynamicObject thisObj, Object other, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
@@ -234,7 +236,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public DynamicObject getISOFields(Object thisObj) {
             TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
-            DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(getContext().getRealm());
+            DynamicObject obj = JSOrdinary.create(getContext());
             JSObjectUtil.putDataProperty(getContext(), obj, CALENDAR, dt.getCalendar());
             JSObjectUtil.putDataProperty(getContext(), obj, "isoDay", dt.getISODay());
             JSObjectUtil.putDataProperty(getContext(), obj, "isoHour", dt.getHours());
@@ -263,7 +265,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             TemporalDateTime dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
             JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), getContext(), isObject, toString, toInt);
+                            Collections.emptySet(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
                             duration.getHour(), duration.getMinute(), duration.getSecond(),
@@ -299,9 +301,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
             TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", isObject, toBoolean, toString);
+            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", toBoolean, toString);
             String showCalendar = TemporalUtil.toShowCalendarOption(options);
             JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainDateTime.roundISODateTime(
                             dt.getISOYear(), dt.getISOMonth(), dt.getISODay(),
@@ -351,6 +353,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             super(context, builtin);
         }
 
+        @SuppressWarnings("unused")
         @Specialization
         public DynamicObject with(DynamicObject thisObj, Object other, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
@@ -367,6 +370,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             super(context, builtin);
         }
 
+        @SuppressWarnings("unused")
         @Specialization
         public DynamicObject until(DynamicObject thisObj, Object other, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
@@ -383,6 +387,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             super(context, builtin);
         }
 
+        @SuppressWarnings("unused")
         @Specialization
         public DynamicObject equals(DynamicObject thisObj, Object other) {
             // TODO
@@ -396,6 +401,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             super(context, builtin);
         }
 
+        @SuppressWarnings("unused")
         @Specialization
         public DynamicObject round(DynamicObject thisObj, Object other) {
             // TODO

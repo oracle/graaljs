@@ -51,6 +51,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -58,7 +59,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.TemporalPlainYearMonthFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TemporalPlainYearMonthPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -66,9 +66,10 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
+public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
 
     public static final JSTemporalPlainYearMonth INSTANCE = new JSTemporalPlainYearMonth();
@@ -82,10 +83,10 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
     public static DynamicObject create(JSContext context, long isoYear, long isoMonth, DynamicObject calendar,
                     long referenceISODay) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
-            throw Errors.createRangeError("Not a valid date.");
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         if (!validateISOYearMonthRange(isoYear, isoMonth)) {
-            throw Errors.createRangeError("Invalid year month range.");
+            throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
 
         JSRealm realm = context.getRealm();
@@ -135,11 +136,11 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
                                 return JSTemporalCalendar.calendarInLeapYear(temporalPlainYearMonth.getCalendar(), temporalPlainYearMonth);
                             default:
                                 errorBranch.enter();
-                                throw Errors.createTypeErrorTemporalPlainMonthYearExpected();
+                                throw TemporalErrors.createTypeErrorTemporalPlainMonthYearExpected();
                         }
                     } else {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorTemporalPlainMonthYearExpected();
+                        throw TemporalErrors.createTypeErrorTemporalPlainMonthYearExpected();
                     }
                 }
             });
@@ -211,6 +212,7 @@ public class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructo
         return true;
     }
 
+    @TruffleBoundary
     public static String temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, String showCalendar) {
         Object year = TemporalUtil.padISOYear(ym.getISOYear());
         String month = String.format("%1$2d", ym.getISOMonth()).replace(" ", "0");

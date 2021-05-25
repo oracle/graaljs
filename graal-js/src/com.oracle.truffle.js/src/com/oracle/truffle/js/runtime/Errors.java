@@ -571,41 +571,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTemporalTimeExpected() {
-        return Errors.createTypeError("Temporal.PlainTime expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalDateExpected() {
-        return Errors.createTypeError("Temporal.PlainDate expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalDateTimeExpected() {
-        return Errors.createTypeError("Temporal.PlainDateTime expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalDurationExpected() {
-        return Errors.createTypeError("Temporal.Duration expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalCalenderExpected() {
-        return Errors.createTypeError("Temporal.Calendar expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalPlainMonthYearExpected() {
-        return Errors.createTypeError("Temporal.PlainMonthYear expected");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalPlainMonthDayExpected() {
-        return Errors.createTypeError("Temporal.PlainMonthDay expected");
-    }
-
-    @TruffleBoundary
     public static JSException createTypeErrorCallableExpected() {
         return Errors.createTypeError("Callable expected");
     }

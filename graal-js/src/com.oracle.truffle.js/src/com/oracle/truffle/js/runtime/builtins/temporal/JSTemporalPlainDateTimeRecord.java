@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class JSTemporalPlainDateTimeRecord {
+public final class JSTemporalPlainDateTimeRecord {
     private final long year;
     private final long month;
     private final long day;
@@ -141,11 +141,13 @@ public class JSTemporalPlainDateTimeRecord {
         return weeks;
     }
 
+    @SuppressWarnings("static-method")
     public Object getTimeZoneOffset() {
         // TODO Auto-generated method stub
         return null;
     }
 
+    @SuppressWarnings("static-method")
     public Object getTimeZoneIANAName() {
         // TODO Auto-generated method stub
         return null;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights resetoTemporalDaterved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -210,7 +210,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!isObject.executeBoolean(fields)) {
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             JSTemporalPlainDateTimeRecord result = JSTemporalCalendar.isoDateFromFields((DynamicObject) fields, options, getContext(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
 
@@ -237,7 +237,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!isObject.executeBoolean(fields)) {
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             DynamicObject result = JSTemporalCalendar.isoYearMonthFromFields((DynamicObject) fields, options, getContext(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
             return JSTemporalPlainYearMonth.create(getContext(), getLong(result, YEAR), getLong(result, MONTH),
@@ -264,7 +264,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!isObject.executeBoolean(fields)) {
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             DynamicObject result = JSTemporalCalendar.isoMonthDayFromFields((DynamicObject) fields, options, getContext(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
 
@@ -292,8 +292,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             Undefined.instance, getContext(), isObject, toBoolean, toString);
             JSTemporalDurationObject duration = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(
                             durationObj, getContext(), isObject, toInt, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
-            String overflow = TemporalUtil.toTemporalOverflow(options, isObject, toBoolean, toString);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
             JSTemporalPlainDateTimeRecord result = TemporalUtil.addISODate(date.getISOYear(), date.getISOMonth(), date.getISODay(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
 
@@ -317,12 +317,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(oneObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(twoObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext().getRealm(), isObject);
+            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options,
                             TemporalUtil.toSet(HOURS, MINUTES, SECONDS,
                                             MILLISECONDS, MICROSECONDS,
                                             NANOSECONDS),
-                            DAYS, isObject, toBoolean, toString);
+                            DAYS, toBoolean, toString);
             JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(), two.getISOYear(), two.getISOMonth(), two.getISODay(),
                             largestUnit);

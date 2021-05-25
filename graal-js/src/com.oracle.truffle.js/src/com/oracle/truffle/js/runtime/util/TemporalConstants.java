@@ -106,6 +106,8 @@ public final class TemporalConstants {
     public static final String UNIT = "Unit";
 
     public static final String AUTO = "auto";
+    public static final String ALWAYS = "always";
+    public static final String NEVER = "never";
 
     public static final String FLOOR = "floor";
     public static final String CEIL = "ceil";
