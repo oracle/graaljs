@@ -1850,15 +1850,11 @@ public class WriteElementNode extends JSTargetableNode {
             if (interop.hasArrayElements(truffleObject) && keyInterop.fitsInLong(convertedKey)) {
                 try {
                     interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
-                } catch (InvalidArrayIndexException e) {
+                } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
                     if (root.isStrict) {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorNotWritableProperty(convertedKey, truffleObject, this);
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
                     }
-                    // non-strict mode: do nothing
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
                 }
             } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
@@ -1869,6 +1865,11 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);
+
+                if (!interop.hasMembers(truffleObject)) {
+                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, truffleObject, this, root.context);
+                }
+
                 if (root.context.isOptionNashornCompatibilityMode()) {
                     if (tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context)) {
                         return;
@@ -1876,15 +1877,11 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 try {
                     interop.writeMember(truffleObject, propertyKey, exportedValue);
-                } catch (UnknownIdentifierException e) {
+                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
                     if (root.isStrict) {
                         errorBranch.enter();
-                        throw Errors.createTypeErrorNotWritableProperty(convertedKey, truffleObject, this);
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                     }
-                    // non-strict mode: do nothing
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
                 }
             }
         }

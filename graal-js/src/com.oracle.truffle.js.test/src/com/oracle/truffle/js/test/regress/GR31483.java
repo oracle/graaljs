@@ -87,6 +87,21 @@ public class GR31483 {
     }
 
     @Test
+    public void testStrictJavaArrayIncompatibleType() {
+        try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
+            Value b = context.getBindings("js");
+
+            b.putMember("array", new int[]{42, 43, 44});
+
+            assertThrowsTypeError(() -> context.eval("js", "'use strict'; array[2] = {};"));
+            context.eval("js", "array[2] = {};");
+
+            assertThrowsTypeError(() -> context.eval("js", "'use strict'; array[4] = {};"));
+            context.eval("js", "array[4] = {};");
+        }
+    }
+
+    @Test
     public void testStrictJavaListOOB() {
         try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
             Value b = context.getBindings("js");
@@ -117,8 +132,36 @@ public class GR31483 {
             assertThrowsTypeError(() -> context.eval("js", "'use strict'; object['new'] = 'b';"));
 
             context.eval("js", "object['new'] = 'b';");
-            assertFalse(b.hasMember("new"));
+            assertFalse(b.getMember("object").hasMember("new"));
         }
+    }
+
+    @Test
+    public void testJavaObjectFieldIncompatibleType() {
+        try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
+            Value b = context.getBindings("js");
+
+            Object obj = new ObjectWithField();
+            b.putMember("object", obj);
+
+            assertTrue(b.getMember("object").hasMember("field"));
+
+            assertThrowsTypeError(() -> context.eval("js", "'use strict'; object['field'] = 'b';"));
+            context.eval("js", "object['field'] = 'b';");
+
+            context.eval("js", "'use strict'; object['field'] = 42;");
+            assertEquals(42, b.getMember("object").getMember("field").asInt());
+
+            assertThrowsTypeError(() -> context.eval("js", "'use strict'; object.field = 'b';"));
+            context.eval("js", "object.field = 'b';");
+
+            context.eval("js", "'use strict'; object.field = 43;");
+            assertEquals(43, b.getMember("object").getMember("field").asInt());
+        }
+    }
+
+    public static class ObjectWithField {
+        public int field;
     }
 
     private static void assertThrowsTypeError(Runnable runnable) {
