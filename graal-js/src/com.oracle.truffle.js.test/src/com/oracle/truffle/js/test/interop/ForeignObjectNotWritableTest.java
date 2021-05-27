@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.regress;
+package com.oracle.truffle.js.test.interop;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -56,10 +56,10 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.JSContextOptions;
 
-public class GR31483 {
+public class ForeignObjectNotWritableTest {
 
     @Test
-    public void testGH455() {
+    public void testJavaArrayPush() {
         try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).//
                         option(JSContextOptions.FOREIGN_OBJECT_PROTOTYPE_NAME, "true").build()) {
             Value b = context.getBindings("js");
@@ -72,7 +72,7 @@ public class GR31483 {
     }
 
     @Test
-    public void testStrictJavaArrayOOB() {
+    public void testJavaArrayOOB() {
         try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
             Value b = context.getBindings("js");
 
@@ -87,7 +87,7 @@ public class GR31483 {
     }
 
     @Test
-    public void testStrictJavaArrayIncompatibleType() {
+    public void testJavaArrayIncompatibleType() {
         try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
             Value b = context.getBindings("js");
 
@@ -102,7 +102,7 @@ public class GR31483 {
     }
 
     @Test
-    public void testStrictJavaListOOB() {
+    public void testJavaListOOB() {
         try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
             Value b = context.getBindings("js");
 
@@ -122,7 +122,7 @@ public class GR31483 {
     }
 
     @Test
-    public void testStrictJavaObjectSet() {
+    public void testJavaObjectSetMember() {
         try (Context context = Context.newBuilder("js").allowHostAccess(HostAccess.ALL).allowExperimentalOptions(true).build()) {
             Value b = context.getBindings("js");
 
