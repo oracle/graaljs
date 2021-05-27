@@ -93,7 +93,14 @@ public final class ScopeVariables implements TruffleObject {
     final boolean nodeEnter;
     final Node blockOrRoot; // FrameBlockScopeNode or RootNode
     final Frame functionFrame;
+    private ScopeMembers members;
 
+    /**
+     * @param frame Block scope or function frame
+     * @param nodeEnter True if we are entering the node
+     * @param blockOrRoot FrameBlockScopeNode or FunctionRootNode
+     * @param functionFrame Optional function frame not accessible via parent chain
+     */
     public ScopeVariables(Frame frame, boolean nodeEnter, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot, Frame functionFrame) {
         this.frame = frame;
         this.nodeEnter = nodeEnter;
@@ -191,11 +198,20 @@ public final class ScopeVariables implements TruffleObject {
             Object parent = FrameUtil.getObjectSafe(frame, parentSlot);
             if (parent instanceof Frame) {
                 return (Frame) parent;
-            } else if (functionFrame != frame) {
+            } else if (functionFrame != null && functionFrame != frame && hasNonInternalSlots(functionFrame)) {
                 return functionFrame;
             }
         }
         return null;
+    }
+
+    private static boolean hasNonInternalSlots(Frame frame) {
+        for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
+            if (!JSFrameUtil.isInternal(slot)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @ExportMessage
@@ -207,7 +223,12 @@ public final class ScopeVariables implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
-        return new ScopeMembers(frame, blockOrRoot, functionFrame);
+        ScopeMembers m = this.members;
+        if (m == null) {
+            m = new ScopeMembers(frame, blockOrRoot, functionFrame);
+            this.members = m;
+        }
+        return m;
     }
 
     @ExportMessage
