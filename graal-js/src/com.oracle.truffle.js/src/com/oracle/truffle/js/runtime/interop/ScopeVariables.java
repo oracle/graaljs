@@ -490,17 +490,18 @@ public final class ScopeVariables implements TruffleObject {
                     return new ResolvedSlot(slot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
                 }
 
+                // look up direct eval scope variable
+                FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
+                if (evalScopeSlot != null) {
+                    DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                    DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
+                    if (objLib.containsKey(evalScope, member)) {
+                        return new DynamicScopeResolvedSlot(member, evalScopeSlot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
+                    }
+                }
+
                 FrameSlot parentSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                 if (parentSlot == null) {
-                    // look up direct eval scope variable
-                    FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
-                    if (evalScopeSlot != null) {
-                        DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
-                        DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
-                        if (objLib.containsKey(evalScope, member)) {
-                            return new DynamicScopeResolvedSlot(member, evalScopeSlot, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
-                        }
-                    }
                     break;
                 }
 

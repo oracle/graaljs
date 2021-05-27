@@ -161,17 +161,18 @@ final class ScopeMembers implements TruffleObject {
                         membersList.add(new Key(slot.getIdentifier().toString(), descNode, slot));
                     }
 
+                    // insert direct eval scope variables
+                    FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
+                    if (evalScopeSlot != null) {
+                        DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                        DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
+                        for (Object key : objLib.getKeyArray(evalScope)) {
+                            membersList.add(new Key(key.toString(), descNode, null));
+                        }
+                    }
+
                     FrameSlot parentSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
-                        // insert direct eval scope variables
-                        FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
-                        if (evalScopeSlot != null) {
-                            DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
-                            DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
-                            for (Object key : objLib.getKeyArray(evalScope)) {
-                                membersList.add(new Key(key.toString(), descNode, null));
-                            }
-                        }
                         break;
                     }
 
