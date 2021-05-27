@@ -1865,11 +1865,6 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);
-
-                if (!interop.hasMembers(truffleObject)) {
-                    throw Errors.createTypeErrorCannotSetProperty(propertyKey, truffleObject, this, root.context);
-                }
-
                 if (root.context.isOptionNashornCompatibilityMode()) {
                     if (tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context)) {
                         return;

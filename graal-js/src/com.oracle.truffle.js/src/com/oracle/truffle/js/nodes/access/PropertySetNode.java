@@ -1104,10 +1104,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
             }
 
-            if (!interop.hasMembers(truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(stringKey, truffleObject, this, context);
-            }
-
             if (context.isOptionNashornCompatibilityMode()) {
                 if (tryInvokeSetter(truffleObject, value, root)) {
                     return true;
