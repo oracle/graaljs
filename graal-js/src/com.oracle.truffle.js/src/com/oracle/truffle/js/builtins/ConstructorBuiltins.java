@@ -126,7 +126,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
-import com.oracle.truffle.js.nodes.access.CreateNonEnumerableDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -1884,29 +1883,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
     }
-
-    public static class InstallErrorCauseNode extends JavaScriptBaseNode {
-        private static final String CAUSE = "cause";
-        @Child private CreateNonEnumerableDataPropertyNode createNonEnumerableDataPropertyNode;
-
-        public InstallErrorCauseNode(JSContext context) {
-            this.createNonEnumerableDataPropertyNode = CreateNonEnumerableDataPropertyNode.create(context, CAUSE);
-        }
-
-        public void executeVoid(DynamicObject error, DynamicObject options) {
-            assert JSObject.isJSObject(error);
-            if(JSObject.hasProperty(options, CAUSE)) {
-                Object cause = JSObject.get(options, CAUSE);
-                createNonEnumerableDataPropertyNode.executeVoid(error, cause);
-            }
-        }
-    }
-
     public abstract static class ConstructErrorNode extends ConstructWithNewTargetNode {
         private final JSErrorType errorType;
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
         @Child private InitErrorObjectNode initErrorObjectNode;
-        @Child private InstallErrorCauseNode installErrorCauseNode;
 
         public ConstructErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1940,17 +1920,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
 
             GraalJSException exception = JSException.createCapture(errorType, messageOpt, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
-            DynamicObject error = initErrorObjectNode.execute(errorObj, exception, messageOpt);
-
-            // Add error cause if present
-            if(context.getEcmaScriptVersion() >= 13 && options != Undefined.instance) {
-                if(installErrorCauseNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    installErrorCauseNode = insert(new InstallErrorCauseNode(context));
-                }
-                installErrorCauseNode.executeVoid(error, options);
-            }
-            return error;
+            return initErrorObjectNode.execute(errorObj, exception, messageOpt, null, options);
         }
 
         @Override
@@ -1968,7 +1938,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public abstract static class ConstructAggregateErrorNode extends ConstructWithNewTargetNode {
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
         @Child private InitErrorObjectNode initErrorObjectNode;
-        @Child private InstallErrorCauseNode installErrorCauseNode;
 
         public ConstructAggregateErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -2007,16 +1976,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
 
             GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
-            initErrorObjectNode.execute(errorObj, exception, message, errorsArray);
-            // Add error cause if present
-            if(context.getEcmaScriptVersion() >= 13 && options != Undefined.instance) {
-                if(installErrorCauseNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    installErrorCauseNode = insert(new InstallErrorCauseNode(context));
-                }
-                installErrorCauseNode.executeVoid(errorObj, options);
-            }
-            return errorObj;
+            return initErrorObjectNode.execute(errorObj, exception, message, errorsArray, options);
         }
 
         @Override

@@ -57,8 +57,10 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class InitErrorObjectNode extends JavaScriptBaseNode {
+    private final JSContext context;
     @Child private PropertySetNode setException;
     @Child private PropertySetNode setFormattedStack;
     @Child private DynamicObjectLibrary setMessage;
@@ -67,8 +69,10 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     private final boolean defaultColumnNumber;
     @Child private CreateMethodPropertyNode setLineNumber;
     @Child private CreateMethodPropertyNode setColumnNumber;
+    @Child private InstallErrorCauseNode installErrorCauseNode;
 
     private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
+        this.context = context;
         this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
         this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
         this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
@@ -89,15 +93,27 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt) {
-        return execute(errorObj, exception, messageOpt, null);
+        return execute(errorObj, exception, messageOpt, null, null);
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt) {
+        return execute(errorObj, exception, messageOpt, errorsOpt, null);
+    }
+
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt, DynamicObject options) {
         if (messageOpt != null) {
             setMessage.putWithFlags(errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
         }
         if (errorsOpt != null) {
             setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
+        }
+        if(options != null && context.getEcmaScriptVersion() >= 13 && options != Undefined.instance) {
+            // Add error cause if present
+            if(installErrorCauseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                installErrorCauseNode = insert(new InstallErrorCauseNode(context));
+            }
+            installErrorCauseNode.executeVoid(errorObj, options);
         }
 
         setException.setValue(errorObj, exception);
