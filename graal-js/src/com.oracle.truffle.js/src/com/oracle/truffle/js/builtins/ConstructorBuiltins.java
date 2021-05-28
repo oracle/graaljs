@@ -1943,10 +1943,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject error = initErrorObjectNode.execute(errorObj, exception, messageOpt);
 
             // Add error cause if present
-            if(options != Undefined.instance) {
+            if(context.getEcmaScriptVersion() >= 13 && options != Undefined.instance) {
                 if(installErrorCauseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));
+                    installErrorCauseNode = insert(new InstallErrorCauseNode(context));
                 }
                 installErrorCauseNode.executeVoid(error, options);
             }
@@ -2009,10 +2009,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
             initErrorObjectNode.execute(errorObj, exception, message, errorsArray);
             // Add error cause if present
-            if(options != Undefined.instance) {
+            if(context.getEcmaScriptVersion() >= 13 && options != Undefined.instance) {
                 if(installErrorCauseNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));
+                    installErrorCauseNode = insert(new InstallErrorCauseNode(context));
                 }
                 installErrorCauseNode.executeVoid(errorObj, options);
             }
