@@ -38,49 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalDate {
+public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements TemporalMonth, TemporalCalendar {
 
-    private final long year;
-    private final long month;
-    private final long day;
+    private final long isoMonth;
+    private final long isoDay;
     private final DynamicObject calendar;
+    private final long isoYear;
 
-    protected JSTemporalPlainDateObject(Shape shape) {
+    protected JSTemporalPlainMonthDayObject(Shape shape, long isoMonth, long isoDay, DynamicObject calendar,
+                    long isoYear) {
         super(shape);
-        this.year = 0;
-        this.month = 0;
-        this.day = 0;
-        this.calendar = null;
-    }
-
-    public JSTemporalPlainDateObject(Shape shape, long year, long month, long day, DynamicObject calendar) {
-        super(shape);
-        this.year = year;
-        this.month = month;
-        this.day = day;
+        this.isoMonth = isoMonth;
+        this.isoDay = isoDay;
         this.calendar = calendar;
-    }
-
-    @Override
-    public long getISOYear() {
-        return year;
+        this.isoYear = isoYear;
     }
 
     @Override
     public long getISOMonth() {
-        return month;
+        return isoMonth;
     }
 
-    @Override
     public long getISODay() {
-        return day;
+        return isoDay;
+    }
+
+    public long getISOYear() {
+        return isoYear;
     }
 
     @Override

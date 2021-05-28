@@ -38,26 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalCalendarObject extends JSNonProxyObject {
+public class JSTemporalPlainYearMonthObject extends JSNonProxyObject implements TemporalMonth {
 
-    private final String id;
+    private final long isoYear;
+    private final long isoMonth;
+    private final long isoDay;
+    private final DynamicObject calendar;
 
-    protected JSTemporalCalendarObject(Shape shape) {
+    protected JSTemporalPlainYearMonthObject(Shape shape, long isoYear, long isoMonth, long isoDay,
+                    DynamicObject calendar) {
         super(shape);
-        this.id = "iso8601";
+        this.isoYear = isoYear;
+        this.isoMonth = isoMonth;
+        this.isoDay = isoDay;
+        this.calendar = calendar;
     }
 
-    protected JSTemporalCalendarObject(Shape shape, String id) {
-        super(shape);
-        this.id = id;
+    public long getISOYear() {
+        return isoYear;
     }
 
-    public String getId() {
-        return id;
+    @Override
+    public long getISOMonth() {
+        return isoMonth;
+    }
+
+    public long getISODay() {
+        return isoDay;
+    }
+
+    public DynamicObject getCalendar() {
+        return calendar;
     }
 }

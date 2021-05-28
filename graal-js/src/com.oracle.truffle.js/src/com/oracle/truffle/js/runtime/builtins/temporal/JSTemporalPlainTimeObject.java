@@ -38,42 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainYearMonthObject extends JSNonProxyObject implements TemporalMonth {
+public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalTime {
 
-    private final long isoYear;
-    private final long isoMonth;
-    private final long isoDay;
+    private final long hours;
+    private final long minutes;
+    private final long seconds;
+    private final long milliseconds;
+    private final long microseconds;
+    private final long nanoseconds;
     private final DynamicObject calendar;
 
-    protected JSTemporalPlainYearMonthObject(Shape shape, long isoYear, long isoMonth, long isoDay,
-                    DynamicObject calendar) {
+    protected JSTemporalPlainTimeObject(Shape shape, long hours, long minutes, long seconds, long milliseconds,
+                    long microseconds, long nanoseconds, DynamicObject calendar) {
         super(shape);
-        this.isoYear = isoYear;
-        this.isoMonth = isoMonth;
-        this.isoDay = isoDay;
+        this.hours = hours;
+        this.minutes = minutes;
+        this.seconds = seconds;
+        this.milliseconds = milliseconds;
+        this.microseconds = microseconds;
+        this.nanoseconds = nanoseconds;
         this.calendar = calendar;
     }
 
-    public long getISOYear() {
-        return isoYear;
+    @Override
+    public long getHours() {
+        return hours;
     }
 
     @Override
-    public long getISOMonth() {
-        return isoMonth;
+    public long getMinutes() {
+        return minutes;
     }
 
-    public long getISODay() {
-        return isoDay;
+    @Override
+    public long getSeconds() {
+        return seconds;
     }
 
+    @Override
+    public long getMilliseconds() {
+        return milliseconds;
+    }
+
+    @Override
+    public long getMicroseconds() {
+        return microseconds;
+    }
+
+    @Override
+    public long getNanoseconds() {
+        return nanoseconds;
+    }
+
+    @Override
     public DynamicObject getCalendar() {
         return calendar;
     }

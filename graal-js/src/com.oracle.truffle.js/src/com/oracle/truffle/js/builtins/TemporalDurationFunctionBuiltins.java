@@ -62,8 +62,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalDuration;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 

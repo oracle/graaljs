@@ -52,8 +52,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonth;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainYearMonthPrototypeBuiltins.TemporalPlainYearMonthPrototype> {

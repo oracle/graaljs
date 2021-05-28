@@ -52,7 +52,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;

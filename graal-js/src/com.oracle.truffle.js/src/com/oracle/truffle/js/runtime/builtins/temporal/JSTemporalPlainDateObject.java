@@ -38,72 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements TemporalDateTime {
+public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalDate {
 
-    // from time
-    private final long hours;
-    private final long minutes;
-    private final long seconds;
-    private final long milliseconds;
-    private final long microseconds;
-    private final long nanoseconds;
-    // from date
-    private final int year;
-    private final int month;
-    private final int day;
+    private final long year;
+    private final long month;
+    private final long day;
     private final DynamicObject calendar;
 
-    protected JSTemporalPlainDateTimeObject(Shape shape, long year, long month, long day, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, DynamicObject calendar) {
+    protected JSTemporalPlainDateObject(Shape shape) {
         super(shape);
-        this.hours = hours;
-        this.minutes = minutes;
-        this.seconds = seconds;
-        this.milliseconds = milliseconds;
-        this.microseconds = microseconds;
-        this.nanoseconds = nanoseconds;
+        this.year = 0;
+        this.month = 0;
+        this.day = 0;
+        this.calendar = null;
+    }
 
-        this.year = (int) year;
-        this.month = (int) month;
-        this.day = (int) day;
+    public JSTemporalPlainDateObject(Shape shape, long year, long month, long day, DynamicObject calendar) {
+        super(shape);
+        this.year = year;
+        this.month = month;
+        this.day = day;
         this.calendar = calendar;
-    }
-
-    @Override
-    public long getHours() {
-        return hours;
-    }
-
-    @Override
-    public long getMinutes() {
-        return minutes;
-    }
-
-    @Override
-    public long getSeconds() {
-        return seconds;
-    }
-
-    @Override
-    public long getMilliseconds() {
-        return milliseconds;
-    }
-
-    @Override
-    public long getMicroseconds() {
-        return microseconds;
-    }
-
-    @Override
-    public long getNanoseconds() {
-        return nanoseconds;
     }
 
     @Override

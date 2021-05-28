@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
@@ -64,6 +64,13 @@ import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.builtins.JSConstructor;
+import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;

@@ -52,8 +52,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTime;
-import com.oracle.truffle.js.runtime.builtins.JSTemporalPlainTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimeFunctionBuiltins.TemporalPlainTimeFunction> {
