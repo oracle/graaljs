@@ -38,13 +38,14 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.builtins.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateCompareNodeGen;
-import com.oracle.truffle.js.builtins.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateFromNodeGen;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthCompareNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthFromNodeGen;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -52,26 +53,26 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDateFunctionBuiltins.TemporalPlainDateFunction> {
+public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainYearMonthFunctionBuiltins.TemporalPlainYearMonthFunction> {
 
-    public static final JSBuiltinsContainer BUILTINS = new TemporalPlainDateFunctionBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new TemporalPlainYearMonthFunctionBuiltins();
 
-    protected TemporalPlainDateFunctionBuiltins() {
-        super(JSTemporalPlainDate.CLASS_NAME, TemporalPlainDateFunction.class);
+    protected TemporalPlainYearMonthFunctionBuiltins() {
+        super(JSTemporalPlainYearMonth.CLASS_NAME, TemporalPlainYearMonthFunction.class);
     }
 
-    public enum TemporalPlainDateFunction implements BuiltinEnum<TemporalPlainDateFunction> {
+    public enum TemporalPlainYearMonthFunction implements BuiltinEnum<TemporalPlainYearMonthFunction> {
         from(1),
         compare(2);
 
         private final int length;
 
-        TemporalPlainDateFunction(int length) {
+        TemporalPlainYearMonthFunction(int length) {
             this.length = length;
         }
 
@@ -82,55 +83,55 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainDateFunction builtinEnum) {
+    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainYearMonthFunction builtinEnum) {
         switch (builtinEnum) {
             case from:
-                return JSTemporalPlainDateFromNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainYearMonthFromNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case compare:
-                return JSTemporalPlainDateCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainYearMonthCompareNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
+
         }
         return null;
     }
 
-    public abstract static class JSTemporalPlainDateFromNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainYearMonthFromNode extends JSBuiltinNode {
 
-        public JSTemporalPlainDateFromNode(JSContext context, JSBuiltin builtin) {
+        public JSTemporalPlainYearMonthFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object from(Object item, Object optParam,
+        protected Object from(Object item, DynamicObject optParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
 
-            if (isObject.executeBoolean(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
-                JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
+            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext(), isObject);
+            if (isObject.executeBoolean(item) && JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(item)) {
+                JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-                return JSTemporalPlainDate.createTemporalDate(getContext(),
-                                dtItem.getISOYear(), dtItem.getISOMonth(), dtItem.getISODay(),
-                                dtItem.getCalendar());
+                return JSTemporalPlainYearMonth.create(getContext(),
+                                pmd.getISOMonth(), pmd.getISODay(), pmd.getCalendar(), pmd.getISOYear());
             }
-            return TemporalUtil.toTemporalDate(item, options, getContext());
+            return TemporalUtil.toTemporalYearMonth(item, options, getContext());
         }
 
     }
 
-    public abstract static class JSTemporalPlainDateCompareNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainYearMonthCompareNode extends JSBuiltinNode {
 
-        public JSTemporalPlainDateCompareNode(JSContext context, JSBuiltin builtin) {
+        public JSTemporalPlainYearMonthCompareNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected int compare(Object obj1, Object obj2) {
-            JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(obj1, Undefined.instance, getContext());
-            JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(obj2, Undefined.instance, getContext());
-            return TemporalUtil.compareISODate(
-                            one.getISOYear(), one.getISOMonth(), one.getISODay(),
-                            two.getISOYear(), two.getISOMonth(), two.getISODay());
+        protected int compare(Object one, Object two) {
+            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(one, Undefined.instance, getContext());
+            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(two, Undefined.instance, getContext());
+            return TemporalUtil.compareISODate(oneYM.getISOYear(), oneYM.getISOMonth(), oneYM.getISODay(),
+                            twoYM.getISOYear(), twoYM.getISOMonth(), twoYM.getISODay());
         }
+
     }
 
 }
