@@ -102,7 +102,7 @@ public class ErrorTest {
 
     @Test
     public void testObjectCause() {
-        runErrorTest(buildErrors("{ cause: { a: 0, b: false}}", "e.cause === { a: 0, b: false}"));
+        runErrorTest(buildErrors("{ cause: { a: 0, b: false}}", "e.cause.a === 0 && e.cause.b === false"));
     }
 
     @Test

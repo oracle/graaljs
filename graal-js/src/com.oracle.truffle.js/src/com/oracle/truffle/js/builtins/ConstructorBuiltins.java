@@ -126,6 +126,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
+import com.oracle.truffle.js.nodes.access.CreateNonEnumerableDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -271,14 +272,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         DisplayNames(2),
         Locale(1),
 
-        Error(1),
-        RangeError(1),
-        TypeError(1),
-        ReferenceError(1),
-        SyntaxError(1),
-        EvalError(1),
-        URIError(1),
-        AggregateError(2),
+        Error(2),
+        RangeError(2),
+        TypeError(2),
+        ReferenceError(2),
+        SyntaxError(2),
+        EvalError(2),
+        URIError(2),
+        AggregateError(3),
 
         // WebAssembly
         CompileError(1),
@@ -476,13 +477,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return createCallRequiresNew(context, builtin);
                 }
 
-            case Error:
-            case RangeError:
-            case TypeError:
-            case ReferenceError:
-            case SyntaxError:
-            case EvalError:
-            case URIError:
             case CompileError:
             case LinkError:
             case RuntimeError:
@@ -490,11 +484,22 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return ConstructErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context));
                 }
                 return ConstructErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
+            case Error:
+            case RangeError:
+            case TypeError:
+            case ReferenceError:
+            case SyntaxError:
+            case EvalError:
+            case URIError:
+                if (newTarget) {
+                    return ConstructErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context));
+                }
+                return ConstructErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
             case AggregateError:
                 if (newTarget) {
-                    return ConstructAggregateErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context));
+                    return ConstructAggregateErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(3).createArgumentNodes(context));
                 }
-                return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(2).createArgumentNodes(context));
+                return ConstructAggregateErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(3).createArgumentNodes(context));
 
             case TypedArray:
                 return CallTypedArrayNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
@@ -1880,10 +1885,28 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
+    public static class InstallErrorCauseNode extends JavaScriptBaseNode {
+        private static final String CAUSE = "cause";
+        @Child private CreateNonEnumerableDataPropertyNode createNonEnumerableDataPropertyNode;
+
+        public InstallErrorCauseNode(JSContext context) {
+            this.createNonEnumerableDataPropertyNode = CreateNonEnumerableDataPropertyNode.create(context, CAUSE);
+        }
+
+        public void executeVoid(DynamicObject error, DynamicObject options) {
+            assert JSObject.isJSObject(error);
+            if(JSObject.hasProperty(options, CAUSE)) {
+                Object cause = JSObject.get(options, CAUSE);
+                createNonEnumerableDataPropertyNode.executeVoid(error, cause);
+            }
+        }
+    }
+
     public abstract static class ConstructErrorNode extends ConstructWithNewTargetNode {
         private final JSErrorType errorType;
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
         @Child private InitErrorObjectNode initErrorObjectNode;
+        @Child private InstallErrorCauseNode installErrorCauseNode;
 
         public ConstructErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1894,17 +1917,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructError(DynamicObject newTarget, String message) {
-            return constructErrorImpl(newTarget, message);
+        protected DynamicObject constructError(DynamicObject newTarget, String message, DynamicObject options) {
+            return constructErrorImpl(newTarget, message, options);
         }
 
         @Specialization
-        protected DynamicObject constructError(DynamicObject newTarget, Object message,
+        protected DynamicObject constructError(DynamicObject newTarget, Object message, DynamicObject options,
                         @Cached("create()") JSToStringNode toStringNode) {
-            return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message));
+            return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), options);
         }
 
-        private DynamicObject constructErrorImpl(DynamicObject newTarget, String messageOpt) {
+        private DynamicObject constructErrorImpl(DynamicObject newTarget, String messageOpt, DynamicObject options) {
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
             DynamicObject errorObj = JSError.createErrorObject(getContext(), realm, errorType);
@@ -1917,7 +1940,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             DynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
 
             GraalJSException exception = JSException.createCapture(errorType, messageOpt, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
-            return initErrorObjectNode.execute(errorObj, exception, messageOpt);
+            DynamicObject error = initErrorObjectNode.execute(errorObj, exception, messageOpt);
+
+            // Add error cause if present
+            if(options != Undefined.instance) {
+                if(installErrorCauseNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));
+                }
+                installErrorCauseNode.executeVoid(error, options);
+            }
+            return error;
         }
 
         @Override
@@ -1935,6 +1968,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     public abstract static class ConstructAggregateErrorNode extends ConstructWithNewTargetNode {
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
         @Child private InitErrorObjectNode initErrorObjectNode;
+        @Child private InstallErrorCauseNode installErrorCauseNode;
 
         public ConstructAggregateErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
@@ -1947,7 +1981,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructError(DynamicObject newTarget, Object errorsObj, Object messageObj,
+        protected DynamicObject constructError(DynamicObject newTarget, Object errorsObj, Object messageObj, DynamicObject options,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                         @Cached("createCall()") JSFunctionCallNode iteratorCallNode,
@@ -1974,6 +2008,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, message, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
             initErrorObjectNode.execute(errorObj, exception, message, errorsArray);
+            // Add error cause if present
+            if(options != Undefined.instance) {
+                if(installErrorCauseNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    installErrorCauseNode = insert(new InstallErrorCauseNode(getContext()));
+                }
+                installErrorCauseNode.executeVoid(errorObj, options);
+            }
             return errorObj;
         }
 
