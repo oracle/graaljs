@@ -91,6 +91,7 @@ import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
@@ -113,7 +114,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
@@ -124,6 +124,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -869,7 +870,27 @@ public final class TemporalUtil {
                     value = conversion.apply(value);
                 }
             }
-            JSObjectUtil.putDataProperty(ctx, result, property, value);
+            JSObjectUtil.defineDataProperty(ctx, result, property, value, JSAttributes.configurableEnumerableWritable());
+        }
+        return result;
+    }
+
+    public static DynamicObject preparePartialTemporalFields(DynamicObject fields, Set<String> fieldNames, JSContext ctx) {
+        DynamicObject result = JSOrdinary.create(ctx);
+        boolean any = false;
+        for (String property : fieldNames) {
+            Object value = JSObject.get(fields, property);
+            if (!isNullish(value)) {
+                any = true;
+                if (temporalFieldConversion.containsKey(property)) {
+                    Function<Object, Object> conversion = temporalFieldConversion.get(property);
+                    value = conversion.apply(value);
+                }
+            }
+            JSObjectUtil.defineDataProperty(ctx, result, property, value, JSAttributes.configurableEnumerableWritable());
+        }
+        if (!any) {
+            throw Errors.createTypeError("Given dateTime like object has no relevant properties.");
         }
         return result;
     }
@@ -1377,7 +1398,7 @@ public final class TemporalUtil {
         String overflows = TemporalUtil.toTemporalOverflow(options);
         JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(JSRuntime.toString(itemParam), ctx);
         if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
-            throw Errors.createRangeError("Given date is not valid.");
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
         result = regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
@@ -1419,7 +1440,7 @@ public final class TemporalUtil {
     // 3.5.9
     public static void rejectISODate(long year, long month, long day) {
         if (!validateISODate(year, month, day)) {
-            throw TemporalErrors.createTypeErrorTemporalDateExpected();
+            throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
     }
 
@@ -1640,19 +1661,26 @@ public final class TemporalUtil {
         DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
         if (result.getYear() == 0) { // TODO Check for undefined here!
             if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), 1)) {
-                throw Errors.createRangeError("invalid date");
+                throw TemporalErrors.createRangeErrorDateOutsideRange();
             }
             // TODO year should be undefined!
             return JSTemporalPlainYearMonth.create(ctx, result.getYear(), result.getMonth(), calendar, 0);
         }
-        DynamicObject result2 = JSTemporalPlainMonthDay.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
+        DynamicObject result2 = JSTemporalPlainYearMonth.create(ctx, result.getYear(), result.getMonth(), calendar, result.getDay());
         DynamicObject canonicalYearMonthOptions = JSOrdinary.createWithNullPrototype(ctx);
         return yearMonthFromFields(calendar, result2, canonicalYearMonthOptions);
     }
 
-    private static DynamicObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
-        Object yearMonth = JSRuntime.call("yearMonthFromFields", calendar, new Object[]{fields, options});
+    public static DynamicObject yearMonthFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+        Object fn = JSObject.getMethod(calendar, "yearMonthFromFields");
+        Object yearMonth = JSRuntime.call(fn, calendar, new Object[]{fields, options});
         return requireTemporalYearMonth(yearMonth);
+    }
+
+    public static DynamicObject monthDayFromFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+        DynamicObject fn = (DynamicObject) JSObject.getMethod(calendar, "monthDayFromFields");
+        Object monthDay = JSRuntime.call(fn, calendar, new Object[]{fields, options});
+        return TemporalUtil.requireTemporalMonthDay(monthDay);
     }
 
     public static String negateTemporalRoundingMode(String roundingMode) {
@@ -1731,4 +1759,58 @@ public final class TemporalUtil {
         }
         throw Errors.createTypeError("unknown property");
     }
+
+    public static Object calendarMergeFields(DynamicObject calendar, DynamicObject fields, DynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode, JSContext ctx) {
+        Object mergeFields = JSObject.getMethod(calendar, TemporalConstants.MERGE_FIELDS);
+        if (mergeFields == Undefined.instance) {
+            return defaultMergeFields(fields, additionalFields, namesNode, ctx);
+        }
+        return JSRuntime.call(mergeFields, calendar, new Object[]{fields, additionalFields});
+    }
+
+    @TruffleBoundary
+    private static Object defaultMergeFields(DynamicObject fields, DynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode, JSContext ctx) {
+        DynamicObject merged = JSOrdinary.create(ctx);
+        UnmodifiableArrayList<? extends Object> originalKeys = namesNode.execute(fields);
+        for (Object nextKey : originalKeys) {
+            if (!MONTH.equals(nextKey) && !MONTH_CODE.equals(nextKey)) {
+                Object propValue = JSObject.get(fields, nextKey);
+                if (propValue != Undefined.instance) {
+                    createDataPropertyOrThrow(ctx, merged, nextKey.toString(), propValue);
+                }
+            }
+        }
+        UnmodifiableArrayList<? extends Object> newKeys = namesNode.execute(additionalFields);
+        for (Object nextKey : newKeys) {
+            Object propValue = JSObject.get(additionalFields, nextKey);
+            if (propValue != Undefined.instance) {
+                createDataPropertyOrThrow(ctx, merged, nextKey.toString(), propValue);
+            }
+        }
+        if (!newKeys.contains(MONTH) && !newKeys.contains(MONTH_CODE)) {
+            Object month = JSObject.get(fields, MONTH);
+            if (month != Undefined.instance) {
+                createDataPropertyOrThrow(ctx, merged, MONTH, month);
+            }
+            Object monthCode = JSObject.get(fields, MONTH_CODE);
+            if (monthCode != Undefined.instance) {
+                createDataPropertyOrThrow(ctx, merged, MONTH_CODE, monthCode);
+            }
+
+        }
+        return merged;
+    }
+
+    public static void createDataPropertyOrThrow(JSContext ctx, DynamicObject obj, String key, Object value) {
+        JSObjectUtil.defineDataProperty(ctx, obj, key, value, JSAttributes.configurableEnumerableWritable());
+    }
+
+    @TruffleBoundary
+    public static Set<String> listJoinRemoveDuplicates(Set<String> receiverFieldNames, Set<String> inputFieldNames) {
+        Set<String> newSet = new HashSet<>();
+        newSet.addAll(receiverFieldNames);
+        newSet.addAll(inputFieldNames);
+        return newSet;
+    }
+
 }

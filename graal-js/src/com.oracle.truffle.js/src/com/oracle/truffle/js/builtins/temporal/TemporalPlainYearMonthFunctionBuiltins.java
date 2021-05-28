@@ -101,7 +101,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected Object from(Object item, DynamicObject optParam,
+        protected Object from(Object item, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {

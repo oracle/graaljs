@@ -168,4 +168,19 @@ public final class TemporalErrors {
         return Errors.createRangeError("Given calendar id not supported.");
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorInvalidDate() {
+        return Errors.createTypeError("Invalid date");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalYearNotPresent() {
+        return Errors.createTypeError("Year not present.");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalDayNotPresent() {
+        return Errors.createTypeError("Day not present.");
+    }
+
 }

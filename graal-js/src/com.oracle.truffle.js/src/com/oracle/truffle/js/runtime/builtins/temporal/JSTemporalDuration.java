@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.BLANK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
@@ -94,9 +96,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     public static final String CLASS_NAME = "TemporalDuration";
     public static final String PROTOTYPE_NAME = "TemporalDuration.prototype";
-
-    public static final String SIGN = "sign";
-    public static final String BLANK = "blank";
 
     public static final String[] PROPERTIES = new String[]{
                     DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS,
@@ -1208,8 +1207,61 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     @SuppressWarnings("unused")
-    private static JSTemporalNanosecondsDaysRecord nanosecondsToDays(long nanoseconds, DynamicObject intermediate) {
-        // TODO implement
+    private static JSTemporalNanosecondsDaysRecord nanosecondsToDays(long nanoseconds, DynamicObject relativeTo) {
+        long sign = TemporalUtil.sign(nanoseconds);
+        long dayLengthNs = 86_400_000_000_000L;
+        if (sign == 0) {
+            return JSTemporalNanosecondsDaysRecord.create(0, 0, dayLengthNs);
+        }
+        if (!TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+            double val = nanoseconds / dayLengthNs;
+            long val2 = nanoseconds % dayLengthNs;
+            return JSTemporalNanosecondsDaysRecord.create((long) val, val2, sign * dayLengthNs);
+        }
+        // TODO
+        // 5. Let startNs be relativeTo.[[Nanoseconds]].
+        // 6. Let startInstant be ? CreateTemporalInstant(startNs).
+        // 7. Let startDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(relativeTo.[[TimeZone]],
+        // startInstant, relativeTo.[[Calendar]]).
+        // 8. Let endNs be startNs + nanoseconds.
+        // 9. Let endInstant be ? CreateTemporalInstant(endNs).
+        // 10. Let endDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(relativeTo.[[TimeZone]],
+        // endInstant,
+        // relativeTo.[[Calendar]]).
+        // 11. Let dateDifference be ? DifferenceISODateTime(startDateTime.[[ISOYear]],
+        // startDateTime.[[ISOMonth]], startDateTime.[[ISODay]], startDateTime.[[ISOHour]],
+        // startDateTime.[[ISOMinute]], startDateTime.[[ISOSecond]],
+        // startDateTime.[[ISOMillisecond]],
+        // startDateTime.[[ISOMicrosecond]], startDateTime.[[ISONanosecond]],
+        // endDateTime.[[ISOYear]],
+        // endDateTime.[[ISOMonth]], endDateTime.[[ISODay]], endDateTime.[[ISOHour]],
+        // endDateTime.[[ISOMinute]], endDateTime.[[ISOSecond]], endDateTime.[[ISOMillisecond]],
+        // endDateTime.[[ISOMicrosecond]], endDateTime.[[ISONanosecond]], relativeTo.[[Calendar]],
+        // "days").
+        // 12. Let days be dateDifference.[[Days]].
+        // 13. Let intermediateNs be ? AddZonedDateTime(startNs, relativeTo.[[TimeZone]],
+        // relativeTo.[[Calendar]], 0, 0, 0, days, 0, 0, 0, 0, 0, 0).
+        if (sign == 1) {
+            // a. Repeat, while days > 0 and intermediateNs > endNs,
+            // i. Set days to days - 1.
+            // ii. Set intermediateNs to ? AddZonedDateTime(startNs, relativeTo.[[TimeZone]],
+            // relativeTo.[[Calendar]], 0, 0, 0, days, 0, 0, 0, 0, 0, 0).
+        }
+        // 15. Set nanoseconds to endNs - intermediateNs.
+        // 16. Let done be false.
+        // 17. Repeat, while done is false,
+        // a. Let oneDayFartherNs be ? AddZonedDateTime(intermediateNs, relativeTo.[[TimeZone]],
+        // relativeTo.[[Calendar]], 0, 0, 0, sign, 0, 0, 0, 0, 0, 0).
+        // b. Set dayLengthNs to oneDayFartherNs - intermediateNs.
+        // c. If (nanoseconds - dayLengthNs) * sign >= 0, then
+        // i. Set nanoseconds to nanoseconds - dayLengthNs.
+        // ii. Set intermediateNs to oneDayFartherNs.
+        // iii. Set days to days + sign.
+        // d. Else,
+        // i. Set done to true.
+        // 18. Return the new Record { [[Days]]: days, [[Nanoseconds]]: nanoseconds, [[DayLength]]:
+// dayLengthNs }.
+
         return JSTemporalNanosecondsDaysRecord.create(0, 0, 0);
     }
 

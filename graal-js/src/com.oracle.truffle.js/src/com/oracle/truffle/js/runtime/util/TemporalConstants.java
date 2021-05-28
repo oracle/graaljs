@@ -114,4 +114,10 @@ public final class TemporalConstants {
     public static final String TRUNC = "trunc";
 
     public static final String HALF_EXPAND = "halfExpand";
+
+    public static final String SIGN = "sign";
+    public static final String BLANK = "blank";
+    public static final String ID = "id";
+
+    public static final String MERGE_FIELDS = "mergeFields";
 }

@@ -40,26 +40,40 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+
 import java.util.EnumSet;
+import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToLocaleStringNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthValueOfNodeGen;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -92,9 +106,9 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         toString(1),
         toLocaleString(0),
         toJSON(0),
-        valueOf(0);
-        // toPlainDate(1),
-        // getISOFields(0);
+        valueOf(0),
+        toPlainDate(1),
+        getISOFields(0);
 
         private final int length;
 
@@ -132,12 +146,12 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 // case equals:
 // return JSTemporalPlainYearMonthEqualsNodeGen.create(context, builtin,
 // args().withThis().fixedArgs(1).createArgumentNodes(context));
-// case toPlainDate:
-// return JSTemporalPlainYearMonthToPlainDateNodeGen.create(context, builtin,
-// args().withThis().fixedArgs(1).createArgumentNodes(context));
-// case getISOFields:
-// return JSTemporalPlainYearMonthGetISOFieldsNodeGen.create(context, builtin,
-// args().withThis().createArgumentNodes(context));
+            case toPlainDate:
+                return JSTemporalPlainYearMonthToPlainDateNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case getISOFields:
+                return JSTemporalPlainYearMonthGetISOFieldsNodeGen.create(context, builtin,
+                                args().withThis().createArgumentNodes(context));
             case toString:
                 return JSTemporalPlainYearMonthToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toLocaleString:
@@ -231,6 +245,51 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
             throw Errors.createTypeError("Not supported.");
+        }
+    }
+
+    public abstract static class JSTemporalPlainYearMonthToPlainDateNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainYearMonthToPlainDateNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object toPlainDate(Object thisObj, Object item,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+            JSTemporalPlainYearMonthObject yearMonth = TemporalUtil.requireTemporalYearMonth(thisObj);
+            if (!JSRuntime.isObject(item)) {
+                throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
+            }
+            DynamicObject calendar = yearMonth.getCalendar();
+            Set<String> receiverFieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH_CODE, YEAR}, getContext());
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(yearMonth, receiverFieldNames, TemporalUtil.toSet(), getContext());
+            Set<String> inputFieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY}, getContext());
+            DynamicObject inputFields = TemporalUtil.prepareTemporalFields((DynamicObject) item, inputFieldNames, TemporalUtil.toSet(), getContext());
+            Object mergedFields = TemporalUtil.calendarMergeFields(calendar, fields, inputFields, namesNode, getContext());
+            Set<String> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
+            mergedFields = TemporalUtil.prepareTemporalFields((DynamicObject) mergedFields, mergedFieldNames, TemporalUtil.toSet(), getContext());
+            DynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
+            return TemporalUtil.dateFromFields(calendar, (DynamicObject) mergedFields, options);
+        }
+    }
+
+    public abstract static class JSTemporalPlainYearMonthGetISOFields extends JSBuiltinNode {
+
+        protected JSTemporalPlainYearMonthGetISOFields(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject getISOFields(Object thisObj) {
+            JSTemporalPlainYearMonthObject ym = TemporalUtil.requireTemporalYearMonth(thisObj);
+            DynamicObject obj = JSOrdinary.create(getContext());
+            JSObjectUtil.putDataProperty(getContext(), obj, CALENDAR, ym.getCalendar());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoDay", ym.getISODay());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoMonth", ym.getISOMonth());
+            JSObjectUtil.putDataProperty(getContext(), obj, "isoYear", ym.getISOYear());
+            return obj;
         }
     }
 }

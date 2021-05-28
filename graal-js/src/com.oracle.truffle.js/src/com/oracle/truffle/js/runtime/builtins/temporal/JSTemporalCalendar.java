@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey.TemporalCalendarId;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
@@ -49,18 +48,14 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
@@ -71,11 +66,8 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -93,8 +85,6 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     public static final String CLASS_NAME = "TemporalCalendar";
     public static final String PROTOTYPE_NAME = "TemporalCalendar.prototype";
-
-    public static final String ID = "id";
 
     private JSTemporalCalendar() {
 
@@ -380,7 +370,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (monthLength != 3) {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
-        String numberPart = ((String) monthCode).substring(2);
+        String numberPart = ((String) monthCode).substring(1);
         double numberPart2 = stringToNumber.executeString(numberPart);
         if (Double.isNaN(numberPart2)) {
             throw Errors.createRangeError("The last character of the monthCode should be a number.");
@@ -408,10 +398,13 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), ctx);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
-            throw Errors.createTypeError("Year not present.");
+            throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
         }
         Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
         Object day = JSObject.get(preparedFields, DAY);
+        if (day == Undefined.instance) {
+            throw TemporalErrors.createTypeErrorTemporalDayNotPresent();
+        }
         return TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
     }
 
@@ -425,7 +418,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), ctx);
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
-            throw Errors.createTypeError("Year not present.");
+            throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
         }
         Object month = resolveISOMonth(preparedFields, stringToNumber, identicalNode);
 
