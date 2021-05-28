@@ -55,6 +55,9 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
+import java.util.EnumSet;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -68,6 +71,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInMonthNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInWeekNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInYearNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarInLeapYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthCodeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthDayFromFieldsNodeGen;
@@ -85,6 +89,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -109,13 +114,17 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarPrototypeBuiltins.TemporalCalendarPrototype> {
 
-    public static final TemporalCalendarPrototypeBuiltins INSTANCE = new TemporalCalendarPrototypeBuiltins();
+    public static final TemporalCalendarPrototypeBuiltins BUILTINS = new TemporalCalendarPrototypeBuiltins();
 
     protected TemporalCalendarPrototypeBuiltins() {
         super(JSTemporalCalendar.PROTOTYPE_NAME, TemporalCalendarPrototype.class);
     }
 
     public enum TemporalCalendarPrototype implements BuiltinEnum<TemporalCalendarPrototype> {
+        // getters
+        id(0),
+
+        // methods
         dateFromFields(3),
         yearMonthFromFields(3),
         monthDayFromFields(3),
@@ -146,11 +155,19 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.of(id).contains(this);
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalCalendarPrototype builtinEnum) {
         switch (builtinEnum) {
+            case id:
+                return JSTemporalCalendarGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
+
             case dateFromFields:
                 return JSTemporalCalendarDateFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case yearMonthFromFields:
@@ -190,6 +207,32 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalCalendarToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalCalendarGetterNode extends JSBuiltinNode {
+
+        public final TemporalCalendarPrototype property;
+
+        public JSTemporalCalendarGetterNode(JSContext context, JSBuiltin builtin, TemporalCalendarPrototype property) {
+            super(context, builtin);
+            this.property = property;
+        }
+
+        @Specialization(guards = "isJSTemporalCalendar(thisObj)")
+        protected Object durationGetter(Object thisObj) {
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) thisObj;
+            switch (property) {
+                case id:
+                    return calendar.getId();
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Specialization(guards = "isJSTemporalCalendar(thisObj)")
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
+        }
     }
 
     // 12.4.4

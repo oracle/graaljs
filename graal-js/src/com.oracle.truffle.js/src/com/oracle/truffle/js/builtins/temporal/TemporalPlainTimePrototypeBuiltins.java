@@ -53,7 +53,9 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import java.util.Collections;
+import java.util.EnumSet;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -61,6 +63,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeAddNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetISOFieldsNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSubtractNodeGen;
@@ -96,6 +99,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainTimePrototypeBuiltins.TemporalPlainTimePrototype> {
@@ -107,6 +111,16 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public enum TemporalPlainTimePrototype implements BuiltinEnum<TemporalPlainTimePrototype> {
+        // getters
+        calendar(0),
+        hour(0),
+        minute(0),
+        second(0),
+        millisecond(0),
+        microsecond(0),
+        nanosecond(0),
+
+        // methods
         add(1),
         subtract(1),
         with(2),
@@ -132,11 +146,24 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.of(calendar, hour, minute, second, millisecond, microsecond, nanosecond).contains(this);
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainTimePrototype builtinEnum) {
         switch (builtinEnum) {
+            case calendar:
+            case hour:
+            case minute:
+            case second:
+            case millisecond:
+            case microsecond:
+            case nanosecond:
+                return JSTemporalPlainTimeGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
             case add:
                 return JSTemporalPlainTimeAddNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case subtract:
@@ -166,6 +193,44 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSTemporalPlainTimeValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalPlainTimeGetterNode extends JSBuiltinNode {
+
+        public final TemporalPlainTimePrototype property;
+
+        public JSTemporalPlainTimeGetterNode(JSContext context, JSBuiltin builtin, TemporalPlainTimePrototype property) {
+            super(context, builtin);
+            this.property = property;
+        }
+
+        @Specialization(guards = "isJSTemporalTime(thisObj)")
+        protected Object timeGetter(Object thisObj) {
+            TemporalTime temporalTime = (TemporalTime) thisObj;
+            switch (property) {
+                case calendar:
+                    return temporalTime.getCalendar();
+                case hour:
+                    return temporalTime.getHours();
+                case minute:
+                    return temporalTime.getMinutes();
+                case second:
+                    return temporalTime.getSeconds();
+                case millisecond:
+                    return temporalTime.getMilliseconds();
+                case microsecond:
+                    return temporalTime.getMicroseconds();
+                case nanosecond:
+                    return temporalTime.getNanoseconds();
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Specialization(guards = "isJSTemporalTime(thisObj)")
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalDateTimeExpected();
+        }
     }
 
     // 4.3.10

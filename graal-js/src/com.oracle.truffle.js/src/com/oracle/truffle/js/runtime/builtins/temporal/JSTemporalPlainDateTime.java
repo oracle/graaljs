@@ -67,24 +67,16 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -130,104 +122,31 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return context.trackAllocation(object);
     }
 
-    private static DynamicObject createGetterFunction(JSRealm realm, BuiltinFunctionKey functionKey, String property) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (obj instanceof TemporalDateTime) {
-                        TemporalDateTime temporalDT = (TemporalDateTime) obj;
-                        switch (property) {
-                            case HOUR:
-                                return temporalDT.getHours();
-                            case MINUTE:
-                                return temporalDT.getMinutes();
-                            case SECOND:
-                                return temporalDT.getSeconds();
-                            case MILLISECOND:
-                                return temporalDT.getMilliseconds();
-                            case MICROSECOND:
-                                return temporalDT.getMicroseconds();
-                            case NANOSECOND:
-                                return temporalDT.getNanoseconds();
-
-                            case YEAR:
-                                return temporalDT.getISOYear();
-                            case MONTH:
-                                return temporalDT.getISOMonth();
-                            case DAY:
-                                return temporalDT.getISODay();
-                            case CALENDAR:
-                                return temporalDT.getCalendar();
-                            case DAY_OF_WEEK:
-                                return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), (DynamicObject) temporalDT);
-                            case DAY_OF_YEAR:
-                                return TemporalUtil.dayOfYear(temporalDT.getCalendar(), (DynamicObject) temporalDT);
-                            // TODO more are missing
-                            // TODO according 3.3.4 this might be more complex
-                            default:
-                                errorBranch.enter();
-                                throw TemporalErrors.createTypeErrorTemporalDateTimeExpected();
-                        }
-                    } else {
-                        errorBranch.enter();
-                        throw TemporalErrors.createTypeErrorTemporalDateTimeExpected();
-                    }
-                }
-            });
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + property);
-        });
-        DynamicObject getter = JSFunction.create(realm, getterData);
-        return getter;
-    }
-
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, HOUR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeHour, HOUR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MINUTE,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeMinute, MINUTE), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, SECOND,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeSecond, SECOND), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MILLISECOND,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeMillisecond, MILLISECOND), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MICROSECOND,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeMicrosecond, MICROSECOND), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECOND,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalTimeNanosecond, NANOSECOND), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateCalendar, CALENDAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, YEAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateYear, YEAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateMonth, MONTH), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateMonthCode, MONTH_CODE), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateDay, DAY), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY_OF_WEEK,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateDayOfWeek, DAY_OF_WEEK), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY_OF_YEAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateDayOfYear, DAY_OF_YEAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, WEEK_OF_YEAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateWeekOfYear, WEEK_OF_YEAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_WEEK,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateDaysInWeek, DAYS_IN_WEEK), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_MONTH,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateDaysInMonth, DAYS_IN_MONTH), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_YEAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateDaysInYear, DAYS_IN_YEAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTHS_IN_YEAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateMonthsInYear, MONTHS_IN_YEAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalDateInLeapYear, IN_LEAP_YEAR), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, HOUR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, HOUR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MINUTE, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, MINUTE));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, SECOND, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, SECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MILLISECOND, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, MILLISECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MICROSECOND, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, MICROSECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, NANOSECOND, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, NANOSECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, CALENDAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, MONTH));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, MONTH_CODE));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, DAY));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY_OF_WEEK, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, DAY_OF_WEEK));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY_OF_YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, DAY_OF_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, WEEK_OF_YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, WEEK_OF_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_WEEK, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, DAYS_IN_WEEK));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_MONTH, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, DAYS_IN_MONTH));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, DAYS_IN_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTHS_IN_YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, MONTHS_IN_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR, realm.lookupAccessor(TemporalPlainDateTimePrototypeBuiltins.BUILTINS, IN_LEAP_YEAR));
 
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainDateTimePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.PlainDateTime");

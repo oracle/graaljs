@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import java.util.EnumSet;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltinsFactory.JSTemporalPlainYearMonthValueOfNodeGen;
@@ -53,8 +57,10 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainYearMonthPrototypeBuiltins.TemporalPlainYearMonthPrototype> {
@@ -66,6 +72,17 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
     }
 
     public enum TemporalPlainYearMonthPrototype implements BuiltinEnum<TemporalPlainYearMonthPrototype> {
+        // getters
+        calendar(0),
+        year(0),
+        month(0),
+        monthCode(0),
+        daysInMonth(0),
+        daysInYear(0),
+        monthsInYear(0),
+        inLeapYear(0),
+
+        // methods
         // with(2),
         // add(1),
         // subtract(1),
@@ -89,11 +106,26 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.of(calendar, year, month, monthCode, daysInMonth, daysInYear, monthsInYear, inLeapYear).contains(this);
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainYearMonthPrototype builtinEnum) {
         switch (builtinEnum) {
+            case calendar:
+            case year:
+            case month:
+            case monthCode:
+            case daysInMonth:
+            case daysInYear:
+            case monthsInYear:
+            case inLeapYear:
+                return JSTemporalPlainYearMonthGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
+
 // case with:
 // return JSTemporalPlainYearMonthWithNodeGen.create(context, builtin,
 // args().withThis().fixedArgs(2).createArgumentNodes(context));
@@ -115,6 +147,49 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 return JSTemporalPlainYearMonthValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalPlainYearMonthGetterNode extends JSBuiltinNode {
+
+        public final TemporalPlainYearMonthPrototype property;
+
+        public JSTemporalPlainYearMonthGetterNode(JSContext context, JSBuiltin builtin, TemporalPlainYearMonthPrototype property) {
+            super(context, builtin);
+            this.property = property;
+        }
+
+        @Specialization(guards = "isJSTemporalYearMonth(thisObj)")
+        protected Object dateGetter(Object thisObj) {
+            JSTemporalPlainYearMonthObject temporalYM = (JSTemporalPlainYearMonthObject) thisObj;
+            switch (property) {
+                case calendar:
+                    return temporalYM.getCalendar();
+                case year:
+                    return JSTemporalCalendar.calendarYear(temporalYM.getCalendar(), temporalYM);
+                case month:
+                    return JSTemporalCalendar.calendarMonth(temporalYM.getCalendar(), temporalYM);
+                case monthCode:
+                    return JSTemporalCalendar.calendarMonthCode(temporalYM.getCalendar(), temporalYM);
+                case daysInYear:
+                    return JSTemporalCalendar.calendarDaysInYear(temporalYM.getCalendar(), temporalYM);
+                case daysInMonth:
+                    return JSTemporalCalendar.calendarDaysInMonth(temporalYM.getCalendar(), temporalYM);
+                case monthsInYear:
+                    return JSTemporalCalendar.calendarMonthsInYear(temporalYM.getCalendar(), temporalYM);
+                case inLeapYear:
+                    return JSTemporalCalendar.calendarInLeapYear(temporalYM.getCalendar(), temporalYM);
+
+                // TODO more are missing
+                // TODO according 3.3.4 this might be more complex
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Specialization(guards = "isJSTemporalYearMonth(thisObj)")
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
+        }
     }
 
     // 4.3.20

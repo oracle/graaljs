@@ -40,10 +40,14 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import java.util.EnumSet;
+
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayValueOfNodeGen;
@@ -53,8 +57,10 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainMonthDayPrototypeBuiltins.TemporalPlainMonthDayPrototype> {
@@ -66,6 +72,12 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
     }
 
     public enum TemporalPlainMonthDayPrototype implements BuiltinEnum<TemporalPlainMonthDayPrototype> {
+        // getters
+        calendar(0),
+        monthCode(0),
+        day(0),
+
+        // methods
         // with(2),
         // equals(1),
         // toPlainDate(1),
@@ -85,11 +97,21 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.of(calendar, monthCode, day).contains(this);
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainMonthDayPrototype builtinEnum) {
         switch (builtinEnum) {
+            case calendar:
+            case monthCode:
+            case day:
+                return JSTemporalPlainMonthDayGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
+
 // case with:
 // return JSTemporalPlainMonthDayWithNodeGen.create(context, builtin,
 // args().withThis().fixedArgs(2).createArgumentNodes(context));
@@ -111,6 +133,39 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                 return JSTemporalPlainMonthDayValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalPlainMonthDayGetterNode extends JSBuiltinNode {
+
+        public final TemporalPlainMonthDayPrototype property;
+
+        public JSTemporalPlainMonthDayGetterNode(JSContext context, JSBuiltin builtin, TemporalPlainMonthDayPrototype property) {
+            super(context, builtin);
+            this.property = property;
+        }
+
+        @Specialization(guards = "isJSTemporalMonthDay(thisObj)")
+        protected Object monthDayGetter(Object thisObj) {
+            JSTemporalPlainMonthDayObject plainMD = (JSTemporalPlainMonthDayObject) thisObj;
+            switch (property) {
+                case day:
+                    // TODO wrong
+                    return (int) plainMD.getISODay();
+                case monthCode:
+                    DynamicObject calendar = plainMD.getCalendar();
+                    return JSTemporalCalendar.calendarMonthCode(calendar, plainMD);
+                case calendar:
+                    return plainMD.getCalendar();
+
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Specialization(guards = "isJSTemporalMonthDay(thisObj)")
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
+        }
     }
 
     // 4.3.20

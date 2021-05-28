@@ -50,25 +50,17 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -109,54 +101,15 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         return CLASS_NAME;
     }
 
-    private static DynamicObject createGetterFunction(JSRealm realm, BuiltinFunctionKey functionKey, String property) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(obj)) {
-                        JSTemporalPlainMonthDayObject plainMD = (JSTemporalPlainMonthDayObject) obj;
-                        switch (property) {
-                            case DAY:
-                                // TODO wrong
-                                return (int) plainMD.getISODay();
-                            case MONTH_CODE:
-                                DynamicObject calendar = plainMD.getCalendar();
-                                return JSTemporalCalendar.calendarMonthCode(calendar, (DynamicObject) obj);
-                            case CALENDAR:
-                                return plainMD.getCalendar();
-
-                            default:
-                                errorBranch.enter();
-                                throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
-                        }
-                    } else {
-                        errorBranch.enter();
-                        throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
-                    }
-                }
-            });
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + property);
-        });
-        DynamicObject getter = JSFunction.create(realm, getterData);
-        return getter;
-    }
-
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainMonthDayCalendar, CALENDAR), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainMonthDayMonthCode, MONTH_CODE), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY,
-                        createGetterFunction(realm, BuiltinFunctionKey.TemporalPlainMonthDayDay, DAY), Undefined.instance);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, CALENDAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, MONTH_CODE));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, DAY));
 
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainMonthDayPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.PlainMonthDay");

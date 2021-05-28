@@ -44,7 +44,9 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 
 import java.util.Collections;
+import java.util.EnumSet;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -52,6 +54,7 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeAddNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeGetISOFieldsNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeRoundNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeSubtractNodeGen;
@@ -80,6 +83,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDateTimePrototypeBuiltins.TemporalPlainDateTimePrototype> {
@@ -91,11 +95,32 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
     }
 
     public enum TemporalPlainDateTimePrototype implements BuiltinEnum<TemporalPlainDateTimePrototype> {
+        // getters
+        calendar(0),
+        year(0),
+        month(0),
+        monthCode(0),
+        day(0),
+        dayOfYear(0),
+        dayOfWeek(0),
+        weekOfYear(0),
+        daysInWeek(0),
+        daysInMonth(0),
+        daysInYear(0),
+        monthsInYear(0),
+        inLeapYear(0),
+        hour(0),
+        minute(0),
+        second(0),
+        millisecond(0),
+        microsecond(0),
+        nanosecond(0),
 
+        // methods
         with(2),
-// withPlainTime(1),
-// withPlainDate(1),
-// withCalendar(1),
+        // withPlainTime(1),
+        // withPlainDate(1),
+        // withCalendar(1),
         add(1),
         subtract(1),
         until(2),
@@ -123,11 +148,37 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         public int getLength() {
             return length;
         }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.of(calendar, hour, minute, second, millisecond, microsecond, nanosecond, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth, daysInYear,
+                            monthsInYear, inLeapYear).contains(this);
+        }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainDateTimePrototype builtinEnum) {
         switch (builtinEnum) {
+            case calendar:
+            case year:
+            case month:
+            case monthCode:
+            case day:
+            case dayOfYear:
+            case dayOfWeek:
+            case weekOfYear:
+            case daysInWeek:
+            case daysInMonth:
+            case daysInYear:
+            case monthsInYear:
+            case inLeapYear:
+            case hour:
+            case minute:
+            case second:
+            case millisecond:
+            case microsecond:
+            case nanosecond:
+                return JSTemporalPlainDateTimeGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
             case add:
                 return JSTemporalPlainDateTimeAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case subtract:
@@ -171,6 +222,67 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                                 args().withThis().createArgumentNodes(context));
         }
         return null;
+    }
+
+    public abstract static class JSTemporalPlainDateTimeGetterNode extends JSBuiltinNode {
+
+        public final TemporalPlainDateTimePrototype property;
+
+        public JSTemporalPlainDateTimeGetterNode(JSContext context, JSBuiltin builtin, TemporalPlainDateTimePrototype property) {
+            super(context, builtin);
+            this.property = property;
+        }
+
+        @Specialization(guards = "isJSTemporalDateTime(thisObj)")
+        protected Object dateTimeGetter(Object thisObj) {
+            TemporalDateTime temporalDT = (TemporalDateTime) thisObj;
+            switch (property) {
+                case calendar:
+                    return temporalDT.getCalendar();
+                case hour:
+                    return temporalDT.getHours();
+                case minute:
+                    return temporalDT.getMinutes();
+                case second:
+                    return temporalDT.getSeconds();
+                case millisecond:
+                    return temporalDT.getMilliseconds();
+                case microsecond:
+                    return temporalDT.getMicroseconds();
+                case nanosecond:
+                    return temporalDT.getNanoseconds();
+                case year:
+                    return temporalDT.getISOYear();
+                case month:
+                    return temporalDT.getISOMonth();
+                case day:
+                    return temporalDT.getISODay();
+
+                case dayOfWeek:
+                    return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), (DynamicObject) temporalDT);
+                case dayOfYear:
+                    return TemporalUtil.dayOfYear(temporalDT.getCalendar(), (DynamicObject) temporalDT);
+
+                case monthCode:
+                case weekOfYear:
+                case daysInWeek:
+                case daysInMonth:
+                case daysInYear:
+                case monthsInYear:
+                case inLeapYear: {
+                    throw Errors.shouldNotReachHere();
+                }
+                // TODO more are missing
+                // TODO according 3.3.4 this might be more complex
+            }
+            CompilerDirectives.transferToInterpreter();
+            throw Errors.shouldNotReachHere();
+        }
+
+        @Specialization(guards = "isJSTemporalDateTime(thisObj)")
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw TemporalErrors.createTypeErrorTemporalDateTimeExpected();
+        }
     }
 
     // 4.3.10

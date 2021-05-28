@@ -76,8 +76,8 @@ public final class TemporalConstants {
     public static final String MONTHS_IN_YEAR = "monthsInYear";
     public static final String IN_LEAP_YEAR = "inLeapYear";
 
-    public static final String DAY_OF_WEEK = "daysOfWeek";
-    public static final String DAY_OF_YEAR = "daysOfYear";
+    public static final String DAY_OF_WEEK = "dayOfWeek";
+    public static final String DAY_OF_YEAR = "dayOfYear";
     public static final String WEEK_OF_YEAR = "weekOfYear";
 
     public static final String DATE_FROM_FIELDS = "dateFromFields";

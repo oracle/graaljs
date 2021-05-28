@@ -83,6 +83,11 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSPluralRules;
 import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
@@ -327,8 +332,28 @@ public final class JSGuards {
         return JSTemporalPlainTime.isJSTemporalPlainTime(value);
     }
 
+    public static boolean isJSTemporalDate(Object value) {
+        return JSTemporalPlainDate.isJSTemporalPlainDate(value);
+    }
+
+    public static boolean isJSTemporalDateTime(Object value) {
+        return JSTemporalPlainDateTime.isJSTemporalPlainDateTime(value);
+    }
+
     public static boolean isJSTemporalYearMonth(Object value) {
         return JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(value);
+    }
+
+    public static boolean isJSTemporalMonthDay(Object value) {
+        return JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(value);
+    }
+
+    public static boolean isJSTemporalDuration(Object value) {
+        return JSTemporalDuration.isJSTemporalDuration(value);
+    }
+
+    public static boolean isJSTemporalCalendar(Object value) {
+        return JSTemporalCalendar.isJSTemporalCalendar(value);
     }
 
     public static boolean isJSTemporalDateLike(Object value) {

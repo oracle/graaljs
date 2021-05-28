@@ -134,13 +134,13 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTemporalCalenderExpected() {
+    public static JSException createTypeErrorTemporalCalendarExpected() {
         return Errors.createTypeError("Temporal.Calendar expected");
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTemporalPlainMonthYearExpected() {
-        return Errors.createTypeError("Temporal.PlainMonthYear expected");
+    public static JSException createTypeErrorTemporalPlainYearMonthExpected() {
+        return Errors.createTypeError("Temporal.PlainYearMonth expected");
     }
 
     @TruffleBoundary

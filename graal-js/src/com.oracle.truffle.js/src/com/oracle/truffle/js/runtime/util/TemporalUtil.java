@@ -1664,7 +1664,7 @@ public final class TemporalUtil {
         return roundingMode;
     }
 
-    public static boolean calenderEquals(DynamicObject one, DynamicObject two) {
+    public static boolean calendarEquals(DynamicObject one, DynamicObject two) {
         if (one == two) {
             return true;
         }

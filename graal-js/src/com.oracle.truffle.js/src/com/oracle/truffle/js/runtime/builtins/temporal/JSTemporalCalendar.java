@@ -60,6 +60,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
@@ -119,37 +120,14 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         return CLASS_NAME;
     }
 
-    private static DynamicObject getIdFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(TemporalCalendarId, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSTemporalCalendar.isJSTemporalCalendar(obj)) {
-                        JSTemporalCalendarObject temporalCalendar = (JSTemporalCalendarObject) obj;
-                        return temporalCalendar.getId();
-                    } else {
-                        errorBranch.enter();
-                        throw TemporalErrors.createTypeErrorTemporalCalenderExpected();
-                    }
-                }
-            });
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get id");
-        });
-        DynamicObject getter = JSFunction.create(realm, getterData);
-        return getter;
-    }
-
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
         JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
 
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, ID, getIdFunction(realm), Undefined.instance);
-        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalCalendarPrototypeBuiltins.INSTANCE);
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, ID, realm.lookupAccessor(TemporalCalendarPrototypeBuiltins.BUILTINS, ID));
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalCalendarPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, "Temporal.Calendar");
 
         return prototype;
@@ -188,7 +166,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     // 12.1.4
-    public static JSTemporalCalendarObject getISO8601Calender(JSContext ctx) {
+    public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx) {
         return getBuiltinCalendar(ISO8601, ctx);
     }
 
@@ -273,7 +251,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     // 12.1.22
     public static Object toOptionalTemporalCalendar(Object temporalCalendarLike, JSContext ctx, JSToStringNode toString, IsObjectNode isObject) {
         if (temporalCalendarLike == Undefined.instance || temporalCalendarLike == null) {
-            return getISO8601Calender(ctx);
+            return getISO8601Calendar(ctx);
         }
         return toTemporalCalendar(temporalCalendarLike, ctx, isObject, toString);
     }
