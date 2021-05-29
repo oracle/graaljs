@@ -148,6 +148,9 @@ public class TuplePrototypeBuiltinsTest {
     public void testSpliced() {
         assertTrue(execute("#[1, 7, 4].spliced(1, 1, 2, 3) === #[1, 2, 3, 4]").asBoolean());
         assertTrue(execute("Object(#[2, 1]).spliced(0, 1) === #[1]").asBoolean());
+        assertTrue(execute("Object(#[2, 1]).spliced() === #[2, 1]").asBoolean());
+        assertTrue(execute("Object(#[2, 1]).spliced(undefined, undefined) === #[2, 1]").asBoolean());
+        assertTrue(execute("Object(#[2, 1]).spliced(undefined) === #[]").asBoolean());
         expectError("Tuple.prototype.spliced.call('test')", "be a Tuple");
     }
 
@@ -165,7 +168,7 @@ public class TuplePrototypeBuiltinsTest {
         assertTrue(execute("Object(#[1, 2]).includes(2)").asBoolean());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testIncludes_Fallback() {
         expectError("Tuple.prototype.includes.call('test')", "be a Tuple");
@@ -178,7 +181,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals(1, execute("Object(#[1, 2]).indexOf(2)").asInt());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testIndexOf_Fallback() {
         expectError("Tuple.prototype.indexOf.call('test')", "be a Tuple");
@@ -191,7 +194,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals("1", execute("Object(#[1]).join('-')").asString());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testJoin_Fallback() {
         expectError("Tuple.prototype.join.call('test')", "be a Tuple");
@@ -204,7 +207,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals(1, execute("Object(#[1, 2]).lastIndexOf(2)").asInt());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testLastIndexOf_Fallback() {
         expectError("Tuple.prototype.lastIndexOf.call('test')", "be a Tuple");
@@ -228,7 +231,7 @@ public class TuplePrototypeBuiltinsTest {
         assertTrue(execute("Object(#[1, 1]).every(it => it === 1)").asBoolean());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testEvery_Fallback() {
         expectError("Tuple.prototype.every.call('test')", "be a Tuple");
@@ -248,7 +251,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals(1, execute("Object(#[1, 1]).find(it => it === 1)").asInt());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testFind_Fallback() {
         expectError("Tuple.prototype.find.call('test')", "be a Tuple");
@@ -261,7 +264,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals(0, execute("Object(#[1, 1]).findIndex(it => it === 1)").asInt());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testFindIndex_Fallback() {
         expectError("Tuple.prototype.findIndex.call('test')", "be a Tuple");
@@ -294,7 +297,7 @@ public class TuplePrototypeBuiltinsTest {
         );
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testForEach_Fallback() {
         expectError("Tuple.prototype.forEach.call('test')", "be a Tuple");
@@ -319,7 +322,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals(6, execute("Object(#[1, 2, 3]).reduce((acc, it) => acc += it)").asInt());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testReduce_Fallback() {
         expectError("Tuple.prototype.reduce.call('test')", "be a Tuple");
@@ -331,7 +334,7 @@ public class TuplePrototypeBuiltinsTest {
         assertEquals(6, execute("Object(#[1, 2, 3]).reduceRight((acc, it) => acc += it)").asInt());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testReduceRight_Fallback() {
         expectError("Tuple.prototype.reduceRight.call('test')", "be a Tuple");
@@ -343,7 +346,7 @@ public class TuplePrototypeBuiltinsTest {
         assertFalse(execute("Object(#[1, 2, 3]).some(it => it < 0)").asBoolean());
     }
 
-    @Ignore
+    @Ignore // TODO: re-evaluate, check proposal for changes
     @Test
     public void testSome_Fallback() {
         expectError("Tuple.prototype.some.call('test')", "be a Tuple");

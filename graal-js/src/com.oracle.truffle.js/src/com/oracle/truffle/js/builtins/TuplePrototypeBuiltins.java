@@ -47,14 +47,15 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
-import com.oracle.truffle.js.nodes.array.JSArrayFirstElementIndexNode;
-import com.oracle.truffle.js.nodes.array.JSArrayLastElementIndexNode;
-import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -72,7 +73,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSTuple;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -265,200 +266,11 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSTupleToStringNode extends JSBuiltinNode {
-
-        public JSTupleToStringNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected String toString(Tuple thisObj) {
-            return thisObj.toString();
-        }
-
-        @Specialization(guards = {"isJSTuple(thisObj)"})
-        protected String toString(DynamicObject thisObj) {
-            return JSTuple.valueOf(thisObj).toString();
-        }
-
-        @Fallback
-        protected void toStringNoTuple(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("Tuple.prototype.toString requires that 'this' be a Tuple");
-        }
-    }
-
-    public abstract static class JSTupleIteratorNode extends BasicTupleOperation {
-
-        @Child private ArrayPrototypeBuiltins.CreateArrayIteratorNode createArrayIteratorNode;
-
-        public JSTupleIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
-            super(context, builtin);
-            this.createArrayIteratorNode = ArrayPrototypeBuiltins.CreateArrayIteratorNode.create(context, iterationKind);
-        }
-
-        @Specialization
-        protected DynamicObject doObject(VirtualFrame frame, Object thisObj,
-                                         @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
-            Tuple tuple = thisTupleValue(thisObj);
-            Object obj = toObjectNode.execute(tuple);
-            return createArrayIteratorNode.execute(frame, obj);
-        }
-    }
-
-    public abstract static class JSTupleValueOfNode extends JSBuiltinNode {
-
-        public JSTupleValueOfNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Tuple doTuple(Tuple thisObj) {
-            return thisObj;
-        }
-
-        @Specialization(guards = "isJSTuple(thisObj)")
-        protected Tuple doJSTuple(DynamicObject thisObj) {
-            return JSTuple.valueOf(thisObj);
-        }
-
-        @Fallback
-        protected void fallback(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("Tuple.prototype.valueOf requires that 'this' be a Tuple");
-        }
-    }
-
-    public abstract static class JSTuplePoppedNode extends JSBuiltinNode {
-
-        public JSTuplePoppedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Tuple doTuple(Tuple thisObj) {
-            return getPoppedTuple(thisObj);
-        }
-
-        @Specialization(guards = "isJSTuple(thisObj)")
-        protected Tuple doJSTuple(DynamicObject thisObj) {
-            Tuple tuple = JSTuple.valueOf(thisObj);
-            return getPoppedTuple(tuple);
-        }
-
-        private Tuple getPoppedTuple(Tuple tuple) {
-            if (tuple.getArraySize() <= 1) {
-                return Tuple.EMPTY_TUPLE;
-            }
-            Object[] values = tuple.getElements();
-            return Tuple.create(Arrays.copyOf(values, values.length - 1));
-        }
-
-        @Fallback
-        protected void fallback(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("Tuple.prototype.popped requires that 'this' be a Tuple");
-        }
-    }
-
-    public abstract static class JSTuplePushedNode extends BasicTupleOperation {
-        public JSTuplePushedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Tuple doTuple(Tuple thisObj, Object[] args) {
-            return getPushedTuple(thisObj, args);
-        }
-
-        @Specialization(guards = "isJSTuple(thisObj)")
-        protected Tuple doJSTuple(DynamicObject thisObj, Object[] args) {
-            Tuple tuple = JSTuple.valueOf(thisObj);
-            return getPushedTuple(tuple, args);
-        }
-
-        private Tuple getPushedTuple(Tuple tuple, Object[] args) {
-            long targetSize = tuple.getArraySize() + args.length;
-            checkSize(targetSize);
-
-            Object[] values = Arrays.copyOf(tuple.getElements(), (int) (targetSize));
-            for (int i = 0; i < args.length; i++) {
-                Object value = args[i];
-                if (!JSRuntime.isJSPrimitive(value)) {
-                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
-                }
-                values[tuple.getArraySizeInt() + i] = value;
-            }
-            return Tuple.create(values);
-        }
-
-        @Fallback
-        protected void fallback(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object args) {
-            throw Errors.createTypeError("Tuple.prototype.popped requires that 'this' be a Tuple");
-        }
-    }
-
-    public abstract static class JSTupleReversedNode extends JSBuiltinNode {
-
-        public JSTupleReversedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Tuple doTuple(Tuple thisObj) {
-            return getReversedTuple(thisObj);
-        }
-
-        @Specialization(guards = "isJSTuple(thisObj)")
-        protected Tuple doJSTuple(DynamicObject thisObj) {
-            Tuple tuple = JSTuple.valueOf(thisObj);
-            return getReversedTuple(tuple);
-        }
-
-        private Tuple getReversedTuple(Tuple tuple) {
-            Object[] values = new Object[tuple.getArraySizeInt()];
-            for (int i = 0; i < values.length; i++) {
-                values[i] = tuple.getElement(values.length - i - 1);
-            }
-            return Tuple.create(values);
-        }
-
-        @Fallback
-        protected void fallback(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("Tuple.prototype.reversed requires that 'this' be a Tuple");
-        }
-    }
-
-    public abstract static class JSTupleShiftedNode extends JSBuiltinNode {
-
-        public JSTupleShiftedNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Tuple doTuple(Tuple thisObj) {
-            return getShiftedTuple(thisObj);
-        }
-
-        @Specialization(guards = "isJSTuple(thisObj)")
-        protected Tuple doJSTuple(DynamicObject thisObj) {
-            Tuple tuple = JSTuple.valueOf(thisObj);
-            return getShiftedTuple(tuple);
-        }
-
-        private Tuple getShiftedTuple(Tuple tuple) {
-            if (tuple.getArraySize() == 0) {
-                return tuple;
-            }
-            return Tuple.create(Arrays.copyOfRange(tuple.getElements(), 1, tuple.getArraySizeInt()));
-        }
-
-        @Fallback
-        protected void fallback(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("Tuple.prototype.shifted requires that 'this' be a Tuple");
-        }
-    }
-
     public abstract static class BasicTupleOperation extends JSBuiltinNode {
 
-        private final BranchProfile errorProfile = BranchProfile.create();
+        protected final BranchProfile errorProfile = BranchProfile.create();
+
+        @Child private IsObjectNode isObjectNode;
 
         public BasicTupleOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -475,45 +287,240 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeError("'this' must be a Tuple");
         }
 
-        protected Tuple toTupleValue(Object obj) {
-            if (obj instanceof Tuple) {
-                return (Tuple) obj;
+        protected int checkSize(long size) {
+            if (size != (int) size) {
+                errorProfile.enter();
+                throw Errors.createTypeError("Tuple instances cannot hold more than " + Integer.MAX_VALUE + " items currently");
             }
-            if (JSTuple.isJSTuple(obj)) {
-                return JSTuple.valueOf((JSDynamicObject) obj);
-            }
-            throw Errors.createTypeError("'this' must be a Tuple");
+            return (int) size;
         }
 
-        protected void checkSize(long size) {
-            if (size > JSRuntime.MAX_SAFE_INTEGER) {
-                throw Errors.createTypeError("length too big");
+        protected boolean isObject(Object obj) {
+            if (isObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isObjectNode = insert(IsObjectNode.create());
             }
+            return isObjectNode.executeBoolean(obj);
+        }
+    }
+
+    public abstract static class JSTupleToStringNode extends BasicTupleOperation {
+
+        private final static String JOIN = "join";
+
+        @Child private JSToObjectNode toObjectNode;
+        @Child private PropertyNode joinPropertyNode;
+        @Child private IsCallableNode isCallableNode;
+        @Child private JSFunctionCallNode callNode;
+
+        public JSTupleToStringNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object toString(Object thisObj) {
+            Tuple tuple = thisTupleValue(thisObj);
+            Object tupleObj = toObject(tuple);
+            Object join = getJoinProperty(tupleObj);
+            if (isCallable(join)) {
+                return call(JSArguments.createZeroArg(tupleObj, join));
+            } else {
+                return JSObject.defaultToString((DynamicObject) tupleObj);
+            }
+        }
+
+        private Object toObject(Object obj) {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+            }
+            return toObjectNode.execute(obj);
+        }
+
+        private Object getJoinProperty(Object obj) {
+            if (joinPropertyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                joinPropertyNode = insert(PropertyNode.createProperty(getContext(), null, JOIN));
+            }
+            return joinPropertyNode.executeWithTarget(obj);
+        }
+
+        private boolean isCallable(Object callback) {
+            if (isCallableNode == null) {
+                transferToInterpreterAndInvalidate();
+                isCallableNode = insert(IsCallableNode.create());
+            }
+            return isCallableNode.executeBoolean(callback);
+        }
+
+        protected Object call(Object[] arguments) {
+            if (callNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callNode.executeCall(arguments);
+        }
+    }
+
+    public abstract static class JSTupleIteratorNode extends BasicTupleOperation {
+
+        private final int iterationKind;
+
+        @Child private JSToObjectNode toObjectNode;
+        @Child private ArrayPrototypeBuiltins.CreateArrayIteratorNode createArrayIteratorNode;
+
+        public JSTupleIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.iterationKind = iterationKind;
+        }
+
+        @Specialization
+        protected DynamicObject doObject(VirtualFrame frame, Object thisObj) {
+            Tuple tuple = thisTupleValue(thisObj);
+            Object object = toObject(tuple);
+            return createArrayIterator(frame, object);
+        }
+
+        private Object toObject(Object obj) {
+            if (toObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+            }
+            return toObjectNode.execute(obj);
+        }
+
+        private DynamicObject createArrayIterator(VirtualFrame frame, Object object) {
+            if (createArrayIteratorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                createArrayIteratorNode = insert(ArrayPrototypeBuiltins.CreateArrayIteratorNode.create(getContext(), iterationKind));
+            }
+            return createArrayIteratorNode.execute(frame, object);
+        }
+    }
+
+    public abstract static class JSTupleValueOfNode extends BasicTupleOperation {
+
+        public JSTupleValueOfNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Tuple valueOf(Object thisObj) {
+            return thisTupleValue(thisObj);
+        }
+    }
+
+    public abstract static class JSTuplePoppedNode extends BasicTupleOperation {
+
+        private final ConditionProfile emptyTupleProfile = ConditionProfile.createBinaryProfile();
+
+        public JSTuplePoppedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Tuple popped(Object thisObj) {
+            Tuple tuple = thisTupleValue(thisObj);
+            if (emptyTupleProfile.profile(tuple.getArraySize() <= 1)) {
+                return Tuple.EMPTY_TUPLE;
+            }
+            Object[] values = tuple.getElements();
+            values = Arrays.copyOf(values, values.length - 1);
+            return Tuple.create(values);
+        }
+    }
+
+    public abstract static class JSTuplePushedNode extends BasicTupleOperation {
+
+        public JSTuplePushedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Tuple pushed(Object thisObj, Object[] args) {
+            Tuple tuple = thisTupleValue(thisObj);
+            int targetSize = checkSize(tuple.getArraySize() + args.length);
+            Object[] values = Arrays.copyOf(tuple.getElements(), targetSize);
+            for (int i = 0; i < args.length; i++) {
+                Object value = args[i];
+                if (isObject(value)) {
+                    errorProfile.enter();
+                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                }
+                values[tuple.getArraySizeInt() + i] = value;
+            }
+            return Tuple.create(values);
+        }
+    }
+
+    public abstract static class JSTupleReversedNode extends BasicTupleOperation {
+
+        public JSTupleReversedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Tuple reversed(Object thisObj) {
+            Tuple tuple = thisTupleValue(thisObj);
+            Object[] values = new Object[tuple.getArraySizeInt()];
+            for (int i = 0; i < values.length; i++) {
+                values[i] = tuple.getElement(values.length - i - 1);
+            }
+            return Tuple.create(values);
+        }
+    }
+
+    public abstract static class JSTupleShiftedNode extends BasicTupleOperation {
+
+        private final ConditionProfile emptyTupleProfile = ConditionProfile.createBinaryProfile();
+
+        public JSTupleShiftedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Tuple shifted(Object thisObj) {
+            Tuple tuple = thisTupleValue(thisObj);
+            if (emptyTupleProfile.profile(tuple.getArraySize() <= 1)) {
+                return Tuple.EMPTY_TUPLE;
+            }
+            return Tuple.create(Arrays.copyOfRange(tuple.getElements(), 1, tuple.getArraySizeInt()));
         }
     }
 
     public abstract static class JSTupleSliceNode extends BasicTupleOperation {
+
+        private final ConditionProfile emptyTupleProfile = ConditionProfile.createBinaryProfile();
+
+        @Child private JSToIntegerAsIntNode toIntegerAsIntNode;
 
         public JSTupleSliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Tuple slice(Object thisObj, Object begin, Object end,
-                              @Cached("create()") JSToIntegerAsLongNode toIntegerAsLong) {
-            Tuple tuple = toTupleValue(thisObj);
-            long size = tuple.getArraySize();
+        protected Tuple slice(Object thisObj, Object begin, Object end) {
+            Tuple tuple = thisTupleValue(thisObj);
+            int size = tuple.getArraySizeInt();
 
-            long startPos = toIntegerAsLong.executeLong(begin);
-            long endPos = end == Undefined.instance ? size : toIntegerAsLong.executeLong(end);
+            int startPos = toInteger(begin);
+            int endPos = end == Undefined.instance ? size : toInteger(end);
 
             startPos = startPos < 0 ? Math.max(size + startPos, 0) : Math.min(startPos, size);
             endPos = endPos < 0 ? Math.max(size + endPos, 0) : Math.min(endPos, size);
 
-            if (startPos >= endPos) {
+            if (emptyTupleProfile.profile(startPos >= endPos)) {
                 return Tuple.EMPTY_TUPLE;
             }
-            return Tuple.create(Arrays.copyOfRange(tuple.getElements(), (int) startPos, (int) endPos));
+            return Tuple.create(Arrays.copyOfRange(tuple.getElements(), startPos, endPos));
+        }
+
+        private int toInteger(Object obj) {
+            if (toIntegerAsIntNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntegerAsIntNode = insert(JSToIntegerAsIntNode.create());
+            }
+            return toIntegerAsIntNode.executeInt(obj);
         }
     }
 
@@ -528,7 +535,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object sorted(Object thisObj, Object comparefn) {
             checkCompareFunction(comparefn);
-            Tuple tuple = toTupleValue(thisObj);
+            Tuple tuple = thisTupleValue(thisObj);
             long size = tuple.getArraySize();
 
             if (size < 2) {
@@ -544,6 +551,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         private void checkCompareFunction(Object compare) {
             if (!(compare == Undefined.instance || isCallable(compare))) {
+                errorProfile.enter();
                 throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
         }
@@ -565,6 +573,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
+        // taken from ArrayPrototypeBuiltins.JSArraySortNode.SortComparator and slightly adjusted
         private class SortComparator implements Comparator<Object> {
             private final Object compFnObj;
             private final boolean isFunction;
@@ -629,20 +638,21 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class JSTupleSplicedNode extends BasicTupleOperation {
 
+        @Child JSToIntegerAsLongNode toIntegerAsLongNode;
+
         public JSTupleSplicedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Tuple spliced(Object thisObj, Object[] args,
-                                @Cached("create()") JSToIntegerAsLongNode toIntegerAsLong) {
+        protected Tuple spliced(Object thisObj, Object[] args) {
             Object start = JSRuntime.getArgOrUndefined(args, 0);
             Object deleteCount = JSRuntime.getArgOrUndefined(args, 1);
 
-            Tuple tuple = toTupleValue(thisObj);
+            Tuple tuple = thisTupleValue(thisObj);
             long size = tuple.getArraySize();
 
-            long startPos = toIntegerAsLong.executeLong(start);
+            long startPos = toInteger(start);
             startPos = startPos < 0 ? Math.max(size + startPos, 0) : Math.min(startPos, size);
 
             long insertCount, delCount;
@@ -654,12 +664,12 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 delCount = size - startPos;
             } else {
                 insertCount = args.length - 2;
-                delCount = toIntegerAsLong.executeLong(deleteCount);
+                delCount = toInteger(deleteCount);
                 delCount = Math.min(Math.max(delCount, 0), size - startPos);
             }
 
-            checkSize(size + insertCount - delCount);
-            Object[] values = new Object[(int) (size + insertCount - delCount)];
+            int valuesSize = checkSize(size + insertCount - delCount);
+            Object[] values = new Object[valuesSize];
 
             int k = 0;
             while (k < startPos) {
@@ -667,18 +677,27 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 k++;
             }
             for (int i = 2; i < args.length; i++) {
-                if (!JSRuntime.isJSPrimitive(args[i])) {
+                if (isObject(args[i])) {
+                    errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
                 values[k] = args[i];
                 k++;
             }
-            for (int i = (int) (startPos + delCount); i < size; i++) {
+            for (long i = startPos + delCount; i < size; i++) {
                 values[k] = tuple.getElement(i);
                 k++;
             }
 
             return Tuple.create(values);
+        }
+
+        private long toInteger(Object obj) {
+            if (toIntegerAsLongNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toIntegerAsLongNode = insert(JSToIntegerAsLongNode.create());
+            }
+            return toIntegerAsLongNode.executeLong(obj);
         }
     }
 
@@ -698,7 +717,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Tuple concat(Object thisObj, Object[] args) {
-            Tuple tuple = toTupleValue(thisObj);
+            Tuple tuple = thisTupleValue(thisObj);
             SimpleArrayList<Object> list = new SimpleArrayList<>(1 + JSConfig.SpreadArgumentPlaceholderCount);
             concatElement(tuple, list);
             for (Object arg : args) {
@@ -718,14 +737,16 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 for (long k = 0; k < len; k++) {
                     if (hasProperty(e, k)) {
                         Object subElement = get(e, k);
-                        if (JSRuntime.isObject(subElement)) {
+                        if (isObject(subElement)) {
+                            errorProfile.enter();
                             throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                         }
                         list.add(subElement, growProfile);
                     }
                 }
             } else {
-                if (JSRuntime.isObject(e)) {
+                if (isObject(e)) {
+                    errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
                 list.add(e, growProfile);
@@ -769,11 +790,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readElementNode = insert(ReadElementNode.create(getContext()));
             }
-            if (JSRuntime.longIsRepresentableAsInt(index)) {
-                return readElementNode.executeWithTargetAndIndex(target, (int) index);
-            } else {
-                return readElementNode.executeWithTargetAndIndex(target, (double) index);
-            }
+            return readElementNode.executeWithTargetAndIndex(target, index);
         }
     }
 
@@ -792,6 +809,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                                @Cached("createCall()") JSFunctionCallNode callNode) {
             Tuple tuple = thisTupleValue(thisObj);
             if (!isCallableNode.executeBoolean(callbackfn)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             SimpleArrayList<Object> list = SimpleArrayList.create(tuple.getArraySize());
@@ -809,8 +827,6 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class TupleFlattenOperation extends BasicTupleOperation {
-
-        private final BranchProfile errorProfile = BranchProfile.create();
 
         @Child
         private JSFunctionCallNode callNode;
@@ -832,7 +848,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 Object element = source.getElement(i);
                 if (mapperFunction != null) {
                     element = call(JSArguments.create(thisArg, mapperFunction, element, i, source));
-                    if (JSRuntime.isObject(element)) {
+                    if (isObject(element)) {
                         errorProfile.enter();
                         throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                     }
@@ -883,6 +899,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Tuple flatMap(Object thisObj, Object mapperFunction, Object thisArg) {
             Tuple tuple = thisTupleValue(thisObj);
             if (!isCallableNode.executeBoolean(mapperFunction)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             SimpleArrayList<Object> list = SimpleArrayList.create(tuple.getArraySize());
@@ -894,7 +911,6 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSTupleMapNode extends BasicTupleOperation {
 
         private final BranchProfile growProfile = BranchProfile.create();
-        private final BranchProfile errorProfile = BranchProfile.create();
 
         @Child private IsCallableNode isCallableNode = IsCallableNode.create();
         @Child private JSFunctionCallNode callNode;
@@ -907,13 +923,14 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Tuple map(Object thisObj, Object mapperFunction, Object thisArg) {
             Tuple tuple = thisTupleValue(thisObj);
             if (!isCallableNode.executeBoolean(mapperFunction)) {
+                errorProfile.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
             SimpleArrayList<Object> list = SimpleArrayList.create(tuple.getArraySize());
             for (long k = 0; k < tuple.getArraySize(); k++) {
                 Object value = tuple.getElement(k);
                 value = call(JSArguments.create(thisArg, mapperFunction, value, k, tuple));
-                if (JSRuntime.isObject(value)) {
+                if (isObject(value)) {
                     errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
@@ -934,7 +951,6 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSTupleUnshiftedNode extends BasicTupleOperation {
 
         private final BranchProfile growProfile = BranchProfile.create();
-        private final BranchProfile errorProfile = BranchProfile.create();
 
         public JSTupleUnshiftedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -945,7 +961,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Tuple tuple = thisTupleValue(thisObj);
             SimpleArrayList<Object> list = SimpleArrayList.create(tuple.getArraySize());
             for (Object arg : args) {
-                if (JSRuntime.isObject(arg)) {
+                if (isObject(arg)) {
                     errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
@@ -953,7 +969,7 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             for (long k = 0; k < tuple.getArraySize(); k++) {
                 Object value = tuple.getElement(k);
-                if (JSRuntime.isObject(value)) {
+                if (isObject(value)) {
                     errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
@@ -964,9 +980,6 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSTupleWithNode extends BasicTupleOperation {
-
-        private final BranchProfile rangeErrorProfile = BranchProfile.create();
-        private final BranchProfile primitiveErrorProfile = BranchProfile.create();
 
         @Child private JSToIndexNode toIndexNode = JSToIndexNode.create();
 
@@ -980,12 +993,12 @@ public final class TuplePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object[] list = tuple.getElements();
             long i = toIndexNode.executeLong(index);
             if (i >= list.length) {
-                rangeErrorProfile.enter();
+                errorProfile.enter();
                 throw Errors.createRangeError("Index out of range");
 
             }
-            if (JSRuntime.isObject(value)) {
-                primitiveErrorProfile.enter();
+            if (isObject(value)) {
+                errorProfile.enter();
                 throw Errors.createTypeError("Tuples cannot contain non-primitive values");
             }
             list[(int) i] = value;
