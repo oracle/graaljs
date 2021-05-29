@@ -52,6 +52,8 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeGen;
+import com.oracle.truffle.js.nodes.record.JSRecordToStringNode;
+import com.oracle.truffle.js.nodes.tuples.JSTupleToStringNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -164,13 +166,13 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected String doRecord(Record value) {
-        return JSRuntime.recordToString(value);
+    protected String doRecord(Record value, @Cached("create()") JSRecordToStringNode recordToStringNode) {
+        return recordToStringNode.execute(value);
     }
 
     @Specialization
-    protected String doTuple(Tuple value) {
-        return JSRuntime.tupleToString(value);
+    protected String doTuple(Tuple value, @Cached("create()") JSTupleToStringNode tupleToStringNode ) {
+        return tupleToStringNode.execute(value);
     }
 
     @Specialization(guards = {"isForeignObject(object)"})

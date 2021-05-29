@@ -1351,8 +1351,19 @@ public final class JSRuntime {
     /**
      * Record & Tuple Proposal 2.1.2.1 TupleToString
      */
+    @TruffleBoundary
     public static String tupleToString(Tuple value) {
-        return value.toString();
+        StringBuilder sb = new StringBuilder();
+        for (long k = 0; k < value.getArraySize(); k++) {
+            if (k > 0) {
+                sb.append(',');
+            }
+            Object element = value.getElement(k);
+            if (!isNullOrUndefined(element)) {
+                sb.append(toString(element));
+            }
+        }
+        return sb.toString();
     }
 
     public static String toString(DynamicObject value) {

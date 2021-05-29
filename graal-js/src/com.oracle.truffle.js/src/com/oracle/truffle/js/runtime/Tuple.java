@@ -147,10 +147,4 @@ public final class Tuple implements TruffleObject {
         }
         return true;
     }
-
-    @Override
-    @TruffleBoundary
-    public String toString() {
-        return Arrays.stream(value).map(String::valueOf).collect(Collectors.joining(","));
-    }
 }
