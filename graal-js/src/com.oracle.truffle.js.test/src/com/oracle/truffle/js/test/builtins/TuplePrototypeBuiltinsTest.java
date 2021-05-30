@@ -40,13 +40,8 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.junit.Assert;
+import com.oracle.truffle.js.test.JSSimpleTest;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -54,35 +49,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-public class TuplePrototypeBuiltinsTest {
+public class TuplePrototypeBuiltinsTest extends JSSimpleTest {
 
-    private static final String testName = "tuple-prototype-builtins-test";
-
-    private static Value execute(String sourceText) {
-        try (Context context = JSTest.newContextBuilder()
-                .option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022")
-                .option(JSContextOptions.INTL_402_NAME, "true")
-                .build()) {
-            return context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
-        }
-    }
-
-    private static Value execute(String... sourceText) {
-        return execute(String.join("\n", sourceText));
-    }
-
-    private static void expectError(String sourceText, String expectedMessage) {
-        try (Context context = JSTest.newContextBuilder()
-                .option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022")
-                .build()) {
-            context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
-            Assert.fail("should have thrown");
-        } catch (Exception ex) {
-            Assert.assertTrue(
-                    String.format("\"%s\" should contain \"%s\"", ex.getMessage(), expectedMessage),
-                    ex.getMessage().contains(expectedMessage)
-            );
-        }
+    public TuplePrototypeBuiltinsTest() {
+        super("tuple-prototype-builtins-test");
+        addOption(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        addOption(JSContextOptions.INTL_402_NAME, "true");
     }
 
     @Test

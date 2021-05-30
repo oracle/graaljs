@@ -42,7 +42,7 @@ assertThrows(function() {
  */
 const y = #{ "__proto__": 1 }; // valid, creates a record with a "__proto__" property.
 assertThrows(function() {
-    eval("const x = #{ __proto__: foo }"); // SyntaxError, __proto__ identifier prevented by syntax
+    eval("const x = #{ __proto__: 1 }"); // SyntaxError, __proto__ identifier prevented by syntax
 }, SyntaxError);
 
 /*

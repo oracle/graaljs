@@ -1,31 +1,17 @@
 package com.oracle.truffle.js.test.nodes.record;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+import com.oracle.truffle.js.test.JSSimpleTest;
 import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
 
-public class RecordLiteralNodeTest {
+public class RecordLiteralNodeTest extends JSSimpleTest {
 
-    private static final String testName = "record-literal-node-test";
-
-    private static Value execute(String sourceText) {
-        try (Context context = JSTest.newContextBuilder()
-                .option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022")
-                .build()) {
-            return context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
-        }
-    }
-
-    @Test
-    public void testSpread_Polyfill() {
-        assertTrue(execute("#{...['test']} === #{'0': 'test'}").asBoolean());
+    public RecordLiteralNodeTest() {
+        super("record-literal-node-test");
+        addOption(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
     }
 
     // TODO: re-evaluate, check proposal for changes
@@ -39,5 +25,9 @@ public class RecordLiteralNodeTest {
     @Test
     public void testSpread_Spec() {
         assertTrue(execute("#{...['test']} === #{'0': 'test', length: 1}").asBoolean());
+    }
+    @Test
+    public void testSpread_Polyfill() {
+        assertTrue(execute("#{...['test']} === #{'0': 'test'}").asBoolean());
     }
 }

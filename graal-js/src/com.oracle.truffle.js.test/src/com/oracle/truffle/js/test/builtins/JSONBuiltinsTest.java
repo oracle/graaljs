@@ -40,30 +40,17 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSTest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
+import com.oracle.truffle.js.test.JSSimpleTest;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
 
-public class JSONBuiltinsTest {
+public class JSONBuiltinsTest extends JSSimpleTest {
 
-    private static final String testName = "json-builtins-test";
-
-    private static Value execute(String sourceText) {
-        try (Context context = JSTest.newContextBuilder()
-                .option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022")
-                .build()) {
-            return context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
-        }
-    }
-
-    private static Value execute(String... sourceText) {
-        return execute(String.join("\n", sourceText));
+    public JSONBuiltinsTest() {
+        super("json-builtins-test");
+        addOption(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
     }
 
     @Test

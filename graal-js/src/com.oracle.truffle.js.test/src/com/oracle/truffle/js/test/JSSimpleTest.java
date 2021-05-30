@@ -38,36 +38,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.builtins;
+package com.oracle.truffle.js.test;
 
-import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.test.JSSimpleTest;
-import org.junit.Test;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import java.util.HashMap;
+import java.util.Map;
 
-public class RecordFunctionBuiltinsTest extends JSSimpleTest {
+/**
+ * Base for testing simple JS snippets.
+ */
+public abstract class JSSimpleTest {
 
-    public RecordFunctionBuiltinsTest() {
-        super("record-function-builtins-test");
-        addOption(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+    protected final String testName;
+
+    private final Map<String, String> options = new HashMap<>();
+
+    protected JSSimpleTest(String testName) {
+        this.testName = testName;
     }
 
-    @Test
-    public void testIsRecord() {
-        assertTrue(execute("Record.isRecord(#{})").asBoolean());
-        assertTrue(execute("Record.isRecord(Object(#{}))").asBoolean());
-        assertFalse(execute("Record.isRecord()").asBoolean());
-        assertFalse(execute("Record.isRecord({})").asBoolean());
+    protected void addOption(String key, String value) {
+        options.put(key, value);
     }
 
-    @Test
-    public void testFromEntries() {
-        assertTrue(execute("Record.fromEntries(Object.entries({a: 'foo'})) === #{a: 'foo'}").asBoolean());
-        assertTrue(execute("Record.fromEntries([['a', 'foo']]) === #{a: 'foo'}").asBoolean());
-        expectError("Record.fromEntries()", "undefined or null");
-        expectError("Record.fromEntries(Object.entries({data: [1, 2, 3]}))", "cannot contain objects");
-        expectError("Record.fromEntries([0])", "not an object");
+    protected Value execute(String sourceText) {
+        try (Context context = newContext()) {
+            return context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
+        }
+    }
+
+    protected Value execute(String... sourceText) {
+        return execute(String.join("\n", sourceText));
+    }
+
+    protected void expectError(String sourceText, String expectedMessage) {
+        try (Context context = newContext()) {
+            context.eval(Source.newBuilder(JavaScriptLanguage.ID, sourceText, testName).buildLiteral());
+            Assert.fail("should have thrown");
+        } catch (Exception ex) {
+            Assert.assertTrue(
+                    String.format("\"%s\" should contain \"%s\"", ex.getMessage(), expectedMessage),
+                    ex.getMessage().contains(expectedMessage)
+            );
+        }
+    }
+
+    private Context newContext() {
+        return Context.newBuilder(JavaScriptLanguage.ID)
+                .allowExperimentalOptions(true)
+                .options(options)
+                .build();
     }
 }
