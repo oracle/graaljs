@@ -870,4 +870,13 @@ public final class Errors {
         return JSException.create(JSErrorType.RuntimeError, cause.getMessage(), cause, originatingNode);
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorRecordsCannotContainObjects(Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, "Records cannot contain non-primitive values", originatingNode);
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTuplesCannotContainObjects(Node originatingNode) {
+        return JSException.create(JSErrorType.TypeError, "Tuples cannot contain non-primitive values", originatingNode);
+    }
 }

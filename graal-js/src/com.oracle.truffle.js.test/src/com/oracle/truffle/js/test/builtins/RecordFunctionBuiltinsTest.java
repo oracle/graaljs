@@ -67,7 +67,7 @@ public class RecordFunctionBuiltinsTest extends JSSimpleTest {
         assertTrue(execute("Record.fromEntries(Object.entries({a: 'foo'})) === #{a: 'foo'}").asBoolean());
         assertTrue(execute("Record.fromEntries([['a', 'foo']]) === #{a: 'foo'}").asBoolean());
         expectError("Record.fromEntries()", "undefined or null");
-        expectError("Record.fromEntries(Object.entries({data: [1, 2, 3]}))", "cannot contain objects");
+        expectError("Record.fromEntries(Object.entries({data: [1, 2, 3]}))", "non-primitive values");
         expectError("Record.fromEntries([0])", "not an object");
     }
 }

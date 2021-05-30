@@ -183,7 +183,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         }
                         if (isObject(value)) {
                             isObjectErrorBranch.enter();
-                            throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                            throw Errors.createTypeErrorTuplesCannotContainObjects(this);
                         }
                         list.add(value, growProfile);
                         k++;
@@ -205,7 +205,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 }
                 if (isObject(value)) {
                     isObjectErrorBranch.enter();
-                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                    throw Errors.createTypeErrorTuplesCannotContainObjects(this);
                 }
                 list.add(value, growProfile);
                 k++;
@@ -317,7 +317,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             for (Object item : items) {
                 if (isObjectNode.executeBoolean(item)) {
                     errorProfile.enter();
-                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                    throw Errors.createTypeErrorTuplesCannotContainObjects(this);
                 }
             }
             return Tuple.create(items);

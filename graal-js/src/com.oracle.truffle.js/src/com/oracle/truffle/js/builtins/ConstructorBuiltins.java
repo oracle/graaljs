@@ -2789,7 +2789,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 Object value = readElementNode.executeWithTargetAndIndex(prop, 1);
                 if (isObjectNode.executeBoolean(value)) {
                     errorProfile.enter();
-                    throw Errors.createTypeError("Records cannot contain non-primitive values");
+                    throw Errors.createTypeErrorRecordsCannotContainObjects(this);
                 }
                 fields.put(name, value);
             }
@@ -2827,7 +2827,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             for (Object item : items) {
                 if (isObjectNode.executeBoolean(item)) {
                     errorProfile.enter();
-                    throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+                    throw Errors.createTypeErrorTuplesCannotContainObjects(this);
                 }
             }
             return Tuple.create(items);

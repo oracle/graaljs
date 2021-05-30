@@ -128,7 +128,7 @@ public final class RecordFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             BiConsumer<Object, Object> adder = (key, value) -> {
                 if (isObjectNode.executeBoolean(value)) {
                     errorBranch.enter();
-                    throw Errors.createTypeError("Records cannot contain objects", this);
+                    throw Errors.createTypeErrorRecordsCannotContainObjects(this);
                 }
                 fields.put(toStringNode.executeString(key),value);
             };

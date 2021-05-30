@@ -120,7 +120,7 @@ public abstract class TupleLiteralNode extends JavaScriptNode {
 
     private static Object requireNonObject(Object value) {
         if (JSRuntime.isObject(value)) {
-            throw Errors.createTypeError("Tuples cannot contain non-primitive values");
+            throw Errors.createTypeErrorTuplesCannotContainObjects(null);
         }
         return value;
     }
