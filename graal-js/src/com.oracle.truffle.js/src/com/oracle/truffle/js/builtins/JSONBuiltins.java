@@ -367,13 +367,15 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
     public abstract static class JSONParseImmutableNode extends JSONOperation {
 
+        @Child private JSONBuildImmutablePropertyNode buildImmutableProperty;
+
         public JSONParseImmutableNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            buildImmutableProperty = JSONBuildImmutablePropertyNode.create(context);
         }
 
         @Specialization(limit = "1")
-        protected Object parseUnfiltered(String text, Object reviver,
-                                         @Cached("create(getContext())") JSONBuildImmutablePropertyNode buildImmutableProperty) {
+        protected Object parseUnfiltered(Object text, Object reviver) {
             Object unfiltered = parseIntl(toString(text));
             return buildImmutableProperty.execute(unfiltered, "", reviver);
         }

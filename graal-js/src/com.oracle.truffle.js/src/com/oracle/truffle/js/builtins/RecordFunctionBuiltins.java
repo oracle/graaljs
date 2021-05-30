@@ -52,14 +52,12 @@ import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.RequireObjectCoercibleNode;
-import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Record;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -111,11 +109,12 @@ public final class RecordFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile errorBranch = BranchProfile.create();
 
         @Child private RequireObjectCoercibleNode requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
+        @Child private IsObjectNode isObjectNode = IsObjectNode.create();
+        @Child private JSToStringNode toStringNode = JSToStringNode.create();
         @Child private GetIteratorNode getIteratorNode;
         @Child private IteratorStepNode iteratorStepNode;
         @Child private IteratorValueNode iteratorValueNode;
         @Child private ReadElementNode readElementNode;
-        @Child private IsObjectNode isObjectNode;
         @Child private IteratorCloseNode iteratorCloseNode;
 
         public RecordFromEntriesNode(JSContext context, JSBuiltin builtin) {
@@ -127,11 +126,11 @@ public final class RecordFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             requireObjectCoercibleNode.executeVoid(iterable);
             Map<String, Object> fields = new TreeMap<>();
             BiConsumer<Object, Object> adder = (key, value) -> {
-                if (JSRuntime.isObject(value)) {
+                if (isObjectNode.executeBoolean(value)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Records cannot contain objects", this);
                 }
-                fields.put(JSRuntime.toString(key),value);
+                fields.put(toStringNode.executeString(key),value);
             };
             addEntriesFromIterable(iterable, adder);
             return Record.create(fields);
@@ -146,7 +145,7 @@ public final class RecordFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         break;
                     }
                     Object nextItem = iteratorValue((DynamicObject) next);
-                    if (!isObject(nextItem)) {
+                    if (!isObjectNode.executeBoolean(nextItem)) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorIteratorResultNotObject(nextItem, this);
                     }
@@ -199,14 +198,6 @@ public final class RecordFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 readElementNode = insert(ReadElementNode.create(getContext()));
             }
             return readElementNode.executeWithTargetAndIndex(obj, idx);
-        }
-
-        private boolean isObject(Object obj) {
-            if (isObjectNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isObjectNode = insert(IsObjectNode.create());
-            }
-            return isObjectNode.executeBoolean(obj);
         }
     }
 

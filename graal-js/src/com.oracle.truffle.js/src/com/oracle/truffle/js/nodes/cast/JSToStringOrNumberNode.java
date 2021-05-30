@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -124,12 +125,12 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected String doRecord(Record value, @Cached("create()") JSToStringNode toStringNode) {
+    protected String doRecord(Record value, @Cached("create()") @Shared("toString") JSToStringNode toStringNode) {
         return toStringNode.executeString(value);
     }
 
     @Specialization
-    protected String doTuple(Tuple value, @Cached("create()") JSToStringNode toStringNode) {
+    protected String doTuple(Tuple value, @Cached("create()") @Shared("toString") JSToStringNode toStringNode) {
         return toStringNode.executeString(value);
     }
 }

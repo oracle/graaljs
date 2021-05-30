@@ -47,6 +47,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -61,7 +62,6 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -139,6 +139,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private IteratorStepNode iteratorStepNode;
         @Child private IteratorValueNode iteratorValueNode;
         @Child private IteratorCloseNode iteratorCloseNode;
+        @Child private IsObjectNode isObjectNode;
         @Child private JSToObjectNode toObjectNode;
         @Child private JSGetLengthNode getLengthNode;
         @Child private ReadElementNode readElementNode;
@@ -180,7 +181,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         if (mapping) {
                             value = call(mapFn, thisArg, value, k);
                         }
-                        if (JSRuntime.isObject(value)) {
+                        if (isObject(value)) {
                             isObjectErrorBranch.enter();
                             throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                         }
@@ -202,7 +203,7 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 if (mapping) {
                     value = call(mapFn, thisArg, value, k);
                 }
-                if (JSRuntime.isObject(value)) {
+                if (isObject(value)) {
                     isObjectErrorBranch.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
@@ -260,6 +261,14 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             iteratorCloseNode.executeAbrupt(iterator);
         }
 
+        private boolean isObject(Object obj) {
+            if (isObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                isObjectNode = insert(IsObjectNode.create());
+            }
+            return isObjectNode.executeBoolean(obj);
+        }
+
         private Object toObject(Object obj) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -295,6 +304,10 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class TupleOfNode extends JSBuiltinNode {
 
+        private final BranchProfile errorProfile = BranchProfile.create();
+
+        @Child private IsObjectNode isObjectNode = IsObjectNode.create();
+
         public TupleOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -302,7 +315,8 @@ public final class TupleFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Specialization
         protected Tuple of(Object[] items) {
             for (Object item : items) {
-                if (JSRuntime.isObject(item)) {
+                if (isObjectNode.executeBoolean(item)) {
+                    errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
             }

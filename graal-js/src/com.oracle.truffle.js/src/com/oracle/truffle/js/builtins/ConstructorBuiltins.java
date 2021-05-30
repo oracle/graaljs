@@ -45,7 +45,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
+import java.util.TreeMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -2765,13 +2765,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class CallRecordNode extends JSBuiltinNode {
 
+        private final BranchProfile errorProfile = BranchProfile.create();
+
         @Child JSToObjectNode toObjectNode;
-        @Child EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
         @Child ReadElementNode readElementNode;
+        @Child EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
+        @Child IsObjectNode isObjectNode = IsObjectNode.create();
 
         public CallRecordNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toObjectNode = JSToObjectNode.createToObject(context);
+            readElementNode = ReadElementNode.create(context);
             enumerableOwnPropertyNamesNode = EnumerableOwnPropertyNamesNode.createKeysValues(context);
         }
 
@@ -2779,25 +2783,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected Record call(Object arg) {
             Object obj = toObjectNode.execute(arg);
             UnmodifiableArrayList<? extends Object> props = enumerableOwnPropertyNamesNode.execute((DynamicObject) obj);
-            Map<String, Object> fields = props.stream().collect(Collectors.toMap(
-                    it -> (String) getV(it, 0),
-                    it -> {
-                        Object value = getV(it, 1);
-                        if (JSRuntime.isObject(value)) {
-                            throw Errors.createTypeError("Records cannot contain non-primitive values");
-                        }
-                        return value;
-                    }
-            ));
-            return Record.create(fields);
-        }
-
-        private Object getV(Object object, long index) {
-            if (readElementNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readElementNode = insert(ReadElementNode.create(getContext()));
+            Map<String, Object> fields = new TreeMap<>();
+            for (Object prop : props) {
+                String name = (String) readElementNode.executeWithTargetAndIndex(prop, 0);
+                Object value = readElementNode.executeWithTargetAndIndex(prop, 1);
+                if (isObjectNode.executeBoolean(value)) {
+                    errorProfile.enter();
+                    throw Errors.createTypeError("Records cannot contain non-primitive values");
+                }
+                fields.put(name, value);
             }
-            return readElementNode.executeWithTargetAndIndex(object, index);
+            return Record.create(fields);
         }
     }
 
@@ -2815,6 +2811,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class CallTupleNode extends JSBuiltinNode {
 
+        private final BranchProfile errorProfile = BranchProfile.create();
+
         public CallTupleNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -2825,9 +2823,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"items.length != 0"})
-        protected Tuple call(Object[] items) {
+        protected Tuple call(Object[] items, @Cached("create()") IsJSObjectNode isObjectNode) {
             for (Object item : items) {
-                if (JSRuntime.isObject(item)) {
+                if (isObjectNode.executeBoolean(item)) {
+                    errorProfile.enter();
                     throw Errors.createTypeError("Tuples cannot contain non-primitive values");
                 }
             }
