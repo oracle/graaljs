@@ -4077,14 +4077,16 @@ public class Parser extends AbstractParser {
         } else if (isIdentifier && (type == COMMARIGHT || type == RBRACE || type == ASSIGN) && isES6()) {
             IdentNode ident = (IdentNode) propertyName;
             verifyIdent(ident, yield, await);
-            propertyValue = createIdentNode(propertyToken, finish, ident.getPropertyName());
+            IdentNode identInValue = createIdentNode(propertyToken, finish, ident.getPropertyName());
             if (type == ASSIGN && ES6_DESTRUCTURING) {
                 // If not destructuring, this is a SyntaxError
                 long assignToken = token;
                 coverInitializedName = true;
                 next();
                 Expression rhs = assignmentExpression(true, yield, await);
-                propertyValue = verifyAssignment(assignToken, propertyValue, rhs, true);
+                propertyValue = verifyAssignment(assignToken, identInValue, rhs, true);
+            } else {
+                propertyValue = detectSpecialProperty(identInValue);
             }
         } else {
             expect(COLON);
