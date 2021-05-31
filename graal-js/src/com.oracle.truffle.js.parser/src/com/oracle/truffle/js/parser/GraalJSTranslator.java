@@ -1205,15 +1205,25 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 }
             }
 
-            JavaScriptNode blockNode = transformStatements(blockStatements, block.isTerminal(), scopeInit, block.isExpressionBlock() || block.isParameterBlock());
-
+            JavaScriptNode blockNode;
             if (block.isFunctionBody()) {
+                // Note: Parameters should already be initialized when entering the function body.
+                // Therefore, we need to create and tag the body block without the prolog.
+                blockNode = transformStatements(blockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock());
+
                 FunctionNode function = lc.getCurrentFunction();
                 blockNode = handleFunctionReturn(function, blockNode);
                 if (currentFunction.isDerivedConstructor()) {
                     blockNode = finishDerivedConstructorBody(function, blockNode);
                 }
                 tagBody(blockNode, block);
+
+                if (!scopeInit.isEmpty()) {
+                    scopeInit.add(blockNode);
+                    blockNode = factory.createExprBlock(scopeInit.toArray(EMPTY_NODE_ARRAY));
+                }
+            } else {
+                blockNode = transformStatements(blockStatements, block.isTerminal(), block.isExpressionBlock() || block.isParameterBlock(), scopeInit);
             }
 
             result = blockEnv.wrapBlockScope(blockNode);
@@ -1294,11 +1304,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return new DeclareEvalVariableNode(context, varName, dynamicScopeVar.createReadNode(), (WriteNode) dynamicScopeVar.createWriteNode(null));
     }
 
-    private JavaScriptNode transformStatements(List<Statement> blockStatements, boolean terminal) {
-        return transformStatements(blockStatements, terminal, Collections.emptyList(), false);
+    private JavaScriptNode transformStatements(List<Statement> blockStatements, boolean terminal, boolean expressionBlock) {
+        return transformStatements(blockStatements, terminal, expressionBlock, javaScriptNodeArray(blockStatements.size()), 0);
     }
 
-    private JavaScriptNode transformStatements(List<Statement> blockStatements, boolean terminal, List<JavaScriptNode> prolog, boolean expressionBlock) {
+    private JavaScriptNode transformStatements(List<Statement> blockStatements, boolean terminal, boolean expressionBlock, List<JavaScriptNode> prolog) {
         final int size = prolog.size() + blockStatements.size();
         JavaScriptNode[] statements = javaScriptNodeArray(size);
         int pos = 0;
@@ -1307,6 +1317,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 statements[pos] = prolog.get(pos);
             }
         }
+        return transformStatements(blockStatements, terminal, expressionBlock, statements, pos);
+    }
+
+    private JavaScriptNode transformStatements(List<Statement> blockStatements, boolean terminal, boolean expressionBlock, JavaScriptNode[] statements, int destPos) {
+        int pos = destPos;
         int lastNonEmptyIndex = -1;
         for (int i = 0; i < blockStatements.size(); i++) {
             Statement statement = blockStatements.get(i);
@@ -1327,7 +1342,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             statements[lastNonEmptyIndex] = wrapSetCompletionValue(statements[lastNonEmptyIndex]);
         }
 
-        assert pos == size;
+        assert pos == statements.length;
         return createBlock(statements, terminal, expressionBlock);
     }
 
@@ -3139,7 +3154,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         JavaScriptNode curNode = null;
         if (defaultCase != null) {
-            curNode = dropTerminalDirectBreakStatement(transformStatements(defaultCase.getStatements(), false));
+            curNode = dropTerminalDirectBreakStatement(transformStatements(defaultCase.getStatements(), false, false));
             ensureHasSourceSection(curNode, defaultCase);
         }
 
@@ -3171,7 +3186,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                     }
                 } else {
                     // start of a cascade (without the default case)
-                    JavaScriptNode pass = dropTerminalDirectBreakStatement(transformStatements(caseNode.getStatements(), false));
+                    JavaScriptNode pass = dropTerminalDirectBreakStatement(transformStatements(caseNode.getStatements(), false, false));
                     ensureHasSourceSection(pass, caseNode);
                     curNode = factory.createIf(test, pass, curNode);
                     defaultCascade = false;
