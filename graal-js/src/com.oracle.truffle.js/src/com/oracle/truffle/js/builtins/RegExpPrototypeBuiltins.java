@@ -56,6 +56,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.HasIndicesGetterNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpCompileNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecNodeGen;
@@ -103,6 +104,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -278,13 +280,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.regExpNode = JSRegExpExecBuiltinNode.create(context);
         }
 
-        @Specialization(guards = "isJSRegExp(thisRegExp)")
-        DynamicObject doString(DynamicObject thisRegExp, String inputStr) {
+        @Specialization
+        DynamicObject doString(JSRegExpObject thisRegExp, String inputStr) {
             return (DynamicObject) regExpNode.execute(thisRegExp, inputStr);
         }
 
-        @Specialization(guards = "isJSRegExp(thisRegExp)")
-        DynamicObject doObject(DynamicObject thisRegExp, Object input,
+        @Specialization(replaces = {"doString"})
+        DynamicObject doObject(JSRegExpObject thisRegExp, Object input,
                         @Cached("create()") JSToStringNode toStringNode) {
             return (DynamicObject) regExpNode.execute(thisRegExp, toStringNode.executeString(input));
         }
@@ -316,8 +318,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.toStringNode = JSToStringNode.create();
         }
 
-        @Specialization(guards = "isJSRegExp(thisRegExp)")
-        protected DynamicObject exec(DynamicObject thisRegExp, Object input) {
+        @Specialization
+        protected DynamicObject exec(JSRegExpObject thisRegExp, Object input) {
             String inputStr = toStringNode.executeString(input);
             Object result = regExpNode.execute(thisRegExp, inputStr);
             if (match.profile(resultAccessor.isMatch(result))) {
@@ -327,7 +329,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        @Specialization(guards = "!isJSRegExp(thisObj)")
+        @Fallback
         protected Object exec(Object thisObj, @SuppressWarnings("unused") Object input) {
             throw createNoRegExpError(thisObj);
         }
@@ -1578,9 +1580,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             global(0),
             multiline(0),
             ignoreCase(0),
-            sticky(0),
-            unicode(0),
-            dotAll(0);
+            sticky(0),     // ES 2015
+            unicode(0),    // ES 2015
+            dotAll(0),     // ES 2018
+            hasIndices(0); // ES 2022
 
             private final int length;
 
@@ -1597,10 +1600,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             public int getECMAScriptVersion() {
                 if (EnumSet.of(sticky, unicode).contains(this)) {
                     return 6;
-                }
-                if (this.equals(dotAll)) {
+                } else if (this == dotAll) {
                     return JSConfig.ECMAScript2018;
                 }
+                // Note: hasIndices (ES 2022) may be enabled using regexp-match-indices flag, too.
                 return BuiltinEnum.super.getECMAScriptVersion();
             }
 
@@ -1617,6 +1620,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return CompiledRegexPatternAccessor.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
                 case flags:
                     return RegExpFlagsGetterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+                case hasIndices:
+                    return HasIndicesGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 default:
                     return CompiledRegexFlagPropertyAccessor.create(context, builtin, builtinEnum.name(), args().withThis().fixedArgs(0).createArgumentNodes(context));
             }
@@ -1633,6 +1638,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertyGetNode getDotAll;
         @Child private PropertyGetNode getUnicode;
         @Child private PropertyGetNode getSticky;
+        @Child private PropertyGetNode getHasIndices;
         @Child private JSToBooleanNode toBoolean;
 
         public RegExpFlagsGetterNode(JSContext context, JSBuiltin builtin) {
@@ -1645,13 +1651,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
             this.getUnicode = PropertyGetNode.create(JSRegExp.UNICODE, context);
             this.getSticky = PropertyGetNode.create(JSRegExp.STICKY, context);
+            if (context.isOptionRegexpMatchIndices()) {
+                this.getHasIndices = PropertyGetNode.create(JSRegExp.HAS_INDICES, context);
+            }
         }
 
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected String doObject(DynamicObject rx,
                         @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode) {
-            char[] flags = new char[6];
+            char[] flags = new char[7];
             int len = 0;
+            if (getHasIndices != null && getFlag(rx, getHasIndices)) {
+                flags[len++] = 'd';
+            }
             if (getFlag(rx, getGlobal)) {
                 flags[len++] = 'g';
             }
@@ -1767,6 +1779,32 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         static CompiledRegexPatternAccessor create(JSContext context, JSBuiltin builtin, JavaScriptNode[] args) {
             return RegExpPrototypeBuiltinsFactory.CompiledRegexPatternAccessorNodeGen.create(context, builtin, args);
+        }
+    }
+
+    abstract static class HasIndicesGetterNode extends JSBuiltinNode {
+
+        HasIndicesGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        Object doDynamicObject(JSRegExpObject regExp) {
+            return regExp.hasIndices();
+        }
+
+        @Specialization(guards = "isRegExpPrototype(obj)")
+        Object doPrototype(@SuppressWarnings("unused") DynamicObject obj) {
+            return Undefined.instance;
+        }
+
+        @Fallback
+        Object doObject(Object obj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(obj);
+        }
+
+        boolean isRegExpPrototype(DynamicObject obj) {
+            return obj == getContext().getRealm().getRegExpPrototype();
         }
     }
 }

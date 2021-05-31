@@ -63,7 +63,7 @@ public final class RegexCompilerInterface {
     public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
-        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
+        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices());
         Object compiledRegex;
         try {
             compiledRegex = context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
@@ -78,14 +78,14 @@ public final class RegexCompilerInterface {
 
     @TruffleBoundary
     private static Source createRegexSource(String pattern, String flags, String options) {
-        String regexStr = options + '/' + pattern + '/' + flags;
+        String regexStr = options + '/' + pattern + '/' + stripDFlag(flags);
         return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").internal(true).build();
     }
 
     @TruffleBoundary
     public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
         if (context.isOptionNashornCompatibilityMode() && !flags.isEmpty()) {
-            validateFlags(flags, ecmaScriptVersion, true);
+            validateFlags(flags, ecmaScriptVersion, true, context.isOptionRegexpMatchIndices());
         }
         try {
             context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
@@ -94,15 +94,20 @@ public final class RegexCompilerInterface {
         }
     }
 
+    private static String stripDFlag(String flags) {
+        return flags.replace("d", "");
+    }
+
     @SuppressWarnings("fallthrough")
     @TruffleBoundary
-    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat) {
+    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat, boolean allowHasIndices) {
         boolean ignoreCase = false;
         boolean multiline = false;
         boolean global = false;
         boolean sticky = false;
         boolean unicode = false;
         boolean dotAll = false;
+        boolean hasIndices = false;
 
         for (int i = 0; i < flags.length(); i++) {
             char ch = flags.charAt(i);
@@ -135,9 +140,16 @@ public final class RegexCompilerInterface {
                     }
                     // fallthrough
                 case 's':
-                    if (ecmaScriptVersion >= 9) {
+                    if (ecmaScriptVersion >= JSConfig.ECMAScript2018) {
                         repeated = dotAll;
                         dotAll = true;
+                        break;
+                    }
+                    // fallthrough
+                case 'd':
+                    if (allowHasIndices) {
+                        repeated = hasIndices;
+                        hasIndices = true;
                         break;
                     }
                     // fallthrough

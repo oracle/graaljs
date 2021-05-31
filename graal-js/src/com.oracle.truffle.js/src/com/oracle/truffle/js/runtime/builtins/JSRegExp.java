@@ -57,6 +57,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
@@ -92,6 +93,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final String GROUPS = "groups";
     public static final String INDEX = "index";
     public static final String INDICES = "indices";
+    public static final String HAS_INDICES = "hasIndices";
 
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
@@ -195,15 +197,15 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
     public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory) {
-        return create(context, compiledRegex, groupsFactory, true);
+        return create(context, compiledRegex, groupsFactory, true, false);
     }
 
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+    public static JSRegExpObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled, boolean hasIndices) {
         JSRealm realm = context.getRealm();
-        DynamicObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
+        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled, hasIndices);
         assert isJSRegExp(regExp);
         return context.trackAllocation(regExp);
     }
@@ -306,8 +308,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             putRegExpPropertyAccessor(realm, prototype, STICKY);
             putRegExpPropertyAccessor(realm, prototype, UNICODE);
         }
-        if (ctx.getEcmaScriptVersion() >= 9) {
+        if (ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2018) {
             putRegExpPropertyAccessor(realm, prototype, DOT_ALL);
+        }
+        if (ctx.isOptionRegexpMatchIndices()) {
+            putRegExpPropertyAccessor(realm, prototype, HAS_INDICES);
         }
         // ctor and functions
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);

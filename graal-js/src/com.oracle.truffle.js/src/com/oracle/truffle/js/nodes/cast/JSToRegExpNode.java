@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,11 @@ package com.oracle.truffle.js.nodes.cast;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 
 /**
  * Implements a cast from an value to a RegExp Object, as defined by String.prototype.match and
@@ -61,19 +61,19 @@ public abstract class JSToRegExpNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
-    public abstract DynamicObject execute(Object target);
+    public abstract JSRegExpObject execute(Object target);
 
     public static JSToRegExpNode create(JSContext context) {
         return JSToRegExpNodeGen.create(context);
     }
 
-    @Specialization(guards = "isJSRegExp(regExp)")
-    protected DynamicObject returnRegExp(DynamicObject regExp) {
+    @Specialization
+    protected JSRegExpObject returnRegExp(JSRegExpObject regExp) {
         return regExp;
     }
 
     @Specialization(guards = "!isJSRegExp(patternObj)")
-    protected DynamicObject createRegExp(Object patternObj,
+    protected JSRegExpObject createRegExp(Object patternObj,
                     @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
                     @Cached("create(context)") CompileRegexNode compileRegexNode) {
         String pattern = toStringNode.executeString(patternObj);
