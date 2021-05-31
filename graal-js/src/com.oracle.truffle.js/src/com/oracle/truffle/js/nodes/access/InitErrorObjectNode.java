@@ -108,7 +108,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         if (errorsOpt != null) {
             setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
         }
-        if(options != null && context.getEcmaScriptVersion() >= 13 && JSRuntime.isObject(options) && options != Undefined.instance) {
+        if(options != null && context.getContextOptions().isErrorCauseEnabled() && JSRuntime.isObject(options) && options != Undefined.instance) {
             // Add error cause if present
             if(installErrorCauseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();

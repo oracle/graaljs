@@ -8,7 +8,7 @@
 /**
  * Test for checking the order of properties in AggregateError.
  *
- * @option ecmascript-version=2022
+ * @option use-error-cause=true
  */
 
 load('assert.js');

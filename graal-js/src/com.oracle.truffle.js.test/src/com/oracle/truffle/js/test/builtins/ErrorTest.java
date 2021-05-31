@@ -44,7 +44,7 @@ public class ErrorTest {
 
     private void runErrorTest(String[] errors) {
         for(String source: errors) {
-            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "13").build()) {
+            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.USE_ERROR_CAUSE_NAME, "true").build()) {
                 Value value = context.eval(JavaScriptLanguage.ID, source);
                 Assert.assertTrue(value.isBoolean());
                 Assert.assertTrue(value.asBoolean());

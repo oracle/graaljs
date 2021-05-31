@@ -519,6 +519,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> OPERATOR_OVERLOADING = new OptionKey<>(false);
     @CompilationFinal private boolean operatorOverloading;
 
+    public static final String USE_ERROR_CAUSE_NAME = JS_OPTION_PREFIX + "use-error-cause";
+    @Option(name = USE_ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "Allows to use the optional options parameter on all errors. The error cause can be specified within this options object.")
+            public static final OptionKey<Boolean> USE_ERROR_CAUSE = new OptionKey<>(false);
+    @CompilationFinal private boolean useErrorCause;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -605,6 +610,7 @@ public final class JSContextOptions {
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
+        this.useErrorCause = readBooleanOption(USE_ERROR_CAUSE);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -979,6 +985,10 @@ public final class JSContextOptions {
         return operatorOverloading;
     }
 
+    public boolean isErrorCauseEnabled() {
+        return useErrorCause;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1032,6 +1042,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
+        hash = 53 * hash + (this.useErrorCause ? 1 : 0);
         return hash;
     }
 
@@ -1192,6 +1203,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.operatorOverloading != other.operatorOverloading) {
+            return false;
+        }
+        if(this.useErrorCause != other.useErrorCause) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
