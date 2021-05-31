@@ -745,10 +745,6 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/harmony/regexp-match-indices.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/harmony/regexp-property-emoji-flag-sequence-generated.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
