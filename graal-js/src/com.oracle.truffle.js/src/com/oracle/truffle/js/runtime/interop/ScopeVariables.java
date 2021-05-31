@@ -74,6 +74,7 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
+import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -138,27 +139,46 @@ public final class ScopeVariables implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     boolean hasScopeParent() {
-        if (blockOrRoot instanceof RootNode) {
-            if (frame == null) {
-                return false;
+        if (blockOrRoot instanceof BlockScopeNode) {
+            Node parentNode = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
+            if (parentNode != null && (frame == null || getParentFrame() != null)) {
+                return true;
             }
-            if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                if (getParentFrame() != null) {
-                    return true;
+        } else {
+            assert blockOrRoot instanceof RootNode;
+            if (frame != null) {
+                // For closures, we don't have any outer block nodes, only the RootNode.
+                if (ScopeFrameNode.isBlockScopeFrame(frame)) {
+                    if (getParentFrame() != null) {
+                        return true;
+                    }
                 }
             }
+        }
+        if (frame != null) {
             Frame parentFrame = JSFrameUtil.getParentFrame(frame);
             return parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME;
-        } else {
-            Node parentNode = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
-            return parentNode != null && (frame == null || getParentFrame() != null);
         }
+        return false;
     }
 
     @ExportMessage
     @TruffleBoundary
     Object getScopeParent() throws UnsupportedMessageException {
-        if (blockOrRoot instanceof RootNode) {
+        if (blockOrRoot instanceof BlockScopeNode) {
+            Node parentBlock = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
+            if (parentBlock != null) {
+                if (frame == null) {
+                    return new ScopeVariables(null, true, parentBlock, null);
+                } else {
+                    Frame enclosingFrame = getParentFrame();
+                    if (enclosingFrame != null) {
+                        return new ScopeVariables(enclosingFrame, true, parentBlock, functionFrame);
+                    }
+                }
+            }
+        } else {
+            assert blockOrRoot instanceof RootNode;
             if (frame != null) {
                 // For closures, we don't have any outer block nodes, only the RootNode.
                 if (ScopeFrameNode.isBlockScopeFrame(frame)) {
@@ -167,25 +187,13 @@ public final class ScopeVariables implements TruffleObject {
                         return new ScopeVariables(parentBlockScope, true, blockOrRoot, null);
                     }
                 }
-                Frame parentFrame = JSFrameUtil.getParentFrame(frame);
-                if (parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
-                    RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(JSFrameUtil.getFunctionObject(parentFrame))).getRootNode();
-                    return new ScopeVariables(parentFrame, true, rootNode, null);
-                }
             }
-        } else {
-            Node parentBlock = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
-            if (parentBlock != null) {
-                Frame enclosingFrame;
-                if (frame != null) {
-                    enclosingFrame = getParentFrame();
-                    if (enclosingFrame == null) {
-                        throw UnsupportedMessageException.create();
-                    }
-                } else {
-                    enclosingFrame = null;
-                }
-                return new ScopeVariables(enclosingFrame, true, parentBlock, functionFrame);
+        }
+        if (frame != null) {
+            Frame parentFrame = JSFrameUtil.getParentFrame(frame);
+            if (parentFrame != null && parentFrame != JSFrameUtil.NULL_MATERIALIZED_FRAME) {
+                RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(JSFrameUtil.getFunctionObject(parentFrame))).getRootNode();
+                return new ScopeVariables(parentFrame, true, rootNode, null);
             }
         }
         throw UnsupportedMessageException.create();
