@@ -271,14 +271,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         DisplayNames(2),
         Locale(1),
 
-        Error(2),
-        RangeError(2),
-        TypeError(2),
-        ReferenceError(2),
-        SyntaxError(2),
-        EvalError(2),
-        URIError(2),
-        AggregateError(3),
+        Error(1),
+        RangeError(1),
+        TypeError(1),
+        ReferenceError(1),
+        SyntaxError(1),
+        EvalError(1),
+        URIError(1),
+        AggregateError(2),
 
         // WebAssembly
         CompileError(1),
