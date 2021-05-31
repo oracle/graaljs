@@ -54,8 +54,9 @@ public class BlockEnvironment extends Environment {
     private final FrameSlot parentSlot;
     private final int scopeLevel;
     private final FrameSlot[] parentSlots;
+    private final boolean isFunctionBlock;
 
-    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context) {
+    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context, boolean isFunctionBlock) {
         super(parent, factory, context);
         this.functionEnvironment = parent.function();
         this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
@@ -63,7 +64,12 @@ public class BlockEnvironment extends Environment {
         this.scopeLevel = parent.getScopeLevel() + 1;
         this.parentSlots = prepend(parent.getParentSlots(), parentSlot);
         assert parentSlots.length == scopeLevel;
+        this.isFunctionBlock = isFunctionBlock;
         this.functionEnvironment.getOrCreateBlockScopeSlot();
+    }
+
+    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context) {
+        this(parent, factory, context, false);
     }
 
     @Override
@@ -93,6 +99,10 @@ public class BlockEnvironment extends Environment {
     @Override
     public FrameSlot[] getParentSlots() {
         return parentSlots;
+    }
+
+    public boolean isFunctionBlock() {
+        return isFunctionBlock;
     }
 
     private static FrameSlot[] prepend(FrameSlot[] srcArray, FrameSlot newSlot) {

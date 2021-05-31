@@ -70,7 +70,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
     }
 
     public static BlockScopeNode create(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
-        return new FrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, captureFunctionFrame);
+        return new FrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
     }
 
     @Override
@@ -110,6 +110,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         return block;
     }
 
+    public abstract boolean isFunctionBlock();
+
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return block.isResultAlwaysOfType(clazz);
@@ -119,14 +121,17 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         protected final FrameSlot blockScopeSlot;
         protected final FrameDescriptor frameDescriptor;
         protected final FrameSlot parentSlot;
+        /** If true, this is the function-level block scope. */
+        protected final boolean functionBlock;
         /** If true, put the virtual function frame in the parent scope slot. */
         protected final boolean captureFunctionFrame;
 
-        protected FrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, boolean captureFunctionFrame) {
+        protected FrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
             super(block);
             this.blockScopeSlot = blockScopeSlot;
             this.frameDescriptor = frameDescriptor;
             this.parentSlot = parentSlot;
+            this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
         }
 
@@ -134,7 +139,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
             if (materializedTags.contains(DeclareTag.class) && !DeclareTagProvider.isMaterializedFrameProvider(this)) {
                 JavaScriptNode materialized = DeclareTagProvider.createMaterializedBlockNode(cloneUninitialized(block, materializedTags),
-                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), captureFunctionFrame);
+                                blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame);
                 transferSourceSectionAndTags(this, materialized);
                 return materialized;
             } else {
@@ -202,8 +207,13 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         }
 
         @Override
+        public boolean isFunctionBlock() {
+            return functionBlock;
+        }
+
+        @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, captureFunctionFrame);
+            return new FrameBlockScopeNode(cloneUninitialized(block, materializedTags), blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
         }
     }
 }

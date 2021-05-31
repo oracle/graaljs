@@ -141,7 +141,7 @@ public final class ScopeVariables implements TruffleObject {
     boolean hasScopeParent() {
         if (blockOrRoot instanceof BlockScopeNode) {
             Node parentNode = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
-            if (parentNode != null && (frame == null || getParentFrame() != null)) {
+            if (parentNode != null && (frame == null || getParentFrame(((BlockScopeNode) blockOrRoot).isFunctionBlock()) != null)) {
                 return true;
             }
         } else {
@@ -149,7 +149,7 @@ public final class ScopeVariables implements TruffleObject {
             if (frame != null) {
                 // For closures, we don't have any outer block nodes, only the RootNode.
                 if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                    if (getParentFrame() != null) {
+                    if (getParentFrame(false) != null) {
                         return true;
                     }
                 }
@@ -171,7 +171,7 @@ public final class ScopeVariables implements TruffleObject {
                 if (frame == null) {
                     return new ScopeVariables(null, true, parentBlock, null);
                 } else {
-                    Frame enclosingFrame = getParentFrame();
+                    Frame enclosingFrame = getParentFrame(((BlockScopeNode) blockOrRoot).isFunctionBlock());
                     if (enclosingFrame != null) {
                         return new ScopeVariables(enclosingFrame, true, parentBlock, functionFrame);
                     }
@@ -182,7 +182,7 @@ public final class ScopeVariables implements TruffleObject {
             if (frame != null) {
                 // For closures, we don't have any outer block nodes, only the RootNode.
                 if (ScopeFrameNode.isBlockScopeFrame(frame)) {
-                    Frame parentBlockScope = getParentFrame();
+                    Frame parentBlockScope = getParentFrame(false);
                     if (parentBlockScope != null) {
                         return new ScopeVariables(parentBlockScope, true, blockOrRoot, null);
                     }
@@ -200,26 +200,17 @@ public final class ScopeVariables implements TruffleObject {
     }
 
     @TruffleBoundary
-    private Frame getParentFrame() {
+    private Frame getParentFrame(boolean functionBlock) {
         FrameSlot parentSlot = frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
         if (parentSlot != null) {
             Object parent = FrameUtil.getObjectSafe(frame, parentSlot);
             if (parent instanceof Frame) {
                 return (Frame) parent;
-            } else if (functionFrame != null && functionFrame != frame && hasNonInternalSlots(functionFrame)) {
+            } else if (functionFrame != null && functionFrame != frame && !functionBlock) {
                 return functionFrame;
             }
         }
         return null;
-    }
-
-    private static boolean hasNonInternalSlots(Frame frame) {
-        for (FrameSlot slot : frame.getFrameDescriptor().getSlots()) {
-            if (!JSFrameUtil.isInternal(slot)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     @ExportMessage

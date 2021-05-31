@@ -1385,7 +1385,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 FunctionNode function = lc.getCurrentFunction();
                 assert function.hasClosures() || !hasClosures(function.getBody()) : function;
                 if (!function.isModule() && !function.isGenerator() && (function.hasClosures() || function.hasEval())) {
-                    functionEnv = new BlockEnvironment(environment, factory, context);
+                    functionEnv = new BlockEnvironment(environment, factory, context, true);
                 }
 
                 boolean onlyBlockScoped = currentFunction().isCallerContextEval();
@@ -3456,7 +3456,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (newEnv instanceof BlockEnvironment) {
                     BlockEnvironment blockEnv = (BlockEnvironment) newEnv;
                     return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor(), blockEnv.getParentSlot(),
-                                    blockEnv.function().hasWith() || blockEnv.function().isGeneratorFunction());
+                                    blockEnv.isFunctionBlock(), blockEnv.getParent() == blockEnv.function() && (blockEnv.function().hasWith() || blockEnv.function().isGeneratorFunction()));
                 }
             }
             return block;

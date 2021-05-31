@@ -63,8 +63,8 @@ public final class DeclareTagProvider {
     }
 
     public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection,
-                    boolean functionFrame) {
-        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionFrame);
+                    boolean functionBlock, boolean functionFrame) {
+        return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionBlock, functionFrame);
     }
 
     public static boolean isMaterializedFrameProvider(JavaScriptNode node) {
@@ -106,8 +106,8 @@ public final class DeclareTagProvider {
         @Children private JavaScriptNode[] declarations;
 
         protected MaterializedFrameBlockScopeNode(JavaScriptNode block, FrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, FrameSlot parentSlot, SourceSection sourceSection,
-                        boolean captureFunctionFrame) {
-            super(block, blockScopeSlot, frameDescriptor, parentSlot, captureFunctionFrame);
+                        boolean functionBlock, boolean captureFunctionFrame) {
+            super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
             this.declarations = initDeclarations(frameDescriptor, sourceSection);
         }
 
@@ -133,7 +133,7 @@ public final class DeclareTagProvider {
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new MaterializedFrameBlockScopeNode(cloneUninitialized(block, materializedTags),
-                            blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), captureFunctionFrame);
+                            blockScopeSlot, frameDescriptor, parentSlot, getSourceSection(), functionBlock, captureFunctionFrame);
         }
     }
 
