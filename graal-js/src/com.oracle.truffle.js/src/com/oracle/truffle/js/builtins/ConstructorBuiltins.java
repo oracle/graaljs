@@ -1897,17 +1897,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructError(DynamicObject newTarget, String message, DynamicObject options) {
+        protected DynamicObject constructError(DynamicObject newTarget, String message, Object options) {
             return constructErrorImpl(newTarget, message, options);
         }
 
         @Specialization
-        protected DynamicObject constructError(DynamicObject newTarget, Object message, DynamicObject options,
+        protected DynamicObject constructError(DynamicObject newTarget, Object message, Object options,
                         @Cached("create()") JSToStringNode toStringNode) {
             return constructErrorImpl(newTarget, message == Undefined.instance ? null : toStringNode.executeString(message), options);
         }
 
-        private DynamicObject constructErrorImpl(DynamicObject newTarget, String messageOpt, DynamicObject options) {
+        private DynamicObject constructErrorImpl(DynamicObject newTarget, String messageOpt, Object options) {
             JSContext context = getContext();
             JSRealm realm = context.getRealm();
             DynamicObject errorObj = JSError.createErrorObject(getContext(), realm, errorType);
@@ -1950,7 +1950,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization
-        protected DynamicObject constructError(DynamicObject newTarget, Object errorsObj, Object messageObj, DynamicObject options,
+        protected DynamicObject constructError(DynamicObject newTarget, Object errorsObj, Object messageObj, Object options,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                         @Cached("createCall()") JSFunctionCallNode iteratorCallNode,

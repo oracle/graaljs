@@ -28,6 +28,13 @@ try {
 }
 
 try {
+    throw new Error('message', 'test');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
     throw new RangeError('message', { cause: 'test'});
 } catch(e) {
     assertSame('message', e.message);
@@ -36,6 +43,13 @@ try {
 
 try {
     throw new RangeError('message');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
+    throw new RangeError('message', 'test');
 } catch(e) {
     assertSame('message', e.message);
     assertSame(undefined, e.cause);
@@ -56,6 +70,13 @@ try {
 }
 
 try {
+    throw new TypeError('message', 'test');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
     throw new ReferenceError('message', { cause: 'test'});
 } catch(e) {
     assertSame('message', e.message);
@@ -64,6 +85,13 @@ try {
 
 try {
     throw new ReferenceError('message');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
+    throw new ReferenceError('message', 'test');
 } catch(e) {
     assertSame('message', e.message);
     assertSame(undefined, e.cause);
@@ -84,6 +112,13 @@ try {
 }
 
 try {
+    throw new SyntaxError('message', 'test');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
     throw new EvalError('message', { cause: 'test'});
 } catch(e) {
     assertSame('message', e.message);
@@ -92,6 +127,13 @@ try {
 
 try {
     throw new EvalError('message');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
+    throw new EvalError('message', 'test');
 } catch(e) {
     assertSame('message', e.message);
     assertSame(undefined, e.cause);
@@ -112,10 +154,24 @@ try {
 }
 
 try {
+    throw new URIError('message', 'test');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
+}
+
+try {
     throw new AggregateError([],'message', { cause: 'test'});
 } catch(e) {
     assertSame('message', e.message);
     assertSame('test', e.cause);
+}
+
+try {
+    throw new AggregateError([], 'message', 'test');
+} catch(e) {
+    assertSame('message', e.message);
+    assertSame(undefined, e.cause);
 }
 
 try {

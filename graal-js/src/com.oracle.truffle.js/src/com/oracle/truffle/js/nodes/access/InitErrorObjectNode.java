@@ -53,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -100,20 +101,20 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return execute(errorObj, exception, messageOpt, errorsOpt, null);
     }
 
-    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt, DynamicObject options) {
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt, Object options) {
         if (messageOpt != null) {
             setMessage.putWithFlags(errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
         }
         if (errorsOpt != null) {
             setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
         }
-        if(options != null && context.getEcmaScriptVersion() >= 13 && options != Undefined.instance) {
+        if(options != null && context.getEcmaScriptVersion() >= 13 && JSRuntime.isObject(options) && options != Undefined.instance) {
             // Add error cause if present
             if(installErrorCauseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 installErrorCauseNode = insert(new InstallErrorCauseNode(context));
             }
-            installErrorCauseNode.executeVoid(errorObj, options);
+            installErrorCauseNode.executeVoid(errorObj, (DynamicObject) options);
         }
 
         setException.setValue(errorObj, exception);

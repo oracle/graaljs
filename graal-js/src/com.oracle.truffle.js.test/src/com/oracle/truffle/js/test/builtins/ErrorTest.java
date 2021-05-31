@@ -106,6 +106,11 @@ public class ErrorTest {
     }
 
     @Test
+    public void testFunctionCause() {
+        runErrorTest(buildErrors("{ cause: () => 0}", "e.cause() === 0"));
+    }
+
+    @Test
     public void testNullCause() {
         runErrorTest(buildErrors("{ cause: null }" ,"e.cause === null"));
     }
@@ -119,5 +124,14 @@ public class ErrorTest {
     public void testOtherProperties() {
         runErrorTest(buildErrors("{ a: 0, b: false}", "e.cause === undefined && e.a === undefined && e.b === undefined"));
         runErrorTest(buildErrors("{ cause: 0, a: 0, b: false}", "e.cause === 0 && e.a === undefined && e.b === undefined"));
+    }
+
+    @Test
+    public void testCauseIsNotObject() {
+        runErrorTest(buildErrors("'test'", "e.cause === undefined"));
+        runErrorTest(buildErrors("0", "e.cause === undefined"));
+        runErrorTest(buildErrors("true", "e.cause === undefined"));
+        runErrorTest(buildErrors("() => {}", "e.cause === undefined"));
+        runErrorTest(buildErrors("null", "e.cause === undefined"));
     }
 }
