@@ -1659,7 +1659,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isObjectNode.executeBoolean(rx)", limit = "1")
         protected String doObject(DynamicObject rx,
                         @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode) {
-            char[] flags = new char[7];
+            char[] flags = new char[JSRegExp.MAX_FLAGS_LENGTH];
             int len = 0;
             if (getHasIndices != null && getFlag(rx, getHasIndices)) {
                 flags[len++] = 'd';

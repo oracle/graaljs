@@ -98,6 +98,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
 
+    public static final int MAX_FLAGS_LENGTH = 7; // "dgimsuy"
+
     /**
      * Since we cannot use nodes here, access to this property is special-cased in
      * {@code com.oracle.truffle.js.nodes.access.PropertyGetNode.LazyRegexResultIndexPropertyGetNode}
@@ -265,8 +267,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     /**
-     * Format: '/' pattern '/' flags, flags may contain 'g' (global), 'i' (ignore case) and 'm'
-     * (multiline).<br>
+     * Format: '/' pattern '/' flags. Flags may be none, one, or more of 'dgimsuy', in that order.
+     * <p>
      * Example: <code>/ab*c/gi</code>
      */
     @TruffleBoundary
@@ -277,8 +279,36 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         if (pattern.length() == 0) {
             pattern = "(?:)";
         }
-        String flags = readString.execute(TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS), TRegexUtil.Props.Flags.SOURCE);
-        return "/" + pattern + '/' + flags;
+
+        StringBuilder sb = new StringBuilder(pattern.length() + MAX_FLAGS_LENGTH + 2);
+        sb.append('/');
+        sb.append(pattern);
+        sb.append('/');
+
+        if (((JSRegExpObject) thisObj).hasIndices()) {
+            sb.append('d');
+        }
+        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
+            sb.append('g');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
+            sb.append('i');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
+            sb.append('m');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.DOT_ALL)) {
+            sb.append('s');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
+            sb.append('u');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.STICKY)) {
+            sb.append('y');
+        }
+
+        return sb.toString();
     }
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
