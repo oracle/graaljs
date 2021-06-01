@@ -450,10 +450,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             declareParameters(functionNode);
             functionEnvInit(functionNode);
 
+            JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, Collections.emptyList());
+
             currentFunction.freeze();
             assert currentFunction.isDeepFrozen();
 
-            JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, Collections.emptyList());
             return createFunctionRoot(functionNode, functionData, currentFunction, body);
         }
     }
