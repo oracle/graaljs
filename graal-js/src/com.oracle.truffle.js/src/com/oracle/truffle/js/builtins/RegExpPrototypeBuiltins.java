@@ -76,7 +76,6 @@ import com.oracle.truffle.js.nodes.CompileRegexNode;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.IsJSClassNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -226,8 +225,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             setLastIndexNode = PropertySetNode.create(JSRegExp.LAST_INDEX, false, context, true);
         }
 
-        @Specialization(guards = "isJSRegExp(thisRegExp)")
-        protected DynamicObject compile(DynamicObject thisRegExp, Object patternObj, Object flagsObj,
+        @Specialization
+        protected JSRegExpObject compile(JSRegExpObject thisRegExp, Object patternObj, Object flagsObj,
                         @Cached("create(getContext())") CompileRegexNode compileRegexNode,
                         @Cached("createUndefinedToEmpty()") JSToStringNode toStringNode,
                         @Cached("createBinaryProfile()") ConditionProfile isRegExpProfile,
@@ -261,7 +260,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return thisRegExp;
         }
 
-        @Specialization(guards = "!isJSRegExp(thisObj)")
+        @Fallback
         protected Object compile(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
             throw createNoRegExpError(thisObj);
         }
@@ -548,7 +547,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private TRegexUtil.TRegexFlagsAccessor flagsAccessor;
         @Child private TRegexUtil.TRegexResultAccessor resultAccessor;
         @Child private IsPristineObjectNode isPristineObjectNode;
-        @Child private IsJSClassNode isJSRegExpNode;
         private final ConditionProfile sizeZeroProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile sameMatchEnd = ConditionProfile.createBinaryProfile();
         private final ConditionProfile resultIsNull = ConditionProfile.createBinaryProfile();
@@ -899,7 +897,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child TRegexUtil.TRegexResultAccessor resultAccessor;
         @Child private TRegexUtil.TRegexNamedCaptureGroupsAccessor namedCaptureGroupsAccessor;
         @Child private IsPristineObjectNode isPristineObjectNode;
-        @Child private IsJSClassNode isJSRegExpNode;
 
         private final ConditionProfile unicodeProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile globalProfile = ConditionProfile.createBinaryProfile();
@@ -1724,8 +1721,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             readNode = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(flagName);
         }
 
-        @Specialization(guards = "isJSRegExp(obj)")
-        Object doDynamicObject(DynamicObject obj) {
+        @Specialization
+        Object doRegExp(JSRegExpObject obj) {
             return readNode.get(JSRegExp.getCompiledRegex(obj));
         }
 
@@ -1758,8 +1755,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSRegExp(obj)")
-        Object doDynamicObject(DynamicObject obj) {
+        @Specialization
+        Object doRegExp(JSRegExpObject obj) {
             return JSRegExp.escapeRegExpPattern(readPatternNode.execute(JSRegExp.getCompiledRegex(obj), TRegexUtil.Props.CompiledRegex.PATTERN));
         }
 
@@ -1789,7 +1786,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        Object doDynamicObject(JSRegExpObject regExp) {
+        Object doRegExp(JSRegExpObject regExp) {
             return regExp.hasIndices();
         }
 
