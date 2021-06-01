@@ -122,6 +122,7 @@ import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.OptionalChainNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.access.VarWrapperNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.access.WriteNode;
@@ -1256,15 +1257,21 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             if (symbol.isVarRedeclaredHere()) {
                 // redeclaration of parameter binding; initial value is copied from outer scope.
                 assert block.isFunctionBody();
-                assert environment.getScopeLevel() >= 1;
-                JavaScriptNode outerVar = factory.createReadFrameSlot(environment.getParent().findLocalVar(symbol.getName()).getFrameSlot(),
-                                factory.createScopeFrame(0, 1, environment.getParentSlots(0, 1), environment.function().getBlockScopeSlot()));
+                JavaScriptNode outerVar = createReadFromParentEnv(symbol.getName());
                 blockWithInit.add(findScopeVar(symbol.getName(), true).createWriteNode(outerVar));
             }
         }
         if (block.isModuleBody()) {
             createResolveImports(lc.getCurrentFunction(), blockWithInit);
         }
+    }
+
+    private JavaScriptNode createReadFromParentEnv(String symbolName) {
+        assert environment.getScopeLevel() >= 1;
+        ScopeFrameNode parentScope = environment.getScopeLevel() == 1
+                        ? factory.createScopeFrame(0, 0, ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY, null)
+                        : factory.createScopeFrame(0, 1, environment.getParentSlots(0, 1), environment.function().getBlockScopeSlot());
+        return factory.createReadFrameSlot(environment.getParent().findLocalVar(symbolName).getFrameSlot(), parentScope);
     }
 
     private void createResolveImports(FunctionNode functionNode, List<JavaScriptNode> declarations) {
