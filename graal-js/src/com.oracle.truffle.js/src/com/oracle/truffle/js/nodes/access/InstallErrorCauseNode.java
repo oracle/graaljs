@@ -8,10 +8,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 public class InstallErrorCauseNode extends JavaScriptBaseNode {
     private static final String CAUSE = "cause";
     @Child
-    private CreateNonEnumerableDataPropertyNode createNonEnumerableDataPropertyNode;
+    private CreateDataPropertyNode createNonEnumerableDataPropertyNode;
 
     public InstallErrorCauseNode(JSContext context) {
-        this.createNonEnumerableDataPropertyNode = CreateNonEnumerableDataPropertyNode.create(context, CAUSE);
+        this.createNonEnumerableDataPropertyNode = CreateDataPropertyNode.createNonEnumerable(context, CAUSE);
     }
 
     public void executeVoid(DynamicObject error, DynamicObject options) {

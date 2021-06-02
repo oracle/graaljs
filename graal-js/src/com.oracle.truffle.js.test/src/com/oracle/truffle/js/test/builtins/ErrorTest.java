@@ -134,4 +134,9 @@ public class ErrorTest {
         runErrorTest(buildErrors("() => {}", "e.cause === undefined"));
         runErrorTest(buildErrors("null", "e.cause === undefined"));
     }
+
+    @Test
+    public void testEnumerableProperty() {
+        runErrorTest(buildErrors("'test'", "!e.propertyIsEnumerable('cause')"));
+    }
 }

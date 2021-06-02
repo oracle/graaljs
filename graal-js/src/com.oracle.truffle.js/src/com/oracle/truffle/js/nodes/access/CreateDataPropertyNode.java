@@ -52,16 +52,22 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final Object key;
+    protected final boolean setEnumerable;
     @Child protected IsJSObjectNode isObject;
 
-    protected CreateDataPropertyNode(JSContext context, Object key) {
+    protected CreateDataPropertyNode(JSContext context, Object key, boolean setEnumerable) {
         this.context = context;
         this.key = key;
         this.isObject = IsJSObjectNode.create();
+        this.setEnumerable = setEnumerable;
     }
 
     public static CreateDataPropertyNode create(JSContext context, Object key) {
-        return CreateDataPropertyNodeGen.create(context, key);
+        return CreateDataPropertyNodeGen.create(context, key, false);
+    }
+
+    public static CreateDataPropertyNode createNonEnumerable(JSContext context, Object key) {
+        return CreateDataPropertyNodeGen.create(context, key, true);
     }
 
     public abstract void executeVoid(Object object, Object value);
@@ -74,7 +80,11 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
-        JSRuntime.createDataPropertyOrThrow(object, key, value);
+        if(setEnumerable){
+            JSRuntime.createNonEnumerableDataPropertyOrThrow(object, key, value);
+        } else {
+            JSRuntime.createDataPropertyOrThrow(object, key, value);
+        }
     }
 
     @Specialization(guards = "!isJSObject(object)")
@@ -83,6 +93,10 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     }
 
     protected final PropertySetNode makeDefinePropertyCache() {
-        return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());
+        if(setEnumerable) {
+            return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());
+        } else {
+            return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());
+        }
     }
 }
