@@ -199,15 +199,15 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
     public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory) {
-        return create(context, compiledRegex, groupsFactory, true, false);
+        return create(context, compiledRegex, groupsFactory, true);
     }
 
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static JSRegExpObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled, boolean hasIndices) {
+    public static JSRegExpObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
         JSRealm realm = context.getRealm();
-        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled, hasIndices);
+        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
         assert isJSRegExp(regExp);
         return context.trackAllocation(regExp);
     }
@@ -285,10 +285,10 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         sb.append(pattern);
         sb.append('/');
 
-        if (((JSRegExpObject) thisObj).hasIndices()) {
+        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.HAS_INDICES)) {
             sb.append('d');
         }
-        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS);
         if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
             sb.append('g');
         }

@@ -1028,17 +1028,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 regexpObject.enter();
                 Object compiledRegex = JSRegExp.getCompiledRegex((DynamicObject) patternObj);
                 if (flags == Undefined.instance) {
-                    return getCreateRegExpNode().createRegExp(compiledRegex, true, false);
+                    return getCreateRegExpNode().createRegExp(compiledRegex);
                 } else {
                     if (getContext().getEcmaScriptVersion() < 6) {
                         throw Errors.createTypeError("Cannot supply flags when constructing one RegExp from another");
                     }
                     String flagsStr = flagsToString(flags);
                     regexpObjectNewFlagsBranch.enter();
-                    String pattern = getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN);
-                    Object newCompiledRegex = getCompileRegexNode().compile(pattern, flagsStr);
-                    boolean hasIndices = flagsStr.indexOf('d') >= 0;
-                    return getCreateRegExpNode().createRegExp(newCompiledRegex, true, hasIndices);
+                    Object newCompiledRegex = getCompileRegexNode().compile(getInteropReadPatternNode().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.PATTERN), flagsStr);
+                    return getCreateRegExpNode().createRegExp(newCompiledRegex);
                 }
             } else if (hasMatchSymbol) {
                 regexpMatcherObject.enter();
@@ -1058,8 +1056,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             String patternStr = getPatternToStringNode().executeString(p);
             String flagsStr = flagsToString(f);
             Object compiledRegex = getCompileRegexNode().compile(patternStr, flagsStr);
-            boolean hasIndices = flagsStr.indexOf('d') >= 0;
-            DynamicObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled, hasIndices);
+            DynamicObject regExp = getCreateRegExpNode().createRegExp(compiledRegex, legacyFeaturesEnabled);
             if (getContext().getContextOptions().isTestV8Mode()) {
                 // workaround for the reference equality check at the end of mjsunit/regexp.js
                 // TODO: remove this as soon as option maps are available for TRegex Sources

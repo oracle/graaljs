@@ -321,7 +321,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             Object flags = compiledRegexAccessor.flags(compiledRegex);
             boolean global = flagsAccessor.global(flags);
             boolean sticky = ecmaScriptVersion >= 6 && flagsAccessor.sticky(flags);
-            boolean hasIndices = regExp.hasIndices();
+            boolean hasIndices = flagsAccessor.hasIndices(flags);
             long lastIndex = getLastIndex(regExp);
             if (global || sticky) {
                 if (invalidLastIndex.profile(lastIndex < 0 || lastIndex > input.length())) {

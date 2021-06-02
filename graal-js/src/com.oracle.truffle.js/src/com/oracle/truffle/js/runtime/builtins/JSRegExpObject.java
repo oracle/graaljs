@@ -51,15 +51,13 @@ public final class JSRegExpObject extends JSNonProxyObject implements JSCopyable
     private JSObjectFactory groupsFactory;
     private final JSRealm realm;
     private final boolean legacyFeaturesEnabled;
-    boolean hasIndices;
 
-    protected JSRegExpObject(Shape shape, Object compiledRegex, JSObjectFactory groupsFactory, JSRealm realm, boolean legacyFeaturesEnabled, boolean hasIndices) {
+    protected JSRegExpObject(Shape shape, Object compiledRegex, JSObjectFactory groupsFactory, JSRealm realm, boolean legacyFeaturesEnabled) {
         super(shape);
         this.compiledRegex = compiledRegex;
         this.groupsFactory = groupsFactory;
         this.realm = realm;
         this.legacyFeaturesEnabled = legacyFeaturesEnabled;
-        this.hasIndices = hasIndices;
     }
 
     public Object getCompiledRegex() {
@@ -86,25 +84,21 @@ public final class JSRegExpObject extends JSNonProxyObject implements JSCopyable
         return legacyFeaturesEnabled;
     }
 
-    public boolean hasIndices() {
-        return hasIndices;
-    }
-
     @Override
     public String getClassName() {
         return JSRegExp.CLASS_NAME;
     }
 
-    public static JSRegExpObject create(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled, boolean hasIndices) {
-        return factory.initProto(new JSRegExpObject(factory.getShape(realm), compiledRegex, groupsFactory, realm, legacyFeaturesEnabled, hasIndices), realm);
+    public static JSRegExpObject create(JSRealm realm, JSObjectFactory factory, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        return factory.initProto(new JSRegExpObject(factory.getShape(realm), compiledRegex, groupsFactory, realm, legacyFeaturesEnabled), realm);
     }
 
     public static JSRegExpObject create(Shape shape, Object compiledRegex, JSRealm realm) {
-        return new JSRegExpObject(shape, compiledRegex, null, realm, false, false);
+        return new JSRegExpObject(shape, compiledRegex, null, realm, false);
     }
 
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        return new JSRegExpObject(shape, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled, hasIndices);
+        return new JSRegExpObject(shape, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled);
     }
 }

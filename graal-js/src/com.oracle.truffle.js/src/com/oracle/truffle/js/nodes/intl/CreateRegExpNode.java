@@ -66,26 +66,26 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     }
 
     public JSRegExpObject createRegExp(Object compiledRegex) {
-        return createRegExp(compiledRegex, true, false);
+        return createRegExp(compiledRegex, true);
     }
 
-    public JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled, boolean hasIndices) {
-        return execute(compiledRegex, legacyFeaturesEnabled, hasIndices);
+    public JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
+        return execute(compiledRegex, legacyFeaturesEnabled);
     }
 
-    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled, boolean hasIndices);
+    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled);
 
     @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
-    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled, boolean hasIndices) {
-        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, null, legacyFeaturesEnabled, hasIndices);
+    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
+        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
 
     @Specialization(guards = {"hasNamedCG(compiledRegex)"})
-    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled, boolean hasIndices) {
+    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
         Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled, hasIndices);
+        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }

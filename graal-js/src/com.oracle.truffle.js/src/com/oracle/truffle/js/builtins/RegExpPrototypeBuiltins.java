@@ -56,7 +56,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
-import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.HasIndicesGetterNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpCompileNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecNodeGen;
@@ -1617,8 +1616,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return CompiledRegexPatternAccessor.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
                 case flags:
                     return RegExpFlagsGetterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
-                case hasIndices:
-                    return HasIndicesGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
                 default:
                     return CompiledRegexFlagPropertyAccessor.create(context, builtin, builtinEnum.name(), args().withThis().fixedArgs(0).createArgumentNodes(context));
             }
@@ -1776,32 +1773,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         static CompiledRegexPatternAccessor create(JSContext context, JSBuiltin builtin, JavaScriptNode[] args) {
             return RegExpPrototypeBuiltinsFactory.CompiledRegexPatternAccessorNodeGen.create(context, builtin, args);
-        }
-    }
-
-    abstract static class HasIndicesGetterNode extends JSBuiltinNode {
-
-        HasIndicesGetterNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        Object doRegExp(JSRegExpObject regExp) {
-            return regExp.hasIndices();
-        }
-
-        @Specialization(guards = "isRegExpPrototype(obj)")
-        Object doPrototype(@SuppressWarnings("unused") DynamicObject obj) {
-            return Undefined.instance;
-        }
-
-        @Fallback
-        Object doObject(Object obj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(obj);
-        }
-
-        boolean isRegExpPrototype(DynamicObject obj) {
-            return obj == getContext().getRealm().getRegExpPrototype();
         }
     }
 }

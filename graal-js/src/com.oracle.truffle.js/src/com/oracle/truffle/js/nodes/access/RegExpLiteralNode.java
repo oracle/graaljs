@@ -58,7 +58,6 @@ public class RegExpLiteralNode extends JavaScriptNode {
     private final JSContext context;
     private final String pattern;
     private final String flags;
-    private final boolean hasIndices;
 
     @CompilationFinal private Object compiledRegex;
 
@@ -83,7 +82,6 @@ public class RegExpLiteralNode extends JavaScriptNode {
         this.context = context;
         this.pattern = pattern;
         this.flags = flags;
-        this.hasIndices = flags.indexOf('d') >= 0;
     }
 
     public static RegExpLiteralNode create(JSContext context, String pattern, String flags) {
@@ -96,7 +94,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             compiledRegex = RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
         }
-        return getCreateRegExpNode().createRegExp(compiledRegex, true, hasIndices);
+        return getCreateRegExpNode().createRegExp(compiledRegex);
     }
 
     private CreateRegExpNode getCreateRegExpNode() {

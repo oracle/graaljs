@@ -78,7 +78,7 @@ public final class RegexCompilerInterface {
 
     @TruffleBoundary
     private static Source createRegexSource(String pattern, String flags, String options) {
-        String regexStr = options + '/' + pattern + '/' + stripDFlag(flags);
+        String regexStr = options + '/' + pattern + '/' + flags;
         return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").internal(true).build();
     }
 
@@ -92,10 +92,6 @@ public final class RegexCompilerInterface {
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }
-    }
-
-    private static String stripDFlag(String flags) {
-        return flags.replace("d", "");
     }
 
     @TruffleBoundary
