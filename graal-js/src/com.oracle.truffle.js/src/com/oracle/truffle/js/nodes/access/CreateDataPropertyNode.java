@@ -63,11 +63,11 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     }
 
     public static CreateDataPropertyNode create(JSContext context, Object key) {
-        return CreateDataPropertyNodeGen.create(context, key, false);
+        return CreateDataPropertyNodeGen.create(context, key, true);
     }
 
     public static CreateDataPropertyNode createNonEnumerable(JSContext context, Object key) {
-        return CreateDataPropertyNodeGen.create(context, key, true);
+        return CreateDataPropertyNodeGen.create(context, key, false);
     }
 
     public abstract void executeVoid(Object object, Object value);
@@ -81,9 +81,9 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
         if(setEnumerable){
-            JSRuntime.createNonEnumerableDataPropertyOrThrow(object, key, value);
-        } else {
             JSRuntime.createDataPropertyOrThrow(object, key, value);
+        } else {
+            JSRuntime.createNonEnumerableDataPropertyOrThrow(object, key, value);
         }
     }
 
@@ -94,9 +94,9 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     protected final PropertySetNode makeDefinePropertyCache() {
         if(setEnumerable) {
-            return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());
-        } else {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());
+        } else {
+            return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());
         }
     }
 }
