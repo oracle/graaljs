@@ -836,7 +836,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            String thisStr = (String) thisObj;
+            String thisStr = JSRuntime.toStringIsString(thisObj);
             if (root.getKey() instanceof String) {
                 Object boxedString = root.getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
                 try {
@@ -1616,7 +1616,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     private GetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
         final ReceiverCheckNode receiverCheck;
         if (depth == 0) {
-            if (isMethod() && thisObj instanceof String && context.isOptionNashornCompatibilityMode()) {
+            if (isMethod() && JSRuntime.isString(thisObj) && context.isOptionNashornCompatibilityMode()) {
                 // This hack ensures we get the Java method instead of the JavaScript property
                 // for length in s.length() where s is a java.lang.String. Required by Nashorn.
                 // We do this only for depth 0, because JavaScript prototype functions in turn
@@ -1718,7 +1718,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return null;
         }
         if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
-            if (thisObj instanceof String && isMethod()) {
+            if (JSRuntime.isString(thisObj) && isMethod()) {
                 return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
             }
         }
