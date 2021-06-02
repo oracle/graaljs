@@ -1860,8 +1860,10 @@ public class WriteElementNode extends JSTargetableNode {
                 try {
                     interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    }
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);

@@ -1099,8 +1099,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 try {
                     interop.writeHashEntry(truffleObject, stringKey, value);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    }
                 }
             }
 
