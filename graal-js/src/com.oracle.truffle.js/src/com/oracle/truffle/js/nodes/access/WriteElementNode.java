@@ -1850,18 +1850,20 @@ public class WriteElementNode extends JSTargetableNode {
             if (interop.hasArrayElements(truffleObject) && keyInterop.fitsInLong(convertedKey)) {
                 try {
                     interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
-                } catch (InvalidArrayIndexException e) {
-                    // do nothing
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                    }
                 }
             } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    }
                 }
             } else {
                 String propertyKey = toStringNode.executeString(convertedKey);
@@ -1872,11 +1874,11 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 try {
                     interop.writeMember(truffleObject, propertyKey, exportedValue);
-                } catch (UnknownIdentifierException e) {
-                    // do nothing
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                    }
                 }
             }
         }

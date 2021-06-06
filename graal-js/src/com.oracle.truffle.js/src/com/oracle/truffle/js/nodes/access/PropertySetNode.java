@@ -1099,8 +1099,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 try {
                     interop.writeHashEntry(truffleObject, stringKey, value);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    }
                 }
             }
 
@@ -1109,27 +1111,34 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     return true;
                 }
             }
-            if (optimistic) {
+            // strict mode always throws if the member is not writable
+            if (root.isStrict || optimistic) {
                 try {
                     interop.writeMember(truffleObject, stringKey, value);
-                } catch (UnknownIdentifierException e) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    optimistic = false;
-                } catch (UnsupportedTypeException | UnsupportedMessageException e) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
+                    return true;
+                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                    if (root.isStrict) {
+                        errorBranch.enter();
+                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
+                    } else if (e instanceof UnknownIdentifierException) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        optimistic = false;
+                    }
+                    return false;
                 }
             } else {
+                assert !root.isStrict;
                 if (interop.isMemberWritable(truffleObject, stringKey)) {
                     try {
                         interop.writeMember(truffleObject, stringKey, value);
+                        return true;
                     } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", stringKey, this);
+                        return false;
                     }
+                } else {
+                    return false;
                 }
             }
-            return true;
         }
 
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
