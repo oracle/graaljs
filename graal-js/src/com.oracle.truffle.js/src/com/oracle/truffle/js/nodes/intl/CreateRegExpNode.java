@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,11 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -65,27 +65,27 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
         return CreateRegExpNodeGen.create(context);
     }
 
-    public DynamicObject createRegExp(Object compiledRegex) {
+    public JSRegExpObject createRegExp(Object compiledRegex) {
         return createRegExp(compiledRegex, true);
     }
 
-    public DynamicObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
+    public JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
         return execute(compiledRegex, legacyFeaturesEnabled);
     }
 
-    protected abstract DynamicObject execute(Object compiledRegex, boolean legacyFeaturesEnabled);
+    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled);
 
     @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
-    protected DynamicObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
-        DynamicObject reObj = JSRegExp.create(context, compiledRegex, null, legacyFeaturesEnabled);
+    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
+        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
 
     @Specialization(guards = {"hasNamedCG(compiledRegex)"})
-    protected DynamicObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
+    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
         Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        DynamicObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
+        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }

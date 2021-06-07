@@ -63,7 +63,7 @@ public final class RegexCompilerInterface {
     public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {
         // RegexLanguage does its own validation of the flags. This call to validateFlags only
         // serves the purpose of mimicking the error messages of Nashorn and V8.
-        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode());
+        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices());
         Object compiledRegex;
         try {
             compiledRegex = context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
@@ -85,7 +85,7 @@ public final class RegexCompilerInterface {
     @TruffleBoundary
     public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
         if (context.isOptionNashornCompatibilityMode() && !flags.isEmpty()) {
-            validateFlags(flags, ecmaScriptVersion, true);
+            validateFlags(flags, ecmaScriptVersion, true, context.isOptionRegexpMatchIndices());
         }
         try {
             context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
@@ -94,59 +94,67 @@ public final class RegexCompilerInterface {
         }
     }
 
-    @SuppressWarnings("fallthrough")
     @TruffleBoundary
-    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat) {
+    public static void validateFlags(String flags, int ecmaScriptVersion, boolean nashornCompat, boolean allowHasIndices) {
         boolean ignoreCase = false;
         boolean multiline = false;
         boolean global = false;
         boolean sticky = false;
         boolean unicode = false;
         boolean dotAll = false;
+        boolean hasIndices = false;
 
         for (int i = 0; i < flags.length(); i++) {
             char ch = flags.charAt(i);
-            boolean repeated;
+            boolean recognized = false;
+            boolean repeated = false;
             switch (ch) {
                 case 'i':
+                    recognized = true;
                     repeated = ignoreCase;
                     ignoreCase = true;
                     break;
                 case 'm':
+                    recognized = true;
                     repeated = multiline;
                     multiline = true;
                     break;
                 case 'g':
+                    recognized = true;
                     repeated = global;
                     global = true;
                     break;
                 case 'y':
                     if (ecmaScriptVersion >= 6) {
+                        recognized = true;
                         repeated = sticky;
                         sticky = true;
-                        break;
                     }
-                    // fallthrough
+                    break;
                 case 'u':
                     if (ecmaScriptVersion >= 6) {
+                        recognized = true;
                         repeated = unicode;
                         unicode = true;
-                        break;
                     }
-                    // fallthrough
+                    break;
                 case 's':
-                    if (ecmaScriptVersion >= 9) {
+                    if (ecmaScriptVersion >= JSConfig.ECMAScript2018) {
+                        recognized = true;
                         repeated = dotAll;
                         dotAll = true;
-                        break;
                     }
-                    // fallthrough
-                default:
-                    if (nashornCompat) {
-                        throw throwFlagError(UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN, ch);
-                    } else {
-                        throw throwFlagError(UNSUPPORTED_REG_EXP_FLAG_MSG);
+                    break;
+                case 'd':
+                    if (allowHasIndices) {
+                        recognized = true;
+                        repeated = hasIndices;
+                        hasIndices = true;
                     }
+                    break;
+            }
+            if (!recognized) {
+                throw unsupportedFlagError(ch, nashornCompat);
             }
             if (repeated) {
                 throw throwFlagError(REPEATED_REG_EXP_FLAG_MSG, ch);
@@ -155,13 +163,17 @@ public final class RegexCompilerInterface {
     }
 
     @TruffleBoundary
-    private static RuntimeException throwFlagError(String msg, char flag) {
-        throw Errors.createSyntaxError(String.format(msg, flag));
+    private static RuntimeException unsupportedFlagError(char ch, boolean nashornCompat) {
+        if (nashornCompat) {
+            throw throwFlagError(UNSUPPORTED_REG_EXP_FLAG_MSG_NASHORN, ch);
+        } else {
+            throw Errors.createSyntaxError(UNSUPPORTED_REG_EXP_FLAG_MSG);
+        }
     }
 
     @TruffleBoundary
-    private static RuntimeException throwFlagError(String msg) {
-        throw Errors.createSyntaxError(msg);
+    private static RuntimeException throwFlagError(String msg, char flag) {
+        throw Errors.createSyntaxError(String.format(msg, flag));
     }
 
     @TruffleBoundary

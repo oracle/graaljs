@@ -3256,6 +3256,9 @@ public final class GraalJSAccess {
         if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
             v8Flags |= 16; // v8::RegExp::Flags::kUnicode
         }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.DOT_ALL)) {
+            v8Flags |= 32; // v8::RegExp::Flags::kDotAll
+        }
         return v8Flags;
     }
 

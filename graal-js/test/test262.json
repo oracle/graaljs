@@ -146,66 +146,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "built-ins/RegExp/duplicate-flags.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-element.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-matched.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-non-unicode-match.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-unicode-match.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-unicode-property-names.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array-unmatched.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-array.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-groups-object-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-groups-object-unmatched.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-groups-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-groups-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/indices-property.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/match-indices/no-indices-array.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
     "filePath" : "built-ins/RegExp/named-groups/non-unicode-property-names-valid.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-07-21"
@@ -1821,58 +1761,6 @@
     "filePath" : "built-ins/RegExp/property-escapes/generated/XID_Start.js",
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/flags/coercion-hasIndices.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/flags/get-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/flags/rethrow.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/flags/return-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/flags/this-val-regexp.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/cross-realm.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/length.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/this-val-invalid-obj.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/this-val-non-obj.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/this-val-regexp-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "built-ins/RegExp/prototype/hasIndices/this-val-regexp.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
   }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/Final_Sigma_U180E.js",
     "status" : "FAIL",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,6 +135,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
+import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -1498,7 +1499,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             if (isRegExp.profile(JSRegExp.isJSRegExp(searchValue))) {
-                DynamicObject searchRegExp = (DynamicObject) searchValue;
+                JSRegExpObject searchRegExp = (JSRegExpObject) searchValue;
                 int groupCount = compiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(searchRegExp));
                 if (isFnRepl.profile(JSFunction.isJSFunction(replaceValue))) {
                     DynamicObject replaceFunc = (DynamicObject) replaceValue;
@@ -1579,7 +1580,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Boundaries.builderToString(sb);
         }
 
-        private <T> String replaceFirst(String thisStr, DynamicObject regExp, Replacer<T> replacer, T replaceValue) {
+        private <T> String replaceFirst(String thisStr, JSRegExpObject regExp, Replacer<T> replacer, T replaceValue) {
             Object result = match(regExp, thisStr);
             if (match.profile(!resultAccessor.isMatch(result))) {
                 return thisStr;
@@ -1587,7 +1588,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return replace(thisStr, result, compiledRegexAccessor.groupCount(JSRegExp.getCompiledRegex(regExp)), replacer, replaceValue);
         }
 
-        protected final Object match(DynamicObject regExp, String input) {
+        protected final Object match(JSRegExpObject regExp, String input) {
             assert getContext().getEcmaScriptVersion() <= 5;
             return getRegExpNode().execute(regExp, input);
         }
@@ -2222,7 +2223,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         private DynamicObject matchNotRegExpIntl(Object thisObj, Object searchObj) {
             String thisStr = toString(thisObj);
-            DynamicObject regExp = toRegExpNode.execute(searchObj);
+            JSRegExpObject regExp = toRegExpNode.execute(searchObj);
             return regExpExecNode.exec(regExp, thisStr);
         }
 

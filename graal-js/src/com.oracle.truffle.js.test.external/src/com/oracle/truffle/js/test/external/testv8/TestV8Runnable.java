@@ -78,6 +78,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
+    private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
     private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--experimental-wasm-bulk-memory",
@@ -163,6 +164,9 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(NO_ASYNC_STACK_TRACES)) {
             extraOptions.put(JSContextOptions.ASYNC_STACK_TRACES_NAME, "false");
+        }
+        if (flags.contains(NO_HARMONY_REGEXP_MATCH_INDICES)) {
+            extraOptions.put(JSContextOptions.REGEXP_MATCH_INDICES_NAME, "false");
         }
 
         if (supported) {

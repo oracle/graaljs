@@ -59,7 +59,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     private final String pattern;
     private final String flags;
 
-    @CompilationFinal private Object regex;
+    @CompilationFinal private Object compiledRegex;
 
     @Child private CreateRegExpNode createRegExpNode;
     @Child private TRegexUtil.InteropIsNullNode isCompiledRegexNullNode;
@@ -90,11 +90,11 @@ public class RegExpLiteralNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (regex == null) {
+        if (compiledRegex == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            regex = RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
+            compiledRegex = RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
         }
-        return getCreateRegExpNode().createRegExp(regex);
+        return getCreateRegExpNode().createRegExp(compiledRegex);
     }
 
     private CreateRegExpNode getCreateRegExpNode() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,6 +98,7 @@ public final class TRegexUtil {
             public static final String STICKY = "sticky";
             public static final String UNICODE = "unicode";
             public static final String DOT_ALL = "dotAll";
+            public static final String HAS_INDICES = "hasIndices";
         }
 
         public static final class RegexResult {
@@ -492,6 +493,7 @@ public final class TRegexUtil {
         @Child private InteropReadBooleanMemberNode readStickyNode;
         @Child private InteropReadBooleanMemberNode readUnicodeNode;
         @Child private InteropReadBooleanMemberNode readDotAllNode;
+        @Child private InteropReadBooleanMemberNode readHasIndicesNode;
 
         private TRegexFlagsAccessor() {
         }
@@ -526,6 +528,10 @@ public final class TRegexUtil {
 
         public boolean dotAll(Object regexFlagsObject) {
             return getReadDotAllNode().execute(regexFlagsObject, Props.Flags.DOT_ALL);
+        }
+
+        public boolean hasIndices(Object regexFlagsObject) {
+            return getReadHasIndicesNode().execute(regexFlagsObject, Props.Flags.HAS_INDICES);
         }
 
         private InteropReadStringMemberNode getReadSourceNode() {
@@ -582,6 +588,14 @@ public final class TRegexUtil {
                 readDotAllNode = insert(InteropReadBooleanMemberNode.create());
             }
             return readDotAllNode;
+        }
+
+        private InteropReadBooleanMemberNode getReadHasIndicesNode() {
+            if (readHasIndicesNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                readHasIndicesNode = insert(InteropReadBooleanMemberNode.create());
+            }
+            return readHasIndicesNode;
         }
     }
 

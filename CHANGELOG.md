@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * Added the `js.unhandled-rejections` option to track unhandled promise rejections in a polyglot `Context`. By default, the option is set to `none`, and unhandled promise rejections are not tracked.
 * Implemented the [New Set Methods](https://github.com/tc39/proposal-set-methods) proposal. It is available behind an experimental flag (`--js.new-set-methods`).
 * Implemented experimental operator overloading support. Use the experimental option `--js.operator-overloading` to enable it and consult [the documentation](docs/user/OperatorOverloading.md).
+* Updated RegExp Match Indices proposal with opt-in using the `d` flag. Available in ECMAScript 2022 (`--js.ecmascript-version=2022`). Deprecated `--js.regexp-match-indices` option.
 
 ## Version 21.1.0
 * Updated Node.js to version 14.16.1.

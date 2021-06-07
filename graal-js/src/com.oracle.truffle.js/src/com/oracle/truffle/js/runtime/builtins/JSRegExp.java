@@ -57,6 +57,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
@@ -92,9 +93,12 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final String GROUPS = "groups";
     public static final String INDEX = "index";
     public static final String INDICES = "indices";
+    public static final String HAS_INDICES = "hasIndices";
 
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
+
+    public static final int MAX_FLAGS_LENGTH = 7; // "dgimsuy"
 
     /**
      * Since we cannot use nodes here, access to this property is special-cased in
@@ -201,9 +205,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+    public static JSRegExpObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
         JSRealm realm = context.getRealm();
-        DynamicObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
+        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
         assert isJSRegExp(regExp);
         return context.trackAllocation(regExp);
     }
@@ -263,8 +267,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     /**
-     * Format: '/' pattern '/' flags, flags may contain 'g' (global), 'i' (ignore case) and 'm'
-     * (multiline).<br>
+     * Format: '/' pattern '/' flags. Flags may be none, one, or more of 'dgimsuy', in that order.
+     * <p>
      * Example: <code>/ab*c/gi</code>
      */
     @TruffleBoundary
@@ -275,8 +279,36 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         if (pattern.length() == 0) {
             pattern = "(?:)";
         }
-        String flags = readString.execute(TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS), TRegexUtil.Props.Flags.SOURCE);
-        return "/" + pattern + '/' + flags;
+
+        StringBuilder sb = new StringBuilder(pattern.length() + MAX_FLAGS_LENGTH + 2);
+        sb.append('/');
+        sb.append(pattern);
+        sb.append('/');
+
+        Object flagsObj = TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.HAS_INDICES)) {
+            sb.append('d');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.GLOBAL)) {
+            sb.append('g');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.IGNORE_CASE)) {
+            sb.append('i');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.MULTILINE)) {
+            sb.append('m');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.DOT_ALL)) {
+            sb.append('s');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.UNICODE)) {
+            sb.append('u');
+        }
+        if (TRegexUtil.InteropReadBooleanMemberNode.getUncached().execute(flagsObj, TRegexUtil.Props.Flags.STICKY)) {
+            sb.append('y');
+        }
+
+        return sb.toString();
     }
 
     // non-standard according to ES2015, 7.2.8 IsRegExp (@@match check missing)
@@ -306,8 +338,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             putRegExpPropertyAccessor(realm, prototype, STICKY);
             putRegExpPropertyAccessor(realm, prototype, UNICODE);
         }
-        if (ctx.getEcmaScriptVersion() >= 9) {
+        if (ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2018) {
             putRegExpPropertyAccessor(realm, prototype, DOT_ALL);
+        }
+        if (ctx.isOptionRegexpMatchIndices()) {
+            putRegExpPropertyAccessor(realm, prototype, HAS_INDICES);
         }
         // ctor and functions
         JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
