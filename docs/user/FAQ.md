@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: FAQ
+permalink: /reference-manual/js/FAQ/
+---
 # Frequently Asked Questions
 
 Below are the most frequently asked questions and answers about JavaScript running on GraalVM.

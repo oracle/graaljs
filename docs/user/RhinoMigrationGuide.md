@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: Migration Guide from Rhino to GraalVM JavaScript
+permalink: /reference-manual/js/RhinoMigrationGuide/
+---
 # Migration Guide from Rhino to GraalVM JavaScript
 
 This document serves as a migration guide for code previously targeted to the Rhino engine.

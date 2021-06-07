@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: Options
+permalink: /reference-manual/js/Options/
+---
 # Options
 
 Running JavaScript on GraalVM can be configured with several options.

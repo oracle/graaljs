@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: Node.js Runtime
+permalink: /reference-manual/js/NodeJS/
+---
 # Node.js Runtime
 
 GraalVM can run unmodified Node.js applications.
@@ -11,7 +17,7 @@ Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM compon
 It can be installed with the _GraalVM Updater_.
 
 ```shell
-$ $GRAALVM/bin/gu install nodejs
+$GRAALVM/bin/gu install nodejs
 ```
 
 This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
@@ -23,21 +29,21 @@ This feature is available by default in JVM mode (flag: `--jvm`).
 For polyglot access to the Ruby language, you can e.g. use this command:
 
 ```shell
-$ $GRAALVM/bin/node --jvm --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
+$GRAALVM/bin/node --jvm --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
 ```
 
 To use the polyglot capabilities of `node` in the native mode (flag: `--native`), the `libpolyglot` needs to be rebuilt first.
 For this, the `native-image` component and the other languages need to be installed first, before the image can be rebuilt:
 
 ```shell
-$ $GRAALVM/bin/gu install native-image
-$ $GRAALVM/bin/gu rebuild-images libpolyglot
+$GRAALVM/bin/gu install native-image
+$GRAALVM/bin/gu rebuild-images libpolyglot
 ```
 
 After a successfull rebuild, the polyglot access is also available in the `--native` mode:
 
 ```shell
-$ $GRAALVM/bin/node --native --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
+$GRAALVM/bin/node --native --polyglot -e 'var array = Polyglot.eval("ruby", "[1,2,42,4]"); console.log(array[2]);'
 ```
 
 ## Running Node.js Applications
@@ -48,9 +54,7 @@ $GRAALVM_HOME/bin/node [options] [filename] [args]
 ```
 
 GraalVM's Node.js runtime is based on a recent version of Node.js, and runs the
-GraalVM JavaScript engine instead of Google V8. Thus, some internal features (e.g.,
-VM-internal statistics, configuration, profiling, debugging, etc.) are
-unsupported, or supported with potentially different behavior.
+GraalVM JavaScript engine instead of Google V8. Thus, some internal features (e.g., VM-internal statistics, configuration, profiling, debugging, etc.) are unsupported, or supported with potentially different behavior.
 
 The `node` command is largely compatible with Node.js, and features additional GraalVM-specific functionalities (e.g., interoperability with Java and all other GraalVM languages).
 A list of available options can be obtained with `node --help`.

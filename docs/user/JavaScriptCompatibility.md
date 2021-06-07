@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: JavaScript Compatibility
+permalink: /reference-manual/js/JavaScriptCompatibility/
+---
 # JavaScript Compatibility
 
 GraalVM provides an ECMAScript-compliant JavaScript language runtime.

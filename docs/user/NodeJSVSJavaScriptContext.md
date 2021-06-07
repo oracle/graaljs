@@ -1,7 +1,13 @@
+---
+layout: docs
+toc_group: js
+link_title: Differences Between Node.js and Java Embeddings
+permalink: /reference-manual/js/NodeJSvsJavaScriptContext/
+---
 # Differences Between Node.js and Java Embeddings
 
 GraalVM provides a fully-compliant ECMAScript 2020 JavaScript language runtime.
-As such, it can run JavaScript code in a variety of embedding scenarios, including the Oracle [RDBMS](https://www.graalvm.org/docs/examples/mle-oracle/), any Java-based application, and Node.js.
+As such, it can run JavaScript code in a variety of embedding scenarios, including [Oracle Database](https://medium.com/graalvm/mle-executing-javascript-in-oracle-database-c545feb1a010), any Java-based application, and Node.js.
 
 Depending on the GraalVM's JavaScript embedding scenario, applications have access to different built-in capabilities.
 For example, Node.js applications executed using GraalVM's `bin/node` executable have access to all of Node.js' APIs, including built-in Node.js modules such as `fs`, `http`, etc.

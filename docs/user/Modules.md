@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: Using JavaScript Modules and Packages
+permalink: /reference-manual/js/Modules/
+---
 # Using JavaScript Modules and Packages in GraalVM JavaScript
 
 GraalVM JavaScript is compatible with the latest ECMAScript standard, and can be executed in a variety of embedding scenarios such as Java-based applications or Node.js.
@@ -34,7 +40,7 @@ Therefore, any ECMAScript module should have file name extension `.mjs`.
 Alternatively, the module [Source](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html) should have Mime type `"application/javascript+module"`.
 
 As an example, let's assume that you have a file named `foo.mjs` containing the following simple ES module:
-```
+```js
 export class Foo {
 
     square(x) {
@@ -44,7 +50,7 @@ export class Foo {
 ```
 
 The ES module can be loaded in a polyglot `Context` in the following way:
-```
+```java
 public static void main(String[] args) throws IOException {
 
     String src = "import {Foo} from '/path/to/foo.mjs';" +
@@ -70,7 +76,7 @@ By default, GraalVM JavaScript uses the built-in FileSystem of the polyglot `Con
 A [FileSystem](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/io/FileSystem.html) can be used to customize the ES modules loading process.
 For example, a custom FileSystem can be used to resolve ES modules using URLs:
 
-```
+```java
 Context cx = Context.newBuilder("js").fileSystem(new FileSystem() {
 
 	private final Path TMP = Paths.get("/some/tmp/path");

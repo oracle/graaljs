@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: Multithreading
+permalink: /reference-manual/js/Multithreading/
+---
 # Multithreading
 
 Running JavaScript on GraalVM supports multithreading.

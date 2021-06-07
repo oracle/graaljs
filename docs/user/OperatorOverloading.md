@@ -1,10 +1,16 @@
+---
+layout: docs
+toc_group: js
+link_title: Operator Overloading
+permalink: /reference-manual/js/OperatorOverloading/
+---
 # Operator Overloading
 
 GraalVM JavaScript provides an early implementation of the ECMAScript [operator overloading proposal](https://github.com/tc39/proposal-operator-overloading). This lets you overload the behavior of JavaScript's operators on your JavaScript classes.
 
 If you want to experiment with this feature, you will first need to enable it. Since both the proposal and our implementation of it are in early stages, you will need to set the following experimental option.
 
-```
+```shell
 js --experimental-options --js.operator-overloading
 ```
 
@@ -14,7 +20,7 @@ After setting the option, you will see a new builtin in the global namespace, th
 
 Let's look at an example from the original proposal featuring vectors:
 
-```
+```java
 const VectorOps = Operators({
   "+"(a, b) {
     return new Vector(a.contents.map((elt, i) => elt + b.contents[i]));
@@ -47,7 +53,7 @@ true
 
 It is also possible to overload operators between values of different types, allowing, for example, multiplication of vectors by numbers.
 
-```
+```java
 const VectorOps = Operators({
     "+"(a, b) {
         return new Vector(a.contents.map((elt, i) => elt + b.contents[i]));

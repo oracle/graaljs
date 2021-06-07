@@ -1,3 +1,9 @@
+---
+layout: docs
+toc_group: js
+link_title: JavaScript and Node.js Reference
+permalink: /reference-manual/js/
+---
 # GraalVM JavaScript Implementation
 
 GraalVM provides an ECMAScript-compliant runtime to execute JavaScript and Node.js applications.
@@ -21,7 +27,7 @@ Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM compon
 It can be installed with the _GraalVM Updater_.
 
 ```shell
-$ $GRAALVM/bin/gu install nodejs
+$GRAALVM/bin/gu install nodejs
 ```
 
 This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.
@@ -82,7 +88,7 @@ Type ".help" for more information.
 ```
 
 For more information about interoperability with other programming
-languages, see [Polyglot Programming](https://www.graalvm.org/docs/reference-manual/polyglot-programming/) for a general description.
+languages, see [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) for a general description.
 
 ## Interoperability with Java
 
