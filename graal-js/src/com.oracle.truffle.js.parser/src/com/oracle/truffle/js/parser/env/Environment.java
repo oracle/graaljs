@@ -182,8 +182,7 @@ public abstract class Environment {
                 scopeLevel++;
             } else if (current instanceof DebugEnvironment) {
                 if (allowDebug && ((DebugEnvironment) current).hasMember(name)) {
-                    ensureFrameLevelAvailable(frameLevel);
-                    return new DebugVarRef(name);
+                    return new DebugVarRef(name, frameLevel);
                 }
             }
             current = current.getParent();
@@ -265,7 +264,7 @@ public abstract class Environment {
                 }
             } else if (current instanceof DebugEnvironment) {
                 if (((DebugEnvironment) current).hasMember(name)) {
-                    wrapClosure = makeDebugWrapClosure(wrapClosure, name);
+                    wrapClosure = makeDebugWrapClosure(wrapClosure, name, frameLevel);
                     wrapFrameLevel = frameLevel;
                 }
             } else {
@@ -407,7 +406,8 @@ public abstract class Environment {
         });
     }
 
-    private WrapClosure makeDebugWrapClosure(WrapClosure wrapClosure, String name) {
+    private WrapClosure makeDebugWrapClosure(WrapClosure wrapClosure, String name, int frameLevel) {
+        ensureFrameLevelAvailable(frameLevel);
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
@@ -423,7 +423,7 @@ public abstract class Environment {
                 } else {
                     throw new IllegalArgumentException();
                 }
-                JavaScriptNode debugScope = factory.createDebugScope();
+                JavaScriptNode debugScope = factory.createDebugScope(context, factory.createAccessCallee(frameLevel - 1));
                 return factory.createDebugVarWrapper(name, delegateNode, debugScope, scopeAccessNode);
             }
         });
@@ -1074,13 +1074,18 @@ public abstract class Environment {
     }
 
     class DebugVarRef extends VarRef {
-        DebugVarRef(String name) {
+        private final int frameLevel;
+
+        DebugVarRef(String name, int frameLevel) {
             super(name);
+            this.frameLevel = frameLevel;
+            ensureFrameLevelAvailable(frameLevel);
         }
 
         @Override
         public JavaScriptNode createReadNode() {
-            return factory.createDebugVarWrapper(name, factory.createConstantUndefined(), factory.createDebugScope(), factory.createReadProperty(context, null, name));
+            JavaScriptNode debugScope = factory.createDebugScope(context, factory.createAccessCallee(frameLevel - 1));
+            return factory.createDebugVarWrapper(name, factory.createConstantUndefined(), debugScope, factory.createReadProperty(context, null, name));
         }
 
         @Override

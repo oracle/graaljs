@@ -186,6 +186,9 @@ public final class JSFunction extends JSNonProxy {
     private static final HiddenKey GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("generator function");
     private static final HiddenKey ASYNC_GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("async generator function");
 
+    /** Slot for scope object passed to inline parsed scripts. */
+    public static final HiddenKey DEBUG_SCOPE_ID = new HiddenKey("Scope");
+
     public enum GeneratorState {
         SuspendedStart,
         SuspendedYield,

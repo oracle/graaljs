@@ -56,7 +56,6 @@ import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorNextNode;
 import com.oracle.truffle.js.nodes.access.CompoundWriteElementNode;
 import com.oracle.truffle.js.nodes.access.ConstantVariableWriteNode;
-import com.oracle.truffle.js.nodes.access.DebugScopeNode;
 import com.oracle.truffle.js.nodes.access.DebugScopeVarWrapperNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalFunctionNode;
 import com.oracle.truffle.js.nodes.access.DeclareGlobalLexicalVariableNode;
@@ -1179,8 +1178,8 @@ public class NodeFactory {
         return IfNode.create(condition, origIfNode.getThenPart(), origIfNode.getElsePart());
     }
 
-    public JavaScriptNode createDebugScope() {
-        return DebugScopeNode.create();
+    public JavaScriptNode createDebugScope(JSContext context, JavaScriptNode function) {
+        return PropertyNode.createGetHidden(context, function, JSFunction.DEBUG_SCOPE_ID);
     }
 
     public JavaScriptNode createDebugVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {

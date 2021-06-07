@@ -71,6 +71,8 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.NodeLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -83,9 +85,9 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
-import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -97,6 +99,7 @@ import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -966,25 +969,34 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public JavaScriptNode parseInlineScript(JSContext context, Source source, MaterializedFrame lexicalContextFrame, boolean isStrict, Node locationNode) {
-        Environment env = new DebugEnvironment(null, NodeFactory.getInstance(context), context, locationNode, lexicalContextFrame);
+        Environment env;
+        Object scope;
+        try {
+            scope = NodeLibrary.getUncached().getScope(locationNode, lexicalContextFrame, true);
+            env = new DebugEnvironment(null, NodeFactory.getInstance(context), context, scope);
+        } catch (UnsupportedMessageException e) {
+            scope = null;
+            env = null;
+        }
         ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict);
-        return createInlineScriptCallNode(script.getFunctionData(), script.getCallTarget(), locationNode);
+        return createInlineScriptCallNode(context, script.getFunctionData(), script.getCallTarget(), locationNode);
     }
 
-    private static JavaScriptNode createInlineScriptCallNode(JSFunctionData functionData, RootCallTarget callTarget, Node locationNode) {
-        final Node block = JavaScriptNode.findBlockScopeNode(locationNode);
+    private static JavaScriptNode createInlineScriptCallNode(JSContext context, JSFunctionData functionData, RootCallTarget callTarget, Node locationNode) {
         return new JavaScriptNode() {
             @Child private DirectCallNode callNode = DirectCallNode.create(callTarget);
+            @Child private PropertySetNode setScopeNode = PropertySetNode.createSetHidden(JSFunction.DEBUG_SCOPE_ID, context);
+            @Child private NodeLibrary nodeLibrary = NodeLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
             @Override
             public Object execute(VirtualFrame frame) {
-                MaterializedFrame scopeFrame;
-                if (block instanceof BlockScopeNode) {
-                    scopeFrame = (MaterializedFrame) ((BlockScopeNode) block).getBlockScope(frame);
-                } else {
-                    scopeFrame = frame.materialize();
+                DynamicObject closure = JSFunction.create(getRealm(), functionData);
+                try {
+                    Object scope = nodeLibrary.getScope(locationNode, frame, true);
+                    setScopeNode.setValue(closure, scope);
+                } catch (UnsupportedMessageException e) {
+                    // ignore
                 }
-                DynamicObject closure = JSFunction.create(getRealm(), functionData, scopeFrame);
                 return callNode.call(JSArguments.createZeroArg(JSFrameUtil.getThisObj(frame), closure));
             }
         };
