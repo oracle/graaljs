@@ -183,4 +183,9 @@ public final class TemporalErrors {
         return Errors.createTypeError("Day not present.");
     }
 
+    @TruffleBoundary
+    public static JSException createRangeErrorIdenticalCalendarExpected() {
+        return Errors.createRangeError("identical calendar expected");
+    }
+
 }

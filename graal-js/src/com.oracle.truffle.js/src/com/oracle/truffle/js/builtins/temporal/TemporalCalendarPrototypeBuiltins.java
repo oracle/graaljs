@@ -40,18 +40,18 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
@@ -95,12 +95,12 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
@@ -124,7 +124,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         id(0),
 
         // methods
-        dateFromFields(3),
+        dateFromFields(2),
         yearMonthFromFields(3),
         monthDayFromFields(3),
         dateAdd(4),
@@ -168,7 +168,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSTemporalCalendarGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
             case dateFromFields:
-                return JSTemporalCalendarDateFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+                return JSTemporalCalendarDateFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case yearMonthFromFields:
                 return JSTemporalCalendarYearMonthFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
             case monthDayFromFields:
@@ -361,9 +361,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(oneObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(twoObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options,
-                            TemporalUtil.toSet(HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS),
-                            DAYS, toBoolean, toString);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.toSet(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND), AUTO, DAY, toBoolean, toString);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(), two.getISOYear(), two.getISOMonth(), two.getISODay(),
                             largestUnit);
@@ -445,11 +443,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        public long day(Object thisObj, Object temporalDateLike,
-                        @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt) {
+        public long day(Object thisObj, Object temporalDateLike) {
             JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             DynamicObject tdl = Undefined.instance;
@@ -458,7 +452,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else {
                 tdl = (DynamicObject) temporalDateLike;
             }
-            return JSTemporalCalendar.isoDay(tdl, getContext(), isObject, toBoolean, toString, toInt);
+            return JSTemporalCalendar.isoDay(tdl);
         }
     }
 

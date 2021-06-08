@@ -155,9 +155,9 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
                 calendar = ((TemporalCalendar) itemObj).getCalendar();
                 calendarAbsent = false;
             } else {
-                calendar = (DynamicObject) JSObject.get(itemObj, CALENDAR);
-                calendarAbsent = calendar == Undefined.instance;
-                calendar = TemporalUtil.toOptionalTemporalCalendar(calendar, ctx);
+                Object calendarObj = JSObject.get(itemObj, CALENDAR);
+                calendarAbsent = TemporalUtil.isNullish(calendar);
+                calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarObj, ctx);
             }
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, ctx);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, new HashSet<>(), ctx);
@@ -173,7 +173,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         TemporalUtil.toTemporalOverflow(options);
         String string = JSRuntime.toString(item);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string, ctx);
-        DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
+        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
         if (result.getYear() == 0) { // TODO Check for undefined here!
             if (!TemporalUtil.validateISODate(referenceISOYear, result.getMonth(), result.getDay())) {
                 throw TemporalErrors.createRangeErrorDateOutsideRange();

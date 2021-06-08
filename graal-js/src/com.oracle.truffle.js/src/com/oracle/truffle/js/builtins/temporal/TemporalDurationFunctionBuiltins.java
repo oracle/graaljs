@@ -140,7 +140,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
-            long shift1 = JSTemporalDuration.calculateOffsetShift(relativeTo,
+            long shift1 = TemporalUtil.calculateOffsetShift(relativeTo,
                             getLong(one, YEARS, 0),
                             getLong(one, MONTHS, 0),
                             getLong(one, WEEKS, 0),
@@ -152,7 +152,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                             getLong(one, MICROSECONDS, 0),
                             getLong(one, NANOSECONDS, 0),
                             isObject);
-            long shift2 = JSTemporalDuration.calculateOffsetShift(relativeTo,
+            long shift2 = TemporalUtil.calculateOffsetShift(relativeTo,
                             getLong(two, YEARS, 0),
                             getLong(two, MONTHS, 0),
                             getLong(two, WEEKS, 0),
@@ -169,13 +169,13 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             if (getLong(one, YEARS, 0) != 0 || getLong(two, YEARS, 0) != 0 ||
                             getLong(one, MONTHS, 0) != 0 || getLong(two, MONTHS, 0) != 0 ||
                             getLong(one, WEEKS, 0) != 0 || getLong(two, WEEKS, 0) != 0) {
-                JSTemporalDurationRecord balanceResult1 = JSTemporalDuration.unbalanceDurationRelative(
+                JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
                                 getLong(one, YEARS, 0),
                                 getLong(one, MONTHS, 0),
                                 getLong(one, WEEKS, 0),
                                 getLong(one, DAYS, 0),
                                 DAYS, relativeTo, getContext());
-                JSTemporalDurationRecord balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
+                JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
                                 getLong(two, YEARS, 0),
                                 getLong(two, MONTHS, 0),
                                 getLong(two, WEEKS, 0),
@@ -187,7 +187,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 days1 = getLong(one, DAYS, 0);
                 days2 = getLong(two, DAYS, 0);
             }
-            long ns1 = JSTemporalDuration.totalDurationNanoseconds(days1,
+            long ns1 = TemporalUtil.totalDurationNanoseconds(days1,
                             getLong(one, HOURS, 0),
                             getLong(one, MINUTES, 0),
                             getLong(one, SECONDS, 0),
@@ -195,7 +195,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                             getLong(one, MICROSECONDS, 0),
                             getLong(one, NANOSECONDS, 0),
                             shift1);
-            long ns2 = JSTemporalDuration.totalDurationNanoseconds(days2,
+            long ns2 = TemporalUtil.totalDurationNanoseconds(days2,
                             getLong(two, HOURS, 0),
                             getLong(two, MINUTES, 0),
                             getLong(two, SECONDS, 0),

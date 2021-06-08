@@ -40,6 +40,27 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public interface TemporalDate extends TemporalCalendar, TemporalMonth, TemporalDay {
-    long getISOYear();
+import com.oracle.truffle.api.object.DynamicObject;
+
+public final class JSTemporalRelativeDateRecord {
+    private final DynamicObject relativeTo;
+    private final long days;
+
+    private JSTemporalRelativeDateRecord(DynamicObject relativeTo, long days) {
+        this.relativeTo = relativeTo;
+        this.days = days;
+    }
+
+    @SuppressWarnings("hiding")
+    public static JSTemporalRelativeDateRecord create(DynamicObject relativeTo, long days) {
+        return new JSTemporalRelativeDateRecord(relativeTo, days);
+    }
+
+    public DynamicObject getRelativeTo() {
+        return relativeTo;
+    }
+
+    public long getDays() {
+        return days;
+    }
 }

@@ -42,13 +42,15 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.GREGORY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.JAPANESE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REFERENCE_ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -144,7 +146,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.2
     public static boolean isBuiltinCalendar(String id) {
-        return id.equals(ISO8601);
+        return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
     }
 
     // 12.1.3
@@ -229,25 +231,8 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         return (boolean) executeFunction(calendar, "inLeapYear", dateLike);
     }
 
-    // 12.1.21
-    // TODO (CW) not sure this is correct, looks different than the spec
-    public static Object toTemporalCalendar(Object temporalCalendarLike, JSContext ctx, IsObjectNode isObjectNode, JSToStringNode toStringNode) {
-        if (isObjectNode.executeBoolean(temporalCalendarLike)) {
-            return temporalCalendarLike;
-        }
-        return calendarFrom(temporalCalendarLike, isObjectNode, toStringNode, ctx);
-    }
-
-    // 12.1.22
-    public static Object toOptionalTemporalCalendar(Object temporalCalendarLike, JSContext ctx, JSToStringNode toString, IsObjectNode isObject) {
-        if (temporalCalendarLike == Undefined.instance || temporalCalendarLike == null) {
-            return getISO8601Calendar(ctx);
-        }
-        return toTemporalCalendar(temporalCalendarLike, ctx, isObject, toString);
-    }
-
     // 12.1.24
-    public static Object calendarFrom(Object itemParam, IsObjectNode isObject, JSToStringNode toString, JSContext ctx) {
+    public static Object toTemporalCalendar(Object itemParam, IsObjectNode isObject, JSToStringNode toString, JSContext ctx) {
         Object item = itemParam;
         if (isObject.executeBoolean(item)) {
             if (!JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
@@ -380,7 +365,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         long m2 = (long) numberPart2;
 
         if (!TemporalUtil.isNullish(month) && m1 != m2) {
-            throw Errors.createTypeError("Month does not equal the month code.");
+            throw Errors.createRangeError("Month does not equal the month code.");
         }
         if (!identicalNode.executeBoolean(monthCode, TemporalUtil.buildISOMonthCode(numberPart))) {
             throw Errors.createRangeError("Not same value");
@@ -500,13 +485,8 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     // 12.1.45
-    public static long isoDay(DynamicObject dateOrDateTime, JSContext ctx, IsObjectNode isObject,
-                    JSToBooleanNode toBoolean, JSToStringNode toString, JSToIntegerAsLongNode toInt) {
-        if (!isObject.executeBoolean(dateOrDateTime) || !JSObject.hasProperty(dateOrDateTime, MONTH)) {
-            JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
-                            dateOrDateTime, Undefined.instance, ctx, isObject, toBoolean, toString);
-            return date.getISODay();
-        }
-        return toInt.executeLong(getLong(dateOrDateTime, DAY, 0L));
+    public static long isoDay(DynamicObject temporalObject) {
+        TemporalDay day = (TemporalDay) temporalObject;
+        return day.getISODay();
     }
 }

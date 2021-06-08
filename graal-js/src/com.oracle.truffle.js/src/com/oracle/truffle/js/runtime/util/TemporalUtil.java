@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.ALWAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CEIL;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.JAPANESE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
@@ -51,9 +52,11 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.FLOOR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.GREGORY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
@@ -72,6 +75,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
@@ -107,19 +111,22 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalNanosecondsDaysRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
@@ -142,16 +149,19 @@ public final class TemporalUtil {
     private static final Function<Object, Object> toInteger = (argument -> (long) JSToIntegerAsLongNode.create().executeLong(argument));
     private static final Function<Object, Object> toString = (argument -> JSToStringNode.create().executeString(argument));
 
-    private static final Set<String> singularUnits = toSet(YEAR, MONTH, DAY, HOUR, MINUTE, SECOND,
-                    MILLISECOND, MICROSECOND, NANOSECOND);
-    private static final Set<String> pluralUnits = toSet(YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS,
+    // private static final Set<String> singularUnits = toSet(YEAR, MONTH, WEEK, DAY, HOUR, MINUTE,
+    // SECOND,
+    // MILLISECOND, MICROSECOND, NANOSECOND);
+    private static final Set<String> pluralUnits = toSet(YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS,
                     MILLISECONDS, MICROSECONDS, NANOSECONDS);
     private static final Map<String, String> pluralToSingular = toMap(
-                    new String[]{YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS},
-                    new String[]{YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND});
-    private static final Map<String, String> singularToPlural = toMap(
-                    new String[]{YEAR, MONTH, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND},
-                    new String[]{YEARS, MONTHS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS});
+                    new String[]{YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS},
+                    new String[]{YEAR, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND});
+    // private static final Map<String, String> singularToPlural = toMap(
+    // new String[]{YEAR, MONTH, WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND,
+    // NANOSECOND},
+    // new String[]{YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS,
+    // NANOSECONDS});
     @SuppressWarnings("unchecked") private static final Map<String, Function<Object, Object>> temporalFieldConversion = toMap(
                     new String[]{YEAR, MONTH, MONTH_CODE, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND, YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS, MILLISECONDS,
                                     MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR},
@@ -164,9 +174,12 @@ public final class TemporalUtil {
                                     MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR},
                     new Object[]{Undefined.instance, Undefined.instance, Undefined.instance, Undefined.instance, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Undefined.instance, Undefined.instance,
                                     Undefined.instance});
-    public static final Set<String> setYMWD = TemporalUtil.toSet(YEARS, MONTHS, WEEKS, DAYS);
+    public static final Set<String> setYMWD = TemporalUtil.toSet(YEAR, MONTH, WEEK, DAY);
 
     public static final String[] TIME_LIKE_PROPERTIES = new String[]{HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
+
+    public static final String[] DURATION_PROPERTIES = new String[]{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS
+    };
 
     // 13.1
     public static DynamicObject getOptionsObject(Object options, JSContext ctx, IsObjectNode isObject) {
@@ -297,56 +310,41 @@ public final class TemporalUtil {
         return increment;
     }
 
-    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options) {
-        return toSecondsStringPrecisionIntl(options, true, false);
-    }
-
-    public static JSTemporalPrecisionRecord toDurationSecondsStringPrecision(DynamicObject options) {
-        return toSecondsStringPrecisionIntl(options, false, true);
-    }
-
     @TruffleBoundary
-    private static JSTemporalPrecisionRecord toSecondsStringPrecisionIntl(DynamicObject options, boolean supportMinutes, boolean plural) {
-        Set<Object> set = TemporalUtil.toSet(SECONDS, MILLISECONDS, MICROSECONDS, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
-        if (supportMinutes) {
-            set.add(MINUTE);
-            set.add(MINUTES);
-        }
-        Object smallestUnit = TemporalUtil.getOption(options, "smallestUnit", "string", set, Undefined.instance);
+    public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options, JSToBooleanNode toBooleanNode, JSToStringNode toStringNode) {
+        String smallestUnit = toSmallestTemporalUnit(options, toSet(YEAR, MONTH, WEEK, DAY, HOUR), null, toBooleanNode, toStringNode);
 
-        smallestUnit = TemporalUtil.toPlural(smallestUnit);
-
-        if (supportMinutes && MINUTES.equals(smallestUnit)) {
-            return JSTemporalPrecisionRecord.create(MINUTE, plural ? MINUTES : MINUTE, 1);
-        } else if (SECONDS.equals(smallestUnit)) {
-            return JSTemporalPrecisionRecord.create(0, plural ? SECONDS : SECOND, 1);
-        } else if (MILLISECONDS.equals(smallestUnit)) {
-            return JSTemporalPrecisionRecord.create(3, plural ? MILLISECONDS : MILLISECOND, 1);
-        } else if (MICROSECONDS.equals(smallestUnit)) {
-            return JSTemporalPrecisionRecord.create(6, plural ? MICROSECONDS : MICROSECOND, 1);
-        } else if (NANOSECONDS.equals(smallestUnit)) {
-            return JSTemporalPrecisionRecord.create(9, plural ? NANOSECONDS : NANOSECOND, 1);
+        if (MINUTE.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(MINUTE, MINUTE, 1);
+        } else if (SECOND.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(0, SECOND, 1);
+        } else if (MILLISECOND.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(3, MILLISECOND, 1);
+        } else if (MICROSECOND.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(6, MICROSECOND, 1);
+        } else if (NANOSECOND.equals(smallestUnit)) {
+            return JSTemporalPrecisionRecord.create(9, NANOSECOND, 1);
         }
 
-        assert smallestUnit == Undefined.instance;
+        assert smallestUnit == null;
 
         Object digits = TemporalUtil.getStringOrNumberOption(options, "fractionalSecondDigits", TemporalUtil.toSet(AUTO), 0, 9, AUTO);
         if (digits.equals(AUTO)) {
-            return JSTemporalPrecisionRecord.create(AUTO, plural ? NANOSECONDS : NANOSECOND, 1);
+            return JSTemporalPrecisionRecord.create(AUTO, NANOSECOND, 1);
         }
         int iDigit = ((Number) digits).intValue();
 
         if (iDigit == 0) {
-            return JSTemporalPrecisionRecord.create(0, plural ? SECONDS : SECOND, 1);
+            return JSTemporalPrecisionRecord.create(0, SECOND, 1);
         }
         if (iDigit == 1 || iDigit == 2 || iDigit == 3) {
-            return JSTemporalPrecisionRecord.create(digits, plural ? MILLISECONDS : MILLISECOND, Math.pow(10, 3 - TemporalUtil.toLong(digits)));
+            return JSTemporalPrecisionRecord.create(digits, MILLISECOND, Math.pow(10, 3 - TemporalUtil.toLong(digits)));
         }
         if (iDigit == 4 || iDigit == 5 || iDigit == 6) {
-            return JSTemporalPrecisionRecord.create(digits, plural ? MICROSECONDS : MICROSECOND, Math.pow(10, 6 - TemporalUtil.toLong(digits)));
+            return JSTemporalPrecisionRecord.create(digits, MICROSECOND, Math.pow(10, 6 - TemporalUtil.toLong(digits)));
         }
         assert iDigit == 7 || iDigit == 8 || iDigit == 9;
-        return JSTemporalPrecisionRecord.create(digits, plural ? NANOSECONDS : NANOSECOND, Math.pow(10, 9 - TemporalUtil.toLong(digits)));
+        return JSTemporalPrecisionRecord.create(digits, NANOSECOND, Math.pow(10, 9 - TemporalUtil.toLong(digits)));
     }
 
     // TODO this whole method should be unnecessary
@@ -359,17 +357,18 @@ public final class TemporalUtil {
     }
 
     // 13.21
-    public static String toLargestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String defaultUnit, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        assert !disallowedUnits.contains(defaultUnit) && !disallowedUnits.contains("auto");
+    public static String toLargestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String fallback, String autoValue, JSToBooleanNode toBoolean,
+                    JSToStringNode toStringNode) {
+        assert !disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO);
         String largestUnit = (String) getOption(normalizedOptions, "largestUnit", "string", toSet(
-                        "auto", "year", "years", "month", "months", "weeks", "day", "days", "hour",
+                        "auto", "year", "years", "month", "months", "week", "weeks", "day", "days", "hour",
                         "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), "auto", toBoolean, toStringNode);
-        if (largestUnit.equals("auto")) {
-            return defaultUnit;
+                        "microseconds", "nanosecond", "nanoseconds"), fallback, toBoolean, toStringNode);
+        if (largestUnit.equals(AUTO) && autoValue != null) {
+            return autoValue;
         }
-        if (Boundaries.setContains(singularUnits, largestUnit)) {
-            largestUnit = Boundaries.mapGet(singularToPlural, largestUnit);
+        if (Boundaries.setContains(pluralUnits, largestUnit)) {
+            largestUnit = Boundaries.mapGet(pluralToSingular, largestUnit);
         }
         if (Boundaries.setContains(disallowedUnits, largestUnit)) {
             throw Errors.createRangeError("Largest unit is not allowed.");
@@ -378,30 +377,12 @@ public final class TemporalUtil {
     }
 
     // 13.22
-    public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        String smallestUnit = (String) getOption(normalizedOptions, "smallestUnit", "string", toSet("day", "days", "hour",
-                        "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), null, toBoolean, toStringNode);
-        if (smallestUnit == null) {
-            throw Errors.createRangeError("No smallest unit found.");
-        }
-        if (Boundaries.setContains(pluralUnits, smallestUnit)) {
-            smallestUnit = Boundaries.mapGet(pluralToSingular, smallestUnit);
-        }
-        if (Boundaries.setContains(disallowedUnits, smallestUnit)) {
-            throw Errors.createRangeError("Smallest unit not allowed.");
-        }
-        return smallestUnit;
-    }
-
-    // 13.23
-    public static String toSmallestTemporalDurationUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String fallback, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        String smallestUnit = (String) getOption(normalizedOptions, "smallestUnit", "string", toSet(
-                        "year", "years", "month", "months", "weeks", "day", "days", "hour",
+    public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String fallback, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
+        String smallestUnit = (String) getOption(normalizedOptions, "smallestUnit", "string", toSet("year", "years", "month", "months", "weeks", "day", "days", "hour",
                         "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
                         "microseconds", "nanosecond", "nanoseconds"), fallback, toBoolean, toStringNode);
-        if (Boundaries.setContains(singularUnits, smallestUnit)) {
-            smallestUnit = Boundaries.mapGet(singularToPlural, smallestUnit);
+        if (Boundaries.setContains(pluralUnits, smallestUnit)) {
+            smallestUnit = Boundaries.mapGet(pluralToSingular, smallestUnit);
         }
         if (Boundaries.setContains(disallowedUnits, smallestUnit)) {
             throw Errors.createRangeError("Smallest unit not allowed.");
@@ -415,8 +396,8 @@ public final class TemporalUtil {
                         DAYS, DAY, HOURS, HOUR, MINUTES, MINUTE, SECONDS, SECOND, MILLISECONDS, MILLISECOND, MICROSECONDS,
                         MICROSECOND, NANOSECONDS, NANOSECONDS),
                         null, toBoolean, toStringNode);
-        if (Boundaries.setContains(singularUnits, unit)) {
-            unit = Boundaries.mapGet(singularToPlural, unit);
+        if (Boundaries.setContains(pluralUnits, unit)) {
+            unit = Boundaries.mapGet(pluralToSingular, unit);
         }
         return unit;
     }
@@ -445,7 +426,7 @@ public final class TemporalUtil {
                 JSTemporalPlainDateObject pd = (JSTemporalPlainDateObject) valueObj;
                 return JSTemporalPlainDateTime.createTemporalDateTime(ctx, pd.getISOYear(), pd.getISOMonth(), pd.getISODay(), 0, 0, 0, 0, 0, 0, pd.getCalendar());
             }
-            calendar = TemporalUtil.getOptionalTemporalCalendar(valueObj, ctx);
+            calendar = TemporalUtil.getTemporalCalendarWithISODefault(valueObj, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, ctx);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(valueObj, fieldNames, new HashSet<>(), ctx);
 
@@ -457,7 +438,7 @@ public final class TemporalUtil {
         } else {
             String string = JSRuntime.toString(value);
             result = parseISODateTime(string, ctx);
-            calendar = toOptionalTemporalCalendar(result.getCalendar(), ctx);
+            calendar = toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
             offset = result.getTimeZoneOffset();
             timeZone = result.getTimeZoneIANAName();
         }
@@ -663,79 +644,47 @@ public final class TemporalUtil {
 
     // 13.27
     public static void validateTemporalUnitRange(String largestUnit, String smallestUnit) {
-        if (smallestUnit.equals(YEARS) && !largestUnit.equals(YEARS)) {
+        if (smallestUnit.equals(YEAR) && !largestUnit.equals(YEAR)) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(MONTHS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS)) {
+        if (smallestUnit.equals(MONTH) && !largestUnit.equals(YEAR) && !largestUnit.equals(MONTH)) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(WEEKS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS)) {
+        if (smallestUnit.equals(WEEK) && !largestUnit.equals(YEAR) && !largestUnit.equals(MONTH) && !largestUnit.equals(WEEK)) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(DAYS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS) && !largestUnit.equals(DAYS)) {
+        if (smallestUnit.equals(DAY) && !largestUnit.equals(YEAR) && !largestUnit.equals(MONTH) && !largestUnit.equals(WEEK) && !largestUnit.equals(DAY)) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(HOURS) && !largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS) && !largestUnit.equals(DAYS) && !largestUnit.equals(HOURS)) {
+        if (smallestUnit.equals(HOUR) && !largestUnit.equals(YEAR) && !largestUnit.equals(MONTH) && !largestUnit.equals(WEEK) && !largestUnit.equals(DAY) && !largestUnit.equals(HOUR)) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(MINUTES) && (largestUnit.equals(SECONDS) || largestUnit.equals(MILLISECONDS) || largestUnit.equals(MICROSECONDS) || largestUnit.equals(NANOSECONDS))) {
+        if (smallestUnit.equals(MINUTE) && (largestUnit.equals(SECOND) || largestUnit.equals(MILLISECOND) || largestUnit.equals(MICROSECOND) || largestUnit.equals(NANOSECOND))) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(SECONDS) && (largestUnit.equals(MILLISECONDS) || largestUnit.equals(MICROSECONDS) || largestUnit.equals(NANOSECONDS))) {
+        if (smallestUnit.equals(SECOND) && (largestUnit.equals(MILLISECOND) || largestUnit.equals(MICROSECOND) || largestUnit.equals(NANOSECOND))) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(MILLISECONDS) && (largestUnit.equals(MICROSECONDS) || largestUnit.equals(NANOSECONDS))) {
+        if (smallestUnit.equals(MILLISECOND) && (largestUnit.equals(MICROSECOND) || largestUnit.equals(NANOSECOND))) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-        if (smallestUnit.equals(MICROSECONDS) && largestUnit.equals(NANOSECONDS)) {
+        if (smallestUnit.equals(MICROSECOND) && largestUnit.equals(NANOSECOND)) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
-    }
-
-    // 13.28
-    public static String largerOfTwoTemporalDurationUnits(String u1, String u2) {
-        if (u1.equals(YEARS) || u2.equals(YEARS)) {
-            return YEARS;
-        }
-        if (u1.equals(MONTHS) || u2.equals(MONTHS)) {
-            return MONTHS;
-        }
-        if (u1.equals(WEEKS) || u2.equals(WEEKS)) {
-            return WEEKS;
-        }
-        if (u1.equals(DAYS) || u2.equals(DAYS)) {
-            return DAYS;
-        }
-        if (u1.equals(HOURS) || u2.equals(HOURS)) {
-            return HOURS;
-        }
-        if (u1.equals(MINUTES) || u2.equals(MINUTES)) {
-            return MINUTES;
-        }
-        if (u1.equals(SECONDS) || u2.equals(SECONDS)) {
-            return SECONDS;
-        }
-        if (u1.equals(MILLISECONDS) || u2.equals(MILLISECONDS)) {
-            return MILLISECONDS;
-        }
-        if (u1.equals(MICROSECONDS) || u2.equals(MICROSECONDS)) {
-            return MICROSECONDS;
-        }
-        return NANOSECONDS;
     }
 
     // 13.31
     public static double maximumTemporalDurationRoundingIncrement(String unit) {
-        if (unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS)) {
+        if (unit.equals(YEAR) || unit.equals(MONTH) || unit.equals(WEEK) || unit.equals(DAY)) {
             return Double.POSITIVE_INFINITY; // Undefined according to spec, we fix in caller
         }
-        if (unit.equals(HOURS)) {
+        if (unit.equals(HOUR)) {
             return 24d;
         }
-        if (unit.equals(MINUTES) || unit.equals(SECONDS)) {
+        if (unit.equals(MINUTE) || unit.equals(SECOND)) {
             return 60d;
         }
-        assert unit.equals(MILLISECONDS) || unit.equals(MICROSECONDS) || unit.equals(NANOSECONDS);
+        assert unit.equals(MILLISECOND) || unit.equals(MICROSECOND) || unit.equals(NANOSECOND);
         return 1000d;
     }
 
@@ -830,7 +779,15 @@ public final class TemporalUtil {
     // 13.43
     @SuppressWarnings("unused")
     public static String parseTemporalCalendarString(String isoString) {
-        return "iso8601";   // TODO: parseTemporalCalendarString
+        // TODO: parseTemporalCalendarString
+        if (isoString.contains(ISO8601)) {
+            return ISO8601;
+        } else if (isoString.contains(GREGORY)) {
+            return GREGORY;
+        } else if (isoString.contains(JAPANESE)) {
+            return JAPANESE;
+        }
+        return ISO8601;
     }
 
     // 13.51
@@ -875,6 +832,7 @@ public final class TemporalUtil {
         return result;
     }
 
+    @TruffleBoundary
     public static DynamicObject preparePartialTemporalFields(DynamicObject fields, Set<String> fieldNames, JSContext ctx) {
         DynamicObject result = JSOrdinary.create(ctx);
         boolean any = false;
@@ -991,7 +949,7 @@ public final class TemporalUtil {
             throw Errors.createRangeError("value our of range");
         }
 
-        long yearPrepared = year + (long) Math.floor((month - 1) / 12);
+        long yearPrepared = year + (long) Math.floor((month - 1.0) / 12.0);
         long monthPrepared = (long) nonNegativeModulo(month - 1, 12) + 1;
 
         return JSTemporalDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
@@ -1004,25 +962,17 @@ public final class TemporalUtil {
         return (long) value;
     }
 
-    public static DynamicObject getOptionalTemporalCalendar(Object item, JSContext ctx) {
+    public static DynamicObject getTemporalCalendarWithISODefault(Object item, JSContext ctx) {
         if (item instanceof TemporalCalendar) {
             return ((TemporalCalendar) item).getCalendar();
         } else {
             Object calendar = JSObject.get((DynamicObject) item, TemporalConstants.CALENDAR);
-            return toOptionalTemporalCalendar(calendar, ctx);
-        }
-    }
-
-    public static DynamicObject toOptionalTemporalCalendar(Object calendar, JSContext ctx) {
-        if (calendar == Undefined.instance) {
-            return getISO8601Calendar(ctx);
-        } else {
-            return toTemporalCalendar(calendar, ctx);
+            return toTemporalCalendarWithISODefault(calendar, ctx);
         }
     }
 
     public static DynamicObject getISO8601Calendar(JSContext ctx) {
-        return getBuiltinCalendar("iso8601", ctx);
+        return getBuiltinCalendar(ISO8601, ctx);
     }
 
     @TruffleBoundary
@@ -1046,7 +996,6 @@ public final class TemporalUtil {
                 return (DynamicObject) obj2;
             }
         }
-
         String identifier = JSRuntime.toString(temporalCalendarLike);
         if (!JSTemporalCalendar.isBuiltinCalendar(identifier)) {
             identifier = parseTemporalCalendarString(identifier);
@@ -1097,7 +1046,8 @@ public final class TemporalUtil {
     public static JSTemporalDateTimeRecord parseTemporalDateString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
         JSTemporalDateTimeRecord result = parseISODateTime(string, ctx);
-        return JSTemporalDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
+        DynamicObject calendar = getISO8601Calendar(ctx); // TODO: should be result.getCalendar();
+        return JSTemporalDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, calendar);
     }
 
     public static JSTemporalDateTimeRecord parseTemporalTimeString(String string, JSContext ctx) {
@@ -1193,57 +1143,31 @@ public final class TemporalUtil {
         return value != null ? value : defaultValue;
     }
 
-    public static boolean validateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds) {
-        if (hours < 0 || hours > 23) {
-            return false;
-        }
-        if (minutes < 0 || minutes > 59) {
-            return false;
-        }
-        if (seconds < 0 || seconds > 59) {
-            return false;
-        }
-        if (milliseconds < 0 || milliseconds > 999) {
-            return false;
-        }
-        if (microseconds < 0 || microseconds > 999) {
-            return false;
-        }
-        if (nanoseconds < 0 || nanoseconds > 999) {
-            return false;
-        }
-        return true;
-    }
-
-    public static boolean validateISODateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond) {
-        if (month < 1 || month > 12) {
-            return false;
-        }
-        if (day < 1 || day > isoDaysInMonth(year, month)) {
-            return false;
-        }
-        return validateTime(hour, minute, second, millisecond, microsecond, nanosecond);
-    }
-
     public static boolean isoDateTimeWithinLimits(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond) {
         double ns = getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
 
         final double lowerBound = -8.64 * Math.pow(10, 21) - 8.64 * Math.pow(10, 16);
         final double upperBound = 8.64 * Math.pow(10, 21) + 8.64 * Math.pow(10, 16);
 
-        if (ns <= lowerBound || ns > upperBound) {
+        if (ns <= lowerBound || ns >= upperBound) {
             return false;
         }
         return true;
     }
 
-    private static double getEpochFromISOParts(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond) {
-        double date = JSDate.makeDay(year, month, day);
+    public static double getEpochFromISOParts(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond) {
+        assert isValidISODate(year, month, day);
+        assert isValidTime(hour, minute, second, millisecond, microsecond, nanosecond);
+
+        double date = JSDate.makeDay(year, month - 1, day);
         double time = JSDate.makeTime(hour, minute, second, millisecond);
         double ms = JSDate.makeDate(date, time);
-        assert Double.isFinite(ms);
+        assert isFinite(ms);
         return ms * 1_000_000L + microsecond * 1_000L + nanosecond;
+    }
+
+    private static boolean isFinite(double d) {
+        return !(Double.isNaN(d) || Double.isInfinite(d));
     }
 
     public static String toTemporalOverflow(DynamicObject options) {
@@ -1291,10 +1215,9 @@ public final class TemporalUtil {
         if (overflow.equals(CONSTRAIN)) {
             return constrainTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         } else {
-            if (!TemporalUtil.validateTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
+            if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
                 throw Errors.createRangeError("Given time outside the range.");
             }
-
             // sets [[Days]] but [[Hour]]
             return JSTemporalDurationRecord.create(0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
@@ -1384,14 +1307,14 @@ public final class TemporalUtil {
     }
 
     public static DynamicObject toTemporalDate(Object itemParam, DynamicObject optionsParam, JSContext ctx) {
-        DynamicObject options = optionsParam != null ? optionsParam : JSOrdinary.createWithNullPrototype(ctx);
+        DynamicObject options = isNullish(optionsParam) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
         if (JSRuntime.isObject(itemParam)) {
             DynamicObject item = (DynamicObject) itemParam;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 return item;
             }
-            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(item, ctx);
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"}, ctx);
+            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(item, ctx);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, ctx);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(item, fieldNames, TemporalUtil.toSet(), ctx);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
@@ -1400,7 +1323,7 @@ public final class TemporalUtil {
         if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
+        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
         result = regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
 
         return JSTemporalPlainDate.createTemporalDate(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -1601,7 +1524,7 @@ public final class TemporalUtil {
         throw Errors.createTypeError("cannot convert Unit to plural");
     }
 
-    public static boolean isTemporalZonedDateTime(@SuppressWarnings("unused") DynamicObject obj) {
+    public static boolean isTemporalZonedDateTime(@SuppressWarnings("unused") Object obj) {
         // TODO this should be an instanceof check on JSTemporalZonedDateTimeObject
         // but that class does not exist yet :-)
         return false;
@@ -1624,7 +1547,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static String formatCalendarAnnotation(String id, String showCalendar) {
-        if ("never".equals(showCalendar)) {
+        if (NEVER.equals(showCalendar)) {
             return "";
         } else if (AUTO.equals(showCalendar) && ISO8601.equals(id)) {
             return "";
@@ -1648,7 +1571,7 @@ public final class TemporalUtil {
             if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {
                 return itemObj;
             }
-            DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(itemObj, ctx);
+            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(itemObj, ctx);
 
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH, MONTH_CODE, YEAR}, ctx);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, new HashSet<>(), ctx);
@@ -1658,7 +1581,7 @@ public final class TemporalUtil {
 
         String string = JSRuntime.toString(item);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string, ctx);
-        DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
+        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
         if (result.getYear() == 0) { // TODO Check for undefined here!
             if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), 1)) {
                 throw TemporalErrors.createRangeErrorDateOutsideRange();
@@ -1813,4 +1736,1238 @@ public final class TemporalUtil {
         return newSet;
     }
 
+    public static DynamicObject toTemporalCalendarWithISODefault(Object calendar, JSContext ctx) {
+        if (calendar == Undefined.instance) {
+            return getISO8601Calendar(ctx);
+        } else {
+            return toTemporalCalendar(calendar, ctx);
+        }
+    }
+
+    public static String largerOfTwoTemporalUnits(String a, String b) {
+        if (YEAR.equals(a) || YEAR.equals(b)) {
+            return YEAR;
+        }
+        if (MONTH.equals(a) || MONTH.equals(b)) {
+            return MONTH;
+        }
+        if (WEEK.equals(a) || WEEK.equals(b)) {
+            return WEEK;
+        }
+        if (DAY.equals(a) || DAY.equals(b)) {
+            return DAY;
+        }
+        if (HOUR.equals(a) || HOUR.equals(b)) {
+            return HOUR;
+        }
+        if (MINUTE.equals(a) || MINUTE.equals(b)) {
+            return MINUTE;
+        }
+        if (SECOND.equals(a) || SECOND.equals(b)) {
+            return SECOND;
+        }
+        if (MILLISECOND.equals(a) || MILLISECOND.equals(b)) {
+            return MILLISECOND;
+        }
+        if (MICROSECOND.equals(a) || MICROSECOND.equals(b)) {
+            return MICROSECOND;
+        }
+        return NANOSECOND;
+    }
+
+    @TruffleBoundary
+    public static DynamicObject toTemporalDateTime(Object item, DynamicObject optParam, JSContext ctx) {
+        DynamicObject options = optParam;
+        if (isNullish(optParam)) {
+            options = JSOrdinary.createWithNullPrototype(ctx);
+        }
+        JSTemporalDateTimeRecord result = null;
+        DynamicObject calendar = null;
+        if (JSRuntime.isObject(item)) {
+            DynamicObject itemObj = (DynamicObject) item;
+            if (itemObj instanceof JSTemporalPlainDateTimeObject) {
+                return itemObj;
+            }
+            // TODO
+            // if (item instanceof JSTemporalZonedDateTimeObject) {
+            // long instant = TemporalUtil.createTemporalInstant(item.getNanoseconds());
+            // ii. Return ? BuiltinTimeZoneGetPlainDateTimeFor(item.[[TimeZone]], instant,
+            // item.[[Calendar]]).
+            // }
+            if (itemObj instanceof JSTemporalPlainDateObject) {
+                TemporalDate date = (TemporalDate) itemObj;
+                return JSTemporalPlainDateTime.createTemporalDateTime(ctx, date.getISOYear(), date.getISOMonth(), date.getISODay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
+            }
+            calendar = TemporalUtil.getTemporalCalendarWithISODefault(itemObj, ctx);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "hour", "microsecond", "millisecond", "minute",
+                            "month", "monthCode", "nanosecond", "second", "year"}, ctx);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, new HashSet<>(), ctx);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
+        } else {
+            TemporalUtil.toTemporalOverflow(options);
+            String string = JSRuntime.toString(item);
+            result = TemporalUtil.parseTemporalDateTimeString(string, ctx);
+            assert isValidISODate(result.getYear(), result.getMonth(), result.getDay());
+            assert isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
+            calendar = TemporalUtil.toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
+        }
+        return JSTemporalPlainDateTime.createTemporalDateTime(ctx,
+                        result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
+                        result.getMicrosecond(), result.getNanosecond(),
+                        calendar);
+    }
+
+    public static JSTemporalDurationRecord differenceISODateTime(long y1, long mon1, long d1, long h1, long min1, long s1, long ms1, long mus1,
+                    long ns1, long y2, long mon2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
+                    DynamicObject calendar, String largestUnit, DynamicObject optionsParam, EnumerableOwnPropertyNamesNode namesNode, JSContext ctx) {
+
+        DynamicObject options = optionsParam;
+        if (isNullish(optionsParam)) {
+            options = JSOrdinary.createWithNullPrototypeInit(ctx);
+        }
+        JSTemporalDurationRecord timeDifference = differenceTime(h1, min1, s1, ms1, mus1, ns1, h2, min2, s2, ms2, mus2, ns2);
+
+        int timeSign = durationSign(0, 0, 0, timeDifference.getDays(), timeDifference.getHours(), timeDifference.getMinutes(), timeDifference.getSeconds(),
+                        timeDifference.getMilliseconds(), timeDifference.getMicroseconds(), timeDifference.getNanoseconds());
+        int dateSign = compareISODate(y2, mon2, d2, y1, mon1, d1);
+        JSTemporalDateTimeRecord balanceResult = balanceISODate(y1, mon1, d1 + timeDifference.getDays());
+        if (timeSign == -dateSign) {
+            balanceResult = balanceISODate(balanceResult.getYear(), balanceResult.getMonth(), balanceResult.getDay() - timeSign);
+            timeDifference = balanceDuration(-timeSign, timeDifference.getHours(),
+                            timeDifference.getMinutes(), timeDifference.getSeconds(), timeDifference.getMilliseconds(), timeDifference.getMicroseconds(), timeDifference.getNanoseconds(), largestUnit,
+                            Undefined.instance);
+        }
+        DynamicObject date1 = createTemporalDate(ctx, balanceResult.getYear(), balanceResult.getMonth(), balanceResult.getDay(), calendar);
+        DynamicObject date2 = createTemporalDate(ctx, y2, mon2, d2, calendar);
+        String dateLargestUnit = largerOfTwoTemporalUnits(DAY, largestUnit);
+        DynamicObject untilOptions = mergeLargestUnitOption(options, dateLargestUnit, namesNode, ctx);
+        JSTemporalDurationObject dateDifference = (JSTemporalDurationObject) calendarDateUntil(calendar, date1, date2, untilOptions, Undefined.instance);
+        // TODO spec on 2021-06-09 says to add years, months and weeks here??
+        return balanceDuration(dateDifference.getDays(), timeDifference.getHours(), timeDifference.getMinutes(), timeDifference.getSeconds(), timeDifference.getMilliseconds(),
+                        timeDifference.getMicroseconds(),
+                        timeDifference.getNanoseconds(), largestUnit, Undefined.instance);
+    }
+
+    @TruffleBoundary
+    public static DynamicObject mergeLargestUnitOption(DynamicObject options, String largestUnit, EnumerableOwnPropertyNamesNode namesNode, JSContext ctx) {
+        DynamicObject merged = JSOrdinary.create(ctx);
+        UnmodifiableArrayList<?> keys = namesNode.execute(options);
+        for (Object nextKey : keys) {
+            String key = nextKey.toString();
+            Object propValue = JSObject.get(options, key);
+            createDataPropertyOrThrow(ctx, merged, key, propValue);
+        }
+        createDataPropertyOrThrow(ctx, merged, "largestUnit", largestUnit);
+        return merged;
+    }
+
+    // 7.5.3
+    public static int durationSign(long years, long months, long weeks, long days, long hours, long minutes,
+                    long seconds, long milliseconds, long microseconds, long nanoseconds) {
+        if (years < 0) {
+            return -1;
+        }
+        if (years > 0) {
+            return 1;
+        }
+        if (months < 0) {
+            return -1;
+        }
+        if (months > 1) {
+            return 1;
+        }
+        if (weeks < 0) {
+            return -1;
+        }
+        if (weeks > 0) {
+            return 1;
+        }
+        if (days < 0) {
+            return -1;
+        }
+        if (days > 0) {
+            return 1;
+        }
+        if (hours < 0) {
+            return -1;
+        }
+        if (hours > 0) {
+            return 1;
+        }
+        if (minutes < 0) {
+            return -1;
+        }
+        if (minutes > 0) {
+            return 1;
+        }
+        if (seconds < 0) {
+            return -1;
+        }
+        if (seconds > 0) {
+            return 1;
+        }
+        if (milliseconds < 0) {
+            return -1;
+        }
+        if (milliseconds > 0) {
+            return 1;
+        }
+        if (microseconds < 0) {
+            return -1;
+        }
+        if (microseconds > 0) {
+            return 1;
+        }
+        if (nanoseconds < 0) {
+            return -1;
+        }
+        if (nanoseconds > 0) {
+            return 1;
+        }
+        return 0;
+    }
+
+    // 7.5.4
+    public static void rejectDurationSign(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+        long sign = durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        if (years < 0 && sign > 0) {
+            throw Errors.createRangeError("Years is negative but it should be positive.");
+        }
+        if (years > 0 && sign < 0) {
+            throw Errors.createRangeError("Years is positive but it should be negative.");
+        }
+        if (months < 0 && sign > 0) {
+            throw Errors.createRangeError("Months is negative but it should be positive.");
+        }
+        if (months > 0 && sign < 0) {
+            throw Errors.createRangeError("Months is positive but it should be negative.");
+        }
+        if (weeks < 0 && sign > 0) {
+            throw Errors.createRangeError("Weeks is negative but it should be positive.");
+        }
+        if (weeks > 0 && sign < 0) {
+            throw Errors.createRangeError("Weeks is positive but it should be negative.");
+        }
+        if (days < 0 && sign > 0) {
+            throw Errors.createRangeError("Days is negative but it should be positive.");
+        }
+        if (days > 0 && sign < 0) {
+            throw Errors.createRangeError("Days is positive but it should be negative.");
+        }
+        if (hours < 0 && sign > 0) {
+            throw Errors.createRangeError("Hours is negative but it should be positive.");
+        }
+        if (hours > 0 && sign < 0) {
+            throw Errors.createRangeError("Hours is positive but it should be negative.");
+        }
+        if (minutes < 0 && sign > 0) {
+            throw Errors.createRangeError("Minutes is negative but it should be positive.");
+        }
+        if (minutes > 0 && sign < 0) {
+            throw Errors.createRangeError("Minutes is positive but it should be negative.");
+        }
+        if (seconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Seconds is negative but it should be positive.");
+        }
+        if (seconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Seconds is positive but it should be negative.");
+        }
+        if (milliseconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Milliseconds is negative but it should be positive.");
+        }
+        if (milliseconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Milliseconds is positive but it should be negative.");
+        }
+        if (microseconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Microseconds is negative but it should be positive.");
+        }
+        if (microseconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Microseconds is positive but it should be negative.");
+        }
+        if (nanoseconds < 0 && sign > 0) {
+            throw Errors.createRangeError("Nanoseconds is negative but it should be positive.");
+        }
+        if (nanoseconds > 0 && sign < 0) {
+            throw Errors.createRangeError("Nanoseconds is positive but it should be negative.");
+        }
+    }
+
+    public static JSTemporalDurationRecord balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
+                    long microseconds, long nanoseconds, String largestUnit, DynamicObject relativeTo) {
+        long ns;
+        if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+            // TODO implement that branch
+            ns = nanoseconds;
+        } else {
+            ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+        }
+        long d;
+        if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) || largestUnit.equals(DAY)) {
+            JSTemporalNanosecondsDaysRecord result = nanosecondsToDays(ns, relativeTo);
+            d = result.getDays();
+            ns = result.getNanoseconds();
+        } else {
+            d = 0;
+        }
+        long h = 0;
+        long min = 0;
+        long s = 0;
+        long ms = 0;
+        long mus = 0;
+        long sign = ns < 0 ? -1 : 1;
+        ns = Math.abs(ns);
+        if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) ||
+                        largestUnit.equals(DAY) || largestUnit.equals(HOUR)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+            s = Math.floorDiv(ms, 1000);
+            ms = ms % 1000;
+            min = Math.floorDiv(s, 60);
+            s = s % 60;
+            h = Math.floorDiv(min, 60);
+            min = min % 60;
+        } else if (largestUnit.equals(MINUTE)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+            s = Math.floorDiv(ms, 1000);
+            ms = ms % 1000;
+            min = Math.floorDiv(s, 60);
+            s = s % 60;
+        } else if (largestUnit.equals(SECOND)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+            s = Math.floorDiv(ms, 1000);
+            ms = ms % 1000;
+        } else if (largestUnit.equals(MILLISECOND)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+            ms = Math.floorDiv(mus, 1000);
+            mus = mus % 1000;
+        } else if (largestUnit.equals(MICROSECOND)) {
+            mus = Math.floorDiv(ns, 1000);
+            ns = ns % 1000;
+        } else {
+            assert largestUnit.equals(NANOSECOND);
+        }
+
+        return JSTemporalDurationRecord.create(0, 0, d, h * sign, min * sign, s * sign, ms * sign, mus * sign, ns * sign);
+    }
+
+    // 7.5.14
+    public static JSTemporalDurationRecord unbalanceDurationRelative(long y, long m, long w, long d,
+                    String largestUnit, DynamicObject relTo, JSContext ctx) {
+        long years = y;
+        long months = m;
+        long weeks = w;
+        long days = d;
+        DynamicObject relativeTo = relTo;
+        if (largestUnit.equals(YEAR) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        }
+        long sign = durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        assert sign != 0;
+        DynamicObject oneYear = JSTemporalDuration.createTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+        DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+        DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, ctx);
+        DynamicObject calendar = Undefined.instance;
+        if (relativeTo != Undefined.instance) {
+            assert JSObject.hasProperty(relativeTo, CALENDAR);
+            calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
+        }
+        if (largestUnit.equals(MONTH)) {
+            if (calendar == Undefined.instance) {
+                throw Errors.createRangeError("No calendar provided.");
+            }
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject dateUntil = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_UNTIL);
+
+            while (Math.abs(years) > 0) {
+                DynamicObject addOptions = JSOrdinary.createWithNullPrototype(ctx);
+                DynamicObject newRelativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, oneYear, addOptions, dateAdd);
+
+                DynamicObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
+                JSObjectUtil.putDataProperty(ctx, untilOptions, "largestUnit", MONTH);
+                DynamicObject untilResult = TemporalUtil.calendarDateUntil(calendar, relativeTo, newRelativeTo, untilOptions, dateUntil);
+                long oneYearMonths = getLong(untilResult, MONTHS, 0);
+                relativeTo = newRelativeTo;
+                years = years - sign;
+                months = months + oneYearMonths;
+            }
+        } else if (largestUnit.equals(WEEK)) {
+            if (calendar == Undefined.instance) {
+                throw Errors.createRangeError("Calendar should be not undefined.");
+            }
+            while (Math.abs(years) > 0) {
+                JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                long oneYearDays = moveResult.getDays();
+                years = years - sign;
+                days = days + oneYearDays;
+            }
+            while (Math.abs(months) > 0) {
+                JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                long oneMonthDays = moveResult.getDays();
+                months = months - sign;
+                days = days + oneMonthDays;
+            }
+        } else {
+            if (years != 0 || months != 0 || days != 0) {
+                if (calendar == Undefined.instance) {
+                    throw Errors.createRangeError("Calendar should be not undefined.");
+                }
+                while (Math.abs(years) > 0) {
+                    JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
+                    relativeTo = moveResult.getRelativeTo();
+                    long oneYearDays = moveResult.getDays();
+                    years = years - sign;
+                    days = days + oneYearDays;
+                }
+                while (Math.abs(months) > 0) {
+                    JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+                    relativeTo = moveResult.getRelativeTo();
+                    long oneMonthDays = moveResult.getDays();
+                    months = months - sign;
+                    days = days + oneMonthDays;
+                }
+                while (Math.abs(weeks) > 0) {
+                    JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, ctx);
+                    relativeTo = moveResult.getRelativeTo();
+                    long oneWeekDays = moveResult.getDays();
+                    weeks = weeks - sign;
+                    days = days + oneWeekDays;
+                }
+            }
+        }
+        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+    }
+
+    // 7.5.15
+    public static JSTemporalDurationRecord balanceDurationRelative(long y, long m, long w, long d, String largestUnit, DynamicObject relTo, JSContext ctx) {
+        long years = y;
+        long months = m;
+        long weeks = w;
+        long days = d;
+        DynamicObject relativeTo = relTo;
+        if ((!largestUnit.equals(YEAR) && !largestUnit.equals(MONTH) && !largestUnit.equals(WEEK)) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        }
+        long sign = durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        assert sign != 0;
+        DynamicObject oneYear = JSTemporalDuration.createTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+        DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+        DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, ctx);
+        if (relativeTo == Undefined.instance) {
+            throw Errors.createRangeError("RelativeTo should not be null.");
+        }
+        assert JSObject.hasProperty(relativeTo, CALENDAR);
+        DynamicObject calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
+        if (largestUnit.equals(YEAR)) {
+            JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneYearDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneYearDays)) {
+                days = days - oneYearDays;
+                years = years + sign;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneYearDays = moveResult.getDays();
+            }
+            moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneMonthDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneMonthDays)) {
+                days = days - oneMonthDays;
+                months = months + sign;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneMonthDays = moveResult.getDays();
+            }
+
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject newRelativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, oneYear, options, dateAdd);
+
+            DynamicObject dateUntil = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_UNTIL);
+            options = JSOrdinary.createWithNullPrototype(ctx);
+            JSObjectUtil.putDataProperty(ctx, options, TemporalConstants.LARGEST_UNIT, MONTH);
+            DynamicObject untilResult = TemporalUtil.calendarDateUntil(calendar, relativeTo, newRelativeTo, options, dateUntil);
+
+            long oneYearMonths = getLong(untilResult, MONTHS, 0);
+            while (Math.abs(months) >= Math.abs((oneYearMonths))) {
+                months = months - oneYearMonths;
+                years = years + sign;
+                relativeTo = newRelativeTo;
+
+                options = JSOrdinary.createWithNullPrototype(ctx);
+                newRelativeTo = TemporalUtil.calendarDateAdd(calendar, relativeTo, oneYear, options, dateAdd);
+                options = JSOrdinary.createWithNullPrototype(ctx);
+                untilResult = TemporalUtil.calendarDateUntil(calendar, relativeTo, newRelativeTo, options, dateUntil);
+                oneYearMonths = getLong(untilResult, MONTHS, 0);
+            }
+        } else if (largestUnit.equals(MONTH)) {
+            JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneMonthDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneMonthDays)) {
+                days = days - oneMonthDays;
+                months = months + sign;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneMonthDays = moveResult.getDays();
+            }
+        } else {
+            assert largestUnit.equals(WEEK);
+            JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneWeekDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneWeekDays)) {
+                days = days - oneWeekDays;
+                weeks = weeks + sign;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneWeekDays = moveResult.getDays();
+            }
+        }
+        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+    }
+
+    // 7.5.16
+    public static JSTemporalDurationRecord addDuration(long y1, long mon1, long w1, long d1, long h1, long min1, long s1, long ms1, long mus1, long ns1,
+                    long y2, long mon2, long w2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
+                    DynamicObject relativeTo, JSContext ctx) {
+        String largestUnit1 = defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1);
+        String largestUnit2 = defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2);
+        String largestUnit = TemporalUtil.largerOfTwoTemporalUnits(largestUnit1, largestUnit2);
+        long years = 0;
+        long months = 0;
+        long weeks = 0;
+        long days = 0;
+        long hours = 0;
+        long minutes = 0;
+        long seconds = 0;
+        long milliseconds = 0;
+        long microseconds = 0;
+        long nanoseconds = 0;
+        if (relativeTo == Undefined.instance) {
+            if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK)) {
+                throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
+            }
+            JSTemporalDurationRecord result = balanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2,
+                            ns1 + ns2, largestUnit, Undefined.instance);
+            years = 0;
+            months = 0;
+            weeks = 0;
+            days = result.getDays();
+            hours = result.getHours();
+            minutes = result.getMinutes();
+            seconds = result.getSeconds();
+            milliseconds = result.getMilliseconds();
+            microseconds = result.getMicroseconds();
+            nanoseconds = result.getNanoseconds();
+        } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
+            DynamicObject calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
+            DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(ctx,
+                            getLong(relativeTo, "ISOYear", 0L),
+                            getLong(relativeTo, "ISOMonth", 0L),
+                            getLong(relativeTo, "ISODay", 0L),
+                            (DynamicObject) JSObject.get(relativeTo, "Calendar"));
+            DynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, ctx);
+            DynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, ctx);
+
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject intermediate = TemporalUtil.calendarDateAdd(calendar, datePart, dateDuration1, firstAddOptions, dateAdd);
+
+            DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject end = TemporalUtil.calendarDateAdd(calendar, intermediate, dateDuration2, secondAddOptions, dateAdd);
+
+            String dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(DAY, largestUnit);
+
+            DynamicObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
+            JSObjectUtil.putDataProperty(ctx, differenceOptions, LARGEST_UNIT, dateLargestUnit);
+            JSTemporalDurationObject dateDifference = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(calendar, datePart, end, differenceOptions, Undefined.instance);
+            JSTemporalDurationRecord result = balanceDuration(dateDifference.getDays(),
+                            h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, Undefined.instance);
+            years = dateDifference.getYears();
+            months = dateDifference.getMonths();
+            weeks = dateDifference.getWeeks();
+            days = result.getDays();
+            hours = result.getHours();
+            minutes = result.getMinutes();
+            seconds = result.getSeconds();
+            milliseconds = result.getMilliseconds();
+            microseconds = result.getMicroseconds();
+            nanoseconds = result.getNanoseconds();
+        } else {
+            // TODO: Handle ZonedDateTime
+        }
+        if (!validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds,
+                        microseconds, nanoseconds)) {
+            throw Errors.createRangeError("Duration out of range!");
+        }
+        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    }
+
+    // 7.5.5
+    public static boolean validateTemporalDuration(long years, long months, long weeks, long days, long hours,
+                    long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds) {
+        int sign = durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds,
+                        nanoseconds);
+        if (years < 0 && sign > 0) {
+            return false;
+        }
+        if (years > 0 && sign < 0) {
+            return false;
+        }
+        if (months < 0 && sign > 0) {
+            return false;
+        }
+        if (months > 0 && sign < 0) {
+            return false;
+        }
+        if (weeks < 0 && sign > 0) {
+            return false;
+        }
+        if (weeks > 0 && sign < 0) {
+            return false;
+        }
+        if (days < 0 && sign > 0) {
+            return false;
+        }
+        if (days > 0 && sign < 0) {
+            return false;
+        }
+        if (hours < 0 && sign > 0) {
+            return false;
+        }
+        if (hours > 0 && sign < 0) {
+            return false;
+        }
+        if (minutes < 0 && sign > 0) {
+            return false;
+        }
+        if (minutes > 0 && sign < 0) {
+            return false;
+        }
+        if (seconds < 0 && sign > 0) {
+            return false;
+        }
+        if (seconds > 0 && sign < 0) {
+            return false;
+        }
+        if (milliseconds < 0 && sign > 0) {
+            return false;
+        }
+        if (milliseconds > 0 && sign < 0) {
+            return false;
+        }
+        if (microseconds < 0 && sign > 0) {
+            return false;
+        }
+        if (microseconds > 0 && sign < 0) {
+            return false;
+        }
+        if (nanoseconds < 0 && sign > 0) {
+            return false;
+        }
+        if (nanoseconds > 0 && sign < 0) {
+            return false;
+        }
+        return true;
+    }
+
+    // 7.5.6
+    public static String defaultTemporalLargestUnit(long years, long months, long weeks, long days, long hours,
+                    long minutes, long seconds, long milliseconds, long microseconds) {
+        if (years != 0) {
+            return YEARS;
+        }
+        if (months != 0) {
+            return MONTHS;
+        }
+        if (weeks != 0) {
+            return WEEKS;
+        }
+        if (days != 0) {
+            return DAYS;
+        }
+        if (hours != 0) {
+            return HOURS;
+        }
+        if (minutes != 0) {
+            return MINUTES;
+        }
+        if (seconds != 0) {
+            return SECONDS;
+        }
+        if (milliseconds != 0) {
+            return MILLISECONDS;
+        }
+        if (microseconds != 0) {
+            return MICROSECONDS;
+        }
+        return NANOSECONDS;
+    }
+
+    // 7.5.7
+    public static DynamicObject toPartialDuration(DynamicObject temporalDurationLike, JSContext ctx,
+                    IsObjectNode isObjectNode, JSToIntegerAsLongNode toInt) {
+        if (!isObjectNode.executeBoolean(temporalDurationLike)) {
+            throw Errors.createTypeError("Given duration like is not a object.");
+        }
+        DynamicObject result = JSOrdinary.create(ctx);
+        boolean any = false;
+        for (String property : DURATION_PROPERTIES) {
+            Object value = JSObject.get(temporalDurationLike, property);
+            if (value != Undefined.instance) {
+                any = true;
+                JSObjectUtil.putDataProperty(ctx, result, property, toInt.executeLong(value));
+            }
+        }
+        if (!any) {
+            throw Errors.createTypeError("Given duration like object has no duration properties.");
+        }
+        return result;
+    }
+
+    // 7.5.18
+    public static JSTemporalRelativeDateRecord moveRelativeDate(DynamicObject calendar, DynamicObject relativeTo, DynamicObject duration, JSContext ctx) {
+        DynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
+        TemporalDate later = (TemporalDate) TemporalUtil.calendarDateAdd(calendar, relativeTo, duration, options, Undefined.instance);
+        long days = daysUntil(relativeTo, (DynamicObject) later);
+        DynamicObject dateTime = TemporalUtil.createTemporalDateTime(later.getISOYear(), later.getISOMonth(), later.getISODay(),
+                        TemporalUtil.getLong(relativeTo, HOUR, 0), TemporalUtil.getLong(relativeTo, MINUTE, 0), TemporalUtil.getLong(relativeTo, SECOND, 0),
+                        TemporalUtil.getLong(relativeTo, MILLISECOND, 0), TemporalUtil.getLong(relativeTo, MICROSECOND, 0), TemporalUtil.getLong(relativeTo, NANOSECOND, 0), calendar, ctx);
+        return JSTemporalRelativeDateRecord.create(dateTime, days);
+    }
+
+    // 7.5.20
+    public static JSTemporalDurationRecord roundDuration(long y, long m, long w, long d, long h, long min, long sec, long milsec, long micsec, long nsec,
+                    long increment, String unit, String roundingMode, DynamicObject relTo, JSContext ctx) {
+        long years = y;
+        long months = m;
+        long weeks = w;
+        long days = d;
+        long hours = h;
+        long minutes = min;
+        long seconds = sec;
+        long microseconds = micsec;
+        long milliseconds = milsec;
+        long nanoseconds = nsec;
+        DynamicObject relativeTo = relTo;
+        if ((unit.equals(YEAR) || unit.equals(MONTH) || unit.equals(WEEK)) && relativeTo == Undefined.instance) {
+            throw TemporalErrors.createRangeErrorRelativeToNotUndefined(unit);
+        }
+        DynamicObject zonedRelativeTo = Undefined.instance;
+        DynamicObject calendar = Undefined.instance;
+        double fractionalSeconds = 0;
+
+        if (relativeTo != Undefined.instance) {
+            // TODO: Check if relativeTo has InitializedTemporalZonedDateTime
+            calendar = (DynamicObject) JSObject.get(relativeTo, "calendar");
+        }
+        if (unit.equals(YEAR) || unit.equals(MONTH) || unit.equals(WEEK) || unit.equals(DAY)) {
+            nanoseconds = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+            DynamicObject intermediate = Undefined.instance;
+            if (zonedRelativeTo != Undefined.instance) {
+                // TODO: intermediate = moveRelativeZonedDateTime
+            }
+            JSTemporalNanosecondsDaysRecord result = nanosecondsToDays(nanoseconds, intermediate);
+            days = days + result.getDays() +
+                            (result.getNanoseconds() /
+                                            Math.abs(result.getDayLength()));
+            hours = 0;
+            minutes = 0;
+            seconds = 0;
+            milliseconds = 0;
+            microseconds = 0;
+            nanoseconds = 0;
+        } else {
+            fractionalSeconds = (nanoseconds * 0.000_000_001) + (microseconds * 0.000_001) + (milliseconds * 0.001) + seconds;
+        }
+        double remainder = 0;
+        if (unit.equals(YEAR)) {
+            DynamicObject yearsDuration = JSTemporalDuration.createTemporalDuration(years, 0, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject yearsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsDuration, firstAddOptions, dateAdd);
+            DynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(years, months, weeks, 0, 0, 0, 0, 0, 0, 0, ctx);
+
+            DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
+            long monthsWeeksInDays = daysUntil(yearsLater, yearsMonthsWeeksLater);
+            relativeTo = yearsLater;
+            days = days + monthsWeeksInDays;
+            long sign = TemporalUtil.sign(days);
+            if (sign == 0) {
+                sign = 1;
+            }
+            DynamicObject oneYear = JSTemporalDuration.createTemporalDuration(sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+            JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneYearDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneYearDays)) {
+                years = years + sign;
+                days = days - oneYearDays;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneYear, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneYearDays = moveResult.getDays();
+            }
+            double fractionalYears = years + ((double) days / Math.abs(oneYearDays));
+            years = (long) TemporalUtil.roundNumberToIncrement(fractionalYears, increment, roundingMode);
+            remainder = fractionalYears - years;
+            months = 0;
+            weeks = 0;
+            years = 0;
+        } else if (unit.equals(MONTH)) {
+            DynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(years, months, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+            DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
+            DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject yearsMonthsLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonths, firstAddOptions, dateAdd);
+            DynamicObject yearsMonthsWeeks = JSTemporalDuration.createTemporalDuration(years, months, weeks, 0, 0, 0, 0, 0, 0, 0, ctx);
+            DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
+            DynamicObject yearsMonthsWeeksLater = TemporalUtil.calendarDateAdd(calendar, relativeTo, yearsMonthsWeeks, secondAddOptions, dateAdd);
+            long weeksInDays = daysUntil(yearsMonthsLater, yearsMonthsWeeksLater);
+            relativeTo = yearsMonthsLater;
+            days = days + weeksInDays;
+            long sign = TemporalUtil.sign(days);
+            if (sign == 0) {
+                sign = 1;
+            }
+            DynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(0, sign, 0, 0, 0, 0, 0, 0, 0, 0, ctx);
+            JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneMonthDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneMonthDays)) {
+                months = months + sign;
+                days = days - oneMonthDays;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneMonth, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneMonthDays = moveResult.getDays();
+            }
+            double fractionalMonths = months + ((double) days / Math.abs(oneMonthDays));
+            months = (long) TemporalUtil.roundNumberToIncrement(fractionalMonths, increment, roundingMode);
+            remainder = fractionalMonths - months;
+            weeks = 0;
+            days = 0;
+        } else if (unit.equals(WEEK)) {
+            long sign = TemporalUtil.sign(days);
+            if (sign == 0) {
+                sign = 1;
+            }
+            DynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(0, 0, sign, 0, 0, 0, 0, 0, 0, 0, ctx);
+            JSTemporalRelativeDateRecord moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, ctx);
+            relativeTo = moveResult.getRelativeTo();
+            long oneWeekDays = moveResult.getDays();
+            while (Math.abs(days) >= Math.abs(oneWeekDays)) {
+                weeks = weeks - sign;
+                days = days - oneWeekDays;
+                moveResult = moveRelativeDate(calendar, relativeTo, oneWeek, ctx);
+                relativeTo = moveResult.getRelativeTo();
+                oneWeekDays = moveResult.getDays();
+            }
+            double fractionalWeeks = weeks + ((double) days / Math.abs(oneWeekDays));
+            weeks = (long) TemporalUtil.roundNumberToIncrement(fractionalWeeks, increment, roundingMode);
+            remainder = fractionalWeeks - weeks;
+            days = 0;
+        } else if (unit.equals(DAY)) {
+            double fractionalDays = days;
+            days = (long) TemporalUtil.roundNumberToIncrement(fractionalDays, increment, roundingMode);
+            remainder = fractionalDays - days;
+        } else if (unit.equals(HOUR)) {
+            double fractionalHours = (((fractionalSeconds / 60) + minutes) / 60) + hours;
+            hours = (long) TemporalUtil.roundNumberToIncrement(fractionalHours, increment, roundingMode);
+            remainder = fractionalHours - hours;
+            minutes = 0;
+            seconds = 0;
+            milliseconds = 0;
+            microseconds = 0;
+            nanoseconds = 0;
+        } else if (unit.equals(MINUTE)) {
+            double fractionalMinutes = (fractionalSeconds / 60) + minutes;
+            minutes = (long) TemporalUtil.roundNumberToIncrement(fractionalMinutes, increment, roundingMode);
+            remainder = fractionalMinutes - minutes;
+            seconds = 0;
+            milliseconds = 0;
+            microseconds = 0;
+            nanoseconds = 0;
+        } else if (unit.equals(SECOND)) {
+            seconds = (long) TemporalUtil.roundNumberToIncrement(fractionalSeconds, increment, roundingMode);
+            remainder = fractionalSeconds - seconds;
+            milliseconds = 0;
+            microseconds = 0;
+            nanoseconds = 0;
+        } else if (unit.equals(MILLISECOND)) {
+            double fractionalMilliseconds = (nanoseconds * 0.000_000_1) + (microseconds * 0.000_1) + milliseconds;
+            milliseconds = (long) TemporalUtil.roundNumberToIncrement(fractionalMilliseconds, increment, roundingMode);
+            remainder = fractionalMilliseconds - milliseconds;
+            microseconds = 0;
+            nanoseconds = 0;
+        } else if (unit.equals(MICROSECOND)) {
+            double fractionalMicroseconds = (nanoseconds * 0.000_1) + microseconds;
+            microseconds = (long) TemporalUtil.roundNumberToIncrement(fractionalMicroseconds, increment, roundingMode);
+            remainder = fractionalMicroseconds - microseconds;
+            nanoseconds = 0;
+        } else {
+            assert unit.equals(NANOSECOND);
+            remainder = nanoseconds;
+            nanoseconds = (long) TemporalUtil.roundNumberToIncrement(nanoseconds, increment, roundingMode);
+            remainder = remainder - nanoseconds;
+        }
+
+        return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, remainder);
+    }
+
+    @SuppressWarnings("unused")
+    private static JSTemporalNanosecondsDaysRecord nanosecondsToDays(long nanoseconds, DynamicObject relativeTo) {
+        long sign = TemporalUtil.sign(nanoseconds);
+        double dayLengthNs = 86_400_000_000_000L;
+        if (sign == 0) {
+            return JSTemporalNanosecondsDaysRecord.create(0, 0, (long) dayLengthNs);
+        }
+        if (!TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+            double val = nanoseconds / dayLengthNs;
+            double val2 = nanoseconds % dayLengthNs;
+            return JSTemporalNanosecondsDaysRecord.create((long) val, (long) val2, (long) (sign * dayLengthNs));
+        }
+        // TODO
+        // 5. Let startNs be relativeTo.[[Nanoseconds]].
+        // 6. Let startInstant be ? CreateTemporalInstant(startNs).
+        // 7. Let startDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(relativeTo.[[TimeZone]],
+        // startInstant, relativeTo.[[Calendar]]).
+        // 8. Let endNs be startNs + nanoseconds.
+        // 9. Let endInstant be ? CreateTemporalInstant(endNs).
+        // 10. Let endDateTime be ? BuiltinTimeZoneGetPlainDateTimeFor(relativeTo.[[TimeZone]],
+        // endInstant,
+        // relativeTo.[[Calendar]]).
+        // 11. Let dateDifference be ? DifferenceISODateTime(startDateTime.[[ISOYear]],
+        // startDateTime.[[ISOMonth]], startDateTime.[[ISODay]], startDateTime.[[ISOHour]],
+        // startDateTime.[[ISOMinute]], startDateTime.[[ISOSecond]],
+        // startDateTime.[[ISOMillisecond]],
+        // startDateTime.[[ISOMicrosecond]], startDateTime.[[ISONanosecond]],
+        // endDateTime.[[ISOYear]],
+        // endDateTime.[[ISOMonth]], endDateTime.[[ISODay]], endDateTime.[[ISOHour]],
+        // endDateTime.[[ISOMinute]], endDateTime.[[ISOSecond]], endDateTime.[[ISOMillisecond]],
+        // endDateTime.[[ISOMicrosecond]], endDateTime.[[ISONanosecond]], relativeTo.[[Calendar]],
+        // "days").
+        // 12. Let days be dateDifference.[[Days]].
+        // 13. Let intermediateNs be ? AddZonedDateTime(startNs, relativeTo.[[TimeZone]],
+        // relativeTo.[[Calendar]], 0, 0, 0, days, 0, 0, 0, 0, 0, 0).
+        if (sign == 1) {
+            // a. Repeat, while days > 0 and intermediateNs > endNs,
+            // i. Set days to days - 1.
+            // ii. Set intermediateNs to ? AddZonedDateTime(startNs, relativeTo.[[TimeZone]],
+            // relativeTo.[[Calendar]], 0, 0, 0, days, 0, 0, 0, 0, 0, 0).
+        }
+        // 15. Set nanoseconds to endNs - intermediateNs.
+        // 16. Let done be false.
+        // 17. Repeat, while done is false,
+        // a. Let oneDayFartherNs be ? AddZonedDateTime(intermediateNs, relativeTo.[[TimeZone]],
+        // relativeTo.[[Calendar]], 0, 0, 0, sign, 0, 0, 0, 0, 0, 0).
+        // b. Set dayLengthNs to oneDayFartherNs - intermediateNs.
+        // c. If (nanoseconds - dayLengthNs) * sign >= 0, then
+        // i. Set nanoseconds to nanoseconds - dayLengthNs.
+        // ii. Set intermediateNs to oneDayFartherNs.
+        // iii. Set days to days + sign.
+        // d. Else,
+        // i. Set done to true.
+        // 18. Return the new Record { [[Days]]: days, [[Nanoseconds]]: nanoseconds, [[DayLength]]:
+// dayLengthNs }.
+
+        return JSTemporalNanosecondsDaysRecord.create(0, 0, 0);
+    }
+
+    // 7.5.21
+    public static JSTemporalDurationRecord adjustRoundedDurationDays(long years, long months, long weeks, long days, long hours,
+                    long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds, long increment, String unit,
+                    String roundingMode, DynamicObject relativeTo,
+                    JSContext ctx) {
+        if (!(TemporalUtil.isTemporalZonedDateTime(relativeTo)) || unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) ||
+                        (unit.equals(NANOSECONDS) && increment == 1)) {
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        }
+        long timeRemainderNs = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+        long direction = TemporalUtil.sign(timeRemainderNs);
+        long dayStart = TemporalUtil.addZonedDateTime(
+                        getLong(relativeTo, NANOSECONDS),
+                        JSObject.get(relativeTo, TIME_ZONE),
+                        (DynamicObject) JSObject.get(relativeTo, CALENDAR), years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        long dayEnd = TemporalUtil.addZonedDateTime(dayStart, JSObject.get(relativeTo, TIME_ZONE), (DynamicObject) JSObject.get(relativeTo, CALENDAR), 0, 0, 0, direction, 0, 0, 0, 0, 0, 0);
+        long dayLengthNs = dayEnd - dayStart;
+        if ((timeRemainderNs - dayLengthNs) * direction < 0) {
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        }
+        timeRemainderNs = TemporalUtil.roundTemporalInstant(timeRemainderNs - dayLengthNs, increment, unit, roundingMode);
+        JSTemporalDurationRecord add = addDuration(years, months, weeks, days, 0, 0, 0, 0,
+                        0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
+                        relativeTo, ctx);
+        JSTemporalDurationRecord atd = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", Undefined.instance);
+
+        return JSTemporalDurationRecord.createWeeks(add.getYears(), add.getMonths(), add.getWeeks(), add.getDays(),
+                        atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds());
+    }
+
+    // 7.5.12
+    public static long totalDurationNanoseconds(long days, long hours, long minutes, long seconds, long milliseconds,
+                    long microseconds, long nanoseconds, long offsetShift) {
+        long ns = nanoseconds;
+        if (days != 0) {
+            ns -= offsetShift;
+        }
+        long h = hours + days * 24;
+        long min = minutes + h * 60;
+        long s = seconds + min * 60;
+        long ms = milliseconds + s * 1000;
+        long mus = microseconds + ms * 1000;
+        return ns + mus * 1000;
+    }
+
+    // 7.5.11
+    @SuppressWarnings("unused")
+    public static long calculateOffsetShift(DynamicObject relativeTo, long y, long mon, long w, long d, long h, long min,
+                    long s, long ms, long mus, long ns, IsObjectNode isObject) {
+        if (isObject.executeBoolean(relativeTo)) { // TODO: Check if there is an internal slot for
+                                                   // InitializedTemporalZoneDateTime
+            return 0;
+        }
+        DynamicObject instant = null;   // TODO: Call JSTemporalInstant.createTemporalInstant()
+        long offsetBefore = 0;          // TODO: Call JSTemporalTimeZone.getOffsetNanoSecondsFor()
+        long after = 0;                 // TODO: Call JSTemporalZonedDateTime.addZonedDateTime()
+        DynamicObject instantAfter = null;  // TODO: Call JSTemporalInstant.createTemporalInstant()
+        long offsetAfter = 0;           // TODO: Call JSTemporalTimeZone.getOffsetNanoSecondsFor()
+        return offsetAfter - offsetBefore;
+    }
+
+    // 7.5.17
+    public static long daysUntil(DynamicObject earlier, DynamicObject later) {
+        assert earlier instanceof TemporalDate && later instanceof TemporalDate;
+        TemporalDate ed = (TemporalDate) earlier;
+        TemporalDate ld = (TemporalDate) later;
+        JSTemporalDurationRecord difference = JSTemporalPlainDate.differenceISODate(ed.getISOYear(), ed.getISOMonth(), ed.getISODay(), ld.getISOYear(), ld.getISOMonth(), ld.getISODay(), DAY);
+        return difference.getDays();
+    }
+
+    // 4.5.1
+    public static JSTemporalDurationRecord differenceTime(long h1, long min1, long s1, long ms1, long mus1, long ns1,
+                    long h2, long min2, long s2, long ms2, long mus2, long ns2) {
+        long hours = h2 - h1;
+        long minutes = min2 - min1;
+        long seconds = s2 - s1;
+        long milliseconds = ms2 - ms1;
+        long microseconds = mus2 - mus1;
+        long nanoseconds = ns2 - ns1;
+        long sign = durationSign(0, 0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        JSTemporalDurationRecord bt = balanceTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+
+        return JSTemporalDurationRecord.create(0, 0, bt.getDays() * sign, bt.getHours() * sign, bt.getMinutes() * sign, bt.getSeconds() * sign,
+                        bt.getMilliseconds() * sign, bt.getMicroseconds() * sign, bt.getNanoseconds() * sign);
+    }
+
+    // 4.5.15
+    public static JSTemporalDurationRecord roundTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds, double increment, String unit, String roundingMode,
+                    Long dayLengthNsParam) {
+        double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
+                        ((double) milliseconds / 1_000) + seconds;
+        double quantity;
+        if (unit.equals(DAY)) {
+            long dayLengthNs = dayLengthNsParam == null ? 86_300_000_000_000L : (long) dayLengthNsParam;
+            quantity = ((double) (((((hours * 60 + minutes) * 60 + seconds) * 1000 + milliseconds) * 1000 + microseconds) * 1000 + nanoseconds)) / dayLengthNs;
+        } else if (unit.equals(HOUR)) {
+            quantity = (fractionalSecond / 60 + minutes) / 60 + hours;
+        } else if (unit.equals(MINUTE)) {
+            quantity = fractionalSecond / 60 + minutes;
+        } else if (unit.equals(SECOND)) {
+            quantity = fractionalSecond;
+        } else if (unit.equals(MILLISECOND)) {
+            quantity = ((double) nanoseconds / 1_000_000) + ((double) microseconds / 1_000) + milliseconds;
+        } else if (unit.equals(MICROSECOND)) {
+            quantity = ((double) nanoseconds / 1_000) + microseconds;
+        } else {
+            assert unit.equals(NANOSECOND);
+            quantity = nanoseconds;
+        }
+        long result = (long) TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
+        if (unit.equals(DAY)) {
+            return JSTemporalDurationRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
+        }
+        if (unit.equals(HOUR)) {
+            return balanceTime(result, 0, 0, 0, 0, 0);
+        }
+        if (unit.equals(MINUTE)) {
+            return balanceTime(hours, result, 0, 0, 0, 0);
+        }
+        if (unit.equals(SECOND)) {
+            return balanceTime(hours, minutes, result, 0, 0, 0);
+        }
+        if (unit.equals(MILLISECOND)) {
+            return balanceTime(hours, minutes, seconds, result, 0, 0);
+        }
+        if (unit.equals(MICROSECOND)) {
+            return balanceTime(hours, minutes, seconds, milliseconds, result, 0);
+        }
+        assert unit.equals(NANOSECOND);
+        return balanceTime(hours, minutes, seconds, milliseconds, microseconds, result);
+    }
+
+    // 4.5.6
+    public static JSTemporalDurationRecord balanceTime(long h, long min, long sec, long mils, long mics, long ns) {
+        if (h == Double.POSITIVE_INFINITY || h == Double.NEGATIVE_INFINITY ||
+                        min == Double.POSITIVE_INFINITY || min == Double.NEGATIVE_INFINITY ||
+                        sec == Double.POSITIVE_INFINITY || sec == Double.NEGATIVE_INFINITY ||
+                        mils == Double.POSITIVE_INFINITY || mils == Double.NEGATIVE_INFINITY ||
+                        mics == Double.POSITIVE_INFINITY || mics == Double.NEGATIVE_INFINITY ||
+                        ns == Double.POSITIVE_INFINITY || ns == Double.NEGATIVE_INFINITY) {
+            throw Errors.createRangeError("Time is infinite");
+        }
+        long microseconds = mics;
+        long milliseconds = mils;
+        long nanoseconds = ns;
+        long seconds = sec;
+        long minutes = min;
+        long hours = h;
+        microseconds = microseconds + (long) Math.floor(nanoseconds / 1000.0);
+        nanoseconds = (long) TemporalUtil.nonNegativeModulo(nanoseconds, 1000);
+        milliseconds = milliseconds + (long) Math.floor(microseconds / 1000.0);
+        microseconds = (long) TemporalUtil.nonNegativeModulo(microseconds, 1000);
+        seconds = seconds + (long) Math.floor(milliseconds / 1000.0);
+        milliseconds = (long) TemporalUtil.nonNegativeModulo(milliseconds, 1000);
+        minutes = minutes + (long) Math.floor(seconds / 60.0);
+        seconds = (long) TemporalUtil.nonNegativeModulo(seconds, 60);
+        hours = hours + (long) Math.floor(minutes / 60.0);
+        minutes = (long) TemporalUtil.nonNegativeModulo(minutes, 60);
+        long days = (long) Math.floor(hours / 24.0);
+        hours = (long) TemporalUtil.nonNegativeModulo(hours, 24);
+
+        // TODO [[Days]] is plural, rest is singular WTF
+        return JSTemporalDurationRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+    }
+
+    // 4.5.13
+    public static int compareTemporalTime(long h1, long min1, long s1, long ms1, long mus1, long ns1,
+                    long h2, long min2, long s2, long ms2, long mus2, long ns2) {
+        if (h1 > h2) {
+            return 1;
+        }
+        if (h1 < h2) {
+            return -1;
+        }
+        if (min1 > min2) {
+            return 1;
+        }
+        if (min1 < min2) {
+            return -1;
+        }
+        if (s1 > s2) {
+            return 1;
+        }
+        if (s1 < s2) {
+            return -1;
+        }
+        if (ms1 > ms2) {
+            return 1;
+        }
+        if (ms1 < ms2) {
+            return -1;
+        }
+        if (mus1 > mus2) {
+            return 1;
+        }
+        if (mus1 < mus2) {
+            return -1;
+        }
+        if (ns1 > ns2) {
+            return 1;
+        }
+        if (ns1 < ns2) {
+            return -1;
+        }
+        return 0;
+    }
+
+    // 4.5.14
+    public static JSTemporalDurationRecord addTime(long hour, long minute, long second, long millisecond, long microsecond,
+                    long nanosecond, long hours, long minutes, long seconds, long milliseconds,
+                    long microseconds, long nanoseconds) {
+        return balanceTime(hour + hours, minute + minutes, second + seconds, millisecond + milliseconds,
+                        microsecond + microseconds, nanosecond + nanoseconds);
+    }
+
+    public static JSTemporalDurationRecord roundISODateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
+                    long nanosecond, double increment, String unit, String roundingMode, Long dayLength) {
+        JSTemporalDurationRecord rt = TemporalUtil.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
+        JSTemporalDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + rt.getDays());
+        return JSTemporalDurationRecord.create(br.getYear(), br.getMonth(), br.getDay(),
+                        rt.getHours(), rt.getMinutes(), rt.getSeconds(),
+                        rt.getMilliseconds(), rt.getMicroseconds(), rt.getNanoseconds());
+    }
+
+    public static double toTemporalDateTimeRoundingIncrement(DynamicObject options, String smallestUnit, IsObjectNode isObject, JSToNumberNode toNumber) {
+        int maximum = 0;
+        if (DAY.equals(smallestUnit)) {
+            maximum = 1;
+        } else if (HOUR.equals(smallestUnit)) {
+            maximum = 24;
+        } else if (MINUTE.equals(smallestUnit) || SECOND.equals(smallestUnit)) {
+            maximum = 60;
+        } else {
+            assert MILLISECOND.equals(smallestUnit) || MICROSECOND.equals(smallestUnit) || NANOSECOND.equals(smallestUnit);
+            maximum = 1000;
+        }
+        return toTemporalRoundingIncrement(options, (double) maximum, false, isObject, toNumber);
+    }
+
+    public static boolean isValidTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+                    long nanoseconds) {
+        if (hours < 0 || hours > 23) {
+            return false;
+        }
+        if (minutes < 0 || minutes > 59) {
+            return false;
+        }
+        if (seconds < 0 || seconds > 59) {
+            return false;
+        }
+        if (milliseconds < 0 || milliseconds > 999) {
+            return false;
+        }
+        if (microseconds < 0 || microseconds > 999) {
+            return false;
+        }
+        if (nanoseconds < 0 || nanoseconds > 999) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean isValidISODate(long year, long month, long day) {
+        if (month < 1 || month > 12) {
+            return false;
+        }
+        if (day < 1 || day > isoDaysInMonth(year, month)) {
+            return false;
+        }
+        return true;
+    }
+
+    public static boolean dateTimeWithinLimits(long year, long month, long day, long hour, long minute, long second,
+                    long millisecond, long microsecond, long nanosecond) {
+        double ns = TemporalUtil.getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+        if ((ns / 100_000_000_000_000L) <= -864_000L - 864L) {
+            return false;
+        } else if ((ns / 100_000_000_000_000L) >= 864_000L + 864L) {
+            return false;
+        }
+        return true;
+    }
 }

@@ -94,7 +94,7 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
         protected Object from(Object item,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
-            return JSTemporalCalendar.calendarFrom(item, isObject, toString, getContext());
+            return JSTemporalCalendar.toTemporalCalendar(item, isObject, toString, getContext());
         }
 
     }

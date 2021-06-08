@@ -74,7 +74,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -261,10 +260,10 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         public DynamicObject getISOFields(Object thisObj) {
             JSTemporalPlainYearMonthObject ym = TemporalUtil.requireTemporalYearMonth(thisObj);
             DynamicObject obj = JSOrdinary.create(getContext());
-            JSObjectUtil.putDataProperty(getContext(), obj, CALENDAR, ym.getCalendar());
-            JSObjectUtil.putDataProperty(getContext(), obj, "isoDay", ym.getISODay());
-            JSObjectUtil.putDataProperty(getContext(), obj, "isoMonth", ym.getISOMonth());
-            JSObjectUtil.putDataProperty(getContext(), obj, "isoYear", ym.getISOYear());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, ym.getCalendar());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", ym.getISODay());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", ym.getISOMonth());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", ym.getISOYear());
             return obj;
         }
     }

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-//TODO check whether we really need that in addition to the singular version.
 public final class JSTemporalDurationRecord {
     private final long years;
     private final long months;
@@ -53,7 +52,7 @@ public final class JSTemporalDurationRecord {
     private final long nanoseconds;
 
     private final long weeks;
-    private final boolean hasWeeks;
+    @SuppressWarnings("unused") private final boolean hasWeeks;
     private final double remainder;
     private final boolean hasRemainder;
 
@@ -131,7 +130,7 @@ public final class JSTemporalDurationRecord {
     }
 
     public long getWeeks() {
-        assert hasWeeks;
+        // assert hasWeeks; //TODO?
         return weeks;
     }
 

@@ -1068,13 +1068,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructTemporalPlainDate(DynamicObject newTarget, Object isoYear, Object isoMonth,
                         Object isoDay, DynamicObject calendarLike,
-                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") IsObjectNode isObject) {
+                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
             final long y = toIntegerNode.executeLong(isoYear);
             final long m = toIntegerNode.executeLong(isoMonth);
             final long d = toIntegerNode.executeLong(isoDay);
-            DynamicObject calendar = (DynamicObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike, getContext(), toString, isObject);
+            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
             return swapPrototype(JSTemporalPlainDate.createTemporalDate(getContext(), y, m, d, calendar), newTarget);
         }
 
@@ -1132,7 +1130,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long millisecond = toIntegerNode.executeLong(millisecondObject);
             final long microsecond = toIntegerNode.executeLong(microsecondObject);
             final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
-            DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(calendarLike, getContext());
+            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
             return swapPrototype(JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
                             year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar), newTarget);
         }
@@ -1205,9 +1203,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected DynamicObject constructTemporalPlainYearMonth(DynamicObject newTarget, Object isoYear,
                         Object isoMonth, DynamicObject calendarLike,
                         Object refISODay,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") IsObjectNode isObject) {
+                        @Cached("create()") JSToIntegerAsLongNode toInt) {
 
             Object referenceISODay = refISODay;
             if (referenceISODay == Undefined.instance || referenceISODay == null) {
@@ -1215,7 +1211,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             long y = toInt.executeLong(isoYear);
             long m = toInt.executeLong(isoMonth);
-            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike, getContext(), toString, isObject);
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
             long ref = toInt.executeLong(referenceISODay);
             return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
         }
@@ -1235,16 +1231,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructTemporalPlainMonthDay(DynamicObject newTarget, Object isoMonth,
                         Object isoDay, DynamicObject calendarLike, Object refISOYear,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") IsObjectNode isObject) {
+                        @Cached("create()") JSToIntegerAsLongNode toInt) {
             Object referenceISOYear = refISOYear;
             if (referenceISOYear == Undefined.instance || referenceISOYear == null) {
                 referenceISOYear = 1972;
             }
             long m = toInt.executeLong(isoMonth);
             long d = toInt.executeLong(isoDay);
-            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) JSTemporalCalendar.toOptionalTemporalCalendar(calendarLike, getContext(), toString, isObject);
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
             long ref = toInt.executeLong(referenceISOYear);
             return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref), newTarget);
         }

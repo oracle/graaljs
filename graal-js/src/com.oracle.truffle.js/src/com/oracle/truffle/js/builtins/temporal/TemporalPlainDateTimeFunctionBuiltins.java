@@ -113,7 +113,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                                 dtItem.getHours(), dtItem.getMinutes(), dtItem.getSeconds(), dtItem.getMilliseconds(),
                                 dtItem.getMicroseconds(), dtItem.getNanoseconds(), dtItem.getCalendar());
             }
-            return JSTemporalPlainDateTime.toTemporalDateTime(item, options, getContext());
+            return TemporalUtil.toTemporalDateTime(item, options, getContext());
         }
 
     }
@@ -126,8 +126,8 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            TemporalDateTime one = (TemporalDateTime) JSTemporalPlainDateTime.toTemporalDateTime(obj1, Undefined.instance, getContext());
-            TemporalDateTime two = (TemporalDateTime) JSTemporalPlainDateTime.toTemporalDateTime(obj2, Undefined.instance, getContext());
+            TemporalDateTime one = (TemporalDateTime) TemporalUtil.toTemporalDateTime(obj1, Undefined.instance, getContext());
+            TemporalDateTime two = (TemporalDateTime) TemporalUtil.toTemporalDateTime(obj2, Undefined.instance, getContext());
             return JSTemporalPlainDateTime.compareISODateTime(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),

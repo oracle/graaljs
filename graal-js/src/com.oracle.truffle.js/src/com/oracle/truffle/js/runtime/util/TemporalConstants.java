@@ -45,6 +45,7 @@ public final class TemporalConstants {
     public static final String YEAR = "year";
     public static final String MONTH = "month";
     public static final String MONTH_CODE = "monthCode";
+    public static final String WEEK = "week";
     public static final String DAY = "day";
     public static final String HOUR = "hour";
     public static final String MINUTE = "minute";
@@ -81,9 +82,12 @@ public final class TemporalConstants {
     public static final String WEEK_OF_YEAR = "weekOfYear";
 
     public static final String DATE_FROM_FIELDS = "dateFromFields";
-    public static final String ISO8601 = "iso8601";
     public static final String REFERENCE_ISO_DAY = "referenceIsoDay";
     public static final String REFERENCE_ISO_YEAR = "referenceIsoYear";
+
+    public static final String ISO8601 = "iso8601";
+    public static final String GREGORY = "gregory";
+    public static final String JAPANESE = "japanese";
 
     public static final String ISO_YEAR = "ISOYear";
     public static final String ISO_MONTH = "ISOMonth";
@@ -120,4 +124,6 @@ public final class TemporalConstants {
     public static final String ID = "id";
 
     public static final String MERGE_FIELDS = "mergeFields";
+    public static final String RELATIVE_TO = "relativeTo";
+    public static final String LARGEST_UNIT = "largestUnit";
 }
