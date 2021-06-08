@@ -99,8 +99,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
@@ -254,7 +254,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
-            JSTemporalPlainDateTimeRecord result = JSTemporalCalendar.isoDateFromFields((DynamicObject) fields, options, getContext(),
+            JSTemporalDateTimeRecord result = JSTemporalCalendar.isoDateFromFields((DynamicObject) fields, options, getContext(),
                             isObject, toBoolean, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainDate.createTemporalDate(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -337,7 +337,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             durationObj, getContext(), isObject, toInt, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.addISODate(date.getISOYear(), date.getISOMonth(), date.getISODay(),
+            JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getISOYear(), date.getISOMonth(), date.getISODay(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
 
             return JSTemporalPlainDate.createTemporalDate(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -364,7 +364,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options,
                             TemporalUtil.toSet(HOURS, MINUTES, SECONDS, MILLISECONDS, MICROSECONDS, NANOSECONDS),
                             DAYS, toBoolean, toString);
-            JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainDate.differenceISODate(
+            JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(), two.getISOYear(), two.getISOMonth(), two.getISODay(),
                             largestUnit);
             return JSTemporalDuration.createTemporalDuration(

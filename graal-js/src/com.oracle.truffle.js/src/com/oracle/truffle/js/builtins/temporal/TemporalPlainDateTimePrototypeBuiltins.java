@@ -92,8 +92,8 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -316,14 +316,14 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             TemporalDateTime dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
-            JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
+            JSTemporalDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
                             duration.getHour(), duration.getMinute(), duration.getSecond(),
                             duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond());
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
-            JSTemporalPlainDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
+            JSTemporalDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
                             dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
                             dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
                             dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
@@ -395,14 +395,14 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             TemporalDateTime dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
-            JSTemporalPlainDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
+            JSTemporalDateTimeRecord duration = JSTemporalDuration.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), isObject, toString, toInt);
             JSTemporalDuration.rejectDurationSign(
                             duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
                             duration.getHour(), duration.getMinute(), duration.getSecond(),
                             duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond());
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
-            JSTemporalPlainDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
+            JSTemporalDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
                             dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
                             dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
                             dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
@@ -436,7 +436,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, "trunc", toBoolean, toString);
             String showCalendar = TemporalUtil.toShowCalendarOption(options);
-            JSTemporalPlainDateTimePluralRecord result = JSTemporalPlainDateTime.roundISODateTime(
+            JSTemporalDurationRecord result = JSTemporalPlainDateTime.roundISODateTime(
                             dt.getISOYear(), dt.getISOMonth(), dt.getISODay(),
                             dt.getHours(), dt.getMinutes(), dt.getSeconds(),
                             dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds(),
@@ -511,7 +511,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Object fields = TemporalUtil.prepareTemporalFields((DynamicObject) dateTime, fieldNames, TemporalUtil.toSet(), getContext());
             fields = TemporalUtil.calendarMergeFields(calendar, (DynamicObject) fields, partialDateTime, namesNode, getContext());
             fields = TemporalUtil.prepareTemporalFields((DynamicObject) fields, fieldNames, TemporalUtil.toSet(), getContext());
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.interpretTemporalDateTimeFields(calendar, (DynamicObject) fields, options);
+            JSTemporalDateTimeRecord result = TemporalUtil.interpretTemporalDateTimeFields(calendar, (DynamicObject) fields, options);
             assert TemporalUtil.validateISODateTime(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond());
             return TemporalUtil.createTemporalDateTime(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),

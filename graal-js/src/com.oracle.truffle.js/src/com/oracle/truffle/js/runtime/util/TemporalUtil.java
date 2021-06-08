@@ -112,8 +112,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
@@ -429,7 +429,7 @@ public final class TemporalUtil {
         if (value == Undefined.instance) {
             return Undefined.instance;
         }
-        JSTemporalPlainDateTimeRecord result = null;
+        JSTemporalDateTimeRecord result = null;
         Object timeZone = null;
         DynamicObject calendar = null;
         Object offset = null;
@@ -501,53 +501,53 @@ public final class TemporalUtil {
         throw Errors.unsupported("TODO");
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalMonthDayString(String string, JSContext ctx) {
-        JSTemporalPlainDateTimeRecord res = parseISODateTime(string, ctx);
+    public static JSTemporalDateTimeRecord parseTemporalMonthDayString(String string, JSContext ctx) {
+        JSTemporalDateTimeRecord res = parseISODateTime(string, ctx);
         // TODO this is not according to the spec, yet
         return res;
     }
 
-    private static JSTemporalPlainDateTimeRecord parseTemporalYearMonthString(String string, JSContext ctx) {
-        JSTemporalPlainDateTimeRecord res = parseISODateTime(string, ctx);
+    private static JSTemporalDateTimeRecord parseTemporalYearMonthString(String string, JSContext ctx) {
+        JSTemporalDateTimeRecord res = parseISODateTime(string, ctx);
         // TODO this is not according to the spec, yet
         return res;
     }
 
     // TODO this needs to be improved!
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord parseISODateTime(String string, JSContext ctx) {
-        JSTemporalPlainDateTimeRecord jsDate = tryJSDateParser(string, ctx);
+    private static JSTemporalDateTimeRecord parseISODateTime(String string, JSContext ctx) {
+        JSTemporalDateTimeRecord jsDate = tryJSDateParser(string, ctx);
         if (jsDate != null) {
             return jsDate;
         }
-        JSTemporalPlainDateTimeRecord instant = tryParseInstant(string);
+        JSTemporalDateTimeRecord instant = tryParseInstant(string);
         if (instant != null) {
             return instant;
         }
-        JSTemporalPlainDateTimeRecord date = tryParseDate(string);
+        JSTemporalDateTimeRecord date = tryParseDate(string);
         if (date != null) {
             return date;
         }
-        JSTemporalPlainDateTimeRecord date2 = tryParseDate2(string);
+        JSTemporalDateTimeRecord date2 = tryParseDate2(string);
         if (date2 != null) {
             return date2;
         }
-        JSTemporalPlainDateTimeRecord time = tryParseTime(string);
+        JSTemporalDateTimeRecord time = tryParseTime(string);
         if (time != null) {
             return time;
         }
-        JSTemporalPlainDateTimeRecord time2 = tryParseTime2(string);
+        JSTemporalDateTimeRecord time2 = tryParseTime2(string);
         if (time2 != null) {
             return time2;
         }
-        JSTemporalPlainDateTimeRecord time3 = tryParseTime3(string);
+        JSTemporalDateTimeRecord time3 = tryParseTime3(string);
         if (time3 != null) {
             return time3;
         }
         throw Errors.createRangeError("cannot parse the ISO date time string");
     }
 
-    private static JSTemporalPlainDateTimeRecord tryJSDateParser(String string, JSContext ctx) {
+    private static JSTemporalDateTimeRecord tryJSDateParser(String string, JSContext ctx) {
         Integer[] f = ctx.getEvaluator().parseDate(ctx.getRealm(), string, true);
         if (f != null) {
             int millis = get(f, 6);
@@ -578,7 +578,7 @@ public final class TemporalUtil {
             }
 
             int month = get(f, 1) + 1; // +1 !
-            return JSTemporalPlainDateTimeRecord.create(get(f, 0), month, get(f, 2), get(f, 3), get(f, 4), get(f, 5), ms, mics, ns);
+            return JSTemporalDateTimeRecord.create(get(f, 0), month, get(f, 2), get(f, 3), get(f, 4), get(f, 5), ms, mics, ns);
         }
         return null;
     }
@@ -589,10 +589,10 @@ public final class TemporalUtil {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord tryParseInstant(String string) {
+    private static JSTemporalDateTimeRecord tryParseInstant(String string) {
         try {
             java.util.Date d = Date.from(Instant.parse(string));
-            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
             return null;
         }
@@ -600,11 +600,11 @@ public final class TemporalUtil {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord tryParseDate(String string) {
+    private static JSTemporalDateTimeRecord tryParseDate(String string) {
         try {
             DateFormat df = new SimpleDateFormat();
             java.util.Date d = df.parse(string);
-            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
             return null;
         }
@@ -612,11 +612,11 @@ public final class TemporalUtil {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord tryParseDate2(String string) {
+    private static JSTemporalDateTimeRecord tryParseDate2(String string) {
         try {
             DateFormat df = new SimpleDateFormat("yyyy-MM-dd");
             java.util.Date d = df.parse(string);
-            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
             return null;
         }
@@ -624,12 +624,12 @@ public final class TemporalUtil {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord tryParseTime(String string) {
+    private static JSTemporalDateTimeRecord tryParseTime(String string) {
         try {
             DateFormat df = new SimpleDateFormat("hh:mm:ss.SSS");
             df.setLenient(true);
             java.util.Date d = df.parse(string);
-            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
             return null;
         }
@@ -637,12 +637,12 @@ public final class TemporalUtil {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord tryParseTime2(String string) {
+    private static JSTemporalDateTimeRecord tryParseTime2(String string) {
         try {
             DateFormat df = new SimpleDateFormat("hh:mm:ss");
             df.setLenient(true);
             java.util.Date d = df.parse(string);
-            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
             return null;
         }
@@ -650,12 +650,12 @@ public final class TemporalUtil {
 
     @SuppressWarnings("deprecation")
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord tryParseTime3(String string) {
+    private static JSTemporalDateTimeRecord tryParseTime3(String string) {
         try {
             DateFormat df = new SimpleDateFormat("hh:mm");
             df.setLenient(true);
             java.util.Date d = df.parse(string);
-            return JSTemporalPlainDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(d.getYear(), d.getMonth(), d.getDate(), d.getHours(), d.getMinutes(), d.getSeconds(), 0, 0, 0);
         } catch (Exception e) {
             return null;
         }
@@ -983,7 +983,7 @@ public final class TemporalUtil {
         return JSRuntime.longIsRepresentableAsInt(l);
     }
 
-    public static JSTemporalPlainDateTimeRecord balanceISOYearMonth(long year, long month) {
+    public static JSTemporalDateTimeRecord balanceISOYearMonth(long year, long month) {
         assert isInteger(year);
         assert isInteger(month);
 
@@ -994,7 +994,7 @@ public final class TemporalUtil {
         long yearPrepared = year + (long) Math.floor((month - 1) / 12);
         long monthPrepared = (long) nonNegativeModulo(month - 1, 12) + 1;
 
-        return JSTemporalPlainDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
+        return JSTemporalDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
     }
 
     // helper method. According to spec, this already is an integer value
@@ -1088,22 +1088,22 @@ public final class TemporalUtil {
         return date;
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalDateTimeString(String string, JSContext ctx) {
+    public static JSTemporalDateTimeRecord parseTemporalDateTimeString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalPlainDateTimeRecord result = parseISODateTime(string, ctx);
+        JSTemporalDateTimeRecord result = parseISODateTime(string, ctx);
         return result;
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalDateString(String string, JSContext ctx) {
+    public static JSTemporalDateTimeRecord parseTemporalDateString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalPlainDateTimeRecord result = parseISODateTime(string, ctx);
-        return JSTemporalPlainDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
+        JSTemporalDateTimeRecord result = parseISODateTime(string, ctx);
+        return JSTemporalDateTimeRecord.createCalendar(result.getYear(), result.getMonth(), result.getDay(), 0, 0, 0, 0, 0, 0, result.getCalendar());
     }
 
-    public static JSTemporalPlainDateTimeRecord parseTemporalTimeString(String string, JSContext ctx) {
+    public static JSTemporalDateTimeRecord parseTemporalTimeString(String string, JSContext ctx) {
         // TODO 2. If isoString does not satisfy the syntax of a TemporalDateTimeString (see 13.39)
-        JSTemporalPlainDateTimeRecord result = parseISODateTime(string, ctx);
-        return JSTemporalPlainDateTimeRecord.create(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
+        JSTemporalDateTimeRecord result = parseISODateTime(string, ctx);
+        return JSTemporalDateTimeRecord.create(0, 0, 0, result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
     }
 
     @SuppressWarnings("unused")
@@ -1270,22 +1270,22 @@ public final class TemporalUtil {
         return value;
     }
 
-    public static JSTemporalPlainDateTimeRecord interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
-        JSTemporalPlainDateTimeRecord timeResult = toTemporalTimeRecord(fields);
+    public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(DynamicObject calendar, DynamicObject fields, DynamicObject options) {
+        JSTemporalDateTimeRecord timeResult = toTemporalTimeRecord(fields);
         DynamicObject temporalDate = dateFromFields(calendar, fields, options);
         TemporalDate date = (TemporalDate) temporalDate;
         String overflow = toTemporalOverflow(options);
-        JSTemporalPlainDateTimePluralRecord timeResult2 = TemporalUtil.regulateTime(
+        JSTemporalDurationRecord timeResult2 = TemporalUtil.regulateTime(
                         timeResult.getHour(), timeResult.getMinute(), timeResult.getSecond(), timeResult.getMillisecond(), timeResult.getMicrosecond(), timeResult.getNanosecond(),
                         overflow);
 
-        return JSTemporalPlainDateTimeRecord.create(
+        return JSTemporalDateTimeRecord.create(
                         date.getISOYear(), date.getISOMonth(), date.getISODay(),
                         timeResult2.getHours(), timeResult2.getMinutes(), timeResult2.getSeconds(),
                         timeResult2.getMilliseconds(), timeResult2.getMicroseconds(), timeResult2.getNanoseconds());
     }
 
-    public static JSTemporalPlainDateTimePluralRecord regulateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+    public static JSTemporalDurationRecord regulateTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, String overflow) {
         assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
         if (overflow.equals(CONSTRAIN)) {
@@ -1296,13 +1296,13 @@ public final class TemporalUtil {
             }
 
             // sets [[Days]] but [[Hour]]
-            return JSTemporalPlainDateTimePluralRecord.create(0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+            return JSTemporalDurationRecord.create(0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
     }
 
-    public static JSTemporalPlainDateTimePluralRecord constrainTime(long hours, long minutes, long seconds, long milliseconds,
+    public static JSTemporalDurationRecord constrainTime(long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds) {
-        return JSTemporalPlainDateTimePluralRecord.create(0, 0, 0,
+        return JSTemporalDurationRecord.create(0, 0, 0,
                         TemporalUtil.constrainToRange(hours, 0, 23),
                         TemporalUtil.constrainToRange(minutes, 0, 59),
                         TemporalUtil.constrainToRange(seconds, 0, 59),
@@ -1311,8 +1311,8 @@ public final class TemporalUtil {
                         TemporalUtil.constrainToRange(nanoseconds, 0, 999));
     }
 
-    public static JSTemporalPlainDateTimeRecord toTemporalTimeRecord(DynamicObject temporalTimeLike) {
-        return JSTemporalPlainDateTimeRecord.create(0, 0, 0,
+    public static JSTemporalDateTimeRecord toTemporalTimeRecord(DynamicObject temporalTimeLike) {
+        return JSTemporalDateTimeRecord.create(0, 0, 0,
                         getOrFail(temporalTimeLike, HOUR),
                         getOrFail(temporalTimeLike, MINUTE),
                         getOrFail(temporalTimeLike, SECOND),
@@ -1396,7 +1396,7 @@ public final class TemporalUtil {
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         String overflows = TemporalUtil.toTemporalOverflow(options);
-        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(JSRuntime.toString(itemParam), ctx);
+        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(JSRuntime.toString(itemParam), ctx);
         if (!validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
@@ -1425,11 +1425,11 @@ public final class TemporalUtil {
 
     // 3.5.7
     @TruffleBoundary
-    public static JSTemporalPlainDateTimeRecord regulateISODate(long year, long month, long day, String overflow) {
+    public static JSTemporalDateTimeRecord regulateISODate(long year, long month, long day, String overflow) {
         assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
         if (overflow.equals(REJECT)) {
             rejectISODate(year, month, day);
-            return JSTemporalPlainDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
+            return JSTemporalDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
         }
         if (overflow.equals(CONSTRAIN)) {
             return constrainISODate(year, month, day);
@@ -1445,15 +1445,15 @@ public final class TemporalUtil {
     }
 
     // 3.5.10
-    public static JSTemporalPlainDateTimeRecord constrainISODate(long year, long month, long day) {
+    public static JSTemporalDateTimeRecord constrainISODate(long year, long month, long day) {
         long monthPrepared = TemporalUtil.constrainToRange(month, 1, 12);
         long dayPrepared = TemporalUtil.constrainToRange(day, 1, TemporalUtil.isoDaysInMonth(year, month));
-        return JSTemporalPlainDateTimeRecord.create(year, monthPrepared, dayPrepared, 0, 0, 0, 0, 0, 0);
+        return JSTemporalDateTimeRecord.create(year, monthPrepared, dayPrepared, 0, 0, 0, 0, 0, 0);
     }
 
     // 3.5.11
-    public static JSTemporalPlainDateTimeRecord balanceISODate(long yearParam, long monthParam, long dayParam) {
-        JSTemporalPlainDateTimeRecord balancedYearMonth = TemporalUtil.balanceISOYearMonth(yearParam, monthParam);
+    public static JSTemporalDateTimeRecord balanceISODate(long yearParam, long monthParam, long dayParam) {
+        JSTemporalDateTimeRecord balancedYearMonth = TemporalUtil.balanceISOYearMonth(yearParam, monthParam);
         long month = balancedYearMonth.getMonth();
         long year = balancedYearMonth.getYear();
         long day = dayParam;
@@ -1491,11 +1491,11 @@ public final class TemporalUtil {
 
     // 3.5.14
     @TruffleBoundary
-    public static JSTemporalPlainDateTimeRecord addISODate(long year, long month, long day, long years, long months, long weeks, long days, String overflow) {
+    public static JSTemporalDateTimeRecord addISODate(long year, long month, long day, long years, long months, long weeks, long days, String overflow) {
         assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
         long y = year + years;
         long m = month + months;
-        JSTemporalPlainDateTimeRecord intermediate = TemporalUtil.balanceISOYearMonth(y, m);
+        JSTemporalDateTimeRecord intermediate = TemporalUtil.balanceISOYearMonth(y, m);
         intermediate = regulateISODate(intermediate.getYear(), intermediate.getMonth(), day, overflow);
         long d = intermediate.getDay() + (days + (7 * weeks));
         intermediate = balanceISODate(intermediate.getYear(), intermediate.getMonth(), d);
@@ -1657,7 +1657,7 @@ public final class TemporalUtil {
         TemporalUtil.toTemporalOverflow(options);
 
         String string = JSRuntime.toString(item);
-        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string, ctx);
+        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string, ctx);
         DynamicObject calendar = TemporalUtil.toOptionalTemporalCalendar(result.getCalendar(), ctx);
         if (result.getYear() == 0) { // TODO Check for undefined here!
             if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), 1)) {
@@ -1727,14 +1727,14 @@ public final class TemporalUtil {
     }
 
     @SuppressWarnings("unused")
-    public static JSTemporalPlainDateTimeRecord durationHandleFractions(double fHour, double minute, double fMinute, double second, double fSecond, double millisecond, double fMillisecond,
+    public static JSTemporalDateTimeRecord durationHandleFractions(double fHour, double minute, double fMinute, double second, double fSecond, double millisecond, double fMillisecond,
                     double microsecond, double fMicrosecond, double nanosecond, double fNanosecond) {
         // TODO lots of compution missing here!!
         long hour = (long) fHour;
-        return JSTemporalPlainDateTimeRecord.create(0, 0, 0, hour, (long) minute, (long) second, (long) millisecond, (long) microsecond, (long) nanosecond);
+        return JSTemporalDateTimeRecord.create(0, 0, 0, hour, (long) minute, (long) second, (long) millisecond, (long) microsecond, (long) nanosecond);
     }
 
-    public static long getPropertyFromRecord(JSTemporalPlainDateTimeRecord d, String property) {
+    public static long getPropertyFromRecord(JSTemporalDateTimeRecord d, String property) {
         switch (property) {
             case YEARS:
                 return d.getYear();

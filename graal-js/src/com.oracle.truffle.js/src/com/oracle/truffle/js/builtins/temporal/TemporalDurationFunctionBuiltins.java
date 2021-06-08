@@ -65,7 +65,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimePluralRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalDurationFunctionBuiltins.TemporalDurationFunction> {
@@ -169,13 +169,13 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             if (getLong(one, YEARS, 0) != 0 || getLong(two, YEARS, 0) != 0 ||
                             getLong(one, MONTHS, 0) != 0 || getLong(two, MONTHS, 0) != 0 ||
                             getLong(one, WEEKS, 0) != 0 || getLong(two, WEEKS, 0) != 0) {
-                JSTemporalPlainDateTimePluralRecord balanceResult1 = JSTemporalDuration.unbalanceDurationRelative(
+                JSTemporalDurationRecord balanceResult1 = JSTemporalDuration.unbalanceDurationRelative(
                                 getLong(one, YEARS, 0),
                                 getLong(one, MONTHS, 0),
                                 getLong(one, WEEKS, 0),
                                 getLong(one, DAYS, 0),
                                 DAYS, relativeTo, getContext());
-                JSTemporalPlainDateTimePluralRecord balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
+                JSTemporalDurationRecord balanceResult2 = JSTemporalDuration.unbalanceDurationRelative(
                                 getLong(two, YEARS, 0),
                                 getLong(two, MONTHS, 0),
                                 getLong(two, WEEKS, 0),

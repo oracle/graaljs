@@ -184,7 +184,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         if (options == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
         }
-        JSTemporalPlainDateTimeRecord result = null;
+        JSTemporalDateTimeRecord result = null;
         if (JSRuntime.isObject(item)) {
             DynamicObject itemObj = (DynamicObject) item;
             if (itemObj instanceof JSTemporalPlainDateTimeObject) {
@@ -221,17 +221,17 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
                         calendar);
     }
 
-    public static JSTemporalPlainDateTimeRecord addDateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
+    public static JSTemporalDateTimeRecord addDateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, DynamicObject calendar, long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds, DynamicObject options, JSContext ctx) {
-        JSTemporalPlainDateTimePluralRecord timeResult = JSTemporalPlainTime.addTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds,
+        JSTemporalDurationRecord timeResult = JSTemporalPlainTime.addTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds);
         DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(ctx, year, month, day, calendar);
         DynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(years, months, weeks, days + timeResult.getDays(), 0L, 0L, 0L, 0L, 0L, 0L, ctx);
 
         DynamicObject addedDate = TemporalUtil.dateAdd(calendar, datePart, dateDuration, options);
 
-        return JSTemporalPlainDateTimeRecord.create(getLong(addedDate, ISO_YEAR), getLong(addedDate, ISO_MONTH), getLong(addedDate, ISO_DAY),
+        return JSTemporalDateTimeRecord.create(getLong(addedDate, ISO_YEAR), getLong(addedDate, ISO_MONTH), getLong(addedDate, ISO_DAY),
                         timeResult.getHours(), timeResult.getMinutes(), timeResult.getSeconds(),
                         timeResult.getMilliseconds(), timeResult.getMicroseconds(), timeResult.getNanoseconds());
     }
@@ -259,11 +259,11 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return String.format("%s-%s-%sT%s:%s%s%s", yearString, monthString, dayString, hourString, minuteString, secondString, calendarString);
     }
 
-    public static JSTemporalPlainDateTimePluralRecord roundISODateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
+    public static JSTemporalDurationRecord roundISODateTime(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, double increment, String unit, String roundingMode, Long dayLength) {
-        JSTemporalPlainDateTimePluralRecord rt = JSTemporalPlainTime.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
-        JSTemporalPlainDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + rt.getDays());
-        return JSTemporalPlainDateTimePluralRecord.create(br.getYear(), br.getMonth(), br.getDay(),
+        JSTemporalDurationRecord rt = JSTemporalPlainTime.roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
+        JSTemporalDateTimeRecord br = TemporalUtil.balanceISODate(year, month, day + rt.getDays());
+        return JSTemporalDurationRecord.create(br.getYear(), br.getMonth(), br.getDay(),
                         rt.getHours(), rt.getMinutes(), rt.getSeconds(),
                         rt.getMilliseconds(), rt.getMicroseconds(), rt.getNanoseconds());
     }

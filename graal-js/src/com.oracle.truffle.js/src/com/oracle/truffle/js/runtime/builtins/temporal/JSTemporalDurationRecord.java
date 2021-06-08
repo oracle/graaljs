@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 //TODO check whether we really need that in addition to the singular version.
-public final class JSTemporalPlainDateTimePluralRecord {
+public final class JSTemporalDurationRecord {
     private final long years;
     private final long months;
     private final long days;
@@ -57,7 +57,7 @@ public final class JSTemporalPlainDateTimePluralRecord {
     private final double remainder;
     private final boolean hasRemainder;
 
-    private JSTemporalPlainDateTimePluralRecord(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds, long weeks,
+    private JSTemporalDurationRecord(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds, long weeks,
                     boolean hasWeeks, double remainder, boolean hasRemainder) {
         this.years = years;
         this.months = months;
@@ -75,23 +75,23 @@ public final class JSTemporalPlainDateTimePluralRecord {
         this.hasRemainder = hasRemainder;
     }
 
-    public static JSTemporalPlainDateTimePluralRecord create(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
-        return new JSTemporalPlainDateTimePluralRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, false, 0, false);
+    public static JSTemporalDurationRecord create(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, false, 0, false);
     }
 
-    public static JSTemporalPlainDateTimePluralRecord createWeeks(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
+    public static JSTemporalDurationRecord createWeeks(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds) {
-        return new JSTemporalPlainDateTimePluralRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, true, 0, false);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, true, 0, false);
     }
 
-    public static JSTemporalPlainDateTimePluralRecord createRemainder(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
+    public static JSTemporalDurationRecord createRemainder(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, double remainder) {
-        return new JSTemporalPlainDateTimePluralRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, false, remainder, true);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, false, remainder, true);
     }
 
-    public static JSTemporalPlainDateTimePluralRecord createWeeksRemainder(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
+    public static JSTemporalDurationRecord createWeeksRemainder(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, double remainder) {
-        return new JSTemporalPlainDateTimePluralRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, true, remainder, true);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, true, remainder, true);
     }
 
     public long getYears() {
@@ -140,7 +140,7 @@ public final class JSTemporalPlainDateTimePluralRecord {
         return remainder;
     }
 
-    public static JSTemporalPlainDateTimePluralRecord create(JSTemporalPlainDateTimeRecord r) {
+    public static JSTemporalDurationRecord create(JSTemporalDateTimeRecord r) {
         return create(r.getYear(), r.getMonth(), r.getDay(), r.getHour(), r.getMinute(), r.getSecond(), r.getMillisecond(), r.getMicrosecond(), r.getNanosecond());
     }
 

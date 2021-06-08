@@ -158,7 +158,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // region Abstract methods
 
     // 4.5.1
-    public static JSTemporalPlainDateTimePluralRecord differenceTime(long h1, long min1, long s1, long ms1, long mus1, long ns1,
+    public static JSTemporalDurationRecord differenceTime(long h1, long min1, long s1, long ms1, long mus1, long ns1,
                     long h2, long min2, long s2, long ms2, long mus2, long ns2) {
         long hours = h2 - h1;
         long minutes = min2 - min1;
@@ -167,9 +167,9 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         long microseconds = mus2 - mus1;
         long nanoseconds = ns2 - ns1;
         long sign = JSTemporalDuration.durationSign(0, 0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        JSTemporalPlainDateTimePluralRecord bt = balanceTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        JSTemporalDurationRecord bt = balanceTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
 
-        return JSTemporalPlainDateTimePluralRecord.create(0, 0, bt.getDays() * sign, bt.getHours() * sign, bt.getMinutes() * sign, bt.getSeconds() * sign,
+        return JSTemporalDurationRecord.create(0, 0, bt.getDays() * sign, bt.getHours() * sign, bt.getMinutes() * sign, bt.getSeconds() * sign,
                         bt.getMilliseconds() * sign, bt.getMicroseconds() * sign, bt.getNanoseconds() * sign);
     }
 
@@ -177,7 +177,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     public static Object toTemporalTime(Object item, String overflowParam, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
         String overflow = overflowParam == null ? TemporalConstants.CONSTRAIN : overflowParam;
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
-        JSTemporalPlainDateTimePluralRecord result2 = null;
+        JSTemporalDurationRecord result2 = null;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalPlainTime(item)) {
                 return item;
@@ -191,14 +191,14 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             if (!JSRuntime.toString(calendar).equals(TemporalConstants.ISO8601)) {
                 throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
             }
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
+            JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
             result2 = TemporalUtil.regulateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond(),
                             overflow);
         } else {
             String string = toString.executeString(item);
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string, ctx);
+            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string, ctx);
             if (!TemporalUtil.validateTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond())) {
@@ -207,7 +207,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             if (result.hasCalendar() && !JSRuntime.toString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
                 throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
             }
-            result2 = JSTemporalPlainDateTimePluralRecord.create(result);
+            result2 = JSTemporalDurationRecord.create(result);
         }
         return create(ctx, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(),
                         result2.getMicroseconds(), result2.getNanoseconds());
@@ -300,7 +300,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     // 4.5.14
-    public static JSTemporalPlainDateTimePluralRecord addTime(long hour, long minute, long second, long millisecond, long microsecond,
+    public static JSTemporalDurationRecord addTime(long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds) {
         return balanceTime(hour + hours, minute + minutes, second + seconds, millisecond + milliseconds,
@@ -308,7 +308,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     }
 
     // 4.5.15
-    public static JSTemporalPlainDateTimePluralRecord roundTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
+    public static JSTemporalDurationRecord roundTime(long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, double increment, String unit, String roundingMode,
                     Long dayLengthNsParam) {
         double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
@@ -333,7 +333,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         }
         long result = (long) TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
         if (unit.equals(DAY)) {
-            return JSTemporalPlainDateTimePluralRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
+            return JSTemporalDurationRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
         }
         if (unit.equals(HOUR)) {
             return balanceTime(result, 0, 0, 0, 0, 0);
@@ -356,7 +356,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // endregion
 
     // 4.5.6
-    public static JSTemporalPlainDateTimePluralRecord balanceTime(long h, long min, long sec, long mils, long mics, long ns) {
+    public static JSTemporalDurationRecord balanceTime(long h, long min, long sec, long mils, long mics, long ns) {
         if (h == Double.POSITIVE_INFINITY || h == Double.NEGATIVE_INFINITY ||
                         min == Double.POSITIVE_INFINITY || min == Double.NEGATIVE_INFINITY ||
                         sec == Double.POSITIVE_INFINITY || sec == Double.NEGATIVE_INFINITY ||
@@ -385,7 +385,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         hours = (long) TemporalUtil.nonNegativeModulo(hours, 24);
 
         // TODO [[Days]] is plural, rest is singular WTF
-        return JSTemporalPlainDateTimePluralRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        return JSTemporalDurationRecord.create(0, 0, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
 
     }
 }

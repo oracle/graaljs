@@ -390,7 +390,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     // 12.1.39
-    public static JSTemporalPlainDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
+    public static JSTemporalDateTimeRecord isoDateFromFields(DynamicObject fields, DynamicObject options, JSContext ctx, IsObjectNode isObject,
                     JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber,
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
@@ -445,7 +445,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
             throw Errors.createTypeError("Day not present.");
         }
         long referenceISOYear = 1972;
-        JSTemporalPlainDateTimeRecord result = null;
+        JSTemporalDateTimeRecord result = null;
         if (monthCode == Undefined.instance) {
             result = TemporalUtil.regulateISODate((Long) year, (Long) month, (Long) day, overflow);
         } else {

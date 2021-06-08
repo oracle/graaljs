@@ -253,14 +253,14 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-        JSTemporalPlainDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
+        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
         assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
         DynamicObject calendar = TemporalUtil.getOptionalTemporalCalendar(result.getCalendar(), ctx);
         return createTemporalDate(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
     // 3.5.5
-    public static JSTemporalPlainDateTimePluralRecord differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnitParam) {
+    public static JSTemporalDurationRecord differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnitParam) {
         String largestUnit = largestUnitParam;
         assert largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) ||
                         largestUnit.equals(WEEKS) || largestUnit.equals(DAYS) ||
@@ -274,10 +274,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             if (sign == 0) {
                 return toRecordWeeksPlural(0, 0, 0, 0);
             }
-            JSTemporalPlainDateTimeRecord start = toRecord(y1, m1, d1);
-            JSTemporalPlainDateTimeRecord end = toRecord(y2, m2, d2);
+            JSTemporalDateTimeRecord start = toRecord(y1, m1, d1);
+            JSTemporalDateTimeRecord end = toRecord(y2, m2, d2);
             long years = end.getYear() - start.getYear();
-            JSTemporalPlainDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, CONSTRAIN);
+            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, CONSTRAIN);
             long midSign = TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit.equals(YEARS)) {
@@ -328,8 +328,8 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             return toRecordWeeksPlural(years, months, 0, days);
         }
         if (largestUnit.equals(DAYS) || largestUnit.equals(WEEKS)) {
-            JSTemporalPlainDateTimeRecord smaller;
-            JSTemporalPlainDateTimeRecord greater;
+            JSTemporalDateTimeRecord smaller;
+            JSTemporalDateTimeRecord greater;
             long sign;
             if (TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2) < 0) {
                 smaller = toRecord(y1, m1, d1);
@@ -361,16 +361,16 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         throw Errors.shouldNotReachHere();
     }
 
-    private static JSTemporalPlainDateTimePluralRecord toRecordPlural(long year, long month, long day) {
-        return JSTemporalPlainDateTimePluralRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
+    private static JSTemporalDurationRecord toRecordPlural(long year, long month, long day) {
+        return JSTemporalDurationRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
     }
 
-    private static JSTemporalPlainDateTimePluralRecord toRecordWeeksPlural(long year, long month, long weeks, long day) {
-        return JSTemporalPlainDateTimePluralRecord.createWeeks(year, month, weeks, day, 0, 0, 0, 0, 0, 0);
+    private static JSTemporalDurationRecord toRecordWeeksPlural(long year, long month, long weeks, long day) {
+        return JSTemporalDurationRecord.createWeeks(year, month, weeks, day, 0, 0, 0, 0, 0, 0);
     }
 
-    public static JSTemporalPlainDateTimeRecord toRecord(long year, long month, long day) {
-        return JSTemporalPlainDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
+    public static JSTemporalDateTimeRecord toRecord(long year, long month, long day) {
+        return JSTemporalDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
     }
 
     @TruffleBoundary

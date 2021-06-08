@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSTemporalPlainDateTimeRecord {
+public final class JSTemporalDateTimeRecord {
     private final long year;
     private final long month;
     private final long day;
@@ -60,7 +60,7 @@ public final class JSTemporalPlainDateTimeRecord {
     private final long weeks;
     private final boolean hasWeeks;
 
-    private JSTemporalPlainDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    private JSTemporalDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
                     long weeks, boolean hasWeeks,
                     DynamicObject calendar, boolean hasCalendar) {
         this.year = year;
@@ -81,19 +81,19 @@ public final class JSTemporalPlainDateTimeRecord {
     }
 
     @SuppressWarnings("hiding")
-    public static JSTemporalPlainDateTimeRecord create(long year, long month, long day, long hour, long minute, long second,
+    public static JSTemporalDateTimeRecord create(long year, long month, long day, long hour, long minute, long second,
                     long millisecond, long microsecond, long nanosecond) {
-        return new JSTemporalPlainDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, null, false);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, null, false);
     }
 
-    public static JSTemporalPlainDateTimeRecord createCalendar(long year, long month, long day, long hour, long minute, long second,
+    public static JSTemporalDateTimeRecord createCalendar(long year, long month, long day, long hour, long minute, long second,
                     long millisecond, long microsecond, long nanosecond, DynamicObject calendar) {
-        return new JSTemporalPlainDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, true);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, true);
     }
 
-    public static JSTemporalPlainDateTimeRecord createWeeks(long year, long month, long weeks, long day, long hour, long minute, long second,
+    public static JSTemporalDateTimeRecord createWeeks(long year, long month, long weeks, long day, long hour, long minute, long second,
                     long millisecond, long microsecond, long nanosecond) {
-        return new JSTemporalPlainDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, weeks, true, null, false);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, weeks, true, null, false);
     }
 
     public long getYear() {

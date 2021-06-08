@@ -174,7 +174,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     // region Abstract methods
     // 7.2.1
     public static Object toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSToStringNode toString) {
-        JSTemporalPlainDateTimeRecord result;
+        JSTemporalDateTimeRecord result;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalDuration(item)) {
                 return item;
@@ -189,7 +189,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     @TruffleBoundary
-    private static JSTemporalPlainDateTimeRecord parseTemporalDurationString(String string) {
+    private static JSTemporalDateTimeRecord parseTemporalDurationString(String string) {
 
         // PT1H10M29.876543211S
         // P1Y1M1W1DT1H1M1.123456789S
@@ -287,8 +287,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             } else {
                 fMinute = 0;
             }
-            JSTemporalPlainDateTimeRecord result = TemporalUtil.durationHandleFractions(fHour, minute, fMinute, second, 0, millisecond, 0, microsecond, 0, nanosecond, 0);
-            return JSTemporalPlainDateTimeRecord.createWeeks(year, month, week, day, (long) hour,
+            JSTemporalDateTimeRecord result = TemporalUtil.durationHandleFractions(fHour, minute, fMinute, second, 0, millisecond, 0, microsecond, 0, nanosecond, 0);
+            return JSTemporalDateTimeRecord.createWeeks(year, month, week, day, (long) hour,
                             result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
         }
         throw Errors.createTypeError("malformed Duration");
@@ -303,11 +303,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.2
-    public static JSTemporalPlainDateTimeRecord toTemporalDurationRecord(DynamicObject temporalDurationLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
+    public static JSTemporalDateTimeRecord toTemporalDurationRecord(DynamicObject temporalDurationLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
         assert isObject.executeBoolean(temporalDurationLike);
         if (isJSTemporalDuration(temporalDurationLike)) {
             JSTemporalDurationObject d = (JSTemporalDurationObject) temporalDurationLike;
-            return JSTemporalPlainDateTimeRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
+            return JSTemporalDateTimeRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
                             d.getMicroseconds(), d.getNanoseconds());
         }
         boolean any = false;
@@ -367,7 +367,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (!any) {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
-        return JSTemporalPlainDateTimeRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
+        return JSTemporalDateTimeRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
     // 7.5.3
@@ -681,7 +681,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.13
-    public static JSTemporalPlainDateTimePluralRecord balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
+    public static JSTemporalDurationRecord balanceDuration(long days, long hours, long minutes, long seconds, long milliseconds,
                     long microseconds, long nanoseconds, String largestUnit, DynamicObject relativeTo) {
         long ns;
         if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
@@ -743,11 +743,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             assert largestUnit.equals(NANOSECONDS);
         }
 
-        return JSTemporalPlainDateTimePluralRecord.create(0, 0, d, h * sign, min * sign, s * sign, ms * sign, mus * sign, ns * sign);
+        return JSTemporalDurationRecord.create(0, 0, d, h * sign, min * sign, s * sign, ms * sign, mus * sign, ns * sign);
     }
 
     // 7.5.14
-    public static JSTemporalPlainDateTimePluralRecord unbalanceDurationRelative(long y, long m, long w, long d,
+    public static JSTemporalDurationRecord unbalanceDurationRelative(long y, long m, long w, long d,
                     String largestUnit, DynamicObject relTo, JSContext ctx) {
         long years = y;
         long months = m;
@@ -755,7 +755,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long days = d;
         DynamicObject relativeTo = relTo;
         if (largestUnit.equals(YEARS) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
-            return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         }
         long sign = JSTemporalDuration.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
@@ -832,18 +832,18 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 }
             }
         }
-        return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
     // 7.5.15
-    public static JSTemporalPlainDateTimePluralRecord balanceDurationRelative(long y, long m, long w, long d, String largestUnit, DynamicObject relTo, JSContext ctx) {
+    public static JSTemporalDurationRecord balanceDurationRelative(long y, long m, long w, long d, String largestUnit, DynamicObject relTo, JSContext ctx) {
         long years = y;
         long months = m;
         long weeks = w;
         long days = d;
         DynamicObject relativeTo = relTo;
         if ((!largestUnit.equals(YEARS) && !largestUnit.equals(MONTHS) && !largestUnit.equals(WEEKS)) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
-            return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         }
         long sign = durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
@@ -925,11 +925,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 oneWeekDays = getLong(moveResult, DAYS, 0);
             }
         }
-        return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
     }
 
     // 7.5.16
-    public static JSTemporalPlainDateTimePluralRecord addDuration(long y1, long mon1, long w1, long d1, long h1, long min1, long s1, long ms1, long mus1, long ns1,
+    public static JSTemporalDurationRecord addDuration(long y1, long mon1, long w1, long d1, long h1, long min1, long s1, long ms1, long mus1, long ns1,
                     long y2, long mon2, long w2, long d2, long h2, long min2, long s2, long ms2, long mus2, long ns2,
                     DynamicObject relativeTo, JSContext ctx) {
         String largestUnit1 = defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1);
@@ -949,7 +949,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             if (largestUnit.equals(YEARS) || largestUnit.equals(MONTHS) || largestUnit.equals(WEEKS)) {
                 throw Errors.createRangeError("Largest unit allowed with no relative is 'days'.");
             }
-            JSTemporalPlainDateTimePluralRecord result = balanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2,
+            JSTemporalDurationRecord result = balanceDuration(d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2,
                             ns1 + ns2, largestUnit, Undefined.instance);
             years = 0;
             months = 0;
@@ -983,7 +983,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             DynamicObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(ctx, differenceOptions, "largestUnit", dateLargestUnit);
             DynamicObject dateDifference = TemporalUtil.calendarDateUntil(calendar, datePart, end, differenceOptions, Undefined.instance);
-            JSTemporalPlainDateTimePluralRecord result = JSTemporalDuration.balanceDuration(getLong(dateDifference, DAYS, 0L),
+            JSTemporalDurationRecord result = JSTemporalDuration.balanceDuration(getLong(dateDifference, DAYS, 0L),
                             h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit, Undefined.instance);
             years = getLong(dateDifference, YEARS);
             months = getLong(dateDifference, MONTHS);
@@ -1002,7 +1002,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                         microseconds, nanoseconds)) {
             throw Errors.createRangeError("Duration out of range!");
         }
-        return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
     // 7.5.17
@@ -1029,7 +1029,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.20
-    public static JSTemporalPlainDateTimePluralRecord roundDuration(long y, long m, long w, long d, long h, long min, long sec, long milsec, long micsec, long nsec,
+    public static JSTemporalDurationRecord roundDuration(long y, long m, long w, long d, long h, long min, long sec, long milsec, long micsec, long nsec,
                     long increment, String unit, String roundingMode, DynamicObject relTo, JSContext ctx) {
         long years = y;
         long months = m;
@@ -1203,7 +1203,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             remainder = remainder - nanoseconds;
         }
 
-        return JSTemporalPlainDateTimePluralRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, remainder);
+        return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, remainder);
     }
 
     @SuppressWarnings("unused")
@@ -1266,14 +1266,14 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.21
-    public static JSTemporalPlainDateTimePluralRecord adjustRoundedDurationDays(long years, long months, long weeks, long days, long hours,
+    public static JSTemporalDurationRecord adjustRoundedDurationDays(long years, long months, long weeks, long days, long hours,
                     long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, long increment, String unit,
                     String roundingMode, DynamicObject relativeTo,
                     JSContext ctx) {
         if (!(TemporalUtil.isTemporalZonedDateTime(relativeTo)) || unit.equals(YEARS) || unit.equals(MONTHS) || unit.equals(WEEKS) || unit.equals(DAYS) ||
                         (unit.equals(NANOSECONDS) && increment == 1)) {
-            return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
         long timeRemainderNs = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
         long direction = TemporalUtil.sign(timeRemainderNs);
@@ -1284,22 +1284,22 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long dayEnd = TemporalUtil.addZonedDateTime(dayStart, JSObject.get(relativeTo, TIME_ZONE), (DynamicObject) JSObject.get(relativeTo, CALENDAR), 0, 0, 0, direction, 0, 0, 0, 0, 0, 0);
         long dayLengthNs = dayEnd - dayStart;
         if ((timeRemainderNs - dayLengthNs) * direction < 0) {
-            return JSTemporalPlainDateTimePluralRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+            return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
         timeRemainderNs = TemporalUtil.roundTemporalInstant(timeRemainderNs - dayLengthNs, increment, unit, roundingMode);
-        JSTemporalPlainDateTimePluralRecord add = addDuration(years, months, weeks, days, 0, 0, 0, 0,
+        JSTemporalDurationRecord add = addDuration(years, months, weeks, days, 0, 0, 0, 0,
                         0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
                         relativeTo, ctx);
-        JSTemporalPlainDateTimePluralRecord atd = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", Undefined.instance);
+        JSTemporalDurationRecord atd = balanceDuration(0, 0, 0, 0, 0, 0, timeRemainderNs, "hours", Undefined.instance);
 
-        return JSTemporalPlainDateTimePluralRecord.createWeeks(add.getYears(), add.getMonths(), add.getWeeks(), add.getDays(),
+        return JSTemporalDurationRecord.createWeeks(add.getYears(), add.getMonths(), add.getWeeks(), add.getDays(),
                         atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds());
     }
 
     // 7.5.22
-    public static JSTemporalPlainDateTimeRecord toLimitedTemporalDuration(Object temporalDurationLike,
+    public static JSTemporalDateTimeRecord toLimitedTemporalDuration(Object temporalDurationLike,
                     Set<String> disallowedFields, IsObjectNode isObject, JSToStringNode toString, JSToIntegerAsLongNode toInt) {
-        JSTemporalPlainDateTimeRecord d;
+        JSTemporalDateTimeRecord d;
         if (!isObject.executeBoolean(temporalDurationLike)) {
             String str = toString.executeString(temporalDurationLike);
             d = parseTemporalDurationString(str);
