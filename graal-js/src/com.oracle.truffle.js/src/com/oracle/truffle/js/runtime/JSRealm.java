@@ -1838,13 +1838,14 @@ public class JSRealm {
         assert context.isOptionTemporal();
         DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 
-        JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor());
-        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor());
-        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDateTime", getTemporalPlainDateTimeConstructor());
-        JSObjectUtil.putDataProperty(context, temporalObject, "Duration", getTemporalDurationConstructor());
-        JSObjectUtil.putDataProperty(context, temporalObject, "Calendar", getTemporalCalendarConstructor());
-        JSObjectUtil.putDataProperty(context, temporalObject, "PlainYearMonth", getTemporalPlainYearMonthConstructor());
-        JSObjectUtil.putDataProperty(context, temporalObject, "PlainMonthDay", getTemporalPlainMonthDayConstructor());
+        int flags = JSAttributes.notConfigurableEnumerableNotWritable();
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainDateTime", getTemporalPlainDateTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Duration", getTemporalDurationConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Calendar", getTemporalCalendarConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainYearMonth", getTemporalPlainYearMonthConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "PlainMonthDay", getTemporalPlainMonthDayConstructor(), flags);
 
         putGlobalProperty("Temporal", temporalObject);
     }

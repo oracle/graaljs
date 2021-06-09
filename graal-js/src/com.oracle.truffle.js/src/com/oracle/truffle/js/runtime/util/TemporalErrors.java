@@ -188,4 +188,9 @@ public final class TemporalErrors {
         return Errors.createRangeError("identical calendar expected");
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalMalformedDuration() {
+        return Errors.createTypeError("malformed Duration");
+    }
+
 }

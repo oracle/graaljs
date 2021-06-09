@@ -40,6 +40,5 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public interface TemporalDate extends TemporalCalendar, TemporalMonth, TemporalDay {
-    long getISOYear();
+public interface TemporalDate extends TemporalCalendar, TemporalYear, TemporalMonth, TemporalDay {
 }

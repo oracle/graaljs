@@ -87,8 +87,8 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
 
     public static final JSTemporalPlainDate INSTANCE = new JSTemporalPlainDate();
 
-    public static final String CLASS_NAME = "TemporalPlainDate";
-    public static final String PROTOTYPE_NAME = "TemporalPlainDate.prototype";
+    public static final String CLASS_NAME = "PlainDate";
+    public static final String PROTOTYPE_NAME = "PlainDate.prototype";
 
     private JSTemporalPlainDate() {
     }
@@ -147,7 +147,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static DynamicObject createTemporalDate(JSContext context, long y, long m, long d, DynamicObject calendar) {
+    public static DynamicObject create(JSContext context, long y, long m, long d, DynamicObject calendar) {
         rejectDate(y, m, d);
         if (!TemporalUtil.dateTimeWithinLimits(y, m, d, 12, 0, 0, 0, 0, 0)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
@@ -216,7 +216,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 // TODO
             } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
-                return createTemporalDate(ctx, dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());
+                return create(ctx, dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(itemObj, ctx);
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"}, ctx);
@@ -227,7 +227,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
         assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
         DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
-        return createTemporalDate(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
+        return create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
     // 3.5.5

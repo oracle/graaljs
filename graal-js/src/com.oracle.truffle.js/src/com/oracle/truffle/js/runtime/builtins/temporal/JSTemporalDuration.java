@@ -54,7 +54,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.SIGN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -66,15 +65,12 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
@@ -89,8 +85,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     public static final JSTemporalDuration INSTANCE = new JSTemporalDuration();
 
-    public static final String CLASS_NAME = "TemporalDuration";
-    public static final String PROTOTYPE_NAME = "TemporalDuration.prototype";
+    public static final String CLASS_NAME = "Duration";
+    public static final String PROTOTYPE_NAME = "Duration.prototype";
 
     private JSTemporalDuration() {
     }
@@ -179,10 +175,12 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     @TruffleBoundary
-    private static JSTemporalDateTimeRecord parseTemporalDurationString(String string) {
+    public static JSTemporalDateTimeRecord parseTemporalDurationString(String string) {
 
         // PT1H10M29.876543211S
         // P1Y1M1W1DT1H1M1.123456789S
+        // P10D
+        // -PT1H
 
         // Pattern regex =
         // Pattern.compile("^([\\+-])+[Pp]([Tt]((\\d+)[Hh])?((\\d+)[Mm])?((\\d+)[Ss])?)$");
@@ -200,44 +198,21 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         double fHour = 0;
         double fMinute = 0;
 
-        // (\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?
-        Pattern regex = Pattern.compile("^([\\+-]?)[Pp]([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
+        Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
         Matcher matcher = regex.matcher(string);
         if (matcher.matches()) {
             String sign = matcher.group(1);
 
-            int count = 1;
-            boolean datePart = true;
-            while (++count < matcher.groupCount()) {
-                String val = matcher.group(count);
-                if (val == null) {
-                    // why?
-                } else if (val.startsWith("T") || val.startsWith("t")) {
-                    datePart = false;
-                } else {
-                    char id = val.charAt(val.length() - 1);
-                    String numstr = val.substring(0, val.length() - 1);
+            year = parseDurationIntl(matcher, 2);
+            month = parseDurationIntl(matcher, 3);
+            day = parseDurationIntl(matcher, 4);
+            week = parseDurationIntl(matcher, 5);
 
-                    if (id == 'Y' || id == 'y') {
-                        year = Long.parseLong(numstr);
-                    } else if (id == 'M' || id == 'm') {
-                        if (datePart) {
-                            month = Long.parseLong(numstr);
-                        } else {
-                            minute = Double.parseDouble(numstr);
-                        }
-                    } else if (id == 'D' || id == 'd') {
-                        day = Long.parseLong(numstr);
-                    } else if (id == 'W' || id == 'w') {
-                        week = Long.parseLong(numstr);
-                    } else if (id == 'H' || id == 'h') {
-                        hour = Double.parseDouble(numstr);
-                    } else if (id == 'S' || id == 's') {
-                        second = Double.parseDouble(numstr);
-                    } else {
-                        throw Errors.createTypeError("malformed Duration");
-                    }
-                }
+            String timeGroup = matcher.group(6);
+            if (timeGroup != null && timeGroup.length() > 0) {
+                hour = parseDurationIntlDouble(matcher, 7);
+                minute = parseDurationIntlDouble(matcher, 8);
+                second = parseDurationIntlDouble(matcher, 9);
             }
 
             int factor = (sign.equals("-") || sign.equals("\u2212")) ? -1 : 1;
@@ -251,11 +226,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             second = second * factor;
             if (hasFraction(second)) {
                 double fpart = fractionPart(second) * 1000;
-                millisecond = factor * (fpart % 1000);
+                millisecond = factor * (fpart % 1000.0);
                 fpart *= 1000;
-                microsecond = factor * (fpart % 1000);
+                microsecond = factor * (fpart % 1000.0);
                 fpart *= 1000;
-                nanosecond = factor * (fpart % 1000);
+                nanosecond = factor * (fpart % 1000.0);
             } else {
                 millisecond = 0;
                 microsecond = 0;
@@ -281,7 +256,29 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             return JSTemporalDateTimeRecord.createWeeks(year, month, week, day, (long) hour,
                             result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
         }
-        throw Errors.createTypeError("malformed Duration");
+        throw TemporalErrors.createTypeErrorTemporalMalformedDuration();
+    }
+
+    private static long parseDurationIntl(Matcher matcher, int i) {
+        String val = matcher.group(i);
+        if (val != null) {
+            String numstr = val.substring(0, val.length() - 1);
+            try {
+                return Long.parseLong(numstr);
+            } catch (NumberFormatException ex) {
+                throw Errors.createRangeError("decimal numbers only allowed in time units");
+            }
+        }
+        return 0L;
+    }
+
+    private static double parseDurationIntlDouble(Matcher matcher, int i) {
+        String val = matcher.group(i);
+        if (val != null) {
+            String numstr = val.substring(0, val.length() - 1);
+            return Double.parseDouble(numstr);
+        }
+        return 0.0;
     }
 
     private static double fractionPart(double second) {
@@ -370,45 +367,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return create(ctx, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
-    // 7.5.9
-    public static JSTemporalDurationObject createTemporalDurationFromInstance(long years, long months, long weeks, long days,
-                    long hours, long minutes, long seconds,
-                    long milliseconds, long microseconds,
-                    long nanoseconds, JSRealm realm,
-                    JSFunctionCallNode callNode) {
-        assert TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        DynamicObject constructor = realm.getTemporalDurationConstructor();
-        Object[] ctorArgs = new Object[]{years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        Object result = callNode.executeCall(args);
-        return (JSTemporalDurationObject) result;
-    }
-
-    // 7.5.22
-    public static JSTemporalDateTimeRecord toLimitedTemporalDuration(Object temporalDurationLike,
-                    Set<String> disallowedFields, IsObjectNode isObject, JSToStringNode toString, JSToIntegerAsLongNode toInt) {
-        JSTemporalDateTimeRecord d;
-        if (!isObject.executeBoolean(temporalDurationLike)) {
-            String str = toString.executeString(temporalDurationLike);
-            d = parseTemporalDurationString(str);
-        } else {
-            d = toTemporalDurationRecord((DynamicObject) temporalDurationLike, isObject, toInt);
-        }
-        if (!TemporalUtil.validateTemporalDuration(d.getYear(), d.getMonth(), d.getWeeks(), d.getDay(), d.getHour(), d.getMinute(), d.getSecond(), d.getMillisecond(),
-                        d.getMicrosecond(), d.getNanosecond())) {
-            throw Errors.createRangeError("Given duration outside range.");
-        }
-
-        for (String property : TemporalUtil.DURATION_PROPERTIES) {
-            long value = TemporalUtil.getPropertyFromRecord(d, property);
-            if (value > 0 && disallowedFields.contains(property)) {
-                throw TemporalErrors.createRangeErrorDisallowedField(property);
-            }
-        }
-        return d;
-    }
-
     // 7.5.23
     @TruffleBoundary
     public static String temporalDurationToString(long yearsP, long monthsP, long weeksP, long daysP, long hoursP, long minutesP, long secondsP, long millisecondsP, long microsecondsP,
@@ -481,7 +439,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 // TODO Set decimalPart to the longest possible substring of decimalPart starting at
                 // position 0 and not ending with the code unit 0x0030 (DIGIT ZERO).
             } else {
-                decimalPart = decimalPart.substring(0, (int) precision);
+                Number n = (Number) precision;
+                decimalPart = decimalPart.substring(0, Math.min(decimalPart.length(), n.intValue()));
             }
             String secondsPart = String.format("%d", Math.abs(seconds));
             if (!decimalPart.equals("")) {

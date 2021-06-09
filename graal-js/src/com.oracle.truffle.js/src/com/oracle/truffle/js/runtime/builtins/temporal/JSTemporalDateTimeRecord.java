@@ -150,7 +150,7 @@ public final class JSTemporalDateTimeRecord {
     @SuppressWarnings("static-method")
     public Object getTimeZoneIANAName() {
         // TODO Auto-generated method stub
-        return null;
+        return Undefined.instance;
     }
 
     public boolean hasCalendar() {

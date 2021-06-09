@@ -338,13 +338,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Module(1),
         Table(1),
 
-        TemporalPlainTime(6),
-        TemporalPlainDate(4),
-        TemporalPlainDateTime(10),
-        TemporalDuration(10),
-        TemporalCalendar(1),
-        TemporalPlainYearMonth(4),
-        TemporalPlainMonthDay(4),
+        // Temporal
+        PlainTime(0),
+        PlainDate(3),
+        PlainDateTime(3),
+        Duration(0),
+        Calendar(1),
+        PlainYearMonth(2),
+        PlainMonthDay(2),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -383,8 +384,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return JSConfig.ECMAScript2017;
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
-            } else if (EnumSet.of(TemporalPlainTime, TemporalCalendar, TemporalDuration,
-                            TemporalPlainDate, TemporalPlainDateTime, TemporalPlainYearMonth, TemporalPlainMonthDay).contains(this)) {
+            } else if (EnumSet.of(PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay).contains(this)) {
                 return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -625,35 +625,35 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return createCallRequiresNew(context, builtin);
                 }
 
-            case TemporalPlainTime:
+            case PlainTime:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(6).createArgumentNodes(context))
                                     : ConstructTemporalPlainTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(6).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TemporalPlainDate:
+            case PlainDate:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainDateNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalPlainDateNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TemporalPlainDateTime:
+            case PlainDateTime:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
                                     : ConstructTemporalPlainDateTimeNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TemporalDuration:
+            case Duration:
                 if (construct) {
                     return newTarget ? ConstructTemporalDurationNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(10).createArgumentNodes(context))
                                     : ConstructTemporalDurationNodeGen.create(context, builtin, false, args().function().fixedArgs(10).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TemporalCalendar:
+            case Calendar:
                 if (construct) {
                     return newTarget ? ConstructTemporalCalendarNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                     : ConstructTemporalCalendarNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
@@ -661,14 +661,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TemporalPlainYearMonth:
+            case PlainYearMonth:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalPlainYearMonthNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
-            case TemporalPlainMonthDay:
+            case PlainMonthDay:
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
@@ -1073,7 +1073,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long m = toIntegerNode.executeLong(isoMonth);
             final long d = toIntegerNode.executeLong(isoDay);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
-            return swapPrototype(JSTemporalPlainDate.createTemporalDate(getContext(), y, m, d, calendar), newTarget);
+            return swapPrototype(JSTemporalPlainDate.create(getContext(), y, m, d, calendar), newTarget);
         }
 
         @Override
@@ -1131,7 +1131,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long microsecond = toIntegerNode.executeLong(microsecondObject);
             final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
-            return swapPrototype(JSTemporalPlainDateTime.createTemporalDateTime(getContext(),
+            return swapPrototype(JSTemporalPlainDateTime.create(getContext(),
                             year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar), newTarget);
         }
 

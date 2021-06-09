@@ -75,8 +75,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     public static final JSTemporalPlainMonthDay INSTANCE = new JSTemporalPlainMonthDay();
 
-    public static final String CLASS_NAME = "TemporalPlainMonthDay";
-    public static final String PROTOTYPE_NAME = "TemporalPlainMonthDay.prototype";
+    public static final String CLASS_NAME = "PlainMonthDay";
+    public static final String PROTOTYPE_NAME = "PlainMonthDay.prototype";
 
     public static DynamicObject create(JSContext context, long isoMonth, long isoDay, DynamicObject calendar, long referenceISOYear) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
@@ -166,9 +166,9 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             Object monthCode = JSObject.get(fields, MONTH_CODE);
             Object year = JSObject.get(fields, YEAR);
             if (calendarAbsent && month != Undefined.instance && monthCode == Undefined.instance && year == Undefined.instance) {
-                JSObjectUtil.putDataProperty(ctx, fields, YEAR, referenceISOYear);
-                return TemporalUtil.monthDayFromFields(calendar, fields, options);
+                TemporalUtil.createDataPropertyOrThrow(ctx, fields, YEAR, referenceISOYear);
             }
+            return TemporalUtil.monthDayFromFields(calendar, fields, options);
         }
         TemporalUtil.toTemporalOverflow(options);
         String string = JSRuntime.toString(item);

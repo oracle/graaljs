@@ -96,7 +96,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected Object from(Object item, DynamicObject optParam,
+        protected Object from(Object item, Object optParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
@@ -105,8 +105,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
             if (isObject.executeBoolean(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-                return JSTemporalPlainMonthDay.create(getContext(),
-                                pmd.getISOMonth(), pmd.getISODay(), pmd.getCalendar(), pmd.getISOYear());
+                return JSTemporalPlainMonthDay.create(getContext(), pmd.getISOMonth(), pmd.getISODay(), pmd.getCalendar(), pmd.getISOYear());
             }
             return JSTemporalPlainMonthDay.toTemporalMonthDay(item, options, getContext());
         }

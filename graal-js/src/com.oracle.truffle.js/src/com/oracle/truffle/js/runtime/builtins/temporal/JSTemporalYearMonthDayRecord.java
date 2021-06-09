@@ -40,6 +40,36 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public interface TemporalDateTime extends TemporalDate, TemporalTime {
+public final class JSTemporalYearMonthDayRecord {
+    private final long year;
+    private final long month;
+    private final long day;
 
+    private JSTemporalYearMonthDayRecord(long year, long month, long day) {
+        this.year = year;
+        this.month = month;
+        this.day = day;
+    }
+
+    @SuppressWarnings("hiding")
+    public static JSTemporalYearMonthDayRecord create(long year, long month, long day) {
+        return new JSTemporalYearMonthDayRecord(year, month, day);
+    }
+
+    @SuppressWarnings("hiding")
+    public static JSTemporalYearMonthDayRecord create(long year, long month) {
+        return new JSTemporalYearMonthDayRecord(year, month, 0);
+    }
+
+    public long getYear() {
+        return year;
+    }
+
+    public long getMonth() {
+        return month;
+    }
+
+    public long getDay() {
+        return day;
+    }
 }

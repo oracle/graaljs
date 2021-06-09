@@ -72,8 +72,8 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
 
     public static final JSTemporalPlainYearMonth INSTANCE = new JSTemporalPlainYearMonth();
 
-    public static final String CLASS_NAME = "TemporalPlainYearMonth";
-    public static final String PROTOTYPE_NAME = "TemporalPlainYearMonth.prototype";
+    public static final String CLASS_NAME = "PlainYearMonth";
+    public static final String PROTOTYPE_NAME = "PlainYearMonth.prototype";
 
     private JSTemporalPlainYearMonth() {
     }

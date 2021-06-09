@@ -111,7 +111,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
                 JSTemporalPlainYearMonthObject pmd = (JSTemporalPlainYearMonthObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
                 return JSTemporalPlainYearMonth.create(getContext(),
-                                pmd.getISOMonth(), pmd.getISODay(), pmd.getCalendar(), pmd.getISOYear());
+                                pmd.getISOYear(), pmd.getISOMonth(), pmd.getCalendar(), pmd.getISODay());
             }
             return TemporalUtil.toTemporalYearMonth(item, options, getContext());
         }

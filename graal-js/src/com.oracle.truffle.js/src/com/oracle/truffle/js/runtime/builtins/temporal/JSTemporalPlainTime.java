@@ -56,14 +56,11 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltin
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -80,8 +77,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
 
     public static final JSTemporalPlainTime INSTANCE = new JSTemporalPlainTime();
 
-    public static final String CLASS_NAME = "TemporalPlainTime";
-    public static final String PROTOTYPE_NAME = "TemporalPlainTime.prototype";
+    public static final String CLASS_NAME = "PlainTime";
+    public static final String PROTOTYPE_NAME = "PlainTime.prototype";
 
     private JSTemporalPlainTime() {
     }
@@ -212,19 +209,6 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             throw TemporalErrors.createTypeErrorTemporalTimePropertyExpected();
         }
         return result;
-    }
-
-    // 4.5.9
-    public static JSTemporalPlainTimeObject createTemporalTimeFromInstance(long hour, long minute, long second,
-                    long millisecond, long microsecond,
-                    long nanosecond, JSRealm realm,
-                    JSFunctionCallNode callNode) {
-        assert TemporalUtil.isValidTime(hour, minute, second, millisecond, microsecond, nanosecond);
-        DynamicObject constructor = realm.getTemporalPlainTimeConstructor();
-        Object[] ctorArgs = new Object[]{hour, minute, second, millisecond, microsecond, nanosecond};
-        Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, ctorArgs.length);
-        System.arraycopy(ctorArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, ctorArgs.length);
-        return (JSTemporalPlainTimeObject) callNode.executeCall(args);
     }
 
     // 4.5.12

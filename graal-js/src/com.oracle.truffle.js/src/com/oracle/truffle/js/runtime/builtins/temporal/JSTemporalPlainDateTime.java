@@ -49,9 +49,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY_OF_WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY_OF_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
@@ -62,7 +59,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK_OF_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -86,8 +82,8 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
 
     public static final JSTemporalPlainDateTime INSTANCE = new JSTemporalPlainDateTime();
 
-    public static final String CLASS_NAME = "TemporalPlainDateTime";
-    public static final String PROTOTYPE_NAME = "TemporalPlainDateTime.prototype";
+    public static final String CLASS_NAME = "PlainDateTime";
+    public static final String PROTOTYPE_NAME = "PlainDateTime.prototype";
 
     private JSTemporalPlainDateTime() {
     }
@@ -102,7 +98,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return CLASS_NAME;
     }
 
-    public static DynamicObject createTemporalDateTime(JSContext context, long y, long m, long d, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    public static DynamicObject create(JSContext context, long y, long m, long d, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
                     DynamicObject calendar) {
         if (!TemporalUtil.isValidISODate(y, m, d)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
@@ -181,12 +177,12 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
                     long microseconds, long nanoseconds, DynamicObject options, JSContext ctx) {
         JSTemporalDurationRecord timeResult = TemporalUtil.addTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds,
                         nanoseconds);
-        DynamicObject datePart = JSTemporalPlainDate.createTemporalDate(ctx, year, month, day, calendar);
+        DynamicObject datePart = JSTemporalPlainDate.create(ctx, year, month, day, calendar);
         DynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(years, months, weeks, days + timeResult.getDays(), 0L, 0L, 0L, 0L, 0L, 0L, ctx);
 
-        DynamicObject addedDate = TemporalUtil.dateAdd(calendar, datePart, dateDuration, options);
+        TemporalDate addedDate = (TemporalDate) TemporalUtil.calendarDateAdd(calendar, datePart, dateDuration, options);
 
-        return JSTemporalDateTimeRecord.create(getLong(addedDate, ISO_YEAR), getLong(addedDate, ISO_MONTH), getLong(addedDate, ISO_DAY),
+        return JSTemporalDateTimeRecord.create(addedDate.getISOYear(), addedDate.getISOMonth(), addedDate.getISODay(),
                         timeResult.getHours(), timeResult.getMinutes(), timeResult.getSeconds(),
                         timeResult.getMilliseconds(), timeResult.getMicroseconds(), timeResult.getNanoseconds());
     }

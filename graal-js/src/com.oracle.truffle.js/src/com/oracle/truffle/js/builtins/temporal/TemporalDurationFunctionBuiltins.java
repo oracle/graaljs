@@ -41,16 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -136,72 +126,44 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("create()") JSToStringNode toString) {
-            DynamicObject one = (DynamicObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toInt, toString);
-            DynamicObject two = (DynamicObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
+            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toInt, toString);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
             long shift1 = TemporalUtil.calculateOffsetShift(relativeTo,
-                            getLong(one, YEARS, 0),
-                            getLong(one, MONTHS, 0),
-                            getLong(one, WEEKS, 0),
-                            getLong(one, DAYS, 0),
-                            getLong(one, HOURS, 0),
-                            getLong(one, MINUTES, 0),
-                            getLong(one, SECONDS, 0),
-                            getLong(one, MILLISECONDS, 0),
-                            getLong(one, MICROSECONDS, 0),
-                            getLong(one, NANOSECONDS, 0),
+                            one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
+                            one.getHours(), one.getMinutes(), one.getSeconds(),
+                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
                             isObject);
             long shift2 = TemporalUtil.calculateOffsetShift(relativeTo,
-                            getLong(two, YEARS, 0),
-                            getLong(two, MONTHS, 0),
-                            getLong(two, WEEKS, 0),
-                            getLong(two, DAYS, 0),
-                            getLong(two, HOURS, 0),
-                            getLong(two, MINUTES, 0),
-                            getLong(two, SECONDS, 0),
-                            getLong(two, MILLISECONDS, 0),
-                            getLong(two, MICROSECONDS, 0),
-                            getLong(two, NANOSECONDS, 0),
+                            two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
+                            two.getHours(), two.getMinutes(), two.getSeconds(),
+                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
                             isObject);
             long days1;
             long days2;
-            if (getLong(one, YEARS, 0) != 0 || getLong(two, YEARS, 0) != 0 ||
-                            getLong(one, MONTHS, 0) != 0 || getLong(two, MONTHS, 0) != 0 ||
-                            getLong(one, WEEKS, 0) != 0 || getLong(two, WEEKS, 0) != 0) {
+            if (one.getYears() != 0 || two.getYears() != 0 ||
+                            one.getMonths() != 0 || two.getMonths() != 0 ||
+                            one.getWeeks() != 0 || two.getWeeks() != 0) {
                 JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
-                                getLong(one, YEARS, 0),
-                                getLong(one, MONTHS, 0),
-                                getLong(one, WEEKS, 0),
-                                getLong(one, DAYS, 0),
+                                one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                                 DAYS, relativeTo, getContext());
                 JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
-                                getLong(two, YEARS, 0),
-                                getLong(two, MONTHS, 0),
-                                getLong(two, WEEKS, 0),
-                                getLong(two, DAYS, 0),
+                                two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                                 DAYS, relativeTo, getContext());
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {
-                days1 = getLong(one, DAYS, 0);
-                days2 = getLong(two, DAYS, 0);
+                days1 = one.getDays();
+                days2 = two.getDays();
             }
             long ns1 = TemporalUtil.totalDurationNanoseconds(days1,
-                            getLong(one, HOURS, 0),
-                            getLong(one, MINUTES, 0),
-                            getLong(one, SECONDS, 0),
-                            getLong(one, MILLISECONDS, 0),
-                            getLong(one, MICROSECONDS, 0),
-                            getLong(one, NANOSECONDS, 0),
+                            one.getHours(), one.getMinutes(), one.getSeconds(),
+                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
                             shift1);
             long ns2 = TemporalUtil.totalDurationNanoseconds(days2,
-                            getLong(two, HOURS, 0),
-                            getLong(two, MINUTES, 0),
-                            getLong(two, SECONDS, 0),
-                            getLong(two, MILLISECONDS, 0),
-                            getLong(two, MICROSECONDS, 0),
-                            getLong(two, NANOSECONDS, 0),
+                            two.getHours(), two.getMinutes(), two.getSeconds(),
+                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
                             shift2);
             if (ns1 > ns2) {
                 return 1;
