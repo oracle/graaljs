@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,15 @@ public class TestNashornTypeConversion {
         assertEquals(expectedResult, holder.getValue());
     }
 
+    private static void testToStringExpressionValue(String expression, String expectedResult) throws ScriptException {
+        ScriptEngine engine = getEngineNashornCompat();
+        ValueHolder holder = new ValueHolder();
+        Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
+        bindings.put("holder", holder);
+        engine.eval("holder.setValue(" + expression + ")");
+        assertEquals(expectedResult, holder.getValue());
+    }
+
     @Test
     public void testNumberToString() throws ScriptException {
         testToString(42, "42");
@@ -98,6 +107,41 @@ public class TestNashornTypeConversion {
     public void testObjectToString() throws ScriptException {
         Point p = new java.awt.Point(42, 211);
         testToString(p, p.toString());
+    }
+
+    @Test
+    public void testRegExpToString() throws ScriptException {
+        testToStringExpressionValue("/foo/i", "/foo/i");
+    }
+
+    @Test
+    public void testArrayToString() throws ScriptException {
+        testToStringExpressionValue("[42,211]", "42,211");
+    }
+
+    @Test
+    public void testObjectToStringToString() throws ScriptException {
+        testToStringExpressionValue("({ toString: function() { return 'foo'; } })", "foo");
+    }
+
+    @Test
+    public void testObjectValueOfToString() throws ScriptException {
+        testToStringExpressionValue("Object.setPrototypeOf({ valueOf: function() { return 42; } }, null)", "42");
+    }
+
+    @Test
+    public void testBooleanObjectToString() throws ScriptException {
+        testToStringExpressionValue("Object(true)", "true");
+    }
+
+    @Test
+    public void testNumberObjectToString() throws ScriptException {
+        testToStringExpressionValue("Object(3.14)", "3.14");
+    }
+
+    @Test
+    public void testStringObjectToString() throws ScriptException {
+        testToStringExpressionValue("Object('xyz')", "xyz");
     }
 
     @Test

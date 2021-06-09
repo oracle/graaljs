@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,13 +101,42 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
     private static HostAccess createNashornHostAccess() {
         HostAccess.Builder b = HostAccess.newBuilder(HostAccess.ALL);
         // Last resort conversions similar to those in NashornBottomLinker.
-        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull(), Value::toString, TargetMappingPrecedence.LOWEST);
+        b.targetTypeMapping(Value.class, String.class, v -> !v.isNull(), v -> toString(v), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Number.class, Integer.class, n -> true, n -> n.intValue(), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Number.class, Double.class, n -> true, n -> n.doubleValue(), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Number.class, Long.class, n -> true, n -> n.longValue(), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Number.class, Boolean.class, n -> true, n -> toBoolean(n.doubleValue()), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(String.class, Boolean.class, n -> true, n -> !n.isEmpty(), TargetMappingPrecedence.LOWEST);
         return b.build();
+    }
+
+    // ToString() operation
+    private static String toString(Value value) {
+        return toPrimitive(value).toString();
+    }
+
+    // "Type(result) is not Object" heuristic for the purpose of ToPrimitive() conversion
+    private static boolean isPrimitive(Value value) {
+        return value.isString() || value.isNumber() || value.isBoolean() || value.isNull();
+    }
+
+    // ToPrimitive()/OrdinaryToPrimitive() operation
+    private static Value toPrimitive(Value value) {
+        if (value.hasMembers()) {
+            for (String methodName : new String[]{"toString", "valueOf"}) {
+                if (value.canInvokeMember(methodName)) {
+                    Value maybePrimitive = value.invokeMember(methodName);
+                    if (isPrimitive(maybePrimitive)) {
+                        return maybePrimitive;
+                    }
+                }
+            }
+        }
+        if (isPrimitive(value)) {
+            return value;
+        } else {
+            throw new ClassCastException();
+        }
     }
 
     private static boolean toBoolean(double d) {
