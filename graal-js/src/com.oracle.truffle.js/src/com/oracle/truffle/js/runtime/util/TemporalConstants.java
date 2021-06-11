@@ -126,4 +126,11 @@ public final class TemporalConstants {
     public static final String MERGE_FIELDS = "mergeFields";
     public static final String RELATIVE_TO = "relativeTo";
     public static final String LARGEST_UNIT = "largestUnit";
+
+    public static final String EPOCH_SECONDS = "epochSeconds";
+    public static final String EPOCH_MILLISECONDS = "epochMilliseconds";
+    public static final String EPOCH_MICROSECONDS = "epochMicroseconds";
+    public static final String EPOCH_NANOSECONDS = "epochNanoseconds";
+
+    public static final Object UTC = "UTC";
 }

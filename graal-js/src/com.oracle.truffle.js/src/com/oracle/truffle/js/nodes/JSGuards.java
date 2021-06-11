@@ -85,6 +85,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
@@ -364,6 +365,10 @@ public final class JSGuards {
     public static boolean isJSTemporalTimeLike(Object value) {
         // TODO Andreas might want to optimize the shape check?
         return value instanceof TemporalTime;
+    }
+
+    public static boolean isJSTemporalInstant(Object value) {
+        return JSTemporalInstant.isJSTemporalInstant(value);
     }
 
     public static boolean isJSMap(Object value) {

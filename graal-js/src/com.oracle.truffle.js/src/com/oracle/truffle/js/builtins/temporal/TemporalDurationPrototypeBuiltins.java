@@ -94,7 +94,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -336,7 +335,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-            JSTemporalDateTimeRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
+            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
                             isObject, toString, toInt);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
@@ -344,9 +343,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
                             duration.getNanoseconds(),
-                            otherDuration.getYear(), otherDuration.getMonth(), otherDuration.getWeeks(), otherDuration.getDay(),
-                            otherDuration.getHour(), otherDuration.getMinute(), otherDuration.getSecond(),
-                            otherDuration.getMillisecond(), otherDuration.getMicrosecond(), otherDuration.getNanosecond(),
+                            otherDuration.getYears(), otherDuration.getMonths(), otherDuration.getWeeks(), otherDuration.getDays(),
+                            otherDuration.getHours(), otherDuration.getMinutes(), otherDuration.getSeconds(),
+                            otherDuration.getMilliseconds(), otherDuration.getMicroseconds(), otherDuration.getNanoseconds(),
                             relativeTo, getContext());
             return JSTemporalDuration.create(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(),
@@ -367,7 +366,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-            JSTemporalDateTimeRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
+            JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
                             isObject, toString, toInt);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
@@ -375,9 +374,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
                             duration.getNanoseconds(),
-                            -otherDuration.getYear(), -otherDuration.getMonth(), -otherDuration.getWeeks(), -otherDuration.getDay(),
-                            -otherDuration.getHour(), -otherDuration.getMinute(), -otherDuration.getSecond(),
-                            -otherDuration.getMillisecond(), -otherDuration.getMicrosecond(), -otherDuration.getNanosecond(),
+                            -otherDuration.getYears(), -otherDuration.getMonths(), -otherDuration.getWeeks(), -otherDuration.getDays(),
+                            -otherDuration.getHours(), -otherDuration.getMinutes(), -otherDuration.getSeconds(),
+                            -otherDuration.getMilliseconds(), -otherDuration.getMicroseconds(), -otherDuration.getNanoseconds(),
                             relativeTo, getContext());
             return JSTemporalDuration.create(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),

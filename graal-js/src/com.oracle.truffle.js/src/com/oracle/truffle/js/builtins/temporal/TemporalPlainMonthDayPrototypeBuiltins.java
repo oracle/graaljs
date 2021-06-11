@@ -41,9 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
@@ -238,7 +235,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainMonthDayObject monthDay = TemporalUtil.requireTemporalMonthDay(thisObj);
 
             DynamicObject calendar = monthDay.getCalendar();
-            Set<String> receiverFieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH_CODE}, getContext());
+            Set<String> receiverFieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMC, getContext());
             DynamicObject fields = TemporalUtil.prepareTemporalFields(monthDay, receiverFieldNames, TemporalUtil.toSet(), getContext());
             if (!JSRuntime.isObject(item)) {
                 throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
@@ -289,14 +286,14 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             TemporalUtil.rejectTemporalCalendarType(mdLikeObj);
             Object calendarProperty = JSObject.get(mdLikeObj, CALENDAR);
             if (calendarProperty != Undefined.instance) {
-                throw Errors.createTypeError("no calendar expected");
+                throw TemporalErrors.createTypeErrorUnexpectedCalendar();
             }
             Object timezoneProperty = JSObject.get(mdLikeObj, TIME_ZONE);
             if (timezoneProperty != Undefined.instance) {
-                throw Errors.createTypeError("no timeZone expected");
+                throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             DynamicObject calendar = md.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, getContext());
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMMCY, getContext());
             DynamicObject partialMonthDay = TemporalUtil.preparePartialTemporalFields(mdLikeObj, fieldNames, getContext());
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             DynamicObject fields = TemporalUtil.prepareTemporalFields(md, fieldNames, TemporalUtil.toSet(), getContext());

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -556,6 +557,25 @@ public final class JSRuntime {
     public static BigInt toBigInt(Object value) {
         Object primitive = toPrimitive(value, HINT_NUMBER);
         if (primitive instanceof String) {
+            try {
+                return BigInt.valueOf((String) primitive);
+            } catch (NumberFormatException e) {
+                throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.SyntaxError, primitive);
+            }
+        } else if (primitive instanceof BigInt) {
+            return (BigInt) primitive;
+        } else if (primitive instanceof Boolean) {
+            return (Boolean) primitive ? BigInt.ONE : BigInt.ZERO;
+        } else {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, primitive);
+        }
+    }
+
+    public static BigInt toBigIntSpec(Object value) {
+        Object primitive = toPrimitive(value, HINT_NUMBER);
+        if (primitive instanceof Number) {
+            return new BigInt(BigInteger.valueOf(((Number) primitive).longValue()));
+        } else if (primitive instanceof String) {
             try {
                 return BigInt.valueOf((String) primitive);
             } catch (NumberFormatException e) {
@@ -2928,4 +2948,5 @@ public final class JSRuntime {
             return UserScriptException.create(errorObject);
         }
     }
+
 }

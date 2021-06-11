@@ -193,4 +193,28 @@ public final class TemporalErrors {
         return Errors.createTypeError("malformed Duration");
     }
 
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalInstantExpected() {
+        return Errors.createTypeError("Temporal.Instant expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorInvalidNanoseconds() {
+        return Errors.createRangeError("invalid nanoseconds value");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorSmallestUnitExpected() {
+        return Errors.createRangeError("smallestUnit expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorUnexpectedCalendar() {
+        return Errors.createTypeError("Unexpected calendar property");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorUnexpectedTimeZone() {
+        return Errors.createTypeError("Unexpected timeZone property");
+    }
 }

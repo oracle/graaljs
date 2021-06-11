@@ -114,6 +114,7 @@ import com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
+import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -166,6 +167,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
@@ -285,7 +287,8 @@ public class JSRealm {
     private final DynamicObject temporalPlainYearMonthPrototype;
     private final DynamicObject temporalPlainMonthDayConstructor;
     private final DynamicObject temporalPlainMonthDayPrototype;
-
+    private final DynamicObject temporalInstantConstructor;
+    private final DynamicObject temporalInstantPrototype;
     // ES6:
     private final DynamicObject symbolConstructor;
     private final DynamicObject symbolPrototype;
@@ -923,6 +926,10 @@ public class JSRealm {
             ctor = JSTemporalPlainMonthDay.createConstructor(this);
             this.temporalPlainMonthDayConstructor = ctor.getFunctionObject();
             this.temporalPlainMonthDayPrototype = ctor.getPrototype();
+
+            ctor = JSTemporalInstant.createConstructor(this);
+            this.temporalInstantConstructor = ctor.getFunctionObject();
+            this.temporalInstantPrototype = ctor.getPrototype();
         } else {
             this.temporalPlainTimeConstructor = null;
             this.temporalPlainTimePrototype = null;
@@ -938,6 +945,8 @@ public class JSRealm {
             this.temporalPlainYearMonthPrototype = null;
             this.temporalPlainMonthDayConstructor = null;
             this.temporalPlainMonthDayPrototype = null;
+            this.temporalInstantConstructor = null;
+            this.temporalInstantPrototype = null;
         }
     }
 
@@ -1432,6 +1441,14 @@ public class JSRealm {
         return temporalPlainMonthDayPrototype;
     }
 
+    public DynamicObject getTemporalInstantConstructor() {
+        return temporalInstantConstructor;
+    }
+
+    public DynamicObject getTemporalInstantPrototype() {
+        return temporalInstantPrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1846,6 +1863,12 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, temporalObject, "Calendar", getTemporalCalendarConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainYearMonth", getTemporalPlainYearMonthConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainMonthDay", getTemporalPlainMonthDayConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Instant", getTemporalInstantConstructor(), flags);
+
+        DynamicObject nowObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+
+        JSObjectUtil.putDataProperty(context, temporalObject, "now", nowObject, flags);
+        JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
 
         putGlobalProperty("Temporal", temporalObject);
     }

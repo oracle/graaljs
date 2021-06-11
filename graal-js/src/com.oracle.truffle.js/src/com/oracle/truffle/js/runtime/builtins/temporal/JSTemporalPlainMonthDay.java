@@ -159,7 +159,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
                 calendarAbsent = TemporalUtil.isNullish(calendar);
                 calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarObj, ctx);
             }
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, MONTH, MONTH_CODE, YEAR}, ctx);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMMCY, ctx);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, new HashSet<>(), ctx);
 
             Object month = JSObject.get(fields, MONTH);

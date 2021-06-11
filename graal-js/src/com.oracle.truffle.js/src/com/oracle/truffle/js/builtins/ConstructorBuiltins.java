@@ -110,6 +110,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructString
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalCalendarNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalDurationNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalInstantNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainMonthDayNodeGen;
@@ -232,6 +233,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
@@ -257,6 +259,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -346,6 +349,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Calendar(1),
         PlainYearMonth(2),
         PlainMonthDay(2),
+        Instant(1),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -672,6 +676,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalPlainMonthDayNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case Instant:
+                if (construct) {
+                    return newTarget ? ConstructTemporalInstantNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
+                                    : ConstructTemporalInstantNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1246,6 +1257,27 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
             return realm.getTemporalPlainMonthDayPrototype();
+        }
+    }
+
+    public abstract static class ConstructTemporalInstant extends ConstructWithNewTargetNode {
+
+        protected ConstructTemporalInstant(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected DynamicObject constructTemporalIntant(DynamicObject newTarget, Object epochNanoseconds) {
+            BigInt bi = JSRuntime.toBigIntSpec(epochNanoseconds);
+            if (!TemporalUtil.isValidEpochNanoseconds(bi)) {
+                throw TemporalErrors.createRangeErrorInvalidNanoseconds();
+            }
+            return swapPrototype(JSTemporalInstant.create(getContext(), bi), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getTemporalPlainYearMonthPrototype();
         }
     }
 

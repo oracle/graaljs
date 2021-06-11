@@ -320,21 +320,21 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             TemporalDateTime dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
-            JSTemporalDateTimeRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), isObject, toString, toInt);
             TemporalUtil.rejectDurationSign(
-                            duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
-                            duration.getHour(), duration.getMinute(), duration.getSecond(),
-                            duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond());
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             JSTemporalDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
                             dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
                             dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
                             dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
                             dateTime.getCalendar(),
-                            duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
-                            duration.getHour(), duration.getMinute(), duration.getSecond(),
-                            duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond(),
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(),
                             options,
                             getContext());
 
@@ -476,21 +476,21 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
             TemporalDateTime dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
-            JSTemporalDateTimeRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
                             Collections.emptySet(), isObject, toString, toInt);
             TemporalUtil.rejectDurationSign(
-                            duration.getYear(), duration.getMonth(), duration.getWeeks(), duration.getDay(),
-                            duration.getHour(), duration.getMinute(), duration.getSecond(),
-                            duration.getMillisecond(), duration.getMicrosecond(), duration.getNanosecond());
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                            duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             JSTemporalDateTimeRecord result = JSTemporalPlainDateTime.addDateTime(
                             dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
                             dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
                             dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
                             dateTime.getCalendar(),
-                            -duration.getYear(), -duration.getMonth(), -duration.getWeeks(), -duration.getDay(),
-                            -duration.getHour(), -duration.getMinute(), -duration.getSecond(),
-                            -duration.getMillisecond(), -duration.getMicrosecond(), -duration.getNanosecond(),
+                            -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
+                            -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
+                            -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds(),
                             options,
                             getContext());
 
@@ -579,11 +579,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             DynamicObject temporalDTObj = (DynamicObject) temporalDateTimeLike;
             Object calendarProperty = JSObject.get(temporalDTObj, CALENDAR);
             if (calendarProperty != Undefined.instance) {
-                throw Errors.createTypeError("Unexpected calendar property");
+                throw TemporalErrors.createTypeErrorUnexpectedCalendar();
             }
             Object timeZoneProperty = JSObject.get(temporalDTObj, TIME_ZONE);
             if (timeZoneProperty != Undefined.instance) {
-                throw Errors.createTypeError("Unexpected timeZone property");
+                throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             DynamicObject calendar = dateTime.getCalendar();
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY, HOUR, MICROSECOND, MILLISECOND, MINUTE, MONTH, MONTH_CODE, NANOSECOND, SECOND, YEAR}, getContext());

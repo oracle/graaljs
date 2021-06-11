@@ -219,7 +219,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 return create(ctx, dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(itemObj, ctx);
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{"day", "month", "monthCode", "year"}, ctx);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMMCY, ctx);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, TemporalUtil.toSet(), ctx);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
@@ -232,8 +232,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
 
     // 3.5.5
     public static JSTemporalDurationRecord differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnit) {
-        assert largestUnit.equals(YEAR) || largestUnit.equals(MONTH) ||
-                        largestUnit.equals(WEEK) || largestUnit.equals(DAY);
+        assert largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) || largestUnit.equals(DAY);
         if (largestUnit.equals(YEAR) || largestUnit.equals(MONTH)) {
             long sign = -TemporalUtil.compareISODate(y1, m1, d1, y2, m2, d2);
             if (sign == 0) {

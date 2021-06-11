@@ -159,32 +159,23 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     // region Abstract methods
     // 7.2.1
-    public static Object toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSToStringNode toString) {
-        JSTemporalDateTimeRecord result;
+    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSToStringNode toString) {
+        JSTemporalDurationRecord result;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalDuration(item)) {
-                return item;
+                return (DynamicObject) item;
             }
             result = toTemporalDurationRecord((DynamicObject) item, isObject, toInt);
         } else {
             String string = toString.executeString(item);
             result = parseTemporalDurationString(string);
         }
-        return createTemporalDuration(result.getYear(), result.getMonth(), result.getWeeks(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
-                        result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), ctx);
+        return createTemporalDuration(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
+                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), ctx);
     }
 
     @TruffleBoundary
-    public static JSTemporalDateTimeRecord parseTemporalDurationString(String string) {
-
-        // PT1H10M29.876543211S
-        // P1Y1M1W1DT1H1M1.123456789S
-        // P10D
-        // -PT1H
-
-        // Pattern regex =
-        // Pattern.compile("^([\\+-])+[Pp]([Tt]((\\d+)[Hh])?((\\d+)[Mm])?((\\d+)[Ss])?)$");
-
+    public static JSTemporalDurationRecord parseTemporalDurationString(String string) {
         long year = 0;
         long month = 0;
         long day = 0;
@@ -198,6 +189,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         double fHour = 0;
         double fMinute = 0;
 
+        // P1Y1M1W1DT1H1M1.123456789S
         Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
         Matcher matcher = regex.matcher(string);
         if (matcher.matches()) {
@@ -253,7 +245,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 fMinute = 0;
             }
             JSTemporalDateTimeRecord result = TemporalUtil.durationHandleFractions(fHour, minute, fMinute, second, 0, millisecond, 0, microsecond, 0, nanosecond, 0);
-            return JSTemporalDateTimeRecord.createWeeks(year, month, week, day, (long) hour,
+            return JSTemporalDurationRecord.createWeeks(year, month, week, day, (long) hour,
                             result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
         }
         throw TemporalErrors.createTypeErrorTemporalMalformedDuration();
@@ -290,11 +282,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.2
-    public static JSTemporalDateTimeRecord toTemporalDurationRecord(DynamicObject temporalDurationLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
+    public static JSTemporalDurationRecord toTemporalDurationRecord(DynamicObject temporalDurationLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
         assert isObject.executeBoolean(temporalDurationLike);
         if (isJSTemporalDuration(temporalDurationLike)) {
             JSTemporalDurationObject d = (JSTemporalDurationObject) temporalDurationLike;
-            return JSTemporalDateTimeRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
+            return JSTemporalDurationRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
                             d.getMicroseconds(), d.getNanoseconds());
         }
         boolean any = false;
@@ -354,7 +346,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         if (!any) {
             throw Errors.createTypeError("Given duration like object has no duration properties.");
         }
-        return JSTemporalDateTimeRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
+        return JSTemporalDurationRecord.createWeeks(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
     // 7.5.8

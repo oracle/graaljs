@@ -92,7 +92,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -293,7 +292,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
             }
             DynamicObject calendar = yearMonth.getCalendar();
-            Set<String> receiverFieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH_CODE, YEAR}, getContext());
+            Set<String> receiverFieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_MCY, getContext());
             DynamicObject fields = TemporalUtil.prepareTemporalFields(yearMonth, receiverFieldNames, TemporalUtil.toSet(), getContext());
             Set<String> inputFieldNames = TemporalUtil.calendarFields(calendar, new String[]{DAY}, getContext());
             DynamicObject inputFields = TemporalUtil.prepareTemporalFields((DynamicObject) item, inputFieldNames, TemporalUtil.toSet(), getContext());
@@ -364,11 +363,11 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             TemporalUtil.rejectTemporalCalendarType(ymLikeObj);
             Object calendarProperty = JSObject.get(ymLikeObj, CALENDAR);
             if (calendarProperty != Undefined.instance) {
-                throw Errors.createTypeError("no calendar expected");
+                throw TemporalErrors.createTypeErrorUnexpectedCalendar();
             }
             Object timezoneProperty = JSObject.get(ymLikeObj, TIME_ZONE);
             if (timezoneProperty != Undefined.instance) {
-                throw Errors.createTypeError("no timeZone expected");
+                throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             DynamicObject calendar = ym.getCalendar();
             Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH, MONTH_CODE, YEAR}, getContext());
@@ -394,13 +393,13 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("create()") JSToIntegerAsLongNode toIntegerAsLongNode) {
             JSTemporalPlainYearMonthObject ym = TemporalUtil.requireTemporalYearMonth(thisObj);
 
-            JSTemporalDateTimeRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.toSet(), isObjectNode, toStringNode, toIntegerAsLongNode);
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(duration.getDay(), duration.getHour(), duration.getMinute(), duration.getSecond(), duration.getMillisecond(),
-                            duration.getMicrosecond(), duration.getNanosecond(), DAY, Undefined.instance);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.toSet(), isObjectNode, toStringNode, toIntegerAsLongNode);
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                            duration.getMicroseconds(), duration.getNanoseconds(), DAY, Undefined.instance);
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             DynamicObject calendar = ym.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH_CODE, YEAR}, getContext());
-            int sign = TemporalUtil.durationSign(duration.getYear(), duration.getMonth(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_MCY, getContext());
+            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             long day = 0;
             if (sign < 0) {
                 day = JSTemporalCalendar.calendarDaysInMonth(calendar, ym);
@@ -408,7 +407,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 day = 1;
             }
             DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getISOYear(), ym.getISOMonth(), day, calendar);
-            DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(duration.getYear(), duration.getMonth(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0,
+            DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0,
                             getContext());
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
             DynamicObject addedDateFields = TemporalUtil.prepareTemporalFields(addedDate, fieldNames, TemporalUtil.toSet(), getContext());
@@ -429,13 +428,13 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("create()") JSToIntegerAsLongNode toIntegerAsLongNode) {
             JSTemporalPlainYearMonthObject ym = TemporalUtil.requireTemporalYearMonth(thisObj);
 
-            JSTemporalDateTimeRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.toSet(), isObjectNode, toStringNode, toIntegerAsLongNode);
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(duration.getDay(), duration.getHour(), duration.getMinute(), duration.getSecond(), duration.getMillisecond(),
-                            duration.getMicrosecond(), duration.getNanosecond(), DAY, Undefined.instance);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.toSet(), isObjectNode, toStringNode, toIntegerAsLongNode);
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
+                            duration.getMicroseconds(), duration.getNanoseconds(), DAY, Undefined.instance);
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
             DynamicObject calendar = ym.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH_CODE, YEAR}, getContext());
-            int sign = TemporalUtil.durationSign(duration.getYear(), duration.getMonth(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_MCY, getContext());
+            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             long day = 0;
             if (sign < 0) {
                 day = JSTemporalCalendar.calendarDaysInMonth(calendar, ym);
@@ -443,7 +442,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 day = 1;
             }
             DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getISOYear(), ym.getISOMonth(), day, calendar);
-            DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(-duration.getYear(), -duration.getMonth(), -duration.getWeeks(), -balanceResult.getDays(), 0, 0, 0, 0, 0, 0,
+            DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(-duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -balanceResult.getDays(), 0, 0, 0, 0, 0, 0,
                             getContext());
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
             DynamicObject addedDateFields = TemporalUtil.prepareTemporalFields(addedDate, fieldNames, TemporalUtil.toSet(), getContext());
@@ -478,7 +477,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBooleanNode, toStringNode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH_CODE, YEAR}, getContext());
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_MCY, getContext());
             DynamicObject otherFields = TemporalUtil.prepareTemporalFields(other, fieldNames, TemporalUtil.toSet(), getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
             DynamicObject otherDate = TemporalUtil.dateFromFields(calendar, otherFields, Undefined.instance);
@@ -524,7 +523,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBooleanNode, toStringNode);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, new String[]{MONTH_CODE, YEAR}, getContext());
+            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_MCY, getContext());
             DynamicObject otherFields = TemporalUtil.prepareTemporalFields(other, fieldNames, TemporalUtil.toSet(), getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), otherFields, DAY, 1);
             DynamicObject otherDate = TemporalUtil.dateFromFields(calendar, otherFields, Undefined.instance);
