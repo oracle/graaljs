@@ -4,10 +4,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "built-ins/Array/prototype/toString/non-callable-join-string-tag.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
