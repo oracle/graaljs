@@ -244,15 +244,12 @@ public abstract class JSClass extends ObjectType {
     }
 
     protected String getToStringTag(DynamicObject object) {
-        String result = null;
+        String result = getBuiltinToStringTag(object);
         if (JSRuntime.isObject(object)) {
             Object toStringTag = JSObject.get(object, Symbol.SYMBOL_TO_STRING_TAG);
             if (JSRuntime.isString(toStringTag)) {
                 result = JSRuntime.toStringIsString(toStringTag);
             }
-        }
-        if (result == null) {
-            result = getBuiltinToStringTag(object);
         }
         return result;
     }
