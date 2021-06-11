@@ -85,7 +85,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -309,12 +308,13 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isJSProxy(thisObj)")
         protected String doJSProxy(DynamicObject thisObj,
                         @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
-            Object target = JSProxy.getTargetNonProxy(thisObj);
-            String toString = getToStringTag(thisObj);
-            if (toString == null) {
-                toString = getBuiltinToStringTagNode.execute(target);
+            // builtinTag must be read before tag because the latter may revoke the proxy
+            String builtinTag = getBuiltinToStringTagNode.execute(thisObj);
+            String tag = getToStringTag(thisObj);
+            if (tag == null) {
+                tag = builtinTag;
             }
-            return formatString(toString);
+            return formatString(tag);
         }
 
         @Specialization(guards = "isJSNull(thisObj)")

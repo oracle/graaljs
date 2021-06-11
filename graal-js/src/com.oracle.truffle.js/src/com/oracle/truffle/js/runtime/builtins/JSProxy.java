@@ -548,7 +548,13 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public String getBuiltinToStringTag(DynamicObject object) {
         Object targetNonProxy = getTargetNonProxy(object);
         if (JSDynamicObject.isJSDynamicObject(targetNonProxy)) {
-            return JSObject.getJSClass((DynamicObject) targetNonProxy).getBuiltinToStringTag((DynamicObject) targetNonProxy);
+            if (JSArray.isJSArray(targetNonProxy)) {
+                return JSArray.CLASS_NAME;
+            } else if (JSFunction.isJSFunction(targetNonProxy)) {
+                return JSFunction.CLASS_NAME;
+            } else {
+                return "Object";
+            }
         } else {
             return "Foreign";
         }
