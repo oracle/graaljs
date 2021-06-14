@@ -950,7 +950,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
                             break;
+                        } else if (!function.isProgram() && varName.equals(Environment.ARGUMENTS_NAME)) {
+                            // arguments must be local if we are not in an arrow function
+                            assert local || (lastFunction != null && lastFunction.isArrow());
+                            // Arrow functions inherit 'arguments', but may also declare it.
+                            // Therefore, continue until a non-arrow function or found symbol.
+                            // Note that (direct) eval may also declare arguments dynamically.
+                            if (!function.isArrow()) {
+                                if (!local) {
+                                    markUsesAncestorScopeUntil(lastFunction, true);
+                                }
+                                break;
+                            }
                         } else if (function.isArrow() && isVarLexicallyScopedInArrowFunction(varName)) {
+                            assert !varName.equals(Environment.ARGUMENTS_NAME);
                             FunctionNode nonArrowFunction = lc.getCurrentNonArrowFunction();
                             // `this` is read from the arrow function object,
                             // unless `this` is supplied by a subclass constructor
@@ -960,11 +973,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 }
                             }
                             break;
-                        } else if (!function.isProgram() && varName.equals(Environment.ARGUMENTS_NAME)) {
-                            assert !function.isArrow();
-                            assert local;
-                            break;
-                        } else if (function.hasEval() && !function.isProgram()) {
+                        }
+                        if (function.hasEval() && !function.isProgram()) {
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
