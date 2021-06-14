@@ -158,6 +158,10 @@ public abstract class Environment {
         getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
     }
 
+    public FrameSlot declareInternalSlot(String name) {
+        return getBlockFrameDescriptor().findOrAddFrameSlot(name);
+    }
+
     public final JavaScriptNode createLocal(FrameSlot frameSlot, int frameLevel, int scopeLevel) {
         return factory.createReadFrameSlot(frameSlot, factory.createScopeFrame(frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), getBlockScopeSlot(frameLevel, scopeLevel)), false);
     }
@@ -440,7 +444,7 @@ public abstract class Environment {
     protected abstract FrameSlot findBlockFrameSlot(String name);
 
     public FrameDescriptor getBlockFrameDescriptor() {
-        return getFunctionFrameDescriptor();
+        throw new UnsupportedOperationException();
     }
 
     private static boolean isMappedArgumentsParameter(FrameSlot slot, Environment current) {

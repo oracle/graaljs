@@ -3287,7 +3287,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         JavaScriptNode withExpression = transform(withNode.getExpression());
         JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
         String withVarName = makeUniqueTempVarNameForStatement(withNode);
-        environment.declareLocalVar(withVarName);
+        environment.declareInternalSlot(withVarName);
         JavaScriptNode writeWith = environment.findLocalVar(withVarName).createWriteNode(toObject);
         try (EnvironmentCloseable withEnv = enterWithEnvironment(withVarName)) {
             JavaScriptNode withBody = transform(withNode.getBody());
@@ -3296,7 +3296,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private EnvironmentCloseable enterWithEnvironment(String withVarName) {
-        currentFunction().setHasWith(true);
         return new EnvironmentCloseable(new WithEnvironment(environment, factory, context, withVarName));
     }
 
@@ -3463,8 +3462,12 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 wrappedInBlockScopeNode++;
                 if (newEnv instanceof BlockEnvironment) {
                     BlockEnvironment blockEnv = (BlockEnvironment) newEnv;
+                    // Generator functions and modules do not have an extra block environment
+                    // since their frames are always materialized anyway; so we need to capture the
+                    // function frame in this case. Note that isModule implies isGenerator.
+                    boolean captureFunctionFrame = blockEnv.getParent() == blockEnv.function() && blockEnv.function().isGeneratorFunction();
                     return factory.createBlockScope(block, blockEnv.function().getBlockScopeSlot(), blockEnv.getBlockFrameDescriptor(), blockEnv.getParentSlot(),
-                                    blockEnv.isFunctionBlock(), blockEnv.getParent() == blockEnv.function() && (blockEnv.function().hasWith() || blockEnv.function().isGeneratorFunction()));
+                                    blockEnv.isFunctionBlock(), captureFunctionFrame);
                 }
             }
             return block;

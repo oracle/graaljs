@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.parser.env;
 
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -59,7 +60,7 @@ public class WithEnvironment extends Environment {
     public WithEnvironment(Environment parent, NodeFactory factory, JSContext context, String withVarName) {
         super(parent, factory, context);
         this.withVarName = withVarName;
-        assert parent.hasLocalVar(withVarName);
+        assert parent.findInternalSlot(withVarName) != null;
     }
 
     public String getWithVarName() {
@@ -79,6 +80,11 @@ public class WithEnvironment extends Environment {
     @Override
     protected FrameSlot findBlockFrameSlot(String name) {
         return null;
+    }
+
+    @Override
+    public FrameDescriptor getBlockFrameDescriptor() {
+        return getParent().getBlockFrameDescriptor();
     }
 
     @Override

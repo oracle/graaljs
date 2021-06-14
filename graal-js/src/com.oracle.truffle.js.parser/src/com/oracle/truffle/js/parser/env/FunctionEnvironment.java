@@ -107,7 +107,6 @@ public class FunctionEnvironment extends Environment {
     private boolean isDynamicallyScoped;
     private boolean needsNewTarget;
     private final boolean inDirectEval;
-    private boolean hasWith;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
                     boolean isStrictMode, boolean isEval, boolean isDirectEval, boolean isArrowFunction, boolean isGeneratorFunction, boolean isDerivedConstructor, boolean isAsyncFunction,
@@ -179,6 +178,11 @@ public class FunctionEnvironment extends Environment {
 
     public boolean isGeneratorFunction() {
         return isGeneratorFunction;
+    }
+
+    @Override
+    public FrameDescriptor getBlockFrameDescriptor() {
+        return getFunctionFrameDescriptor();
     }
 
     @Override
@@ -548,13 +552,5 @@ public class FunctionEnvironment extends Environment {
 
     public boolean isAsyncGeneratorFunction() {
         return isAsyncFunction && isGeneratorFunction;
-    }
-
-    public void setHasWith(boolean hasWith) {
-        this.hasWith = hasWith;
-    }
-
-    public boolean hasWith() {
-        return hasWith;
     }
 }
