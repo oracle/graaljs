@@ -165,14 +165,6 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public static final int IS_PROGRAM = 1 << 13;
 
-    /**
-     * Flag indicating whether this function uses the local variable symbol for itself. Only named
-     * function expressions can have this flag set if they reference themselves (e.g.
-     * <code>(function f() { return f })</code>). Declared functions will use the symbol in their
-     * parent scope instead when they reference themselves by name.
-     */
-    public static final int USES_SELF_SYMBOL = 1 << 14;
-
     /** Does this function use the "this" keyword? */
     public static final int USES_THIS = 1 << 15;
 
