@@ -104,7 +104,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
             if (isObject.executeBoolean(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 TemporalDateTime dtItem = (TemporalDateTime) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
@@ -113,7 +113,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                                 dtItem.getHours(), dtItem.getMinutes(), dtItem.getSeconds(), dtItem.getMilliseconds(),
                                 dtItem.getMicroseconds(), dtItem.getNanoseconds(), dtItem.getCalendar());
             }
-            return TemporalUtil.toTemporalDateTime(item, options, getContext());
+            return TemporalUtil.toTemporalDateTime(getContext(), item, options);
         }
 
     }
@@ -126,8 +126,8 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            TemporalDateTime one = (TemporalDateTime) TemporalUtil.toTemporalDateTime(obj1, Undefined.instance, getContext());
-            TemporalDateTime two = (TemporalDateTime) TemporalUtil.toTemporalDateTime(obj2, Undefined.instance, getContext());
+            TemporalDateTime one = (TemporalDateTime) TemporalUtil.toTemporalDateTime(getContext(), obj1, Undefined.instance);
+            TemporalDateTime two = (TemporalDateTime) TemporalUtil.toTemporalDateTime(getContext(), obj2, Undefined.instance);
             return JSTemporalPlainDateTime.compareISODateTime(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),

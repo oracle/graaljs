@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
@@ -369,6 +370,10 @@ public final class JSGuards {
 
     public static boolean isJSTemporalInstant(Object value) {
         return JSTemporalInstant.isJSTemporalInstant(value);
+    }
+
+    public static boolean isJSTemporalTimeZone(Object value) {
+        return JSTemporalTimeZone.isJSTemporalTimeZone(value);
     }
 
     public static boolean isJSMap(Object value) {

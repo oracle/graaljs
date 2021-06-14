@@ -218,15 +218,15 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
                 return create(ctx, dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());
             }
-            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(itemObj, ctx);
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMMCY, ctx);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(itemObj, fieldNames, TemporalUtil.toSet(), ctx);
+            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, itemObj);
+            Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.ARR_DMMCY);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.toSet());
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toString.executeString(item), ctx);
+        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(ctx, toString.executeString(item));
         assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
-        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(result.getCalendar(), ctx);
+        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
         return create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 

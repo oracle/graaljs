@@ -116,6 +116,7 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTempor
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainMonthDayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainTimeNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalPlainYearMonthNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTemporalTimeZoneNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
@@ -350,6 +351,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         PlainYearMonth(2),
         PlainMonthDay(2),
         Instant(1),
+        TimeZone(2),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -388,7 +390,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return JSConfig.ECMAScript2017;
             } else if (EnumSet.range(Map, Symbol).contains(this)) {
                 return 6;
-            } else if (EnumSet.of(PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay).contains(this)) {
+            } else if (EnumSet.of(PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, TimeZone).contains(this)) {
                 return JSConfig.ECMAScript2022;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -683,6 +685,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (construct) {
                     return newTarget ? ConstructTemporalInstantNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
                                     : ConstructTemporalInstantNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
+                } else {
+                    return createCallRequiresNew(context, builtin);
+                }
+            case TimeZone:
+                if (construct) {
+                    return newTarget ? ConstructTemporalTimeZoneNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(4).createArgumentNodes(context))
+                                    : ConstructTemporalTimeZoneNodeGen.create(context, builtin, false, args().function().fixedArgs(4).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -1083,7 +1092,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long y = toIntegerNode.executeLong(isoYear);
             final long m = toIntegerNode.executeLong(isoMonth);
             final long d = toIntegerNode.executeLong(isoDay);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
+            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), calendarLike);
             return swapPrototype(JSTemporalPlainDate.create(getContext(), y, m, d, calendar), newTarget);
         }
 
@@ -1141,7 +1150,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             final long millisecond = toIntegerNode.executeLong(millisecondObject);
             final long microsecond = toIntegerNode.executeLong(microsecondObject);
             final long nanosecond = toIntegerNode.executeLong(nanosecondObject);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
+            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), calendarLike);
             return swapPrototype(JSTemporalPlainDateTime.create(getContext(),
                             year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar), newTarget);
         }
@@ -1222,7 +1231,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             long y = toInt.executeLong(isoYear);
             long m = toInt.executeLong(isoMonth);
-            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) TemporalUtil.toTemporalCalendarWithISODefault(getContext(), calendarLike);
             long ref = toInt.executeLong(referenceISODay);
             return swapPrototype(JSTemporalPlainYearMonth.create(getContext(), y, m, calendar, ref), newTarget);
         }
@@ -1249,7 +1258,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             long m = toInt.executeLong(isoMonth);
             long d = toInt.executeLong(isoDay);
-            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) TemporalUtil.toTemporalCalendarWithISODefault(calendarLike, getContext());
+            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) TemporalUtil.toTemporalCalendarWithISODefault(getContext(), calendarLike);
             long ref = toInt.executeLong(referenceISOYear);
             return swapPrototype(JSTemporalPlainMonthDay.create(getContext(), m, d, calendar, ref), newTarget);
         }
@@ -1273,6 +1282,35 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
             return swapPrototype(JSTemporalInstant.create(getContext(), bi), newTarget);
+        }
+
+        @Override
+        protected DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
+            return realm.getTemporalPlainYearMonthPrototype();
+        }
+    }
+
+    public abstract static class ConstructTemporalTimeZone extends ConstructWithNewTargetNode {
+
+        protected ConstructTemporalTimeZone(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
+            super(context, builtin, isNewTargetCase);
+        }
+
+        @Specialization
+        protected DynamicObject constructTemporalTimeZone(DynamicObject newTarget, Object identifier,
+                        @Cached("create()") JSToStringNode toStringNode) {
+            String id = toStringNode.executeString(identifier);
+            String canonical = null;
+            try {
+                long offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(id);
+                canonical = TemporalUtil.formatTimeZoneOffsetString(offsetNanoseconds);
+            } catch (Exception ex) {
+                if (!TemporalUtil.isValidTimeZoneName(id)) {
+                    throw Errors.createRangeError("invalid TimeZone");
+                }
+                canonical = TemporalUtil.canonicalizeTimeZoneName(id);
+            }
+            return swapPrototype(TemporalUtil.createTemporalTimeZone(getContext(), canonical), newTarget);
         }
 
         @Override

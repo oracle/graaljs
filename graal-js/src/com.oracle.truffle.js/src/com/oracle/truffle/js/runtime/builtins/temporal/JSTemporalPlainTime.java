@@ -166,7 +166,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
                 TemporalDateTime dt = (TemporalDateTime) item;
                 return TemporalUtil.createTemporalTime(ctx, dt.getHours(), dt.getMinutes(), dt.getSeconds(), dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds());
             }
-            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(item, ctx);
+            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, item);
             if (!JSRuntime.toString(calendar).equals(TemporalConstants.ISO8601)) {
                 throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
             }
@@ -177,7 +177,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
                             overflow);
         } else {
             String string = toString.executeString(item);
-            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string, ctx);
+            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(ctx, string);
             assert TemporalUtil.isValidTime(
                             result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
                             result.getMicrosecond(), result.getNanosecond());

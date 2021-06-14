@@ -135,7 +135,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject timeZone() {
-            return TemporalUtil.systemTimeZone();
+            return TemporalUtil.systemTimeZone(getContext());
         }
     }
 

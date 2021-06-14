@@ -170,8 +170,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             String string = toString.executeString(item);
             result = parseTemporalDurationString(string);
         }
-        return createTemporalDuration(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
-                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), ctx);
+        return createTemporalDuration(ctx, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
+                        result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
     }
 
     @TruffleBoundary
@@ -350,9 +350,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.8
-    public static DynamicObject createTemporalDuration(long years, long months, long weeks, long days, long hours,
-                    long minutes, long seconds, long milliseconds, long microseconds,
-                    long nanoseconds, JSContext ctx) {
+    public static DynamicObject createTemporalDuration(JSContext ctx, long years, long months, long weeks, long days, long hours,
+                    long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         if (!TemporalUtil.validateTemporalDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw Errors.createRangeError("Duration not valid.");
         }

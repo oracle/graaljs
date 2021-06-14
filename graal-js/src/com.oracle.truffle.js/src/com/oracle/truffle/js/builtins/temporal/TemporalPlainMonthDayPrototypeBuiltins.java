@@ -235,16 +235,16 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainMonthDayObject monthDay = TemporalUtil.requireTemporalMonthDay(thisObj);
 
             DynamicObject calendar = monthDay.getCalendar();
-            Set<String> receiverFieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMC, getContext());
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(monthDay, receiverFieldNames, TemporalUtil.toSet(), getContext());
+            Set<String> receiverFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.ARR_DMC);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), monthDay, receiverFieldNames, TemporalUtil.toSet());
             if (!JSRuntime.isObject(item)) {
                 throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
             }
-            Set<String> inputFieldNames = TemporalUtil.calendarFields(calendar, new String[]{YEAR}, getContext());
-            DynamicObject inputFields = TemporalUtil.prepareTemporalFields((DynamicObject) item, inputFieldNames, TemporalUtil.toSet(), getContext());
-            Object mergedFields = TemporalUtil.calendarMergeFields(calendar, fields, inputFields, namesNode, getContext());
+            Set<String> inputFieldNames = TemporalUtil.calendarFields(getContext(), calendar, new String[]{YEAR});
+            DynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) item, inputFieldNames, TemporalUtil.toSet());
+            Object mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, inputFields);
             Set<String> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
-            mergedFields = TemporalUtil.prepareTemporalFields((DynamicObject) mergedFields, mergedFieldNames, TemporalUtil.toSet(), getContext());
+            mergedFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) mergedFields, mergedFieldNames, TemporalUtil.toSet());
             DynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
             return TemporalUtil.dateFromFields(calendar, (DynamicObject) mergedFields, options);
@@ -293,12 +293,12 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             DynamicObject calendar = md.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(calendar, TemporalUtil.ARR_DMMCY, getContext());
-            DynamicObject partialMonthDay = TemporalUtil.preparePartialTemporalFields(mdLikeObj, fieldNames, getContext());
-            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(md, fieldNames, TemporalUtil.toSet(), getContext());
-            fields = (DynamicObject) TemporalUtil.calendarMergeFields(calendar, fields, partialMonthDay, namesNode, getContext());
-            fields = TemporalUtil.prepareTemporalFields(fields, fieldNames, TemporalUtil.toSet(), getContext());
+            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.ARR_DMMCY);
+            DynamicObject partialMonthDay = TemporalUtil.preparePartialTemporalFields(getContext(), mdLikeObj, fieldNames);
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), md, fieldNames, TemporalUtil.toSet());
+            fields = (DynamicObject) TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialMonthDay);
+            fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.toSet());
             return TemporalUtil.monthDayFromFields(calendar, fields, options);
         }
     }

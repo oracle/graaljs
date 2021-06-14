@@ -127,6 +127,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
@@ -466,6 +467,7 @@ public class JSContext {
     private final JSObjectFactory temporalPlainYearMonthFactory;
     private final JSObjectFactory temporalPlainMonthDayFactory;
     private final JSObjectFactory temporalInstantFactory;
+    private final JSObjectFactory temporalTimeZoneFactory;
 
     private final JSObjectFactory globalObjectFactory;
 
@@ -635,6 +637,7 @@ public class JSContext {
         this.temporalPlainYearMonthFactory = builder.create(JSTemporalPlainYearMonth.INSTANCE);
         this.temporalPlainMonthDayFactory = builder.create(JSTemporalPlainMonthDay.INSTANCE);
         this.temporalInstantFactory = builder.create(JSTemporalInstant.INSTANCE);
+        this.temporalTimeZoneFactory = builder.create(JSTemporalTimeZone.INSTANCE);
 
         this.dictionaryObjectFactory = JSConfig.DictionaryObject ? builder.create(objectPrototypeSupplier, JSDictionary::makeDictionaryShape) : null;
 
@@ -1103,6 +1106,10 @@ public class JSContext {
 
     public JSObjectFactory getTemporalInstantFactory() {
         return temporalInstantFactory;
+    }
+
+    public JSObjectFactory getTemporalTimeZoneFactory() {
+        return temporalTimeZoneFactory;
     }
 
     public JSObjectFactory getDictionaryObjectFactory() {

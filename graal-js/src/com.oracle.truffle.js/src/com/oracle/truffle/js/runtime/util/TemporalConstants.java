@@ -85,6 +85,8 @@ public final class TemporalConstants {
     public static final String REFERENCE_ISO_DAY = "referenceIsoDay";
     public static final String REFERENCE_ISO_YEAR = "referenceIsoYear";
 
+    public static final String PLAIN_DATE = "plainDate";
+
     public static final String ISO8601 = "iso8601";
     public static final String GREGORY = "gregory";
     public static final String JAPANESE = "japanese";
@@ -108,6 +110,8 @@ public final class TemporalConstants {
     public static final String PRECISION = "Precision";
     public static final String INCREMENT = "Increment";
     public static final String UNIT = "Unit";
+    public static final String SMALLEST_UNIT = "smallestUnit";
+    public static final String STRING = "string";
 
     public static final String AUTO = "auto";
     public static final String ALWAYS = "always";
@@ -132,5 +136,6 @@ public final class TemporalConstants {
     public static final String EPOCH_MICROSECONDS = "epochMicroseconds";
     public static final String EPOCH_NANOSECONDS = "epochNanoseconds";
 
-    public static final Object UTC = "UTC";
+    public static final String UTC = "UTC";
+
 }

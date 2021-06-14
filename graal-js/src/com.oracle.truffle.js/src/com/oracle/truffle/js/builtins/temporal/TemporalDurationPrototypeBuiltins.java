@@ -84,6 +84,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
@@ -333,20 +334,21 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject add(DynamicObject thisObj, Object other, Object options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt) {
+                        @Cached("create()") JSToIntegerAsLongNode toInt,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
                             isObject, toString, toInt);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
-            JSTemporalDurationRecord result = TemporalUtil.addDuration(duration.getYears(), duration.getMonths(),
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
+            JSTemporalDurationRecord result = TemporalUtil.addDuration(getContext(), namesNode, duration.getYears(), duration.getMonths(),
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
                             duration.getNanoseconds(),
                             otherDuration.getYears(), otherDuration.getMonths(), otherDuration.getWeeks(), otherDuration.getDays(),
                             otherDuration.getHours(), otherDuration.getMinutes(), otherDuration.getSeconds(),
                             otherDuration.getMilliseconds(), otherDuration.getMicroseconds(), otherDuration.getNanoseconds(),
-                            relativeTo, getContext());
+                            relativeTo);
             return JSTemporalDuration.create(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(),
                             result.getMicroseconds(), result.getNanoseconds());
@@ -364,20 +366,21 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject subtract(DynamicObject thisObj, Object other, Object options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt) {
+                        @Cached("create()") JSToIntegerAsLongNode toInt,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
                             isObject, toString, toInt);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
-            JSTemporalDurationRecord result = TemporalUtil.addDuration(duration.getYears(), duration.getMonths(),
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
+            JSTemporalDurationRecord result = TemporalUtil.addDuration(getContext(), namesNode, duration.getYears(), duration.getMonths(),
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
                             duration.getNanoseconds(),
                             -otherDuration.getYears(), -otherDuration.getMonths(), -otherDuration.getWeeks(), -otherDuration.getDays(),
                             -otherDuration.getHours(), -otherDuration.getMinutes(), -otherDuration.getSeconds(),
                             -otherDuration.getMilliseconds(), -otherDuration.getMicroseconds(), -otherDuration.getNanoseconds(),
-                            relativeTo, getContext());
+                            relativeTo);
             return JSTemporalDuration.create(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
@@ -396,7 +399,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToNumberNode toNumber) {
+                        @Cached("create()") JSToNumberNode toNumber,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             if (optParam == Undefined.instance) {
                 throw Errors.createTypeError("No options given.");
@@ -429,27 +433,27 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, HALF_EXPAND, toBoolean, toString);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(normalizedOptions, maximum, false, isObject, toNumber);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
-            JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(duration.getYears(),
-                            duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit, relativeTo,
-                            getContext());
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
+            JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(),
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit,
+                            relativeTo);
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode,
                             unbalanceResult.getYears(),
                             unbalanceResult.getMonths(),
                             unbalanceResult.getWeeks(),
                             unbalanceResult.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
-                            roundingMode, relativeTo, getContext());
-            JSTemporalDurationRecord adjustResult = TemporalUtil.adjustRoundedDurationDays(
+                            roundingMode, relativeTo);
+            JSTemporalDurationRecord adjustResult = TemporalUtil.adjustRoundedDurationDays(getContext(), namesNode,
                             roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                             roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(),
-                            (long) roundingIncrement, smallestUnit, roundingMode, relativeTo, getContext());
+                            (long) roundingIncrement, smallestUnit, roundingMode, relativeTo);
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDurationRelative(
-                            adjustResult.getYears(), adjustResult.getMonths(), adjustResult.getWeeks(), adjustResult.getDays(),
-                            largestUnit, relativeTo, getContext());
+                            getContext(), adjustResult.getYears(), adjustResult.getMonths(), adjustResult.getWeeks(),
+                            adjustResult.getDays(), largestUnit, relativeTo);
             // TODO: Check if relativeTo has InitializedTemporalZonedDateTime 7.3.22.22
-            JSTemporalDurationRecord result = TemporalUtil.balanceDuration(
+            JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode,
                             balanceResult.getDays(),
                             adjustResult.getHours(), adjustResult.getMinutes(), adjustResult.getSeconds(),
                             adjustResult.getMilliseconds(), adjustResult.getMicroseconds(), adjustResult.getNanoseconds(),
@@ -472,20 +476,21 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected long total(DynamicObject thisObj, Object options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(normalizedOptions, getContext());
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, toBoolean, toString);
             if (unit == null) {
                 throw Errors.createRangeError("Unit not defined.");
             }
-            JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(duration.getYears(),
-                            duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo, getContext());
+            JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(),
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo);
             DynamicObject intermediate = Undefined.instance;
             // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes
             // intermediate = moveRelativeZonedDateTime()
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode,
                             unbalanceResult.getDays(),
                             unbalanceResult.getHours(),
                             unbalanceResult.getMinutes(),
@@ -494,7 +499,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             unbalanceResult.getMicroseconds(),
                             unbalanceResult.getNanoseconds(),
                             unit, intermediate);
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode,
                             unbalanceResult.getYears(),
                             unbalanceResult.getMonths(),
                             unbalanceResult.getWeeks(),
@@ -505,7 +510,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             balanceResult.getMilliseconds(),
                             balanceResult.getMicroseconds(),
                             balanceResult.getNanoseconds(),
-                            1, unit, TRUNC, relativeTo, getContext());
+                            1, unit, TRUNC, relativeTo);
             long whole = 0;
             if (unit.equals(YEAR)) {
                 whole = roundResult.getYears();
@@ -565,17 +570,18 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected String toString(Object duration, Object opt,
                         @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject dur = TemporalUtil.requireTemporalDuration(duration);
-            DynamicObject options = TemporalUtil.getOptionsObject(opt, getContext());
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), opt);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toBoolean, toString);
             if (precision.getUnit().equals(MINUTE)) {
                 throw Errors.createRangeError("unexpected precision minute");
             }
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBoolean, toString);
-            JSTemporalDurationRecord result = TemporalUtil.roundDuration(
+            JSTemporalDurationRecord result = TemporalUtil.roundDuration(getContext(), namesNode,
                             dur.getYears(), dur.getMonths(), dur.getWeeks(), dur.getDays(), dur.getHours(), dur.getMinutes(), dur.getSeconds(), dur.getMilliseconds(), dur.getMicroseconds(),
-                            dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance, getContext());
+                            dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance);
             return JSTemporalDuration.temporalDurationToString(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(),
                             result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),

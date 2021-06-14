@@ -74,6 +74,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantValueOfNodeGen;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
@@ -227,7 +228,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.toSet(YEARS, MONTHS, WEEKS, DAYS), isObject, toString, toInt);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
-            return TemporalUtil.createTemporalInstant(ns, getContext());
+            return TemporalUtil.createTemporalInstant(getContext(), ns);
         }
     }
 
@@ -246,7 +247,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.toSet(YEARS, MONTHS, WEEKS, DAYS), isObject, toString, toInt);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
-            return TemporalUtil.createTemporalInstant(ns, getContext());
+            return TemporalUtil.createTemporalInstant(getContext(), ns);
         }
     }
 
@@ -264,10 +265,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToNumberNode toNumber) {
+                        @Cached("create()") JSToNumberNode toNumber,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalInstantObject instant = TemporalUtil.requireTemporalInstant(thisObj);
-            JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(otherObj, getContext());
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext());
+            JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optionsParam);
             String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setYMWD, NANOSECOND, toBoolean, toString);
             String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(SECOND, smallestUnit);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, AUTO, defaultLargestUnit, toBoolean, toString);
@@ -280,9 +282,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInt two = isUntil ? other.getNanoseconds() : instant.getNanoseconds();
 
             long roundedNs = TemporalUtil.differenceInstant(one, two, roundingIncrement, smallestUnit, roundingMode);
-            JSTemporalDurationRecord result = TemporalUtil.balanceDuration(0, 0, 0, 0, 0, 0, roundedNs, largestUnit);
-            return JSTemporalDuration.createTemporalDuration(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(),
-                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), getContext());
+            JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode, 0, 0, 0, 0, 0, 0, roundedNs, largestUnit);
+            return JSTemporalDuration.createTemporalDuration(getContext(), 0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(),
+                            result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
         }
     }
 
@@ -299,7 +301,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToNumberNode toNumber) {
             JSTemporalInstantObject instant = TemporalUtil.requireTemporalInstant(thisObj);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext());
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optionsParam);
             String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setYMWD, null, toBoolean, toString);
             if (smallestUnit == null) {
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
@@ -323,7 +325,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, true, isObject, toNumber);
             long ns = instant.getNanoseconds().longValue();
             long roundedNs = (long) TemporalUtil.roundTemporalInstant(ns, roundingIncrement, smallestUnit, roundingMode);
-            return TemporalUtil.createTemporalInstant(new BigInt(BigInteger.valueOf(roundedNs)), getContext());
+            return TemporalUtil.createTemporalInstant(getContext(), new BigInt(BigInteger.valueOf(roundedNs)));
         }
     }
 
@@ -336,7 +338,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         public boolean equals(Object thisObj, Object otherObj) {
             JSTemporalInstantObject instant = TemporalUtil.requireTemporalInstant(thisObj);
-            JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(otherObj, getContext());
+            JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
             if (instant.getNanoseconds().equals(other.getNanoseconds())) {
                 return false;
             }
@@ -355,18 +357,18 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToBooleanNode toBoolean) {
             JSTemporalInstantObject instant = TemporalUtil.requireTemporalInstant(thisObj);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext());
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optionsParam);
             Object timeZoneRaw = JSObject.get(options, TIME_ZONE);
             DynamicObject timeZone = Undefined.instance;
             if (timeZoneRaw != Undefined.instance) {
-                timeZone = TemporalUtil.toTemporalTimeZone(timeZoneRaw, getContext());
+                timeZone = TemporalUtil.toTemporalTimeZone(getContext(), timeZoneRaw);
             }
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toBoolean, toString);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBoolean, toString);
             BigInt ns = instant.getNanoseconds();
             double roundedNs = TemporalUtil.roundTemporalInstant(ns.longValue(), precision.getIncrement(), precision.getUnit(), roundingMode);
-            DynamicObject roundedInstant = TemporalUtil.createTemporalInstant((long) roundedNs, getContext());
-            return TemporalUtil.temporalInstantToString(roundedInstant, timeZone, precision.getPrecision(), getContext());
+            DynamicObject roundedInstant = TemporalUtil.createTemporalInstant(getContext(), (long) roundedNs);
+            return TemporalUtil.temporalInstantToString(getContext(), roundedInstant, timeZone, precision.getPrecision());
         }
     }
 
@@ -380,7 +382,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         public String toLocaleString(Object thisObj) {
             JSTemporalInstantObject instant = TemporalUtil.requireTemporalInstant(thisObj);
-            return TemporalUtil.temporalInstantToString(instant, Undefined.instance, AUTO, getContext());
+            return TemporalUtil.temporalInstantToString(getContext(), instant, Undefined.instance, AUTO);
         }
     }
 

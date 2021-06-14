@@ -117,7 +117,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             if (TemporalUtil.isTemporalInstant(item)) {
                 return JSTemporalInstant.create(getContext(), ((JSTemporalInstantObject) item).getNanoseconds());
             }
-            return TemporalUtil.toTemporalInstant(item, getContext());
+            return TemporalUtil.toTemporalInstant(getContext(), item);
         }
 
     }
@@ -137,7 +137,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             if (!TemporalUtil.isValidEpochNanoseconds(epoch)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            return TemporalUtil.createTemporalInstant(epoch, getContext());
+            return TemporalUtil.createTemporalInstant(getContext(), epoch);
         }
 
     }
@@ -150,8 +150,8 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            JSTemporalInstantObject one = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(obj1, getContext());
-            JSTemporalInstantObject two = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(obj2, getContext());
+            JSTemporalInstantObject one = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), obj1);
+            JSTemporalInstantObject two = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), obj2);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }

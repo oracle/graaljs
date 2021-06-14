@@ -103,7 +103,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext());
+            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
 
             if (isObject.executeBoolean(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
@@ -112,7 +112,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
                                 dtItem.getISOYear(), dtItem.getISOMonth(), dtItem.getISODay(),
                                 dtItem.getCalendar());
             }
-            return TemporalUtil.toTemporalDate(item, options, getContext());
+            return TemporalUtil.toTemporalDate(getContext(), item, options);
         }
 
     }
@@ -125,8 +125,8 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(obj1, null, getContext());
-            JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(obj2, null, getContext());
+            JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(getContext(), obj1, null);
+            JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(getContext(), obj2, null);
             return TemporalUtil.compareISODate(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(),
                             two.getISOYear(), two.getISOMonth(), two.getISODay());

@@ -378,7 +378,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.setDMMCY, TemporalUtil.toSet(), ctx);
+        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.setDMMCY, TemporalUtil.toSet());
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
@@ -398,7 +398,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
                     JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.toSet(MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet(), ctx);
+        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.toSet(MONTH, MONTH_CODE, YEAR), TemporalUtil.toSet());
         Object year = JSObject.get(preparedFields, YEAR);
         if (year == Undefined.instance) {
             throw TemporalErrors.createTypeErrorTemporalYearNotPresent();
@@ -414,7 +414,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
                     JSToBooleanNode toBoolean, JSToStringNode toString, JSStringToNumberNode stringToNumber, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(fields, TemporalUtil.setDMMCY, TemporalUtil.toSet(), ctx);
+        DynamicObject preparedFields = TemporalUtil.prepareTemporalFields(ctx, fields, TemporalUtil.setDMMCY, TemporalUtil.toSet());
         Object month = JSObject.get(preparedFields, MONTH);
         Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
         Object year = JSObject.get(preparedFields, YEAR);

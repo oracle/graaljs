@@ -129,13 +129,13 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toInt, toString);
             JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(options, getContext());
-            long shift1 = TemporalUtil.calculateOffsetShift(relativeTo,
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), options);
+            long shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),
                             one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
                             isObject);
-            long shift2 = TemporalUtil.calculateOffsetShift(relativeTo,
+            long shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                             two.getHours(), two.getMinutes(), two.getSeconds(),
                             two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
@@ -146,11 +146,11 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0) {
                 JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
-                                one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
-                                DAYS, relativeTo, getContext());
+                                getContext(), one.getYears(), one.getMonths(), one.getWeeks(),
+                                one.getDays(), DAYS, relativeTo);
                 JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
-                                two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
-                                DAYS, relativeTo, getContext());
+                                getContext(), two.getYears(), two.getMonths(), two.getWeeks(),
+                                two.getDays(), DAYS, relativeTo);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {

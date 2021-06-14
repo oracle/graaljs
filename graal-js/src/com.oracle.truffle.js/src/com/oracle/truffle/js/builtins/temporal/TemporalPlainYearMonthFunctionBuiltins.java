@@ -113,7 +113,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
                 return JSTemporalPlainYearMonth.create(getContext(),
                                 pmd.getISOYear(), pmd.getISOMonth(), pmd.getCalendar(), pmd.getISODay());
             }
-            return TemporalUtil.toTemporalYearMonth(item, options, getContext());
+            return TemporalUtil.toTemporalYearMonth(getContext(), item, options);
         }
 
     }
@@ -126,8 +126,8 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected int compare(Object one, Object two) {
-            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(one, Undefined.instance, getContext());
-            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(two, Undefined.instance, getContext());
+            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), one, Undefined.instance);
+            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), two, Undefined.instance);
             return TemporalUtil.compareISODate(oneYM.getISOYear(), oneYM.getISOMonth(), oneYM.getISODay(),
                             twoYM.getISOYear(), twoYM.getISOMonth(), twoYM.getISODay());
         }
