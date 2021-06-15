@@ -206,7 +206,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             throw Errors.shouldNotReachHere();
         }
 
-        @Specialization(guards = "isJSTemporalInstant(thisObj)")
+        @Specialization(guards = "!isJSTemporalInstant(thisObj)")
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalInstantExpected();
         }

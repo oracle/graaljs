@@ -250,12 +250,11 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @SuppressWarnings("unused")
         @Specialization
         protected DynamicObject getPlainDateTimeFor(Object thisObj, Object instantParam, Object calendarLike) {
             DynamicObject instant = TemporalUtil.toTemporalInstant(getContext(), instantParam);
             DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), calendarLike);
-            return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor((DynamicObject) thisObj, instant, calendar, getContext());
+            return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), (DynamicObject) thisObj, instant, calendar);
         }
     }
 
@@ -265,7 +264,6 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
-        @SuppressWarnings("unused")
         @Specialization
         protected DynamicObject getInstantFor(Object thisObj, Object dateTimeParam, Object optionsParam) {
             JSTemporalTimeZoneObject timeZone = TemporalUtil.requireTemporalTimeZone(thisObj);

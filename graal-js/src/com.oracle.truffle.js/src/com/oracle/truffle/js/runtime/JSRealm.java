@@ -174,6 +174,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
@@ -292,6 +293,8 @@ public class JSRealm {
     private final DynamicObject temporalInstantPrototype;
     private final DynamicObject temporalTimeZoneConstructor;
     private final DynamicObject temporalTimeZonePrototype;
+    private final DynamicObject temporalZonedDateTimeConstructor;
+    private final DynamicObject temporalZonedDateTimePrototype;
     // ES6:
     private final DynamicObject symbolConstructor;
     private final DynamicObject symbolPrototype;
@@ -937,6 +940,10 @@ public class JSRealm {
             ctor = JSTemporalTimeZone.createConstructor(this);
             this.temporalTimeZoneConstructor = ctor.getFunctionObject();
             this.temporalTimeZonePrototype = ctor.getPrototype();
+
+            ctor = JSTemporalZonedDateTime.createConstructor(this);
+            this.temporalZonedDateTimeConstructor = ctor.getFunctionObject();
+            this.temporalZonedDateTimePrototype = ctor.getPrototype();
         } else {
             this.temporalPlainTimeConstructor = null;
             this.temporalPlainTimePrototype = null;
@@ -956,6 +963,8 @@ public class JSRealm {
             this.temporalInstantPrototype = null;
             this.temporalTimeZoneConstructor = null;
             this.temporalTimeZonePrototype = null;
+            this.temporalZonedDateTimeConstructor = null;
+            this.temporalZonedDateTimePrototype = null;
         }
     }
 
@@ -1466,6 +1475,14 @@ public class JSRealm {
         return temporalTimeZonePrototype;
     }
 
+    public DynamicObject getTemporalZonedDateTimeConstructor() {
+        return temporalZonedDateTimeConstructor;
+    }
+
+    public DynamicObject getTemporalZonedDateTimePrototype() {
+        return temporalZonedDateTimePrototype;
+    }
+
     public final Map<Object, DynamicObject> getTemplateRegistry() {
         if (templateRegistry == null) {
             createTemplateRegistry();
@@ -1882,6 +1899,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainMonthDay", getTemporalPlainMonthDayConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "Instant", getTemporalInstantConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "TimeZone", getTemporalTimeZoneConstructor(), flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "ZonedDateTime", getTemporalZonedDateTimeConstructor(), flags);
 
         DynamicObject nowObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 

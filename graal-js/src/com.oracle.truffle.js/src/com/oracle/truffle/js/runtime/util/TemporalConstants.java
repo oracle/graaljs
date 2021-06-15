@@ -103,6 +103,7 @@ public final class TemporalConstants {
     public static final String TIME_ZONE = "timeZone";
     public static final String TIME_ZONE_OFFSET = "timeZoneOffset";
     public static final String TIME_ZONE_IANA_NAME = "timeZoneIANAName";
+    public static final String TIME_ZONE_NAME = "timeZoneName";
 
     public static final String DATE_UNTIL = "dateUntil";
     public static final String DATE_ADD = "dateAdd";
@@ -112,6 +113,7 @@ public final class TemporalConstants {
     public static final String UNIT = "Unit";
     public static final String SMALLEST_UNIT = "smallestUnit";
     public static final String STRING = "string";
+    public static final String BOOLEAN = "boolean";
 
     public static final String AUTO = "auto";
     public static final String ALWAYS = "always";

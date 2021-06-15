@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSTemporalDateTimeRecord {
+public class JSTemporalDateTimeRecord {
     private final long year;
     private final long month;
     private final long day;
@@ -60,9 +60,8 @@ public final class JSTemporalDateTimeRecord {
     private final long weeks;
     private final boolean hasWeeks;
 
-    private JSTemporalDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
-                    long weeks, boolean hasWeeks,
-                    DynamicObject calendar, boolean hasCalendar) {
+    protected JSTemporalDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+                    long weeks, boolean hasWeeks, DynamicObject calendar, boolean hasCalendar) {
         this.year = year;
         this.month = month;
         this.day = day;

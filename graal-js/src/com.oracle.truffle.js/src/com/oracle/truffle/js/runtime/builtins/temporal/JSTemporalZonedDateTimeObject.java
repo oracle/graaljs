@@ -41,10 +41,35 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public interface TemporalZonedDateTime extends TemporalCalendar {
-    BigInt getNanoseconds();
+public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements TemporalZonedDateTime {
 
-    DynamicObject getTimeZone();
+    private final BigInt nanoseconds;
+    private final DynamicObject timeZone;
+    private final DynamicObject calendar;
+
+    protected JSTemporalZonedDateTimeObject(Shape shape, BigInt nanoseconds, DynamicObject timeZone, DynamicObject calendar) {
+        super(shape);
+        this.nanoseconds = nanoseconds;
+        this.calendar = calendar;
+        this.timeZone = timeZone;
+    }
+
+    @Override
+    public BigInt getNanoseconds() {
+        return nanoseconds;
+    }
+
+    @Override
+    public DynamicObject getCalendar() {
+        return calendar;
+    }
+
+    @Override
+    public DynamicObject getTimeZone() {
+        return timeZone;
+    }
 }

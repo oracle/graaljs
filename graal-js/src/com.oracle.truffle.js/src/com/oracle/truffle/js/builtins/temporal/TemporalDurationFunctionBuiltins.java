@@ -133,13 +133,11 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             long shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),
-                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
-                            isObject);
+                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
             long shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                             two.getHours(), two.getMinutes(), two.getSeconds(),
-                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
-                            isObject);
+                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
             long days1;
             long days2;
             if (one.getYears() != 0 || two.getYears() != 0 ||

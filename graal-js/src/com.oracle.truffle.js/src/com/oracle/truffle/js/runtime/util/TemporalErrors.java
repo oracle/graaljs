@@ -227,4 +227,9 @@ public final class TemporalErrors {
     public static JSException createRangeErrorInvalidTimeZoneString() {
         return Errors.createRangeError("invalid timeZone string");
     }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorTemporalZonedDateTimeExpected() {
+        return Errors.createTypeError("Temporal.ZonedDateTime expected");
+    }
 }

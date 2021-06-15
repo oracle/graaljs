@@ -41,8 +41,6 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.PLAIN_DATE;
-
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
@@ -51,11 +49,11 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.PLAIN_DATE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.getLong;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -93,6 +91,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
@@ -600,9 +599,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             DynamicObject temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), date.getISOYear(), date.getISOMonth(), date.getISODay(),
                             time.getHours(), time.getMinutes(), time.getSeconds(), time.getMilliseconds(), time.getMicroseconds(),
                             time.getNanoseconds(), date.getCalendar());
-            DynamicObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
-            long ns = getLong(instant, NANOSECOND);
-            return TemporalUtil.createTemporalZonedDateTime(ns, timeZone, date.getCalendar());
+            JSTemporalInstantObject instant = (JSTemporalInstantObject) TemporalUtil.builtinTimeZoneGetInstantFor(timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
+            return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, date.getCalendar());
         }
     }
 
