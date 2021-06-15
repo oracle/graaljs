@@ -97,6 +97,12 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private boolean hasParameterExpressions;
     private boolean containsDefaultParameter;
 
+    /**
+     * If true, this is a provisional function produced by an arrow head cover grammar. Once the
+     * ambiguity is resolved, the flag is cleared.
+     */
+    private boolean coverArrowHead;
+
     private Module module;
     private String internalName;
 
@@ -163,10 +169,61 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
+     * Marks the occurrence of eval within this function.
+     */
+    public void markEval() {
+        setFlag(FunctionNode.HAS_EVAL);
+        setFlag(FunctionNode.HAS_SCOPE_BLOCK);
+    }
+
+    /**
+     * Marks the occurrence of eval in a nested function.
+     */
+    public void markNestedEval() {
+        setFlag(FunctionNode.HAS_NESTED_EVAL);
+        setFlag(FunctionNode.HAS_SCOPE_BLOCK);
+    }
+
+    /**
+     * Marks the occurrence of eval in a nested arrow function.
+     */
+    public void markArrowEval() {
+        setFlag(FunctionNode.HAS_ARROW_EVAL);
+    }
+
+    /**
+     * Marks the use of {@code this}.
+     */
+    public void markThis() {
+        setFlag(FunctionNode.USES_THIS);
+    }
+
+    /**
+     * @return true if the function has a direct eval call.
+     */
+    public boolean hasEval() {
+        return getFlag(FunctionNode.HAS_EVAL) != 0;
+    }
+
+    /**
      * @return true if the function has nested evals
      */
     public boolean hasNestedEval() {
         return getFlag(FunctionNode.HAS_NESTED_EVAL) != 0;
+    }
+
+    /**
+     * @return true if the function has a direct eval call nested in an arrow function.
+     */
+    public boolean hasArrowEval() {
+        return getFlag(FunctionNode.HAS_ARROW_EVAL) != 0;
+    }
+
+    /**
+     * @return true if the function uses this.
+     */
+    public boolean usesThis() {
+        return getFlag(FunctionNode.USES_THIS) != 0;
     }
 
     /**
@@ -212,13 +269,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
-     * Set last token
-     *
-     * @param token New last token
+     * @return lastToken Function's first token
      */
-    public void setLastToken(final long token) {
-        this.lastToken = token;
-
+    public long getFirstToken() {
+        return token;
     }
 
     /**
@@ -226,6 +280,15 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public long getLastToken() {
         return lastToken;
+    }
+
+    /**
+     * Set last token
+     *
+     * @param token New last token
+     */
+    public void setLastToken(final long token) {
+        this.lastToken = token;
     }
 
     /**
@@ -511,6 +574,41 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public void setInternalName(String internalName) {
         this.internalName = internalName;
+    }
+
+    public boolean isCoverArrowHead() {
+        return coverArrowHead;
+    }
+
+    public void setCoverArrowHead(boolean coverArrowHead) {
+        this.coverArrowHead = coverArrowHead;
+    }
+
+    /**
+     * Propagate relevant flags to the enclosing function.
+     */
+    public void propagateFlagsToParent(ParserContextFunctionNode parent) {
+        // Propagate the presence of eval to all parents.
+        if (hasEval() || hasNestedEval()) {
+            parent.markNestedEval();
+        }
+        if (isArrow()) {
+            // Propagate the presence of eval to the first non-arrow and all arrow parents in
+            // between as HAS_ARROW_EVAL.
+            // This ensures that `this`, `new.target`, and `super` are available to the eval
+            // even if the parent does not use them (and does not have an eval itself).
+            // e.g.:
+            // function fun(){ return (() => eval("this"))(); };
+            // function fun(){ return eval("() => this")(); };
+            // (() => (() => eval("this"))())();
+            if (hasEval() || hasArrowEval()) {
+                parent.markArrowEval();
+            }
+            // Propagate use of `this` up to the first non-arrow and all arrow parents in between.
+            if (usesThis()) {
+                parent.markThis();
+            }
+        }
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {

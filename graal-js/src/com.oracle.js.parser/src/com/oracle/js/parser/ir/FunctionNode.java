@@ -231,6 +231,13 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     public static final int IS_CLASS_FIELD_INITIALIZER = 1 << 30;
 
     /**
+     * All flags that may be set during parsing of an arrow head cover grammar and that have to be
+     * propagated to the enclosing function if the expression ends up not being an arrow function.
+     */
+    public static final int ARROW_HEAD_FLAGS = USES_THIS | USES_ARGUMENTS | USES_SUPER |
+                    HAS_EVAL | HAS_ARROW_EVAL | HAS_NESTED_EVAL | HAS_SCOPE_BLOCK;
+
+    /**
      * Constructor
      *
      * @param source the source

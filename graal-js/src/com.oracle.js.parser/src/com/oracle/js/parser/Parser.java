@@ -106,7 +106,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -272,6 +271,14 @@ public class Parser extends AbstractParser {
     private RecompilableScriptFunctionData reparsedFunction;
 
     private boolean isModule;
+
+    /**
+     * Used to pass (async) arrow function flags from head to body.
+     *
+     * Must be immediately consumed, i.e. before parsing the next expression, in order to avoid any
+     * nesting issues.
+     */
+    private ParserContextFunctionNode coverArrowFunction;
 
     public static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
     public static final boolean PROFILE_PARSING_PRINT = Options.getBooleanProperty("parser.profiling.print", true);
@@ -4314,22 +4321,13 @@ public class Parser extends AbstractParser {
 
         if (type == LPAREN) {
             boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
-            final List<Expression> arguments = argumentList(yield, await, async);
+            final List<Expression> arguments = argumentList(yield, await, async, callToken, callLine);
 
             if (async) {
                 if (type == ARROW && checkNoLineTerminator()) {
                     // async () => ...
                     // async ( ArgumentsList ) => ...
-                    return new ExpressionList(callToken, callLine, optimizeList(arguments));
-                } else {
-                    // invocation of a function named 'async'
-                    for (Expression argument : arguments) {
-                        if (hasCoverInitializedName(argument)) {
-                            // would be thrown by assignmentExpression() if we knew that
-                            // we are parsing arguments (and not arrow parameter list)
-                            throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
-                        }
-                    }
+                    return new ExpressionList(callToken, callLine, arguments);
                 }
             }
 
@@ -4720,11 +4718,11 @@ public class Parser extends AbstractParser {
     }
 
     private ArrayList<Expression> argumentList(boolean yield, boolean await) {
-        return argumentList(yield, await, false);
+        return argumentList(yield, await, false, 0L, 0);
     }
 
     /**
-     * Parse function call arguments.
+     * Parse function call arguments. Also used to parse CoverCallExpressionAndAsyncArrowHead.
      *
      * <pre>
      * {@code
@@ -4742,42 +4740,76 @@ public class Parser extends AbstractParser {
      *
      * @return Argument list.
      */
-    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean inPatternPosition) {
-        // Prepare to accumulate list of arguments.
-        final ArrayList<Expression> nodeList = new ArrayList<>();
+    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean coverAsyncArrow, long startToken, int startLine) {
         // LPAREN tested in caller.
+        assert type == LPAREN;
         next();
 
+        final boolean inPatternPosition = coverAsyncArrow;
+        // Prepare to accumulate list of arguments.
+        final ArrayList<Expression> nodeList = new ArrayList<>();
         // Track commas.
         boolean first = true;
+        boolean hasCoverInitializedName = false;
 
-        while (type != RPAREN) {
-            // Comma prior to every argument except the first.
-            if (!first) {
-                expect(COMMARIGHT);
-                // Trailing comma.
-                if (ES8_TRAILING_COMMA && isES2017() && type == RPAREN) {
-                    break;
+        ParserContextFunctionNode cover = coverAsyncArrow ? createParserContextArrowFunctionNode(startToken, startLine, true, true) : null;
+        if (coverAsyncArrow) {
+            lc.push(cover);
+        }
+
+        try {
+            while (type != RPAREN) {
+                // Comma prior to every argument except the first.
+                if (!first) {
+                    expect(COMMARIGHT);
+                    // Trailing comma.
+                    if (ES8_TRAILING_COMMA && isES2017() && type == RPAREN) {
+                        break;
+                    }
+                } else {
+                    first = false;
                 }
-            } else {
-                first = false;
-            }
 
-            long spreadToken = 0;
-            if (ES6_SPREAD_ARGUMENT && type == ELLIPSIS && isES6()) {
-                spreadToken = token;
-                next();
-            }
+                long spreadToken = 0;
+                if (ES6_SPREAD_ARGUMENT && type == ELLIPSIS && isES6()) {
+                    spreadToken = token;
+                    next();
+                }
 
-            // Get argument expression.
-            Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
-            if (spreadToken != 0) {
-                expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
+                // Get argument expression.
+                Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
+
+                hasCoverInitializedName = inPatternPosition && (hasCoverInitializedName || hasCoverInitializedName(expression));
+                assert inPatternPosition || !hasCoverInitializedName(expression);
+
+                if (spreadToken != 0) {
+                    expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
+                }
+
+                nodeList.add(expression);
             }
-            nodeList.add(expression);
+        } finally {
+            if (coverAsyncArrow) {
+                lc.pop(cover);
+            }
         }
 
         expect(RPAREN);
+
+        if (coverAsyncArrow) {
+            if (type == ARROW && checkNoLineTerminator()) {
+                commitArrowHead(cover);
+            } else {
+                // invocation of a function named 'async'
+                if (hasCoverInitializedName) {
+                    // would be thrown by assignmentExpression() if we knew that
+                    // we are parsing arguments (and not arrow parameter list)
+                    throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
+                }
+                revertArrowHead(cover);
+            }
+        }
+
         return nodeList;
     }
 
@@ -5314,6 +5346,7 @@ public class Parser extends AbstractParser {
         } finally {
             functionNode.finishBodyScope();
             restoreBlock(body);
+            lc.propagateFunctionFlags();
         }
 
         // NOTE: we can only do alterations to the function node after restoreFunctionNode.
@@ -5683,6 +5716,7 @@ public class Parser extends AbstractParser {
 
     private Expression parenthesizedExpressionAndArrowParameterList(boolean yield, boolean await) {
         long primaryToken = token;
+        int startLine = line;
         assert type == LPAREN;
         next();
 
@@ -5695,33 +5729,46 @@ public class Parser extends AbstractParser {
 
         Expression assignmentExpression = null;
         boolean hasCoverInitializedName = false;
+        boolean hasRestParameter = false;
         long commaToken = 0L;
-        while (true) {
-            if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
-                // (a, b, ...rest) is not a valid expression, but a valid arrow function parameter
-                // list. Since the rest parameter is always last, we know that the cover expression
-                // has to end here with a binding identifier/pattern followed by RPAREN and ARROW.
-                return arrowFunctionRestParameter(assignmentExpression, commaToken, yield, await);
-            } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES2017() && type == RPAREN && lookaheadIsArrow()) {
-                // Trailing comma at end of arrow function parameter list
-                break;
-            }
 
-            Expression rhs = assignmentExpression(true, yield, await, true);
-            hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
+        ParserContextFunctionNode cover = createParserContextArrowFunctionNode(primaryToken, startLine, false, true);
+        lc.push(cover);
+        try {
+            while (true) {
+                if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
+                    // (a, b, ...rest) is not a valid expression, but a valid arrow function
+                    // parameter
+                    // list. Since the rest parameter is always last, we know that the cover
+                    // expression
+                    // has to end here with a binding identifier/pattern followed by RPAREN and
+                    // ARROW.
+                    assignmentExpression = arrowFunctionRestParameter(assignmentExpression, commaToken, yield, await);
+                    hasRestParameter = true;
+                    break;
+                } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES2017() && type == RPAREN && lookaheadIsArrow()) {
+                    // Trailing comma at end of arrow function parameter list
+                    break;
+                }
 
-            if (assignmentExpression == null) {
-                assignmentExpression = rhs;
-            } else {
-                assert Token.descType(commaToken) == COMMARIGHT;
-                assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
-            }
+                Expression rhs = assignmentExpression(true, yield, await, true);
+                hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
 
-            if (type != COMMARIGHT) {
-                break;
+                if (assignmentExpression == null) {
+                    assignmentExpression = rhs;
+                } else {
+                    assert Token.descType(commaToken) == COMMARIGHT;
+                    assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
+                }
+
+                if (type != COMMARIGHT) {
+                    break;
+                }
+                commaToken = token;
+                next();
             }
-            commaToken = token;
-            next();
+        } finally {
+            lc.pop(cover);
         }
 
         boolean arrowAhead = lookaheadIsArrow();
@@ -5729,14 +5776,35 @@ public class Parser extends AbstractParser {
             throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
         }
 
-        expect(RPAREN);
+        if (hasRestParameter) {
+            // Rest parameter must be last and followed by `)` [NoLineTerminator] `=>`.
+            expectDontAdvance(RPAREN);
+            nextOrEOL();
+            expectDontAdvance(ARROW);
+        } else {
+            expect(RPAREN);
+        }
 
-        if (!arrowAhead) {
+        if (arrowAhead) {
+            // arrow parameter list
+            commitArrowHead(cover);
+        } else {
             // parenthesized expression
             assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
-        } // else arrow parameter list
+            revertArrowHead(cover);
+        }
 
         return assignmentExpression;
+    }
+
+    private void commitArrowHead(ParserContextFunctionNode cover) {
+        assert coverArrowFunction == null;
+        coverArrowFunction = cover;
+    }
+
+    private void revertArrowHead(ParserContextFunctionNode cover) {
+        // merge flags gathered during expression parsing into the current function's flags.
+        lc.getCurrentFunctionFlagsReceiver().setFlag(cover.getFlags() & FunctionNode.ARROW_HEAD_FLAGS);
     }
 
     private Expression arrowFunctionRestParameter(Expression paramListExpr, long commaToken, final boolean yield, final boolean await) {
@@ -5751,11 +5819,6 @@ public class Parser extends AbstractParser {
         } else {
             restParam = new UnaryNode(Token.recast(ellipsisToken, SPREAD_ARGUMENT), pattern);
         }
-
-        // Rest parameter must be last and followed by `)` [NoLineTerminator] `=>`.
-        expectDontAdvance(RPAREN);
-        nextOrEOL();
-        expectDontAdvance(ARROW);
 
         if (paramListExpr == null) {
             return restParam;
@@ -5907,14 +5970,18 @@ public class Parser extends AbstractParser {
         assert type != ARROW || checkNoLineTerminator();
         expect(ARROW);
 
-        final long functionToken = Token.recast(startToken, ARROW);
-        final IdentNode name = null;
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, FunctionNode.IS_ARROW, functionLine);
+        final ParserContextFunctionNode functionNode;
+        if (coverArrowFunction == null) {
+            functionNode = createParserContextArrowFunctionNode(startToken, functionLine, async, false);
+        } else {
+            functionNode = coverArrowFunction;
+            functionNode.setCoverArrowHead(false);
+            coverArrowFunction = null;
+        }
+        assert functionNode.isArrow() && !functionNode.isCoverArrowHead();
+        assert functionNode.isAsync() == async;
         functionNode.setInternalName(ARROW_FUNCTION_NAME);
         functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
-        if (async) {
-            functionNode.setFlag(FunctionNode.IS_ASYNC);
-        }
 
         lc.push(functionNode);
         try {
@@ -5931,14 +5998,13 @@ public class Parser extends AbstractParser {
             verifyParameterList(functionNode);
 
             if (parameterBlock != null) {
-                markEvalInArrowParameterList(parameterBlock);
                 functionBody = wrapParameterBlock(parameterBlock, functionBody);
             }
 
             final FunctionNode function = createFunctionNode(
                             functionNode,
-                            functionToken,
-                            name,
+                            functionNode.getFirstToken(),
+                            functionNode.getIdent(),
                             functionLine,
                             functionBody);
             return function;
@@ -5947,27 +6013,18 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private void markEvalInArrowParameterList(ParserContextBlockNode parameterBlock) {
-        Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        ParserContextFunctionNode current = iter.next();
-        ParserContextFunctionNode parent = iter.next();
-        int flagsToPropagate = parent.getFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_ARROW_EVAL);
-        if (flagsToPropagate != 0) {
-            // we might have flagged has-eval in the parent function during parsing the parameter
-            // list; if the parameter list contains eval; must tag arrow function as has-eval.
-            for (Statement st : parameterBlock.getStatements()) {
-                st.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
-                    @Override
-                    public boolean enterCallNode(CallNode callNode) {
-                        if (callNode.isEval()) {
-                            current.setFlag(flagsToPropagate);
-                        }
-                        return true;
-                    }
-                });
-            }
-            // TODO: function containing the arrow function should not be flagged has-eval
+    private ParserContextFunctionNode createParserContextArrowFunctionNode(long startToken, int startLine, boolean async, boolean cover) {
+        final long functionToken = Token.recast(startToken, ARROW);
+        final IdentNode name = null;
+        ParserContextFunctionNode function = createParserContextFunctionNode(name, functionToken, FunctionNode.IS_ARROW, startLine);
+        if (async) {
+            function.setFlag(FunctionNode.IS_ASYNC);
         }
+        if (cover) {
+            function.setCoverArrowHead(true);
+            assert coverArrowFunction == null;
+        }
+        return function;
     }
 
     private static Expression convertExpressionListToExpression(ExpressionList exprList) {
@@ -6058,11 +6115,6 @@ public class Parser extends AbstractParser {
                 if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
                     throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
                 }
-            }
-            if (lc.getCurrentNonArrowFunction().getFlag(FunctionNode.USES_THIS) != 0) {
-                // this may be used by the initializer (and enclosing function
-                // was marked as using 'this' from parenthesizedExpressionAndArrowParameterList())
-                currentFunction.setFlag(FunctionNode.USES_THIS);
             }
             if (lhs instanceof IdentNode && !lhs.isParenthesized()) {
                 // default parameter
@@ -6808,37 +6860,7 @@ public class Parser extends AbstractParser {
     }
 
     private void markEval() {
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        boolean flaggedCurrentFn = false;
-        boolean flagArrowParentFn = false;
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            if (!flaggedCurrentFn) {
-                flaggedCurrentFn = true;
-
-                fn.setFlag(FunctionNode.HAS_EVAL);
-
-                // possible use of this/new.target in the eval, e.g.:
-                // function fun(){ return (() => eval("this"))(); };
-                // function fun(){ return eval("() => this")(); };
-                // (() => (() => eval("this"))())();
-                if (fn.isArrow()) {
-                    flagArrowParentFn = true;
-                }
-            } else {
-                fn.setFlag(FunctionNode.HAS_NESTED_EVAL);
-
-                // flag the first non-arrow and all arrow parents in between as HAS_ARROW_EVAL;
-                // this ensures that the `this` value is propagated to the eval.
-                if (flagArrowParentFn) {
-                    fn.setFlag(FunctionNode.HAS_ARROW_EVAL);
-                    if (!fn.isArrow()) {
-                        flagArrowParentFn = false;
-                    }
-                }
-            }
-            fn.setFlag(FunctionNode.HAS_SCOPE_BLOCK);
-        }
+        lc.getCurrentFunctionFlagsReceiver().markEval();
     }
 
     private void prependStatement(final Statement statement) {
@@ -6850,28 +6872,15 @@ public class Parser extends AbstractParser {
     }
 
     private void markSuperCall() {
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            if (!fn.isArrow()) {
-                if (!fn.isProgram()) {
-                    assert fn.isDerivedConstructor();
-                    fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
-                }
-                break;
-            }
+        ParserContextFunctionNode fn = lc.getCurrentNonArrowFunction();
+        if (!fn.isProgram()) {
+            assert fn.isDerivedConstructor();
+            fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
         }
     }
 
     private void markThis() {
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            fn.setFlag(FunctionNode.USES_THIS);
-            if (!fn.isArrow()) {
-                break;
-            }
-        }
+        lc.getCurrentFunctionFlagsReceiver().markThis();
     }
 
     private void markNewTarget() {
@@ -6879,15 +6888,9 @@ public class Parser extends AbstractParser {
             // `new.target` in script or module (may be wrapped in an arrow function or eval).
             throw error(AbstractParser.message("new.target.in.function"), token);
         }
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            if (!fn.isArrow()) {
-                if (!fn.isProgram()) {
-                    fn.setFlag(FunctionNode.USES_NEW_TARGET);
-                }
-                break;
-            }
+        ParserContextFunctionNode fn = lc.getCurrentNonArrowFunction();
+        if (!fn.isProgram()) {
+            fn.setFlag(FunctionNode.USES_NEW_TARGET);
         }
     }
 
