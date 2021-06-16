@@ -9,6 +9,7 @@
  * Checks that java.lang.String methods can be invoked on lazy strings.
  * 
  * @option nashorn-compat
+ * @option ecmascript-version=6
  */
 
 load('assert.js');
