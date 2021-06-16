@@ -42,13 +42,12 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
 
-import java.math.BigInteger;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -71,7 +70,7 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     }
 
     public static DynamicObject create(JSContext context, long nanoseconds, String identifier) {
-        return create(context, new BigInt(BigInteger.valueOf(nanoseconds)), identifier);
+        return create(context, new BigInt(Boundaries.bigIntegerValueOf(nanoseconds)), identifier);
     }
 
     public static DynamicObject create(JSContext context, BigInt nanoseconds, String identifier) {

@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import java.math.BigInteger;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -131,6 +132,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
             this.factor = BigInteger.valueOf(factor);
         }
 
+        @TruffleBoundary
         @Specialization
         protected DynamicObject from(Object epochParam) {
             BigInt epoch = new BigInt(JSRuntime.toBigIntSpec(epochParam).bigIntegerValue().multiply(factor));

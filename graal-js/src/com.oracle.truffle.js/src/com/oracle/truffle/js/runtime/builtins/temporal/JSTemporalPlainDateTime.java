@@ -98,7 +98,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return CLASS_NAME;
     }
 
-    public static DynamicObject create(JSContext context, long y, long m, long d, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
+    public static JSTemporalPlainDateTimeObject create(JSContext context, long y, long m, long d, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
                     DynamicObject calendar) {
         if (!TemporalUtil.isValidISODate(y, m, d)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
@@ -113,7 +113,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         JSObjectFactory factory = context.getTemporalPlainDateTimeFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateTimeObject(factory.getShape(realm),
                         y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar), realm);
-        return context.trackAllocation(object);
+        return (JSTemporalPlainDateTimeObject) context.trackAllocation(object);
     }
 
     @Override
@@ -170,30 +170,6 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
 
     public static boolean isJSTemporalPlainDateTime(Object obj) {
         return obj instanceof JSTemporalPlainDateTimeObject;
-    }
-
-    public static JSTemporalDateTimeRecord addDateTime(JSContext ctx, long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond,
-                    long nanosecond, DynamicObject calendar, long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds,
-                    long microseconds, long nanoseconds, DynamicObject options) {
-        JSTemporalDurationRecord timeResult = TemporalUtil.addTime(hour, minute, second, millisecond, microsecond, nanosecond, hours, minutes, seconds, milliseconds, microseconds,
-                        nanoseconds);
-        DynamicObject datePart = JSTemporalPlainDate.create(ctx, year, month, day, calendar);
-        DynamicObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, years, months, weeks, days + timeResult.getDays(), 0L, 0L, 0L, 0L, 0L, 0L);
-
-        TemporalDate addedDate = (TemporalDate) TemporalUtil.calendarDateAdd(calendar, datePart, dateDuration, options);
-
-        return JSTemporalDateTimeRecord.create(addedDate.getISOYear(), addedDate.getISOMonth(), addedDate.getISODay(),
-                        timeResult.getHours(), timeResult.getMinutes(), timeResult.getSeconds(),
-                        timeResult.getMilliseconds(), timeResult.getMicroseconds(), timeResult.getNanoseconds());
-    }
-
-    public static int compareISODateTime(long year, long month, long day, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds, long year2, long month2,
-                    long day2, long hours2, long minutes2, long seconds2, long milliseconds2, long microseconds2, long nanoseconds2) {
-        int date = TemporalUtil.compareISODate(year, month, day, year2, month2, day2);
-        if (date == 0) {
-            return TemporalUtil.compareTemporalTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds, hours2, minutes2, seconds2, milliseconds2, microseconds2, nanoseconds2);
-        }
-        return date;
     }
 
     @TruffleBoundary

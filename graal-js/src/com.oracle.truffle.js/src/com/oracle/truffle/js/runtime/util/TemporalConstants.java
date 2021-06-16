@@ -97,6 +97,9 @@ public final class TemporalConstants {
 
     public static final String CONSTRAIN = "constrain";
     public static final String REJECT = "reject";
+    public static final String PREFER = "prefer";
+    public static final String USE = "ure";
+    public static final String IGNORE = "ignore";
     public static final String OVERFLOW = "overflow";
     public static final String COMPATIBLE = "compatible";
 
@@ -118,6 +121,8 @@ public final class TemporalConstants {
     public static final String AUTO = "auto";
     public static final String ALWAYS = "always";
     public static final String NEVER = "never";
+    public static final String EARLIER = "earlier";
+    public static final String LATER = "later";
 
     public static final String FLOOR = "floor";
     public static final String CEIL = "ceil";
@@ -139,5 +144,4 @@ public final class TemporalConstants {
     public static final String EPOCH_NANOSECONDS = "epochNanoseconds";
 
     public static final String UTC = "UTC";
-
 }

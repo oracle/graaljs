@@ -47,7 +47,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -102,7 +101,6 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected Object from(Object item,
                         @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("create()") JSToStringNode toString) {
             if (isObject.executeBoolean(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
@@ -111,7 +109,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                                 duration.getMicroseconds(), duration.getNanoseconds());
             }
-            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObject, toInt, toString);
+            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObject, toString);
         }
     }
 
@@ -124,10 +122,9 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
                         @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toInt, toString);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toInt, toString);
+            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toString);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), options);
             long shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,

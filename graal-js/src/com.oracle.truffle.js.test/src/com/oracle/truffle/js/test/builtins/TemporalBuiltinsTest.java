@@ -60,8 +60,6 @@ public class TemporalBuiltinsTest extends JSTest {
         return JSTest.newContextBuilder(ID).option("js.temporal", "true").build();
     }
 
-    // TODO PlainDateTime tests
-
     private static void validatePlainTime(Context ctx, long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond) {
         final Value hourValue = ctx.eval(ID, "plainTime.hour");

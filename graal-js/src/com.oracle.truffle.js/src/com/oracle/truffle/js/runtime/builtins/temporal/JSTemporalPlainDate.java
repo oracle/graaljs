@@ -147,61 +147,18 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static DynamicObject create(JSContext context, long y, long m, long d, DynamicObject calendar) {
-        rejectDate(y, m, d);
-        if (!TemporalUtil.dateTimeWithinLimits(y, m, d, 12, 0, 0, 0, 0, 0)) {
+    public static DynamicObject create(JSContext context, long year, long month, long day, DynamicObject calendar) {
+        if (!TemporalUtil.validateDate(year, month, day)) {
+            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
+        }
+        if (!TemporalUtil.dateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
-                        (int) y, (int) m, (int) d, calendar), realm);
+                        (int) year, (int) month, (int) day, calendar), realm);
         return context.trackAllocation(object);
-    }
-
-    private static void rejectDate(long year, long month, long day) {
-        if (!validateDate(year, month, day)) {
-            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
-        }
-    }
-
-    private static boolean validateDate(long year, long month, long day) {
-        if (month < 1 || month > 12) {
-            return false;
-        }
-        long daysInMonth = daysInMonth(year, month);
-        if (day < 1 || day > daysInMonth) {
-            return false;
-        }
-        return true;
-    }
-
-    private static int daysInMonth(long year, long month) {
-        assert month >= 1;
-        assert month <= 12;
-        if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
-            return 31;
-        }
-        if (month == 4 || month == 6 || month == 9 || month == 11) {
-            return 30;
-        }
-        if (isLeapYear(year)) {
-            return 29;
-        }
-        return 28;
-    }
-
-    private static boolean isLeapYear(long year) {
-        if (year % 4 != 0) {
-            return false;
-        }
-        if (year % 400 == 0) {
-            return true;
-        }
-        if (year % 100 == 0) {
-            return false;
-        }
-        return true;
     }
 
     // 3.5.4
@@ -213,7 +170,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             if (isJSTemporalPlainDate(item)) {
                 return itemObj;
             } else if (TemporalUtil.isTemporalZonedDateTime(item)) {
-                // TODO
+                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
+                JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
+                JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
+                return TemporalUtil.createTemporalDate(ctx, plainDateTime.getISOYear(), plainDateTime.getISOMonth(), plainDateTime.getISODay(), plainDateTime.getCalendar());
             } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
                 return create(ctx, dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());

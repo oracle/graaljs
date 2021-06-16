@@ -162,20 +162,17 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainMonthDayObject plainMD = (JSTemporalPlainMonthDayObject) thisObj;
             switch (property) {
                 case day:
-                    // TODO wrong
-                    return (int) plainMD.getISODay();
+                    return JSTemporalCalendar.calendarDay(plainMD.getCalendar(), plainMD);
                 case monthCode:
-                    DynamicObject calendar = plainMD.getCalendar();
-                    return JSTemporalCalendar.calendarMonthCode(calendar, plainMD);
+                    return JSTemporalCalendar.calendarMonthCode(plainMD.getCalendar(), plainMD);
                 case calendar:
                     return plainMD.getCalendar();
-
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
         }
 
-        @Specialization(guards = "isJSTemporalMonthDay(thisObj)")
+        @Specialization(guards = "!isJSTemporalMonthDay(thisObj)")
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
         }

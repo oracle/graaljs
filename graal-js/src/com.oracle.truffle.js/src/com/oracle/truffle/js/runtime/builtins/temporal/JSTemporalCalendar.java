@@ -164,17 +164,25 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.9
     public static long calendarYear(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "year", dateLike);
+        Object result = executeFunction(calendar, YEAR, dateLike);
+        if (result == Undefined.instance) {
+            throw Errors.createRangeError("");
+        }
+        return TemporalUtil.toIntegerOrInfinity(result);
     }
 
     // 12.1.10
     public static long calendarMonth(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "month", dateLike);
+        Object result = executeFunction(calendar, MONTH, dateLike);
+        if (result == Undefined.instance) {
+            throw Errors.createRangeError("");
+        }
+        return TemporalUtil.toIntegerOrInfinity(result);
     }
 
     // 12.1.11
     public static String calendarMonthCode(DynamicObject calendar, DynamicObject dateLike) {
-        Object result = executeFunction(calendar, "monthCode", dateLike);
+        Object result = executeFunction(calendar, MONTH_CODE, dateLike);
         if (result == Undefined.instance) {
             throw Errors.createRangeError("");
         }
@@ -183,47 +191,51 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
 
     // 12.1.12
     public static long calendarDay(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "day", dateLike);
+        Object result = executeFunction(calendar, DAY, dateLike);
+        if (result == Undefined.instance) {
+            throw Errors.createRangeError("");
+        }
+        return TemporalUtil.toIntegerOrInfinity(result);
     }
 
     // 12.1.13
-    public static long calendarDayOfWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "dayOfWeek", dateLike);
+    public static Object calendarDayOfWeek(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "dayOfWeek", dateLike);
     }
 
     // 12.1.14
-    public static long calendarDayOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "dayOfYear", dateLike);
+    public static Object calendarDayOfYear(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "dayOfYear", dateLike);
     }
 
     // 12.1.15
-    public static long calendarWeekOfYear(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "weekOfYear", dateLike);
+    public static Object calendarWeekOfYear(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "weekOfYear", dateLike);
     }
 
     // 12.1.16
-    public static long calendarDaysInWeek(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "daysInWeek", dateLike);
+    public static Object calendarDaysInWeek(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "daysInWeek", dateLike);
     }
 
     // 12.1.17
-    public static long calendarDaysInMonth(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "daysInMonth", dateLike);
+    public static Object calendarDaysInMonth(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "daysInMonth", dateLike);
     }
 
     // 12.1.18
-    public static long calendarDaysInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "daysInYear", dateLike);
+    public static Object calendarDaysInYear(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "daysInYear", dateLike);
     }
 
     // 12.1.19
-    public static long calendarMonthsInYear(DynamicObject calendar, DynamicObject dateLike) {
-        return (long) executeFunction(calendar, "monthsInYear", dateLike);
+    public static Object calendarMonthsInYear(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "monthsInYear", dateLike);
     }
 
     // 12.1.20
-    public static boolean calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
-        return (boolean) executeFunction(calendar, "inLeapYear", dateLike);
+    public static Object calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
+        return executeFunction(calendar, "inLeapYear", dateLike);
     }
 
     // 12.1.24

@@ -52,12 +52,10 @@ public final class JSTemporalDurationRecord {
     private final long nanoseconds;
 
     private final long weeks;
-    @SuppressWarnings("unused") private final boolean hasWeeks;
     private final double remainder;
-    private final boolean hasRemainder;
 
     private JSTemporalDurationRecord(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds, long weeks,
-                    boolean hasWeeks, double remainder, boolean hasRemainder) {
+                    double remainder) {
         this.years = years;
         this.months = months;
         this.days = days;
@@ -67,30 +65,27 @@ public final class JSTemporalDurationRecord {
         this.milliseconds = milliseconds;
         this.microseconds = microseconds;
         this.nanoseconds = nanoseconds;
-
         this.weeks = weeks;
-        this.hasWeeks = hasWeeks;
         this.remainder = remainder;
-        this.hasRemainder = hasRemainder;
     }
 
     public static JSTemporalDurationRecord create(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
-        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, false, 0, false);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, 0);
     }
 
     public static JSTemporalDurationRecord createWeeks(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds) {
-        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, true, 0, false);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, 0);
     }
 
     public static JSTemporalDurationRecord createRemainder(long years, long months, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, double remainder) {
-        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, false, remainder, true);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0, remainder);
     }
 
     public static JSTemporalDurationRecord createWeeksRemainder(long years, long months, long weeks, long days, long hours, long minutes, long seconds, long milliseconds, long microseconds,
                     long nanoseconds, double remainder) {
-        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, true, remainder, true);
+        return new JSTemporalDurationRecord(years, months, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, weeks, remainder);
     }
 
     public long getYears() {
@@ -130,12 +125,10 @@ public final class JSTemporalDurationRecord {
     }
 
     public long getWeeks() {
-        // assert hasWeeks; //TODO?
         return weeks;
     }
 
     public double getRemainder() {
-        assert hasRemainder;
         return remainder;
     }
 

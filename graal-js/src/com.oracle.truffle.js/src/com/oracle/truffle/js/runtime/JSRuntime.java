@@ -571,6 +571,7 @@ public final class JSRuntime {
         }
     }
 
+    @TruffleBoundary
     public static BigInt toBigIntSpec(Object value) {
         Object primitive = toPrimitive(value, HINT_NUMBER);
         if (primitive instanceof Number) {

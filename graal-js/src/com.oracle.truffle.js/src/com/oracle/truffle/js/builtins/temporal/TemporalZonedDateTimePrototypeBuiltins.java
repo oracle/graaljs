@@ -46,6 +46,7 @@ import java.math.BigInteger;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -58,7 +59,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -133,13 +133,14 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             this.property = property;
         }
 
+        @TruffleBoundary
         @Specialization(guards = "isJSTemporalZonedDateTime(thisObj)")
-        protected BigInt ZonedDateTimeGetter(Object thisObj) {
-            JSTemporalZonedDateTimeObject ZonedDateTime = (JSTemporalZonedDateTimeObject) thisObj;
-            BigInteger ns = ZonedDateTime.getNanoseconds().bigIntegerValue();
+        protected Object zonedDateTimeGetter(Object thisObj) {
+            JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) thisObj;
+            BigInteger ns = zonedDateTime.getNanoseconds().bigIntegerValue();
             switch (property) {
                 case calendar:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000_000L)));
+                    return zonedDateTime.getCalendar();
 
             }
             CompilerDirectives.transferToInterpreter();

@@ -252,7 +252,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.shouldNotReachHere();
         }
 
-        @Specialization(guards = "isJSTemporalDuration(thisObj)")
+        @Specialization(guards = "!isJSTemporalDuration(thisObj)")
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalDurationExpected();
         }
@@ -334,11 +334,10 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject add(DynamicObject thisObj, Object other, Object options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
-                            isObject, toString, toInt);
+                            isObject, toString);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             JSTemporalDurationRecord result = TemporalUtil.addDuration(getContext(), namesNode, duration.getYears(), duration.getMonths(),
@@ -366,11 +365,10 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected DynamicObject subtract(DynamicObject thisObj, Object other, Object options,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
             JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
-                            isObject, toString, toInt);
+                            isObject, toString);
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             JSTemporalDurationRecord result = TemporalUtil.addDuration(getContext(), namesNode, duration.getYears(), duration.getMonths(),
@@ -438,10 +436,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit,
                             relativeTo);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode,
-                            unbalanceResult.getYears(),
-                            unbalanceResult.getMonths(),
-                            unbalanceResult.getWeeks(),
-                            unbalanceResult.getDays(),
+                            unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(), unbalanceResult.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
                             roundingMode, relativeTo);
@@ -452,12 +447,12 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDurationRelative(
                             getContext(), adjustResult.getYears(), adjustResult.getMonths(), adjustResult.getWeeks(),
                             adjustResult.getDays(), largestUnit, relativeTo);
-            // TODO: Check if relativeTo has InitializedTemporalZonedDateTime 7.3.22.22
+            if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+                relativeTo = TemporalUtil.moveRelativeZonedDateTime(getContext(), relativeTo, balanceResult.getYears(), balanceResult.getMonths(), balanceResult.getWeeks(), 0);
+            }
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(getContext(), namesNode,
-                            balanceResult.getDays(),
-                            adjustResult.getHours(), adjustResult.getMinutes(), adjustResult.getSeconds(),
-                            adjustResult.getMilliseconds(), adjustResult.getMicroseconds(), adjustResult.getNanoseconds(),
-                            largestUnit, relativeTo);
+                            balanceResult.getDays(), adjustResult.getHours(), adjustResult.getMinutes(), adjustResult.getSeconds(), adjustResult.getMilliseconds(), adjustResult.getMicroseconds(),
+                            adjustResult.getNanoseconds(), largestUnit, relativeTo);
             return JSTemporalDuration.create(getContext(),
                             balanceResult.getYears(), balanceResult.getMonths(), balanceResult.getWeeks(),
                             result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(),
@@ -465,7 +460,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-// 7.3.21
+    // 7.3.21
     public abstract static class JSTemporalDurationTotal extends JSBuiltinNode {
 
         protected JSTemporalDurationTotal(JSContext context, JSBuiltin builtin) {
@@ -488,29 +483,14 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, relativeTo);
             DynamicObject intermediate = Undefined.instance;
-            // TODO: Check if relative has InitializedTemporalZonedDateTime. If yes
-            // intermediate = moveRelativeZonedDateTime()
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode,
-                            unbalanceResult.getDays(),
-                            unbalanceResult.getHours(),
-                            unbalanceResult.getMinutes(),
-                            unbalanceResult.getSeconds(),
-                            unbalanceResult.getMilliseconds(),
-                            unbalanceResult.getMicroseconds(),
-                            unbalanceResult.getNanoseconds(),
-                            unit, intermediate);
-            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode,
-                            unbalanceResult.getYears(),
-                            unbalanceResult.getMonths(),
-                            unbalanceResult.getWeeks(),
-                            balanceResult.getDays(),
-                            balanceResult.getHours(),
-                            balanceResult.getMinutes(),
-                            balanceResult.getSeconds(),
-                            balanceResult.getMilliseconds(),
-                            balanceResult.getMicroseconds(),
-                            balanceResult.getNanoseconds(),
-                            1, unit, TRUNC, relativeTo);
+            if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
+                intermediate = TemporalUtil.moveRelativeZonedDateTime(getContext(), relativeTo, unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(), 0);
+            }
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, unbalanceResult.getDays(), unbalanceResult.getHours(), unbalanceResult.getMinutes(),
+                            unbalanceResult.getSeconds(), unbalanceResult.getMilliseconds(), unbalanceResult.getMicroseconds(), unbalanceResult.getNanoseconds(), unit, intermediate);
+            JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
+                            balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
+                            balanceResult.getNanoseconds(), 1, unit, TRUNC, relativeTo);
             long whole = 0;
             if (unit.equals(YEAR)) {
                 whole = roundResult.getYears();

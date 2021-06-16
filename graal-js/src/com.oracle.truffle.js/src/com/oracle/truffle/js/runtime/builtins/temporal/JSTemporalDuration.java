@@ -63,7 +63,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -159,13 +158,13 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
     // region Abstract methods
     // 7.2.1
-    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToIntegerAsLongNode toInt, JSToStringNode toString) {
+    public static DynamicObject toTemporalDuration(Object item, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
         JSTemporalDurationRecord result;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalDuration(item)) {
                 return (DynamicObject) item;
             }
-            result = toTemporalDurationRecord((DynamicObject) item, isObject, toInt);
+            result = toTemporalDurationRecord((DynamicObject) item);
         } else {
             String string = toString.executeString(item);
             result = parseTemporalDurationString(string);
@@ -282,8 +281,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     // 7.5.2
-    public static JSTemporalDurationRecord toTemporalDurationRecord(DynamicObject temporalDurationLike, IsObjectNode isObject, JSToIntegerAsLongNode toInt) {
-        assert isObject.executeBoolean(temporalDurationLike);
+    @TruffleBoundary
+    public static JSTemporalDurationRecord toTemporalDurationRecord(DynamicObject temporalDurationLike) {
         if (isJSTemporalDuration(temporalDurationLike)) {
             JSTemporalDurationObject d = (JSTemporalDurationObject) temporalDurationLike;
             return JSTemporalDurationRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
@@ -305,8 +304,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             if (val != Undefined.instance) {
                 any = true;
             }
-            long lVal = toInt.executeLong(val);
-            // TODO check for integer property before converting!
+            Number n = JSRuntime.toNumber(val);
+            if (!Double.isNaN(n.doubleValue()) && !JSRuntime.doubleIsRepresentableAsLong(n.doubleValue())) {
+                throw Errors.createRangeError("integer value expected");
+            }
+            long lVal = n.longValue();
             switch (property) {
                 case YEARS:
                     year = lVal;
@@ -427,8 +429,10 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             }
             String decimalPart = millisecondPart + microsecondPart + nanosecondPart;
             if (AUTO.equals(precision)) {
-                // TODO Set decimalPart to the longest possible substring of decimalPart starting at
-                // position 0 and not ending with the code unit 0x0030 (DIGIT ZERO).
+                int last = decimalPart.lastIndexOf("0");
+                if (last >= 0) {
+                    decimalPart = decimalPart.substring(0, last);
+                }
             } else {
                 Number n = (Number) precision;
                 decimalPart = decimalPart.substring(0, Math.min(decimalPart.length(), n.intValue()));

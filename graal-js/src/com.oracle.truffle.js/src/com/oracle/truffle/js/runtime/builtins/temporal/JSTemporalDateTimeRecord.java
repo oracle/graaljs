@@ -140,18 +140,6 @@ public class JSTemporalDateTimeRecord {
         return weeks;
     }
 
-    @SuppressWarnings("static-method")
-    public Object getTimeZoneOffset() {
-        // TODO Auto-generated method stub
-        return null;
-    }
-
-    @SuppressWarnings("static-method")
-    public Object getTimeZoneIANAName() {
-        // TODO Auto-generated method stub
-        return Undefined.instance;
-    }
-
     public boolean hasCalendar() {
         return hasCalendar && calendar != Undefined.instance;
     }

@@ -153,16 +153,20 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // region Abstract methods
 
     // 4.5.2
-    public static Object toTemporalTime(Object item, String overflowParam, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
+    public static DynamicObject toTemporalTime(Object item, String overflowParam, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
         String overflow = overflowParam == null ? TemporalConstants.CONSTRAIN : overflowParam;
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
         JSTemporalDurationRecord result2 = null;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalPlainTime(item)) {
-                return item;
-            }
-            // TODO 3.b If item has an [[InitializedTemporalZonedDateTime]] internal slot, then
-            if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
+                return (DynamicObject) item;
+            } else if (TemporalUtil.isTemporalZonedDateTime(item)) {
+                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
+                JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
+                JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
+                return TemporalUtil.createTemporalTime(ctx, plainDateTime.getHours(), plainDateTime.getMinutes(),
+                                plainDateTime.getSeconds(), plainDateTime.getMilliseconds(), plainDateTime.getMicroseconds(), plainDateTime.getNanoseconds());
+            } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 TemporalDateTime dt = (TemporalDateTime) item;
                 return TemporalUtil.createTemporalTime(ctx, dt.getHours(), dt.getMinutes(), dt.getSeconds(), dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds());
             }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -442,5 +443,15 @@ public final class Boundaries {
     @TruffleBoundary
     public static boolean setContains(Set<?> set, Object element) {
         return set.contains(element);
+    }
+
+    @TruffleBoundary
+    public static long longValue(Number num) {
+        return num.longValue();
+    }
+
+    @TruffleBoundary
+    public static BigInteger bigIntegerValueOf(long ns) {
+        return BigInteger.valueOf(ns);
     }
 }

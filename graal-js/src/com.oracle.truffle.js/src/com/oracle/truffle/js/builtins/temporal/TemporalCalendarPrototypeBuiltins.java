@@ -80,7 +80,6 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -225,7 +224,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.shouldNotReachHere();
         }
 
-        @Specialization(guards = "isJSTemporalCalendar(thisObj)")
+        @Specialization(guards = "!isJSTemporalCalendar(thisObj)")
         protected static int error(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
         }
@@ -322,14 +321,13 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         public Object dateAdd(Object thisObj, Object dateObj, Object durationObj, Object optionsParam,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString,
-                        @Cached("create()") JSToIntegerAsLongNode toInt) {
+                        @Cached("create()") JSToStringNode toString) {
             JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(dateObj,
                             Undefined.instance, getContext(), isObject, toBoolean, toString);
             JSTemporalDurationObject duration = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(
-                            durationObj, getContext(), isObject, toInt, toString);
+                            durationObj, getContext(), isObject, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
             JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getISOYear(), date.getISOMonth(), date.getISODay(),
