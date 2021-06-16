@@ -662,7 +662,7 @@ public class Parser extends AbstractParser {
 
     private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final int functionFlags, final int functionLine,
                     final List<IdentNode> parameters, int functionLength, Scope functionTopScope) {
-        final ParserContextFunctionNode parentFunction = lc.getCurrentFunction();
+        final ParserContextFunctionNode parentFunction = lc.getCurrentFunctionFlagsReceiver();
 
         final String name = ident == null ? "" : ident.getName();
 
@@ -673,6 +673,8 @@ public class Parser extends AbstractParser {
         if (parentFunction == null) {
             flags |= FunctionNode.IS_PROGRAM;
             flags |= FunctionNode.IS_ANONYMOUS;
+        } else {
+            parentFunction.setFlag(FunctionNode.HAS_CLOSURES);
         }
 
         final Scope parentScope = lc.getCurrentScope();

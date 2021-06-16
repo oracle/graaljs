@@ -165,6 +165,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public static final int IS_PROGRAM = 1 << 13;
 
+    /** Does this function have closures? */
+    public static final int HAS_CLOSURES = 1 << 14;
+
     /** Does this function use the "this" keyword? */
     public static final int USES_THIS = 1 << 15;
 
@@ -235,7 +238,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      * propagated to the enclosing function if the expression ends up not being an arrow function.
      */
     public static final int ARROW_HEAD_FLAGS = USES_THIS | USES_ARGUMENTS | USES_SUPER |
-                    HAS_EVAL | HAS_ARROW_EVAL | HAS_NESTED_EVAL | HAS_SCOPE_BLOCK;
+                    HAS_EVAL | HAS_ARROW_EVAL | HAS_NESTED_EVAL | HAS_SCOPE_BLOCK | HAS_CLOSURES;
 
     /**
      * Constructor
@@ -785,5 +788,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean isClassFieldInitializer() {
         return getFlag(IS_CLASS_FIELD_INITIALIZER);
+    }
+
+    public boolean hasClosures() {
+        return getFlag(HAS_CLOSURES);
     }
 }
