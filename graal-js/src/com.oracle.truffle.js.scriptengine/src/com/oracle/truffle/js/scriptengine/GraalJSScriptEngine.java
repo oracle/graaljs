@@ -157,119 +157,120 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         return (Boolean) value;
     }
 
-    private static final MagicBindingsOptionSetter[] MAGIC_OPTION_SETTERS = new MagicBindingsOptionSetter[]{
-                    new MagicBindingsOptionSetter() {
+    private static final MagicBindingsOptionSetter[] MAGIC_OPTION_SETTERS = new MagicBindingsOptionSetter[]{new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowHostAccess";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowHostAccess";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            return builder.allowHostAccess(toBoolean(this, value) ? HostAccess.ALL : HostAccess.NONE);
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowHostAccess(toBoolean(this, value) ? HostAccess.ALL : HostAccess.NONE);
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowNativeAccess";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowNativeAccess";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            return builder.allowNativeAccess(toBoolean(this, value));
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowNativeAccess(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowCreateThread";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowCreateThread";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            return builder.allowCreateThread(toBoolean(this, value));
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowCreateThread(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowIO";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowIO";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            return builder.allowIO(toBoolean(this, value));
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowIO(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowHostClassLookup";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowHostClassLookup";
+        }
 
-                        @SuppressWarnings("unchecked")
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            if (value instanceof Boolean) {
-                                boolean enabled = (Boolean) value;
-                                return builder.allowHostClassLookup(enabled ? s -> true : null);
-                            } else {
-                                try {
-                                    return builder.allowHostClassLookup((Predicate<String>) value);
-                                } catch (ClassCastException e) {
-                                    throw new IllegalArgumentException(
-                                                    String.format("failed to set graal-js option \"%s\": expected a boolean or Predicate<String> value, got \"%s\"", getOptionKey(), value));
-                                }
-                            }
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @SuppressWarnings("unchecked")
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            if (value instanceof Boolean) {
+                boolean enabled = (Boolean) value;
+                return builder.allowHostClassLookup(enabled ? s -> true : null);
+            } else {
+                try {
+                    return builder.allowHostClassLookup((Predicate<String>) value);
+                } catch (ClassCastException e) {
+                    throw new IllegalArgumentException(String.format("failed to set graal-js option \"%s\": expected a boolean or Predicate<String> value, got \"%s\"", getOptionKey(), value));
+                }
+            }
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowHostClassLoading";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowHostClassLoading";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            return builder.allowHostClassLoading(toBoolean(this, value));
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowHostClassLoading(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "allowAllAccess";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowAllAccess";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            return builder.allowAllAccess(toBoolean(this, value));
-                        }
-                    },
-                    new MagicBindingsOptionSetter() {
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowAllAccess(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
 
-                        @Override
-                        public String getOptionKey() {
-                            return MAGIC_OPTION_PREFIX + "nashorn-compat";
-                        }
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "nashorn-compat";
+        }
 
-                        @Override
-                        public Builder setOption(Builder builder, Object value) {
-                            boolean val = toBoolean(this, value);
-                            if (val) {
-                                updateForNashornCompatibilityMode(builder);
-                            }
-                            return builder.option("js.nashorn-compat", String.valueOf(val));
-                        }
-                    }
-    };
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            boolean val = toBoolean(this, value);
+            if (val) {
+                updateForNashornCompatibilityMode(builder);
+            }
+            return builder.option("js.nashorn-compat", String.valueOf(val));
+        }
+    }, new MagicBindingsOptionSetter() {
+
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "ecmascript-version";
+        }
+
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.option("js.ecmascript-version", String.valueOf(value));
+        }
+    }};
 
     private static final EconomicSet<String> MAGIC_BINDINGS_OPTION_KEYS = EconomicSet.create();
     static final EconomicMap<String, MagicBindingsOptionSetter> MAGIC_BINDINGS_OPTION_MAP = EconomicMap.create();
