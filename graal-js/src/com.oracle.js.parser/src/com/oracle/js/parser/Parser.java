@@ -531,7 +531,7 @@ public class Parser extends AbstractParser {
             final ParserContextBlockNode body = newBlock(function.createBodyScope());
             functionDeclarations = new ArrayList<>();
             try {
-                sourceElements(0);
+                sourceElements(generator, async, 0);
                 addFunctionDeclarations(function);
             } finally {
                 functionDeclarations = null;
@@ -718,7 +718,7 @@ public class Parser extends AbstractParser {
      *
      * @return Block statements.
      */
-    private Block getBlock(final boolean needsBraces) {
+    private Block getBlock(boolean yield, boolean await, boolean needsBraces) {
         final long blockToken = token;
         final ParserContextBlockNode newBlock = newBlock();
         try {
@@ -727,7 +727,7 @@ public class Parser extends AbstractParser {
                 expect(LBRACE);
             }
             // Accumulate block statements.
-            statementList();
+            statementList(yield, await);
 
         } finally {
             restoreBlock(newBlock);
@@ -752,11 +752,11 @@ public class Parser extends AbstractParser {
     /**
      * Get the statements in a case clause.
      */
-    private List<Statement> caseStatementList() {
+    private List<Statement> caseStatementList(boolean yield, boolean await) {
         // case clauses share the same scope.
         final ParserContextBlockNode newBlock = newBlock(lc.getCurrentScope());
         try {
-            statementList();
+            statementList(yield, await);
         } finally {
             lc.pop(newBlock);
         }
@@ -768,22 +768,22 @@ public class Parser extends AbstractParser {
      *
      * @return Statements.
      */
-    private Block getStatement() {
-        return getStatement(false, false);
+    private Block getStatement(boolean yield, boolean await) {
+        return getStatement(yield, await, false, false);
     }
 
-    private Block getStatement(boolean labelledStatement, boolean mayBeFunctionDeclaration) {
-        return getStatement(labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
+    private Block getStatement(boolean yield, boolean await, boolean labelledStatement, boolean mayBeFunctionDeclaration) {
+        return getStatement(yield, await, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
     }
 
-    private Block getStatement(boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean maybeLabeledFunctionDeclaration) {
+    private Block getStatement(boolean yield, boolean await, boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean mayBeLabeledFunctionDeclaration) {
         if (type == LBRACE) {
-            return getBlock(true);
+            return getBlock(yield, await, true);
         }
         // Set up new block. Captures first token.
         final ParserContextBlockNode newBlock = newBlock();
         try {
-            statement(false, 0, true, labelledStatement, mayBeFunctionDeclaration, maybeLabeledFunctionDeclaration);
+            statement(yield, await, false, 0, true, labelledStatement, mayBeFunctionDeclaration, mayBeLabeledFunctionDeclaration);
         } finally {
             restoreBlock(newBlock);
         }
@@ -1054,7 +1054,7 @@ public class Parser extends AbstractParser {
         final ParserContextBlockNode body = newBlock(topScope);
         functionDeclarations = new ArrayList<>();
         try {
-            sourceElements(parseFlags);
+            sourceElements(false, false, parseFlags);
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;
@@ -1136,15 +1136,9 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse the elements of the script or function.
-     *
-     * <pre>
-     * SourceElements :
-     *      SourceElement
-     *      SourceElements SourceElement
-     * </pre>
+     * Parse the statements of the script, module, or function.
      */
-    private void sourceElements(final int parseFlags) {
+    private void sourceElements(boolean yield, boolean await, int parseFlags) {
         boolean checkDirective = true;
         int functionFlags = parseFlags;
         final boolean oldStrictMode = isStrictMode;
@@ -1160,7 +1154,7 @@ public class Parser extends AbstractParser {
 
                 try {
                     // Get the next element.
-                    statement(true, functionFlags, false, false, true);
+                    statement(yield, await, true, functionFlags, false, false, true);
                     functionFlags = 0;
 
                     // Check for string directive prologues like "use strict".
@@ -1301,12 +1295,12 @@ public class Parser extends AbstractParser {
      *     GeneratorDeclaration
      * </pre>
      */
-    private void statement() {
-        statement(false, 0, false, false, false);
+    private void statement(boolean yield, boolean await) {
+        statement(yield, await, false, 0, false, false, false);
     }
 
-    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
-        statement(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
+    private void statement(boolean yield, boolean await, boolean topLevel, int reparseFlags, boolean singleStatement, boolean labelledStatement, boolean mayBeFunctionDeclaration) {
+        statement(yield, await, topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
     }
 
     /**
@@ -1315,50 +1309,50 @@ public class Parser extends AbstractParser {
      *            functions or ES6 methods.
      * @param singleStatement are we in a single statement context?
      */
-    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration,
-                    final boolean maybeLabeledFunctionDeclaration) {
+    private void statement(boolean yield, boolean await,
+                    boolean topLevel, int reparseFlags, boolean singleStatement, boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean mayBeLabeledFunctionDeclaration) {
         switch (type) {
             case LBRACE:
-                block();
+                block(yield, await);
                 return;
             case VAR:
-                variableStatement(type);
+                variableStatement(type, yield, await);
                 return;
             case SEMICOLON:
                 emptyStatement();
                 return;
             case IF:
-                ifStatement();
+                ifStatement(yield, await);
                 return;
             case FOR:
-                forStatement();
+                forStatement(yield, await);
                 return;
             case WHILE:
-                whileStatement();
+                whileStatement(yield, await);
                 return;
             case DO:
-                doStatement();
+                doStatement(yield, await);
                 return;
             case CONTINUE:
-                continueStatement();
+                continueStatement(yield, await);
                 return;
             case BREAK:
-                breakStatement();
+                breakStatement(yield, await);
                 return;
             case RETURN:
-                returnStatement();
+                returnStatement(yield, await);
                 return;
             case WITH:
-                withStatement();
+                withStatement(yield, await);
                 return;
             case SWITCH:
-                switchStatement();
+                switchStatement(yield, await);
                 return;
             case THROW:
-                throwStatement();
+                throwStatement(yield, await);
                 return;
             case TRY:
-                tryStatement();
+                tryStatement(yield, await);
                 return;
             case DEBUGGER:
                 debuggerStatement();
@@ -1380,7 +1374,7 @@ public class Parser extends AbstractParser {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "function declaration"), token);
                     }
                 }
-                functionExpression(true, topLevel || labelledStatement, singleStatement);
+                functionDeclaration(true, topLevel || labelledStatement, singleStatement, yield, await, false);
                 return;
             case LET:
                 if (useBlockScope()) {
@@ -1394,7 +1388,7 @@ public class Parser extends AbstractParser {
                                 throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "let declaration"), token);
                             } // else break and call expressionStatement()
                         } else {
-                            variableStatement(type);
+                            variableStatement(type, yield, await);
                             return;
                         }
                     }
@@ -1405,10 +1399,10 @@ public class Parser extends AbstractParser {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "const declaration"), token);
                     }
-                    variableStatement(type);
+                    variableStatement(type, yield, await);
                     return;
                 } else if (env.constAsVar) {
-                    variableStatement(TokenType.VAR);
+                    variableStatement(TokenType.VAR, yield, await);
                     return;
                 }
                 break;
@@ -1417,7 +1411,7 @@ public class Parser extends AbstractParser {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "class declaration"), token);
                     }
-                    classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+                    classDeclaration(yield, await, false);
                     return;
                 }
                 break;
@@ -1426,7 +1420,7 @@ public class Parser extends AbstractParser {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "async function declaration"), token);
                     }
-                    asyncFunctionExpression(true, topLevel || labelledStatement);
+                    asyncFunctionDeclaration(true, topLevel || labelledStatement, yield, await, false);
                     return;
                 }
                 break;
@@ -1435,8 +1429,8 @@ public class Parser extends AbstractParser {
         }
 
         if (isBindingIdentifier()) {
-            if (T(k + 1) == COLON && (type != YIELD || !inGeneratorFunction()) && (!isAwait() || !inAsyncFunction())) {
-                labelStatement(maybeLabeledFunctionDeclaration);
+            if (T(k + 1) == COLON && (type != YIELD || !yield) && (!isAwait() || !await)) {
+                labelStatement(yield, await, mayBeLabeledFunctionDeclaration);
                 return;
             }
             if (reparseFlags != 0 && reparseFunctionStatement(reparseFlags)) {
@@ -1444,7 +1438,7 @@ public class Parser extends AbstractParser {
             }
         }
 
-        expressionStatement();
+        expressionStatement(yield, await);
     }
 
     private boolean reparseFunctionStatement(final int reparseFlags) {
@@ -2011,8 +2005,8 @@ public class Parser extends AbstractParser {
      *      { StatementList? }
      * </pre>
      */
-    private void block() {
-        appendStatement(new BlockStatement(line, getBlock(true)));
+    private void block(boolean yield, boolean await) {
+        appendStatement(new BlockStatement(line, getBlock(yield, await, true)));
     }
 
     /**
@@ -2024,7 +2018,7 @@ public class Parser extends AbstractParser {
      *      StatementList Statement
      * </pre>
      */
-    private void statementList() {
+    private void statementList(boolean yield, boolean await) {
         // Accumulate statements until end of the statement list.
         loop: while (type != EOF) {
             switch (type) {
@@ -2038,7 +2032,7 @@ public class Parser extends AbstractParser {
             }
 
             // Get next statement.
-            statement();
+            statement(yield, await);
         }
     }
 
@@ -2158,8 +2152,8 @@ public class Parser extends AbstractParser {
      *      = AssignmentExpression
      * </pre>
      */
-    private void variableStatement(final TokenType varType) {
-        variableDeclarationList(varType, true, -1);
+    private void variableStatement(final TokenType varType, boolean yield, boolean await) {
+        variableDeclarationList(varType, true, yield, await, -1);
     }
 
     private static final class ForVariableDeclarationListResult {
@@ -2203,10 +2197,12 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * @param isStatement {@code true} if a VariableStatement, {@code false} if a {@code for} loop
-     *            VariableDeclarationList
+     * Parse VariableDeclarationList[In, Yield, Await].
+     *
+     * @param isStatement Same as In flag; {@code true} if a VariableStatement, {@code false} if a
+     *            {@code for} loop VariableDeclarationList
      */
-    private ForVariableDeclarationListResult variableDeclarationList(final TokenType varType, final boolean isStatement, final int sourceOrder) {
+    private ForVariableDeclarationListResult variableDeclarationList(TokenType varType, boolean isStatement, boolean yield, boolean await, int sourceOrder) {
         // VAR tested in caller.
         int varStart = Token.descPosition(token);
         assert varType == VAR || varType == LET || varType == CONST;
@@ -2227,7 +2223,7 @@ public class Parser extends AbstractParser {
             final long varToken = Token.recast(token, varType);
 
             // Get name of var.
-            final Expression binding = bindingIdentifierOrPattern(VARIABLE_NAME_CONTEXT);
+            final Expression binding = bindingIdentifierOrPattern(yield, await, VARIABLE_NAME_CONTEXT);
             final boolean isDestructuring = !(binding instanceof IdentNode);
             if (isDestructuring) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
@@ -2261,7 +2257,7 @@ public class Parser extends AbstractParser {
                     pushDefaultName(binding);
                 }
                 try {
-                    init = assignmentExpression(isStatement);
+                    init = assignmentExpression(isStatement, yield, await);
                 } finally {
                     if (!isDestructuring) {
                         popDefaultName();
@@ -2426,8 +2422,8 @@ public class Parser extends AbstractParser {
         return identifier(yield, await, "IdentifierReference", false);
     }
 
-    private IdentNode labelIdentifier() {
-        return identifier(inGeneratorFunction(), inAsyncFunction(), "LabelIdentifier", false);
+    private IdentNode labelIdentifier(boolean yield, boolean await) {
+        return identifier(yield, await, "LabelIdentifier", false);
     }
 
     private boolean isBindingIdentifier() {
@@ -2454,10 +2450,6 @@ public class Parser extends AbstractParser {
         } else {
             return bindingPattern(yield, await);
         }
-    }
-
-    private Expression bindingIdentifierOrPattern(String contextString) {
-        return bindingIdentifierOrPattern(inGeneratorFunction(), inAsyncFunction(), contextString);
     }
 
     private abstract class VerifyDestructuringPatternNodeVisitor extends NodeVisitor<LexicalContext> {
@@ -2596,13 +2588,13 @@ public class Parser extends AbstractParser {
      *
      * Parse an expression used in a statement block.
      */
-    private void expressionStatement() {
+    private void expressionStatement(boolean yield, boolean await) {
         // Lookahead checked in caller.
         final int expressionLine = line;
         final long expressionToken = token;
 
         // Get expression and add as statement.
-        final Expression expression = expression();
+        final Expression expression = expression(yield, await);
 
         if (expression != null) {
             endOfLine();
@@ -2623,7 +2615,7 @@ public class Parser extends AbstractParser {
      *      if ( Expression ) Statement
      * </pre>
      */
-    private void ifStatement() {
+    private void ifStatement(boolean yield, boolean await) {
         // Capture IF token.
         final int ifLine = line;
         final long ifToken = token;
@@ -2631,14 +2623,14 @@ public class Parser extends AbstractParser {
         next();
 
         expect(LPAREN);
-        final Expression test = expression();
+        final Expression test = expression(yield, await);
         expect(RPAREN);
-        final Block pass = getStatement(false, true, false);
+        final Block pass = getStatement(yield, await, false, true, false);
 
         Block fail = null;
         if (type == ELSE) {
             next();
-            fail = getStatement(false, true, false);
+            fail = getStatement(yield, await, false, true, false);
         }
 
         appendStatement(new IfNode(ifLine, ifToken, fail != null ? fail.getFinish() : pass.getFinish(), test, pass, fail));
@@ -2647,7 +2639,7 @@ public class Parser extends AbstractParser {
     /**
      * Parse a {@code for} IterationStatement.
      */
-    private void forStatement() {
+    private void forStatement(boolean yield, boolean await) {
         final long forToken = token;
         final int forLine = line;
         // start position of this for statement. This is used
@@ -2684,7 +2676,7 @@ public class Parser extends AbstractParser {
                 flags |= ForNode.IS_FOR_EACH;
                 next();
             } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
-                if (!inAsyncFunction()) {
+                if (!await) {
                     throw error(AbstractParser.message("invalid.for.await.of"), token);
                 }
                 isForAwaitOf = true;
@@ -2698,7 +2690,7 @@ public class Parser extends AbstractParser {
                 case VAR:
                     // Var declaration captured in for outer block.
                     varType = type;
-                    varDeclList = variableDeclarationList(varType, false, forStart);
+                    varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                     break;
                 case SEMICOLON:
                     break;
@@ -2706,7 +2698,7 @@ public class Parser extends AbstractParser {
                     if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration() || type == CONST)) {
                         // LET/CONST declaration captured in container block created above.
                         varType = type;
-                        varDeclList = variableDeclarationList(varType, false, forStart);
+                        varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                         if (varType == LET) {
                             // Per-iteration scope not needed if BindingPattern is empty
                             if (!forNode.getStatements().isEmpty()) {
@@ -2718,13 +2710,13 @@ public class Parser extends AbstractParser {
                     if (env.constAsVar && type == CONST) {
                         // Var declaration captured in for outer block.
                         varType = TokenType.VAR;
-                        varDeclList = variableDeclarationList(varType, false, forStart);
+                        varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                         break;
                     }
 
                     initStartsWithLet = (type == LET);
                     initStartsWithAsyncOf = (type == ASYNC && !isForAwaitOf && lookaheadIsOf());
-                    init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
+                    init = expression(false, yield, await, true);
                     break;
             }
 
@@ -2756,11 +2748,11 @@ public class Parser extends AbstractParser {
 
                     expect(SEMICOLON);
                     if (type != SEMICOLON) {
-                        test = joinPredecessorExpression();
+                        test = joinPredecessorExpression(yield, await);
                     }
                     expect(SEMICOLON);
                     if (type != RPAREN) {
-                        modify = joinPredecessorExpression();
+                        modify = joinPredecessorExpression(yield, await);
                     }
                     break;
 
@@ -2812,7 +2804,7 @@ public class Parser extends AbstractParser {
                     next();
 
                     // For-of only allows AssignmentExpression.
-                    modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true)) : joinPredecessorExpression();
+                    modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true, yield, await)) : joinPredecessorExpression(yield, await);
                     break;
 
                 default:
@@ -2823,7 +2815,7 @@ public class Parser extends AbstractParser {
             expect(RPAREN);
 
             // Set the for body.
-            body = getStatement();
+            body = getStatement(yield, await);
         } finally {
             lc.pop(forNode);
 
@@ -2915,7 +2907,7 @@ public class Parser extends AbstractParser {
     /**
      * Parse a {@code while} IterationStatement.
      */
-    private void whileStatement() {
+    private void whileStatement(boolean yield, boolean await) {
         // Capture WHILE token.
         final long whileToken = token;
         final int whileLine = line;
@@ -2930,9 +2922,9 @@ public class Parser extends AbstractParser {
 
         try {
             expect(LPAREN);
-            test = joinPredecessorExpression();
+            test = joinPredecessorExpression(yield, await);
             expect(RPAREN);
-            body = getStatement();
+            body = getStatement(yield, await);
         } finally {
             lc.pop(whileNode);
         }
@@ -2945,7 +2937,7 @@ public class Parser extends AbstractParser {
     /**
      * Parse a {@code do while} IterationStatement.
      */
-    private void doStatement() {
+    private void doStatement(boolean yield, boolean await) {
         // Capture DO token.
         final long doToken = token;
         int doLine = 0;
@@ -2960,12 +2952,12 @@ public class Parser extends AbstractParser {
 
         try {
             // Get DO body.
-            body = getStatement();
+            body = getStatement(yield, await);
 
             expect(WHILE);
             expect(LPAREN);
             doLine = line;
-            test = joinPredecessorExpression();
+            test = joinPredecessorExpression(yield, await);
             expect(RPAREN);
 
             if (type == SEMICOLON) {
@@ -2987,7 +2979,7 @@ public class Parser extends AbstractParser {
      *      continue [no LineTerminator here] LabelIdentifier ;
      * </pre>
      */
-    private void continueStatement() {
+    private void continueStatement(boolean yield, boolean await) {
         // Capture CONTINUE token.
         final int continueLine = line;
         final long continueToken = token;
@@ -3012,7 +3004,7 @@ public class Parser extends AbstractParser {
                 if (seenEOL) {
                     break;
                 }
-                final IdentNode ident = labelIdentifier();
+                final IdentNode ident = labelIdentifier(yield, await);
                 labelNode = lc.findLabel(ident.getName());
 
                 if (labelNode == null) {
@@ -3044,7 +3036,7 @@ public class Parser extends AbstractParser {
      *      break [no LineTerminator here] LabelIdentifier ;
      * </pre>
      */
-    private void breakStatement() {
+    private void breakStatement(boolean yield, boolean await) {
         // Capture BREAK token.
         final int breakLine = line;
         final long breakToken = token;
@@ -3069,7 +3061,7 @@ public class Parser extends AbstractParser {
                 if (seenEOL) {
                     break;
                 }
-                final IdentNode ident = labelIdentifier();
+                final IdentNode ident = labelIdentifier(yield, await);
                 labelNode = lc.findLabel(ident.getName());
 
                 if (labelNode == null) {
@@ -3102,7 +3094,7 @@ public class Parser extends AbstractParser {
      *      return [no LineTerminator here] Expression ;
      * </pre>
      */
-    private void returnStatement() {
+    private void returnStatement(boolean yield, boolean await) {
         // check for return outside function
         if (lc.getCurrentFunction().isScriptOrModule()) {
             throw error(AbstractParser.message("invalid.return"));
@@ -3132,7 +3124,7 @@ public class Parser extends AbstractParser {
                 if (seenEOL) {
                     break;
                 }
-                expression = expression();
+                expression = expression(yield, await);
                 break;
         }
 
@@ -3153,7 +3145,7 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private Expression yieldExpression(boolean in, boolean await) {
-        assert inGeneratorFunction() && isES6();
+        assert isES6();
         // Capture YIELD token.
         long yieldToken = token;
         // YIELD tested in caller.
@@ -3199,14 +3191,15 @@ public class Parser extends AbstractParser {
     }
 
     private Expression awaitExpression(boolean yield) {
-        assert inAsyncFunction();
+        assert isAwait();
         // Capture await token.
         long awaitToken = token;
+
         nextOrEOL();
 
         Expression expression = unaryExpression(yield, true);
 
-        if (lc.getCurrentFunction().isModule()) {
+        if (isModule && lc.getCurrentFunction().isModule()) {
             // Top-level await module: mark the body of the module as async.
             lc.getCurrentFunction().setFlag(FunctionNode.IS_ASYNC);
         }
@@ -3226,7 +3219,7 @@ public class Parser extends AbstractParser {
      *      with ( Expression ) Statement
      * </pre>
      */
-    private void withStatement() {
+    private void withStatement(boolean yield, boolean await) {
         // Capture WITH token.
         final int withLine = line;
         final long withToken = token;
@@ -3239,9 +3232,9 @@ public class Parser extends AbstractParser {
         }
 
         expect(LPAREN);
-        final Expression expression = expression();
+        final Expression expression = expression(yield, await);
         expect(RPAREN);
-        final Block body = getStatement();
+        final Block body = getStatement(yield, await);
 
         appendStatement(new WithNode(withLine, withToken, finish, expression, body));
     }
@@ -3268,7 +3261,7 @@ public class Parser extends AbstractParser {
      *      default : StatementList?
      * </pre>
      */
-    private void switchStatement() {
+    private void switchStatement(boolean yield, boolean await) {
         final int switchLine = line;
         final long switchToken = token;
 
@@ -3294,7 +3287,7 @@ public class Parser extends AbstractParser {
         try {
             expect(LPAREN);
             int expressionLine = line;
-            Expression expression = expression();
+            Expression expression = expression(yield, await);
             expect(RPAREN);
 
             expect(LBRACE);
@@ -3319,7 +3312,7 @@ public class Parser extends AbstractParser {
                 switch (type) {
                     case CASE:
                         next();
-                        caseExpression = expression();
+                        caseExpression = expression(yield, await);
                         break;
 
                     case DEFAULT:
@@ -3338,7 +3331,7 @@ public class Parser extends AbstractParser {
                 expect(COLON);
 
                 // Get CASE body.
-                List<Statement> statements = caseStatementList();
+                List<Statement> statements = caseStatementList(yield, await);
                 final CaseNode caseNode = new CaseNode(caseToken, finish, caseExpression, statements);
 
                 if (caseExpression == null) {
@@ -3378,11 +3371,11 @@ public class Parser extends AbstractParser {
      *      Identifier : Statement
      * </pre>
      */
-    private void labelStatement(final boolean mayBeFunctionDeclaration) {
+    private void labelStatement(boolean yield, boolean await, boolean mayBeFunctionDeclaration) {
         // Capture label token.
         final long labelToken = token;
         // Get label ident.
-        final IdentNode ident = labelIdentifier();
+        final IdentNode ident = labelIdentifier(yield, await);
 
         expect(COLON);
 
@@ -3394,7 +3387,7 @@ public class Parser extends AbstractParser {
         Block body = null;
         try {
             lc.push(labelNode);
-            body = getStatement(true, mayBeFunctionDeclaration);
+            body = getStatement(yield, await, true, mayBeFunctionDeclaration);
         } finally {
             lc.pop(labelNode);
         }
@@ -3412,7 +3405,7 @@ public class Parser extends AbstractParser {
      * }
      * </pre>
      */
-    private void throwStatement() {
+    private void throwStatement(boolean yield, boolean await) {
         // Capture THROW token.
         final int throwLine = line;
         final long throwToken = token;
@@ -3429,7 +3422,7 @@ public class Parser extends AbstractParser {
                 break;
 
             default:
-                expression = expression();
+                expression = expression(yield, await);
                 break;
         }
 
@@ -3459,7 +3452,7 @@ public class Parser extends AbstractParser {
      *      finally Block
      * </pre>
      */
-    private void tryStatement() {
+    private void tryStatement(boolean yield, boolean await) {
         // Capture TRY token.
         final int tryLine = line;
         final long tryToken = token;
@@ -3472,7 +3465,7 @@ public class Parser extends AbstractParser {
         // Create try.
 
         try {
-            final Block tryBody = getBlock(true);
+            final Block tryBody = getBlock(yield, await, true);
             final ArrayList<Block> catchBlocks = new ArrayList<>();
 
             while (type == CATCH) {
@@ -3481,13 +3474,13 @@ public class Parser extends AbstractParser {
                 next();
 
                 if (type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING) {
-                    catchBlocks.add(catchBlock(catchToken, catchLine, null, null, null));
+                    catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, null, null, null));
                     break;
                 }
 
                 expect(LPAREN);
 
-                final Expression catchParameter = bindingIdentifierOrPattern(CATCH_PARAMETER_CONTEXT);
+                final Expression catchParameter = bindingIdentifierOrPattern(yield, await, CATCH_PARAMETER_CONTEXT);
                 final IdentNode exception;
                 final Expression pattern;
                 if (catchParameter instanceof IdentNode) {
@@ -3505,14 +3498,14 @@ public class Parser extends AbstractParser {
                 if (env.syntaxExtensions && type == IF) {
                     next();
                     // Get the exception condition.
-                    ifExpression = expression();
+                    ifExpression = expression(yield, await);
                 } else {
                     ifExpression = null;
                 }
 
                 expect(RPAREN);
 
-                catchBlocks.add(catchBlock(catchToken, catchLine, exception, pattern, ifExpression));
+                catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, exception, pattern, ifExpression));
 
                 // If unconditional catch then should to be the end.
                 if (ifExpression == null) {
@@ -3525,7 +3518,7 @@ public class Parser extends AbstractParser {
 
             if (type == FINALLY) {
                 next();
-                finallyStatements = getBlock(true);
+                finallyStatements = getBlock(yield, await, true);
             }
 
             // Need at least one catch or a finally.
@@ -3544,7 +3537,7 @@ public class Parser extends AbstractParser {
         appendStatement(new BlockStatement(startLine, new Block(tryToken, finish, outer.getFlags() | Block.IS_SYNTHETIC, outer.getScope(), outer.getStatements())));
     }
 
-    private Block catchBlock(final long catchToken, final int catchLine, final IdentNode exception, final Expression pattern, final Expression ifExpression) {
+    private Block catchBlock(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
         final ParserContextBlockNode catchBlock = newBlock(Scope.createCatch(lc.getCurrentScope()));
         try {
             if (exception != null) {
@@ -3566,7 +3559,7 @@ public class Parser extends AbstractParser {
             }
 
             // Get CATCH body.
-            final Block catchBody = getBlock(true);
+            final Block catchBody = getBlock(yield, await, true);
             final CatchNode catchNode = new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
             appendStatement(catchNode);
         } finally {
@@ -3700,7 +3693,7 @@ public class Parser extends AbstractParser {
         // Skip beginning of edit string expression.
         expect(LBRACE);
         // Add the following expression to arguments.
-        final List<Expression> arguments = Collections.singletonList(expression());
+        final List<Expression> arguments = Collections.singletonList(expression(false, false));
         // Skip ending of edit string expression.
         expect(RBRACE);
 
@@ -4570,7 +4563,7 @@ public class Parser extends AbstractParser {
 
             case FUNCTION:
                 // Get function expression.
-                lhs = functionExpression(false, false);
+                lhs = functionExpression();
                 break;
 
             case CLASS:
@@ -4614,7 +4607,7 @@ public class Parser extends AbstractParser {
 
             case ASYNC:
                 if (isAsync() && lookaheadIsAsyncFunction()) {
-                    lhs = asyncFunctionExpression(false, false);
+                    lhs = asyncFunctionExpression();
                     break;
                 }
                 // fall through
@@ -4813,45 +4806,63 @@ public class Parser extends AbstractParser {
         }
     }
 
-    /**
-     * <pre>
-     * AsyncFunctionExpression :
-     *     async [no LineTerminator here] function ( FormalParameters[Await] ) { AsyncFunctionBody }
-     *     async [no LineTerminator here] function BindingIdentifier[Await] ( FormalParameters[Await] ) { AsyncFunctionBody }
-     * </pre>
-     */
-    private Expression asyncFunctionExpression(final boolean isStatement, final boolean topLevel) {
+    private long expectAsyncFunction() {
         assert isAsync() && lookaheadIsAsyncFunction();
         long asyncToken = token;
         nextOrEOL();
-        return functionExpression(isStatement, topLevel, true, Token.recast(asyncToken, FUNCTION), false);
-    }
-
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel) {
-        return functionExpression(isStatement, topLevel, false, token, false);
-    }
-
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean expressionStatement) {
-        return functionExpression(isStatement, topLevel, false, token, expressionStatement);
+        return Token.recast(asyncToken, FUNCTION);
     }
 
     /**
-     * Parse function declaration.
+     * Parse async (generator) function declaration.
+     */
+    private Expression asyncFunctionDeclaration(final boolean isStatement, final boolean topLevel, boolean yield, boolean await, boolean isDefault) {
+        long functionToken = expectAsyncFunction();
+        return functionDeclarationOrExpression(functionToken, isStatement, topLevel, true, false, true, yield, await, isDefault);
+    }
+
+    /**
+     * Parse async (generator) function expression.
+     */
+    private Expression asyncFunctionExpression() {
+        long functionToken = expectAsyncFunction();
+        return functionDeclarationOrExpression(functionToken, false, false, true, false, false, false, true, true);
+    }
+
+    /**
+     * Parse (generator) function declaration.
+     */
+    private Expression functionDeclaration(final boolean isStatement, final boolean topLevel, final boolean expressionStatement, boolean yield, boolean await, boolean isDefault) {
+        return functionDeclarationOrExpression(token, isStatement, topLevel, false, expressionStatement, true, yield, await, isDefault);
+    }
+
+    /**
+     * Parse (generator) function expression.
+     */
+    private Expression functionExpression() {
+        return functionDeclarationOrExpression(token, false, false, false, false, false, false, false, true);
+    }
+
+    /**
+     * Parse (async) (generator) function declaration or expression.
      *
      * <pre>
-     * FunctionDeclaration :
+     * FunctionDeclaration[Yield, Await] :
      *      function Identifier ( FormalParameterList? ) { FunctionBody }
      *
      * FunctionExpression :
      *      function Identifier? ( FormalParameterList? ) { FunctionBody }
      * </pre>
      *
-     *
      * @param isStatement true if parsing in a statement context.
-     *
-     * @return Expression node.
+     * @param isDeclaration True if parsing a declaration, false if parsing an expression.
+     * @param isYield Yield if parsing a declaration, otherwise ignored.
+     * @param isAwait Await if parsing a declaration, otherwise ignored.
+     * @param isDefault Default if parsing a declaration, otherwise ignored.
+     * @return the function.
      */
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean async, final long functionToken, final boolean expressionStatement) {
+    private Expression functionDeclarationOrExpression(long functionToken, boolean isStatement, boolean topLevel, boolean async,
+                    boolean expressionStatement, boolean isDeclaration, boolean isYield, boolean isAwait, boolean isDefault) {
         final int functionLine = line;
         // FUNCTION is tested in caller.
         assert type == FUNCTION;
@@ -4869,10 +4880,10 @@ public class Parser extends AbstractParser {
         IdentNode name = null;
 
         if (isBindingIdentifier()) {
-            boolean yield = (!isStatement && generator) || (isStatement && inGeneratorFunction());
-            boolean await = (!isStatement && async) || (isStatement && inAsyncFunction());
+            boolean yield = (!isDeclaration && generator) || (isDeclaration && isYield);
+            boolean await = (!isDeclaration && async) || (isDeclaration && isAwait);
             name = bindingIdentifier(yield, await, "function name");
-        } else if (isStatement) {
+        } else if (isDeclaration && !isDefault) {
             // Nashorn extension: anonymous function statements.
             // Do not allow anonymous function statement if extensions
             // are not allowed. But if we are reparsing then anon function
@@ -5224,6 +5235,8 @@ public class Parser extends AbstractParser {
      * @return function node (body.)
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
+        final boolean yield = functionNode.isGenerator();
+        final boolean await = functionNode.isAsync() || (isTopLevelAwait() && isModule && functionNode.isModule());
         final long bodyToken = token;
         final int bodyFinish;
         final boolean parseBody;
@@ -5240,7 +5253,7 @@ public class Parser extends AbstractParser {
                 // print(square(3));
 
                 // just expression as function body
-                final Expression expr = assignmentExpression(true);
+                final Expression expr = assignmentExpression(true, yield, await);
                 long lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
                 assert lc.getCurrentBlock().getScope().isFunctionBodyScope();
@@ -5266,7 +5279,7 @@ public class Parser extends AbstractParser {
                     final List<Statement> prevFunctionDecls = functionDeclarations;
                     functionDeclarations = new ArrayList<>();
                     try {
-                        sourceElements(0);
+                        sourceElements(yield, await, 0);
                         addFunctionDeclarations(functionNode);
                     } finally {
                         functionDeclarations = prevFunctionDecls;
@@ -5645,13 +5658,12 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private Expression expression() {
-        // Include commas in expression parsing.
-        return expression(true, inGeneratorFunction(), inAsyncFunction());
-    }
-
     private Expression expression(boolean in, boolean yield, boolean await) {
         return expression(in, yield, await, false);
+    }
+
+    private Expression expression(boolean yield, boolean await) {
+        return expression(true, yield, await);
     }
 
     private Expression expression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
@@ -5754,8 +5766,8 @@ public class Parser extends AbstractParser {
         return expression(unaryExpression(yield, await), minPrecedence, in, yield, await);
     }
 
-    private JoinPredecessorExpression joinPredecessorExpression() {
-        return new JoinPredecessorExpression(expression());
+    private JoinPredecessorExpression joinPredecessorExpression(boolean yield, boolean await) {
+        return new JoinPredecessorExpression(expression(yield, await));
     }
 
     private Expression expression(Expression exprLhs, int minPrecedence, boolean in, boolean yield, boolean await) {
@@ -5806,10 +5818,6 @@ public class Parser extends AbstractParser {
         }
 
         return lhs;
-    }
-
-    private Expression assignmentExpression(boolean in) {
-        return assignmentExpression(in, inGeneratorFunction(), inAsyncFunction(), false);
     }
 
     private Expression assignmentExpression(boolean in, boolean yield, boolean await) {
@@ -6378,10 +6386,15 @@ public class Parser extends AbstractParser {
                     // fall through
                 default:
                     // StatementListItem
-                    statement(true, 0, false, false, false);
+                    boolean await = isTopLevelAwait();
+                    statement(false, await, true, 0, false, false, false);
                     break;
             }
         }
+    }
+
+    private boolean isTopLevelAwait() {
+        return isES2021() && ES2021_TOP_LEVEL_AWAIT;
     }
 
     private boolean isImportExpression() {
@@ -6408,6 +6421,10 @@ public class Parser extends AbstractParser {
 
     private void declareImportStarBinding(IdentNode ident) {
         declareImportBinding(ident, true);
+    }
+
+    private IdentNode importedBindingIdentifier() {
+        return bindingIdentifier(false, isTopLevelAwait(), IMPORTED_BINDING_CONTEXT);
     }
 
     /**
@@ -6458,7 +6475,7 @@ public class Parser extends AbstractParser {
                 importEntries = convert(namedImportsNode);
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
-                IdentNode importedDefaultBinding = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
+                IdentNode importedDefaultBinding = importedBindingIdentifier();
                 declareImportBinding(importedDefaultBinding);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
 
@@ -6514,7 +6531,7 @@ public class Parser extends AbstractParser {
 
         expect(AS);
 
-        IdentNode localNameSpace = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
+        IdentNode localNameSpace = importedBindingIdentifier();
         declareImportStarBinding(localNameSpace);
         return new NameSpaceImportNode(startToken, Token.descPosition(startToken), finish, localNameSpace);
     }
@@ -6546,7 +6563,7 @@ public class Parser extends AbstractParser {
             IdentNode importName = getIdentifierName();
             if (type == AS) {
                 next();
-                IdentNode localName = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
+                IdentNode localName = importedBindingIdentifier();
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 declareImportBinding(localName);
             } else if (bindingIdentifier) {
@@ -6607,6 +6624,8 @@ public class Parser extends AbstractParser {
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
         expect(EXPORT);
+        final boolean yield = false;
+        final boolean await = isTopLevelAwait();
         switch (type) {
             case MUL: {
                 next();
@@ -6643,20 +6662,20 @@ public class Parser extends AbstractParser {
                 boolean hoistableDeclaration = false;
                 switch (type) {
                     case FUNCTION:
-                        assignmentExpression = functionExpression(false, true);
+                        assignmentExpression = functionDeclaration(false, true, false, yield, await, true);
                         hoistableDeclaration = true;
                         break;
                     case CLASS:
-                        assignmentExpression = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, true);
+                        assignmentExpression = classDeclaration(yield, await, true);
                         ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
                     default:
                         if (isAsync() && lookaheadIsAsyncFunction()) {
-                            assignmentExpression = asyncFunctionExpression(false, true);
+                            assignmentExpression = asyncFunctionDeclaration(false, true, yield, await, true);
                             hoistableDeclaration = true;
                             break;
                         }
-                        assignmentExpression = assignmentExpression(true, false, isES2021() && ES2021_TOP_LEVEL_AWAIT);
+                        assignmentExpression = assignmentExpression(true, yield, await);
                         endOfLine();
                         break;
                 }
@@ -6690,7 +6709,7 @@ public class Parser extends AbstractParser {
             case CONST: {
                 List<Statement> statements = lc.getCurrentBlock().getStatements();
                 int previousEnd = statements.size();
-                variableStatement(type);
+                variableStatement(type, yield, await);
                 for (Statement statement : statements.subList(previousEnd, statements.size())) {
                     if (statement instanceof VarNode) {
                         VarNode varNode = (VarNode) statement;
@@ -6700,18 +6719,18 @@ public class Parser extends AbstractParser {
                 break;
             }
             case CLASS: {
-                ClassNode classDeclaration = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, false);
+                ClassNode classDeclaration = classDeclaration(yield, await, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
             }
             case FUNCTION: {
-                FunctionNode functionDeclaration = (FunctionNode) functionExpression(true, true);
+                FunctionNode functionDeclaration = (FunctionNode) functionDeclaration(true, true, false, yield, await, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration.getIdent(), functionDeclaration, false));
                 break;
             }
             default:
                 if (isAsync() && lookaheadIsAsyncFunction()) {
-                    FunctionNode functionDeclaration = (FunctionNode) asyncFunctionExpression(true, true);
+                    FunctionNode functionDeclaration = (FunctionNode) asyncFunctionDeclaration(true, true, yield, await, false);
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration.getIdent(), functionDeclaration, false));
                     break;
                 }
@@ -6880,31 +6899,6 @@ public class Parser extends AbstractParser {
         return false;
     }
 
-    private boolean inGeneratorFunction() {
-        if (!ES6_GENERATOR_FUNCTION) {
-            return false;
-        }
-        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-        return currentFunction != null && currentFunction.isGenerator();
-    }
-
-    private boolean inAsyncFunction() {
-        if (!ES8_ASYNC_FUNCTION) {
-            return false;
-        }
-        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-        if (currentFunction == null) {
-            return false;
-        }
-        boolean isAsync = currentFunction.isAsync();
-        if (isAsync) {
-            return true;
-        } else if (ES2021_TOP_LEVEL_AWAIT && isES2021()) {
-            return isModule && currentFunction.isModule();
-        }
-        return isAsync;
-    }
-
     private boolean isAwait() {
         return ES8_ASYNC_FUNCTION && isES2017() && type == AWAIT;
     }
@@ -6977,7 +6971,7 @@ public class Parser extends AbstractParser {
             prepareLexer(0, source.getLength());
             scanFirstToken();
 
-            return expression();
+            return expression(false, false);
         } catch (final Exception e) {
             handleParseException(e);
 
