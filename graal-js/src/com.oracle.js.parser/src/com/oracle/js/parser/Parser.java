@@ -106,6 +106,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -3161,6 +3162,9 @@ public class Parser extends AbstractParser {
         long yieldToken = token;
         // YIELD tested in caller.
         assert type == YIELD;
+
+        recordYieldOrAwait();
+
         nextOrEOL();
 
         Expression expression = null;
@@ -3206,6 +3210,8 @@ public class Parser extends AbstractParser {
         // Capture await token.
         long awaitToken = token;
 
+        recordYieldOrAwait();
+
         nextOrEOL();
 
         Expression expression = unaryExpression(yield, true);
@@ -3220,6 +3226,30 @@ public class Parser extends AbstractParser {
 
     private static UnaryNode newUndefinedLiteral(long token, int finish) {
         return new UnaryNode(Token.recast(token, VOID), LiteralNode.newInstance(token, finish, 0));
+    }
+
+    /**
+     * It is an early SyntaxError if arrow parameter list contains yield or await. We cannot detect
+     * this immediately due to grammar ambiguity, so we only record the potential error to be thrown
+     * later once the ambiguity is resolved.
+     */
+    private void recordYieldOrAwait() {
+        long yieldOrAwaitToken = token;
+        assert Token.descType(yieldOrAwaitToken) == YIELD || Token.descType(yieldOrAwaitToken) == AWAIT;
+        for (Iterator<ParserContextFunctionNode> iterator = lc.getFunctions(); iterator.hasNext();) {
+            ParserContextFunctionNode fn = iterator.next();
+            if (fn.isCoverArrowHead()) {
+                // Only record the first yield or await.
+                if (fn.getYieldOrAwaitInParameters() == 0L) {
+                    fn.setYieldOrAwaitInParameters(yieldOrAwaitToken);
+                } else {
+                    // We can stop here, all the remaining parents have seen a yield/await already.
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
     }
 
     /**
@@ -5801,6 +5831,9 @@ public class Parser extends AbstractParser {
 
     private void commitArrowHead(ParserContextFunctionNode cover) {
         assert coverArrowFunction == null;
+        if (cover.getYieldOrAwaitInParameters() != 0L) {
+            throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), cover.getYieldOrAwaitInParameters());
+        }
         coverArrowFunction = cover;
     }
 
@@ -6044,22 +6077,6 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private void verifyContainsNeitherYieldNorAwaitExpression(Expression expression) {
-        expression.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
-            @Override
-            public boolean enterUnaryNode(UnaryNode unaryNode) {
-                switch (unaryNode.tokenType()) {
-                    case AWAIT:
-                    case YIELD:
-                    case YIELD_STAR:
-                        throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), unaryNode.getToken());
-                    default:
-                        return super.enterUnaryNode(unaryNode);
-                }
-            }
-        });
-    }
-
     private void convertArrowFunctionParameterList(Expression paramList, ParserContextFunctionNode function) {
         Expression paramListExpr = paramList;
         if (paramListExpr instanceof ExpressionList) {
@@ -6070,7 +6087,6 @@ public class Parser extends AbstractParser {
             // empty parameter list, i.e. () =>
             return;
         }
-        verifyContainsNeitherYieldNorAwaitExpression(paramListExpr);
         final int functionLine = function.getLineNumber();
         if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
             convertArrowParameter(paramListExpr, 0, functionLine, function);
@@ -6102,9 +6118,10 @@ public class Parser extends AbstractParser {
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode) param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
-            if (ident.isParenthesized() || currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
+            if (ident.isParenthesized()) {
                 throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
             }
+            assert !(currentFunction.isAsync() && AWAIT.getName().equals(ident.getName()));
             currentFunction.addParameter(ident);
             return;
         }
@@ -6113,11 +6130,7 @@ public class Parser extends AbstractParser {
             Expression lhs = ((BinaryNode) param).getLhs();
             long paramToken = lhs.getToken();
             Expression initializer = ((BinaryNode) param).getRhs();
-            if (initializer instanceof IdentNode) {
-                if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
-                    throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
-                }
-            }
+            assert !(initializer instanceof IdentNode && currentFunction.isAsync() && AWAIT.getName().equals(((IdentNode) initializer).getName()));
             if (lhs instanceof IdentNode && !lhs.isParenthesized()) {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;

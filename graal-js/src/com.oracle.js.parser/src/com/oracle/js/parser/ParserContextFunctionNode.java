@@ -102,6 +102,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      * ambiguity is resolved, the flag is cleared.
      */
     private boolean coverArrowHead;
+    private long yieldOrAwaitInParameters;
 
     private Module module;
     private String internalName;
@@ -582,6 +583,16 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public void setCoverArrowHead(boolean coverArrowHead) {
         this.coverArrowHead = coverArrowHead;
+    }
+
+    public void setYieldOrAwaitInParameters(long yieldOrAwaitInParameters) {
+        // Record only the first yield or await token.
+        assert this.yieldOrAwaitInParameters == 0L;
+        this.yieldOrAwaitInParameters = yieldOrAwaitInParameters;
+    }
+
+    public long getYieldOrAwaitInParameters() {
+        return yieldOrAwaitInParameters;
     }
 
     /**
