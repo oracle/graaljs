@@ -22,6 +22,8 @@ These options are:
 * `polyglot.js.allowHostClassLookup <boolean or Predicate<String>>`
 * `polyglot.js.allowHostClassLoading <boolean>`
 * `polyglot.js.allowAllAccess <boolean>`
+* `polyglot.js.nashorn-compat <boolean>`
+* `polyglot.js.ecmascript-version <String>`
 
 These options control the sandboxing rules applied to evaluated JavaScript code and are set to `false` by default, unless the application was started in the Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
