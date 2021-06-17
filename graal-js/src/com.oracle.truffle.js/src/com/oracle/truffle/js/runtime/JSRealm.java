@@ -63,9 +63,12 @@ import org.graalvm.options.OptionValues;
 
 import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.SimpleDateFormat;
+import com.ibm.icu.text.TimeZoneFormat;
+import com.ibm.icu.text.TimeZoneNames;
 import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
+import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -2561,8 +2564,13 @@ public class JSRealm {
 
     @TruffleBoundary
     private DateFormat createDateFormat(String pattern, boolean local) {
-        DateFormat format = new SimpleDateFormat(pattern, Locale.US);
+        SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
         format.setTimeZone(local ? getLocalTimeZone() : TimeZone.GMT_ZONE);
+
+        TimeZoneFormat tzFormat = format.getTimeZoneFormat().cloneAsThawed();
+        tzFormat.setTimeZoneNames(TimeZoneNames.getTZDBInstance(ULocale.US));
+        format.setTimeZoneFormat(tzFormat);
+
         Calendar calendar = format.getCalendar();
         if (calendar instanceof GregorianCalendar) {
             // Ensure that Gregorian calendar is used for all dates.
