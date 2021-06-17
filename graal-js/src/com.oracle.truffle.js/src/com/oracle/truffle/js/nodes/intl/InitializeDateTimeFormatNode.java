@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import java.time.ZoneId;
 import java.util.MissingResourceException;
 
 import com.ibm.icu.util.TimeZone;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -204,27 +202,10 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                 errorBranch.enter();
                 throw Errors.createRangeErrorInvalidTimeZone(name);
             }
+            return IntlUtil.getICUTimeZone(tzId);
         } else {
-            tzId = toICUTimeZoneId(context.getRealm().getLocalTimeZoneId());
+            return context.getRealm().getLocalTimeZone();
         }
-        return getICUTimeZone(tzId);
     }
 
-    @TruffleBoundary
-    private static TimeZone getICUTimeZone(String tzId) {
-        assert tzId != null;
-        return TimeZone.getTimeZone(tzId);
-    }
-
-    @TruffleBoundary
-    private static String toICUTimeZoneId(ZoneId zoneId) {
-        String tzid = zoneId.getId();
-        char c = tzid.charAt(0);
-        if (c == '+' || c == '-') {
-            tzid = "GMT" + tzid;
-        } else if (c == 'Z' && tzid.length() == 1) {
-            tzid = "UTC";
-        }
-        return tzid;
-    }
 }

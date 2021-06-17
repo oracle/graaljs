@@ -59,6 +59,7 @@ import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
+import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -168,6 +169,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -382,6 +384,7 @@ public class JSRealm {
      * Local time zone ID. Initialized lazily.
      */
     @CompilationFinal private ZoneId localTimeZoneId;
+    @CompilationFinal private TimeZone localTimeZone;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private SplittableRandom random;
@@ -2255,6 +2258,17 @@ public class JSRealm {
         assert newAgent != null : "Cannot set a null agent!";
         CompilerAsserts.neverPartOfCompilation("Assigning agent to context in compiled code");
         this.agent = newAgent;
+    }
+
+    public TimeZone getLocalTimeZone() {
+        TimeZone timeZone = localTimeZone;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, timeZone == null)) {
+            if (CompilerDirectives.isPartialEvaluationConstant(timeZone)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            timeZone = IntlUtil.getICUTimeZone(getLocalTimeZoneId());
+        }
+        return timeZone;
     }
 
     public ZoneId getLocalTimeZoneId() {
