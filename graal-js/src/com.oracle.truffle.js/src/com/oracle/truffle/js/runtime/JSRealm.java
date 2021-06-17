@@ -2537,7 +2537,7 @@ public class JSRealm {
         if (jsShortTimeFormat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             // no UTC
-            jsShortTimeFormat = createDateFormat("HH:mm:ss 'GMT'Z (z)", true);
+            jsShortTimeFormat = createDateFormat("HH:mm:ss 'GMT'xx (z)", true);
         }
         return jsShortTimeFormat;
     }
@@ -2554,7 +2554,7 @@ public class JSRealm {
     public DateFormat getDateToStringFormat() {
         if (jsDateToStringFormat == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateToStringFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'Z (z)", true);
+            jsDateToStringFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'xx (z)", true);
         }
         return jsDateToStringFormat;
     }
