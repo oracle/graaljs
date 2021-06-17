@@ -42,13 +42,7 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 
 import java.util.EnumSet;
 
@@ -354,7 +348,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(oneObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(twoObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.toSet(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND), AUTO, DAY, toBoolean, toString);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setTime, AUTO, DAY, toBoolean, toString);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getISOYear(), one.getISOMonth(), one.getISODay(), two.getISOYear(), two.getISOMonth(), two.getISODay(),
                             largestUnit);

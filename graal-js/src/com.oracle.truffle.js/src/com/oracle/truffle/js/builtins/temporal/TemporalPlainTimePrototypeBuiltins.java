@@ -41,19 +41,15 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.PLAIN_DATE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import java.util.Collections;
 import java.util.EnumSet;
@@ -478,7 +474,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeError("Options should not be null.");
             }
             DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, TemporalUtil.toSet(YEAR, MONTH, WEEK, DAY), null, toBoolean, toString);
+            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, TemporalUtil.setYMWD, null, toBoolean, toString);
             if (TemporalUtil.isNullish(smallestUnit)) {
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }

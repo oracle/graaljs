@@ -194,19 +194,45 @@ public final class TemporalUtil {
                                     MICROSECONDS, NANOSECONDS, OFFSET, ERA, ERA_YEAR},
                     new Object[]{Undefined.instance, Undefined.instance, Undefined.instance, Undefined.instance, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, Undefined.instance, Undefined.instance,
                                     Undefined.instance});
-    public static final Set<String> setYMWD = TemporalUtil.toSet(YEAR, MONTH, WEEK, DAY);
+
+    public static final Set<String> setEmpty = toSet();
+    public static final Set<String> setYMWD = toSet(YEAR, MONTH, WEEK, DAY);
+    public static final Set<String> setPluralYMWD = toSet(YEARS, MONTHS, WEEKS, DAYS);
+    public static final Set<String> setYMW = toSet(YEAR, MONTH, WEEK);
+    public static final Set<String> setYMWDH = toSet(YEAR, MONTH, WEEK, DAY, HOUR);
+    public static final Set<String> setTime = toSet(HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
+    public static final Set<String> setDMMCY = toSet(DAY, MONTH, MONTH_CODE, YEAR);
+    public static final Set<String> setMMCY = toSet(MONTH, MONTH_CODE, YEAR);
+    public static final Set<String> setWDHMSMMN = toSet(WEEK, DAY, HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND);
+    public static final Set<String> setAllDateTime = toSet(YEARS, YEAR, MONTHS, MONTH, WEEKS, WEEK, DAYS, DAY, HOURS, HOUR, MINUTES, MINUTE, SECONDS, SECOND, MILLISECONDS, MILLISECOND, MICROSECONDS,
+                    MICROSECOND, NANOSECONDS, NANOSECONDS);
+    public static final Set<String> setAllDateTimeAuto = toSet(AUTO, YEARS, YEAR, MONTHS, MONTH, WEEKS, WEEK, DAYS, DAY, HOURS, HOUR, MINUTES, MINUTE, SECONDS, SECOND, MILLISECONDS, MILLISECOND,
+                    MICROSECONDS, MICROSECOND, NANOSECONDS, NANOSECONDS);
+
+    public static final Set<String> setAuto = toSet(AUTO);
+    public static final Set<String> setAutoNever = toSet(AUTO, NEVER);
+    public static final Set<String> setAutoAlwaysNever = toSet(AUTO, ALWAYS, NEVER);
+    public static final Set<String> setConstrainReject = toSet(CONSTRAIN, REJECT);
+    public static final Set<String> setTimeZone = toSet(TIME_ZONE);
+    public static final Set<String> setCFTH = toSet(CEIL, FLOOR, TRUNC, HALF_EXPAND);
+    public static final Set<String> setPUIR = toSet(PREFER, USE, IGNORE, REJECT);
+    public static final Set<String> setCELR = toSet(COMPATIBLE, EARLIER, LATER, REJECT);
+
     public static final String[] ARR_DMMCY = new String[]{DAY, MONTH, MONTH_CODE, YEAR};
-    public static final Set<String> setDMMCY = TemporalUtil.toSet(DAY, MONTH, MONTH_CODE, YEAR);
     public static final String[] ARR_MCY = new String[]{MONTH_CODE, YEAR};
     public static final String[] ARR_DMC = new String[]{DAY, MONTH_CODE};
 
     public static final String[] TIME_LIKE_PROPERTIES = new String[]{HOUR, MINUTE, SECOND, MILLISECOND, MICROSECOND, NANOSECOND};
-
-    public static final String[] DURATION_PROPERTIES = new String[]{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS
-    };
+    public static final String[] DURATION_PROPERTIES = new String[]{DAYS, HOURS, MICROSECONDS, MILLISECONDS, MINUTES, MONTHS, NANOSECONDS, SECONDS, WEEKS, YEARS};
 
     private static final BigInteger upperEpochNSLimit = BigInteger.valueOf(86400).multiply(BigInteger.valueOf(10).pow(17));
     private static final BigInteger lowerEpochNSLimit = upperEpochNSLimit.negate();
+
+    @SuppressWarnings("unchecked")
+    @TruffleBoundary
+    public static <T> Set<T> toSet(T... values) {
+        return Arrays.stream(values).collect(Collectors.toSet());
+    }
 
     // 13.1
     public static DynamicObject getOptionsObject(Object options, JSContext ctx, IsObjectNode isObject) {
@@ -295,20 +321,12 @@ public final class TemporalUtil {
 
     // 13.8
     public static String toTemporalOverflow(DynamicObject options, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        return (String) getOption(options, OVERFLOW, STRING, prepareSet(), CONSTRAIN, toBoolean, toStringNode);
-    }
-
-    @TruffleBoundary
-    private static Set<?> prepareSet() {
-        Set<Object> set = new HashSet<>();
-        set.add(CONSTRAIN);
-        set.add(REJECT);
-        return set;
+        return (String) getOption(options, OVERFLOW, STRING, setConstrainReject, CONSTRAIN, toBoolean, toStringNode);
     }
 
     // 13.11
     public static String toTemporalRoundingMode(DynamicObject options, String fallback, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        return (String) getOption(options, "roundingMode", STRING, toSet(CEIL, FLOOR, TRUNC, HALF_EXPAND), fallback, toBoolean, toStringNode);
+        return (String) getOption(options, "roundingMode", STRING, setCFTH, fallback, toBoolean, toStringNode);
     }
 
     // 13.17
@@ -339,7 +357,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static JSTemporalPrecisionRecord toSecondsStringPrecision(DynamicObject options, JSToBooleanNode toBooleanNode, JSToStringNode toStringNode) {
-        String smallestUnit = toSmallestTemporalUnit(options, toSet(YEAR, MONTH, WEEK, DAY, HOUR), null, toBooleanNode, toStringNode);
+        String smallestUnit = toSmallestTemporalUnit(options, setYMWDH, null, toBooleanNode, toStringNode);
 
         if (MINUTE.equals(smallestUnit)) {
             return JSTemporalPrecisionRecord.create(MINUTE, MINUTE, 1);
@@ -355,7 +373,7 @@ public final class TemporalUtil {
 
         assert smallestUnit == null;
 
-        Object digits = TemporalUtil.getStringOrNumberOption(options, "fractionalSecondDigits", TemporalUtil.toSet(AUTO), 0, 9, AUTO);
+        Object digits = getStringOrNumberOption(options, "fractionalSecondDigits", setAuto, 0, 9, AUTO);
         if (digits.equals(AUTO)) {
             return JSTemporalPrecisionRecord.create(AUTO, NANOSECOND, 1);
         }
@@ -365,13 +383,13 @@ public final class TemporalUtil {
             return JSTemporalPrecisionRecord.create(0, SECOND, 1);
         }
         if (iDigit == 1 || iDigit == 2 || iDigit == 3) {
-            return JSTemporalPrecisionRecord.create(digits, MILLISECOND, Math.pow(10, 3 - TemporalUtil.toLong(digits)));
+            return JSTemporalPrecisionRecord.create(digits, MILLISECOND, Math.pow(10, 3 - toLong(digits)));
         }
         if (iDigit == 4 || iDigit == 5 || iDigit == 6) {
-            return JSTemporalPrecisionRecord.create(digits, MICROSECOND, Math.pow(10, 6 - TemporalUtil.toLong(digits)));
+            return JSTemporalPrecisionRecord.create(digits, MICROSECOND, Math.pow(10, 6 - toLong(digits)));
         }
         assert iDigit == 7 || iDigit == 8 || iDigit == 9;
-        return JSTemporalPrecisionRecord.create(digits, NANOSECOND, Math.pow(10, 9 - TemporalUtil.toLong(digits)));
+        return JSTemporalPrecisionRecord.create(digits, NANOSECOND, Math.pow(10, 9 - toLong(digits)));
     }
 
     // TODO this whole method should be unnecessary
@@ -387,10 +405,7 @@ public final class TemporalUtil {
     public static String toLargestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String fallback, String autoValue, JSToBooleanNode toBoolean,
                     JSToStringNode toStringNode) {
         assert !disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO);
-        String largestUnit = (String) getOption(normalizedOptions, "largestUnit", STRING, toSet(
-                        "auto", "year", "years", "month", "months", "week", "weeks", "day", "days", "hour",
-                        "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), fallback, toBoolean, toStringNode);
+        String largestUnit = (String) getOption(normalizedOptions, LARGEST_UNIT, STRING, setAllDateTimeAuto, fallback, toBoolean, toStringNode);
         if (largestUnit != null && largestUnit.equals(AUTO) && autoValue != null) {
             return autoValue;
         }
@@ -405,9 +420,7 @@ public final class TemporalUtil {
 
     // 13.22
     public static String toSmallestTemporalUnit(DynamicObject normalizedOptions, Set<String> disallowedUnits, String fallback, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        String smallestUnit = (String) getOption(normalizedOptions, SMALLEST_UNIT, STRING, toSet("year", "years", "month", "months", "weeks", "day", "days", "hour",
-                        "hours", "minute", "minutes", "second", "seconds", "millisecond", "milliseconds", "microsecond",
-                        "microseconds", "nanosecond", "nanoseconds"), fallback, toBoolean, toStringNode);
+        String smallestUnit = (String) getOption(normalizedOptions, SMALLEST_UNIT, STRING, setAllDateTime, fallback, toBoolean, toStringNode);
         if (Boundaries.setContains(pluralUnits, smallestUnit)) {
             smallestUnit = Boundaries.mapGet(pluralToSingular, smallestUnit);
         }
@@ -419,10 +432,7 @@ public final class TemporalUtil {
 
     // 13.24
     public static String toTemporalDurationTotalUnit(DynamicObject normalizedOptions, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        String unit = (String) getOption(normalizedOptions, UNIT, STRING, toSet(YEARS, YEAR, MONTHS, MONTH, WEEKS,
-                        DAYS, DAY, HOURS, HOUR, MINUTES, MINUTE, SECONDS, SECOND, MILLISECONDS, MILLISECOND, MICROSECONDS,
-                        MICROSECOND, NANOSECONDS, NANOSECONDS),
-                        null, toBoolean, toStringNode);
+        String unit = (String) getOption(normalizedOptions, UNIT, STRING, setAllDateTime, null, toBoolean, toStringNode);
         if (Boundaries.setContains(pluralUnits, unit)) {
             unit = Boundaries.mapGet(pluralToSingular, unit);
         }
@@ -853,12 +863,6 @@ public final class TemporalUtil {
         return result;
     }
 
-    @SuppressWarnings("unchecked")
-    @TruffleBoundary
-    public static <T> Set<T> toSet(T... values) {
-        return Arrays.stream(values).collect(Collectors.toSet());
-    }
-
     @TruffleBoundary
     private static <T, I> Map<T, I> toMap(T[] keys, I[] values) {
         Map<T, I> map = new HashMap<>();
@@ -1161,20 +1165,20 @@ public final class TemporalUtil {
 
     public static String toTemporalOverflow(DynamicObject options) {
         String type = "string"; // TODO there is a bug in the current spec, missing this argument!
-        return (String) getOption(options, OVERFLOW, type, TemporalUtil.toSet(CONSTRAIN, REJECT), CONSTRAIN);
+        return (String) getOption(options, OVERFLOW, type, setConstrainReject, CONSTRAIN);
     }
 
     @TruffleBoundary
-    public static Object getOption(DynamicObject options, String property, String type, Set<Object> values, Object fallback) {
+    public static Object getOption(DynamicObject options, String property, String type, Set<String> values, Object fallback) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (value == Undefined.instance) {
             return fallback;
         }
-        assert type.equals("boolean") || type.equals("string");
-        if (type.equals("boolean")) {
+        assert type.equals(BOOLEAN) || type.equals(STRING);
+        if (type.equals(BOOLEAN)) {
             value = JSRuntime.toBoolean(value);
-        } else if (type.equals("string")) {
+        } else if (type.equals(STRING)) {
             value = JSRuntime.toString(value);
         }
         if (values != null && !values.contains(value)) {
@@ -1300,7 +1304,7 @@ public final class TemporalUtil {
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, item);
             Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, ARR_DMMCY);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.toSet());
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         String overflows = TemporalUtil.toTemporalOverflow(options);
@@ -1521,7 +1525,7 @@ public final class TemporalUtil {
     }
 
     public static String toShowCalendarOption(DynamicObject options) {
-        return (String) getOption(options, "calendarName", STRING, toSet(AUTO, ALWAYS, NEVER), AUTO);
+        return (String) getOption(options, "calendarName", STRING, setAutoAlwaysNever, AUTO);
     }
 
     @TruffleBoundary
@@ -3609,7 +3613,7 @@ public final class TemporalUtil {
     }
 
     public static Object toTemporalDisambiguation(DynamicObject options) {
-        return getOption(options, "disambiguation", STRING, TemporalUtil.toSet("compatible", "earlier", "later", "reject"), "compatible");
+        return getOption(options, "disambiguation", STRING, setCELR, COMPATIBLE);
     }
 
     public static DynamicObject toTemporalZonedDateTime(JSContext ctx, Object item) {
@@ -3634,7 +3638,7 @@ public final class TemporalUtil {
             calendar = getTemporalCalendarWithISODefault(ctx, itemObj);
             Set<String> fieldNames = calendarFields(ctx, calendar, new String[]{DAY, HOUR, MICROSECOND, MILLISECOND, MINUTE, MONTH, MONTH_CODE, NANOSECOND, SECOND, YEAR});
             fieldNames.add(TIME_ZONE);
-            DynamicObject fields = prepareTemporalFields(ctx, itemObj, fieldNames, toSet(new String[]{TIME_ZONE}));
+            DynamicObject fields = prepareTemporalFields(ctx, itemObj, fieldNames, setTimeZone);
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
             timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone(ctx, timeZoneObj);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
@@ -3663,15 +3667,15 @@ public final class TemporalUtil {
     }
 
     public static Object toTemporalOffset(DynamicObject options, String fallback) {
-        return getOption(options, OFFSET, STRING, toSet(PREFER, USE, IGNORE, REJECT), fallback);
+        return getOption(options, OFFSET, STRING, setPUIR, fallback);
     }
 
     public static String toShowTimeZoneNameOption(DynamicObject options, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        return (String) getOption(options, TIME_ZONE_NAME, STRING, toSet(AUTO, NEVER), AUTO, toBoolean, toStringNode);
+        return (String) getOption(options, TIME_ZONE_NAME, STRING, setAutoNever, AUTO, toBoolean, toStringNode);
     }
 
     public static String toShowOffsetOption(DynamicObject options, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
-        return (String) getOption(options, OFFSET, STRING, toSet(AUTO, NEVER), AUTO, toBoolean, toStringNode);
+        return (String) getOption(options, OFFSET, STRING, setAutoNever, AUTO, toBoolean, toStringNode);
     }
 
     public static String temporalZonedDateTimeToString(JSContext ctx, DynamicObject zonedDateTime, Object precision, String showCalendar, String showTimeZone, String showOffset) {

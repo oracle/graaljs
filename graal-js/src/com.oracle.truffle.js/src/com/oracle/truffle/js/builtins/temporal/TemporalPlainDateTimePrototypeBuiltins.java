@@ -54,7 +54,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import java.util.Collections;
@@ -367,9 +366,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
 
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.toSet(), NANOSECOND, toBoolean, toString);
+            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setEmpty, NANOSECOND, toBoolean, toString);
             String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(DAY, smallestUnit);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.toSet(), AUTO, defaultLargestUnit, toBoolean, toString);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setEmpty, AUTO, defaultLargestUnit, toBoolean, toString);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
 
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBoolean, toString);
@@ -413,9 +412,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
 
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.toSet(), NANOSECOND, toBoolean, toString);
+            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setEmpty, NANOSECOND, toBoolean, toString);
             String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(DAY, smallestUnit);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.toSet(), AUTO, defaultLargestUnit, toBoolean, toString);
+            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setEmpty, AUTO, defaultLargestUnit, toBoolean, toString);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
 
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBoolean, toString);
@@ -586,9 +585,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, new String[]{DAY, HOUR, MICROSECOND, MILLISECOND, MINUTE, MONTH, MONTH_CODE, NANOSECOND, SECOND, YEAR});
             DynamicObject partialDateTime = TemporalUtil.preparePartialTemporalFields(getContext(), temporalDTObj, fieldNames);
             DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext(), isObject);
-            Object fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) dateTime, fieldNames, TemporalUtil.toSet());
+            Object fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) dateTime, fieldNames, TemporalUtil.setEmpty);
             fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, (DynamicObject) fields, partialDateTime);
-            fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) fields, fieldNames, TemporalUtil.toSet());
+            fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) fields, fieldNames, TemporalUtil.setEmpty);
             JSTemporalDateTimeRecord result = TemporalUtil.interpretTemporalDateTimeFields(calendar, (DynamicObject) fields, options);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
@@ -650,7 +649,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createTypeErrorOptions();
             }
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.toSet(YEAR, MONTH, WEEK), null, toBooleanNode, toStringNode);
+            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setYMW, null, toBooleanNode, toStringNode);
             if (TemporalUtil.isNullish(smallestUnit)) {
                 throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
             }

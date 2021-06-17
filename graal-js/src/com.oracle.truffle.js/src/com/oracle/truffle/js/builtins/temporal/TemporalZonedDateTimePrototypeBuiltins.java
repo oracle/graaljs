@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 
-import java.math.BigInteger;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -137,7 +136,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization(guards = "isJSTemporalZonedDateTime(thisObj)")
         protected Object zonedDateTimeGetter(Object thisObj) {
             JSTemporalZonedDateTimeObject zonedDateTime = (JSTemporalZonedDateTimeObject) thisObj;
-            BigInteger ns = zonedDateTime.getNanoseconds().bigIntegerValue();
             switch (property) {
                 case calendar:
                     return zonedDateTime.getCalendar();
