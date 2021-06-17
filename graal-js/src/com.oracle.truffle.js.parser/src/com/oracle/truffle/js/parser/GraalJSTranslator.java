@@ -1881,7 +1881,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private boolean needsPerIterationScope(ForNode forNode) {
         // for loop init block may contain closures, too; that's why we check the surrounding block.
-        return forNode.hasPerIterationScope() && hasClosures(lc.getCurrentBlock());
+        if (forNode.hasPerIterationScope()) {
+            FunctionNode function = lc.getCurrentFunction();
+            if (function.hasClosures() && hasClosures(lc.getCurrentBlock())) {
+                return true;
+            } else if (function.hasEval()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasClosures(com.oracle.js.parser.ir.Node node) {
