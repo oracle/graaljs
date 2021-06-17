@@ -391,6 +391,10 @@
     "status" : "SKIP",
     "comment" : "Loading the 'nashorn' engine"
   }, {
+    "filePath" : "basic/JDK-8062024.js",
+    "status" : "FAIL",
+    "comment" : "ICU does not provide IANA zone abbreviations for dates before 1970 for some reason: https://stackoverflow.com/questions/31626356/how-can-i-get-the-current-iana-time-zone-abbreviation-throughout-time-in-icu4j"
+  }, {
     "filePath" : "basic/JDK-8062141.js",
     "status" : "FAIL"
   }, {
