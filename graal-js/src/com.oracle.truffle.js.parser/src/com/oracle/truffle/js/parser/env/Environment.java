@@ -584,7 +584,7 @@ public abstract class Environment {
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped) {
         for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
-            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal())) {
+            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal() && !symbol.isArguments())) {
                 addFrameSlotFromSymbol(symbol);
             }
         }
