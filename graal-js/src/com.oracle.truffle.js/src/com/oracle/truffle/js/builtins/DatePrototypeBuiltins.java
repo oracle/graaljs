@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -399,7 +399,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 if (isNaN.profile(Double.isNaN(t))) {
                     return JSDate.INVALID_DATE_STRING;
                 }
-                return JSDate.formatUTC(JSDate.getJSDateUTCFormat(), t);
+                return JSDate.format(getContext().getRealm().getJSDateUTCFormat(), t);
             } else {
                 return JSDate.toString(t, getContext().getRealm());
             }
@@ -438,7 +438,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortDateFormat(), t, getContext().getRealm());
+            return JSDate.format(getContext().getRealm().getJSShortDateFormat(), t);
         }
     }
 
@@ -454,7 +454,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeFormat(), t, getContext().getRealm());
+            return JSDate.format(getContext().getRealm().getJSShortTimeFormat(), t);
         }
     }
 
@@ -470,7 +470,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortDateLocalFormat(), t, getContext().getRealm());
+            return JSDate.format(getContext().getRealm().getJSShortDateLocalFormat(), t);
         }
     }
 
@@ -506,7 +506,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.formatLocal(JSDate.getJSShortTimeLocalFormat(), t, getContext().getRealm());
+            return JSDate.format(getContext().getRealm().getJSShortTimeLocalFormat(), t);
         }
     }
 
@@ -540,7 +540,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         protected String doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             checkTimeValid(t);
-            return JSDate.toISOStringIntl(t);
+            return JSDate.toISOStringIntl(t, getContext().getRealm());
         }
     }
 
