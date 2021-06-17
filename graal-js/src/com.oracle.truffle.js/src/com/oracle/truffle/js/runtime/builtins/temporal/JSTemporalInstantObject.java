@@ -46,7 +46,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalInstantObject extends JSNonProxyObject {
 
-    private final BigInt nanoseconds;
+    private final BigInt nanoseconds; // 8.4 A BigInt value
 
     protected JSTemporalInstantObject(Shape shape, BigInt nanoseconds) {
         super(shape);

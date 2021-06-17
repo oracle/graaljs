@@ -47,7 +47,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements TemporalZonedDateTime {
 
-    private final BigInt nanoseconds;
+    private final BigInt nanoseconds; // 6.4. A BigInt value
     private final DynamicObject timeZone;
     private final DynamicObject calendar;
 
