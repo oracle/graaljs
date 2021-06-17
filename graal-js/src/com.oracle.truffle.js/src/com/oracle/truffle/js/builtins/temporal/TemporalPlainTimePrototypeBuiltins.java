@@ -388,7 +388,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj, null, getContext(), isObject, toString);
+            JSTemporalPlainTimeObject other = JSTemporalPlainTime.toTemporalTime(otherObj, null, getContext(), isObject, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setYMWD, NANOSECOND, toBoolean, toString);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, AUTO, HOUR, toBoolean, toString);
@@ -429,7 +429,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
-            JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(otherObj, null, getContext(), isObject, toString);
+            JSTemporalPlainTimeObject other = JSTemporalPlainTime.toTemporalTime(otherObj, null, getContext(), isObject, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, TemporalUtil.setYMWD, NANOSECOND, toBoolean, toString);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setYMWD, AUTO, HOUR, toBoolean, toString);
@@ -515,7 +515,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
             TemporalTime temporalTime = TemporalUtil.requireTemporalTime(thisObj);
-            TemporalTime otherTime = (TemporalTime) JSTemporalPlainTime.toTemporalTime(other, null, getContext(), isObject, toString);
+            TemporalTime otherTime = JSTemporalPlainTime.toTemporalTime(other, null, getContext(), isObject, toString);
             return equalsIntl(temporalTime, otherTime);
         }
 
@@ -594,7 +594,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
                             time.getNanosecond(), date.getCalendar());
-            JSTemporalInstantObject instant = (JSTemporalInstantObject) TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
+            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, date.getCalendar());
         }
     }

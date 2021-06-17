@@ -268,7 +268,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalTimeZoneObject timeZone = TemporalUtil.requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.toTemporalDateTime(getContext(), dateTimeParam, Undefined.instance);
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optionsParam);
-            String disambiguation = (String) TemporalUtil.toTemporalDisambiguation(options);
+            String disambiguation = TemporalUtil.toTemporalDisambiguation(options);
             return TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, dateTime, disambiguation);
         }
     }

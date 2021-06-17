@@ -68,6 +68,7 @@ public final class TemporalConstants {
     public static final String OFFSET = "offset";
     public static final String ERA = "era";
     public static final String ERA_YEAR = "eraYear";
+    public static final String OFFSET_NANOSECONDS = "offsetNanoseconds";
 
     public static final String FIELDS = "fields";
     public static final String CALENDAR = "calendar";
@@ -75,6 +76,7 @@ public final class TemporalConstants {
     public static final String DAYS_IN_MONTH = "daysInMonth";
     public static final String DAYS_IN_WEEK = "daysInWeek";
     public static final String MONTHS_IN_YEAR = "monthsInYear";
+    public static final String HOURS_IN_DAY = "hoursInDay";
     public static final String IN_LEAP_YEAR = "inLeapYear";
 
     public static final String DAY_OF_WEEK = "dayOfWeek";
@@ -127,8 +129,9 @@ public final class TemporalConstants {
     public static final String FLOOR = "floor";
     public static final String CEIL = "ceil";
     public static final String TRUNC = "trunc";
-
     public static final String HALF_EXPAND = "halfExpand";
+    public static final String ROUNDING_MODE = "roundingMode";
+    public static final String ROUNDING_INCREMENT = "roundingIncrement";
 
     public static final String SIGN = "sign";
     public static final String BLANK = "blank";
@@ -144,4 +147,6 @@ public final class TemporalConstants {
     public static final String EPOCH_NANOSECONDS = "epochNanoseconds";
 
     public static final String UTC = "UTC";
+
+    public static final String DISAMBIGUATION = "disambiguation";
 }

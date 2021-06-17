@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltins;
@@ -55,6 +53,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
@@ -93,8 +92,36 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
         JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalZonedDateTimePrototypeBuiltins.BUILTINS);
 
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, CALENDAR));
-        // TODO lots of getters here
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.CALENDAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.CALENDAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.TIME_ZONE, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.TIME_ZONE));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MONTH, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MONTH));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MONTH_CODE, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MONTH_CODE));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAY, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAY));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.HOUR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.HOUR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MINUTE, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MINUTE));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.SECOND, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.SECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MILLISECOND, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MILLISECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MICROSECOND, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MICROSECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.NANOSECOND, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.NANOSECOND));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.EPOCH_SECONDS, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.EPOCH_SECONDS));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.EPOCH_MILLISECONDS,
+                        realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.EPOCH_MILLISECONDS));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.EPOCH_MICROSECONDS,
+                        realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.EPOCH_MICROSECONDS));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.EPOCH_NANOSECONDS,
+                        realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.EPOCH_NANOSECONDS));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAY_OF_WEEK, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAY_OF_WEEK));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAY_OF_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAY_OF_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.WEEK_OF_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.WEEK_OF_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.HOURS_IN_DAY, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.HOURS_IN_DAY));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAYS_IN_WEEK, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAYS_IN_WEEK));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAYS_IN_MONTH, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAYS_IN_MONTH));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MONTHS_IN_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MONTHS_IN_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.IN_LEAP_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.IN_LEAP_YEAR));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.OFFSET_NANOSECONDS,
+                        realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.OFFSET_NANOSECONDS));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.OFFSET, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.OFFSET));
 
         JSObjectUtil.putToStringTag(prototype, "Temporal.ZonedDateTime");
 

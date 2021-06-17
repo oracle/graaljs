@@ -153,13 +153,13 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // region Abstract methods
 
     // 4.5.2
-    public static DynamicObject toTemporalTime(Object item, String overflowParam, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
+    public static JSTemporalPlainTimeObject toTemporalTime(Object item, String overflowParam, JSContext ctx, IsObjectNode isObject, JSToStringNode toString) {
         String overflow = overflowParam == null ? TemporalConstants.CONSTRAIN : overflowParam;
         assert overflow.equals(TemporalConstants.CONSTRAIN) || overflow.equals(TemporalConstants.REJECT);
         JSTemporalDurationRecord result2 = null;
         if (isObject.executeBoolean(item)) {
             if (isJSTemporalPlainTime(item)) {
-                return (DynamicObject) item;
+                return (JSTemporalPlainTimeObject) item;
             } else if (TemporalUtil.isTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
@@ -176,22 +176,18 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             }
             JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord((DynamicObject) item);
             result2 = TemporalUtil.regulateTime(
-                            result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                            result.getMicrosecond(), result.getNanosecond(),
-                            overflow);
+                            result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);
         } else {
             String string = toString.executeString(item);
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(ctx, string);
             assert TemporalUtil.isValidTime(
-                            result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                            result.getMicrosecond(), result.getNanosecond());
+                            result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
             if (result.hasCalendar() && !JSRuntime.toString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
                 throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
             }
             result2 = JSTemporalDurationRecord.create(result);
         }
-        return create(ctx, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(),
-                        result2.getMicroseconds(), result2.getNanoseconds());
+        return (JSTemporalPlainTimeObject) create(ctx, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds());
     }
 
     // 4.5.3

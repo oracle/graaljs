@@ -118,8 +118,8 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            JSTemporalZonedDateTimeObject one = (JSTemporalZonedDateTimeObject) TemporalUtil.toTemporalZonedDateTime(getContext(), obj1);
-            JSTemporalZonedDateTimeObject two = (JSTemporalZonedDateTimeObject) TemporalUtil.toTemporalZonedDateTime(getContext(), obj2);
+            JSTemporalZonedDateTimeObject one = TemporalUtil.toTemporalZonedDateTime(getContext(), obj1);
+            JSTemporalZonedDateTimeObject two = TemporalUtil.toTemporalZonedDateTime(getContext(), obj2);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }

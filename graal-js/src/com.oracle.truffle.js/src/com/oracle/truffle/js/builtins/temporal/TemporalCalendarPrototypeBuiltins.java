@@ -373,7 +373,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
                 return ((JSTemporalPlainYearMonthObject) temporalDateLike).getYear();
             } else {
-                TemporalDate td = (TemporalDate) TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
+                TemporalDate td = TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
                 return td.getYear();
             }
         }
@@ -562,7 +562,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
                 year = ((JSTemporalPlainYearMonthObject) temporalDateLike).getYear();
             } else {
-                TemporalDate dateLike = (TemporalDate) TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
+                TemporalDate dateLike = TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
                 year = dateLike.getYear();
             }
             return JSTemporalCalendar.isoDaysInYear(year);
@@ -604,7 +604,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
                 year = ((JSTemporalPlainYearMonthObject) temporalDateLike).getYear();
             } else {
-                TemporalDate dateLike = (TemporalDate) TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
+                TemporalDate dateLike = TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
                 year = dateLike.getYear();
             }
             return JSTemporalCalendar.isISOLeapYear(year);

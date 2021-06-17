@@ -340,7 +340,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             DynamicObject calendar = temporalDate.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.ARR_DMMCY);
+            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setDMMCY);
             DynamicObject partialDate = TemporalUtil.preparePartialTemporalFields(getContext(), (DynamicObject) temporalDateLike, fieldNames);
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) temporalDate, fieldNames, TemporalUtil.setEmpty);
@@ -517,7 +517,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (temporalTimeObj == Undefined.instance) {
                 return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar());
             }
-            TemporalTime time = (TemporalTime) JSTemporalPlainTime.toTemporalTime(temporalTimeObj, null, getContext(), isObject, toString);
+            TemporalTime time = JSTemporalPlainTime.toTemporalTime(temporalTimeObj, null, getContext(), isObject, toString);
 
             return TemporalUtil.createTemporalDateTime(getContext(), date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
@@ -535,7 +535,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public DynamicObject toPlainYearMonth(Object thisObj) {
             TemporalDate date = TemporalUtil.requireTemporalDate(thisObj);
             DynamicObject calendar = date.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.ARR_MCY);
+            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setMCY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) date, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.yearMonthFromFields(calendar, fields, Undefined.instance);
         }
@@ -551,7 +551,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public DynamicObject toPlainMonthDay(Object thisObj) {
             TemporalDate date = TemporalUtil.requireTemporalDate(thisObj);
             DynamicObject calendar = date.getCalendar();
-            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.ARR_DMC);
+            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setDMC);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) date, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.monthDayFromFields(calendar, fields, Undefined.instance);
         }
@@ -566,7 +566,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         public boolean equals(Object thisObj, Object otherParam) {
             TemporalDate temporalDate = TemporalUtil.requireTemporalDate(thisObj);
-            JSTemporalPlainDateObject other = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(getContext(), otherParam, null);
+            JSTemporalPlainDateObject other = TemporalUtil.toTemporalDate(getContext(), otherParam, null);
             if (temporalDate.getYear() != other.getYear()) {
                 return false;
             }
@@ -613,12 +613,12 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), td.getYear(), td.getMonth(), td.getDay(), 0, 0, 0, 0, 0, 0,
                                 td.getCalendar());
             } else {
-                JSTemporalPlainTimeObject tt = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(temporalTime, null, getContext(), isObject, toString);
+                JSTemporalPlainTimeObject tt = JSTemporalPlainTime.toTemporalTime(temporalTime, null, getContext(), isObject, toString);
                 temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), td.getYear(), td.getMonth(), td.getDay(),
                                 tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(),
                                 tt.getNanosecond(), td.getCalendar());
             }
-            JSTemporalInstantObject instant = (JSTemporalInstantObject) TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
+            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, td.getCalendar());
         }
     }

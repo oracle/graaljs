@@ -127,8 +127,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         protected int compare(Object obj1, Object obj2,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(obj1, null, getContext(), isObject, toString);
-            JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(obj2, null, getContext(), isObject, toString);
+            JSTemporalPlainTimeObject time1 = JSTemporalPlainTime.toTemporalTime(obj1, null, getContext(), isObject, toString);
+            JSTemporalPlainTimeObject time2 = JSTemporalPlainTime.toTemporalTime(obj2, null, getContext(), isObject, toString);
             return TemporalUtil.compareTemporalTime(
                             time1.getHour(), time1.getMinute(), time1.getSecond(),
                             time1.getMillisecond(), time1.getMicrosecond(), time1.getNanosecond(),

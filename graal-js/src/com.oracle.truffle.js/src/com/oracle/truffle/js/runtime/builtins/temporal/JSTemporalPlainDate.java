@@ -179,7 +179,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 return create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, itemObj);
-            Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.ARR_DMMCY);
+            Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.setDMMCY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }

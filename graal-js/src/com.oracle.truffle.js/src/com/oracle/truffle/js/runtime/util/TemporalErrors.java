@@ -54,6 +54,11 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorOptionsUndefined() {
+        return Errors.createTypeError("Options object expected");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorInvalidPlainDateTime() {
         return Errors.createRangeError("invalid PlainDateTime");
     }
@@ -186,6 +191,11 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createRangeErrorIdenticalCalendarExpected() {
         return Errors.createRangeError("identical calendar expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorIdenticalTimeZoneExpected() {
+        return Errors.createRangeError("identical timeZone expected");
     }
 
     @TruffleBoundary
