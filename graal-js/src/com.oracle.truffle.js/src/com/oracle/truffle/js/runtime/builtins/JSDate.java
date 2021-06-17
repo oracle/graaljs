@@ -45,16 +45,11 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Year;
 import java.time.ZoneOffset;
-import java.util.Date;
-import java.util.Locale;
 
 import com.ibm.icu.impl.Grego;
 import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.text.SimpleDateFormat;
-import com.ibm.icu.util.Calendar;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -76,15 +71,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     public static final String CLASS_NAME = "Date";
     public static final String PROTOTYPE_NAME = "Date.prototype";
 
-    private static DateFormat jsDateFormat;
-    private static DateFormat jsDateFormatBeforeYear0;
-    private static DateFormat jsDateFormatAfterYear9999;
-    private static DateFormat jsDateFormatISO;
-    private static DateFormat jsShortDateFormat;
-    private static DateFormat jsShortDateLocalFormat;
-    private static DateFormat jsShortTimeFormat;
-    private static DateFormat jsShortTimeLocalFormat;
-    private static DateFormat jsDateToStringFormat;
     public static final JSDate INSTANCE = new JSDate();
 
     private static final int HOURS_PER_DAY = 24;
@@ -680,28 +666,19 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     @TruffleBoundary
-    public static synchronized String formatLocal(DateFormat format, double time, JSRealm realm) {
-        format.setTimeZone(realm.getLocalTimeZone());
+    public static String format(DateFormat format, double time) {
         return format.format(time);
     }
 
-    @TruffleBoundary
-    public static synchronized String formatUTC(DateFormat format, double time) {
-        format.setTimeZone(TimeZone.GMT_ZONE);
-        return format.format(time);
-    }
-
-    @TruffleBoundary
     public static String toString(double time, JSRealm realm) {
         if (Double.isNaN(time)) {
             return INVALID_DATE_STRING;
         }
-        return formatLocal(getDateToStringFormat(), time, realm);
+        return format(realm.getDateToStringFormat(), time);
     }
 
-    @TruffleBoundary
-    public static String toISOStringIntl(double time) {
-        return formatUTC(getJSDateFormat(time), time);
+    public static String toISOStringIntl(double time, JSRealm realm) {
+        return format(realm.getJSDateFormat(time), time);
     }
 
     public static boolean isTimeValid(double time) {
@@ -750,101 +727,13 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         }
     }
 
-    public static DateFormat getJSDateFormat(double time) {
-        long milliseconds = (long) time;
-        if (milliseconds < -62167219200000L) {
-            if (jsDateFormatBeforeYear0 == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsDateFormatBeforeYear0 = createDateFormat("uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'");
-            }
-            return jsDateFormatBeforeYear0;
-        } else if (milliseconds >= 253402300800000L) {
-            if (jsDateFormatAfterYear9999 == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsDateFormatAfterYear9999 = createDateFormat("+uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'");
-            }
-            return jsDateFormatAfterYear9999;
-        } else {
-            if (jsDateFormat == null) {
-                // UTC
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsDateFormat = createDateFormat("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'");
-            }
-            return jsDateFormat;
-        }
-    }
-
-    public static DateFormat getJSDateUTCFormat() {
-        if (jsDateFormatISO == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateFormatISO = createDateFormat("EEE, dd MMM uuuu HH:mm:ss 'GMT'");
-        }
-        return jsDateFormatISO;
-    }
-
-    public static DateFormat getJSShortDateFormat() {
-        if (jsShortDateFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortDateFormat = createDateFormat("EEE MMM dd uuuu");
-        }
-        return jsShortDateFormat;
-    }
-
-    public static DateFormat getJSShortDateLocalFormat() {
-        if (jsShortDateLocalFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortDateLocalFormat = createDateFormat("uuuu-MM-dd");
-        }
-        return jsShortDateLocalFormat;
-    }
-
-    public static DateFormat getJSShortTimeFormat() {
-        if (jsShortTimeFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortTimeFormat = createDateFormat("HH:mm:ss 'GMT'Z (z)");
-        }
-        return jsShortTimeFormat;
-    }
-
-    public static DateFormat getJSShortTimeLocalFormat() {
-        if (jsShortTimeLocalFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortTimeLocalFormat = createDateFormat("HH:mm:ss");
-        }
-        return jsShortTimeLocalFormat;
-    }
-
-    public static DateFormat getDateToStringFormat() {
-        if (jsDateToStringFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateToStringFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'Z (z)");
-        }
-        return jsDateToStringFormat;
-    }
-
-    private static DateFormat createDateFormat(String pattern) {
-        DateFormat format = new SimpleDateFormat(pattern, Locale.US);
-        Calendar calendar = format.getCalendar();
-        if (calendar instanceof GregorianCalendar) {
-            // Ensure that Gregorian calendar is used for all dates.
-            // GregorianCalendar used by SimpleDateFormat is using
-            // Julian calendar for dates before 1582 otherwise.
-            ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
-        }
-        return format;
-    }
-
     @TruffleBoundary
     @Override
     public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         double time = getTimeMillisField(obj);
         String formattedDate;
         if (isTimeValid(time)) {
-            formattedDate = toISOStringIntl(time);
+            formattedDate = toISOStringIntl(time, context.getRealm());
         } else {
             formattedDate = INVALID_DATE_STRING;
         }
