@@ -262,23 +262,23 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case calendar:
                     return temporalDT.getCalendar();
                 case hour:
-                    return temporalDT.getHours();
+                    return temporalDT.getHour();
                 case minute:
-                    return temporalDT.getMinutes();
+                    return temporalDT.getMinute();
                 case second:
-                    return temporalDT.getSeconds();
+                    return temporalDT.getSecond();
                 case millisecond:
-                    return temporalDT.getMilliseconds();
+                    return temporalDT.getMillisecond();
                 case microsecond:
-                    return temporalDT.getMicroseconds();
+                    return temporalDT.getMicrosecond();
                 case nanosecond:
-                    return temporalDT.getNanoseconds();
+                    return temporalDT.getNanosecond();
                 case year:
-                    return temporalDT.getISOYear();
+                    return temporalDT.getYear();
                 case month:
-                    return temporalDT.getISOMonth();
+                    return temporalDT.getMonth();
                 case day:
-                    return temporalDT.getISODay();
+                    return temporalDT.getDay();
                 case dayOfWeek:
                     return TemporalUtil.dayOfWeek(temporalDT.getCalendar(), (DynamicObject) temporalDT);
                 case dayOfYear:
@@ -329,9 +329,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
             JSTemporalDateTimeRecord result = TemporalUtil.addDateTime(getContext(),
-                            dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
-                            dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
-                            dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
+                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
+                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
+                            dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             dateTime.getCalendar(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -376,11 +376,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObject, toNumber);
 
-            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), namesNode, other.getISOYear(), other.getISOMonth(), other.getISODay(), other.getHours(),
-                            other.getMinutes(), other.getSeconds(), other.getMilliseconds(),
-                            other.getMicroseconds(), other.getNanoseconds(), dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(), dateTime.getHours(), dateTime.getMinutes(),
-                            dateTime.getSeconds(), dateTime.getMilliseconds(),
-                            dateTime.getMicroseconds(), dateTime.getNanoseconds(), dateTime.getCalendar(), largestUnit, options);
+            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), namesNode, other.getYear(), other.getMonth(), other.getDay(), other.getHour(),
+                            other.getMinute(), other.getSecond(), other.getMillisecond(),
+                            other.getMicrosecond(), other.getNanosecond(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
+                            dateTime.getSecond(), dateTime.getMillisecond(),
+                            dateTime.getMicrosecond(), dateTime.getNanosecond(), dateTime.getCalendar(), largestUnit, options);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, -diff.getYears(), -diff.getMonths(), -diff.getWeeks(), -diff.getDays(), -diff.getHours(),
                             -diff.getMinutes(), -diff.getSeconds(), -diff.getMilliseconds(), -diff.getMicroseconds(), -diff.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, (DynamicObject) dateTime);
@@ -421,11 +421,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObject, toNumber);
 
-            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), namesNode, other.getISOYear(), other.getISOMonth(), other.getISODay(), other.getHours(),
-                            other.getMinutes(), other.getSeconds(), other.getMilliseconds(),
-                            other.getMicroseconds(), other.getNanoseconds(), dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(), dateTime.getHours(), dateTime.getMinutes(),
-                            dateTime.getSeconds(), dateTime.getMilliseconds(),
-                            dateTime.getMicroseconds(), dateTime.getNanoseconds(), dateTime.getCalendar(), largestUnit, options);
+            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), namesNode, other.getYear(), other.getMonth(), other.getDay(), other.getHour(),
+                            other.getMinute(), other.getSecond(), other.getMillisecond(),
+                            other.getMicrosecond(), other.getNanosecond(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
+                            dateTime.getSecond(), dateTime.getMillisecond(),
+                            dateTime.getMicrosecond(), dateTime.getNanosecond(), dateTime.getCalendar(), largestUnit, options);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, diff.getYears(), diff.getMonths(), diff.getWeeks(), diff.getDays(), diff.getHours(),
                             diff.getMinutes(), diff.getSeconds(), diff.getMilliseconds(), diff.getMicroseconds(), diff.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, (DynamicObject) dateTime);
@@ -448,15 +448,15 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
             DynamicObject obj = JSOrdinary.create(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, dt.getCalendar());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", dt.getISODay());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoHour", dt.getHours());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", dt.getISOMonth());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMicrosecond", dt.getMicroseconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMillisecond", dt.getMilliseconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMinute", dt.getMinutes());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoNanosecond", dt.getNanoseconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoSecond", dt.getSeconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", dt.getISOYear());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", dt.getDay());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoHour", dt.getHour());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", dt.getMonth());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMicrosecond", dt.getMicrosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMillisecond", dt.getMillisecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMinute", dt.getMinute());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoNanosecond", dt.getNanosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoSecond", dt.getSecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", dt.getYear());
             return obj;
         }
     }
@@ -481,9 +481,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
             JSTemporalDateTimeRecord result = TemporalUtil.addDateTime(getContext(),
-                            dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
-                            dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(),
-                            dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds(),
+                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
+                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
+                            dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             dateTime.getCalendar(),
                             -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
                             -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
@@ -514,9 +514,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBoolean, toString);
             String showCalendar = TemporalUtil.toShowCalendarOption(options);
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(
-                            dt.getISOYear(), dt.getISOMonth(), dt.getISODay(),
-                            dt.getHours(), dt.getMinutes(), dt.getSeconds(),
-                            dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds(),
+                            dt.getYear(), dt.getMonth(), dt.getDay(),
+                            dt.getHour(), dt.getMinute(), dt.getSecond(),
+                            dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(),
                             precision.getIncrement(), precision.getUnit(), roundingMode,
                             null);
             return JSTemporalPlainDateTime.temporalDateTimeToString(
@@ -536,9 +536,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public String toLocaleString(Object thisObj) {
             TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
-            return JSTemporalPlainDateTime.temporalDateTimeToString(dt.getISOYear(), dt.getISOMonth(), dt.getISODay(),
-                            dt.getHours(), dt.getMinutes(), dt.getSeconds(),
-                            dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds(),
+            return JSTemporalPlainDateTime.temporalDateTimeToString(dt.getYear(), dt.getMonth(), dt.getDay(),
+                            dt.getHour(), dt.getMinute(), dt.getSecond(),
+                            dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(),
                             dt.getCalendar(), AUTO, AUTO);
         }
     }
@@ -617,12 +617,12 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         private static boolean equalsIntl(TemporalDateTime one, TemporalDateTime two) {
             int result = TemporalUtil.compareISODateTime(
-                            one.getISOYear(), one.getISOMonth(), one.getISODay(),
-                            one.getHours(), one.getMinutes(), one.getSeconds(),
-                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
-                            two.getISOYear(), two.getISOMonth(), two.getISODay(),
-                            two.getHours(), two.getMinutes(), two.getSeconds(),
-                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
+                            one.getYear(), one.getMonth(), one.getDay(),
+                            one.getHour(), one.getMinute(), one.getSecond(),
+                            one.getMillisecond(), one.getMicrosecond(), one.getNanosecond(),
+                            two.getYear(), two.getMonth(), two.getDay(),
+                            two.getHour(), two.getMinute(), two.getSecond(),
+                            two.getMillisecond(), two.getMicrosecond(), two.getNanosecond());
             if (result != 0) {
                 return false;
             } else {
@@ -655,8 +655,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, HALF_EXPAND, toBooleanNode, toStringNode);
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(options, smallestUnit, isObjectNode, toNumberNode);
-            JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getHours(), dt.getMinutes(), dt.getSeconds(),
-                            dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, null);
+            JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getYear(), dt.getMonth(), dt.getDay(), dt.getHour(), dt.getMinute(), dt.getSecond(),
+                            dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainDateTime.create(getContext(), result.getYears(), result.getMonths(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(),
                             result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), dt.getCalendar());
@@ -672,7 +672,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public DynamicObject toPlainTime(Object thisObj) {
             TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
-            return TemporalUtil.createTemporalTime(getContext(), dt.getHours(), dt.getMinutes(), dt.getSeconds(), dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds());
+            return TemporalUtil.createTemporalTime(getContext(), dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond());
         }
     }
 
@@ -685,7 +685,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public DynamicObject toPlainDate(Object thisObj) {
             TemporalDateTime dt = TemporalUtil.requireTemporalDateTime(thisObj);
-            return TemporalUtil.createTemporalDate(getContext(), dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());
+            return TemporalUtil.createTemporalDate(getContext(), dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
         }
     }
 

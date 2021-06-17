@@ -306,9 +306,9 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             JSTemporalPlainYearMonthObject ym = TemporalUtil.requireTemporalYearMonth(thisObj);
             DynamicObject obj = JSOrdinary.create(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, ym.getCalendar());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", ym.getISODay());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", ym.getISOMonth());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", ym.getISOYear());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", ym.getDay());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", ym.getMonth());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", ym.getYear());
             return obj;
         }
     }
@@ -323,13 +323,13 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         protected boolean equals(Object thisObj, Object otherParam) {
             JSTemporalPlainYearMonthObject md = TemporalUtil.requireTemporalYearMonth(thisObj);
             JSTemporalPlainYearMonthObject other = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), otherParam, Undefined.instance);
-            if (md.getISOMonth() != other.getISOMonth()) {
+            if (md.getMonth() != other.getMonth()) {
                 return false;
             }
-            if (md.getISODay() != other.getISODay()) {
+            if (md.getDay() != other.getDay()) {
                 return false;
             }
-            if (md.getISOYear() != other.getISOYear()) {
+            if (md.getYear() != other.getYear()) {
                 return false;
             }
             return TemporalUtil.calendarEquals(md.getCalendar(), other.getCalendar());
@@ -397,7 +397,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             } else {
                 day = 1;
             }
-            DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getISOYear(), ym.getISOMonth(), day, calendar);
+            DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getYear(), ym.getMonth(), day, calendar);
             DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0,
                             0, 0, 0, 0, 0);
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
@@ -433,7 +433,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             } else {
                 day = 1;
             }
-            DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getISOYear(), ym.getISOMonth(), day, calendar);
+            DynamicObject date = TemporalUtil.createTemporalDate(getContext(), ym.getYear(), ym.getMonth(), day, calendar);
             DynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -balanceResult.getDays(), 0, 0, 0,
                             0, 0, 0);
             DynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
@@ -481,7 +481,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (MONTH.equals(smallestUnit) && roundingIncrement == 1) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
             }
-            DynamicObject relativeTo = TemporalUtil.createTemporalDateTime(getContext(), thisDate.getISOYear(), thisDate.getISOMonth(), thisDate.getISODay(), 0, 0, 0, 0, 0, 0, calendar);
+            DynamicObject relativeTo = TemporalUtil.createTemporalDateTime(getContext(), thisDate.getYear(), thisDate.getMonth(), thisDate.getDay(), 0, 0, 0, 0, 0, 0, calendar);
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
                             smallestUnit, roundingMode, relativeTo);
             return JSTemporalDuration.createTemporalDuration(getContext(), result2.getYears(), result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
@@ -527,7 +527,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (MONTH.equals(smallestUnit) && roundingIncrement == 1) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
             }
-            DynamicObject relativeTo = TemporalUtil.createTemporalDateTime(getContext(), thisDate.getISOYear(), thisDate.getISOMonth(), thisDate.getISODay(), 0, 0, 0, 0, 0, 0, calendar);
+            DynamicObject relativeTo = TemporalUtil.createTemporalDateTime(getContext(), thisDate.getYear(), thisDate.getMonth(), thisDate.getDay(), 0, 0, 0, 0, 0, 0, calendar);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
                             smallestUnit, roundingMode, relativeTo);

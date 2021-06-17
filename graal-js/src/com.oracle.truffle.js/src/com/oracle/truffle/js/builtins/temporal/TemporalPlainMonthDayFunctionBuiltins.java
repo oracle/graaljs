@@ -105,7 +105,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
             if (isObject.executeBoolean(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-                return JSTemporalPlainMonthDay.create(getContext(), pmd.getISOMonth(), pmd.getISODay(), pmd.getCalendar(), pmd.getISOYear());
+                return JSTemporalPlainMonthDay.create(getContext(), pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear());
             }
             return JSTemporalPlainMonthDay.toTemporalMonthDay(item, options, getContext());
         }

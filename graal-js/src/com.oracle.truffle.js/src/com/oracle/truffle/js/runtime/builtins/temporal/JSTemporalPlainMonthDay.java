@@ -188,12 +188,12 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     @TruffleBoundary
     public static String temporalMonthDayToString(JSTemporalPlainMonthDayObject md, String showCalendar) {
-        String monthString = String.format("%1$2d", md.getISOMonth()).replace(" ", "0");
-        String dayString = String.format("%1$2d", md.getISODay()).replace(" ", "0");
+        String monthString = String.format("%1$2d", md.getMonth()).replace(" ", "0");
+        String dayString = String.format("%1$2d", md.getDay()).replace(" ", "0");
 
         String calendarID = JSRuntime.toString(md.getCalendar());
         if (!ISO8601.equals(calendarID)) {
-            String year = TemporalUtil.padISOYear(md.getISOYear());
+            String year = TemporalUtil.padISOYear(md.getYear());
             return String.format("%s-%s-%s", year, monthString, dayString);
         }
         String calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

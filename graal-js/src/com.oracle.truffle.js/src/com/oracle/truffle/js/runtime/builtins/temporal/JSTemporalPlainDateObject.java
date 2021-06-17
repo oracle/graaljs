@@ -68,17 +68,17 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
     }
 
     @Override
-    public long getISOYear() {
+    public long getYear() {
         return year;
     }
 
     @Override
-    public long getISOMonth() {
+    public long getMonth() {
         return month;
     }
 
     @Override
-    public long getISODay() {
+    public long getDay() {
         return day;
     }
 

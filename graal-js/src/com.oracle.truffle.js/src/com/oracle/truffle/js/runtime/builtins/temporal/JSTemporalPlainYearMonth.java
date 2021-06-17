@@ -160,12 +160,12 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
 
     @TruffleBoundary
     public static String temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, String showCalendar) {
-        Object year = TemporalUtil.padISOYear(ym.getISOYear());
-        String month = String.format("%1$2d", ym.getISOMonth()).replace(" ", "0");
+        Object year = TemporalUtil.padISOYear(ym.getYear());
+        String month = String.format("%1$2d", ym.getMonth()).replace(" ", "0");
         String result = year + "-" + month;
         String calendarID = JSRuntime.toString(ym.getCalendar());
         if (!ISO8601.equals(calendarID)) {
-            String day = String.format("%1$2d", ym.getISODay()).replace(" ", "0");
+            String day = String.format("%1$2d", ym.getDay()).replace(" ", "0");
             result += "-" + day;
         }
         String calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

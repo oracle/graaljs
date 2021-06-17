@@ -61,16 +61,16 @@ public class JSTemporalPlainMonthDayObject extends JSNonProxyObject implements T
     }
 
     @Override
-    public long getISOMonth() {
+    public long getMonth() {
         return isoMonth;
     }
 
     @Override
-    public long getISODay() {
+    public long getDay() {
         return isoDay;
     }
 
-    public long getISOYear() {
+    public long getYear() {
         return isoYear;
     }
 

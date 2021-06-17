@@ -109,7 +109,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
                 return JSTemporalPlainDate.create(getContext(),
-                                dtItem.getISOYear(), dtItem.getISOMonth(), dtItem.getISODay(),
+                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
                                 dtItem.getCalendar());
             }
             return TemporalUtil.toTemporalDate(getContext(), item, options);
@@ -128,8 +128,8 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(getContext(), obj1, null);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) TemporalUtil.toTemporalDate(getContext(), obj2, null);
             return TemporalUtil.compareISODate(
-                            one.getISOYear(), one.getISOMonth(), one.getISODay(),
-                            two.getISOYear(), two.getISOMonth(), two.getISODay());
+                            one.getYear(), one.getMonth(), one.getDay(),
+                            two.getYear(), two.getMonth(), two.getDay());
         }
     }
 

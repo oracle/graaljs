@@ -210,17 +210,17 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 case calendar:
                     return temporalTime.getCalendar();
                 case hour:
-                    return temporalTime.getHours();
+                    return temporalTime.getHour();
                 case minute:
-                    return temporalTime.getMinutes();
+                    return temporalTime.getMinute();
                 case second:
-                    return temporalTime.getSeconds();
+                    return temporalTime.getSecond();
                 case millisecond:
-                    return temporalTime.getMilliseconds();
+                    return temporalTime.getMillisecond();
                 case microsecond:
-                    return temporalTime.getMicroseconds();
+                    return temporalTime.getMicrosecond();
                 case nanosecond:
-                    return temporalTime.getNanoseconds();
+                    return temporalTime.getNanosecond();
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -251,8 +251,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             JSTemporalDurationRecord result = TemporalUtil.addTime(
-                            temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(),
-                            temporalTime.getMilliseconds(), temporalTime.getMicroseconds(), temporalTime.getNanoseconds(),
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
+                            temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
@@ -282,8 +282,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             JSTemporalDurationRecord result = TemporalUtil.addTime(
-                            temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(),
-                            temporalTime.getMilliseconds(), temporalTime.getMicroseconds(), temporalTime.getNanoseconds(),
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
+                            temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
                             -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
             JSTemporalDurationRecord result2 = TemporalUtil.regulateTime(
@@ -334,37 +334,37 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (tempValue != Undefined.instance) {
                 hour = toInt.executeLong(tempValue);
             } else {
-                hour = temporalTime.getHours();
+                hour = temporalTime.getHour();
             }
             tempValue = JSObject.get(partialTime, MINUTE);
             if (tempValue != Undefined.instance) {
                 minute = toInt.executeLong(tempValue);
             } else {
-                minute = temporalTime.getMinutes();
+                minute = temporalTime.getMinute();
             }
             tempValue = JSObject.get(partialTime, SECOND);
             if (tempValue != Undefined.instance) {
                 second = toInt.executeLong(tempValue);
             } else {
-                second = temporalTime.getSeconds();
+                second = temporalTime.getSecond();
             }
             tempValue = JSObject.get(partialTime, MILLISECOND);
             if (tempValue != Undefined.instance) {
                 millisecond = toInt.executeLong(tempValue);
             } else {
-                millisecond = temporalTime.getMilliseconds();
+                millisecond = temporalTime.getMillisecond();
             }
             tempValue = JSObject.get(partialTime, MICROSECOND);
             if (tempValue != Undefined.instance) {
                 microsecond = toInt.executeLong(tempValue);
             } else {
-                microsecond = temporalTime.getMicroseconds();
+                microsecond = temporalTime.getMicrosecond();
             }
             tempValue = JSObject.get(partialTime, NANOSECOND);
             if (tempValue != Undefined.instance) {
                 nanosecond = toInt.executeLong(tempValue);
             } else {
-                nanosecond = temporalTime.getNanoseconds();
+                nanosecond = temporalTime.getNanosecond();
             }
             JSTemporalDurationRecord result = TemporalUtil.regulateTime(hour, minute, second, millisecond, microsecond,
                             nanosecond, overflow);
@@ -397,9 +397,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObject, toNumber);
             JSTemporalDurationRecord result = TemporalUtil.differenceTime(
-                            temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(), temporalTime.getMilliseconds(), temporalTime.getMicroseconds(),
-                            temporalTime.getNanoseconds(),
-                            other.getHours(), other.getMinutes(), other.getSeconds(), other.getMilliseconds(), other.getMicroseconds(), other.getNanoseconds());
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
+                            temporalTime.getNanosecond(),
+                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode,
                             0, 0, 0, 0,
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
@@ -439,9 +439,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             double maximum = max == null ? Double.POSITIVE_INFINITY : max.doubleValue();
             long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObject, toNumber);
             JSTemporalDurationRecord result = TemporalUtil.differenceTime(
-                            temporalTime.getHours(), temporalTime.getMinutes(), temporalTime.getSeconds(), temporalTime.getMilliseconds(), temporalTime.getMicroseconds(),
-                            temporalTime.getNanoseconds(),
-                            other.getHours(), other.getMinutes(), other.getSeconds(), other.getMilliseconds(), other.getMicroseconds(), other.getNanoseconds());
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
+                            temporalTime.getNanosecond(),
+                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode,
                             0, 0, 0, 0,
                             -result.getHours(), -result.getMinutes(), -result.getSeconds(), -result.getMilliseconds(), -result.getMicroseconds(), -result.getNanoseconds(),
@@ -489,9 +489,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(normalizedOptions, (double) maximum,
                             false, isObject, toNumber);
-            JSTemporalDurationRecord result = TemporalUtil.roundTime(temporalTime.getHours(), temporalTime.getMinutes(),
-                            temporalTime.getSeconds(), temporalTime.getMilliseconds(), temporalTime.getMicroseconds(),
-                            temporalTime.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, null);
+            JSTemporalDurationRecord result = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(),
+                            temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
+                            temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainTime.create(getContext(),
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
         }
@@ -520,22 +520,22 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         private static boolean equalsIntl(TemporalTime thisTime, TemporalTime otherTime) {
-            if (thisTime.getHours() != otherTime.getHours()) {
+            if (thisTime.getHour() != otherTime.getHour()) {
                 return false;
             }
-            if (thisTime.getMinutes() != otherTime.getMinutes()) {
+            if (thisTime.getMinute() != otherTime.getMinute()) {
                 return false;
             }
-            if (thisTime.getSeconds() != otherTime.getSeconds()) {
+            if (thisTime.getSecond() != otherTime.getSecond()) {
                 return false;
             }
-            if (thisTime.getMilliseconds() != otherTime.getMilliseconds()) {
+            if (thisTime.getMillisecond() != otherTime.getMillisecond()) {
                 return false;
             }
-            if (thisTime.getMicroseconds() != otherTime.getMicroseconds()) {
+            if (thisTime.getMicrosecond() != otherTime.getMicrosecond()) {
                 return false;
             }
-            if (thisTime.getNanoseconds() != otherTime.getNanoseconds()) {
+            if (thisTime.getNanosecond() != otherTime.getNanosecond()) {
                 return false;
             }
             return true;
@@ -559,9 +559,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             getContext(), isObject, toBoolean, toString);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) temporalDate;
 
-            return TemporalUtil.createTemporalDateTime(getContext(), date.getISOYear(), date.getISOMonth(), date.getISODay(),
-                            time.getHours(), time.getMinutes(), time.getSeconds(), time.getMilliseconds(), time.getMicroseconds(),
-                            time.getNanoseconds(), date.getCalendar());
+            return TemporalUtil.createTemporalDateTime(getContext(), date.getYear(), date.getMonth(), date.getDay(),
+                            time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
+                            time.getNanosecond(), date.getCalendar());
         }
     }
 
@@ -591,9 +591,9 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             DynamicObject timeZone = TemporalUtil.toTemporalTimeZone(getContext(), temporalTimeZoneLike);
 
-            JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), date.getISOYear(), date.getISOMonth(), date.getISODay(),
-                            time.getHours(), time.getMinutes(), time.getSeconds(), time.getMilliseconds(), time.getMicroseconds(),
-                            time.getNanoseconds(), date.getCalendar());
+            JSTemporalPlainDateTimeObject temporalDateTime = TemporalUtil.createTemporalDateTime(getContext(), date.getYear(), date.getMonth(), date.getDay(),
+                            time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
+                            time.getNanosecond(), date.getCalendar());
             JSTemporalInstantObject instant = (JSTemporalInstantObject) TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, TemporalConstants.COMPATIBLE);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, date.getCalendar());
         }
@@ -611,12 +611,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime time = TemporalUtil.requireTemporalTime(thisObj);
             DynamicObject fields = JSOrdinary.create(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoHour", time.getHours());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMinute", time.getMinutes());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoSecond", time.getSeconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMillisecond", time.getMilliseconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMicrosecond", time.getMicroseconds());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoNanosecond", time.getNanoseconds());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoHour", time.getHour());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMinute", time.getMinute());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoSecond", time.getSecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMillisecond", time.getMillisecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMicrosecond", time.getMicrosecond());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoNanosecond", time.getNanosecond());
             return fields;
         }
     }
@@ -638,8 +638,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toBoolean, toString);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TemporalConstants.TRUNC, toBoolean, toString);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundTime(
-                            time.getHours(), time.getMinutes(), time.getSeconds(),
-                            time.getMilliseconds(), time.getMicroseconds(), time.getNanoseconds(),
+                            time.getHour(), time.getMinute(), time.getSecond(),
+                            time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),
                             precision.getIncrement(), precision.getUnit(), roundingMode,
                             null);
             return JSTemporalPlainTime.temporalTimeToString(
@@ -660,8 +660,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public String toLocaleString(Object thisObj) {
             TemporalTime time = TemporalUtil.requireTemporalTime(thisObj);
             return JSTemporalPlainTime.temporalTimeToString(
-                            time.getHours(), time.getMinutes(), time.getSeconds(),
-                            time.getMilliseconds(), time.getMicroseconds(), time.getNanoseconds(),
+                            time.getHour(), time.getMinute(), time.getSecond(),
+                            time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),
                             TemporalConstants.AUTO);
         }
     }

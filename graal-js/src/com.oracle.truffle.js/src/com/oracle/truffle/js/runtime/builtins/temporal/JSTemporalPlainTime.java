@@ -164,11 +164,11 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
                 JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
-                return TemporalUtil.createTemporalTime(ctx, plainDateTime.getHours(), plainDateTime.getMinutes(),
-                                plainDateTime.getSeconds(), plainDateTime.getMilliseconds(), plainDateTime.getMicroseconds(), plainDateTime.getNanoseconds());
+                return TemporalUtil.createTemporalTime(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
+                                plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond());
             } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 TemporalDateTime dt = (TemporalDateTime) item;
-                return TemporalUtil.createTemporalTime(ctx, dt.getHours(), dt.getMinutes(), dt.getSeconds(), dt.getMilliseconds(), dt.getMicroseconds(), dt.getNanoseconds());
+                return TemporalUtil.createTemporalTime(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, item);
             if (!JSRuntime.toString(calendar).equals(TemporalConstants.ISO8601)) {

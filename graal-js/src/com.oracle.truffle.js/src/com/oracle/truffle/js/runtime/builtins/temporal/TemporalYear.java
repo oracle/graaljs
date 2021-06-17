@@ -41,5 +41,5 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 public interface TemporalYear {
-    long getISOYear();
+    long getYear();
 }

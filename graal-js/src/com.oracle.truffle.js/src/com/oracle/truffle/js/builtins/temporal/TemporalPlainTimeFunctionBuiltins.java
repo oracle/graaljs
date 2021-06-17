@@ -109,8 +109,8 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
             if (isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),
-                                timeItem.getHours(), timeItem.getMinutes(), timeItem.getSeconds(), timeItem.getMilliseconds(),
-                                timeItem.getMicroseconds(), timeItem.getNanoseconds());
+                                timeItem.getHour(), timeItem.getMinute(), timeItem.getSecond(), timeItem.getMillisecond(),
+                                timeItem.getMicrosecond(), timeItem.getNanosecond());
             }
             return JSTemporalPlainTime.toTemporalTime(item, overflow, getContext(), isObject, toString);
         }
@@ -130,10 +130,10 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainTimeObject time1 = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(obj1, null, getContext(), isObject, toString);
             JSTemporalPlainTimeObject time2 = (JSTemporalPlainTimeObject) JSTemporalPlainTime.toTemporalTime(obj2, null, getContext(), isObject, toString);
             return TemporalUtil.compareTemporalTime(
-                            time1.getHours(), time1.getMinutes(), time1.getSeconds(),
-                            time1.getMilliseconds(), time1.getMicroseconds(), time1.getNanoseconds(),
-                            time2.getHours(), time2.getMinutes(), time2.getSeconds(),
-                            time2.getMilliseconds(), time2.getMicroseconds(), time2.getNanoseconds());
+                            time1.getHour(), time1.getMinute(), time1.getSecond(),
+                            time1.getMillisecond(), time1.getMicrosecond(), time1.getNanosecond(),
+                            time2.getHour(), time2.getMinute(), time2.getSecond(),
+                            time2.getMillisecond(), time2.getMicrosecond(), time2.getNanosecond());
         }
 
     }

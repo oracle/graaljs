@@ -449,7 +449,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     public static String isoMonthCode(TemporalMonth date) {
-        long month = date.getISOMonth();
+        long month = date.getMonth();
         return buildISOMonthCode(month);
     }
 
@@ -462,6 +462,6 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     // 12.1.45
     public static long isoDay(DynamicObject temporalObject) {
         TemporalDay day = (TemporalDay) temporalObject;
-        return day.getISODay();
+        return day.getDay();
     }
 }

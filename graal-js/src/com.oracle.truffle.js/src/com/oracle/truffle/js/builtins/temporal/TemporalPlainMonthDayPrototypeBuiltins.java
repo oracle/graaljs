@@ -259,9 +259,9 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalPlainMonthDayObject md = TemporalUtil.requireTemporalMonthDay(thisObj);
             DynamicObject obj = JSOrdinary.create(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, md.getCalendar());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", md.getISODay());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", md.getISOMonth());
-            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", md.getISOYear());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", md.getDay());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", md.getMonth());
+            TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoYear", md.getYear());
             return obj;
         }
     }
@@ -310,13 +310,13 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         protected boolean equals(Object thisObj, Object otherParam) {
             JSTemporalPlainMonthDayObject md = TemporalUtil.requireTemporalMonthDay(thisObj);
             JSTemporalPlainMonthDayObject other = (JSTemporalPlainMonthDayObject) JSTemporalPlainMonthDay.toTemporalMonthDay(otherParam, Undefined.instance, getContext());
-            if (md.getISOMonth() != other.getISOMonth()) {
+            if (md.getMonth() != other.getMonth()) {
                 return false;
             }
-            if (md.getISODay() != other.getISODay()) {
+            if (md.getDay() != other.getDay()) {
                 return false;
             }
-            if (md.getISOYear() != other.getISOYear()) {
+            if (md.getYear() != other.getYear()) {
                 return false;
             }
             return TemporalUtil.calendarEquals(md.getCalendar(), other.getCalendar());

@@ -173,10 +173,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
                 JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
-                return TemporalUtil.createTemporalDate(ctx, plainDateTime.getISOYear(), plainDateTime.getISOMonth(), plainDateTime.getISODay(), plainDateTime.getCalendar());
+                return TemporalUtil.createTemporalDate(ctx, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(), plainDateTime.getCalendar());
             } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
-                return create(ctx, dt.getISOYear(), dt.getISOMonth(), dt.getISODay(), dt.getCalendar());
+                return create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, itemObj);
             Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.ARR_DMMCY);
@@ -299,9 +299,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
 
     @TruffleBoundary
     public static String temporalDateToString(TemporalDate date, String showCalendar) {
-        String yearString = TemporalUtil.padISOYear(date.getISOYear());
-        String monthString = String.format("%1$2d", date.getISOMonth()).replace(" ", "0");
-        String dayString = String.format("%1$2d", date.getISODay()).replace(" ", "0");
+        String yearString = TemporalUtil.padISOYear(date.getYear());
+        String monthString = String.format("%1$2d", date.getMonth()).replace(" ", "0");
+        String dayString = String.format("%1$2d", date.getDay()).replace(" ", "0");
 
         String calendarID = JSRuntime.toString(date.getCalendar());
         Object calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

@@ -109,9 +109,9 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                 TemporalDateTime dtItem = (TemporalDateTime) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
                 return JSTemporalPlainDateTime.create(getContext(),
-                                dtItem.getISOYear(), dtItem.getISOMonth(), dtItem.getISODay(),
-                                dtItem.getHours(), dtItem.getMinutes(), dtItem.getSeconds(), dtItem.getMilliseconds(),
-                                dtItem.getMicroseconds(), dtItem.getNanoseconds(), dtItem.getCalendar());
+                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
+                                dtItem.getHour(), dtItem.getMinute(), dtItem.getSecond(), dtItem.getMillisecond(),
+                                dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar());
             }
             return TemporalUtil.toTemporalDateTime(getContext(), item, options);
         }
@@ -129,12 +129,12 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
             TemporalDateTime one = TemporalUtil.toTemporalDateTime(getContext(), obj1, Undefined.instance);
             TemporalDateTime two = TemporalUtil.toTemporalDateTime(getContext(), obj2, Undefined.instance);
             return TemporalUtil.compareISODateTime(
-                            one.getISOYear(), one.getISOMonth(), one.getISODay(),
-                            one.getHours(), one.getMinutes(), one.getSeconds(),
-                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
-                            two.getISOYear(), two.getISOMonth(), two.getISODay(),
-                            two.getHours(), two.getMinutes(), two.getSeconds(),
-                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
+                            one.getYear(), one.getMonth(), one.getDay(),
+                            one.getHour(), one.getMinute(), one.getSecond(),
+                            one.getMillisecond(), one.getMicrosecond(), one.getNanosecond(),
+                            two.getYear(), two.getMonth(), two.getDay(),
+                            two.getHour(), two.getMinute(), two.getSecond(),
+                            two.getMillisecond(), two.getMicrosecond(), two.getNanosecond());
         }
     }
 

@@ -208,7 +208,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         @Specialization
         public DynamicObject plainDate(Object calendar, Object temporalTimeZoneLike) {
             TemporalDate dateTime = (TemporalDate) TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
-            return JSTemporalPlainDate.create(getContext(), dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(), dateTime.getCalendar());
+            return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar());
         }
     }
 
@@ -222,7 +222,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         public DynamicObject plainDateISO(Object temporalTimeZoneLike) {
             DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
             TemporalDate dateTime = (TemporalDate) TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
-            return JSTemporalPlainDate.create(getContext(), dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(), dateTime.getCalendar());
+            return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar());
         }
     }
 
@@ -236,8 +236,8 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         public DynamicObject plainTimeISO(Object temporalTimeZoneLike) {
             DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
             TemporalDateTime dateTime = (TemporalDateTime) TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
-            return JSTemporalPlainTime.create(getContext(), dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(), dateTime.getMilliseconds(), dateTime.getMicroseconds(),
-                            dateTime.getNanoseconds());
+            return JSTemporalPlainTime.create(getContext(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(),
+                            dateTime.getNanosecond());
         }
     }
 }

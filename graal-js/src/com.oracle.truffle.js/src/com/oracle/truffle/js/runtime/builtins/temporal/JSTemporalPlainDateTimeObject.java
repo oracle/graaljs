@@ -76,47 +76,47 @@ public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements T
     }
 
     @Override
-    public long getHours() {
+    public long getHour() {
         return hours;
     }
 
     @Override
-    public long getMinutes() {
+    public long getMinute() {
         return minutes;
     }
 
     @Override
-    public long getSeconds() {
+    public long getSecond() {
         return seconds;
     }
 
     @Override
-    public long getMilliseconds() {
+    public long getMillisecond() {
         return milliseconds;
     }
 
     @Override
-    public long getMicroseconds() {
+    public long getMicrosecond() {
         return microseconds;
     }
 
     @Override
-    public long getNanoseconds() {
+    public long getNanosecond() {
         return nanoseconds;
     }
 
     @Override
-    public long getISOYear() {
+    public long getYear() {
         return year;
     }
 
     @Override
-    public long getISOMonth() {
+    public long getMonth() {
         return month;
     }
 
     @Override
-    public long getISODay() {
+    public long getDay() {
         return day;
     }
 

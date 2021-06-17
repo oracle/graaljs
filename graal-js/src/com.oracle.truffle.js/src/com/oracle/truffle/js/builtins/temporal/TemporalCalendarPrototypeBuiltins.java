@@ -324,7 +324,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             durationObj, getContext(), isObject, toString);
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-            JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getISOYear(), date.getISOMonth(), date.getISODay(),
+            JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
 
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
@@ -350,7 +350,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setTime, AUTO, DAY, toBoolean, toString);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
-                            one.getISOYear(), one.getISOMonth(), one.getISODay(), two.getISOYear(), two.getISOMonth(), two.getISODay(),
+                            one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                             largestUnit);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0);
@@ -369,12 +369,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
-                return ((JSTemporalPlainDateObject) temporalDateLike).getISOYear();
+                return ((JSTemporalPlainDateObject) temporalDateLike).getYear();
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
-                return ((JSTemporalPlainYearMonthObject) temporalDateLike).getISOYear();
+                return ((JSTemporalPlainYearMonthObject) temporalDateLike).getYear();
             } else {
                 TemporalDate td = (TemporalDate) TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
-                return td.getISOYear();
+                return td.getYear();
             }
         }
     }
@@ -397,7 +397,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 dateLike = TemporalUtil.toTemporalDate(getContext(), dateLike, null);
             }
             assert dateLike instanceof TemporalMonth;
-            return ((TemporalMonth) dateLike).getISOMonth();
+            return ((TemporalMonth) dateLike).getMonth();
         }
     }
 
@@ -460,7 +460,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
                             temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean,
                             toString);
-            return JSTemporalCalendar.toISODayOfWeek(date.getISOYear(), date.getISOMonth(), date.getISODay());
+            return JSTemporalCalendar.toISODayOfWeek(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
@@ -481,7 +481,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
                             temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean,
                             toString);
-            return JSTemporalCalendar.toISODayOfYear(date.getISOYear(), date.getISOMonth(), date.getISODay());
+            return JSTemporalCalendar.toISODayOfYear(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
@@ -501,7 +501,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) JSTemporalPlainDate.toTemporalDate(
                             temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean, toString);
-            return JSTemporalCalendar.toISOWeekOfYear(date.getISOYear(), date.getISOMonth(), date.getISODay());
+            return JSTemporalCalendar.toISOWeekOfYear(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
@@ -540,8 +540,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 dateLike = TemporalUtil.toTemporalDate(getContext(), dateLike, null);
             }
             return JSTemporalCalendar.isoDaysInMonth(
-                            ((TemporalYear) dateLike).getISOYear(),
-                            ((TemporalMonth) dateLike).getISOMonth());
+                            ((TemporalYear) dateLike).getYear(),
+                            ((TemporalMonth) dateLike).getMonth());
         }
     }
 
@@ -558,12 +558,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             long year = 0;
             if (temporalDateLike instanceof TemporalDate) {
-                year = ((TemporalDate) temporalDateLike).getISOYear();
+                year = ((TemporalDate) temporalDateLike).getYear();
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
-                year = ((JSTemporalPlainYearMonthObject) temporalDateLike).getISOYear();
+                year = ((JSTemporalPlainYearMonthObject) temporalDateLike).getYear();
             } else {
                 TemporalDate dateLike = (TemporalDate) TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
-                year = dateLike.getISOYear();
+                year = dateLike.getYear();
             }
             return JSTemporalCalendar.isoDaysInYear(year);
         }
@@ -600,12 +600,12 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             long year = 0;
             if (temporalDateLike instanceof TemporalDate) {
-                year = ((TemporalDate) temporalDateLike).getISOYear();
+                year = ((TemporalDate) temporalDateLike).getYear();
             } else if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
-                year = ((JSTemporalPlainYearMonthObject) temporalDateLike).getISOYear();
+                year = ((JSTemporalPlainYearMonthObject) temporalDateLike).getYear();
             } else {
                 TemporalDate dateLike = (TemporalDate) TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null);
-                year = dateLike.getISOYear();
+                year = dateLike.getYear();
             }
             return JSTemporalCalendar.isISOLeapYear(year);
         }

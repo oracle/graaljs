@@ -41,5 +41,5 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 public interface TemporalDay {
-    long getISODay();
+    long getDay();
 }

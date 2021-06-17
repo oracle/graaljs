@@ -285,15 +285,15 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalTimeZoneObject timeZone = TemporalUtil.requireTemporalTimeZone(thisObj);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.toTemporalDateTime(getContext(), dateTimeParam, Undefined.instance);
             if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
-                double epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(), dateTime.getHours(), dateTime.getMinutes(),
-                                dateTime.getSeconds(), dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds());
+                double epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
+                                dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
                 Object instant = TemporalUtil.createTemporalInstant(getContext(), (long) (epochNanoseconds - timeZone.getNanoseconds().bigIntegerValue().doubleValue()));
                 List<Object> list = new ArrayList<>();
                 list.add(instant);
                 return JSRuntime.createArrayFromList(getContext(), list);
             }
-            List<Long> possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone.getIdentifier(), dateTime.getISOYear(), dateTime.getISOMonth(), dateTime.getISODay(),
-                            dateTime.getHours(), dateTime.getMinutes(), dateTime.getSeconds(), dateTime.getMilliseconds(), dateTime.getMicroseconds(), dateTime.getNanoseconds());
+            List<Long> possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone.getIdentifier(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
+                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
             List<Object> possibleInstants = new ArrayList<>();
             for (Long epochNanoseconds : possibleEpochNanoseconds) {
                 DynamicObject instant = TemporalUtil.createTemporalInstant(getContext(), epochNanoseconds);
