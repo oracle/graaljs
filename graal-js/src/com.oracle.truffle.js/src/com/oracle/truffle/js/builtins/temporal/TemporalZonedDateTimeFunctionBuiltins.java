@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -99,8 +98,8 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         @Specialization
         protected DynamicObject from(Object item, Object optionsParam) {
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optionsParam);
-            if (item instanceof TemporalZonedDateTime) {
-                TemporalZonedDateTime zdt = (TemporalZonedDateTime) item;
+            if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
+                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 TemporalUtil.toTemporalOverflow(options);
                 TemporalUtil.toTemporalDisambiguation(options);
                 TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT);

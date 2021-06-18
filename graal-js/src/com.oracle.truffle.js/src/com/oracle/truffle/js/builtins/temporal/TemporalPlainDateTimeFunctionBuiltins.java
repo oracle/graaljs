@@ -54,7 +54,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -106,7 +106,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
                         @Cached("create()") JSToStringNode toString) {
             DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
             if (isObject.executeBoolean(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
-                TemporalDateTime dtItem = (TemporalDateTime) item;
+                JSTemporalPlainDateTimeObject dtItem = (JSTemporalPlainDateTimeObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
                 return JSTemporalPlainDateTime.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
@@ -126,8 +126,8 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected int compare(Object obj1, Object obj2) {
-            TemporalDateTime one = TemporalUtil.toTemporalDateTime(getContext(), obj1, Undefined.instance);
-            TemporalDateTime two = TemporalUtil.toTemporalDateTime(getContext(), obj2, Undefined.instance);
+            JSTemporalPlainDateTimeObject one = TemporalUtil.toTemporalDateTime(getContext(), obj1, Undefined.instance);
+            JSTemporalPlainDateTimeObject two = TemporalUtil.toTemporalDateTime(getContext(), obj2, Undefined.instance);
             return TemporalUtil.compareISODateTime(
                             one.getYear(), one.getMonth(), one.getDay(),
                             one.getHour(), one.getMinute(), one.getSecond(),

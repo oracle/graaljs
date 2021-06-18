@@ -242,13 +242,14 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     public static Object toTemporalCalendar(Object itemParam, IsObjectNode isObject, JSToStringNode toString, JSContext ctx) {
         Object item = itemParam;
         if (isObject.executeBoolean(item)) {
+            DynamicObject itemObj = (DynamicObject) item;
             if (item instanceof TemporalCalendar) {
                 return ((TemporalCalendar) item).getCalendar();
             }
-            if (!JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
+            if (!JSObject.hasProperty(itemObj, CALENDAR)) {
                 return item;
             }
-            item = JSObject.get((DynamicObject) item, CALENDAR);
+            item = JSObject.get(itemObj, CALENDAR);
             if (isObject.executeBoolean(item) && !JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
                 return item;
             }

@@ -167,7 +167,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
                 return TemporalUtil.createTemporalTime(ctx, plainDateTime.getHour(), plainDateTime.getMinute(),
                                 plainDateTime.getSecond(), plainDateTime.getMillisecond(), plainDateTime.getMicrosecond(), plainDateTime.getNanosecond());
             } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
-                TemporalDateTime dt = (TemporalDateTime) item;
+                JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
                 return TemporalUtil.createTemporalTime(ctx, dt.getHour(), dt.getMinute(), dt.getSecond(), dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, item);

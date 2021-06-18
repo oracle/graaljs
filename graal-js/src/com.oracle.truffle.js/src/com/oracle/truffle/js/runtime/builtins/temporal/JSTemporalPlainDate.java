@@ -162,13 +162,12 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     // 3.5.4
-    public static DynamicObject toTemporalDate(Object item, Object optionsParam,
-                    JSContext ctx, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString) {
+    public static JSTemporalPlainDateObject toTemporalDate(Object item, Object optionsParam, JSContext ctx, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString) {
         DynamicObject options = optionsParam != Undefined.instance ? (DynamicObject) optionsParam : JSOrdinary.createWithNullPrototype(ctx);
         if (isObject.executeBoolean(item)) {
             DynamicObject itemObj = (DynamicObject) item;
             if (isJSTemporalPlainDate(item)) {
-                return itemObj;
+                return (JSTemporalPlainDateObject) itemObj;
             } else if (TemporalUtil.isTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
@@ -176,7 +175,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 return TemporalUtil.createTemporalDate(ctx, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(), plainDateTime.getCalendar());
             } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
-                return create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
+                return (JSTemporalPlainDateObject) create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
             }
             DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, itemObj);
             Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.setDMMCY);
@@ -187,7 +186,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(ctx, toString.executeString(item));
         assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
         DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
-        return create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
+        return (JSTemporalPlainDateObject) create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
     // 3.5.5
@@ -298,7 +297,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @TruffleBoundary
-    public static String temporalDateToString(TemporalDate date, String showCalendar) {
+    public static String temporalDateToString(JSTemporalPlainDateObject date, String showCalendar) {
         String yearString = TemporalUtil.padISOYear(date.getYear());
         String monthString = String.format("%1$2d", date.getMonth()).replace(" ", "0");
         String dayString = String.format("%1$2d", date.getDay()).replace(" ", "0");

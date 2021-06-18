@@ -57,9 +57,8 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDate;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -207,7 +206,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject plainDate(Object calendar, Object temporalTimeZoneLike) {
-            TemporalDate dateTime = (TemporalDate) TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
             return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar());
         }
     }
@@ -221,7 +220,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         @Specialization
         public DynamicObject plainDateISO(Object temporalTimeZoneLike) {
             DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
-            TemporalDate dateTime = (TemporalDate) TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
             return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar());
         }
     }
@@ -235,7 +234,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         @Specialization
         public DynamicObject plainTimeISO(Object temporalTimeZoneLike) {
             DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
-            TemporalDateTime dateTime = (TemporalDateTime) TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
             return JSTemporalPlainTime.create(getContext(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(),
                             dateTime.getNanosecond());
         }
