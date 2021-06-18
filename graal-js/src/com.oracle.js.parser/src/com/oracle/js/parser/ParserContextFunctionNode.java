@@ -170,36 +170,6 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
-     * Marks the occurrence of eval within this function.
-     */
-    public void markEval() {
-        setFlag(FunctionNode.HAS_EVAL);
-        setFlag(FunctionNode.HAS_SCOPE_BLOCK);
-    }
-
-    /**
-     * Marks the occurrence of eval in a nested function.
-     */
-    public void markNestedEval() {
-        setFlag(FunctionNode.HAS_NESTED_EVAL);
-        setFlag(FunctionNode.HAS_SCOPE_BLOCK);
-    }
-
-    /**
-     * Marks the occurrence of eval in a nested arrow function.
-     */
-    public void markArrowEval() {
-        setFlag(FunctionNode.HAS_ARROW_EVAL);
-    }
-
-    /**
-     * Marks the use of {@code this}.
-     */
-    public void markThis() {
-        setFlag(FunctionNode.USES_THIS);
-    }
-
-    /**
      * @return true if the function has a direct eval call.
      */
     public boolean hasEval() {
@@ -601,7 +571,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     public void propagateFlagsToParent(ParserContextFunctionNode parent) {
         // Propagate the presence of eval to all parents.
         if (hasEval() || hasNestedEval()) {
-            parent.markNestedEval();
+            parent.setFlag(FunctionNode.HAS_NESTED_EVAL | FunctionNode.HAS_SCOPE_BLOCK);
         }
         if (isArrow()) {
             // Propagate the presence of eval to the first non-arrow and all arrow parents in
@@ -613,11 +583,11 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             // function fun(){ return eval("() => this")(); };
             // (() => (() => eval("this"))())();
             if (hasEval() || hasArrowEval()) {
-                parent.markArrowEval();
+                parent.setFlag(FunctionNode.HAS_ARROW_EVAL);
             }
             // Propagate use of `this` up to the first non-arrow and all arrow parents in between.
             if (usesThis()) {
-                parent.markThis();
+                parent.setFlag(FunctionNode.USES_THIS);
             }
         }
     }

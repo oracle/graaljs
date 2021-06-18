@@ -346,12 +346,14 @@ class ParserContext {
     }
 
     /**
-     * Returns the innermost function or provisional arrow function in the context.
+     * Sets function flags on the current function or provisional arrow function in the context.
      */
-    public ParserContextFunctionNode getCurrentFunctionFlagsReceiver() {
+    public ParserContextFunctionNode setCurrentFunctionFlag(int flag) {
         for (int i = sp - 1; i >= 0; i--) {
             if (stack[i] instanceof ParserContextFunctionNode) {
-                return (ParserContextFunctionNode) stack[i];
+                ParserContextFunctionNode fn = (ParserContextFunctionNode) stack[i];
+                fn.setFlag(flag);
+                return fn;
             }
         }
         return null;

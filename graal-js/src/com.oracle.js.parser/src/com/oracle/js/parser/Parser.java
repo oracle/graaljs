@@ -663,7 +663,7 @@ public class Parser extends AbstractParser {
 
     private ParserContextFunctionNode createParserContextFunctionNode(final IdentNode ident, final long functionToken, final int functionFlags, final int functionLine,
                     final List<IdentNode> parameters, int functionLength, Scope functionTopScope) {
-        final ParserContextFunctionNode parentFunction = lc.getCurrentFunctionFlagsReceiver();
+        final ParserContextFunctionNode parentFunction = lc.getCurrentFunction();
 
         final String name = ident == null ? "" : ident.getName();
 
@@ -675,7 +675,7 @@ public class Parser extends AbstractParser {
             flags |= FunctionNode.IS_PROGRAM;
             flags |= FunctionNode.IS_ANONYMOUS;
         } else {
-            parentFunction.setFlag(FunctionNode.HAS_CLOSURES);
+            lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
         }
 
         final Scope parentScope = lc.getCurrentScope();
@@ -5857,7 +5857,7 @@ public class Parser extends AbstractParser {
 
     private void revertArrowHead(ParserContextFunctionNode cover) {
         // merge flags gathered during expression parsing into the current function's flags.
-        lc.getCurrentFunctionFlagsReceiver().setFlag(cover.getFlags() & FunctionNode.ARROW_HEAD_FLAGS);
+        lc.setCurrentFunctionFlag(cover.getFlags() & FunctionNode.ARROW_HEAD_FLAGS);
     }
 
     private Expression arrowFunctionRestParameter(Expression paramListExpr, long commaToken, final boolean yield, final boolean await) {
@@ -6898,7 +6898,7 @@ public class Parser extends AbstractParser {
     }
 
     private void markEval() {
-        lc.getCurrentFunctionFlagsReceiver().markEval();
+        lc.setCurrentFunctionFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_SCOPE_BLOCK);
     }
 
     private void prependStatement(final Statement statement) {
@@ -6918,7 +6918,7 @@ public class Parser extends AbstractParser {
     }
 
     private void markThis() {
-        lc.getCurrentFunctionFlagsReceiver().markThis();
+        lc.setCurrentFunctionFlag(FunctionNode.USES_THIS);
     }
 
     private void markNewTarget() {
