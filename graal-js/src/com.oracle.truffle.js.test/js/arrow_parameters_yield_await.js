@@ -44,6 +44,22 @@ syntaxError("(async function*() { (p = await 21) => {} })();");
 syntaxError("(async function*() { (p = 21 + await 21) => {} })();");
 syntaxError("(async function*() { (p = (await 21, await 21)) => {} })();");
 
+syntaxError("async(p = await 21) => {}");
+syntaxError("async(p = 21 + await 21) => {}");
+syntaxError("async(p = (await 21, await 21)) => {}");
+// await is not a valid identifier in async arrow function head
+syntaxError("async(await) => {}");
+syntaxError("async(\\u0061wait) => {}");
+syntaxError("async(p = (await) => {}) => {}");
+syntaxError("async(p = (\\u0061wait) => {}) => {}");
+syntaxError("async(p = async (await) => {}) => {}");
+// await is a valid identifier in non-async arrow function body
+/* allowed */async(p = () => await) => {}
+/* allowed */async(p = () => \u0061wait) => {}
+// and of course, await can be used as an identifier when it is just a call expression
+/* allowed */true || async(await);
+/* allowed */true || async(\u0061wait);
+
 
 // yield and await are of course allowed again if they are used in the body of nested function.
 

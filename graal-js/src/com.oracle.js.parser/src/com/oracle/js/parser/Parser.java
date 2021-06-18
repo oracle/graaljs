@@ -2075,14 +2075,23 @@ public class Parser extends AbstractParser {
         }
         // It is a Syntax Error if this production has an [Await] parameter or if the goal symbol
         // of the syntactic grammar is Module and StringValue of Identifier is "await".
-        if (await || isModule) {
-            if (ident.isTokenType(AWAIT)) {
+        // If we are inside CoverCallExpressionAndAsyncArrowHead, record the token for later
+        // error handling: "await" is not a valid identifier iff it occurs inside AsyncArrowHead.
+        boolean awaitOrModule = await || isModule;
+        if (ident.isTokenType(AWAIT)) {
+            if (awaitOrModule) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
-            } else if (isEscapedIdent(ident) && AWAIT.getName().equals(ident.getName())) {
+            } else {
+                recordYieldOrAwait(ident);
+            }
+        } else if (isEscapedIdent(ident) && AWAIT.getName().equals(ident.getName())) {
+            if (awaitOrModule) {
                 throw error(AbstractParser.message(MESSAGE_ESCAPED_KEYWORD, ident.getName()), ident.getToken());
             } else {
-                assert !AWAIT.getName().equals(ident.getName());
+                recordYieldOrAwait(ident);
             }
+        } else {
+            assert !AWAIT.getName().equals(ident.getName());
         }
     }
 
@@ -3228,23 +3237,32 @@ public class Parser extends AbstractParser {
         return new UnaryNode(Token.recast(token, VOID), LiteralNode.newInstance(token, finish, 0));
     }
 
+    private void recordYieldOrAwait() {
+        long yieldOrAwaitToken = token;
+        assert Token.descType(yieldOrAwaitToken) == YIELD || Token.descType(yieldOrAwaitToken) == AWAIT;
+        recordYieldOrAwait(yieldOrAwaitToken, false);
+    }
+
+    private void recordYieldOrAwait(IdentNode ident) {
+        recordYieldOrAwait(ident.getToken(), true);
+    }
+
     /**
      * It is an early SyntaxError if arrow parameter list contains yield or await. We cannot detect
      * this immediately due to grammar ambiguity, so we only record the potential error to be thrown
      * later once the ambiguity is resolved.
      */
-    private void recordYieldOrAwait() {
-        long yieldOrAwaitToken = token;
-        assert Token.descType(yieldOrAwaitToken) == YIELD || Token.descType(yieldOrAwaitToken) == AWAIT;
+    private void recordYieldOrAwait(long yieldOrAwaitToken, boolean ident) {
         for (Iterator<ParserContextFunctionNode> iterator = lc.getFunctions(); iterator.hasNext();) {
             ParserContextFunctionNode fn = iterator.next();
             if (fn.isCoverArrowHead()) {
+                if (ident && !fn.isAsync()) {
+                    // await identifiers are only relevant for async arrow heads
+                    continue;
+                }
                 // Only record the first yield or await.
                 if (fn.getYieldOrAwaitInParameters() == 0L) {
                     fn.setYieldOrAwaitInParameters(yieldOrAwaitToken);
-                } else {
-                    // We can stop here, all the remaining parents have seen a yield/await already.
-                    break;
                 }
             } else {
                 break;
