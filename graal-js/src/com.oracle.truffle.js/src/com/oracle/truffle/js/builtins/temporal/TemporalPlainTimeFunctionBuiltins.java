@@ -44,13 +44,12 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltinsFactory.JSTemporalPlainTimeFromNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
@@ -92,7 +91,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
         return null;
     }
 
-    public abstract static class JSTemporalPlainTimeFromNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainTimeFromNode extends JSTemporalBuiltinOperation {
 
         public JSTemporalPlainTimeFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -100,24 +99,22 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object from(Object item, Object options,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+            DynamicObject normalizedOptions = getOptionsObject(options);
             String overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, toBoolean, toString);
-            if (isObject.executeBoolean(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
+            if (isObject(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
                 return JSTemporalPlainTime.create(getContext(),
                                 timeItem.getHour(), timeItem.getMinute(), timeItem.getSecond(), timeItem.getMillisecond(),
                                 timeItem.getMicrosecond(), timeItem.getNanosecond());
             }
-            return JSTemporalPlainTime.toTemporalTime(item, overflow, getContext(), isObject, toString);
+            return JSTemporalPlainTime.toTemporalTime(item, overflow, getContext(), isObjectNode, toString);
         }
 
     }
 
-    public abstract static class JSTemporalPlainTimeCompareNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainTimeCompareNode extends JSTemporalBuiltinOperation {
 
         public JSTemporalPlainTimeCompareNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -125,10 +122,9 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected int compare(Object obj1, Object obj2,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalPlainTimeObject time1 = JSTemporalPlainTime.toTemporalTime(obj1, null, getContext(), isObject, toString);
-            JSTemporalPlainTimeObject time2 = JSTemporalPlainTime.toTemporalTime(obj2, null, getContext(), isObject, toString);
+            JSTemporalPlainTimeObject time1 = JSTemporalPlainTime.toTemporalTime(obj1, null, getContext(), isObjectNode, toString);
+            JSTemporalPlainTimeObject time2 = JSTemporalPlainTime.toTemporalTime(obj2, null, getContext(), isObjectNode, toString);
             return TemporalUtil.compareTemporalTime(
                             time1.getHour(), time1.getMinute(), time1.getSecond(),
                             time1.getMillisecond(), time1.getMicrosecond(), time1.getNanosecond(),

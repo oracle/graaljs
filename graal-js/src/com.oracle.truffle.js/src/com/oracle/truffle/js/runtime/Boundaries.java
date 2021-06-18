@@ -454,4 +454,9 @@ public final class Boundaries {
     public static BigInteger bigIntegerValueOf(long ns) {
         return BigInteger.valueOf(ns);
     }
+
+    @TruffleBoundary
+    public static int intValue(Number number) {
+        return number.intValue();
+    }
 }

@@ -46,10 +46,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -92,7 +91,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         return null;
     }
 
-    public abstract static class JSTemporalDurationFrom extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationFrom extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationFrom(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -100,20 +99,19 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected Object from(Object item,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
-            if (isObject.executeBoolean(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
+            if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
                 return JSTemporalDuration.create(getContext(), duration.getYears(),
                                 duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                                 duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                                 duration.getMicroseconds(), duration.getNanoseconds());
             }
-            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObject, toString);
+            return JSTemporalDuration.toTemporalDuration(item, getContext(), isObjectNode, toString);
         }
     }
 
-    public abstract static class JSTemporalDurationCompare extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationCompare extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationCompare(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -121,11 +119,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObject, toString);
-            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObject, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString);
+            JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString);
+            DynamicObject options = getOptionsObject(optionsParam);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), options);
             long shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),

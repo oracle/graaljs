@@ -70,7 +70,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarWeekOfYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -224,7 +224,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.4
-    public abstract static class JSTemporalCalendarDateFromFields extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDateFromFields extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDateFromFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -232,26 +232,26 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object dateFromFields(Object thisObj, Object fields, Object optionsParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSStringToNumberNode stringToNumber) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            if (!isObject.executeBoolean(fields)) {
+            if (!isObject(fields)) {
+                errorBranch.enter();
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalDateTimeRecord result = JSTemporalCalendar.isoDateFromFields((DynamicObject) fields, options, getContext(),
-                            isObject, toBoolean, toString, stringToNumber, identicalNode);
+                            isObjectNode, toBoolean, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
     }
 
     // 12.4.5
-    public abstract static class JSTemporalCalendarYearMonthFromFields extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarYearMonthFromFields extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarYearMonthFromFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -259,25 +259,25 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object yearMonthFromFields(Object thisObj, Object fields, Object optionsParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSStringToNumberNode stringToNumber) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            if (!isObject.executeBoolean(fields)) {
+            if (!isObject(fields)) {
+                errorBranch.enter();
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalYearMonthDayRecord result = JSTemporalCalendar.isoYearMonthFromFields((DynamicObject) fields, options, getContext(),
-                            isObject, toBoolean, toString, stringToNumber, identicalNode);
+                            isObjectNode, toBoolean, toString, stringToNumber, identicalNode);
             return JSTemporalPlainYearMonth.create(getContext(), result.getYear(), result.getMonth(), calendar, result.getDay());
         }
     }
 
     // 12.4.6
-    public abstract static class JSTemporalCalendarMonthDayFromFields extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarMonthDayFromFields extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarMonthDayFromFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -285,26 +285,26 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object monthDayFromFields(Object thisObj, Object fields, Object optionsParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSStringToNumberNode stringToNumber) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            if (!isObject.executeBoolean(fields)) {
+            if (!isObject(fields)) {
+                errorBranch.enter();
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            DynamicObject options = getOptionsObject(optionsParam);
             JSTemporalYearMonthDayRecord result = JSTemporalCalendar.isoMonthDayFromFields((DynamicObject) fields, options, getContext(),
-                            isObject, toBoolean, toString, stringToNumber, identicalNode);
+                            isObjectNode, toBoolean, toString, stringToNumber, identicalNode);
 
             return JSTemporalPlainMonthDay.create(getContext(), result.getMonth(), result.getDay(), calendar, result.getYear());
         }
     }
 
     // 12.4.7
-    public abstract static class JSTemporalCalendarDateAdd extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDateAdd extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDateAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -312,16 +312,15 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object dateAdd(Object thisObj, Object dateObj, Object durationObj, Object optionsParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(dateObj,
-                            Undefined.instance, getContext(), isObject, toBoolean, toString);
+                            Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
             JSTemporalDurationObject duration = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(
-                            durationObj, getContext(), isObject, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+                            durationObj, getContext(), isObjectNode, toString);
+            DynamicObject options = getOptionsObject(optionsParam);
             String overflow = TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
             JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
@@ -331,7 +330,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.8
-    public abstract static class JSTemporalCalendarDateUntil extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDateUntil extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDateUntil(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -339,14 +338,13 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object dateUntil(Object thisObj, Object oneObj, Object twoObj, Object optionsParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            JSTemporalPlainDateObject one = JSTemporalPlainDate.toTemporalDate(oneObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
-            JSTemporalPlainDateObject two = JSTemporalPlainDate.toTemporalDate(twoObj, Undefined.instance, getContext(), isObject, toBoolean, toString);
-            DynamicObject options = TemporalUtil.getOptionsObject(optionsParam, getContext(), isObject);
+            JSTemporalPlainDateObject one = JSTemporalPlainDate.toTemporalDate(oneObj, Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
+            JSTemporalPlainDateObject two = JSTemporalPlainDate.toTemporalDate(twoObj, Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
+            DynamicObject options = getOptionsObject(optionsParam);
             String largestUnit = TemporalUtil.toLargestTemporalUnit(options, TemporalUtil.setTime, AUTO, DAY, toBoolean, toString);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
@@ -357,7 +355,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.9
-    public abstract static class JSTemporalCalendarYear extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarYear extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarYear(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -365,7 +363,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long year(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
                 return ((JSTemporalPlainDateObject) temporalDateLike).getYear();
@@ -379,7 +377,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.10
-    public abstract static class JSTemporalCalendarMonth extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarMonth extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarMonth(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -387,7 +385,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long month(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
             if (!JSRuntime.isObject(dateLike) ||
@@ -401,7 +399,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.11
-    public abstract static class JSTemporalCalendarMonthCode extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarMonthCode extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarMonthCode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -409,7 +407,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public String monthCode(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
             if (!JSRuntime.isObject(dateLike) ||
@@ -423,7 +421,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.12
-    public abstract static class JSTemporalCalendarDay extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDay extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDay(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -431,7 +429,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long day(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             DynamicObject tdl = Undefined.instance;
             if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(temporalDateLike)) {
@@ -444,7 +442,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.13
-    public abstract static class JSTemporalCalendarDayOfWeek extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDayOfWeek extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDayOfWeek(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -452,18 +450,17 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long dayOfWeek(Object thisObj, Object temporalDateLike,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean, toString);
+            JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
             return JSTemporalCalendar.toISODayOfWeek(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
     // 12.4.14
-    public abstract static class JSTemporalCalendarDayOfYear extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDayOfYear extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDayOfYear(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -471,18 +468,17 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long dayOfYear(Object thisObj, Object temporalDateLike,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean, toString);
+            JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
             return JSTemporalCalendar.toISODayOfYear(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
     // 12.4.15
-    public abstract static class JSTemporalCalendarWeekOfYear extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarWeekOfYear extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarWeekOfYear(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -490,18 +486,17 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long weekOfYear(Object thisObj, Object temporalDateLike,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean, toString);
+            JSTemporalPlainDateObject date = JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
             return JSTemporalCalendar.toISOWeekOfYear(date.getYear(), date.getMonth(), date.getDay());
         }
     }
 
     // 12.4.16
-    public abstract static class JSTemporalCalendarDaysInWeek extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDaysInWeek extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDaysInWeek(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -509,18 +504,17 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long daysInWeek(Object thisObj, Object temporalDateLike,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
-            JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObject, toBoolean, toString);
+            JSTemporalPlainDate.toTemporalDate(temporalDateLike, Undefined.instance, getContext(), isObjectNode, toBoolean, toString);
             return 7;
         }
     }
 
     // 12.4.17
-    public abstract static class JSTemporalCalendarDaysInMonth extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDaysInMonth extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDaysInMonth(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -528,7 +522,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long daysInMonth(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
             if (!JSRuntime.isObject(dateLike) || (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike))) {
@@ -541,7 +535,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.18
-    public abstract static class JSTemporalCalendarDaysInYear extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarDaysInYear extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarDaysInYear(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -549,7 +543,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long daysInYear(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             long year = 0;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
@@ -565,7 +559,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.19
-    public abstract static class JSTemporalCalendarMonthsInYear extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarMonthsInYear extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarMonthsInYear(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -573,7 +567,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public long monthsInYear(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
                 TemporalUtil.toTemporalDate(getContext(), temporalDateLike, null); // discard result
@@ -583,7 +577,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.20
-    public abstract static class JSTemporalCalendarInLeapYear extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarInLeapYear extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarInLeapYear(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -591,7 +585,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public boolean inLeapYear(Object thisObj, Object temporalDateLike) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             long year = 0;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
@@ -607,7 +601,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 12.4.23
-    public abstract static class JSTemporalCalendarToString extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarToString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalCalendarToString(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -615,7 +609,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public String toString(Object thisObj) {
-            JSTemporalCalendarObject calendar = TemporalUtil.requireTemporalCalendar(thisObj);
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             return calendar.getId();
         }
     }

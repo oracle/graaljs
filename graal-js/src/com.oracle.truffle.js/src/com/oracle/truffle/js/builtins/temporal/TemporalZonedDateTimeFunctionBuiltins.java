@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.temporal;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -89,7 +90,7 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         return null;
     }
 
-    public abstract static class JSTemporalZonedDateTimeFromNode extends JSBuiltinNode {
+    public abstract static class JSTemporalZonedDateTimeFromNode extends JSTemporalBuiltinOperation {
 
         public JSTemporalZonedDateTimeFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -97,7 +98,7 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected DynamicObject from(Object item, Object optionsParam) {
-            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optionsParam);
+            DynamicObject options = getOptionsObject(optionsParam);
             if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
                 TemporalUtil.toTemporalOverflow(options);

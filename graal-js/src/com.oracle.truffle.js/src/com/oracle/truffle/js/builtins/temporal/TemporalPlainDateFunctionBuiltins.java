@@ -46,11 +46,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateFromNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -92,7 +91,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         return null;
     }
 
-    public abstract static class JSTemporalPlainDateFromNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainDateFromNode extends JSTemporalBuiltinOperation {
 
         public JSTemporalPlainDateFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -100,24 +99,21 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object from(Object item, Object optParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), optParam);
-
-            if (isObject.executeBoolean(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
+            DynamicObject options = getOptionsObject(optParam);
+            if (isObject(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
                 return JSTemporalPlainDate.create(getContext(),
-                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
-                                dtItem.getCalendar());
+                                dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar());
             }
             return TemporalUtil.toTemporalDate(getContext(), item, options);
         }
 
     }
 
-    public abstract static class JSTemporalPlainDateCompareNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainDateCompareNode extends JSTemporalBuiltinOperation {
 
         public JSTemporalPlainDateCompareNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

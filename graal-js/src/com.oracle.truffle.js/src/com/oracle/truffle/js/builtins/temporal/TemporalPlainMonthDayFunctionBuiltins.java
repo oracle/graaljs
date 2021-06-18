@@ -44,12 +44,11 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltinsFactory.JSTemporalPlainMonthDayFromNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
@@ -89,7 +88,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
         return null;
     }
 
-    public abstract static class JSTemporalPlainMonthDayFromNode extends JSBuiltinNode {
+    public abstract static class JSTemporalPlainMonthDayFromNode extends JSTemporalBuiltinOperation {
 
         public JSTemporalPlainMonthDayFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -97,12 +96,10 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected Object from(Object item, Object optParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString) {
-
-            DynamicObject options = TemporalUtil.getOptionsObject(optParam, getContext(), isObject);
-            if (isObject.executeBoolean(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
+            DynamicObject options = getOptionsObject(optParam);
+            if (isObject(item) && JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(item)) {
                 JSTemporalPlainMonthDayObject pmd = (JSTemporalPlainMonthDayObject) item;
                 TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
                 return JSTemporalPlainMonthDay.create(getContext(), pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear());

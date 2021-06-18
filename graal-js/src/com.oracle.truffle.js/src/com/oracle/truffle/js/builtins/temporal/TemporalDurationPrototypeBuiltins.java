@@ -84,8 +84,8 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -259,7 +259,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.15
-    public abstract static class JSTemporalDurationWith extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationWith extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationWith(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -267,9 +267,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject with(DynamicObject thisObj, DynamicObject temporalDurationLike,
-                        @Cached("create()") IsObjectNode isObjectNode,
                         @Cached("create()") JSToIntegerAsLongNode toInt) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             DynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,
                             getContext(), isObjectNode, toInt);
 
@@ -289,7 +288,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.16
-    public abstract static class JSTemporalDurationNegated extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationNegated extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationNegated(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -297,7 +296,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject negated(DynamicObject thisObj) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.create(getContext(),
                             -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
                             -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(), -duration.getMilliseconds(),
@@ -306,7 +305,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.17
-    public abstract static class JSTemporalDurationAbs extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationAbs extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationAbs(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -314,7 +313,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject abs(DynamicObject thisObj) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.create(getContext(),
                             Math.abs(duration.getYears()), Math.abs(duration.getMonths()), Math.abs(duration.getWeeks()),
                             Math.abs(duration.getDays()), Math.abs(duration.getHours()), Math.abs(duration.getMinutes()),
@@ -324,7 +323,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.18
-    public abstract static class JSTemporalDurationAdd extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationAdd extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -332,13 +331,12 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject add(DynamicObject thisObj, Object other, Object options,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
-                            isObject, toString);
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+                            isObjectNode, toString);
+            DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             JSTemporalDurationRecord result = TemporalUtil.addDuration(getContext(), namesNode, duration.getYears(), duration.getMonths(),
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
@@ -355,7 +353,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.19
-    public abstract static class JSTemporalDurationSubtract extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationSubtract extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationSubtract(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -363,13 +361,12 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject subtract(DynamicObject thisObj, Object other, Object options,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             JSTemporalDurationRecord otherDuration = TemporalUtil.toLimitedTemporalDuration(other, Collections.emptySet(),
-                            isObject, toString);
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+                            isObjectNode, toString);
+            DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             JSTemporalDurationRecord result = TemporalUtil.addDuration(getContext(), namesNode, duration.getYears(), duration.getMonths(),
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
@@ -386,7 +383,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.20
-    public abstract static class JSTemporalDurationRound extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationRound extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationRound(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -394,16 +391,15 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject round(DynamicObject thisObj, Object optParam,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             if (optParam == Undefined.instance) {
                 throw Errors.createTypeError("No options given.");
             }
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(optParam, getContext(), isObject);
+            DynamicObject normalizedOptions = getOptionsObject(optParam);
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
             String smallestUnit = TemporalUtil.toSmallestTemporalUnit(normalizedOptions, Collections.emptySet(), null, toBoolean, toString);
@@ -430,7 +426,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = TemporalUtil.toTemporalRoundingMode(normalizedOptions, HALF_EXPAND, toBoolean, toString);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(normalizedOptions, maximum, false, isObject, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(normalizedOptions, maximum, false, isObjectNode, toNumber);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             JSTemporalDurationRecord unbalanceResult = TemporalUtil.unbalanceDurationRelative(getContext(),
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit,
@@ -461,7 +457,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     // 7.3.21
-    public abstract static class JSTemporalDurationTotal extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationTotal extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationTotal(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -469,12 +465,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long total(DynamicObject thisObj, Object options,
-                        @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
-            DynamicObject normalizedOptions = TemporalUtil.getOptionsObject(options, getContext(), isObject);
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
+            DynamicObject normalizedOptions = getOptionsObject(options);
             DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), normalizedOptions);
             String unit = TemporalUtil.toTemporalDurationTotalUnit(normalizedOptions, toBoolean, toString);
             if (unit == null) {
@@ -524,7 +519,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.23 & 7.3.24
-    public abstract static class JSTemporalDurationToLocaleString extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationToLocaleString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationToLocaleString(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -532,7 +527,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected String toString(DynamicObject thisObj) {
-            JSTemporalDurationObject duration = (JSTemporalDurationObject) thisObj;
+            JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.temporalDurationToString(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -541,7 +536,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    public abstract static class JSTemporalDurationToString extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationToString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationToString(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -552,8 +547,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached("create()") JSToBooleanNode toBoolean,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
-            JSTemporalDurationObject dur = TemporalUtil.requireTemporalDuration(duration);
-            DynamicObject options = TemporalUtil.getOptionsObject(getContext(), opt);
+            JSTemporalDurationObject dur = requireTemporalDuration(duration);
+            DynamicObject options = getOptionsObject(opt);
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toBoolean, toString);
             if (precision.getUnit().equals(MINUTE)) {
                 throw Errors.createRangeError("unexpected precision minute");
@@ -570,7 +565,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
 // 7.3.26
-    public abstract static class JSTemporalDurationValueOf extends JSBuiltinNode {
+    public abstract static class JSTemporalDurationValueOf extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationValueOf(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
