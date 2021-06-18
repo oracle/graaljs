@@ -4370,11 +4370,11 @@ public class Parser extends AbstractParser {
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
+            boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC) && lookbehindNoLineTerminatorAfterAsync();
             final List<Expression> arguments = argumentList(yield, await, async, callToken, callLine);
 
             if (async) {
-                if (type == ARROW && checkNoLineTerminator()) {
+                if (type == ARROW && lookbehindNoLineTerminatorBeforeArrow()) {
                     // async () => ...
                     // async ( ArgumentsList ) => ...
                     return new ExpressionList(callToken, callLine, arguments);
@@ -4847,7 +4847,7 @@ public class Parser extends AbstractParser {
         expect(RPAREN);
 
         if (coverAsyncArrow) {
-            if (type == ARROW && checkNoLineTerminator()) {
+            if (type == ARROW && lookbehindNoLineTerminatorBeforeArrow()) {
                 commitArrowHead(cover);
             } else {
                 // invocation of a function named 'async'
@@ -5975,7 +5975,7 @@ public class Parser extends AbstractParser {
 
         if (ES6_ARROW_FUNCTION && type == ARROW && isES6()) {
             // Look behind to check there's no LineTerminator between IDENT/RPAREN and ARROW
-            if (checkNoLineTerminator()) {
+            if (lookbehindNoLineTerminatorBeforeArrow()) {
                 return arrowFunction(startToken, startLine, exprLhs, asyncArrow);
             }
         }
@@ -6020,7 +6020,7 @@ public class Parser extends AbstractParser {
      */
     private Expression arrowFunction(final long startToken, final int functionLine, final Expression paramListExpr, boolean async) {
         // caller needs to check that there's no LineTerminator between parameter list and arrow
-        assert type != ARROW || checkNoLineTerminator();
+        assert type != ARROW || lookbehindNoLineTerminatorBeforeArrow();
         expect(ARROW);
 
         final ParserContextFunctionNode functionNode;
@@ -6221,7 +6221,7 @@ public class Parser extends AbstractParser {
         return true;
     }
 
-    private boolean checkNoLineTerminator() {
+    private boolean lookbehindNoLineTerminatorBeforeArrow() {
         assert type == ARROW;
         if (last == RPAREN) {
             return true;
@@ -6243,6 +6243,11 @@ public class Parser extends AbstractParser {
             }
         }
         return false;
+    }
+
+    private boolean lookbehindNoLineTerminatorAfterAsync() {
+        assert type == LPAREN;
+        return last == ASYNC;
     }
 
     private boolean lookaheadIsArrow() {
