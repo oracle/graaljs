@@ -66,12 +66,17 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeSubtractNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToPlainDateNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToPlainMonthDayNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToPlainTimeNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToPlainYearMonthNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeToZonedDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeUntilNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeValueOfNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeWithCalendarNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeWithNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeWithPlainDateNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeWithPlainTimeNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -90,8 +95,10 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDateTime;
@@ -132,9 +139,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         // methods
         with(2),
-        // withPlainTime(1), //TODO temporal
-        // withPlainDate(1),
-        // withCalendar(1),
+        withPlainTime(0),
+        withPlainDate(1),
+        withCalendar(1),
         add(1),
         subtract(1),
         until(2),
@@ -146,8 +153,8 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         toJSON(0),
         valueOf(0),
         toPlainDate(0),
-        // toPlainYearMonth(0),//TODO temporal
-        // toPlainMonthDay(0),
+        toPlainYearMonth(0),
+        toPlainMonthDay(0),
         toPlainTime(0),
         toZonedDateTime(1),
         getISOFields(0);
@@ -200,6 +207,15 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             case with:
                 return JSTemporalPlainDateTimeWithNodeGen.create(context, builtin,
                                 args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case withPlainTime:
+                return JSTemporalPlainDateTimeWithPlainTimeNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case withPlainDate:
+                return JSTemporalPlainDateTimeWithPlainDateNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case withCalendar:
+                return JSTemporalPlainDateTimeWithCalendarNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
             case until:
                 return JSTemporalPlainDateTimeUntilNodeGen.create(context, builtin,
                                 args().withThis().fixedArgs(2).createArgumentNodes(context));
@@ -221,6 +237,12 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             case toZonedDateTime:
                 return JSTemporalPlainDateTimeToZonedDateTimeNodeGen.create(context, builtin,
                                 args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case toPlainYearMonth:
+                return JSTemporalPlainDateTimeToPlainYearMonthNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case toPlainMonthDay:
+                return JSTemporalPlainDateTimeToPlainMonthDayNodeGen.create(context, builtin,
+                                args().withThis().fixedArgs(0).createArgumentNodes(context));
             case getISOFields:
                 return JSTemporalPlainDateTimeGetISOFieldsNodeGen.create(context, builtin,
                                 args().withThis().createArgumentNodes(context));
@@ -695,6 +717,91 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             String disambiguation = TemporalUtil.toTemporalDisambiguation(options);
             JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, (JSTemporalPlainDateTimeObject) dateTime, disambiguation);
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, dateTime.getCalendar());
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeToPlainYearMonthNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeToPlainYearMonthNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject toPlainYearMonth(Object thisObj) {
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
+            DynamicObject calendar = dateTime.getCalendar();
+            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setMCY);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.setEmpty);
+            return TemporalUtil.yearMonthFromFields(calendar, fields, Undefined.instance);
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeToPlainMonthDayNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeToPlainMonthDayNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject toPlainMonthDay(Object thisObj) {
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.requireTemporalDateTime(thisObj);
+            DynamicObject calendar = dateTime.getCalendar();
+            Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setDMC);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.setEmpty);
+            return TemporalUtil.monthDayFromFields(calendar, fields, Undefined.instance);
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeWithPlainTimeNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeWithPlainTimeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject withPlainTime(Object thisObj, Object plainTimeLike,
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("create()") IsObjectNode isObject) {
+            TemporalDateTime temporalDateTime = TemporalUtil.requireTemporalDateTime(thisObj);
+            if (plainTimeLike == Undefined.instance) {
+                return TemporalUtil.createTemporalDateTime(getContext(), temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(), 0, 0, 0, 0, 0, 0,
+                                temporalDateTime.getCalendar());
+            }
+            JSTemporalPlainTimeObject plainTime = TemporalUtil.toTemporalTime(getContext(), plainTimeLike, null, isObject, toString);
+            return TemporalUtil.createTemporalDateTime(getContext(), temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(), plainTime.getHour(), plainTime.getMinute(),
+                            plainTime.getSecond(), plainTime.getMillisecond(), plainTime.getMicrosecond(), plainTime.getNanosecond(), temporalDateTime.getCalendar());
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeWithPlainDateNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeWithPlainDateNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject withPlainDate(Object thisObj, Object plainDateLike) {
+            TemporalDateTime temporalDateTime = TemporalUtil.requireTemporalDateTime(thisObj);
+            JSTemporalPlainDateObject plainDate = TemporalUtil.toTemporalDate(getContext(), plainDateLike, Undefined.instance);
+            DynamicObject calendar = TemporalUtil.consolidateCalendars(temporalDateTime.getCalendar(), plainDate.getCalendar());
+            return TemporalUtil.createTemporalDateTime(getContext(), plainDate.getYear(), plainDate.getMonth(), plainDate.getDay(), temporalDateTime.getHour(), temporalDateTime.getMinute(),
+                            temporalDateTime.getSecond(), temporalDateTime.getMillisecond(), temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(), calendar);
+        }
+    }
+
+    public abstract static class JSTemporalPlainDateTimeWithCalendarNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateTimeWithCalendarNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject withCalendar(Object thisObj, Object calendarParam) {
+            TemporalDateTime temporalDateTime = TemporalUtil.requireTemporalDateTime(thisObj);
+            DynamicObject calendar = TemporalUtil.toTemporalCalendar(getContext(), calendarParam);
+            return TemporalUtil.createTemporalDateTime(getContext(), temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(), temporalDateTime.getHour(),
+                            temporalDateTime.getMinute(), temporalDateTime.getSecond(), temporalDateTime.getMillisecond(), temporalDateTime.getMicrosecond(), temporalDateTime.getNanosecond(),
+                            calendar);
         }
     }
 

@@ -1449,11 +1449,11 @@ public final class TemporalUtil {
         return (TemporalDate) obj;
     }
 
-    public static TemporalDateTime requireTemporalDateTime(Object obj) {
+    public static JSTemporalPlainDateTimeObject requireTemporalDateTime(Object obj) {
         if (!(obj instanceof TemporalDateTime)) {
             throw Errors.createTypeError("InitializedTemporalDateTime expected");
         }
-        return (TemporalDateTime) obj;
+        return (JSTemporalPlainDateTimeObject) obj;
     }
 
     public static JSTemporalCalendarObject requireTemporalCalendar(Object obj) {
