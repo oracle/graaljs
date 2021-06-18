@@ -1988,18 +1988,6 @@
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-nested-arrow-parameter-position.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js",
-    "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
-  }, {
     "filePath" : "language/expressions/async-arrow-function/early-errors-arrow-formals-lineterminator.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
