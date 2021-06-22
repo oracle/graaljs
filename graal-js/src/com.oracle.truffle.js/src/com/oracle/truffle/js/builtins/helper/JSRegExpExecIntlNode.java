@@ -269,7 +269,6 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         @Child private DynamicObjectLibrary setIndicesGroupsNode;
         private final ConditionProfile invalidLastIndex = ConditionProfile.createBinaryProfile();
         private final ConditionProfile match = ConditionProfile.createCountingProfile();
-        private final ConditionProfile stickyProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.createBinaryProfile();
         private final int ecmaScriptVersion;
 
@@ -344,11 +343,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 }
             }
             if (match.profile(regexResultAccessor.isMatch(result))) {
-                if (stickyProfile.profile(sticky && regexResultAccessor.captureGroupStart(result, 0) != lastIndex)) {
-                    // matcher should never have advanced that far!
-                    setLastIndex(regExp, 0);
-                    return getEmptyResult();
-                }
+                assert !sticky || regexResultAccessor.captureGroupStart(result, 0) == lastIndex;
                 if (global || sticky) {
                     setLastIndex(regExp, regexResultAccessor.captureGroupEnd(result, 0));
                 }
