@@ -52,6 +52,8 @@ import org.graalvm.polyglot.Value;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
+import com.oracle.truffle.js.runtime.util.TemporalParser;
 import com.oracle.truffle.js.test.JSTest;
 
 public class TemporalBuiltinsTest extends JSTest {
@@ -759,4 +761,15 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 // endregion
 
+    @Test
+    public void testParsing() {
+        TemporalParser parser = new TemporalParser("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]");
+        JSTemporalParserRecord rec = parser.parseISODateTime();
+        assertEquals("2019", rec.getYear());
+        assertEquals("11", rec.getMonth());
+        assertEquals("18", rec.getDay());
+        assertEquals("Europe/Madrid", rec.getName());
+        assertEquals("gregory", rec.getCalendar());
+
+    }
 }

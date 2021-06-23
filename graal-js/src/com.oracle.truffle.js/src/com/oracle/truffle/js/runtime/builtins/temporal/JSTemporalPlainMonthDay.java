@@ -173,7 +173,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         TemporalUtil.toTemporalOverflow(options);
         String string = JSRuntime.toString(item);
         JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(ctx, string);
-        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
+        DynamicObject calendar = result.getCalendar();
         if (result.getYear() == 0) { // TODO Check for undefined here!
             if (!TemporalUtil.validateISODate(referenceISOYear, result.getMonth(), result.getDay())) {
                 throw TemporalErrors.createRangeErrorDateOutsideRange();
