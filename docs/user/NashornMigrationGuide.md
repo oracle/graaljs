@@ -35,6 +35,10 @@ This is the case for Nashorn-specific extensions that GraalVM JavaScript does no
 Note that you have to enable [experimental options](Options.md#stable-and-experimental-options) to use this flag.
 Further note that setting this flag defeats the [secure by default](#secure-by-default) approach of GraalVM JavaScript in some cases, e.g., when operating on a legacy `ScriptEngine`.
 
+When you use the Nashorn compatibility mode, by default, ECMAScript 5 is set as compatibility level.
+You can specify a different ECMAScript version using the `js.ecmascript-version` flag; note that this might conflict with full Nashorn compatibilty.
+A code example how to set the flag is given near the end of this section.
+
 The `js.nashorn-compat` option can be set:
 1&#46; by using a command line option:
 ```shell
@@ -55,7 +59,7 @@ try (Context context = Context.newBuilder().allowExperimentalOptions(true).optio
 java -Dpolyglot.js.nashorn-compat=true MyApplication
 ```
 
-Functionality only available under this flag includes:
+Functionality only available under the `nashorn-compat` flag includes:
 * `Java.isJavaFunction`, `Java.isJavaMethod`, `Java.isScriptObject`, `Java.isScriptFunction`
 * `new Interface|AbstractClass(fn|obj)`
 * `JavaImporter`
@@ -63,6 +67,13 @@ Functionality only available under this flag includes:
 * `java.lang.String` methods on string values
 * `load("nashorn:parser.js")`, `load("nashorn:mozilla_compat.js")`
 * `exit`, `quit`
+
+The `js.ecmascript-version` option can be set in similar fashion.
+As this is a supported option, there is no need to provide the `experimental-options` flag just for setting the `ecmascript-version`:
+1&#46; by using a command line option:
+```shell
+js --js.ecmascript-version=2020
+```
 
 ## Nashorn Syntax Extensions
 
