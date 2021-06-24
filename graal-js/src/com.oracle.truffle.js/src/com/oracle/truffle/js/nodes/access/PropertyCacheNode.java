@@ -1296,7 +1296,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (incomingProperty != null && incomingProperty.equals(cachedProperty)) {
                 Location cachedLocation = cachedProperty.getLocation();
                 Location incomingLocation = incomingProperty.getLocation();
-                return incomingLocation.equals(cachedLocation);
+                // We need to compare locations by identity; locations that are equal are not
+                // necessarily interchangeable.
+                return incomingLocation == cachedLocation;
             }
         }
         return false;
