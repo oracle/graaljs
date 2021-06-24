@@ -85,8 +85,9 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 p = join(unitTestDir, dir_name)
                 if exists(p):
                     mx.rmtree(p)
-            npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
-            node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
+            #GR-32271
+            #npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
+            #node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
