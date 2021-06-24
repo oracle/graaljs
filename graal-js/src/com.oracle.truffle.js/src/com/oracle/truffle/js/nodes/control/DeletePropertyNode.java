@@ -54,6 +54,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -255,6 +256,20 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)"})
     protected boolean member(Object target, String name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            try {
+                interop.removeHashEntry(target, name);
+                return true;
+            } catch (UnknownKeyException e) {
+                // fall through: still need to try members
+            } catch (UnsupportedMessageException e) {
+                if (strict) {
+                    throw Errors.createTypeErrorInteropException(target, e, "delete", this);
+                }
+                return false;
+            }
+        }
+
         if (interop.isMemberExisting(target, name)) {
             try {
                 interop.removeMember(target, name);
@@ -309,10 +324,26 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         Object index = toArrayIndexNode.execute(key);
         if (index instanceof String) {
             return member(target, (String) index, interop);
-        } else if (index instanceof Long) {
+        } else if (interop.hasArrayElements(target) && index instanceof Long) {
             return arrayElementLong(target, (Long) index, interop);
+        } else if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            return hashEntry(target, key, interop);
         } else {
             return true;
+        }
+    }
+
+    private Object hashEntry(Object target, Object key, InteropLibrary interop) {
+        try {
+            interop.removeHashEntry(target, key);
+            return true;
+        } catch (UnknownKeyException e) {
+            return true;
+        } catch (UnsupportedMessageException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(target, e, "delete", this);
+            }
+            return false;
         }
     }
 
