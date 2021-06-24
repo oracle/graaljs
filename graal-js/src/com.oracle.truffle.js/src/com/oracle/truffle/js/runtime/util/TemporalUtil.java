@@ -912,30 +912,117 @@ public final class TemporalUtil {
         return JSTemporalYearMonthDayRecord.create(year, monthPrepared);
     }
 
-    public static long isoDaysInMonth(long y, long m) {
-        if (m == 1 || m == 3 || m == 5 || m == 7 || m == 8 || m == 10 || m == 12) {
-            return 31;
-        } else if (m == 4 || m == 6 || m == 9 || m == 11) {
-            return 30;
-        } else {
-            assert m == 2;
-            return isISOLeapYear(y) ? 29 : 28;
+    // 12.1.24
+    public static Object toTemporalCalendar(Object itemParam, IsObjectNode isObjectNode, JSToStringNode toStringNode, JSContext ctx) {
+        Object item = itemParam;
+        if (isObjectNode.executeBoolean(item)) {
+            DynamicObject itemObj = (DynamicObject) item;
+            if (item instanceof TemporalCalendar) {
+                return ((TemporalCalendar) item).getCalendar();
+            }
+            if (!JSObject.hasProperty(itemObj, CALENDAR)) {
+                return item;
+            }
+            item = JSObject.get(itemObj, CALENDAR);
+            if (isObjectNode.executeBoolean(item) && !JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
+                return item;
+            }
         }
+        String string = toStringNode.executeString(item);
+        if (!JSTemporalCalendar.isBuiltinCalendar(string)) {
+            string = TemporalUtil.parseTemporalCalendarString(string);
+        }
+        return JSTemporalCalendar.create(ctx, string);
     }
 
-    private static boolean isISOLeapYear(long year) {
-        assert isInteger(year);
-        int y = (int) year;
-        if ((y % 4) != 0) {
+    // 12.1.35
+    // Formula: https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html
+    public static long toISODayOfWeek(long year, long month, long day) {
+        long m = month - 2;
+        if (m == -1) {  // Jan
+            m = 11;
+        } else if (m == 0) { // Feb
+            m = 12;
+        }
+        long c = Math.floorDiv(year, 100);
+        long y = Math.floorMod(year, 100);
+        if (m == 11 || m == 12) {
+            y = y - 1;
+        }
+        long weekDay = Math.floorMod((day + (long) Math.floor((2.6 * m) - 0.2) - (2 * c) + y + Math.floorDiv(y, 4) + Math.floorDiv(c, 4)), 7);
+        if (weekDay == 0) { // Sunday
+            return 7;
+        }
+        return weekDay;
+    }
+
+    // 12.1.36
+    public static long toISODayOfYear(long year, long month, long day) {
+        long days = 0;
+        for (int m = 1; m < month; m++) {
+            days += isoDaysInMonth(year, m);
+        }
+        return days + day;
+    }
+
+    // 12.1.37
+    public static long toISOWeekOfYear(long year, long month, long day) {
+        long doy = toISODayOfYear(year, month, day);
+        long dow = toISODayOfWeek(year, month, day);
+        long doj = toISODayOfWeek(year, 1, 1);
+
+        long week = Math.floorDiv(doy - dow + 10, 7);
+        if (week < 1) {
+            if (doj == 5 || (doj == 6 && isISOLeapYear(year - 1))) {
+                return 53;
+            } else {
+                return 52;
+            }
+        }
+        if (week == 53) {
+            if (isoDaysInYear(year) - doy < 4 - dow) {
+                return 1;
+            }
+        }
+
+        return week;
+    }
+
+    // 12.1.32
+    public static boolean isISOLeapYear(long year) {
+        if (year % 4 != 0) {
             return false;
         }
-        if ((y % 400) == 0) {
+        if (year % 400 == 0) {
             return true;
         }
-        if ((y % 100) == 0) {
+        if (year % 100 == 0) {
             return false;
         }
         return true;
+    }
+
+    // 12.1.33
+    public static long isoDaysInYear(long year) {
+        if (isISOLeapYear(year)) {
+            return 366;
+        }
+        return 365;
+    }
+
+    // 12.1.34
+    public static long isoDaysInMonth(long year, long month) {
+        assert month >= 1 && month <= 12;
+        if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
+            return 31;
+        }
+        if (month == 4 || month == 6 || month == 9 || month == 11) {
+            return 30;
+        }
+        if (isISOLeapYear(year)) {
+            return 29;
+        }
+        return 28;
     }
 
     private static boolean isInteger(Object l) {
@@ -1336,7 +1423,7 @@ public final class TemporalUtil {
         if (month < 1 || month > 12) {
             return false;
         }
-        long daysInMonth = JSTemporalCalendar.isoDaysInMonth(year, month);
+        long daysInMonth = isoDaysInMonth(year, month);
         if (day < 1 || day > daysInMonth) {
             return false;
         }
@@ -1378,7 +1465,7 @@ public final class TemporalUtil {
 
     // 3.5.11
     public static JSTemporalDateTimeRecord balanceISODate(long yearParam, long monthParam, long dayParam) {
-        JSTemporalDateTimeRecord balancedYearMonth = TemporalUtil.balanceISOYearMonth(yearParam, monthParam);
+        JSTemporalDateTimeRecord balancedYearMonth = balanceISOYearMonth(yearParam, monthParam);
         long month = balancedYearMonth.getMonth();
         long year = balancedYearMonth.getYear();
         long day = dayParam;
@@ -1388,26 +1475,26 @@ public final class TemporalUtil {
         } else {
             testYear = year - 1;
         }
-        while (day < -1 * JSTemporalCalendar.isoDaysInYear(testYear)) {
-            day = day + JSTemporalCalendar.isoDaysInYear(testYear);
+        while (day < -1 * isoDaysInYear(testYear)) {
+            day = day + isoDaysInYear(testYear);
             year = year - 1;
             testYear = testYear - 1;
         }
         testYear = year + 1;
-        while (day > JSTemporalCalendar.isoDaysInYear(testYear)) {
-            day = day - JSTemporalCalendar.isoDaysInYear(testYear);
+        while (day > isoDaysInYear(testYear)) {
+            day = day - isoDaysInYear(testYear);
             year = year + 1;
             testYear = testYear + 1;
         }
         while (day < 1) {
-            balancedYearMonth = TemporalUtil.balanceISOYearMonth(year, month - 1);
+            balancedYearMonth = balanceISOYearMonth(year, month - 1);
             year = balancedYearMonth.getYear();
             month = balancedYearMonth.getMonth();
-            day = day + JSTemporalCalendar.isoDaysInMonth(year, month);
+            day = day + isoDaysInMonth(year, month);
         }
-        while (day > JSTemporalCalendar.isoDaysInMonth(year, month)) {
-            day = day - JSTemporalCalendar.isoDaysInMonth(year, month);
-            balancedYearMonth = TemporalUtil.balanceISOYearMonth(year, month + 1);
+        while (day > isoDaysInMonth(year, month)) {
+            day = day - isoDaysInMonth(year, month);
+            balancedYearMonth = balanceISOYearMonth(year, month + 1);
             year = balancedYearMonth.getYear();
             month = balancedYearMonth.getMonth();
         }
@@ -1420,7 +1507,7 @@ public final class TemporalUtil {
         assert overflow.equals(CONSTRAIN) || overflow.equals(REJECT);
         long y = year + years;
         long m = month + months;
-        JSTemporalDateTimeRecord intermediate = TemporalUtil.balanceISOYearMonth(y, m);
+        JSTemporalDateTimeRecord intermediate = balanceISOYearMonth(y, m);
         intermediate = regulateISODate(intermediate.getYear(), intermediate.getMonth(), day, overflow);
         long d = intermediate.getDay() + (days + (7 * weeks));
         intermediate = balanceISODate(intermediate.getYear(), intermediate.getMonth(), d);
@@ -3048,45 +3135,6 @@ public final class TemporalUtil {
             return false;
         }
         if (day < 1 || day > isoDaysInMonth(year, month)) {
-            return false;
-        }
-        return true;
-    }
-
-    public static boolean validateDate(long year, long month, long day) {
-        if (month < 1 || month > 12) {
-            return false;
-        }
-        long daysInMonth = daysInMonth(year, month);
-        if (day < 1 || day > daysInMonth) {
-            return false;
-        }
-        return true;
-    }
-
-    public static int daysInMonth(long year, long month) {
-        assert month >= 1;
-        assert month <= 12;
-        if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
-            return 31;
-        }
-        if (month == 4 || month == 6 || month == 9 || month == 11) {
-            return 30;
-        }
-        if (isLeapYear(year)) {
-            return 29;
-        }
-        return 28;
-    }
-
-    public static boolean isLeapYear(long year) {
-        if (year % 4 != 0) {
-            return false;
-        }
-        if (year % 400 == 0) {
-            return true;
-        }
-        if (year % 100 == 0) {
             return false;
         }
         return true;

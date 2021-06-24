@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarFunctionBuiltins.TemporalCalendarFunction> {
 
@@ -94,7 +95,7 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
         protected Object from(Object item,
                         @Cached("create()") IsObjectNode isObject,
                         @Cached("create()") JSToStringNode toString) {
-            return JSTemporalCalendar.toTemporalCalendar(item, isObject, toString, getContext());
+            return TemporalUtil.toTemporalCalendar(item, isObject, toString, getContext());
         }
 
     }

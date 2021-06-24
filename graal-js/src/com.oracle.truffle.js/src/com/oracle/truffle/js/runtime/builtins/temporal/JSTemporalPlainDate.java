@@ -148,7 +148,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     public static DynamicObject create(JSContext context, long year, long month, long day, DynamicObject calendar) {
-        if (!TemporalUtil.validateDate(year, month, day)) {
+        if (!TemporalUtil.validateISODate(year, month, day)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
         if (!TemporalUtil.dateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
@@ -236,13 +236,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             if (mid.getMonth() == end.getMonth() && mid.getYear() == end.getYear()) {
                 days = end.getDay() - mid.getDay();
             } else if (sign < 0) {
-                days = -mid.getDay() -
-                                (JSTemporalCalendar.isoDaysInMonth(
-                                                end.getYear(), end.getMonth()) - end.getDay());
+                days = -mid.getDay() - (TemporalUtil.isoDaysInMonth(end.getYear(), end.getMonth()) - end.getDay());
             } else {
-                days = end.getDay() +
-                                (JSTemporalCalendar.isoDaysInMonth(
-                                                mid.getYear(), mid.getMonth()) - mid.getDay());
+                days = end.getDay() + (TemporalUtil.isoDaysInMonth(mid.getYear(), mid.getMonth()) - mid.getDay());
             }
             if (largestUnit.equals(MONTH)) {
                 months = months + (years * 12);
@@ -264,13 +260,10 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 sign = -1;
             }
             long years = greater.getYear() - smaller.getYear();
-            long days = JSTemporalCalendar.toISODayOfYear(
-                            greater.getYear(), greater.getMonth(), greater.getDay()) -
-                            JSTemporalCalendar.toISODayOfYear(
-                                            smaller.getYear(), smaller.getMonth(), smaller.getDay());
+            long days = TemporalUtil.toISODayOfYear(greater.getYear(), greater.getMonth(), greater.getDay()) - TemporalUtil.toISODayOfYear(smaller.getYear(), smaller.getMonth(), smaller.getDay());
             assert years >= 0;
             while (years > 0) {
-                days = days + JSTemporalCalendar.isoDaysInYear(smaller.getYear() + years - 1);
+                days = days + TemporalUtil.isoDaysInYear(smaller.getYear() + years - 1);
                 years = years - 1;
             }
             long weeks = 0;

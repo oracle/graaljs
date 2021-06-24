@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.GREGORY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ID;
@@ -236,119 +235,6 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     // 12.1.20
     public static Object calendarInLeapYear(DynamicObject calendar, DynamicObject dateLike) {
         return executeFunction(calendar, "inLeapYear", dateLike);
-    }
-
-    // 12.1.24
-    public static Object toTemporalCalendar(Object itemParam, IsObjectNode isObject, JSToStringNode toString, JSContext ctx) {
-        Object item = itemParam;
-        if (isObject.executeBoolean(item)) {
-            DynamicObject itemObj = (DynamicObject) item;
-            if (item instanceof TemporalCalendar) {
-                return ((TemporalCalendar) item).getCalendar();
-            }
-            if (!JSObject.hasProperty(itemObj, CALENDAR)) {
-                return item;
-            }
-            item = JSObject.get(itemObj, CALENDAR);
-            if (isObject.executeBoolean(item) && !JSObject.hasProperty((DynamicObject) item, CALENDAR)) {
-                return item;
-            }
-        }
-        String string = toString.executeString(item);
-        if (!isBuiltinCalendar(string)) {
-            string = TemporalUtil.parseTemporalCalendarString(string);
-        }
-        return create(ctx, string);
-    }
-
-    // 12.1.32
-    public static boolean isISOLeapYear(long year) {
-        if (year % 4 != 0) {
-            return false;
-        }
-        if (year % 400 == 0) {
-            return true;
-        }
-        if (year % 100 == 0) {
-            return false;
-        }
-        return true;
-    }
-
-    // 12.1.33
-    public static long isoDaysInYear(long year) {
-        if (isISOLeapYear(year)) {
-            return 366;
-        }
-        return 365;
-    }
-
-    // 12.1.34
-    public static long isoDaysInMonth(long year, long month) {
-        assert month >= 1 && month <= 12;
-        if (month == 1 || month == 3 || month == 5 || month == 7 || month == 8 || month == 10 || month == 12) {
-            return 31;
-        }
-        if (month == 4 || month == 6 || month == 9 || month == 11) {
-            return 30;
-        }
-        if (isISOLeapYear(year)) {
-            return 29;
-        }
-        return 28;
-    }
-
-    // 12.1.35
-    // Formula: https://cs.uwaterloo.ca/~alopez-o/math-faq/node73.html
-    public static long toISODayOfWeek(long year, long month, long day) {
-        long m = month - 2;
-        if (m == -1) {  // Jan
-            m = 11;
-        } else if (m == 0) { // Feb
-            m = 12;
-        }
-        long c = Math.floorDiv(year, 100);
-        long y = Math.floorMod(year, 100);
-        if (m == 11 || m == 12) {
-            y = y - 1;
-        }
-        long weekDay = Math.floorMod((day + (long) Math.floor((2.6 * m) - 0.2) - (2 * c) + y + Math.floorDiv(y, 4) + Math.floorDiv(c, 4)), 7);
-        if (weekDay == 0) { // Sunday
-            return 7;
-        }
-        return weekDay;
-    }
-
-    // 12.1.36
-    public static long toISODayOfYear(long year, long month, long day) {
-        long days = 0;
-        for (int m = 1; m < month; m++) {
-            days += isoDaysInMonth(year, m);
-        }
-        return days + day;
-    }
-
-    // 12.1.37
-    public static long toISOWeekOfYear(long year, long month, long day) {
-        long doy = toISODayOfYear(year, month, day);
-        long dow = toISODayOfWeek(year, month, day);
-        long doj = toISODayOfWeek(year, 1, 1);
-
-        long week = Math.floorDiv(doy - dow + 10, 7);
-        if (week < 1) {
-            if (doj == 5 || (doj == 6 && isISOLeapYear(year - 1))) {
-                return 53;
-            } else {
-                return 52;
-            }
-        }
-        if (week == 53) {
-            if (isoDaysInYear(year) - doy < 4 - dow) {
-                return 1;
-            }
-        }
-
-        return week;
     }
 
     // 12.1.38
