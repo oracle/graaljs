@@ -47,9 +47,8 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuiltinsFactory.JSTemporalPlainDateTimeFromNodeGen;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -100,18 +99,17 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected Object from(Object item, Object optParam,
-                        @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
             DynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
                 JSTemporalPlainDateTimeObject dtItem = (JSTemporalPlainDateTimeObject) item;
-                TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
+                toTemporalOverflow(options);
                 return JSTemporalPlainDateTime.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(),
                                 dtItem.getHour(), dtItem.getMinute(), dtItem.getSecond(), dtItem.getMillisecond(),
                                 dtItem.getMicrosecond(), dtItem.getNanosecond(), dtItem.getCalendar());
             }
-            return TemporalUtil.toTemporalDateTime(getContext(), item, options);
+            return toTemporalDateTime.executeDynamicObject(item, options);
         }
 
     }
@@ -123,9 +121,10 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected int compare(Object obj1, Object obj2) {
-            JSTemporalPlainDateTimeObject one = TemporalUtil.toTemporalDateTime(getContext(), obj1, Undefined.instance);
-            JSTemporalPlainDateTimeObject two = TemporalUtil.toTemporalDateTime(getContext(), obj2, Undefined.instance);
+        protected int compare(Object obj1, Object obj2,
+                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
+            JSTemporalPlainDateTimeObject one = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(obj1, Undefined.instance);
+            JSTemporalPlainDateTimeObject two = (JSTemporalPlainDateTimeObject) toTemporalDateTime.executeDynamicObject(obj2, Undefined.instance);
             return TemporalUtil.compareISODateTime(
                             one.getYear(), one.getMonth(), one.getDay(),
                             one.getHour(), one.getMinute(), one.getSecond(),

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_WEEK;
@@ -56,17 +55,12 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK_OF_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
-import java.util.Set;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -75,12 +69,11 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
 
 public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
                 PrototypeSupplier {
@@ -161,34 +154,6 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return context.trackAllocation(object);
     }
 
-    // 3.5.4
-    public static JSTemporalPlainDateObject toTemporalDate(Object item, Object optionsParam, JSContext ctx, IsObjectNode isObject, JSToBooleanNode toBoolean, JSToStringNode toString) {
-        DynamicObject options = optionsParam != Undefined.instance ? (DynamicObject) optionsParam : JSOrdinary.createWithNullPrototype(ctx);
-        if (isObject.executeBoolean(item)) {
-            DynamicObject itemObj = (DynamicObject) item;
-            if (isJSTemporalPlainDate(item)) {
-                return (JSTemporalPlainDateObject) itemObj;
-            } else if (TemporalUtil.isTemporalZonedDateTime(item)) {
-                JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
-                JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
-                JSTemporalPlainDateTimeObject plainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
-                return TemporalUtil.createTemporalDate(ctx, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(), plainDateTime.getCalendar());
-            } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(item)) {
-                JSTemporalPlainDateTimeObject dt = (JSTemporalPlainDateTimeObject) item;
-                return (JSTemporalPlainDateObject) create(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
-            }
-            DynamicObject calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, itemObj);
-            Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.setDMMCY);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.setEmpty);
-            return TemporalUtil.dateFromFields(calendar, fields, options);
-        }
-        TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(ctx, toString.executeString(item));
-        assert TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay());
-        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
-        return (JSTemporalPlainDateObject) create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
-    }
-
     // 3.5.5
     public static JSTemporalDurationRecord differenceISODate(long y1, long m1, long d1, long y2, long m2, long d2, String largestUnit) {
         assert largestUnit.equals(YEAR) || largestUnit.equals(MONTH) || largestUnit.equals(WEEK) || largestUnit.equals(DAY);
@@ -200,7 +165,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             JSTemporalDateTimeRecord start = toRecord(y1, m1, d1);
             JSTemporalDateTimeRecord end = toRecord(y2, m2, d2);
             long years = end.getYear() - start.getYear();
-            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, CONSTRAIN);
+            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, TemporalOverflowEnum.CONSTRAIN);
             long midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit.equals(YEAR)) {
@@ -214,7 +179,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                 years = years - sign;
                 months = months + (sign * 12);
             }
-            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, CONSTRAIN);
+            mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
             midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit.equals(YEAR)) {
@@ -229,7 +194,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                     years = years - sign;
                     months = 11 * sign;
                 }
-                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, CONSTRAIN);
+                mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, TemporalOverflowEnum.CONSTRAIN);
                 midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
             }
             long days = 0;

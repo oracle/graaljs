@@ -40,16 +40,17 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltinsFactory.JSTemporalTimeZoneFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalTimeZoneFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalTimeZoneFunctionBuiltins.TemporalTimeZoneFunction> {
 
@@ -90,8 +91,9 @@ public class TemporalTimeZoneFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected DynamicObject from(Object item) {
-            return TemporalUtil.toTemporalTimeZone(getContext(), item);
+        protected DynamicObject from(Object item,
+                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
+            return toTemporalTimeZone.executeDynamicObject(item);
         }
     }
 

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
@@ -48,10 +49,12 @@ import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuil
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimeFunctionBuiltinsFactory.JSTemporalZonedDateTimeFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -97,16 +100,17 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected DynamicObject from(Object item, Object optionsParam) {
+        protected DynamicObject from(Object item, Object optionsParam,
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
             DynamicObject options = getOptionsObject(optionsParam);
             if (JSTemporalZonedDateTime.isJSTemporalZonedDateTime(item)) {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) item;
-                TemporalUtil.toTemporalOverflow(options);
-                TemporalUtil.toTemporalDisambiguation(options);
-                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT);
+                TemporalUtil.toTemporalOverflow(options, getOptionNode());
+                TemporalUtil.toTemporalDisambiguation(options, getOptionNode());
+                TemporalUtil.toTemporalOffset(options, TemporalConstants.REJECT, getOptionNode());
                 return TemporalUtil.createTemporalZonedDateTime(getContext(), zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar());
             }
-            return TemporalUtil.toTemporalZonedDateTime(getContext(), item, options);
+            return toTemporalZonedDateTime.executeDynamicObject(item, options);
         }
     }
 
@@ -117,9 +121,10 @@ public class TemporalZonedDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
         }
 
         @Specialization
-        protected int compare(Object obj1, Object obj2) {
-            JSTemporalZonedDateTimeObject one = TemporalUtil.toTemporalZonedDateTime(getContext(), obj1);
-            JSTemporalZonedDateTimeObject two = TemporalUtil.toTemporalZonedDateTime(getContext(), obj2);
+        protected int compare(Object obj1, Object obj2,
+                        @Cached("create(getContext())") ToTemporalZonedDateTimeNode toTemporalZonedDateTime) {
+            JSTemporalZonedDateTimeObject one = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(obj1, Undefined.instance);
+            JSTemporalZonedDateTimeObject two = (JSTemporalZonedDateTimeObject) toTemporalZonedDateTime.executeDynamicObject(obj2, Undefined.instance);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());
         }
     }

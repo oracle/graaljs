@@ -207,7 +207,7 @@ public class TemporalBuiltinsTest extends JSTest {
             validatePlainTime(ctx, 10, 23, 45, 0, 0, 0);
 
             ctx.eval(ID, "plainTime = Temporal.PlainTime.from('01:02:03.4')");
-            validatePlainTime(ctx, 1, 2, 3, 4, 0, 0);
+            validatePlainTime(ctx, 1, 2, 3, 400, 0, 0);
 
             ctx.eval(ID, "plainTime = Temporal.PlainTime.from('01:02:03.004')");
             validatePlainTime(ctx, 1, 2, 3, 4, 0, 0);

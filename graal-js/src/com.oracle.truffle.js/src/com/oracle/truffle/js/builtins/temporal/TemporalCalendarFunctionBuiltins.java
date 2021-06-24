@@ -42,16 +42,15 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltinsFactory.JSTemporalCalendarFromNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarFunctionBuiltins.TemporalCalendarFunction> {
 
@@ -92,10 +91,9 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected Object from(Object item,
-                        @Cached("create()") IsObjectNode isObject,
-                        @Cached("create()") JSToStringNode toString) {
-            return TemporalUtil.toTemporalCalendar(item, isObject, toString, getContext());
+        protected DynamicObject from(Object item,
+                        @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar) {
+            return toTemporalCalendar.executeDynamicObject(item);
         }
 
     }

@@ -236,7 +236,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         protected String toString(Object thisObj, Object optParam) {
             JSTemporalPlainYearMonthObject md = requireTemporalYearMonth(thisObj);
             DynamicObject options = getOptionsObject(optParam);
-            String showCalendar = TemporalUtil.toShowCalendarOption(options);
+            String showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode());
             return JSTemporalPlainYearMonth.temporalYearMonthToString(md, showCalendar);
         }
     }
@@ -463,10 +463,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             }
             DynamicObject options = getOptionsObject(optParam);
             Set<String> disallowedUnits = TemporalUtil.setWDHMSMMN;
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, disallowedUnits, MONTH, toBooleanNode, toStringNode);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, disallowedUnits, AUTO, YEAR, toBooleanNode, toStringNode);
+            String smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, MONTH);
+            String largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, YEAR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBooleanNode, toStringNode);
+            String roundingMode = toTemporalRoundingMode(options, TRUNC);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
             Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setMCY);
             DynamicObject otherFields = TemporalUtil.prepareTemporalFields(getContext(), other, fieldNames, TemporalUtil.setEmpty);
@@ -495,8 +495,6 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @Specialization
         protected Object since(Object thisObj, Object otherParam, Object optParam,
-                        @Cached("create()") JSToStringNode toStringNode,
-                        @Cached("create()") JSToBooleanNode toBooleanNode,
                         @Cached("create()") JSToNumberNode toNumberNode,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalPlainYearMonthObject ym = requireTemporalYearMonth(thisObj);
@@ -508,10 +506,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             }
             DynamicObject options = getOptionsObject(optParam);
             Set<String> disallowedUnits = TemporalUtil.setWDHMSMMN;
-            String smallestUnit = TemporalUtil.toSmallestTemporalUnit(options, disallowedUnits, MONTH, toBooleanNode, toStringNode);
-            String largestUnit = TemporalUtil.toLargestTemporalUnit(options, disallowedUnits, AUTO, YEAR, toBooleanNode, toStringNode);
+            String smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, MONTH);
+            String largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, YEAR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            String roundingMode = TemporalUtil.toTemporalRoundingMode(options, TRUNC, toBooleanNode, toStringNode);
+            String roundingMode = toTemporalRoundingMode(options, TRUNC);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumberNode);
             Set<String> fieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setMCY);

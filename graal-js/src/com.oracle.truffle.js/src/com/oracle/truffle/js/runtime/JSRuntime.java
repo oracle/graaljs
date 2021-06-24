@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -133,6 +134,7 @@ public final class JSRuntime {
     public static final String VALUE = "value";
     public static final String DONE = "done";
     public static final String NEXT = "next";
+    public static final String RETURN = "return";
 
     public static final String HINT_STRING = "string";
     public static final String HINT_NUMBER = "number";
@@ -2947,6 +2949,48 @@ public final class JSRuntime {
             return JSError.getException((DynamicObject) errorObject);
         } else {
             return UserScriptException.create(errorObject);
+        }
+    }
+
+    public static IteratorRecord getIterator(DynamicObject iteratedObject) {
+        Object method = JSObject.get(iteratedObject, Symbol.SYMBOL_ITERATOR);
+        if (!isCallable(method)) {
+            throw Errors.createTypeErrorNotIterable(iteratedObject, null);
+        }
+        Object iterator = call(method, iteratedObject, new Object[]{});
+        if (isObject(iterator)) {
+            return IteratorRecord.create((DynamicObject) iterator, JSObject.get((DynamicObject) iterator, NEXT), false);
+        } else {
+            throw Errors.createTypeErrorNotAnObject(iterator);
+        }
+    }
+
+    public static Object iteratorStep(IteratorRecord iteratorRecord) {
+        Object nextMethod = iteratorRecord.getNextMethod();
+        DynamicObject iterator = iteratorRecord.getIterator();
+        Object result = call(nextMethod, iterator, new Object[]{});
+        if (!isObject(result)) {
+            throw Errors.createTypeErrorIteratorResultNotObject(result, null);
+        }
+        boolean done = toBoolean(JSObject.get((DynamicObject) result, DONE));
+        if (done) {
+            return false;
+        }
+        return result;
+    }
+
+    public static Object iteratorValue(DynamicObject iterator) {
+        // TODO foreign values not handled here, see IteratorValueNode
+        return JSObject.get(iterator, VALUE);
+    }
+
+    public static void iteratorClose(DynamicObject iterator) {
+        Object returnMethod = JSObject.get(iterator, RETURN);
+        if (returnMethod != Undefined.instance) {
+            Object innerResult = call(returnMethod, iterator, new Object[]{});
+            if (!isObject(innerResult)) {
+                throw Errors.createTypeErrorIterResultNotAnObject(innerResult, null);
+            }
         }
     }
 

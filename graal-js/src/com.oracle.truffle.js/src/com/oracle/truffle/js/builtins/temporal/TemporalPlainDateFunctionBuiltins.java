@@ -47,9 +47,8 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateCompareNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltinsFactory.JSTemporalPlainDateFromNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
@@ -99,16 +98,15 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object from(Object item, Object optParam,
-                        @Cached("create()") JSToBooleanNode toBoolean,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
             DynamicObject options = getOptionsObject(optParam);
             if (isObject(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
-                TemporalUtil.toTemporalOverflow(options, toBoolean, toString);
+                toTemporalOverflow(options);
                 return JSTemporalPlainDate.create(getContext(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar());
             }
-            return TemporalUtil.toTemporalDate(getContext(), item, options);
+            return toTemporalDate.executeDynamicObject(item, options);
         }
 
     }
@@ -120,9 +118,10 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected int compare(Object obj1, Object obj2) {
-            JSTemporalPlainDateObject one = TemporalUtil.toTemporalDate(getContext(), obj1, null);
-            JSTemporalPlainDateObject two = TemporalUtil.toTemporalDate(getContext(), obj2, null);
+        protected int compare(Object obj1, Object obj2,
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+            JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(obj1, null);
+            JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) toTemporalDate.executeDynamicObject(obj2, null);
             return TemporalUtil.compareISODate(
                             one.getYear(), one.getMonth(), one.getDay(),
                             two.getYear(), two.getMonth(), two.getDay());
