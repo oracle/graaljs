@@ -9,6 +9,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [New Set Methods](https://github.com/tc39/proposal-set-methods) proposal. It is available behind an experimental flag (`--js.new-set-methods`).
 * Implemented experimental operator overloading support. Use the experimental option `--js.operator-overloading` to enable it and consult [the documentation](docs/user/OperatorOverloading.md).
 * Updated RegExp Match Indices proposal with opt-in using the `d` flag. Available in ECMAScript 2022 (`--js.ecmascript-version=2022`). Deprecated `--js.regexp-match-indices` option.
+* Nashorn compatibility mode now defaults to compatiblity with ECMAScript version 5, unless another version is explicitly selected.
 
 ## Version 21.1.0
 * Updated Node.js to version 14.16.1.

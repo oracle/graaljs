@@ -76,10 +76,14 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.CurrentECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
         @Override
-        public Integer apply(String t) {
+        public Integer apply(String in) {
+            if ("latest".equals(in)) {
+                return JSConfig.CurrentECMAScriptVersion;
+            } else if ("staging".equals(in)) {
+                return JSConfig.MaxECMAScriptVersion;
+            }
             try {
-                int version = Integer.parseInt(t);
-
+                int version = Integer.parseInt(in);
                 int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptNumberYearDelta;
                 int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta;
                 if (minYearVersion <= version && version <= maxYearVersion) {
@@ -546,7 +550,13 @@ public final class JSContextOptions {
     }
 
     private void cacheOptions() {
+        this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE);
         this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
+        if (nashornCompatibilityMode && !ECMASCRIPT_VERSION.hasBeenSet(optionValues)) {
+            // default to ES5 in nashorn-compat mode
+            this.ecmascriptVersion = JSConfig.ECMAScript5;
+        }
+
         this.annexB = readBooleanOption(ANNEX_B);
         this.intl402 = readBooleanOption(INTL_402);
         this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
@@ -561,7 +571,6 @@ public final class JSContextOptions {
         });
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
         this.v8LegacyConst = readBooleanOption(V8_LEGACY_CONST);
-        this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE);
         this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
             directByteBufferCyclicAssumption.invalidate(msg);
             directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
