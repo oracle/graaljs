@@ -434,11 +434,10 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
 
-            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), namesNode, other.getYear(), other.getMonth(), other.getDay(), other.getHour(),
-                            other.getMinute(), other.getSecond(), other.getMillisecond(),
-                            other.getMicrosecond(), other.getNanosecond(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
-                            dateTime.getSecond(), dateTime.getMillisecond(),
-                            dateTime.getMicrosecond(), dateTime.getNanosecond(), dateTime.getCalendar(), largestUnit, options);
+            JSTemporalDurationRecord diff = TemporalUtil.differenceISODateTime(getContext(), namesNode, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(),
+                            dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), other.getYear(), other.getMonth(),
+                            other.getDay(), other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(), dateTime.getCalendar(),
+                            largestUnit, options);
             JSTemporalDurationRecord roundResult = TemporalUtil.roundDuration(getContext(), namesNode, diff.getYears(), diff.getMonths(), diff.getWeeks(), diff.getDays(), diff.getHours(),
                             diff.getMinutes(), diff.getSeconds(), diff.getMilliseconds(), diff.getMicroseconds(), diff.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, dateTime);

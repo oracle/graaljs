@@ -463,7 +463,7 @@ public final class TemporalUtil {
             long d = rec.getDay() == null ? 1 : Long.parseLong(rec.getDay());
             return JSTemporalDateTimeRecord.createCalendar(y, m, d, 0, 0, 0, 0, 0, 0, toTemporalCalendarWithISODefault(ctx, rec.getCalendar()));
         } else {
-            throw Errors.createRangeError("cannot parse YearMonth");
+            throw Errors.createRangeError("cannot parse MonthDay");
         }
     }
 
@@ -1954,8 +1954,12 @@ public final class TemporalUtil {
         DynamicObject untilOptions = mergeLargestUnitOption(ctx, namesNode, options, dateLargestUnit);
         JSTemporalDurationObject dateDifference = (JSTemporalDurationObject) calendarDateUntil(calendar, date1, date2, untilOptions, Undefined.instance);
         // TODO spec on 2021-06-09 says to add years, months and weeks here??
-        return balanceDuration(ctx, namesNode, dateDifference.getDays(), timeDifference.getHours(), timeDifference.getMinutes(), timeDifference.getSeconds(), timeDifference.getMilliseconds(),
+        // polyfill does that:
+        JSTemporalDurationRecord result = balanceDuration(ctx, namesNode, dateDifference.getDays(), timeDifference.getHours(), timeDifference.getMinutes(), timeDifference.getSeconds(),
+                        timeDifference.getMilliseconds(),
                         timeDifference.getMicroseconds(), timeDifference.getNanoseconds(), largestUnit);
+        return JSTemporalDurationRecord.createWeeks(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), result.getDays(), result.getHours(), result.getMinutes(),
+                        result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
     }
 
     @TruffleBoundary
@@ -3153,9 +3157,12 @@ public final class TemporalUtil {
     public static boolean dateTimeWithinLimits(long year, long month, long day, long hour, long minute, long second,
                     long millisecond, long microsecond, long nanosecond) {
         double ns = TemporalUtil.getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
-        if ((ns / 100_000_000_000_000L) <= -864_000L - 864L) {
+        double upperLimit = 8_640_000_000_000_000_000_000d + 86_400_000_000_000_000d;
+        double lowerLimit = -8_640_000_000_000_000_000_000d - 86_400_000_000_000_000d;
+
+        if (ns < lowerLimit) {
             return false;
-        } else if ((ns / 100_000_000_000_000L) >= 864_000L + 864L) {
+        } else if (ns > upperLimit) {
             return false;
         }
         return true;

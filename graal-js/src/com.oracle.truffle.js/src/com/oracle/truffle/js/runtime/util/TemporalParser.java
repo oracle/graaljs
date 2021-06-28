@@ -52,12 +52,12 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
  */
 public final class TemporalParser {
 
-    private static final String patternDate = "^([+-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)[-]?(\\d\\d)";
-    private static final String patternTime = "^(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)(\\.([\\d]*)?)?)?)?";
+    private static final String patternDate = "^([+-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)[-]?(\\d\\d)";
+    private static final String patternTime = "^(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendar = "^(\\[u-ca=([^\\]]*)\\])";
     private static final String patternTimeZoneBracketedAnnotation = "^(\\[([^\\]]*)\\])";
-    private static final String patternTimeZoneNumericUTCOffset = "^([+-\\u2212]?)(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)(\\.([\\d]*)?)?)?)?";
-    private static final String patternDateSpecYearMonth = "^([+-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)";
+    private static final String patternTimeZoneNumericUTCOffset = "^([+-\\u2212])(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
+    private static final String patternDateSpecYearMonth = "^([+-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^[-]?(\\d\\d)[-]?(\\d\\d)";
     private static final String patternTimeZoneIANAName = "^(\\w*(/\\w*)*)";
 
@@ -76,6 +76,7 @@ public final class TemporalParser {
 
     private String calendar;
     private String timeZoneName;
+    private String utcDesignator;
 
     private String offsetSign;
     private String offsetHour;
@@ -97,12 +98,16 @@ public final class TemporalParser {
             parseTime();
             parseTimeZone();
             parseCalendar();
-            return result();
+            if (atEnd()) {
+                return result();
+            }
         }
         reset();
         if (parseTime()) {
             parseTimeZone();
-            return result();
+            if (atEnd()) {
+                return result();
+            }
         }
         return null;
     }
@@ -110,12 +115,18 @@ public final class TemporalParser {
     public JSTemporalParserRecord parseYearMonth() {
         reset();
         if (parseDateSpecYearMonth()) {
-            return result();
+            if (atEnd()) {
+                return result();
+            }
         }
+        reset();
         if (parseDate()) {
             parseDateTimeSeparator();
             parseTime();
-            return result();
+            parseTimeZone();
+            if (atEnd()) {
+                return result();
+            }
         }
         return null;
     }
@@ -123,12 +134,18 @@ public final class TemporalParser {
     public JSTemporalParserRecord parseMonthDay() {
         reset();
         if (parseDateSpecMonthDay()) {
-            return result();
+            if (atEnd()) {
+                return result();
+            }
         }
+        reset();
         if (parseDate()) {
             parseDateTimeSeparator();
             parseTime();
-            return result();
+            parseTimeZone();
+            if (atEnd()) {
+                return result();
+            }
         }
         return null;
     }
@@ -174,8 +191,11 @@ public final class TemporalParser {
     }
 
     public JSTemporalParserRecord result() {
-        String z = null;
-        return new JSTemporalParserRecord(z, year, month, day, hour, minute, second, fraction, offsetSign, offsetHour, offsetMinute, offsetSecond, offsetFraction, timeZoneName, calendar);
+        return new JSTemporalParserRecord(utcDesignator, year, month, day, hour, minute, second, fraction, offsetSign, offsetHour, offsetMinute, offsetSecond, offsetFraction, timeZoneName, calendar);
+    }
+
+    private boolean atEnd() {
+        return pos >= input.length();
     }
 
     private void reset() {
@@ -193,7 +213,9 @@ public final class TemporalParser {
         if (matcher.matches()) {
             year = matcher.group(1);
             month = matcher.group(2);
-
+            if (year.charAt(0) == '\u2212') {
+                year = "-" + year.substring(1);
+            }
             move(matcher.end(2));
             return true;
         }
@@ -218,7 +240,9 @@ public final class TemporalParser {
             year = matcher.group(1);
             month = matcher.group(2);
             day = matcher.group(3);
-
+            if (year.charAt(0) == '\u2212') {
+                year = "-" + year.substring(1);
+            }
             move(matcher.end(3));
             return true;
         }
@@ -274,6 +298,12 @@ public final class TemporalParser {
             move(matcher.end(3));
 
             parseTimeZoneBracket();
+            return true;
+        }
+        if (rest.equals("Z") || rest.equals("z")) {
+            move(1);
+            this.timeZoneName = TemporalConstants.UTC;
+            this.utcDesignator = "Z";
             return true;
         }
         return parseTimeZoneBracket();
