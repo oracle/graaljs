@@ -69,12 +69,12 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -253,7 +253,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return result;
     }
 
-    @Specialization(guards = {"isForeignObject(target)"})
+    @Specialization(guards = {"isForeignObject(target)", "!interop.hasArrayElements(target)"})
     protected boolean member(Object target, String name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
@@ -284,16 +284,10 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return true;
     }
 
-    @Specialization(guards = {"isForeignObject(target)"})
+    @Specialization(guards = {"isForeignObject(target)", "interop.hasArrayElements(target)"})
     protected boolean arrayElementInt(Object target, int index,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         return arrayElementLong(target, index, interop);
-    }
-
-    @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
-    protected boolean arrayElement(Object target, Number index,
-                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        return arrayElementLong(target, JSRuntime.longValue(index), interop);
     }
 
     private boolean arrayElementLong(Object target, long index, InteropLibrary interop) {
@@ -316,24 +310,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         }
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"isForeignObject(target)", "!isString(key)", "!isNumber(key)"})
-    protected Object foreignObject(Object target, Object key,
-                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
-        Object index = toArrayIndexNode.execute(key);
-        if (index instanceof String) {
-            return member(target, (String) index, interop);
-        } else if (interop.hasArrayElements(target) && index instanceof Long) {
-            return arrayElementLong(target, (Long) index, interop);
-        } else if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
-            return hashEntry(target, key, interop);
-        } else {
-            return true;
-        }
-    }
-
-    private Object hashEntry(Object target, Object key, InteropLibrary interop) {
+    private boolean hashEntry(Object target, Object key, InteropLibrary interop) {
         try {
             interop.removeHashEntry(target, key);
             return true;
@@ -344,6 +321,36 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                 throw Errors.createTypeErrorInteropException(target, e, "delete", this);
             }
             return false;
+        }
+    }
+
+    @SuppressWarnings("unused")
+    @Specialization(guards = {"isForeignObject(target)"}, replaces = {"member", "arrayElementInt"})
+    protected boolean foreignObject(Object target, Object key,
+                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                    @Cached ExportValueNode exportKey) {
+        if (interop.hasArrayElements(target)) {
+            Object index = toArrayIndexNode.execute(key);
+            if (index instanceof Long) {
+                return arrayElementLong(target, (Long) index, interop);
+            }
+        }
+        if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            Object exportedKey = exportKey.execute(key);
+            return hashEntry(target, exportedKey, interop);
+        }
+        if (interop.hasMembers(target)) {
+            Object propertyKey = toPropertyKeyNode.execute(key);
+            if (propertyKey instanceof String) {
+                return member(target, (String) propertyKey, interop);
+            } else {
+                assert propertyKey instanceof Symbol;
+                return true;
+            }
+        } else {
+            return true;
         }
     }
 

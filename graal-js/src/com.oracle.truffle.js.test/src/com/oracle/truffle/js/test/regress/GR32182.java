@@ -41,14 +41,17 @@
 package com.oracle.truffle.js.test.regress;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -68,6 +71,53 @@ public class GR32182 {
             assertTrue(result.toString(), result.isNull());
             assertTrue(myMap.keySet().toString(), !myMap.keySet().contains("A"));
             assertEquals(myMap.keySet().toString(), 1, myMap.keySet().size());
+        }
+    }
+
+    @Test
+    public void testJavaMapDeleteNumber() {
+        try (Context ctx = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).allowMapAccess(true).build()).build()) {
+            Map<String, Object> map = new HashMap<>();
+            ctx.getBindings("js").putMember("map", map);
+
+            assertEquals(0, ctx.eval("js", "map['foo'] = 'someValue'; delete map['foo']; map.size();").asInt());
+            assertEquals(0, ctx.eval("js", "map[42] = 'someValue'; delete map[42]; map.size()\n").asInt());
+
+            map.clear();
+
+            ctx.getBindings("js").putMember("map", ProxyObject.fromMap(map));
+            ctx.eval("js", "map['foo'] = 'someValue';");
+            assertEquals(1, map.size());
+            ctx.eval("js", "delete map['foo'];");
+            assertEquals(0, map.size());
+            ctx.eval("js", "map[42] = 'someValue';");
+            assertEquals(1, map.size());
+            ctx.eval("js", "delete map[42];");
+            assertEquals(0, map.size());
+        }
+    }
+
+    @Test
+    public void testJavaListDeleteNumber() {
+        try (Context ctx = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).allowMapAccess(true).build()).build()) {
+            ArrayList<Object> array = new ArrayList<>();
+            ctx.getBindings("js").putMember("array", array);
+            array.add("element");
+
+            assertEquals("element", ctx.eval("js", "array[0];").asString());
+            assertEquals("element", ctx.eval("js", "array['0'];").asString());
+
+            assertFalse(ctx.eval("js", "delete array[0];").asBoolean());
+            assertFalse(ctx.eval("js", "delete array['0'];").asBoolean());
+
+            assertEquals(1, array.size());
+            assertEquals("element", array.get(0));
+
+            ctx.eval("js", "array[0] = 'element0';");
+            assertEquals("element0", array.get(0));
+
+            ctx.eval("js", "array['0'] = 'element1';");
+            assertEquals("element1", array.get(0));
         }
     }
 }

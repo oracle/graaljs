@@ -1585,13 +1585,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         private final Class<?> targetClass;
 
         @Child private InteropLibrary interop;
-        @Child private InteropLibrary keyInterop;
         @Child private ExportValueNode exportKeyNode;
         @Child private ImportValueNode importValueNode;
         @Child private InteropLibrary getterInterop;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private ReadElementNode readFromPrototypeNode;
         @Child private JSToStringNode toStringNode;
+        @Child private ToArrayIndexNode toArrayIndexNode;
 
         private final BranchProfile errorBranch = BranchProfile.create();
         @CompilationFinal private boolean optimistic = true;
@@ -1602,7 +1602,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.exportKeyNode = ExportValueNode.create();
             this.importValueNode = ImportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.toStringNode = JSToStringNode.create();
         }
 
@@ -1623,13 +1622,17 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 return maybeReadFromPrototype(truffleObject, exportedKey, root.context);
             }
             boolean hasArrayElements = interop.hasArrayElements(truffleObject);
-            if (hasArrayElements && keyInterop.fitsInLong(exportedKey)) {
+            if (hasArrayElements) {
                 try {
-                    return interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
+                    Object maybeIndex = toArrayIndex(exportedKey);
+                    if (maybeIndex instanceof Long) {
+                        return interop.readArrayElement(truffleObject, (long) maybeIndex);
+                    }
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
-            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            }
+            if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     return interop.readHashValue(truffleObject, exportedKey);
                 } catch (UnknownKeyException e) {
@@ -1741,6 +1744,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         public boolean guard(Object target) {
             return targetClass.isInstance(target) && !JSDynamicObject.isJSDynamicObject(target);
+        }
+
+        private Object toArrayIndex(Object maybeIndex) {
+            if (toArrayIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toArrayIndexNode = insert(ToArrayIndexNode.create());
+            }
+            return toArrayIndexNode.execute(maybeIndex);
         }
     }
 
