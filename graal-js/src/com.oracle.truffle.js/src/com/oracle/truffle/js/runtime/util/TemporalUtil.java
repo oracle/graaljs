@@ -110,8 +110,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -160,7 +158,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRec
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneStringRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
@@ -3414,46 +3411,30 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static long parseTimeZoneOffsetString(String offset) {
-        Matcher matcher = matchTimeZoneNumericUTCOffset(offset, true);
-        if (!matcher.matches()) {
-            throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
-        }
-        String sign = matcher.group(1);
-        String hours = matcher.group(2);
-        String minutes = matcher.group(4);
-        String seconds = matcher.group(6);
-        String fraction = matcher.group(8);
-
-        if (sign == null || sign.length() == 0 || hours == null || hours.length() == 0) {
-            throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
+    public static long parseTimeZoneOffsetString(String string) {
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneNumericUTCOffset();
+        if (rec == null) {
+            throw Errors.createRangeError("TemporalTimeZoneNumericUTCOffset expected");
         }
 
-        int signVal = 0;
-        if (sign.equals("-") || sign.equals("\u2212")) {
-            signVal = -1;
-        } else {
-            signVal = 1;
-        }
-        long h = toIntegerOrInfinity(hours);
-        long m = toIntegerOrInfinity(minutes);
-        long s = toIntegerOrInfinity(seconds);
-        long nanoseconds = 0;
-
-        if (!isNullish(fraction)) {
-            fraction = fraction + "000000000";
-            nanoseconds = toIntegerOrInfinity(Long.valueOf(fraction.substring(0, 9)));
-        } else {
+        long nanoseconds;
+        if (rec.getFraction() == null) {
             nanoseconds = 0;
+        } else {
+            String fraction = rec.getFraction() + "000000000";
+            fraction = fraction.substring(0, 9);
+            nanoseconds = Long.parseLong(fraction, 10);
         }
-        return signVal * (((h * 60 + m) * 60 + s) * 1_000_000_000L + nanoseconds);
-    }
 
-    private static Matcher matchTimeZoneNumericUTCOffset(String offset, boolean matchEnd) {
-        // TimeZoneNumericUTCOffset
-        String regex = "^([+-\\u2212]?)(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)(\\.([\\d]*)?)?)?)?" + (matchEnd ? "$" : ".*");
-        Pattern pattern = Pattern.compile(regex);
-        return pattern.matcher(offset);
+        String signS = rec.getOffsetSign();
+        int sign = ("-".equals(signS) || "\u2212".equals(signS)) ? -1 : 1;
+
+        long hours = rec.getOffsetHour() == null ? 0 : Long.parseLong(rec.getOffsetHour());
+        long minutes = rec.getOffsetMinute() == null ? 0 : Long.parseLong(rec.getOffsetMinute());
+        long seconds = rec.getOffsetSecond() == null ? 0 : Long.parseLong(rec.getOffsetSecond());
+
+        long result = sign * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
+        return result;
     }
 
     @TruffleBoundary
@@ -3468,7 +3449,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(String string) {
-        JSTemporalTimeZoneStringRecord rec = parseTemporalTimeZoneStringIntl(string);
+        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneString();
         if (rec == null) {
             throw Errors.createRangeError("TemporalTimeZoneString expected");
         }
@@ -3476,28 +3457,28 @@ public final class TemporalUtil {
         if (!isNullish(rec.getZ())) {
             return JSTemporalTimeZoneRecord.create("Z", "+00:00", null);
         }
+
         String offsetString = null;
-        if (isNullish(rec.getHours())) {
+        if (rec.getOffsetHour() == null) {
             offsetString = null;
         } else {
-            assert !isNullish(rec.getSign());
-            long hours = toIntegerOrInfinity(rec.getHours());
-            long signVal = 0;
-            if (rec.getSign().equals("-") || rec.getSign().equals("\u2212")) {
-                signVal = -1;
-            } else {
-                signVal = 1;
-            }
-            long minutes = toIntegerOrInfinity(rec.getMinutes());
-            long seconds = toIntegerOrInfinity(rec.getSeconds());
-            long nanoseconds = 0;
-            if (!isNullish(rec.getFraction())) {
-                String fraction = rec.getFraction() + "000000000";
-                nanoseconds = toIntegerOrInfinity(Long.valueOf(fraction.substring(0, 9)));
-            } else {
+            long nanoseconds;
+            if (rec.getFraction() == null) {
                 nanoseconds = 0;
+            } else {
+                String fraction = rec.getFraction() + "000000000";
+                fraction = fraction.substring(0, 9);
+                nanoseconds = Long.parseLong(fraction, 10);
             }
-            long offsetNanoseconds = signVal * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
+
+            String signS = rec.getOffsetSign();
+            int sign = ("-".equals(signS) || "\u2212".equals(signS)) ? -1 : 1;
+
+            long hours = rec.getOffsetHour() == null ? 0 : toIntegerOrInfinity(rec.getOffsetHour());
+            long minutes = rec.getOffsetMinute() == null ? 0 : toIntegerOrInfinity(rec.getOffsetMinute());
+            long seconds = rec.getOffsetSecond() == null ? 0 : toIntegerOrInfinity(rec.getOffsetSecond());
+
+            long offsetNanoseconds = sign * (((hours * 60 + minutes) * 60 + seconds) * 1_000_000_000L + nanoseconds);
             offsetString = formatTimeZoneOffsetString(offsetNanoseconds);
         }
 
@@ -3509,142 +3490,6 @@ public final class TemporalUtil {
             name = canonicalizeTimeZoneName(name);
         }
         return JSTemporalTimeZoneRecord.create(null, offsetString, name);
-    }
-
-    @TruffleBoundary
-    private static JSTemporalTimeZoneStringRecord parseTemporalTimeZoneStringIntl(String string) {
-        // parsing a TemporalTimeZoneString:
-        //
-        // TemporalTimeZoneIdentifier
-        // - TimeZoneNumericUTCOffset
-        // --- always starts with sign!
-        // - TimeZoneIANAName
-        // --- always starts with alpha, . or _
-        // TemporalInstantString
-        // - always starts with a Date, thus either sign or digit (conflict with above!)
-
-        // field in JSTemporalTimeZoneStringRecord are:
-        // UTCDesignator, TimeZoneUTCOffsetSign, TimeZoneUTCOffsetHour,
-        // TimeZoneUTCOffsetMinute, TimeZoneUTCOffsetSecond, TimeZoneUTCOffsetFraction,
-        // and TimeZoneIANAName
-
-        // try parse the TimeZoneNumericUTCOffset variant
-        Matcher matcher = matchTimeZoneNumericUTCOffset(string, true);
-        if (matcher.matches()) {
-            String sign = matcher.group(1);
-            String hours = matcher.group(2);
-            String minutes = matcher.group(4);
-            String seconds = matcher.group(6);
-            String fraction = matcher.group(8);
-
-            return JSTemporalTimeZoneStringRecord.create(null, sign, hours, minutes, seconds, fraction, null);
-        }
-
-        // try parse the TimeZoneIANAName variant
-        matcher = matchTimeZoneIANAName(string);
-        if (matcher.matches()) {
-            String firstName = matcher.group(1);
-            String name = firstName;
-            for (int i = 2; i < matcher.groupCount(); i++) {
-                String furtherName = matcher.group(i);
-                // TODO ??
-                name += furtherName;
-            }
-
-            return JSTemporalTimeZoneStringRecord.create(null, null, null, null, null, null, name);
-        }
-
-        // Try parse the TemporalInstantString variant(s)
-        matcher = matcherTemporalInstantString(string, false);
-        if (matcher.matches()) {
-            // Date and DateTimeSeparator matched. We need to check rest!
-            int end = matcher.end(3);
-            if (end < 0) {
-                return null; // cannot parse
-            }
-            String rest = string.substring(end);
-
-            char nextChar = rest.charAt(0);
-            if (nextChar == ' ' || nextChar == 't' || nextChar == 'T') {
-                rest = rest.substring(1);
-                matcher = matchTimeSpec(rest, false);
-                if (matcher.matches()) {
-                    end = matcher.group(2) == null ? matcher.end(1) : matcher.end(2);
-                    rest = rest.substring(end);
-                } else {
-                    return null;
-                }
-            }
-
-            // TimeZoneOffsetRequire
-            if (restIsZ(rest)) {
-                return JSTemporalTimeZoneStringRecord.create("Z", null, null, null, null, null, UTC);
-            } else {
-                matcher = matchTimeZoneNumericUTCOffset(rest, false);
-                if (matcher.matches()) {
-                    String sign = matcher.group(1);
-                    String hour = matcher.group(2);
-                    String minute = matcher.group(4);
-                    String second = matcher.group(6);
-                    String secondFraction = matcher.group(8);
-
-                    end = minute != null ? matcher.end(3) : matcher.end(2);
-                    if (end < 0) {
-                        return null; // cannot parse
-                    }
-                    rest = rest.substring(end);
-
-                    matcher = matchTimeZoneBracketedAnnotation(rest);
-                    if (matcher.matches()) {
-                        String timeZoneBrackedName = matcher.group(1);
-
-                        return JSTemporalTimeZoneStringRecord.create(null, sign, hour, minute, second, secondFraction, timeZoneBrackedName);
-                    } else {
-                        return JSTemporalTimeZoneStringRecord.create(null, sign, hour, minute, second, secondFraction, null);
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
-    private static boolean restIsZ(String rest) {
-        if (rest.length() == 1) {
-            char ch = rest.charAt(rest.length() - 1);
-            if (ch == 'Z' || ch == 'z') {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private static Matcher matchTimeSpec(String string, boolean matchEnd) {
-        // TimeSpec
-        String regex = "^(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)(\\.([\\d]*)?)?)?)?" + (matchEnd ? "$" : ".*");
-        Pattern pattern = Pattern.compile(regex);
-        return pattern.matcher(string);
-    }
-
-    private static Matcher matchTimeZoneBracketedAnnotation(String string) {
-        // TemporalInstantString:
-        // Date DateTimeSeparator // omitted: TimeSpec TimeZoneOffsetRequired
-        String regex = "^\\[(.*)\\]$";
-        Pattern pattern = Pattern.compile(regex);
-        return pattern.matcher(string);
-    }
-
-    private static Matcher matcherTemporalInstantString(String string, boolean matchEnd) {
-        // TemporalInstantString:
-        // Date DateTimeSeparator // omitted: TimeSpec TimeZoneOffsetRequired
-        String regex = "^([+-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)[-]?(\\d\\d)" + (matchEnd ? "$" : ".*");
-        Pattern pattern = Pattern.compile(regex);
-        return pattern.matcher(string);
-    }
-
-    private static Matcher matchTimeZoneIANAName(String string) {
-        String regex = "^([a-zA-Z\\.][a-zA-Z\\.-_]*)(\\/[a-zA-Z\\.][a-zA-Z\\.-_]*)*$";
-        Pattern pattern = Pattern.compile(regex);
-        return pattern.matcher(string);
     }
 
     public static String toTemporalDisambiguation(DynamicObject options, TemporalGetOptionNode getOptionNode) {

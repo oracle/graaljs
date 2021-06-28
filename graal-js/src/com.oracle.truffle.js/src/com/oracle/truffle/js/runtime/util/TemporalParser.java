@@ -59,6 +59,7 @@ public final class TemporalParser {
     private static final String patternTimeZoneNumericUTCOffset = "^([+-\\u2212]?)(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)(\\.([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+-]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^[-]?(\\d\\d)[-]?(\\d\\d)";
+    private static final String patternTimeZoneIANAName = "^(\\w*(/\\w*)*)";
 
     private final String input;
     private String rest;
@@ -127,6 +128,46 @@ public final class TemporalParser {
         if (parseDate()) {
             parseDateTimeSeparator();
             parseTime();
+            return result();
+        }
+        return null;
+    }
+
+    public JSTemporalParserRecord parseTimeZoneString() {
+        reset();
+        // TemporalTimeZoneIdentifier
+        if (parseTimeZone()) {
+            return result();
+        }
+        reset();
+        if (parseTimeZoneIANAName()) {
+            return result();
+        }
+        reset();
+        // TemporalInstantString
+        if (parseDate()) {
+            parseDateTimeSeparator();
+            parseTime();
+            parseTimeZone();
+            return result();
+        }
+        return null;
+    }
+
+    private boolean parseTimeZoneIANAName() {
+        Matcher matcher = createMatch(patternTimeZoneIANAName, rest);
+        if (matcher.matches()) {
+            this.timeZoneName = matcher.group(1);
+
+            move(matcher.end(1));
+            return true;
+        }
+        return false;
+    }
+
+    public JSTemporalParserRecord parseTimeZoneNumericUTCOffset() {
+        reset();
+        if (parseTimeZone()) {
             return result();
         }
         return null;
