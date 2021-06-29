@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,7 +80,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
-        if(setEnumerable){
+        if (setEnumerable) {
             JSRuntime.createDataPropertyOrThrow(object, key, value);
         } else {
             JSRuntime.createNonEnumerableDataPropertyOrThrow(object, key, value);
@@ -93,7 +93,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     }
 
     protected final PropertySetNode makeDefinePropertyCache() {
-        if(setEnumerable) {
+        if (setEnumerable) {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());
         } else {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());

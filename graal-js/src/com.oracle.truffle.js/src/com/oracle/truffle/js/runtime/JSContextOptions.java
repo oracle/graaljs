@@ -520,8 +520,9 @@ public final class JSContextOptions {
     @CompilationFinal private boolean operatorOverloading;
 
     public static final String USE_ERROR_CAUSE_NAME = JS_OPTION_PREFIX + "use-error-cause";
-    @Option(name = USE_ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "Allows to use the optional options parameter on all errors. The error cause can be specified within this options object.")
-            public static final OptionKey<Boolean> USE_ERROR_CAUSE = new OptionKey<>(false);
+    @Option(name = USE_ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "" +
+                    "Allows to use the optional options parameter on all errors. The error cause can be specified within this options object.") //
+    public static final OptionKey<Boolean> USE_ERROR_CAUSE = new OptionKey<>(false);
     @CompilationFinal private boolean useErrorCause;
 
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
@@ -1205,7 +1206,7 @@ public final class JSContextOptions {
         if (this.operatorOverloading != other.operatorOverloading) {
             return false;
         }
-        if(this.useErrorCause != other.useErrorCause) {
+        if (this.useErrorCause != other.useErrorCause) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

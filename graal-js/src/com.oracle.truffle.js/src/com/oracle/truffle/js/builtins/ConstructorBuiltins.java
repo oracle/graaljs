@@ -1883,6 +1883,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
         }
     }
+
     public abstract static class ConstructErrorNode extends ConstructWithNewTargetNode {
         private final JSErrorType errorType;
         @Child private ErrorStackTraceLimitNode stackTraceLimitNode;

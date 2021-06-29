@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,9 +108,9 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         if (errorsOpt != null) {
             setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
         }
-        if(options != null && context.getContextOptions().isErrorCauseEnabled() && JSRuntime.isObject(options) && options != Undefined.instance) {
+        if (options != null && context.getContextOptions().isErrorCauseEnabled() && JSRuntime.isObject(options) && options != Undefined.instance) {
             // Add error cause if present
-            if(installErrorCauseNode == null) {
+            if (installErrorCauseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 installErrorCauseNode = insert(new InstallErrorCauseNode(context));
             }
