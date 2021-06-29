@@ -48,15 +48,19 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 public class InstallErrorCauseNode extends JavaScriptBaseNode {
     private static final String CAUSE = "cause";
     @Child private CreateDataPropertyNode createNonEnumerableDataPropertyNode;
+    @Child private HasPropertyCacheNode hasPropertyNode;
+    @Child private PropertyGetNode getPropertyNode;
 
     public InstallErrorCauseNode(JSContext context) {
         this.createNonEnumerableDataPropertyNode = CreateDataPropertyNode.createNonEnumerable(context, CAUSE);
+        this.hasPropertyNode = HasPropertyCacheNode.create(CAUSE, context);
+        this.getPropertyNode = PropertyGetNode.create(CAUSE, context);
     }
 
     public void executeVoid(DynamicObject error, DynamicObject options) {
         assert JSObject.isJSObject(error);
-        if (JSObject.hasProperty(options, CAUSE)) {
-            Object cause = JSObject.get(options, CAUSE);
+        if (hasPropertyNode.hasProperty(options)) {
+            Object cause = getPropertyNode.getValue(options);
             createNonEnumerableDataPropertyNode.executeVoid(error, cause);
         }
     }
