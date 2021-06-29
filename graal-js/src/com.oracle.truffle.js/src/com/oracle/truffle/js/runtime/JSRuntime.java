@@ -2398,7 +2398,6 @@ public final class JSRuntime {
     /**
      * Error Cause 7.3.6 CreateNonEnumerableDataPropertyOrThrow(O, P, V).
      */
-
     public static void createNonEnumerableDataPropertyOrThrow(DynamicObject o, Object p, Object v) {
         PropertyDescriptor newDesc = PropertyDescriptor.createData(v, JSAttributes.getDefaultNotEnumerable());
         definePropertyOrThrow(o, p, newDesc);

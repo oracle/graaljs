@@ -52,14 +52,14 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final Object key;
-    protected final boolean setEnumerable;
+    protected final boolean enumerable;
     @Child protected IsJSObjectNode isObject;
 
-    protected CreateDataPropertyNode(JSContext context, Object key, boolean setEnumerable) {
+    protected CreateDataPropertyNode(JSContext context, Object key, boolean enumerable) {
         this.context = context;
         this.key = key;
         this.isObject = IsJSObjectNode.create();
-        this.setEnumerable = setEnumerable;
+        this.enumerable = enumerable;
     }
 
     public static CreateDataPropertyNode create(JSContext context, Object key) {
@@ -80,7 +80,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
     protected final void doUncached(DynamicObject object, Object value) {
-        if (setEnumerable) {
+        if (enumerable) {
             JSRuntime.createDataPropertyOrThrow(object, key, value);
         } else {
             JSRuntime.createNonEnumerableDataPropertyOrThrow(object, key, value);
@@ -93,7 +93,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     }
 
     protected final PropertySetNode makeDefinePropertyCache() {
-        if (setEnumerable) {
+        if (enumerable) {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());
         } else {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());

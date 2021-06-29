@@ -50,16 +50,18 @@ public class InstallErrorCauseNode extends JavaScriptBaseNode {
     @Child private CreateDataPropertyNode createNonEnumerableDataPropertyNode;
     @Child private HasPropertyCacheNode hasPropertyNode;
     @Child private PropertyGetNode getPropertyNode;
+    @Child private IsObjectNode isObjectNode;
 
     public InstallErrorCauseNode(JSContext context) {
         this.createNonEnumerableDataPropertyNode = CreateDataPropertyNode.createNonEnumerable(context, CAUSE);
         this.hasPropertyNode = HasPropertyCacheNode.create(CAUSE, context);
         this.getPropertyNode = PropertyGetNode.create(CAUSE, context);
+        this.isObjectNode = IsObjectNode.create();
     }
 
-    public void executeVoid(DynamicObject error, DynamicObject options) {
+    public void executeVoid(DynamicObject error, Object options) {
         assert JSObject.isJSObject(error);
-        if (hasPropertyNode.hasProperty(options)) {
+        if (isObjectNode.executeBoolean(options) && hasPropertyNode.hasProperty(options)) {
             Object cause = getPropertyNode.getValue(options);
             createNonEnumerableDataPropertyNode.executeVoid(error, cause);
         }

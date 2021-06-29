@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -94,11 +93,11 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt) {
-        return execute(errorObj, exception, messageOpt, null, null);
+        return execute(errorObj, exception, messageOpt, null);
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt) {
-        return execute(errorObj, exception, messageOpt, errorsOpt, null);
+        return execute(errorObj, exception, messageOpt, errorsOpt, Undefined.instance);
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt, Object options) {
@@ -108,13 +107,8 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         if (errorsOpt != null) {
             setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
         }
-        if (options != null && context.getContextOptions().isErrorCauseEnabled() && JSRuntime.isObject(options) && options != Undefined.instance) {
-            // Add error cause if present
-            if (installErrorCauseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                installErrorCauseNode = insert(new InstallErrorCauseNode(context));
-            }
-            installErrorCauseNode.executeVoid(errorObj, (DynamicObject) options);
+        if (context.getContextOptions().isErrorCauseEnabled() && options != Undefined.instance) {
+            installErrorCause(errorObj, options);
         }
 
         setException.setValue(errorObj, exception);
@@ -128,6 +122,14 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             setColumnNumber.executeVoid(errorObj, defaultColumnNumber ? JSError.DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());
         }
         return errorObj;
+    }
+
+    private void installErrorCause(DynamicObject errorObj, Object options) {
+        if (installErrorCauseNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            installErrorCauseNode = insert(new InstallErrorCauseNode(context));
+        }
+        installErrorCauseNode.executeVoid(errorObj, options);
     }
 
     private DynamicObjectLibrary setErrorsNode() {
