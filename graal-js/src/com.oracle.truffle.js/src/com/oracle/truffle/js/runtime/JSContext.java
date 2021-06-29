@@ -96,11 +96,13 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
@@ -417,6 +419,9 @@ public class JSContext {
     private final JSObjectFactory webAssemblyTableFactory;
     private final JSObjectFactory webAssemblyGlobalFactory;
 
+    private final JSObjectFactory recordFactory;
+    private final JSObjectFactory tupleFactory;
+
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
@@ -574,6 +579,14 @@ public class JSContext {
         this.webAssemblyMemoryFactory = builder.create(JSWebAssemblyMemory.INSTANCE);
         this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
+
+        if (isRecordAndTupleEnabled()) {
+            this.recordFactory = builder.create(JSRecord.INSTANCE);
+            this.tupleFactory = builder.create(JSTuple.INSTANCE);
+        } else {
+            this.recordFactory = null;
+            this.tupleFactory = null;
+        }
 
         this.factoryCount = builder.finish();
 
@@ -1023,6 +1036,14 @@ public class JSContext {
 
     public JSObjectFactory getWebAssemblyGlobalFactory() {
         return webAssemblyGlobalFactory;
+    }
+
+    public final JSObjectFactory getRecordFactory() {
+        return recordFactory;
+    }
+
+    public final JSObjectFactory getTupleFactory() {
+        return tupleFactory;
     }
 
     private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";
@@ -1732,6 +1753,11 @@ public class JSContext {
     }
 
     public boolean isWaitAsyncEnabled() {
+        return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+    }
+
+    public boolean isRecordAndTupleEnabled() {
+        // TODO: Associate with the correct ECMAScript Version
         return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
     }
 }

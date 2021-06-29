@@ -230,7 +230,16 @@ public enum TokenType {
     SPREAD_OBJECT  (IR,           null),
     YIELD_STAR     (IR,           null),
     ASSIGN_INIT    (IR,           null),
-    NAMEDEVALUATION(IR,           null);
+    NAMEDEVALUATION(IR,           null),
+
+    // Records & Tuples Proposal tokens
+    RECORD         (LITERAL,      null),
+    TUPLE          (LITERAL,      null),
+    SPREAD_RECORD  (IR,           null),
+    SPREAD_TUPLE   (IR,           null),
+    // TODO: Associate with the correct ECMAScript Version
+    HASH_BRACKET   (BRACKET, "#[", 0, true, 13),
+    HASH_BRACE     (BRACKET, "#{", 0, true, 13);
     //@formatter:on
 
     /** Next token kind in token lookup table. */

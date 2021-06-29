@@ -48,8 +48,10 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 /**
  * This implements ECMA2022 7.1.5 ToIntegerOrInfinity.
@@ -115,6 +117,16 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
     @Specialization
     protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
+    }
+
+    @Specialization
+    protected final long doRecord(@SuppressWarnings("unused") Record value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
+    }
+
+    @Specialization
+    protected final long doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     @Specialization

@@ -207,6 +207,9 @@ import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.nodes.module.ResolveNamedImportNode;
 import com.oracle.truffle.js.nodes.module.ResolveStarImportNode;
 import com.oracle.truffle.js.nodes.promise.ImportCallNode;
+import com.oracle.truffle.js.nodes.record.RecordLiteralNode;
+import com.oracle.truffle.js.nodes.record.RecordLiteralNode.AbstractRecordLiteralMemberNode;
+import com.oracle.truffle.js.nodes.tuples.TupleLiteralNode;
 import com.oracle.truffle.js.nodes.unary.JSComplementNode;
 import com.oracle.truffle.js.nodes.unary.JSNotNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryMinusNode;
@@ -784,6 +787,30 @@ public class NodeFactory {
         return ArrayLiteralNode.createWithSpread(context, elements);
     }
 
+    public JavaScriptNode createRecordLiteral(JSContext context, AbstractRecordLiteralMemberNode[] members) {
+        return RecordLiteralNode.create(context, members);
+    }
+
+    public AbstractRecordLiteralMemberNode createRecordMember(String keyName, JavaScriptNode value) {
+        return RecordLiteralNode.createMember(keyName, value);
+    }
+
+    public AbstractRecordLiteralMemberNode createComputedRecordMember(JavaScriptNode key, JavaScriptNode value) {
+        return RecordLiteralNode.createComputedMember(key, value);
+    }
+
+    public AbstractRecordLiteralMemberNode createSpreadRecordMember(JavaScriptNode node) {
+        return RecordLiteralNode.createSpreadMember(node);
+    }
+
+    public JavaScriptNode createTupleLiteral(JSContext context, JavaScriptNode[] elements) {
+        return TupleLiteralNode.create(context, elements);
+    }
+
+    public JavaScriptNode createTupleLiteralWithSpread(JSContext context, JavaScriptNode[] elements) {
+        return TupleLiteralNode.createWithSpread(context, elements);
+    }
+
     public ObjectLiteralMemberNode createAccessorMember(String keyName, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
         return ObjectLiteralNode.newAccessorMember(keyName, isStatic, enumerable, getter, setter);
     }
@@ -823,6 +850,10 @@ public class NodeFactory {
 
     public JavaScriptNode createSpreadArray(JSContext context, JavaScriptNode argument) {
         return ArrayLiteralNode.SpreadArrayNode.create(context, argument);
+    }
+
+    public JavaScriptNode createSpreadTuple(JSContext context, JavaScriptNode argument) {
+        return TupleLiteralNode.SpreadTupleNode.create(context, argument);
     }
 
     public ReturnNode createReturn(JavaScriptNode expression) {

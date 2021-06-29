@@ -86,6 +86,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -110,6 +111,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSlowArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -463,6 +465,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             return new SymbolReadElementTypeCacheNode(next);
         } else if (target instanceof BigInt) {
             return new BigIntReadElementTypeCacheNode(next);
+        } else if (target instanceof Tuple) {
+            return new TupleReadElementTypeCacheNode(next);
         } else if (target instanceof TruffleObject) {
             assert JSRuntime.isForeignObject(target);
             return new ForeignObjectReadElementTypeCacheNode(target.getClass(), next);
@@ -1578,6 +1582,35 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         public boolean guard(Object target) {
             return target instanceof BigInt;
+        }
+    }
+
+    private static class TupleReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
+
+        TupleReadElementTypeCacheNode(ReadElementTypeCacheNode next) {
+            super(next);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root) {
+            Tuple tuple = (Tuple) target;
+            return JSObject.getOrDefault(JSTuple.create(root.context, tuple), toPropertyKey(index), receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, int index, Object receiver, Object defaultValue, ReadElementNode root) {
+            return executeWithTargetAndIndexUnchecked(target, (long)index, receiver, defaultValue, root);
+        }
+
+        @Override
+        protected Object executeWithTargetAndIndexUnchecked(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root) {
+            Tuple tuple = (Tuple) target;
+            return JSObject.getOrDefault(JSTuple.create(root.context, tuple), index, receiver, defaultValue, jsclassProfile, root);
+        }
+
+        @Override
+        public boolean guard(Object target) {
+            return target instanceof Tuple;
         }
     }
 

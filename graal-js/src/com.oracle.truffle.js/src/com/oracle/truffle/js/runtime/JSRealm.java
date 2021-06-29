@@ -55,6 +55,7 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -135,6 +136,7 @@ import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSTest262;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -377,6 +379,12 @@ public class JSRealm {
 
     /** Foreign object prototypes. */
     private final DynamicObject foreignIterablePrototype;
+
+    /** Record and Tuple support. */
+    private final DynamicObject recordConstructor;
+    private final DynamicObject recordPrototype;
+    private final DynamicObject tupleConstructor;
+    private final DynamicObject tuplePrototype;
 
     /**
      * Local time zone ID. Initialized lazily.
@@ -755,6 +763,20 @@ public class JSRealm {
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
+
+        if (context.isRecordAndTupleEnabled()) {
+            ctor = JSRecord.createConstructor(this);
+            this.recordConstructor = ctor.getFunctionObject();
+            this.recordPrototype = ctor.getPrototype();
+            ctor = JSTuple.createConstructor(this);
+            this.tupleConstructor = ctor.getFunctionObject();
+            this.tuplePrototype = ctor.getPrototype();
+        } else {
+            this.recordConstructor = null;
+            this.recordPrototype = null;
+            this.tupleConstructor = null;
+            this.tuplePrototype= null;
+        }
     }
 
     private void initializeTypedArrayConstructors() {
@@ -1415,6 +1437,10 @@ public class JSRealm {
 
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
+        }
+        if (context.isRecordAndTupleEnabled()) {
+            putGlobalProperty(JSRecord.CLASS_NAME, getRecordConstructor());
+            putGlobalProperty(JSTuple.CLASS_NAME, getTupleConstructor());
         }
     }
 
@@ -2453,4 +2479,19 @@ public class JSRealm {
         return foreignIterablePrototype;
     }
 
+    public DynamicObject getRecordConstructor() {
+        return recordConstructor;
+    }
+
+    public DynamicObject getRecordPrototype() {
+        return recordPrototype;
+    }
+
+    public DynamicObject getTupleConstructor() {
+        return tupleConstructor;
+    }
+
+    public DynamicObject getTuplePrototype() {
+        return tuplePrototype;
+    }
 }

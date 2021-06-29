@@ -41,14 +41,17 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 /**
  * This node is intended to be used only by comparison operators.
@@ -119,5 +122,15 @@ public abstract class JSToStringOrNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected static BigInt doBigInt(BigInt value) {
         return value;
+    }
+
+    @Specialization
+    protected String doRecord(Record value, @Cached("create()") @Shared("toString") JSToStringNode toStringNode) {
+        return toStringNode.executeString(value);
+    }
+
+    @Specialization
+    protected String doTuple(Tuple value, @Cached("create()") @Shared("toString") JSToStringNode toStringNode) {
+        return toStringNode.executeString(value);
     }
 }

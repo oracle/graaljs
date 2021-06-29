@@ -48,8 +48,10 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 /**
  * Checks whether the argument is of type Object (JS or foreign), i.e., not a primitive value.
@@ -101,6 +103,16 @@ public abstract class IsObjectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static boolean doBigInt(@SuppressWarnings("unused") BigInt operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doRecord(@SuppressWarnings("unused") Record operand) {
+        return false;
+    }
+
+    @Specialization
+    protected static boolean doTuple(@SuppressWarnings("unused") Tuple operand) {
         return false;
     }
 

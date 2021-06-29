@@ -56,8 +56,10 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
@@ -216,6 +218,16 @@ public abstract class JSToInt32Node extends JSUnaryNode {
 
     protected String getOverloadedOperatorName() {
         return "|";
+    }
+
+    @Specialization
+    protected int doRecord(@SuppressWarnings("unused") Record value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
+    }
+
+    @Specialization
+    protected int doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     @Specialization(guards = {"isJSObject(value)", "!isBitwiseOr() || !hasOverloadedOperators(value)"})

@@ -52,12 +52,16 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNodeGen.JSToStringWrapperNodeGen;
+import com.oracle.truffle.js.nodes.record.JSRecordToStringNode;
+import com.oracle.truffle.js.nodes.tuples.JSTupleToStringNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -159,6 +163,16 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         } else {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value", this);
         }
+    }
+
+    @Specialization
+    protected String doRecord(Record value, @Cached("create()") JSRecordToStringNode recordToStringNode) {
+        return recordToStringNode.execute(value);
+    }
+
+    @Specialization
+    protected String doTuple(Tuple value, @Cached("create()") JSTupleToStringNode tupleToStringNode ) {
+        return tupleToStringNode.execute(value);
     }
 
     @Specialization(guards = {"isForeignObject(object)"})

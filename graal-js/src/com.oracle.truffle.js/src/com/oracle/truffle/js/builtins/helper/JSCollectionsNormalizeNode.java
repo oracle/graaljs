@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -51,10 +52,15 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * This implements behavior for Collections of ES6. Instead of adhering to the SameValueNull
@@ -109,6 +115,25 @@ public abstract class JSCollectionsNormalizeNode extends JavaScriptBaseNode {
     @Specialization
     public BigInt doBigInt(BigInt bigInt) {
         return bigInt;
+    }
+
+    @TruffleBoundary
+    @Specialization
+    public Record doRecord(Record record) {
+        Map<String, Object> fields = record.getEntries().stream().collect(Collectors.toMap(
+                it -> it.getKey(),
+                it -> execute(it.getValue())
+        ));
+        return Record.create(fields);
+    }
+
+    @Specialization
+    public Tuple doTuple(Tuple tuple) {
+        Object[] elements = tuple.getElements();
+        for (int i = 0; i < elements.length; i++) {
+            elements[i] = execute(elements[i]);
+        }
+        return Tuple.create(elements);
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")

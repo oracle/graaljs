@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -76,9 +77,11 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
@@ -228,6 +231,10 @@ public final class JSRuntime {
             return JSBoolean.TYPE_NAME;
         } else if (value instanceof Symbol) {
             return JSSymbol.TYPE_NAME;
+        } else if (value instanceof Record) {
+            return JSRecord.TYPE_NAME;
+        } else if (value instanceof Tuple) {
+            return JSTuple.TYPE_NAME;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             DynamicObject object = (DynamicObject) value;
             if (JSProxy.isJSProxy(object)) {
@@ -492,6 +499,10 @@ public final class JSRuntime {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
         } else if (value instanceof BigInt) {
             throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value");
+        } else if (value instanceof Record) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a Record value");
+        } else if (value instanceof Tuple) {
+            throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value");
         } else if (value instanceof Number) {
             assert isJavaPrimitive(value) : value.getClass().getName();
             return (Number) value;
@@ -528,6 +539,10 @@ public final class JSRuntime {
 
     public static boolean isBigInt(Object value) {
         return value instanceof BigInt;
+    }
+
+    public static boolean isTuple(Object value) {
+        return value instanceof Tuple;
     }
 
     public static boolean isJavaNumber(Object value) {
@@ -920,6 +935,10 @@ public final class JSRuntime {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
         } else if (value instanceof BigInt) {
             return value.toString();
+        } else if (value instanceof Record) {
+            return recordToString((Record) value);
+        } else if (value instanceof Tuple) {
+            return tupleToString((Tuple) value);
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             return toString(JSObject.toPrimitive((DynamicObject) value, HINT_STRING));
         } else if (value instanceof TruffleObject) {
@@ -973,6 +992,10 @@ public final class JSRuntime {
             return value.toString();
         } else if (value instanceof BigInt) {
             return value.toString() + 'n';
+        } else if (value instanceof Record) {
+            return recordToString((Record) value);
+        } else if (value instanceof Tuple) {
+            return tupleToString((Tuple) value);
         } else if (isNumber(value)) {
             Number number = (Number) value;
             if (JSRuntime.isNegativeZero(number.doubleValue())) {
@@ -1318,6 +1341,31 @@ public final class JSRuntime {
         return value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME;
     }
 
+    /**
+     * Record & Tuple Proposal 2.1.1.1 RecordToString
+     */
+    public static String recordToString(@SuppressWarnings("unused") Record value) {
+        return JSRecord.STRING_NAME;
+    }
+
+    /**
+     * Record & Tuple Proposal 2.1.2.1 TupleToString
+     */
+    @TruffleBoundary
+    public static String tupleToString(Tuple value) {
+        StringBuilder sb = new StringBuilder();
+        for (long k = 0; k < value.getArraySize(); k++) {
+            if (k > 0) {
+                sb.append(',');
+            }
+            Object element = value.getElement(k);
+            if (!isNullOrUndefined(element)) {
+                sb.append(toString(element));
+            }
+        }
+        return sb.toString();
+    }
+
     public static String toString(DynamicObject value) {
         if (value == Undefined.instance) {
             return Undefined.NAME;
@@ -1511,6 +1559,10 @@ public final class JSRuntime {
             return JSNumber.create(ctx, (Number) value);
         } else if (value instanceof Symbol) {
             return JSSymbol.create(ctx, (Symbol) value);
+        } else if (value instanceof Record) {
+            return JSRecord.create(ctx, (Record) value);
+        } else if (value instanceof Tuple) {
+            return JSTuple.create(ctx, (Tuple) value);
         } else {
             assert !isJSNative(value) && isJavaPrimitive(value) : value;
             if (useJavaWrapper) {
@@ -1535,6 +1587,9 @@ public final class JSRuntime {
         } else if (isNumber(x) && isNumber(y)) {
             double xd = doubleValue((Number) x);
             double yd = doubleValue((Number) y);
+            if (Double.isNaN(xd)) {
+                return Double.isNaN(yd);
+            }
             return Double.compare(xd, yd) == 0;
         } else if (isString(x) && isString(y)) {
             return x.toString().equals(y.toString());
@@ -1542,8 +1597,72 @@ public final class JSRuntime {
             return (boolean) x == (boolean) y;
         } else if (isBigInt(x) && isBigInt(y)) {
             return ((BigInt) x).compareTo((BigInt) y) == 0;
+        } else if (x instanceof Record && y instanceof Record) {
+            return recordEqual((Record) x, (Record) y, JSRuntime::isSameValue);
+        } else if (x instanceof Tuple && y instanceof Tuple) {
+            return tupleEqual((Tuple) x, (Tuple) y, JSRuntime::isSameValue);
         }
         return x == y;
+    }
+
+    /**
+     * Abstract operation RecordEqual ( x, y, elementEqual )
+     */
+    private static boolean recordEqual(Record x, Record y, BiFunction<Object, Object, Boolean> elementEqual) {
+        String[] xKeys = x.getKeys();
+        String[] yKeys = y.getKeys();
+        if (xKeys.length != yKeys.length) {
+            return false;
+        }
+        for (int i = 0; i < xKeys.length; i++) {
+            Object xValue = x.get(xKeys[i]);
+            Object yValue = y.get(yKeys[i]);
+            if (!elementEqual.apply(xValue, yValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Abstract operation TupleEqual ( x, y, elementEqual )
+     */
+    private static boolean tupleEqual(Tuple x, Tuple y, BiFunction<Object, Object, Boolean> elementEqual) {
+        if (x.getArraySize() != y.getArraySize()) {
+            return false;
+        }
+        for (long k = 0; k < x.getArraySize(); k++) {
+            Object xValue = x.getElement(k);
+            Object yValue = y.getElement(k);
+            if (!elementEqual.apply(xValue, yValue)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * SameValueZero differs from SameValue only in its treatment of +0 and -0,
+     * and the treatment of those values inside a Record or Tuple.
+     */
+    @TruffleBoundary
+    public static boolean isSameValueZero(Object x, Object y) {
+        if (isNumber(x) && isNumber(y)) {
+            double xd = doubleValue((Number) x);
+            double yd = doubleValue((Number) y);
+            if (Double.isNaN(xd)) {
+                return Double.isNaN(yd);
+            }
+            if (xd == 0 && yd == 0) {
+                return true;
+            }
+            return Double.compare(xd, yd) == 0;
+        } else if (x instanceof Record && y instanceof Record) {
+            return recordEqual((Record) x, (Record) y, JSRuntime::isSameValueZero);
+        } else if (x instanceof Tuple && y instanceof Tuple) {
+            return tupleEqual((Tuple) x, (Tuple) y, JSRuntime::isSameValueZero);
+        }
+        return isSameValue(x, y);
     }
 
     @TruffleBoundary
@@ -1578,6 +1697,10 @@ public final class JSRuntime {
             return equalBigIntAndNumber((BigInt) b, (Number) a);
         } else if (isBigInt(a) && isJavaNumber(b)) {
             return equalBigIntAndNumber((BigInt) a, (Number) b);
+        } else if (a instanceof Record && b instanceof Record) {
+            return recordEqual((Record) a, (Record) b, JSRuntime::isSameValueZero);
+        } else if (a instanceof Tuple && b instanceof Tuple) {
+            return tupleEqual((Tuple) a, (Tuple) b, JSRuntime::isSameValueZero);
         } else if (a instanceof Boolean) {
             return equal(booleanToNumber((Boolean) a), b);
         } else if (b instanceof Boolean) {
@@ -1620,8 +1743,9 @@ public final class JSRuntime {
     }
 
     public static boolean isForeignObject(TruffleObject value) {
-        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol) && !(value instanceof JSLazyString) && !(value instanceof SafeInteger) &&
-                        !(value instanceof BigInt);
+        return !JSDynamicObject.isJSDynamicObject(value) && !(value instanceof Symbol)
+                && !(value instanceof JSLazyString) && !(value instanceof SafeInteger)
+                && !(value instanceof BigInt) && !(value instanceof Tuple) && !(value instanceof Record);
     }
 
     private static boolean equalInterop(Object a, Object b) {
@@ -1694,6 +1818,12 @@ public final class JSRuntime {
         }
         if (isBigInt(a) && isBigInt(b)) {
             return a.equals(b);
+        }
+        if (a instanceof Record && b instanceof Record) {
+            return recordEqual((Record) a, (Record) b, JSRuntime::isSameValueZero);
+        }
+        if (a instanceof Tuple && b instanceof Tuple) {
+            return tupleEqual((Tuple) a, (Tuple) b, JSRuntime::isSameValueZero);
         }
         if (isJavaNumber(a) && isJavaNumber(b)) {
             if (a instanceof Integer && b instanceof Integer) {
@@ -2017,8 +2147,13 @@ public final class JSRuntime {
         return JSDynamicObject.isJSDynamicObject(value) || isJSPrimitive(value);
     }
 
+    /**
+     * Is value a native JavaScript primitive?
+     */
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
+        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || isString(value)
+                || value == Undefined.instance || value == Null.instance || value instanceof Symbol
+                || value instanceof Tuple || value instanceof Record;
     }
 
     /**

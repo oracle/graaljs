@@ -509,4 +509,61 @@ public abstract class LiteralNode<T> extends Expression {
     public static LiteralNode<Expression[]> newInstance(final long token, final int finish, final Expression[] value) {
         return new ArrayLiteralNode(token, finish, value);
     }
+
+    /**
+     * Tuple literal node class.
+     */
+    public static final class TupleLiteralNode extends PrimitiveLiteralNode<Expression[]> {
+
+        /**
+         * Constructor
+         *
+         * @param token token
+         * @param finish finish
+         * @param value array literal value, a Node array
+         */
+        protected TupleLiteralNode(final long token, final int finish, final Expression[] value) {
+            super(Token.recast(token, TokenType.TUPLE), finish, value);
+        }
+
+        /**
+         * Returns a list of tuple element expressions.
+         */
+        @Override
+        public List<Expression> getElementExpressions() {
+            return Collections.unmodifiableList(Arrays.asList(value));
+        }
+
+        @Override
+        public void toString(final StringBuilder sb, final boolean printType) {
+            sb.append('[');
+            boolean first = true;
+            for (final Node node : value) {
+                if (!first) {
+                    sb.append(',');
+                    sb.append(' ');
+                }
+                if (node == null) {
+                    sb.append("undefined");
+                } else {
+                    node.toString(sb, printType);
+                }
+                first = false;
+            }
+            sb.append(']');
+        }
+    }
+
+    /**
+     * Create a new tuple literal of Nodes from a list of Node values
+     *
+     * @param token token
+     * @param finish finish
+     * @param value literal value list
+     *
+     * @return the new literal node
+     */
+    public static LiteralNode<Expression[]> newTupleInstance(long token, int finish, List<Expression> value) {
+        return new TupleLiteralNode(token, finish, valueToArray(value));
+    }
 }

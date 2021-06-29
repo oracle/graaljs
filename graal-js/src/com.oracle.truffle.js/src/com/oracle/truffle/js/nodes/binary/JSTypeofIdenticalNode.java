@@ -72,16 +72,20 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -106,6 +110,8 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         Undefined,
         Function,
         Symbol,
+        Record,
+        Tuple,
         /** Unknown type string. Always false. */
         False
     }
@@ -143,6 +149,10 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 return Type.Function;
             case JSSymbol.TYPE_NAME:
                 return Type.Symbol;
+            case JSRecord.TYPE_NAME:
+                return Type.Record;
+            case JSTuple.TYPE_NAME:
+                return Type.Tuple;
             default:
                 return Type.False;
         }
@@ -273,6 +283,16 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     @Specialization
     protected final boolean doBigInt(@SuppressWarnings("unused") BigInt value) {
         return (type == Type.BigInt);
+    }
+
+    @Specialization
+    protected final boolean doRecord(@SuppressWarnings("unused") Record value) {
+        return (type == Type.Record);
+    }
+
+    @Specialization
+    protected final boolean doTuple(@SuppressWarnings("unused") Tuple value) {
+        return (type == Type.Tuple);
     }
 
     @Specialization

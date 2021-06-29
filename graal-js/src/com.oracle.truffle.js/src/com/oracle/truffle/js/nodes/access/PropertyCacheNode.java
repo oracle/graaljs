@@ -74,6 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
@@ -1224,6 +1225,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (JSConfig.DictionaryObject && JSDictionary.isJSDictionaryObject(store)) {
                 // TODO: could probably specialize on shape as well.
                 return rewriteToGeneric(currentHead, cachedCount, "dictionary object");
+            }
+
+            if (JSRecord.isJSRecord(store)) {
+                return rewriteToGeneric(currentHead, cachedCount, "record object");
             }
 
             if (JSConfig.MergeShapes && cachedCount > 0) {

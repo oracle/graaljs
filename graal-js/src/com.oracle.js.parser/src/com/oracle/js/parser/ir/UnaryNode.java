@@ -146,7 +146,8 @@ public final class UnaryNode extends Expression implements Assignment<Expression
         if (tokenType == TokenType.AWAIT) {
             // await expression
             sb.append("await ");
-        } else if (tokenType == TokenType.SPREAD_ARRAY || tokenType == TokenType.SPREAD_OBJECT) {
+        } else if (tokenType == TokenType.SPREAD_ARRAY || tokenType == TokenType.SPREAD_OBJECT
+                || tokenType == TokenType.SPREAD_RECORD || tokenType == TokenType.SPREAD_TUPLE) {
             sb.append("...");
         }
 

@@ -42,8 +42,10 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
+import java.util.TreeMap;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -76,9 +78,11 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateNodeGen
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallDateTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallNumberNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRecordNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallRequiresNewNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallSymbolNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTupleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallTypedArrayNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructAggregateErrorNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructArrayBufferNodeGen;
@@ -103,12 +107,14 @@ import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumber
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructNumberNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructObjectNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructPluralRulesNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRecordNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRegExpNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructRelativeTimeFormatNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSegmenterNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSetNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructStringNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructSymbolNodeGen;
+import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructTupleNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakMapNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakRefNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.ConstructWeakSetNodeGen;
@@ -126,6 +132,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode;
 import com.oracle.truffle.js.nodes.access.ArrayLiteralNode.ArrayContentType;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -185,8 +192,10 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseHook;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractWritableArray;
@@ -239,6 +248,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
  * Contains built-in constructor functions.
@@ -325,7 +335,11 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),
-        JavaImporter(1);
+        JavaImporter(1),
+
+        // Record & Tuple Proposal
+        Record(1),
+        Tuple(1);
 
         private final int length;
 
@@ -350,7 +364,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public int getECMAScriptVersion() {
-            if (AsyncGeneratorFunction == this) {
+            if (EnumSet.of(Record, Tuple).contains(this)) {
+                return JSConfig.ECMAScript2022; // TODO: Associate with the correct ECMAScript Version
+            } else if (AsyncGeneratorFunction == this) {
                 return JSConfig.ECMAScript2018;
             } else if (EnumSet.of(SharedArrayBuffer, AsyncFunction).contains(this)) {
                 return JSConfig.ECMAScript2017;
@@ -624,6 +640,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                 : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
+            case Record:
+                return construct ? ConstructRecordNodeGen.create(context, builtin, args().createArgumentNodes(context))
+                        : CallRecordNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case Tuple:
+                return construct ? ConstructTupleNodeGen.create(context, builtin, args().createArgumentNodes(context))
+                        : CallTupleNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
         }
         return null;
 
@@ -2743,4 +2765,86 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     }
 
+    public abstract static class CallRecordNode extends JSBuiltinNode {
+
+        private final BranchProfile errorProfile = BranchProfile.create();
+
+        @Child JSToObjectNode toObjectNode;
+        @Child ReadElementNode readElementNode;
+        @Child EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
+        @Child IsObjectNode isObjectNode = IsObjectNode.create();
+
+        public CallRecordNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            toObjectNode = JSToObjectNode.createToObject(context);
+            readElementNode = ReadElementNode.create(context);
+            enumerableOwnPropertyNamesNode = EnumerableOwnPropertyNamesNode.createKeysValues(context);
+        }
+
+        @Specialization
+        protected Record call(Object arg) {
+            Object obj = toObjectNode.execute(arg);
+            UnmodifiableArrayList<? extends Object> props = enumerableOwnPropertyNamesNode.execute((DynamicObject) obj);
+            Map<String, Object> fields = new TreeMap<>();
+            for (Object prop : props) {
+                String name = (String) readElementNode.executeWithTargetAndIndex(prop, 0);
+                Object value = readElementNode.executeWithTargetAndIndex(prop, 1);
+                if (isObjectNode.executeBoolean(value)) {
+                    errorProfile.enter();
+                    throw Errors.createTypeErrorRecordsCannotContainObjects(this);
+                }
+                fields.put(name, value);
+            }
+            return Record.create(fields);
+        }
+    }
+
+    public abstract static class ConstructRecordNode extends JSBuiltinNode {
+
+        public ConstructRecordNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static final DynamicObject construct() {
+            throw Errors.createTypeError("Record is not a constructor");
+        }
+    }
+
+    public abstract static class CallTupleNode extends JSBuiltinNode {
+
+        private final BranchProfile errorProfile = BranchProfile.create();
+
+        public CallTupleNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"items.length == 0"})
+        protected Tuple callEmpty(@SuppressWarnings("unused") Object[] items) {
+            return Tuple.create();
+        }
+
+        @Specialization(guards = {"items.length != 0"})
+        protected Tuple call(Object[] items, @Cached("create()") IsJSObjectNode isObjectNode) {
+            for (Object item : items) {
+                if (isObjectNode.executeBoolean(item)) {
+                    errorProfile.enter();
+                    throw Errors.createTypeErrorTuplesCannotContainObjects(this);
+                }
+            }
+            return Tuple.create(items);
+        }
+    }
+
+    public abstract static class ConstructTupleNode extends JSBuiltinNode {
+
+        public ConstructTupleNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static final DynamicObject construct() {
+            throw Errors.createTypeError("Tuple is not a constructor");
+        }
+    }
 }

@@ -88,6 +88,8 @@ import static com.oracle.js.parser.TokenType.SET;
 import static com.oracle.js.parser.TokenType.SPREAD_ARGUMENT;
 import static com.oracle.js.parser.TokenType.SPREAD_ARRAY;
 import static com.oracle.js.parser.TokenType.SPREAD_OBJECT;
+import static com.oracle.js.parser.TokenType.SPREAD_RECORD;
+import static com.oracle.js.parser.TokenType.SPREAD_TUPLE;
 import static com.oracle.js.parser.TokenType.STATIC;
 import static com.oracle.js.parser.TokenType.STRING;
 import static com.oracle.js.parser.TokenType.SUPER;
@@ -156,6 +158,8 @@ import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyKey;
 import com.oracle.js.parser.ir.PropertyNode;
+import com.oracle.js.parser.ir.RecordNode;
+import com.oracle.js.parser.ir.RecordPropertyNode;
 import com.oracle.js.parser.ir.ReturnNode;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
@@ -3664,6 +3668,10 @@ public class Parser extends AbstractParser {
                 return arrayLiteral(yield, await);
             case LBRACE:
                 return objectLiteral(yield, await);
+            case HASH_BRACE:
+                return recordLiteral(yield, await);
+            case HASH_BRACKET:
+                return tupleLiteral(yield, await);
             case LPAREN:
                 return parenthesizedExpressionAndArrowParameterList(yield, await);
             case TEMPLATE:
@@ -3799,7 +3807,8 @@ public class Parser extends AbstractParser {
      * <pre>
      * ObjectLiteral :
      *      { }
-     *      { PropertyNameAndValueList } { PropertyNameAndValueList , }
+     *      { PropertyNameAndValueList }
+     *      { PropertyNameAndValueList , }
      *
      * PropertyNameAndValueList :
      *      PropertyAssignment
@@ -4286,6 +4295,194 @@ public class Parser extends AbstractParser {
             this.functionNode = function;
             this.computed = computed;
         }
+    }
+
+    /**
+     * Parse a record literal.
+     *
+     * <pre>
+     * RecordLiteral[Yield, Await] :
+     *      #{ }
+     *      #{ RecordPropertyDefinitionList[?Yield, ?Await] }
+     *      #{ RecordPropertyDefinitionList[?Yield, ?Await] , }
+     *
+     * RecordPropertyDefinitionList[Yield, Await] :
+     *      RecordPropertyDefinition[?Yield, ?Await]
+     *      RecordPropertyDefinitionList[?Yield, ?Await] , RecordPropertyDefinition[?Yield, ?Await]
+     * </pre>
+     *
+     * @return Record node.
+     */
+    private RecordNode recordLiteral(boolean yield, boolean await) {
+        // Capture HASH_LBRACE token.
+        final long recordToken = token;
+        // HASH_LBRACE tested in caller.
+        next();
+
+        // Accumulate record property elements.
+        final ArrayList<RecordPropertyNode> elements = new ArrayList<>();
+        boolean commaSeen = true;
+        loop: while (true) {
+            switch (type) {
+                case RBRACE:
+                    next();
+                    break loop;
+
+                case COMMARIGHT:
+                    if (commaSeen) {
+                        throw error(AbstractParser.message("expected.property.id", type.getNameOrType()));
+                    }
+                    next();
+                    commaSeen = true;
+                    break;
+
+                default:
+                    if (!commaSeen) {
+                        throw error(AbstractParser.message("expected.comma", type.getNameOrType()));
+                    }
+                    commaSeen = false;
+                    // Get and add the next property.
+                    final RecordPropertyNode property = recordPropertyDefinition(yield, await);
+                    elements.add(property);
+            }
+        }
+
+        return new RecordNode(recordToken, finish, optimizeList(elements));
+    }
+
+    /**
+     * Parse an record literal property definition.
+     * Compared to its object literal counterpart it does not contain
+     * CoverInitializedName and MethodDefinition productions.
+     *
+     * <pre>
+     * RecordPropertyDefinition[Yield, Await] :
+     *      IdentifierReference[?Yield, ?Await]
+     *      PropertyName[?Yield, ?Await] : AssignmentExpression[+In, ?Yield, ?Await]
+     *      ... AssignmentExpression[+In, ?Yield, ?Await]
+     * </pre>
+     *
+     * @return Record property node.
+     */
+    private RecordPropertyNode recordPropertyDefinition(boolean yield, boolean await) {
+        // Capture firstToken.
+        final long propertyToken = token;
+
+        final Expression propertyKey;
+
+        if (type == ELLIPSIS) {
+            // ... AssignmentExpression[+In, ?Yield, ?Await]
+            long spreadToken = Token.recast(propertyToken, SPREAD_RECORD);
+            next();
+            propertyKey = new UnaryNode(spreadToken, assignmentExpression(true, yield, await));
+            return new RecordPropertyNode(propertyToken, finish, propertyKey, null, false);
+        }
+
+        final boolean computed = type == LBRACKET;
+        final boolean isIdentifier = isIdentifier();
+        if (isIdentifier) {
+            // IdentifierReference[?Yield, ?Await]
+            propertyKey = getIdent().setIsPropertyName();
+            if (type == COMMARIGHT || type == RBRACE) {
+                verifyIdent((IdentNode) propertyKey, yield, await);
+                return new RecordPropertyNode(propertyToken, finish, propertyKey, propertyKey, false);
+            }
+        } else {
+            // PropertyName[?Yield, ?Await]
+            propertyKey = propertyName(yield, await);
+        }
+
+        // : AssignmentExpression[+In, ?Yield, ?Await]
+        Expression propertyValue;
+        expect(COLON);
+
+        if (isIdentifier && PROTO_NAME.equals(((PropertyKey) propertyKey).getPropertyName())) {
+            throw error("'__proto__' is not allowed in Record expressions", propertyKey.getToken());
+        }
+
+        pushDefaultName(propertyKey);
+        try {
+            propertyValue = assignmentExpression(true, yield, await);
+        } finally {
+            popDefaultName();
+        }
+
+        if (!computed && isAnonymousFunctionDefinition(propertyValue) && propertyKey instanceof PropertyKey) {
+            propertyValue = setAnonymousFunctionName(propertyValue, ((PropertyKey) propertyKey).getPropertyName());
+        }
+
+        return new RecordPropertyNode(propertyToken, finish, propertyKey, propertyValue, computed);
+    }
+
+    /**
+     * Parse a tuple literal.
+     *
+     * <pre>
+     * TupleLiteral[Yield, Await] :
+     *      #[ ]
+     *      #[ TupleElementList[?Yield, ?Await] ]
+     *      #[ TupleElementList[?Yield, ?Await] , ]
+     *
+     * TupleElementList[Yield, Await] :
+     *      AssignmentExpression[+In, ?Yield, ?Await]
+     *      SpreadElement[?Yield, ?Await]
+     *      TupleElementList[?Yield, ?Await] , AssignmentExpression[+In, ?Yield, ?Await]
+     *      TupleElementList[?Yield, ?Await] , SpreadElement[?Yield, ?Await]
+     * </pre>
+     *
+     * @return Literal node.
+     */
+    private LiteralNode tupleLiteral(boolean yield, boolean await) {
+        final long tupleToken = token; // Capture HASH_BRACKET token.
+        next(); // HASH_BRACKET tested in caller.
+
+        // Prepare to accumulate elements.
+        final ArrayList<Expression> elements = new ArrayList<>();
+        // Track elisions.
+        boolean elision = true;
+        loop: while (true) {
+            long spreadToken = 0;
+            switch (type) {
+                case RBRACKET:
+                    next();
+                    break loop;
+
+                case COMMARIGHT:
+                    if (elision) { // If no prior expression
+                        throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+                    }
+                    next();
+                    elision = true;
+                    break;
+
+                case ELLIPSIS:
+                    spreadToken = token;
+                    next();
+                    // fall through
+
+                default:
+                    if (!elision) {
+                        throw error(AbstractParser.message("expected.comma", type.getNameOrType()));
+                    }
+
+                    // Add expression element.
+                    Expression expression = assignmentExpression(true, yield, await, false);
+                    if (expression != null) {
+                        if (spreadToken != 0) {
+                            expression = new UnaryNode(Token.recast(spreadToken, SPREAD_TUPLE), expression);
+                        }
+                        elements.add(expression);
+                    } else {
+                        // TODO: somehow assignmentExpression(...) can return null, but I'm not sure why we expect a RBRACKET then :/
+                        expect(RBRACKET);
+                    }
+
+                    elision = false;
+                    break;
+            }
+        }
+
+        return LiteralNode.newTupleInstance(tupleToken, finish, optimizeList(elements));
     }
 
     /**
@@ -5819,10 +6016,13 @@ public class Parser extends AbstractParser {
     /**
      * AssignmentExpression.
      *
-     * AssignmentExpression[In, Yield] : ConditionalExpression[?In, ?Yield] [+Yield]
-     * YieldExpression[?In] ArrowFunction[?In, ?Yield] AsyncArrowFunction
-     * LeftHandSideExpression[?Yield] = AssignmentExpression[?In, ?Yield]
-     * LeftHandSideExpression[?Yield] AssignmentOperator AssignmentExpression[?In, ?Yield]
+     * AssignmentExpression[In, Yield] :
+     *      ConditionalExpression[?In, ?Yield, ?Await]
+     *      [+Yield] YieldExpression[?In, ?Await]
+     *      ArrowFunction[?In, ?Yield, ?Await]
+     *      AsyncArrowFunction[?In, ?Yield, ?Await]
+     *      LeftHandSideExpression[?Yield, ?Await] = AssignmentExpression[?In, ?Yield, ?Await]
+     *      LeftHandSideExpression[?Yield, ?Await] AssignmentOperator AssignmentExpression[?In, ?Yield, ?Await]
      */
     private Expression assignmentExpression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
         if (type == YIELD && yield) {

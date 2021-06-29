@@ -61,8 +61,10 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
@@ -177,6 +179,16 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
     @Specialization
     protected int doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
+    }
+
+    @Specialization
+    protected final Number doRecord(@SuppressWarnings("unused") Record value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Record value", this);
+    }
+
+    @Specialization
+    protected final Number doTuple(@SuppressWarnings("unused") Tuple value) {
+        throw Errors.createTypeErrorCannotConvertToNumber("a Tuple value", this);
     }
 
     protected boolean isUnsignedRightShift() {

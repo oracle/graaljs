@@ -47,7 +47,9 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNodeGen.JSToBigIntInnerConvers
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 
 public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
@@ -98,6 +100,16 @@ public abstract class JSToBigIntNode extends JavaScriptBaseNode {
 
         @Specialization
         protected static BigInt doSymbol(Symbol value) {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        }
+
+        @Specialization
+        protected static BigInt doRecord(Record value) {
+            throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
+        }
+
+        @Specialization
+        protected static BigInt doTuple(Tuple value) {
             throw Errors.createErrorCanNotConvertToBigInt(JSErrorType.TypeError, value);
         }
 

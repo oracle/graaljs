@@ -59,13 +59,17 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSRecord;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSTuple;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -129,7 +133,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             throw Errors.createTypeError("Do not know how to serialize a BigInt");
         } else if (JSDynamicObject.isJSDynamicObject(value) && !JSRuntime.isCallableIsJSObject((DynamicObject) value)) {
             DynamicObject valueObj = (DynamicObject) value;
-            if (JSRuntime.isArray(valueObj)) {
+            if (JSRuntime.isArray(valueObj) || JSTuple.isJSTuple(value)) {
                 jsonJA(builder, data, valueObj);
             } else {
                 jsonJO(builder, data, valueObj);
@@ -217,6 +221,10 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             return jsonStrPrepareJSObject((DynamicObject) value);
         } else if (value instanceof Symbol) {
             return Undefined.instance;
+        } else if (value instanceof Record) {
+            return JSRecord.create(context, (Record) value);
+        } else if (value instanceof Tuple) {
+            return JSTuple.create(context, (Tuple) value);
         } else if (JSRuntime.isCallableForeign(value)) {
             return Undefined.instance;
         }
@@ -358,7 +366,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private void jsonJA(StringBuilder builder, JSONData data, Object value) {
         checkCycle(data, value);
-        assert JSRuntime.isArray(value) || InteropLibrary.getFactory().getUncached().hasArrayElements(value);
+        assert JSRuntime.isArray(value) || JSTuple.isJSTuple(value) || InteropLibrary.getFactory().getUncached().hasArrayElements(value);
         data.pushStack(value);
         checkStackDepth(data);
         int stepback = data.getIndent();

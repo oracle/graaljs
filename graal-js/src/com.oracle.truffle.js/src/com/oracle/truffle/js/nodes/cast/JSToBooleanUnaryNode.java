@@ -55,7 +55,9 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Record;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.Tuple;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 
 /**
@@ -152,6 +154,16 @@ public abstract class JSToBooleanUnaryNode extends JSUnaryNode {
 
     @Specialization
     protected static boolean doSymbol(@SuppressWarnings("unused") Symbol value) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doRecord(@SuppressWarnings("unused") Record value) {
+        return true;
+    }
+
+    @Specialization
+    protected static boolean doTuple(@SuppressWarnings("unused") Tuple value) {
         return true;
     }
 
