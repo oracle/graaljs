@@ -87,8 +87,16 @@
     "status" : "SKIP",
     "comment" : "Triggers stack-overflow, test fails randomly based on where the overflow occurs."
   }, {
+    "filePath" : "intl/general/getCanonicalLocales.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: 'no' is now the main locale (not an alias of 'nb')"
+  }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
+  }, {
+    "filePath" : "intl/locale/locale.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: 'no' is now the main locale (not an alias of 'nb')"
   }, {
     "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
     "status" : "FAIL",
