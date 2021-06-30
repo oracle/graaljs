@@ -216,3 +216,9 @@ try {
     assertSame('message1', e.errors[0].message);
     assertSame('test1', e.errors[0].cause);
 }
+
+try {
+    throw new AggregateError({ get [Symbol.iterator]() { throw new Error('iterator') } }, 'unexpected', { get cause() { throw new Error('cause'); } });
+} catch (e) {
+    assertSame('cause', e.message);
+}
