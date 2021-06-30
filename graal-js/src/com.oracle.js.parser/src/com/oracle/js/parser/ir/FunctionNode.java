@@ -238,6 +238,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Is this function a class field initializer? */
     public static final int IS_CLASS_FIELD_INITIALIZER = 1 << 30;
 
+    /** Is this function a module block? */
+    public static final int IS_MODULE_BLOCK = 1 << 31;
+
     /**
      * Constructor
      *
@@ -786,5 +789,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean isClassFieldInitializer() {
         return getFlag(IS_CLASS_FIELD_INITIALIZER);
+    }
+
+    public boolean isModuleBlock() {
+        return getFlag(IS_MODULE_BLOCK);
     }
 }

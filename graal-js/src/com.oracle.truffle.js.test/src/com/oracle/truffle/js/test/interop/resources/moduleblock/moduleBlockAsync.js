@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,17 +38,28 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.Source;
+var test = (async function() {
+    var moduleBlockAsync = module {
+            function resolve() {
+                return new Promise(resolve => {
+                        resolve(4);
+                });
+            }
+        
+            async function asyncCall() {
+                return await resolve();
+            }
+        
+            export var resolved = asyncCall();
+        };
 
-public interface JSModuleLoader {
-    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier);
+    return await import(moduleBlockAsync);
+})();
 
-    JSModuleRecord loadModule(Source moduleSource);
+ 
+var five = test.then( function(moduleBlock) {
+    return moduleBlock.resolved;
+}).then(resolved => resolved+1);
 
-    JSModuleRecord resolveImportedModuleBlock(Source source, DynamicObject specifier);
-
-    JSModuleRecord resolveImportedModuleBlock(JSModuleRecord moduleBlock, DynamicObject specifier);
-}
+[five];

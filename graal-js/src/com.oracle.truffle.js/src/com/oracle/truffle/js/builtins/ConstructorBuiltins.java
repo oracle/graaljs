@@ -323,6 +323,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         // --- not new.target-capable below ---
         TypedArray(0),
         Symbol(0),
+        ModuleBlock(1),
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),
@@ -625,6 +626,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                                 ? ConstructWebAssemblyTableNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
                                 : ConstructWebAssemblyTableNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context)))
                                 : createCallRequiresNew(context, builtin);
+            case ModuleBlock:
+                throw Errors.createTypeErrorNotAConstructor(builtin.getName(), context);
         }
         return null;
 

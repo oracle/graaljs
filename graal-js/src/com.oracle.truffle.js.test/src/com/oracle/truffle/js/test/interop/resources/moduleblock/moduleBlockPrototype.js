@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,17 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+import * as module from 'functionexportmodule.js'; // import everything that the module exports
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.Source;
+// 3 module blocks mimicking the function export test, resulting in 3 promise
+// objects with the desired values: 121, 5, 11
 
-public interface JSModuleLoader {
-    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier);
+var squareTest = (async function() {
+    const moduleBlock = module { export var t = 11; };
 
-    JSModuleRecord loadModule(Source moduleSource);
+    return await import(moduleBlock);
+})();
 
-    JSModuleRecord resolveImportedModuleBlock(Source source, DynamicObject specifier);
+var diagTest = (async function() {
+    const moduleBlock = module { export var x = 3;
+        export var y = 4; };
 
-    JSModuleRecord resolveImportedModuleBlock(JSModuleRecord moduleBlock, DynamicObject specifier);
+    return await import(moduleBlock); 
+})();
+
+var sqrtTest = (async function() {
+    const moduleBlock = module { export var v = 121; };
+
+    return await import(moduleBlock);
+})();
+
+var moduleBlock = module { };
+
+var sq;
+var dg;
+var st;
+
+if (moduleBlock instanceof Object) {
+    sq = squareTest.then(function(value) { return module.square(value.t); });    
+} else {
+    sq = 0;
 }
+
+if (Object.getPrototypeOf(moduleBlock) === Object.prototype) {
+    dg = diagTest.then(value => module.diag(value.x, value.y));
+} else {
+    dg = 0;
+}
+
+if (moduleBlock.constructor.prototype === Object.prototype) {
+    st = sqrtTest.then(value => module.sqrt(value.v));
+} else {
+    st = 0;
+}
+
+[sq, dg, st];

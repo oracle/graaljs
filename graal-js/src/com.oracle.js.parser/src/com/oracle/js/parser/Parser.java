@@ -276,6 +276,8 @@ public class Parser extends AbstractParser {
     public static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
     public static final boolean PROFILE_PARSING_PRINT = Options.getBooleanProperty("parser.profiling.print", true);
 
+    private static final List<Statement> EMPTY_LIST = new ArrayList<>();
+
     /**
      * Constructor
      *
@@ -450,7 +452,7 @@ public class Parser extends AbstractParser {
 
             scanFirstToken();
 
-            return module(moduleName);
+            return module(moduleName, false);
         } catch (final Exception e) {
             handleParseException(e);
 
@@ -3602,6 +3604,7 @@ public class Parser extends AbstractParser {
      *      RegularExpressionLiteral
      *      TemplateLiteral
      *      CoverParenthesizedExpressionAndArrowParameterList
+     *      ModuleBlockExpression
      *
      * CoverParenthesizedExpressionAndArrowParameterList :
      *      ( Expression )
@@ -3625,10 +3628,23 @@ public class Parser extends AbstractParser {
                 markThis();
                 return new IdentNode(primaryToken, finish, name).setIsThis();
             case IDENT:
+                // mimic code from AbstractParser.getIdent()
+                final long identToken = token;
+                String identString = (String) getValue(identToken);
+
+                if (identString.equals("module") && lookahead().equals(LBRACE)) {
+                    nextOrEOL();
+                    expect(LBRACE);
+
+                    return module(source.getName() + "#L" + line + "T" + start, true);
+                }
+
                 final IdentNode ident = identifierReference(yield, await);
+
                 if (ident == null) {
                     break;
                 }
+
                 return detectSpecialProperty(ident);
             case NON_OCTAL_DECIMAL:
                 if (isStrictMode) {
@@ -6298,20 +6314,34 @@ public class Parser extends AbstractParser {
      *      ModuleItemList
      * </pre>
      */
-    private FunctionNode module(final String moduleName) {
+    private FunctionNode module(final String moduleName, boolean moduleBlock) {
         // Make a pseudo-token for the script holding its start and length.
         int functionStart = Math.min(Token.descPosition(Token.withDelimiter(token)), finish);
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
         final int functionLine = line;
 
         final Scope moduleScope = Scope.createModule();
-        final IdentNode ident = null;
-        final ParserContextFunctionNode script = createParserContextFunctionNode(
-                        ident,
-                        functionToken,
-                        FunctionNode.IS_MODULE,
-                        functionLine,
-                        Collections.<IdentNode> emptyList(), 0, moduleScope);
+        final ParserContextFunctionNode script;
+
+        final IdentNode ident = moduleBlock ? new IdentNode(functionToken, finish, moduleName) : null;
+
+        if (moduleBlock) {
+            script = createParserContextFunctionNode(
+                            ident,
+                            functionToken,
+                            FunctionNode.IS_MODULE_BLOCK,
+                            functionLine,
+                            Collections.<IdentNode> emptyList(), 0, moduleScope);
+
+        } else {
+            script = createParserContextFunctionNode(
+                            ident,
+                            functionToken,
+                            FunctionNode.IS_MODULE,
+                            functionLine,
+                            Collections.<IdentNode> emptyList(), 0, moduleScope);
+
+        }
         script.setInternalName(moduleName);
 
         lc.push(script);
@@ -6320,7 +6350,7 @@ public class Parser extends AbstractParser {
         functionDeclarations = new ArrayList<>();
 
         try {
-            moduleBody(module);
+            moduleBody(module, moduleBlock);
 
             // Insert a synthetic yield before the module body but after any function declarations.
             long yieldToken = Token.toDesc(YIELD, functionStart, 0);
@@ -6329,7 +6359,12 @@ public class Parser extends AbstractParser {
 
             addFunctionDeclarations(script);
         } finally {
-            functionDeclarations = null;
+            if (moduleBlock) {
+                functionDeclarations = Collections.emptyList();
+            } else {
+                functionDeclarations = null;
+            }
+
             restoreBlock(body);
             lc.pop(script);
         }
@@ -6338,7 +6373,11 @@ public class Parser extends AbstractParser {
         final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY | Block.IS_MODULE_BODY, body.getScope(), body.getStatements());
         script.setLastToken(token);
 
-        expect(EOF);
+        if (moduleBlock) {
+            expect(RBRACE);
+        } else {
+            expect(EOF);
+        }
 
         script.setModule(module.createModule());
         return createFunctionNode(script, functionToken, ident, functionLine, programBody);
@@ -6361,10 +6400,14 @@ public class Parser extends AbstractParser {
      *      StatementListItem
      * </pre>
      */
-    private void moduleBody(ParserContextModuleNode module) {
-        loop: while (type != EOF) {
+    private void moduleBody(ParserContextModuleNode module, boolean moduleBlock) {
+        TokenType endModuleToken = moduleBlock ? RBRACE : EOF;
+
+        loop: while (type != endModuleToken) {
             switch (type) {
                 case EOF:
+                    break loop;
+                case RBRACE:
                     break loop;
                 case EXPORT:
                     exportDeclaration(module);

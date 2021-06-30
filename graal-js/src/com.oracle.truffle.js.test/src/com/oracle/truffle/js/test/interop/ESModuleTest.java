@@ -45,12 +45,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
 import org.junit.Test;
 
+import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
+import com.oracle.truffle.js.test.interop.AsyncInteropTest.TestOutput;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -208,6 +211,119 @@ public class ESModuleTest {
                 // noinspection ResultOfMethodCallIgnored
                 file.delete();
             }
+        }
+    }
+
+    /**
+     * Test basic module block features via mimicking the {@code} testFunctionExport() +
+     */
+    @Test
+    public void testModuleBlockMimicFunctionExport() throws IOException {
+        File[] allFilesArray = null;
+
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockFunctionExportTestMimic.js",
+                            "resources" + "/functionexportmodule.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            Value v = context.eval(mainSource);
+
+            System.out.println(out);
+
+            assertTrue(v.hasArrayElements());
+
+            System.out.println("Square test: " + v.getArrayElement(0));
+            System.out.println("Diagonal test: " + v.getArrayElement(1));
+            System.out.println("Sqrt test: " + v.getArrayElement(2));
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+    }
+
+    /**
+     * Test module block prototype behavior
+     */
+    @Test
+    public void testModuleBlockPrototype() throws IOException {
+        File[] allFilesArray = null;
+
+        TestOutput out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockPrototype.js",
+                            "resources" + "/functionexportmodule.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            Value v = context.eval(mainSource);
+
+            System.out.println(out);
+
+            assertTrue(v.hasArrayElements());
+
+            System.out.println("Square test: " + v.getArrayElement(0));
+            System.out.println("Diagonal test: " + v.getArrayElement(1));
+            System.out.println("Sqrt test: " + v.getArrayElement(2));
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+    }
+
+    /**
+     * Test module block prototype behavior
+     */
+    @Test
+    public void testModuleBlockAsync() throws IOException {
+        File[] allFilesArray = null;
+
+        TestOutput out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockAsync.js",
+                            "resources" + "/functionexportmodule.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            Value v = context.eval(mainSource);
+
+            System.out.println(out);
+
+            assertTrue(v.hasArrayElements());
+
+            System.out.println("Async test: " + v.getArrayElement(0));
+
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+    }
+
+    /**
+     * Test module block prototype behavior
+     */
+    @Test
+    public void testModuleBlockComparison() throws IOException {
+        File[] allFilesArray = null;
+
+        TestOutput out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockComparison.js",
+                            "resources" + "/functionexportmodule.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            Value v = context.eval(mainSource);
+
+            System.out.println(out);
+
+        } finally {
+            deleteFiles(allFilesArray);
         }
     }
 

@@ -60,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSModuleBlock;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
@@ -472,5 +473,9 @@ public final class JSGuards {
 
     public static boolean hasOverloadedOperators(Object value) {
         return JSOverloadedOperatorsObject.hasOverloadedOperators(value);
+    }
+
+    public static boolean isJSModuleBlock(Object object) {
+        return JSModuleBlock.isJSModuleBlock(object);
     }
 }

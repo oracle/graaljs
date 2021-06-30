@@ -637,6 +637,16 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 public JSModuleRecord loadModule(Source moduleSource) {
                     throw new UnsupportedOperationException();
                 }
+
+                @Override
+                public JSModuleRecord resolveImportedModuleBlock(Source source, DynamicObject specifier) {
+                    throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public JSModuleRecord resolveImportedModuleBlock(JSModuleRecord moduleBlock, DynamicObject specifier) {
+                    throw new UnsupportedOperationException();
+                }
             };
             JSModuleRecord module = moduleLoader.resolveImportedModule(null, name);
             JSRealm realm = context.getRealm();

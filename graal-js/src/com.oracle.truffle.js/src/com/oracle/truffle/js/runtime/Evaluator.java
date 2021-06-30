@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.module.ModuleBlockNode;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -64,6 +65,11 @@ public interface Evaluator {
      * @param lastNode the node invoking the eval or {@code null}
      */
     ScriptNode parseEval(JSContext context, Node lastNode, Source code);
+
+    /**
+     * Parse module block code using the global execution context
+     */
+    JavaScriptNode parseModuleBlock(JSContext context, Source source);
 
     /**
      * Parse direct eval code using the local execution context.
@@ -84,6 +90,10 @@ public interface Evaluator {
     JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader);
 
     JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, String specifier);
+
+    JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, DynamicObject moduleBlock, Source source);
+
+    JSModuleRecord hostResolveImportedModuleBlock(JSContext context, ScriptOrModule referencingScriptOrModule, JSModuleRecord moduleRecord, DynamicObject specifier);
 
     void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord);
 

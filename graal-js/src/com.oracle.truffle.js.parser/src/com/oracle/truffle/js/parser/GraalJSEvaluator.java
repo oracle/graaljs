@@ -84,6 +84,7 @@ import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.module.ModuleBlockNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.parser.date.DateParser;
@@ -131,6 +132,14 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseEval(JSContext context, Node lastNode, Source source) {
         return parseEval(context, lastNode, source, false, null);
+    }
+
+    // TODO
+    @Override
+    public JavaScriptNode parseModuleBlock(JSContext context, Source source) {
+        NodeFactory nodeFactory = NodeFactory.getInstance(context);
+
+        return JavaScriptTranslator.translateModuleBlock(nodeFactory, context, source);
     }
 
     /**
@@ -368,6 +377,19 @@ public final class GraalJSEvaluator implements JSParser {
 
     private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier) {
         return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, specifier);
+    }
+
+    @Override
+    public JSModuleRecord hostResolveImportedModuleBlock(JSContext context,
+                    ScriptOrModule referencingScriptOrModule, JSModuleRecord moduleBlock, DynamicObject specifier) {
+        JSModuleLoader moduleLoader = ((JSModuleRecord) referencingScriptOrModule).getModuleLoader();
+        return moduleLoader.resolveImportedModuleBlock(moduleBlock, specifier);
+    }
+
+    @Override
+    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, DynamicObject moduleBlock, Source source) {
+        JSModuleLoader moduleLoader = ((JSModuleRecord) referencingScriptOrModule).getModuleLoader();
+        return moduleLoader.resolveImportedModuleBlock(source, moduleBlock);
     }
 
     Collection<String> getExportedNames(JSModuleRecord moduleRecord) {

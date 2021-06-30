@@ -80,6 +80,7 @@ import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
@@ -110,6 +111,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -147,6 +149,10 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.js.nodes.module.ModuleBlockNode;
+
 /**
  * Contains builtins for the global object.
  */
@@ -172,6 +178,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         decodeURI(1),
         decodeURIComponent(1),
         eval(1),
+
+        // ModuleBlock methods
+        serialize(1),
+        deserialize(1),
 
         // Annex B
         escape(1),
@@ -215,6 +225,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalDecodeURINodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case eval:
                 return JSGlobalIndirectEvalNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case serialize:
+                return JSGlobalSerializeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case deserialize:
+                return JSGlobalDeserializeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case escape:
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case unescape:
@@ -1281,6 +1295,50 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Override
         public boolean isCallerSensitive() {
             return getContext().isOptionV8CompatibilityMode();
+        }
+    }
+
+    /**
+     * Implementation of Module Block serialize-method
+     */
+    public abstract static class JSGlobalSerializeNode extends JSBuiltinNode {
+
+        protected JSGlobalSerializeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected byte[] serialize(Object value) {
+            if (DynamicObjectLibrary.getUncached().containsKey((DynamicObject) value, (Object) ModuleBlockNode.getModuleBodyKey())) {
+                PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), getContext());
+
+                Object sourceCode = getSourceCode.getValue(value);
+
+                return ("module {" + sourceCode.toString() + "}").getBytes();
+            }
+
+            // TODO Errors.createTypeError("Not a ModuleBlock");
+
+            return null;
+        }
+    }
+
+    /**
+     * Implementation of Module Block deserialize-method
+     */
+    public abstract static class JSGlobalDeserializeNode extends JSBuiltinNode {
+
+        protected JSGlobalDeserializeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        protected JavaScriptNode deserialize(Object value) {
+            String sourceCode = new String((byte[]) value, StandardCharsets.UTF_8);
+
+            // get from sourcecode string to module block via parsing and then translating
+
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "moduleBlock").build();
+
+            return getContext().getEvaluator().parseModuleBlock(getContext(), source);
         }
     }
 

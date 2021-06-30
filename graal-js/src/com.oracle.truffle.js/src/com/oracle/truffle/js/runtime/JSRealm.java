@@ -121,6 +121,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
+import com.oracle.truffle.js.runtime.builtins.JSModuleBlock;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSON;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -306,6 +307,9 @@ public class JSRealm {
     private final DynamicObject asyncGeneratorObjectPrototype;
     private final DynamicObject asyncGeneratorFunctionConstructor;
     private final DynamicObject asyncGeneratorFunctionPrototype;
+
+    private final DynamicObject moduleBlockConstructor;
+    private final DynamicObject moduleBlockPrototype;
 
     private final DynamicObject throwerFunction;
     private final Accessor throwerAccessor;
@@ -660,6 +664,15 @@ public class JSRealm {
             this.weakRefPrototype = null;
             this.finalizationRegistryConstructor = null;
             this.finalizationRegistryPrototype = null;
+        }
+
+        if (!isModuleBlockAvailable()) {
+            ctor = JSModuleBlock.createConstructor(this);
+            this.moduleBlockConstructor = ctor.getFunctionObject();
+            this.moduleBlockPrototype = ctor.getPrototype();
+        } else {
+            this.moduleBlockConstructor = null;
+            this.moduleBlockPrototype = null;
         }
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode();
@@ -1415,6 +1428,10 @@ public class JSRealm {
 
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
+        }
+
+        if (isModuleBlockAvailable()) {
+            putGlobalProperty(JSModuleBlock.CLASS_NAME, getModuleBlockConstructor());
         }
     }
 
@@ -2453,4 +2470,18 @@ public class JSRealm {
         return foreignIterablePrototype;
     }
 
+    // TODO
+    private boolean isModuleBlockAvailable() {
+        return true;
+        // return truffleLanguageEnv.isPolyglotBindingsAccessAllowed() &&
+        // truffleLanguageEnv.getInternalLanguages().get("moduleBlock") != null;
+    }
+
+    public final DynamicObject getModuleBlockConstructor() {
+        return moduleBlockConstructor;
+    }
+
+    public final DynamicObject getModuleBlockPrototype() {
+        return moduleBlockPrototype;
+    }
 }

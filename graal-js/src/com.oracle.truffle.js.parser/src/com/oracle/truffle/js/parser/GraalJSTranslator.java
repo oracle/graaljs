@@ -374,7 +374,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 List<JavaScriptNode> declarations;
                 if (functionMode) {
                     declarations = functionEnvInit(functionNode);
-                } else if (functionNode.isModule()) {
+                } else if (functionNode.isModule() || functionNode.isModuleBlock()) {
                     assert currentFunction.isGlobal();
                     declarations = Collections.emptyList();
                 } else {
@@ -398,6 +398,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                                 needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
 
                 functionRoot = createFunctionRoot(functionNode, functionData, currentFunction, body);
+
+                if (functionNode.isModuleBlock()) {
+                    return factory.createModuleBlock(context, body, functionRoot.getName());
+                }
 
                 if (isEval) {
                     // force eager call target init for Function() code to avoid deopt at call site
@@ -994,7 +998,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
                             }
-                        } else if (function.isModule() && isImport(varName)) {
+                        } else if ((function.isModule() || function.isModuleBlock()) && isImport(varName)) {
                             // needed for GetActiveScriptOrModule()
                             if (!local) {
                                 markUsesAncestorScopeUntil(lastFunction, true);
@@ -1267,7 +1271,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private void createResolveImports(FunctionNode functionNode, List<JavaScriptNode> declarations) {
-        assert functionNode.isModule();
+        assert functionNode.isModule() || functionNode.isModuleBlock();
 
         // Assert: all named exports from module are resolvable.
         for (ImportEntry importEntry : functionNode.getModule().getImportEntries()) {
@@ -1275,7 +1279,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             String localName = importEntry.getLocalName();
             JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
             JavaScriptNode thisModule = getActiveModule();
-            if (importEntry.getImportName().equals(Module.STAR_NAME)) {
+            if (importEntry.getImportName().equals(Module.STAR_NAME) || functionNode.isModuleBlock()) {
                 assert functionNode.getBody().getScope().hasSymbol(localName) && functionNode.getBody().getScope().getExistingSymbol(localName).hasBeenDeclared();
                 declarations.add(factory.createResolveStarImport(context, thisModule, moduleRequest, writeLocalNode));
             } else {
