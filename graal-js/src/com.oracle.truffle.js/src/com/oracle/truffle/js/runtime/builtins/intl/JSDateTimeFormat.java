@@ -244,13 +244,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
-
-                // Workaround for a regression in ICU 68.2/CLDR 38
-                // (missing space in Chinese locale)
-                if (bestPattern.contains("dH") && "zh".equals(selectedLocale.getLanguage())) {
-                    bestPattern = bestPattern.replace("dH", "d H");
-                }
-
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
                 if (containsOneOf(baseSkeleton, "eEc")) {
