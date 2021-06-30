@@ -476,13 +476,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     return createCallRequiresNew(context, builtin);
                 }
 
-            case CompileError:
-            case LinkError:
-            case RuntimeError:
-                if (newTarget) {
-                    return ConstructErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(1).createArgumentNodes(context));
-                }
-                return ConstructErrorNodeGen.create(context, builtin, false, args().function().fixedArgs(1).createArgumentNodes(context));
             case Error:
             case RangeError:
             case TypeError:
@@ -490,6 +483,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case SyntaxError:
             case EvalError:
             case URIError:
+            case CompileError:
+            case LinkError:
+            case RuntimeError:
                 if (newTarget) {
                     return ConstructErrorNodeGen.create(context, builtin, true, args().newTarget().fixedArgs(2).createArgumentNodes(context));
                 }
