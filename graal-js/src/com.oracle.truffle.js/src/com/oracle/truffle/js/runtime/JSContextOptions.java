@@ -519,11 +519,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> OPERATOR_OVERLOADING = new OptionKey<>(false);
     @CompilationFinal private boolean operatorOverloading;
 
-    public static final String USE_ERROR_CAUSE_NAME = JS_OPTION_PREFIX + "use-error-cause";
-    @Option(name = USE_ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "" +
-                    "Allows to use the optional options parameter on all errors. The error cause can be specified within this options object.") //
-    public static final OptionKey<Boolean> USE_ERROR_CAUSE = new OptionKey<>(false);
-    @CompilationFinal private boolean useErrorCause;
+    public static final String ERROR_CAUSE_NAME = JS_OPTION_PREFIX + "error-cause";
+    @Option(name = ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "" +
+                    "Enable the error cause proposal. Allows an error to be chained with a cause using the optional options parameter.") //
+    public static final OptionKey<Boolean> ERROR_CAUSE = new OptionKey<>(false);
+    @CompilationFinal private boolean errorCause;
 
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
@@ -611,7 +611,7 @@ public final class JSContextOptions {
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
-        this.useErrorCause = readBooleanOption(USE_ERROR_CAUSE);
+        this.errorCause = readBooleanOption(ERROR_CAUSE);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -987,7 +987,7 @@ public final class JSContextOptions {
     }
 
     public boolean isErrorCauseEnabled() {
-        return useErrorCause;
+        return errorCause;
     }
 
     @Override
@@ -1043,7 +1043,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
-        hash = 53 * hash + (this.useErrorCause ? 1 : 0);
+        hash = 53 * hash + (this.errorCause ? 1 : 0);
         return hash;
     }
 
@@ -1206,7 +1206,7 @@ public final class JSContextOptions {
         if (this.operatorOverloading != other.operatorOverloading) {
             return false;
         }
-        if (this.useErrorCause != other.useErrorCause) {
+        if (this.errorCause != other.errorCause) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

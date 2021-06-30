@@ -48,7 +48,7 @@ import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-public class ErrorTest {
+public class ErrorCauseTest {
     private static final String[] errorTypes = {
                     "Error",
                     "RangeError",
@@ -84,7 +84,7 @@ public class ErrorTest {
 
     private static void runErrorTest(String[] errors) {
         for (String source : errors) {
-            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.USE_ERROR_CAUSE_NAME, "true").build()) {
+            try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ERROR_CAUSE_NAME, "true").build()) {
                 Value value = context.eval(JavaScriptLanguage.ID, source);
                 Assert.assertTrue(value.isBoolean());
                 Assert.assertTrue(value.asBoolean());

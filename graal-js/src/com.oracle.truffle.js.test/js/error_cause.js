@@ -8,7 +8,7 @@
 /**
  * Test for checking the order of properties in AggregateError.
  *
- * @option use-error-cause=true
+ * @option error-cause=true
  */
 
 load('assert.js');
