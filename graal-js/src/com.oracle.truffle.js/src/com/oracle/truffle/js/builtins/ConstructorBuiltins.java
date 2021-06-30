@@ -69,6 +69,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBigIntNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallBooleanNodeGen;
 import com.oracle.truffle.js.builtins.ConstructorBuiltinsFactory.CallCollatorNodeGen;
@@ -1720,7 +1721,13 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached("paramList") String cachedParamList,
                         @Cached("body") String cachedBody,
                         @Cached("sourceName") String cachedSourceName,
-                        @Cached("parseFunction(paramList, body, sourceName)") ScriptNode parsedFunction) {
+                        @Cached("createAssumedValue()") AssumedValue<ScriptNode> cachedParsedFunction) {
+            ScriptNode parsedFunction = cachedParsedFunction.get();
+            if (parsedFunction == null) {
+                parsedFunction = parseFunction(paramList, body, sourceName);
+                cachedParsedFunction.set(parsedFunction);
+            }
+
             return evalParsedFunction(context.getRealm(), parsedFunction);
         }
 
@@ -1761,6 +1768,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 cache.put(new CachedSourceKey(paramList, body, sourceName), parsedBody);
             }
             return evalParsedFunction(realm, parsedBody);
+        }
+
+        AssumedValue<ScriptNode> createAssumedValue() {
+            return new AssumedValue<>("parsedFunction", null);
         }
 
         protected static class CachedSourceKey {
