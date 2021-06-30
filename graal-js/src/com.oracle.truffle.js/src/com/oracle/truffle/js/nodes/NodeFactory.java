@@ -203,6 +203,7 @@ import com.oracle.truffle.js.nodes.function.NamedEvaluationNode;
 import com.oracle.truffle.js.nodes.function.NewTargetRootNode;
 import com.oracle.truffle.js.nodes.function.SpreadArgumentNode;
 import com.oracle.truffle.js.nodes.module.ImportMetaNode;
+import com.oracle.truffle.js.nodes.module.ModuleBlockNode;
 import com.oracle.truffle.js.nodes.module.ReadImportBindingNode;
 import com.oracle.truffle.js.nodes.module.ResolveNamedImportNode;
 import com.oracle.truffle.js.nodes.module.ResolveStarImportNode;
@@ -1181,6 +1182,10 @@ public class NodeFactory {
 
     public JavaScriptNode createDebugVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new DebugScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
+    }
+
+    public JavaScriptNode createModuleBlock(JSContext context, JavaScriptNode body, String moduleBlockSourceName) {
+        return ModuleBlockNode.create(context, body, moduleBlockSourceName);
     }
 
     // #####

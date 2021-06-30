@@ -90,6 +90,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSModuleBlock;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -307,6 +308,7 @@ public class JSContext {
         WebAssemblyGlobalGetValue,
         WebAssemblyGlobalSetValue,
         WebAssemblySourceInstantiation,
+        ModuleBlock,
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -416,6 +418,8 @@ public class JSContext {
     private final JSObjectFactory webAssemblyMemoryFactory;
     private final JSObjectFactory webAssemblyTableFactory;
     private final JSObjectFactory webAssemblyGlobalFactory;
+
+    private final JSObjectFactory moduleBlockFactory;
 
     private final int factoryCount;
 
@@ -574,6 +578,8 @@ public class JSContext {
         this.webAssemblyMemoryFactory = builder.create(JSWebAssemblyMemory.INSTANCE);
         this.webAssemblyTableFactory = builder.create(JSWebAssemblyTable.INSTANCE);
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
+
+        this.moduleBlockFactory = builder.create(JSModuleBlock.INSTANCE);
 
         this.factoryCount = builder.finish();
 
@@ -1023,6 +1029,10 @@ public class JSContext {
 
     public JSObjectFactory getWebAssemblyGlobalFactory() {
         return webAssemblyGlobalFactory;
+    }
+
+    public JSObjectFactory getModuleBlockFactory() {
+        return moduleBlockFactory;
     }
 
     private static final String REGEX_OPTION_U180E_WHITESPACE = "U180EWhitespace";

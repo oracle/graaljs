@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -58,7 +59,7 @@ import java.util.Objects;
 public class DefaultESModuleLoader implements JSModuleLoader {
 
     protected final JSRealm realm;
-    protected final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
+    protected final Map<Object, JSModuleRecord> moduleMap = new HashMap<>();
 
     public static DefaultESModuleLoader create(JSRealm realm) {
         return new DefaultESModuleLoader(realm);
@@ -156,5 +157,36 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
         }
         return moduleMap.computeIfAbsent(canonicalPath, (key) -> realm.getContext().getEvaluator().parseModule(realm.getContext(), source, this));
+    }
+
+    @Override
+    public JSModuleRecord resolveImportedModuleBlock(JSModuleRecord moduleBlock, DynamicObject specifier) {
+        return loadModuleBlock(moduleBlock, specifier);
+    }
+
+    protected JSModuleRecord loadModuleBlock(JSModuleRecord moduleBlock, DynamicObject specifier) {
+        JSModuleRecord existingModule = moduleMap.get(specifier);
+
+        if (existingModule != null) {
+            return existingModule;
+        }
+
+        moduleMap.put(specifier, moduleBlock);
+
+        return moduleBlock;
+    }
+
+    @Override
+    public JSModuleRecord resolveImportedModuleBlock(Source source, DynamicObject specifier) {
+        return loadModuleBlock(source, specifier);
+    }
+
+    protected JSModuleRecord loadModuleBlock(Source source, DynamicObject specifier) {
+        JSModuleRecord existingModule = moduleMap.get(specifier);
+        if (existingModule != null) {
+            return existingModule;
+        }
+
+        return moduleMap.computeIfAbsent(specifier, (key) -> realm.getContext().getEvaluator().parseModule(realm.getContext(), source, this));
     }
 }

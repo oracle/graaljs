@@ -45,6 +45,7 @@ import com.oracle.js.parser.ir.LexicalContext;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
@@ -115,6 +116,13 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
     public static ScriptNode translateFunction(NodeFactory factory, JSContext context, Environment env, Source source, int prologLength, boolean isParentStrict,
                     com.oracle.js.parser.ir.FunctionNode rootNode) {
         return new JavaScriptTranslator(factory, context, source, prologLength, env, isParentStrict).translateScript(rootNode);
+    }
+
+    public static JavaScriptNode translateModuleBlock(NodeFactory factory, JSContext context, Source source) {
+        FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, context.getParserOptions().putStrict(true));
+        JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, 0, null, true);
+
+        return translator.enterFunctionNode(parsed);
     }
 
     public static JSModuleRecord translateModule(NodeFactory factory, JSContext context, Source source, JSModuleLoader moduleLoader) {
