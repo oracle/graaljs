@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.module;
 
+import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -59,18 +60,18 @@ import java.util.Set;
 public class ResolveStarImportNode extends StatementNode {
 
     private final JSContext context;
-    private final String moduleRequest;
+    private final Module.ModuleRequest moduleRequest;
     @Child private JavaScriptNode moduleNode;
     @Child private JSWriteFrameSlotNode writeLocalNode;
 
-    ResolveStarImportNode(JSContext context, JavaScriptNode moduleNode, String moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
+    ResolveStarImportNode(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
         this.context = context;
         this.moduleRequest = moduleRequest;
         this.moduleNode = moduleNode;
         this.writeLocalNode = writeLocalNode;
     }
 
-    public static StatementNode create(JSContext context, JavaScriptNode moduleNode, String moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
+    public static StatementNode create(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
         return new ResolveStarImportNode(context, moduleNode, moduleRequest, writeLocalNode);
     }
 

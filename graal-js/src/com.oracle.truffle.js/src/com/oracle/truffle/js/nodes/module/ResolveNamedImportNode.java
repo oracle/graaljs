@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.module;
 
+import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.ValueProfile;
@@ -63,13 +64,13 @@ import java.util.Set;
 public class ResolveNamedImportNode extends StatementNode {
 
     private final JSContext context;
-    private final String moduleRequest;
+    private final Module.ModuleRequest moduleRequest;
     private final String importName;
     @Child private JavaScriptNode moduleNode;
     @Child private JSWriteFrameSlotNode writeLocalNode;
     private final ValueProfile resolutionProfile = ValueProfile.createClassProfile();
 
-    ResolveNamedImportNode(JSContext context, JavaScriptNode moduleNode, String moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+    ResolveNamedImportNode(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
         this.context = context;
         this.moduleRequest = moduleRequest;
         this.moduleNode = moduleNode;
@@ -77,7 +78,7 @@ public class ResolveNamedImportNode extends StatementNode {
         this.writeLocalNode = writeLocalNode;
     }
 
-    public static StatementNode create(JSContext context, JavaScriptNode moduleNode, String moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+    public static StatementNode create(JSContext context, JavaScriptNode moduleNode, Module.ModuleRequest moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
         return new ResolveNamedImportNode(context, moduleNode, moduleRequest, importName, writeLocalNode);
     }
 
@@ -91,7 +92,7 @@ public class ResolveNamedImportNode extends StatementNode {
         // If resolution is null or resolution is "ambiguous", throw SyntaxError.
         if (resolution.isNull() || resolution.isAmbiguous()) {
             String message = "The requested module '%s' does not provide an export named '%s'";
-            throw Errors.createSyntaxErrorFormat(message, this, moduleRequest, importName);
+            throw Errors.createSyntaxErrorFormat(message, this, moduleRequest.getSpecifier(), importName);
         }
         Object resolutionOrNamespace;
         if (resolution.isNamespace()) {

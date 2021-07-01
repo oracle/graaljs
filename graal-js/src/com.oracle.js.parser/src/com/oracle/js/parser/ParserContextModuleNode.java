@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.js.parser.ir.ImportNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.Scope;
 
 /**
@@ -64,7 +65,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
     private final Scope moduleScope;
     private final AbstractParser parser;
 
-    private List<String> requestedModules = new ArrayList<>();
+    private List<ModuleRequest> requestedModules = new ArrayList<>();
     private List<ImportEntry> importEntries = new ArrayList<>();
     private List<ExportEntry> localExportEntries = new ArrayList<>();
     private List<ExportEntry> indirectExportEntries = new ArrayList<>();
@@ -104,7 +105,7 @@ class ParserContextModuleNode extends ParserContextBaseNode {
         exports.add(exportNode);
     }
 
-    public void addModuleRequest(String moduleRequest) {
+    public void addModuleRequest(ModuleRequest moduleRequest) {
         requestedModules.add(moduleRequest);
     }
 
@@ -161,11 +162,12 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                             addIndirectExportEntry(exportToken, ExportEntry.exportIndirect(ee.getExportName(), ie.getModuleRequest(), ie.getImportName()));
                         }
                     } else {
-                        addIndirectExportEntry(exportToken, ee.withFrom(export.getFrom().getModuleSpecifier().getValue()));
+                        addIndirectExportEntry(exportToken, ee.withFrom(ModuleRequest.create(export.getFrom().getModuleSpecifier().getValue())));
                     }
                 }
             } else if (export.getFrom() != null) {
-                String moduleRequest = export.getFrom().getModuleSpecifier().getValue();
+                String specifier = export.getFrom().getModuleSpecifier().getValue();
+                ModuleRequest moduleRequest = ModuleRequest.create(specifier, export.getAssertions());
                 if (export.getExportIdentifier() == null) {
                     addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));
                 } else {

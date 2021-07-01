@@ -43,6 +43,7 @@ package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenType.ARROW;
 import static com.oracle.js.parser.TokenType.AS;
+import static com.oracle.js.parser.TokenType.ASSERT;
 import static com.oracle.js.parser.TokenType.ASSIGN;
 import static com.oracle.js.parser.TokenType.ASSIGN_INIT;
 import static com.oracle.js.parser.TokenType.ASYNC;
@@ -148,6 +149,7 @@ import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.LiteralNode.ArrayLiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.NamedImportsNode;
@@ -4736,6 +4738,15 @@ public class Parser extends AbstractParser {
         return lhs;
     }
 
+    /**
+     * Parse import expression
+     *
+     * <pre>
+     * ImportCall:
+     *     import ( AssignmentExpression ,opt )
+     *     import ( AssignmentExpression, AssignmentExpression ,opt )
+     * </pre>
+     */
     private Expression importExpression(boolean yield, boolean await) {
         final long importToken = token;
         final int importLine = line;
@@ -4757,11 +4768,21 @@ public class Parser extends AbstractParser {
             }
         } else if (type == LPAREN) {
             next();
-            Expression argument = assignmentExpression(true, yield, await);
+            ArrayList<Expression> arguments = new ArrayList<>();
+            arguments.add(assignmentExpression(true, yield, await));
+            if (env.importAssertions && type == COMMARIGHT) {
+                next();
+                if (type != RPAREN) {
+                    arguments.add(assignmentExpression(true, yield, await));
+                    if (type == COMMARIGHT) {
+                        next();
+                    }
+                }
+            }
             expect(RPAREN);
 
             IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
-            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, Collections.singletonList(argument));
+            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, optimizeList(arguments));
         } else {
             throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
@@ -6527,6 +6548,8 @@ public class Parser extends AbstractParser {
      * ImportDeclaration :
      *     import ImportClause FromClause ;
      *     import ModuleSpecifier ;
+     *     import ImportClause FromClause [no LineTerminator here] AssertClause ;
+     *     import ModuleSpecifier [no LineTerminator here] AssertClause ;
      * ImportClause :
      *     ImportedDefaultBinding
      *     NameSpaceImport
@@ -6550,7 +6573,11 @@ public class Parser extends AbstractParser {
             long specifierToken = token;
             next();
             LiteralNode<String> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            module.addModuleRequest(moduleSpecifier);
+            Map<String, String> assertions = Collections.emptyMap();
+            if (env.importAssertions && type == ASSERT && last != EOL) {
+                assertions = assertClause();
+            }
+            module.addModuleRequest(ModuleRequest.create(moduleSpecifier, assertions));
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
             // import ImportClause FromClause ;
@@ -6599,14 +6626,82 @@ public class Parser extends AbstractParser {
             }
 
             FromNode fromNode = fromClause();
+            Map<String, String> assertions = Collections.emptyMap();
+            if (env.importAssertions && type == ASSERT && last != EOL) {
+                assertions = assertClause();
+            }
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
             String moduleSpecifier = fromNode.getModuleSpecifier().getValue();
-            module.addModuleRequest(moduleSpecifier);
+            ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, assertions);
+            module.addModuleRequest(moduleRequest);
             for (int i = 0; i < importEntries.size(); i++) {
-                module.addImportEntry(importEntries.get(i).withFrom(moduleSpecifier));
+                module.addImportEntry(importEntries.get(i).withFrom(moduleRequest));
             }
         }
         endOfLine();
+    }
+
+    /**
+     * Parse assert clause.
+     *
+     * <pre>
+     *     assert { }
+     *     assert { AssertEntries ,opt }
+     * </pre>
+     */
+    private Map<String, String> assertClause() {
+        assert type == ASSERT;
+        next();
+        expect(LBRACE);
+        Map<String, String> assertions = assertEntries();
+        expect(RBRACE);
+        return assertions;
+    }
+
+    /**
+     * Parse assert entry.
+     *
+     * <pre>
+     * AssertEntries:
+     *     AssertionKey : StringLiteral
+     *     AssertionKey : StringLiteral , AssertEntries
+     * AssertKey:
+     *     IdentifierName
+     *     StringLiteral
+     * </pre>
+     */
+    private Map<String, String> assertEntries() {
+        Map<String, String> assertions = new HashMap<>();
+
+        while (type != RBRACE) {
+            final long errorToken = token;
+            String assertionKey;
+            if (type == STRING || type == ESCSTRING) {
+                assertionKey = (String) getValue();
+                next();
+            } else {
+                assertionKey = getIdentifierName().getName();
+            }
+            expect(COLON);
+            String value = null;
+            if (type == STRING || type == ESCSTRING) {
+                value = (String) getValue();
+                next();
+            } else {
+                expect(STRING);
+            }
+            if (assertions.containsKey(assertionKey)) {
+                throw error(AbstractParser.message("duplicate.import.assertion", assertionKey), errorToken);
+            } else {
+                assertions.put(assertionKey, value);
+            }
+            if (type == COMMARIGHT) {
+                next();
+            } else {
+                break;
+            }
+        }
+        return assertions;
     }
 
     /**
@@ -6706,6 +6801,7 @@ public class Parser extends AbstractParser {
      * <pre>
      * ExportDeclaration :
      *     export ExportFromClause FromClause ;
+     *     export ExportFromClause FromClause [no LineTerminator here] AssertClause;
      *     export NamedExports ;
      *     export VariableStatement
      *     export Declaration
@@ -6716,6 +6812,7 @@ public class Parser extends AbstractParser {
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
+        Map<String, String> assertions = Collections.emptyMap();
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
@@ -6728,9 +6825,12 @@ public class Parser extends AbstractParser {
                     exportName = getIdentifierName();
                 }
                 FromNode from = fromClause();
+                if (env.importAssertions && type == ASSERT && last != EOL) {
+                    assertions = assertClause();
+                }
                 String moduleRequest = from.getModuleSpecifier().getValue();
-                module.addModuleRequest(moduleRequest);
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from));
+                module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, assertions));
                 endOfLine();
                 break;
             }
@@ -6739,10 +6839,13 @@ public class Parser extends AbstractParser {
                 FromNode from = null;
                 if (type == FROM) {
                     from = fromClause();
+                    if (env.importAssertions && type == ASSERT && last != EOL) {
+                        assertions = assertClause();
+                    }
                     String moduleRequest = from.getModuleSpecifier().getValue();
-                    module.addModuleRequest(moduleRequest);
+                    module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, assertions));
                 endOfLine();
                 break;
             }

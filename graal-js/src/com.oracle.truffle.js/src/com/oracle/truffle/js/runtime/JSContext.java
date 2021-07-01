@@ -40,14 +40,18 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -424,6 +428,8 @@ public class JSContext {
     private final PropertyProxy argumentsPropertyProxy;
     private final PropertyProxy callerPropertyProxy;
 
+    private final Set<String> supportedImportAssertions;
+
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
      * tree but in shared object factories for the purpose of adding properties to newly allocated
@@ -584,6 +590,8 @@ public class JSContext {
 
         this.regexOptions = createRegexOptions(contextOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
+
+        this.supportedImportAssertions = contextOptions.isImportAssertions() ? new HashSet<>() : Collections.emptySet();
 
         if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
@@ -1511,9 +1519,9 @@ public class JSContext {
      * @return the callback result (a promise or {@code null}).
      */
     @TruffleBoundary
-    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
         if (importModuleDynamicallyCallback != null) {
-            return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, specifier);
+            return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, moduleRequest);
         } else {
             return null;
         }
@@ -1733,5 +1741,9 @@ public class JSContext {
 
     public boolean isWaitAsyncEnabled() {
         return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+    }
+
+    public final Set<String> getSupportedImportAssertions() {
+        return supportedImportAssertions;
     }
 }

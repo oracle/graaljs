@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 import com.oracle.js.parser.ir.Expression;
+import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -92,7 +93,7 @@ public interface Evaluator {
      */
     JSModuleData envParseModule(JSRealm realm, Source source);
 
-    JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, String specifier);
+    JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, Module.ModuleRequest moduleRequest);
 
     void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord);
 

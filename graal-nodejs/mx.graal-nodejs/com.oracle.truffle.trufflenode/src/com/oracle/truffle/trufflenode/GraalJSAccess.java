@@ -119,6 +119,7 @@ import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -3039,8 +3040,8 @@ public final class GraalJSAccess {
     public void isolateEnableImportModuleDynamically(boolean enable) {
         ImportModuleDynamicallyCallback callback = enable ? new ImportModuleDynamicallyCallback() {
             @Override
-            public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
-                return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, specifier);
+            public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+                return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier());
             }
         } : null;
         mainJSContext.setImportModuleDynamicallyCallback(callback);
@@ -3459,7 +3460,7 @@ public final class GraalJSAccess {
 
     public String moduleGetRequest(Object module, int index) {
         JSModuleRecord record = (JSModuleRecord) module;
-        return record.getModule().getRequestedModules().get(index);
+        return record.getModule().getRequestedModules().get(index).getSpecifier();
     }
 
     public Object moduleGetNamespace(Object module) {

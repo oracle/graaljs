@@ -78,6 +78,7 @@ import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
@@ -1267,7 +1268,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         // Assert: all named exports from module are resolvable.
         for (ImportEntry importEntry : functionNode.getModule().getImportEntries()) {
-            String moduleRequest = importEntry.getModuleRequest();
+            ModuleRequest moduleRequest = importEntry.getModuleRequest();
             String localName = importEntry.getLocalName();
             JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
             JavaScriptNode thisModule = getActiveModule();
@@ -2270,7 +2271,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
-        assert args.length == 1;
+        assert args.length == 1 || (context.getContextOptions().isImportAssertions() && args.length == 2);
+        if (context.getContextOptions().isImportAssertions() && args.length == 2) {
+            return factory.createImportCall(context, args[0], getActiveScriptOrModule(), args[1]);
+        }
         return factory.createImportCall(context, args[0], getActiveScriptOrModule());
     }
 
