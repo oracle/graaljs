@@ -1856,6 +1856,26 @@
     "status" : "FAIL",
     "comment" : "new failures after 2020-03 update"
   }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test"
+  }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test"
+  }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/preferred-variant.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test"
+  }, {
+    "filePath" : "intl402/Locale/extensions-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test"
+  }, {
+    "filePath" : "intl402/Locale/likely-subtags-grandfathered.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test"
+  }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",
     "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
