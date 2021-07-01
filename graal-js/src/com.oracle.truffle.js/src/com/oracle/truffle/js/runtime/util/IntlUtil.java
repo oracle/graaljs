@@ -462,8 +462,14 @@ public final class IntlUtil {
                     builder.setUnicodeLocaleKeyword(key, type);
                 }
 
-                // Canonicalize transformed extension
-                String transformedExt = locale.getExtension('t');
+                // Validate and canonicalize the transformed extension.
+                // We cannot start with locale.getExtension('t') here. locale is
+                // canonicalized and ICU started (ICU-21406) to remove duplicate
+                // variants during canonicalization. Unfortunately, we have
+                // to detect the duplicates because ECMAScript specification
+                // refuses such locales as invalid explicitly =>
+                // we start with a non-canonicalized locale here.
+                String transformedExt = new ULocale(languageTag).getExtension('t');
                 if (transformedExt != null) {
                     builder.setExtension('t', normalizeTransformedExtension(transformedExt));
                 }

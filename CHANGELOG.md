@@ -14,6 +14,7 @@ The main focus is on user-observable behavior of the engine.
 * Updated RegExp Match Indices proposal with opt-in using the `d` flag. Available in ECMAScript 2022 (`--js.ecmascript-version=2022`). Deprecated `--js.regexp-match-indices` option.
 * Nashorn compatibility mode now defaults to compatiblity with ECMAScript version 5, unless another version is explicitly selected.
 * `Date.prototype` built-ins use ICU (not JDK) algorithms and data (like timezone data) by now (in order to reduce inconsistencies between `Date` and `Intl.DateTimeFormat`).
+* Updated ICU4J library to version 69.1.
 
 ## Version 21.1.0
 * Updated Node.js to version 14.16.1.
