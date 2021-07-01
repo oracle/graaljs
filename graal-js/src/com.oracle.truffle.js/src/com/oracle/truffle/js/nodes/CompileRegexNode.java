@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
@@ -78,8 +79,13 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     protected Object getCached(String pattern, String flags,
                     @Cached("pattern") String cachedPattern,
                     @Cached("flags") String cachedFlags,
-                    @Cached("doCompile(pattern, flags)") Object cachedCompiledRegex) {
-        return cachedCompiledRegex;
+                    @Cached("createAssumedValue()") AssumedValue<Object> cachedCompiledRegex) {
+        Object cached = cachedCompiledRegex.get();
+        if (cached == null) {
+            cached = doCompile(cachedPattern, cachedFlags);
+            cachedCompiledRegex.set(cached);
+        }
+        return cached;
     }
 
     protected static boolean stringEquals(String a, String b) {
@@ -96,5 +102,9 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     @Specialization(replaces = {"getCached"})
     protected Object doCompile(String pattern, String flags) {
         return RegexCompilerInterface.compile(pattern, flags, context, executeCompilerNode);
+    }
+
+    AssumedValue<Object> createAssumedValue() {
+        return new AssumedValue<>("compiledRegex", null);
     }
 }
