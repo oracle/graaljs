@@ -48,8 +48,10 @@ import java.io.Writer;
 import java.time.DateTimeException;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.SplittableRandom;
@@ -59,6 +61,14 @@ import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
 
+import com.ibm.icu.text.DateFormat;
+import com.ibm.icu.text.SimpleDateFormat;
+import com.ibm.icu.text.TimeZoneFormat;
+import com.ibm.icu.text.TimeZoneNames;
+import com.ibm.icu.util.Calendar;
+import com.ibm.icu.util.GregorianCalendar;
+import com.ibm.icu.util.TimeZone;
+import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -168,6 +178,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -382,6 +393,17 @@ public class JSRealm {
      * Local time zone ID. Initialized lazily.
      */
     @CompilationFinal private ZoneId localTimeZoneId;
+    @CompilationFinal private TimeZone localTimeZone;
+
+    @CompilationFinal private DateFormat jsDateFormat;
+    @CompilationFinal private DateFormat jsDateFormatBeforeYear0;
+    @CompilationFinal private DateFormat jsDateFormatAfterYear9999;
+    @CompilationFinal private DateFormat jsDateFormatISO;
+    @CompilationFinal private DateFormat jsShortDateFormat;
+    @CompilationFinal private DateFormat jsShortDateLocalFormat;
+    @CompilationFinal private DateFormat jsShortTimeFormat;
+    @CompilationFinal private DateFormat jsShortTimeLocalFormat;
+    @CompilationFinal private DateFormat jsDateToStringFormat;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private SplittableRandom random;
@@ -2257,6 +2279,17 @@ public class JSRealm {
         this.agent = newAgent;
     }
 
+    public TimeZone getLocalTimeZone() {
+        TimeZone timeZone = localTimeZone;
+        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, timeZone == null)) {
+            if (CompilerDirectives.isPartialEvaluationConstant(timeZone)) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            timeZone = IntlUtil.getICUTimeZone(getLocalTimeZoneId());
+        }
+        return timeZone;
+    }
+
     public ZoneId getLocalTimeZoneId() {
         ZoneId id = localTimeZoneId;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, id == null)) {
@@ -2451,6 +2484,101 @@ public class JSRealm {
 
     public DynamicObject getForeignIterablePrototype() {
         return foreignIterablePrototype;
+    }
+
+    public DateFormat getJSDateFormat(double time) {
+        long milliseconds = (long) time;
+        if (milliseconds < -62167219200000L) {
+            if (jsDateFormatBeforeYear0 == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                jsDateFormatBeforeYear0 = createDateFormat("uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'", false);
+            }
+            return jsDateFormatBeforeYear0;
+        } else if (milliseconds >= 253402300800000L) {
+            if (jsDateFormatAfterYear9999 == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                jsDateFormatAfterYear9999 = createDateFormat("+uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'", false);
+            }
+            return jsDateFormatAfterYear9999;
+        } else {
+            if (jsDateFormat == null) {
+                // UTC
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                jsDateFormat = createDateFormat("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'", false);
+            }
+            return jsDateFormat;
+        }
+    }
+
+    public DateFormat getJSDateUTCFormat() {
+        if (jsDateFormatISO == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            jsDateFormatISO = createDateFormat("EEE, dd MMM uuuu HH:mm:ss 'GMT'", false);
+        }
+        return jsDateFormatISO;
+    }
+
+    public DateFormat getJSShortDateFormat() {
+        if (jsShortDateFormat == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // no UTC
+            jsShortDateFormat = createDateFormat("EEE MMM dd uuuu", true);
+        }
+        return jsShortDateFormat;
+    }
+
+    public DateFormat getJSShortDateLocalFormat() {
+        if (jsShortDateLocalFormat == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // no UTC
+            jsShortDateLocalFormat = createDateFormat("uuuu-MM-dd", true);
+        }
+        return jsShortDateLocalFormat;
+    }
+
+    public DateFormat getJSShortTimeFormat() {
+        if (jsShortTimeFormat == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // no UTC
+            jsShortTimeFormat = createDateFormat("HH:mm:ss 'GMT'xx (z)", true);
+        }
+        return jsShortTimeFormat;
+    }
+
+    public DateFormat getJSShortTimeLocalFormat() {
+        if (jsShortTimeLocalFormat == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            // no UTC
+            jsShortTimeLocalFormat = createDateFormat("HH:mm:ss", true);
+        }
+        return jsShortTimeLocalFormat;
+    }
+
+    public DateFormat getDateToStringFormat() {
+        if (jsDateToStringFormat == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            jsDateToStringFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'xx (z)", true);
+        }
+        return jsDateToStringFormat;
+    }
+
+    @TruffleBoundary
+    private DateFormat createDateFormat(String pattern, boolean local) {
+        SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
+        format.setTimeZone(local ? getLocalTimeZone() : TimeZone.GMT_ZONE);
+
+        TimeZoneFormat tzFormat = format.getTimeZoneFormat().cloneAsThawed();
+        tzFormat.setTimeZoneNames(TimeZoneNames.getTZDBInstance(ULocale.US));
+        format.setTimeZoneFormat(tzFormat);
+
+        Calendar calendar = format.getCalendar();
+        if (calendar instanceof GregorianCalendar) {
+            // Ensure that Gregorian calendar is used for all dates.
+            // GregorianCalendar used by SimpleDateFormat is using
+            // Julian calendar for dates before 1582 otherwise.
+            ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
+        }
+        return format;
     }
 
 }
