@@ -405,6 +405,8 @@ ChildProcess.prototype.spawn = function(options) {
     this._handle.close();
     this._handle = null;
     throw errnoException(err, 'spawn');
+  } else {
+    process.nextTick(onSpawnNT, this);
   }
 
   this.pid = this._handle.pid;
@@ -467,6 +469,11 @@ ChildProcess.prototype.spawn = function(options) {
 
 function onErrorNT(self, err) {
   self._handle.onexit(err);
+}
+
+
+function onSpawnNT(self) {
+  self.emit('spawn');
 }
 
 
@@ -724,7 +731,7 @@ function setupChannel(target, channel, serializationMode) {
     // Non-serializable messages should not reach the remote
     // end point; as any failure in the stringification there
     // will result in error message that is weakly consumable.
-    // So perform a sanity check on message prior to sending.
+    // So perform a final check on message prior to sending.
     if (typeof message !== 'string' &&
         typeof message !== 'object' &&
         typeof message !== 'number' &&

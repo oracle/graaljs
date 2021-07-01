@@ -3,6 +3,7 @@
 const {
   NumberParseInt,
   ObjectDefineProperty,
+  ObjectDefineProperties,
   SafeMap,
   SafeWeakMap,
   StringPrototypeStartsWith,
@@ -31,14 +32,6 @@ function prepareMainThreadExecution(expandArgv1 = false) {
       setupCoverageHooks(process.env.NODE_V8_COVERAGE);
   }
 
-  // If source-map support has been enabled, we substitute in a new
-  // prepareStackTrace method, replacing the default in errors.js.
-  if (getOptionValue('--enable-source-maps')) {
-    const { prepareStackTrace } =
-      require('internal/source_map/prepare_stack_trace');
-    const { setPrepareStackTraceCallback } = internalBinding('errors');
-    setPrepareStackTraceCallback(prepareStackTrace);
-  }
 
   setupDebugEnv();
 
@@ -66,6 +59,7 @@ function prepareMainThreadExecution(expandArgv1 = false) {
   // (including preload modules).
   initializeClusterIPC();
 
+  initializeAbortController();
   initializeDeprecations();
   initializeWASI();
   initializeCJSLoader();
@@ -237,9 +231,9 @@ function setupInspectorHooks() {
   }
 }
 
-// In general deprecations are intialized wherever the APIs are implemented,
+// In general deprecations are initialized wherever the APIs are implemented,
 // this is used to deprecate APIs implemented in C++ where the deprecation
-// utitlities are not easily accessible.
+// utilities are not easily accessible.
 function initializeDeprecations() {
   const { deprecate } = require('internal/util');
   const pendingDeprecation = getOptionValue('--pending-deprecation');
@@ -325,6 +319,30 @@ function initializeDeprecations() {
     enumerable: false,
     configurable: true
   });
+}
+
+function initializeAbortController() {
+  const abortController = getOptionValue('--experimental-abortcontroller');
+  if (abortController) {
+    const {
+      AbortController,
+      AbortSignal
+    } = require('internal/abort_controller');
+    ObjectDefineProperties(global, {
+      AbortController: {
+        writable: true,
+        enumerable: false,
+        configurable: true,
+        value: AbortController
+      },
+      AbortSignal: {
+        writable: true,
+        enumerable: false,
+        configurable: true,
+        value: AbortSignal
+      }
+    });
+  }
 }
 
 function setupChildProcessIpcChannel() {
@@ -463,6 +481,7 @@ module.exports = {
   setupWarningHandler,
   setupDebugEnv,
   prepareMainThreadExecution,
+  initializeAbortController,
   initializeDeprecations,
   initializeESMLoader,
   initializeFrozenIntrinsics,

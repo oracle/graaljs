@@ -1,12 +1,17 @@
 'use strict';
 
 const {
+  ArrayPrototypeForEach,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
+  FunctionPrototypeCall,
   ObjectAssign,
   ObjectCreate,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptors,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
+  ReflectApply,
   Symbol,
 } = primordials;
 
@@ -30,6 +35,7 @@ const {
 const { Readable, Writable } = require('stream');
 const {
   Event,
+  EventTarget,
   NodeEventTarget,
   defineEventHandler,
   initNodeEventTarget,
@@ -79,11 +85,15 @@ class MessageEvent extends Event {
   }
 }
 
+const originalCreateEvent = EventTarget.prototype[kCreateEvent];
 ObjectDefineProperty(
   MessagePort.prototype,
   kCreateEvent,
   {
     value: function(data, type) {
+      if (type !== 'message' && type !== 'messageerror') {
+        return ReflectApply(originalCreateEvent, this, arguments);
+      }
       return new MessageEvent(data, this, type);
     },
     configurable: false,
@@ -94,14 +104,13 @@ ObjectDefineProperty(
 // This is called from inside the `MessagePort` constructor.
 function oninit() {
   initNodeEventTarget(this);
-  // TODO(addaleax): This should be on MessagePort.prototype, but
-  // defineEventHandler() does not support that.
-  defineEventHandler(this, 'message');
-  defineEventHandler(this, 'messageerror');
   // Graal.js: initialize support for Java objects in messages
   this.sharedMemMessaging = SharedMemMessagingInit();
   setupPortReferencing(this, this, 'message');
 }
+
+defineEventHandler(MessagePort.prototype, 'message');
+defineEventHandler(MessagePort.prototype, 'messageerror');
 
 ObjectDefineProperty(MessagePort.prototype, onInitSymbol, {
   enumerable: true,
@@ -137,7 +146,7 @@ ObjectDefineProperty(MessagePort.prototype, handleOnCloseSymbol, {
 MessagePort.prototype.close = function(cb) {
   if (typeof cb === 'function')
     this.once('close', cb);
-  MessagePortPrototype.close.call(this);
+  FunctionPrototypeCall(MessagePortPrototype.close, this);
 };
 
 ObjectDefineProperty(MessagePort.prototype, inspect.custom, {
@@ -148,7 +157,7 @@ ObjectDefineProperty(MessagePort.prototype, inspect.custom, {
     try {
       // This may throw when `this` does not refer to a native object,
       // e.g. when accessing the prototype directly.
-      ref = MessagePortPrototype.hasRef.call(this);
+      ref = FunctionPrototypeCall(MessagePortPrototype.hasRef, this);
     } catch { return this; }
     return ObjectAssign(ObjectCreate(MessagePort.prototype),
                         ref === undefined ? {
@@ -176,18 +185,18 @@ function setupPortReferencing(port, eventEmitter, eventName) {
   const origNewListener = eventEmitter[kNewListener];
   eventEmitter[kNewListener] = function(size, type, ...args) {
     if (type === eventName) newListener(size - 1);
-    return origNewListener.call(this, size, type, ...args);
+    return ReflectApply(origNewListener, this, arguments);
   };
   const origRemoveListener = eventEmitter[kRemoveListener];
   eventEmitter[kRemoveListener] = function(size, type, ...args) {
     if (type === eventName) removeListener(size);
-    return origRemoveListener.call(this, size, type, ...args);
+    return ReflectApply(origRemoveListener, this, arguments);
   };
 
   function newListener(size) {
     if (size === 0) {
       port.ref();
-      MessagePortPrototype.start.call(port);
+      FunctionPrototypeCall(MessagePortPrototype.start, port);
     }
   }
 
@@ -241,9 +250,10 @@ class WritableWorkerStdio extends Writable {
     this[kPort].postMessage({
       type: messageTypes.STDIO_PAYLOAD,
       stream: this[kName],
-      chunks: chunks.map(({ chunk, encoding }) => ({ chunk, encoding }))
+      chunks: ArrayPrototypeMap(chunks,
+                                ({ chunk, encoding }) => ({ chunk, encoding })),
     });
-    this[kWritableCallbacks].push(cb);
+    ArrayPrototypePush(this[kWritableCallbacks], cb);
     if (this[kPort][kWaitingStreams]++ === 0)
       this[kPort].ref();
   }
@@ -260,8 +270,7 @@ class WritableWorkerStdio extends Writable {
   [kStdioWantsMoreDataCallback]() {
     const cbs = this[kWritableCallbacks];
     this[kWritableCallbacks] = [];
-    for (const cb of cbs)
-      cb();
+    ArrayPrototypeForEach(cbs, (cb) => cb());
     if ((this[kPort][kWaitingStreams] -= cbs.length) === 0)
       this[kPort].unref();
   }

@@ -1,9 +1,11 @@
 'use strict';
 
 const {
+  ArrayPrototypeMap,
   ObjectCreate,
   ObjectDefineProperty,
   Promise,
+  ReflectApply,
 } = primordials;
 
 const {
@@ -169,7 +171,8 @@ function onresolve(err, result, ttls) {
   }
 
   if (ttls && this.ttl)
-    result = result.map((address, index) => ({ address, ttl: ttls[index] }));
+    result = ArrayPrototypeMap(
+      result, (address, index) => ({ address, ttl: ttls[index] }));
 
   this.resolve(result);
 }
@@ -217,9 +220,12 @@ class Resolver {
 
 Resolver.prototype.getServers = CallbackResolver.prototype.getServers;
 Resolver.prototype.setServers = CallbackResolver.prototype.setServers;
+Resolver.prototype.cancel = CallbackResolver.prototype.cancel;
+Resolver.prototype.setLocalAddress = CallbackResolver.prototype.setLocalAddress;
 Resolver.prototype.resolveAny = resolveMap.ANY = resolver('queryAny');
 Resolver.prototype.resolve4 = resolveMap.A = resolver('queryA');
 Resolver.prototype.resolve6 = resolveMap.AAAA = resolver('queryAaaa');
+Resolver.prototype.resolveCaa = resolveMap.CAA = resolver('queryCaa');
 Resolver.prototype.resolveCname = resolveMap.CNAME = resolver('queryCname');
 Resolver.prototype.resolveMx = resolveMap.MX = resolver('queryMx');
 Resolver.prototype.resolveNs = resolveMap.NS = resolver('queryNs');
@@ -243,7 +249,7 @@ Resolver.prototype.resolve = function resolve(hostname, rrtype) {
     throw new ERR_INVALID_ARG_TYPE('rrtype', 'string', rrtype);
   }
 
-  return resolver.call(this, hostname);
+  return ReflectApply(resolver, this, [hostname]);
 };
 
 

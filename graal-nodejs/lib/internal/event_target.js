@@ -4,14 +4,20 @@ const {
   ArrayFrom,
   Boolean,
   Error,
-  Map,
+  FunctionPrototypeBind,
+  FunctionPrototypeCall,
   NumberIsInteger,
-  Object,
+  ObjectAssign,
+  ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectGetOwnPropertyDescriptor,
+  ReflectApply,
+  SafeMap,
   String,
   Symbol,
   SymbolFor,
   SymbolToStringTag,
+  SafeWeakSet,
 } = primordials;
 
 const {
@@ -22,24 +28,30 @@ const {
     ERR_INVALID_THIS,
   }
 } = require('internal/errors');
-const { validateInteger, validateObject } = require('internal/validators');
+const { validateObject } = require('internal/validators');
 
 const { customInspectSymbol } = require('internal/util');
 const { inspect } = require('util');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
 
+const EventEmitter = require('events');
+const {
+  kMaxEventTargetListeners,
+  kMaxEventTargetListenersWarned,
+} = EventEmitter;
+
 const kEvents = Symbol('kEvents');
 const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
+const kHandlers = Symbol('khandlers');
 
-const kHybridDispatch = Symbol.for('nodejs.internal.kHybridDispatch');
+const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
 const kCreateEvent = Symbol('kCreateEvent');
 const kNewListener = Symbol('kNewListener');
 const kRemoveListener = Symbol('kRemoveListener');
 const kIsNodeStyleListener = Symbol('kIsNodeStyleListener');
-const kMaxListeners = Symbol('kMaxListeners');
-const kMaxListenersWarned = Symbol('kMaxListenersWarned');
+const kTrustEvent = Symbol('kTrustEvent');
 
 // Lazy load perf_hooks to avoid the additional overhead on startup
 let perf_hooks;
@@ -60,14 +72,20 @@ const kBubbles = Symbol('bubbles');
 const kComposed = Symbol('composed');
 const kPropagationStopped = Symbol('propagationStopped');
 
-const isTrusted = () => false;
+const isTrustedSet = new SafeWeakSet();
+const isTrusted = ObjectGetOwnPropertyDescriptor({
+  get isTrusted() {
+    return isTrustedSet.has(this);
+  }
+}, 'isTrusted').get;
 
 class Event {
-  constructor(type, options) {
+  constructor(type, options = null) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('type');
-    if (options != null)
-      validateObject(options, 'options');
+    validateObject(options, 'options', {
+      allowArray: true, allowFunction: true, nullable: true,
+    });
     const { cancelable, bubbles, composed } = { ...options };
     this[kCancelable] = !!cancelable;
     this[kBubbles] = !!bubbles;
@@ -76,6 +94,10 @@ class Event {
     this[kDefaultPrevented] = false;
     this[kTimestamp] = lazyNow();
     this[kPropagationStopped] = false;
+    if (options?.[kTrustEvent]) {
+      isTrustedSet.add(this);
+    }
+
     // isTrusted is special (LegacyUnforgeable)
     ObjectDefineProperty(this, 'isTrusted', {
       get: isTrusted,
@@ -90,7 +112,7 @@ class Event {
     if (depth < 0)
       return name;
 
-    const opts = Object.assign({}, options, {
+    const opts = ObjectAssign({}, options, {
       depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
     });
 
@@ -152,13 +174,21 @@ class Event {
   static BUBBLING_PHASE = 3;
 }
 
-Object.defineProperty(Event.prototype, SymbolToStringTag, {
+ObjectDefineProperty(Event.prototype, SymbolToStringTag, {
   writable: false,
   enumerable: false,
   configurable: true,
   value: 'Event',
 });
 
+class NodeCustomEvent extends Event {
+  constructor(type, options) {
+    super(type, options);
+    if (options?.detail) {
+      this.detail = options.detail;
+    }
+  }
+}
 // The listeners for an EventTarget are maintained as a linked list.
 // Unfortunately, the way EventTarget is defined, listeners are accounted
 // using the tuple [handler,capture], and even if we don't actually make
@@ -181,7 +211,7 @@ class Listener {
     this.callback =
       typeof listener === 'function' ?
         listener :
-        listener.handleEvent.bind(listener);
+        FunctionPrototypeBind(listener.handleEvent, listener);
   }
 
   same(listener, capture) {
@@ -197,7 +227,9 @@ class Listener {
 }
 
 function initEventTarget(self) {
-  self[kEvents] = new Map();
+  self[kEvents] = new SafeMap();
+  self[kMaxEventTargetListeners] = EventEmitter.defaultMaxListeners;
+  self[kMaxEventTargetListenersWarned] = false;
 }
 
 class EventTarget {
@@ -210,7 +242,24 @@ class EventTarget {
     initEventTarget(this);
   }
 
-  [kNewListener](size, type, listener, once, capture, passive) {}
+  [kNewListener](size, type, listener, once, capture, passive) {
+    if (this[kMaxEventTargetListeners] > 0 &&
+        size > this[kMaxEventTargetListeners] &&
+        !this[kMaxEventTargetListenersWarned]) {
+      this[kMaxEventTargetListenersWarned] = true;
+      // No error code for this since it is a Warning
+      // eslint-disable-next-line no-restricted-syntax
+      const w = new Error('Possible EventTarget memory leak detected. ' +
+                          `${size} ${type} listeners ` +
+                          `added to ${inspect(this, { depth: -1 })}. Use ` +
+                          'events.setMaxListeners() to increase limit');
+      w.name = 'MaxListenersExceededWarning';
+      w.target = this;
+      w.type = type;
+      w.count = size;
+      process.emitWarning(w);
+    }
+  }
   [kRemoveListener](size, type, listener, capture) {}
 
   addEventListener(type, listener, options = {}) {
@@ -275,10 +324,7 @@ class EventTarget {
       return;
 
     type = String(type);
-    // TODO(@jasnell): If it's determined this cannot be backported
-    // to 12.x, then this can be simplified to:
-    //   const capture = Boolean(options?.capture);
-    const capture = options != null && options.capture === true;
+    const capture = options?.capture === true;
 
     const root = this[kEvents].get(type);
     if (root === undefined || root.next === undefined)
@@ -321,13 +367,12 @@ class EventTarget {
       }
       return event;
     };
+    if (event !== undefined)
+      event[kTarget] = this;
 
     const root = this[kEvents].get(type);
     if (root === undefined || root.next === undefined)
       return true;
-
-    if (event !== undefined)
-      event[kTarget] = this;
 
     let handler = root.next;
     let next;
@@ -351,7 +396,7 @@ class EventTarget {
         } else {
           arg = createEvent();
         }
-        const result = handler.callback.call(this, arg);
+        const result = FunctionPrototypeCall(handler.callback, this, arg);
         if (result !== undefined && result !== null)
           addCatch(this, result, createEvent());
       } catch (err) {
@@ -365,12 +410,15 @@ class EventTarget {
       event[kTarget] = undefined;
   }
 
+  [kCreateEvent](nodeValue, type) {
+    return new NodeCustomEvent(type, { detail: nodeValue });
+  }
   [customInspectSymbol](depth, options) {
     const name = this.constructor.name;
     if (depth < 0)
       return name;
 
-    const opts = Object.assign({}, options, {
+    const opts = ObjectAssign({}, options, {
       depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
     });
 
@@ -378,12 +426,12 @@ class EventTarget {
   }
 }
 
-Object.defineProperties(EventTarget.prototype, {
+ObjectDefineProperties(EventTarget.prototype, {
   addEventListener: { enumerable: true },
   removeEventListener: { enumerable: true },
   dispatchEvent: { enumerable: true }
 });
-Object.defineProperty(EventTarget.prototype, SymbolToStringTag, {
+ObjectDefineProperty(EventTarget.prototype, SymbolToStringTag, {
   writable: false,
   enumerable: false,
   configurable: true,
@@ -392,9 +440,6 @@ Object.defineProperty(EventTarget.prototype, SymbolToStringTag, {
 
 function initNodeEventTarget(self) {
   initEventTarget(self);
-  // eslint-disable-next-line no-use-before-define
-  self[kMaxListeners] = NodeEventTarget.defaultMaxListeners;
-  self[kMaxListenersWarned] = false;
 }
 
 class NodeEventTarget extends EventTarget {
@@ -405,33 +450,12 @@ class NodeEventTarget extends EventTarget {
     initNodeEventTarget(this);
   }
 
-  [kNewListener](size, type, listener, once, capture, passive) {
-    if (this[kMaxListeners] > 0 &&
-        size > this[kMaxListeners] &&
-        !this[kMaxListenersWarned]) {
-      this[kMaxListenersWarned] = true;
-      // No error code for this since it is a Warning
-      // eslint-disable-next-line no-restricted-syntax
-      const w = new Error('Possible EventTarget memory leak detected. ' +
-                          `${size} ${type} listeners ` +
-                          `added to ${inspect(this, { depth: -1 })}. Use ` +
-                          'setMaxListeners() to increase limit');
-      w.name = 'MaxListenersExceededWarning';
-      w.target = this;
-      w.type = type;
-      w.count = size;
-      process.emitWarning(w);
-    }
-  }
-
   setMaxListeners(n) {
-    validateInteger(n, 'n', 0);
-    this[kMaxListeners] = n;
-    return this;
+    EventEmitter.setMaxListeners(n, this);
   }
 
   getMaxListeners() {
-    return this[kMaxListeners];
+    return this[kMaxEventTargetListeners];
   }
 
   eventNames() {
@@ -462,6 +486,14 @@ class NodeEventTarget extends EventTarget {
     this.addEventListener(type, listener, { [kIsNodeStyleListener]: true });
     return this;
   }
+  emit(type, arg) {
+    if (typeof type !== 'string') {
+      throw new ERR_INVALID_ARG_TYPE('type', 'string', type);
+    }
+    const hadListeners = this.listenerCount(type) > 0;
+    this[kHybridDispatch](arg, type);
+    return hadListeners;
+  }
 
   once(type, listener) {
     this.addEventListener(type, listener,
@@ -480,7 +512,7 @@ class NodeEventTarget extends EventTarget {
   }
 }
 
-Object.defineProperties(NodeEventTarget.prototype, {
+ObjectDefineProperties(NodeEventTarget.prototype, {
   setMaxListeners: { enumerable: true },
   getMaxListeners: { enumerable: true },
   eventNames: { enumerable: true },
@@ -490,6 +522,7 @@ Object.defineProperties(NodeEventTarget.prototype, {
   on: { enumerable: true },
   addListener: { enumerable: true },
   once: { enumerable: true },
+  emit: { enumerable: true },
   removeAllListeners: { enumerable: true },
 });
 
@@ -497,9 +530,7 @@ Object.defineProperties(NodeEventTarget.prototype, {
 
 function shouldAddListener(listener) {
   if (typeof listener === 'function' ||
-      (listener != null &&
-       typeof listener === 'object' &&
-       typeof listener.handleEvent === 'function')) {
+      typeof listener?.handleEvent === 'function') {
     return true;
   }
 
@@ -512,7 +543,9 @@ function shouldAddListener(listener) {
 function validateEventListenerOptions(options) {
   if (typeof options === 'boolean')
     return { capture: options };
-  validateObject(options, 'options');
+  validateObject(options, 'options', {
+    allowArray: true, allowFunction: true,
+  });
   return {
     once: Boolean(options.once),
     capture: Boolean(options.capture),
@@ -527,13 +560,13 @@ function validateEventListenerOptions(options) {
 // It stands in its current implementation as a compromise.
 // Ref: https://github.com/nodejs/node/pull/33661
 function isEventTarget(obj) {
-  return obj && obj.constructor && obj.constructor[kIsEventTarget];
+  return obj?.constructor?.[kIsEventTarget];
 }
 
 function addCatch(that, promise, event) {
   const then = promise.then;
   if (typeof then === 'function') {
-    then.call(promise, undefined, function(err) {
+    FunctionPrototypeCall(then, promise, undefined, function(err) {
       // The callback is called with nextTick to avoid a follow-up
       // rejection from this promise.
       process.nextTick(emitUnhandledRejectionOrErr, that, err, event);
@@ -545,22 +578,50 @@ function emitUnhandledRejectionOrErr(that, err, event) {
   process.emit('error', err, event);
 }
 
+function makeEventHandler(handler) {
+  // Event handlers are dispatched in the order they were first set
+  // See https://github.com/nodejs/node/pull/35949#issuecomment-722496598
+  function eventHandler(...args) {
+    if (typeof eventHandler.handler !== 'function') {
+      return;
+    }
+    return ReflectApply(eventHandler.handler, this, args);
+  }
+  eventHandler.handler = handler;
+  return eventHandler;
+}
+
 function defineEventHandler(emitter, name) {
   // 8.1.5.1 Event handlers - basically `on[eventName]` attributes
-  let eventHandlerValue;
-  Object.defineProperty(emitter, `on${name}`, {
+  ObjectDefineProperty(emitter, `on${name}`, {
     get() {
-      return eventHandlerValue;
+      return this[kHandlers]?.get(name)?.handler;
     },
     set(value) {
-      if (eventHandlerValue) {
-        emitter.removeEventListener(name, eventHandlerValue);
+      if (!this[kHandlers]) {
+        this[kHandlers] = new SafeMap();
       }
-      if (typeof value === 'function') {
-        emitter.addEventListener(name, value);
+      let wrappedHandler = this[kHandlers]?.get(name);
+      if (wrappedHandler) {
+        if (typeof wrappedHandler.handler === 'function') {
+          this[kEvents].get(name).size--;
+          const size = this[kEvents].get(name).size;
+          this[kRemoveListener](size, name, wrappedHandler.handler, false);
+        }
+        wrappedHandler.handler = value;
+        if (typeof wrappedHandler.handler === 'function') {
+          this[kEvents].get(name).size++;
+          const size = this[kEvents].get(name).size;
+          this[kNewListener](size, name, value, false, false, false);
+        }
+      } else {
+        wrappedHandler = makeEventHandler(value);
+        this.addEventListener(name, wrappedHandler);
       }
-      eventHandlerValue = value;
-    }
+      this[kHandlers].set(name, wrappedHandler);
+    },
+    configurable: true,
+    enumerable: true
   });
 }
 module.exports = {
@@ -572,5 +633,8 @@ module.exports = {
   initNodeEventTarget,
   kCreateEvent,
   kNewListener,
+  kTrustEvent,
   kRemoveListener,
+  kEvents,
+  isEventTarget,
 };

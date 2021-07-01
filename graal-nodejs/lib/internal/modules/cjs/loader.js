@@ -23,28 +23,41 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeConcat,
+  ArrayPrototypeFilter,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
+  Boolean,
   Error,
   JSONParse,
-  Map,
   ObjectCreate,
   ObjectDefineProperty,
   ObjectFreeze,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetPrototypeOf,
   ObjectKeys,
+  ObjectPrototype,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
+  ReflectApply,
   ReflectSet,
   RegExpPrototypeTest,
   SafeMap,
   SafeWeakMap,
   String,
+  StringPrototypeCharAt,
+  StringPrototypeCharCodeAt,
   StringPrototypeEndsWith,
   StringPrototypeLastIndexOf,
   StringPrototypeIndexOf,
   StringPrototypeMatch,
   StringPrototypeSlice,
+  StringPrototypeSplit,
   StringPrototypeStartsWith,
 } = primordials;
 
@@ -59,6 +72,7 @@ module.exports = {
 
 const { NativeModule } = require('internal/bootstrap/loaders');
 const {
+  getSourceMapsEnabled,
   maybeCacheSourceMap,
   rekeySourceMap
 } = require('internal/source_map/source_map_cache');
@@ -81,7 +95,6 @@ const {
   loadNativeModule
 } = require('internal/modules/cjs/helpers');
 const { getOptionValue } = require('internal/options');
-const enableSourceMaps = getOptionValue('--enable-source-maps');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 // Do not eagerly grab .manifest, it may be in TDZ
@@ -128,6 +141,7 @@ const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
 let statCache = null;
+let isPreloading = false;
 
 function stat(filename) {
   filename = path.toNamespacedPath(filename);
@@ -142,8 +156,8 @@ function stat(filename) {
 
 function updateChildren(parent, child, scan) {
   const children = parent && parent.children;
-  if (children && !(scan && children.includes(child)))
-    children.push(child);
+  if (children && !(scan && ArrayPrototypeIncludes(children, child)))
+    ArrayPrototypePush(children, child);
 }
 
 function Module(id = '', parent) {
@@ -160,7 +174,7 @@ function Module(id = '', parent) {
 const builtinModules = [];
 for (const [id, mod] of NativeModule.map) {
   if (mod.canBeRequiredByUsers) {
-    builtinModules.push(id);
+    ArrayPrototypePush(builtinModules, id);
   }
 }
 
@@ -218,6 +232,10 @@ ObjectDefineProperty(Module, 'wrapper', {
     wrapperProxy = value;
   }
 });
+
+const isPreloadingDesc = { get() { return isPreloading; } };
+ObjectDefineProperty(Module.prototype, 'isPreloading', isPreloadingDesc);
+ObjectDefineProperty(NativeModule.prototype, 'isPreloading', isPreloadingDesc);
 
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
@@ -325,7 +343,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
 // In order to minimize unnecessary lstat() calls,
 // this cache is a list of known-real paths.
 // Set to an empty Map to reset.
-const realpathCache = new Map();
+const realpathCache = new SafeMap();
 
 // Check if the file exists and is not a directory
 // if using --preserve-symlinks and isMain is false,
@@ -365,10 +383,10 @@ function findLongestRegisteredExtension(filename) {
   let currentExtension;
   let index;
   let startIndex = 0;
-  while ((index = name.indexOf('.', startIndex)) !== -1) {
+  while ((index = StringPrototypeIndexOf(name, '.', startIndex)) !== -1) {
     startIndex = index + 1;
     if (index === 0) continue; // Skip dotfiles like .gitignore
-    currentExtension = name.slice(index);
+    currentExtension = StringPrototypeSlice(name, index);
     if (Module._extensions[currentExtension]) return currentExtension;
   }
   return '.js';
@@ -449,15 +467,15 @@ Module._findPath = function(request, paths, isMain) {
     return false;
   }
 
-  const cacheKey = request + '\x00' +
-                (paths.length === 1 ? paths[0] : paths.join('\x00'));
+  const cacheKey = request + '\x00' + ArrayPrototypeJoin(paths, '\x00');
   const entry = Module._pathCache[cacheKey];
   if (entry)
     return entry;
 
   let exts;
   let trailingSlash = request.length > 0 &&
-    request.charCodeAt(request.length - 1) === CHAR_FORWARD_SLASH;
+    StringPrototypeCharCodeAt(request, request.length - 1) ===
+    CHAR_FORWARD_SLASH;
   if (!trailingSlash) {
     trailingSlash = RegExpPrototypeTest(trailingSlashRegex, request);
   }
@@ -540,13 +558,14 @@ if (isWindows) {
 
     // return root node_modules when path is 'D:\\'.
     // path.resolve will make sure from.length >=3 in Windows.
-    if (from.charCodeAt(from.length - 1) === CHAR_BACKWARD_SLASH &&
-        from.charCodeAt(from.length - 2) === CHAR_COLON)
+    if (StringPrototypeCharCodeAt(from, from.length - 1) ===
+          CHAR_BACKWARD_SLASH &&
+        StringPrototypeCharCodeAt(from, from.length - 2) === CHAR_COLON)
       return [from + 'node_modules'];
 
     const paths = [];
     for (let i = from.length - 1, p = 0, last = from.length; i >= 0; --i) {
-      const code = from.charCodeAt(i);
+      const code = StringPrototypeCharCodeAt(from, i);
       // The path segment separator check ('\' and '/') was used to get
       // node_modules path for every path segment.
       // Use colon as an extra condition since we can get node_modules
@@ -556,7 +575,10 @@ if (isWindows) {
           code === CHAR_FORWARD_SLASH ||
           code === CHAR_COLON) {
         if (p !== nmLen)
-          paths.push(from.slice(0, last) + '\\node_modules');
+          ArrayPrototypePush(
+            paths,
+            StringPrototypeSlice(from, 0, last) + '\\node_modules'
+          );
         last = i;
         p = 0;
       } else if (p !== -1) {
@@ -585,10 +607,13 @@ if (isWindows) {
     // that works on both Windows and Posix is non-trivial.
     const paths = [];
     for (let i = from.length - 1, p = 0, last = from.length; i >= 0; --i) {
-      const code = from.charCodeAt(i);
+      const code = StringPrototypeCharCodeAt(from, i);
       if (code === CHAR_FORWARD_SLASH) {
         if (p !== nmLen)
-          paths.push(from.slice(0, last) + '/node_modules');
+          ArrayPrototypePush(
+            paths,
+            StringPrototypeSlice(from, 0, last) + '/node_modules'
+          );
         last = i;
         p = 0;
       } else if (p !== -1) {
@@ -601,7 +626,7 @@ if (isWindows) {
     }
 
     // Append /node_modules to handle root paths.
-    paths.push('/node_modules');
+    ArrayPrototypePush(paths, '/node_modules');
 
     return paths;
   };
@@ -614,15 +639,15 @@ Module._resolveLookupPaths = function(request, parent) {
   }
 
   // Check for node modules paths.
-  if (request.charAt(0) !== '.' ||
+  if (StringPrototypeCharAt(request, 0) !== '.' ||
       (request.length > 1 &&
-      request.charAt(1) !== '.' &&
-      request.charAt(1) !== '/' &&
-      (!isWindows || request.charAt(1) !== '\\'))) {
+      StringPrototypeCharAt(request, 1) !== '.' &&
+      StringPrototypeCharAt(request, 1) !== '/' &&
+      (!isWindows || StringPrototypeCharAt(request, 1) !== '\\'))) {
 
     let paths = modulePaths;
     if (parent != null && parent.paths && parent.paths.length) {
-      paths = parent.paths.concat(paths);
+      paths = ArrayPrototypeConcat(parent.paths, paths);
     }
 
     debug('looking for %j in %j', request, paths);
@@ -673,14 +698,10 @@ const CircularRequirePrototypeWarningProxy = new Proxy({}, {
   }
 });
 
-// Object.prototype and ObjectPrototype refer to our 'primordials' versions
-// and are not identical to the versions on the global object.
-const PublicObjectPrototype = global.Object.prototype;
-
 function getExportsForCircularRequire(module) {
   if (module.exports &&
       !isProxy(module.exports) &&
-      ObjectGetPrototypeOf(module.exports) === PublicObjectPrototype &&
+      ObjectGetPrototypeOf(module.exports) === ObjectPrototype &&
       // Exclude transpiled ES6 modules / TypeScript code because those may
       // employ unusual patterns for accessing 'module.exports'. That should
       // be okay because ES6 modules have a different approach to circular
@@ -758,7 +779,7 @@ Module._load = function(request, parent, isMain) {
     // Intercept exceptions that occur during the first tick and rekey them
     // on error instance rather than module instance (which will immediately be
     // garbage collected).
-    if (enableSourceMaps) {
+    if (getSourceMapsEnabled()) {
       try {
         module.load(filename);
       } catch (err) {
@@ -776,9 +797,9 @@ Module._load = function(request, parent, isMain) {
         delete relativeResolveCache[relResolveCacheIdentifier];
         const children = parent && parent.children;
         if (ArrayIsArray(children)) {
-          const index = children.indexOf(module);
+          const index = ArrayPrototypeIndexOf(children, module);
           if (index !== -1) {
-            children.splice(index, 1);
+            ArrayPrototypeSplice(children, index, 1);
           }
         }
       }
@@ -786,7 +807,7 @@ Module._load = function(request, parent, isMain) {
                !isProxy(module.exports) &&
                ObjectGetPrototypeOf(module.exports) ===
                  CircularRequirePrototypeWarningProxy) {
-      ObjectSetPrototypeOf(module.exports, PublicObjectPrototype);
+      ObjectSetPrototypeOf(module.exports, ObjectPrototype);
     }
   }
 
@@ -802,10 +823,10 @@ Module._resolveFilename = function(request, parent, isMain, options) {
 
   if (typeof options === 'object' && options !== null) {
     if (ArrayIsArray(options.paths)) {
-      const isRelative = request.startsWith('./') ||
-          request.startsWith('../') ||
-          ((isWindows && request.startsWith('.\\')) ||
-          request.startsWith('..\\'));
+      const isRelative = StringPrototypeStartsWith(request, './') ||
+          StringPrototypeStartsWith(request, '../') ||
+          ((isWindows && StringPrototypeStartsWith(request, '.\\')) ||
+          StringPrototypeStartsWith(request, '..\\'));
 
       if (isRelative) {
         paths = options.paths;
@@ -820,8 +841,8 @@ Module._resolveFilename = function(request, parent, isMain, options) {
           const lookupPaths = Module._resolveLookupPaths(request, fakeParent);
 
           for (let j = 0; j < lookupPaths.length; j++) {
-            if (!paths.includes(lookupPaths[j]))
-              paths.push(lookupPaths[j]);
+            if (!ArrayPrototypeIncludes(paths, lookupPaths[j]))
+              ArrayPrototypePush(paths, lookupPaths[j]);
           }
         }
       }
@@ -870,11 +891,12 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   for (let cursor = parent;
     cursor;
     cursor = cursor.parent) {
-    requireStack.push(cursor.filename || cursor.id);
+    ArrayPrototypePush(requireStack, cursor.filename || cursor.id);
   }
   let message = `Cannot find module '${request}'`;
   if (requireStack.length > 0) {
-    message = message + '\nRequire stack:\n- ' + requireStack.join('\n- ');
+    message = message + '\nRequire stack:\n- ' +
+              ArrayPrototypeJoin(requireStack, '\n- ');
   }
   // eslint-disable-next-line no-restricted-syntax
   const err = new Error(message);
@@ -885,7 +907,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
 
 function finalizeEsmResolution(match, request, parentPath, pkgPath) {
   const { resolved, exact } = match;
-  if (StringPrototypeMatch(resolved, encodedSepRegEx))
+  if (RegExpPrototypeTest(encodedSepRegEx, resolved))
     throw new ERR_INVALID_MODULE_SPECIFIER(
       resolved, 'must not include encoded "/" or "\\" characters', parentPath);
   const filename = fileURLToPath(resolved);
@@ -922,9 +944,9 @@ Module.prototype.load = function(filename) {
 
   const extension = findLongestRegisteredExtension(filename);
   // allow .mjs to be overridden
-  if (filename.endsWith('.mjs') && !Module._extensions['.mjs']) {
+  if (StringPrototypeEndsWith(filename, '.mjs') && !Module._extensions['.mjs'])
     throw new ERR_REQUIRE_ESM(filename);
-  }
+
   Module._extensions[extension](this, filename);
   this.loaded = true;
 
@@ -1055,13 +1077,13 @@ Module.prototype._compile = function(content, filename) {
   const exports = this.exports;
   const thisValue = exports;
   const module = this;
-  if (requireDepth === 0) statCache = new Map();
+  if (requireDepth === 0) statCache = new SafeMap();
   if (inspectorWrapper) {
     result = inspectorWrapper(compiledWrapper, thisValue, exports,
                               require, module, filename, dirname);
   } else {
-    result = compiledWrapper.call(thisValue, exports, require, module,
-                                  filename, dirname);
+    result = ReflectApply(compiledWrapper, thisValue,
+                          [exports, require, module, filename, dirname]);
   }
   hasLoadedAnyUserCJSModule = true;
   if (requireDepth === 0) statCache = null;
@@ -1070,7 +1092,7 @@ Module.prototype._compile = function(content, filename) {
 
 // Native extension for .js
 Module._extensions['.js'] = function(module, filename) {
-  if (filename.endsWith('.js')) {
+  if (StringPrototypeEndsWith(filename, '.js')) {
     const pkg = readPackageScope(filename);
     // Function require shouldn't be used in ES modules.
     if (pkg && pkg.data && pkg.data.type === 'module') {
@@ -1125,7 +1147,8 @@ Module._extensions['.node'] = function(module, filename) {
 function createRequireFromPath(filename) {
   // Allow a directory to be passed as the filename
   const trailingSlash =
-    filename.endsWith('/') || (isWindows && filename.endsWith('\\'));
+    StringPrototypeEndsWith(filename, '/') ||
+    (isWindows && StringPrototypeEndsWith(filename, '\\'));
 
   const proxyPath = trailingSlash ?
     path.join(filename, 'noop.js') :
@@ -1182,25 +1205,28 @@ Module._initPaths = function() {
   let paths = [path.resolve(prefixDir, 'lib', 'node')];
 
   if (homeDir) {
-    paths.unshift(path.resolve(homeDir, '.node_libraries'));
-    paths.unshift(path.resolve(homeDir, '.node_modules'));
+    ArrayPrototypeUnshift(paths, path.resolve(homeDir, '.node_libraries'));
+    ArrayPrototypeUnshift(paths, path.resolve(homeDir, '.node_modules'));
   }
 
   if (nodePath) {
-    paths = nodePath.split(path.delimiter).filter(function pathsFilterCB(path) {
-      return !!path;
-    }).concat(paths);
+    paths = ArrayPrototypeConcat(ArrayPrototypeFilter(
+      StringPrototypeSplit(nodePath, path.delimiter),
+      Boolean
+    ), paths);
   }
 
   modulePaths = paths;
 
   // Clone as a shallow copy, for introspection.
-  Module.globalPaths = modulePaths.slice(0);
+  Module.globalPaths = ArrayPrototypeSlice(modulePaths);
 };
 
 Module._preloadModules = function(requests) {
   if (!ArrayIsArray(requests))
     return;
+
+  isPreloading = true;
 
   // Preloaded modules have a dummy parent module which is deemed to exist
   // in the current working directory. This seeds the search path for
@@ -1210,11 +1236,13 @@ Module._preloadModules = function(requests) {
     parent.paths = Module._nodeModulePaths(process.cwd());
   } catch (e) {
     if (e.code !== 'ENOENT') {
+      isPreloading = false;
       throw e;
     }
   }
   for (let n = 0; n < requests.length; n++)
     parent.require(requests[n]);
+  isPreloading = false;
 };
 
 Module.syncBuiltinESMExports = function syncBuiltinESMExports() {

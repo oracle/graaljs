@@ -22,6 +22,7 @@
 'use strict';
 
 const {
+  ArrayPrototypeSlice,
   Boolean,
   Error,
   ErrorCaptureStackTrace,
@@ -29,12 +30,12 @@ const {
   NumberIsNaN,
   ObjectCreate,
   ObjectDefineProperty,
+  ObjectDefineProperties,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   Promise,
   PromiseReject,
   PromiseResolve,
-  ReflectApply,
   ReflectOwnKeys,
   String,
   Symbol,
@@ -46,6 +47,7 @@ const kRejection = SymbolFor('nodejs.rejection');
 let spliceOne;
 
 const {
+  hideStackFrames,
   kEnhanceStackBeforeInspector,
   codes
 } = require('internal/errors');
@@ -59,8 +61,23 @@ const {
   inspect
 } = require('internal/util/inspect');
 
+const {
+  validateAbortSignal
+} = require('internal/validators');
+
 const kCapture = Symbol('kCapture');
 const kErrorMonitor = Symbol('events.errorMonitor');
+const kMaxEventTargetListeners = Symbol('events.maxEventTargetListeners');
+const kMaxEventTargetListenersWarned =
+  Symbol('events.maxEventTargetListenersWarned');
+
+let DOMException;
+const lazyDOMException = hideStackFrames((message, name) => {
+  if (DOMException === undefined)
+    DOMException = internalBinding('messaging').DOMException;
+  return new DOMException(message, name);
+});
+
 
 function EventEmitter(opts) {
   EventEmitter.init.call(this, opts);
@@ -68,7 +85,7 @@ function EventEmitter(opts) {
 module.exports = EventEmitter;
 module.exports.once = once;
 module.exports.on = on;
-
+module.exports.getEventListeners = getEventListeners;
 // Backwards-compat with node 0.10.x
 EventEmitter.EventEmitter = EventEmitter;
 
@@ -106,6 +123,7 @@ EventEmitter.prototype._maxListeners = undefined;
 // By default EventEmitters will print a warning if more than 10 listeners are
 // added to it. This is a useful default which helps finding memory leaks.
 let defaultMaxListeners = 10;
+let isEventTarget;
 
 function checkListener(listener) {
   if (typeof listener !== 'function') {
@@ -128,6 +146,48 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
   }
 });
 
+ObjectDefineProperties(EventEmitter, {
+  kMaxEventTargetListeners: {
+    value: kMaxEventTargetListeners,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  },
+  kMaxEventTargetListenersWarned: {
+    value: kMaxEventTargetListenersWarned,
+    enumerable: false,
+    configurable: false,
+    writable: false,
+  }
+});
+
+EventEmitter.setMaxListeners =
+  function(n = defaultMaxListeners, ...eventTargets) {
+    if (typeof n !== 'number' || n < 0 || NumberIsNaN(n))
+      throw new ERR_OUT_OF_RANGE('n', 'a non-negative number', n);
+    if (eventTargets.length === 0) {
+      defaultMaxListeners = n;
+    } else {
+      if (isEventTarget === undefined)
+        isEventTarget = require('internal/event_target').isEventTarget;
+
+      for (let i = 0; i < eventTargets.length; i++) {
+        const target = eventTargets[i];
+        if (isEventTarget(target)) {
+          target[kMaxEventTargetListeners] = n;
+          target[kMaxEventTargetListenersWarned] = false;
+        } else if (typeof target.setMaxListeners === 'function') {
+          target.setMaxListeners(n);
+        } else {
+          throw new ERR_INVALID_ARG_TYPE(
+            'eventTargets',
+            ['EventEmitter', 'EventTarget'],
+            target);
+        }
+      }
+    }
+  };
+
 EventEmitter.init = function(opts) {
 
   if (this._events === undefined ||
@@ -139,7 +199,7 @@ EventEmitter.init = function(opts) {
   this._maxListeners = this._maxListeners || undefined;
 
 
-  if (opts && opts.captureRejections) {
+  if (opts?.captureRejections) {
     if (typeof opts.captureRejections !== 'boolean') {
       throw new ERR_INVALID_ARG_TYPE('options.captureRejections',
                                      'boolean', opts.captureRejections);
@@ -312,7 +372,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     return false;
 
   if (typeof handler === 'function') {
-    const result = ReflectApply(handler, this, args);
+    const result = handler.apply(this, args);
 
     // We check if result is undefined first because that
     // is the most common case so we do not pay any perf
@@ -324,7 +384,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
     const len = handler.length;
     const listeners = arrayClone(handler);
     for (let i = 0; i < len; ++i) {
-      const result = ReflectApply(listeners[i], this, args);
+      const result = listeners[i].apply(this, args);
 
       // We check if result is undefined first because that
       // is the most common case so we do not pay any perf
@@ -609,7 +669,7 @@ function arrayClone(arr) {
     case 5: return [arr[0], arr[1], arr[2], arr[3], arr[4]];
     case 6: return [arr[0], arr[1], arr[2], arr[3], arr[4], arr[5]];
   }
-  return arr.slice();
+  return ArrayPrototypeSlice(arr);
 }
 
 function unwrapListeners(arr) {
@@ -622,21 +682,82 @@ function unwrapListeners(arr) {
   return ret;
 }
 
-function once(emitter, name) {
+function getEventListeners(emitterOrTarget, type) {
+  // First check if EventEmitter
+  if (typeof emitterOrTarget.listeners === 'function') {
+    return emitterOrTarget.listeners(type);
+  }
+  // Require event target lazily to avoid always loading it
+  const { isEventTarget, kEvents } = require('internal/event_target');
+  if (isEventTarget(emitterOrTarget)) {
+    const root = emitterOrTarget[kEvents].get(type);
+    const listeners = [];
+    let handler = root?.next;
+    while (handler?.listener !== undefined) {
+      listeners.push(handler.listener);
+      handler = handler.next;
+    }
+    return listeners;
+  }
+  throw new ERR_INVALID_ARG_TYPE('emitter',
+                                 ['EventEmitter', 'EventTarget'],
+                                 emitterOrTarget);
+}
+
+async function once(emitter, name, options = {}) {
+  const signal = options?.signal;
+  validateAbortSignal(signal, 'options.signal');
+  if (signal?.aborted)
+    throw lazyDOMException('The operation was aborted', 'AbortError');
   return new Promise((resolve, reject) => {
     const errorListener = (err) => {
       emitter.removeListener(name, resolver);
+      if (signal != null) {
+        eventTargetAgnosticRemoveListener(
+          signal,
+          'abort',
+          abortListener,
+          { once: true });
+      }
       reject(err);
     };
     const resolver = (...args) => {
       if (typeof emitter.removeListener === 'function') {
         emitter.removeListener('error', errorListener);
       }
+      if (signal != null) {
+        eventTargetAgnosticRemoveListener(
+          signal,
+          'abort',
+          abortListener,
+          { once: true });
+      }
       resolve(args);
     };
     eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
     if (name !== 'error') {
       addErrorHandlerIfEventEmitter(emitter, errorListener, { once: true });
+    }
+    function abortListener() {
+      if (typeof emitter.removeListener === 'function') {
+        emitter.removeListener(name, resolver);
+        emitter.removeListener('error', errorListener);
+      } else {
+        eventTargetAgnosticRemoveListener(
+          emitter,
+          name,
+          resolver,
+          { once: true });
+        eventTargetAgnosticRemoveListener(
+          emitter,
+          'error',
+          errorListener,
+          { once: true });
+      }
+      reject(lazyDOMException('The operation was aborted', 'AbortError'));
+    }
+    if (signal != null) {
+      signal.addEventListener('abort', abortListener, { once: true });
     }
   });
 }
@@ -666,7 +787,7 @@ function eventTargetAgnosticRemoveListener(emitter, name, listener, flags) {
 
 function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
   if (typeof emitter.on === 'function') {
-    if (flags && flags.once) {
+    if (flags?.once) {
       emitter.once(name, listener);
     } else {
       emitter.on(name, listener);
@@ -680,7 +801,13 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
   }
 }
 
-function on(emitter, event) {
+function on(emitter, event, options) {
+  const signal = options?.signal;
+  validateAbortSignal(signal, 'options.signal');
+  if (signal?.aborted) {
+    throw lazyDOMException('The operation was aborted', 'AbortError');
+  }
+
   const unconsumedEvents = [];
   const unconsumedPromises = [];
   let error = null;
@@ -718,6 +845,15 @@ function on(emitter, event) {
     return() {
       eventTargetAgnosticRemoveListener(emitter, event, eventHandler);
       eventTargetAgnosticRemoveListener(emitter, 'error', errorHandler);
+
+      if (signal) {
+        eventTargetAgnosticRemoveListener(
+          signal,
+          'abort',
+          abortListener,
+          { once: true });
+      }
+
       finished = true;
 
       for (const promise of unconsumedPromises) {
@@ -747,8 +883,19 @@ function on(emitter, event) {
     addErrorHandlerIfEventEmitter(emitter, errorHandler);
   }
 
+  if (signal) {
+    eventTargetAgnosticAddListener(
+      signal,
+      'abort',
+      abortListener,
+      { once: true });
+  }
 
   return iterator;
+
+  function abortListener() {
+    errorHandler(lazyDOMException('The operation was aborted', 'AbortError'));
+  }
 
   function eventHandler(...args) {
     const promise = unconsumedPromises.shift();

@@ -22,9 +22,9 @@
 'use strict';
 
 const {
-  ObjectCreate,
   MathTrunc,
-  Promise,
+  ObjectCreate,
+  ObjectDefineProperty,
   SymbolToPrimitive
 } = primordials;
 
@@ -36,6 +36,7 @@ const L = require('internal/linkedlist');
 const {
   async_id_symbol,
   Timeout,
+  Immediate,
   decRefCount,
   immediateInfoFields: {
     kCount,
@@ -43,7 +44,6 @@ const {
   },
   kRefed,
   kHasPrimitive,
-  initAsyncResource,
   getTimerDuration,
   timerListMap,
   timerListQueue,
@@ -60,6 +60,8 @@ let debug = require('internal/util/debuglog').debuglog('timer', (fn) => {
   debug = fn;
 });
 const { validateCallback } = require('internal/validators');
+
+let timersPromises;
 
 const {
   destroyHooksExist,
@@ -129,7 +131,6 @@ function enroll(item, msecs) {
  * DOM-style timers
  */
 
-
 function setTimeout(callback, after, arg1, arg2, arg3) {
   validateCallback(callback);
 
@@ -160,13 +161,14 @@ function setTimeout(callback, after, arg1, arg2, arg3) {
   return timeout;
 }
 
-setTimeout[customPromisify] = function(after, value) {
-  const args = value !== undefined ? [value] : value;
-  return new Promise((resolve) => {
-    const timeout = new Timeout(resolve, after, args, false, true);
-    insert(timeout, timeout._idleTimeout);
-  });
-};
+ObjectDefineProperty(setTimeout, customPromisify, {
+  enumerable: true,
+  get() {
+    if (!timersPromises)
+      timersPromises = require('internal/timers/promises');
+    return timersPromises.setTimeout;
+  }
+});
 
 function clearTimeout(timer) {
   if (timer && timer._onTimeout) {
@@ -234,46 +236,6 @@ Timeout.prototype[SymbolToPrimitive] = function() {
   return id;
 };
 
-const Immediate = class Immediate {
-  constructor(callback, args) {
-    this._idleNext = null;
-    this._idlePrev = null;
-    this._onImmediate = callback;
-    this._argv = args;
-    this._destroyed = false;
-    this[kRefed] = false;
-
-    initAsyncResource(this, 'Immediate');
-
-    this.ref();
-    immediateInfo[kCount]++;
-
-    immediateQueue.append(this);
-  }
-
-  ref() {
-    if (this[kRefed] === false) {
-      this[kRefed] = true;
-      if (immediateInfo[kRefCount]++ === 0)
-        toggleImmediateRef(true);
-    }
-    return this;
-  }
-
-  unref() {
-    if (this[kRefed] === true) {
-      this[kRefed] = false;
-      if (--immediateInfo[kRefCount] === 0)
-        toggleImmediateRef(false);
-    }
-    return this;
-  }
-
-  hasRef() {
-    return !!this[kRefed];
-  }
-};
-
 function setImmediate(callback, arg1, arg2, arg3) {
   validateCallback(callback);
 
@@ -300,9 +262,15 @@ function setImmediate(callback, arg1, arg2, arg3) {
   return new Immediate(callback, args);
 }
 
-setImmediate[customPromisify] = function(value) {
-  return new Promise((resolve) => new Immediate(resolve, [value]));
-};
+ObjectDefineProperty(setImmediate, customPromisify, {
+  enumerable: true,
+  get() {
+    if (!timersPromises)
+      timersPromises = require('internal/timers/promises');
+    return timersPromises.setImmediate;
+  }
+});
+
 
 function clearImmediate(immediate) {
   if (!immediate || immediate._destroyed)
@@ -315,7 +283,7 @@ function clearImmediate(immediate) {
     toggleImmediateRef(false);
   immediate[kRefed] = null;
 
-  if (destroyHooksExist()) {
+  if (destroyHooksExist() && immediate[async_id_symbol] !== undefined) {
     emitDestroy(immediate[async_id_symbol]);
   }
 

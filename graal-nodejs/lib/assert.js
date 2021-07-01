@@ -21,16 +21,29 @@
 'use strict';
 
 const {
+  ArrayPrototypeIndexOf,
+  ArrayPrototypeJoin,
+  ArrayPrototypePush,
+  ArrayPrototypeShift,
+  ArrayPrototypeSlice,
   Error,
   ErrorCaptureStackTrace,
+  FunctionPrototypeBind,
+  NumberIsNaN,
   ObjectAssign,
   ObjectIs,
   ObjectKeys,
   ObjectPrototypeIsPrototypeOf,
-  Map,
-  NumberIsNaN,
+  ReflectApply,
   RegExpPrototypeTest,
+  SafeMap,
   String,
+  StringPrototypeCharCodeAt,
+  StringPrototypeIncludes,
+  StringPrototypeIndexOf,
+  StringPrototypeReplace,
+  StringPrototypeSlice,
+  StringPrototypeSplit,
 } = primordials;
 
 const { Buffer } = require('buffer');
@@ -52,7 +65,7 @@ const { EOL } = require('internal/constants');
 const { NativeModule } = require('internal/bootstrap/loaders');
 const { isError } = require('internal/util');
 
-const errorCache = new Map();
+const errorCache = new SafeMap();
 const CallTracker = require('internal/assert/calltracker');
 
 let isDeepEqual;
@@ -81,7 +94,7 @@ const meta = [
   '\\u001e', '\\u001f'
 ];
 
-const escapeFn = (str) => meta[str.charCodeAt(0)];
+const escapeFn = (str) => meta[StringPrototypeCharCodeAt(str, 0)];
 
 let warned = false;
 
@@ -105,6 +118,14 @@ function innerFail(obj) {
   throw new AssertionError(obj);
 }
 
+/**
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @param {string} [operator]
+ * @param {Function} [stackStartFn]
+ * @returns {never}
+ */
 function fail(actual, expected, message, operator, stackStartFn) {
   const argsLen = arguments.length;
 
@@ -232,7 +253,7 @@ function parseCode(code, offset) {
       classFields,
       staticClassFeatures
     );
-    parseExpressionAt = Parser.parseExpressionAt.bind(Parser);
+    parseExpressionAt = FunctionPrototypeBind(Parser.parseExpressionAt, Parser);
   }
   let node;
   let start = 0;
@@ -257,8 +278,9 @@ function parseCode(code, offset) {
 
   return [
     node.node.start,
-    code.slice(node.node.start, node.node.end)
-        .replace(escapeSequencesRegExp, escapeFn)
+    StringPrototypeReplace(StringPrototypeSlice(code,
+                                                node.node.start, node.node.end),
+                           escapeSequencesRegExp, escapeFn)
   ];
 }
 
@@ -322,23 +344,24 @@ function getErrMessage(message, fn) {
       decoder.end();
     } else {
       for (let i = 0; i < line; i++) {
-        code = code.slice(code.indexOf('\n') + 1);
+        code = StringPrototypeSlice(code,
+                                    StringPrototypeIndexOf(code, '\n') + 1);
       }
       [column, message] = parseCode(code, column);
     }
     // Always normalize indentation, otherwise the message could look weird.
-    if (message.includes('\n')) {
+    if (StringPrototypeIncludes(message, '\n')) {
       if (EOL === '\r\n') {
-        message = message.replace(/\r\n/g, '\n');
+        message = StringPrototypeReplace(message, /\r\n/g, '\n');
       }
-      const frames = message.split('\n');
-      message = frames.shift();
+      const frames = StringPrototypeSplit(message, '\n');
+      message = ArrayPrototypeShift(frames);
       for (const frame of frames) {
         let pos = 0;
         while (pos < column && (frame[pos] === ' ' || frame[pos] === '\t')) {
           pos++;
         }
-        message += `\n  ${frame.slice(pos)}`;
+        message += `\n  ${StringPrototypeSlice(frame, pos)}`;
       }
     }
     message = `The expression evaluated to a falsy value:\n\n  ${message}\n`;
@@ -384,14 +407,24 @@ function innerOk(fn, argLen, value, message) {
   }
 }
 
-// Pure assertion tests whether a value is truthy, as determined
-// by !!value.
+/**
+ * Pure assertion tests whether a value is truthy, as determined
+ * by !!value.
+ * @param {...any} args
+ * @returns {void}
+ */
 function ok(...args) {
   innerOk(ok, args.length, ...args);
 }
 assert.ok = ok;
 
-// The equality assertion tests shallow, coercive equality with ==.
+/**
+ * The equality assertion tests shallow, coercive equality with ==.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 /* eslint-disable no-restricted-properties */
 assert.equal = function equal(actual, expected, message) {
   if (arguments.length < 2) {
@@ -409,8 +442,14 @@ assert.equal = function equal(actual, expected, message) {
   }
 };
 
-// The non-equality assertion tests for whether two objects are not
-// equal with !=.
+/**
+ * The non-equality assertion tests for whether two objects are not
+ * equal with !=.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.notEqual = function notEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
@@ -427,7 +466,13 @@ assert.notEqual = function notEqual(actual, expected, message) {
   }
 };
 
-// The equivalence assertion tests a deep equality relation.
+/**
+ * The deep equivalence assertion tests a deep equality relation.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.deepEqual = function deepEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
@@ -444,7 +489,13 @@ assert.deepEqual = function deepEqual(actual, expected, message) {
   }
 };
 
-// The non-equivalence assertion tests for any deep inequality.
+/**
+ * The deep non-equivalence assertion tests for any deep inequality.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
@@ -462,6 +513,14 @@ assert.notDeepEqual = function notDeepEqual(actual, expected, message) {
 };
 /* eslint-enable */
 
+/**
+ * The deep strict equivalence assertion tests a deep strict equality
+ * relation.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.deepStrictEqual = function deepStrictEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
@@ -478,6 +537,14 @@ assert.deepStrictEqual = function deepStrictEqual(actual, expected, message) {
   }
 };
 
+/**
+ * The deep strict non-equivalence assertion tests for any deep strict
+ * inequality.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.notDeepStrictEqual = notDeepStrictEqual;
 function notDeepStrictEqual(actual, expected, message) {
   if (arguments.length < 2) {
@@ -495,6 +562,13 @@ function notDeepStrictEqual(actual, expected, message) {
   }
 }
 
+/**
+ * The strict equivalence assertion tests a strict equality relation.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.strictEqual = function strictEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
@@ -510,6 +584,13 @@ assert.strictEqual = function strictEqual(actual, expected, message) {
   }
 };
 
+/**
+ * The strict non-equivalence assertion tests for any strict inequality.
+ * @param {any} actual
+ * @param {any} expected
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.notStrictEqual = function notStrictEqual(actual, expected, message) {
   if (arguments.length < 2) {
     throw new ERR_MISSING_ARGS('actual', 'expected');
@@ -604,7 +685,7 @@ function expectedException(actual, expected, message, fn) {
       // Special handle errors to make sure the name and the message are
       // compared as well.
       if (expected instanceof Error) {
-        keys.push('name', 'message');
+        ArrayPrototypePush(keys, 'name', 'message');
       } else if (keys.length === 0) {
         throw new ERR_INVALID_ARG_VALUE('error',
                                         expected, 'may not be an empty object');
@@ -647,7 +728,7 @@ function expectedException(actual, expected, message, fn) {
     throwError = true;
   } else {
     // Check validation functions return value.
-    const res = expected.call({}, actual);
+    const res = ReflectApply(expected, {}, [actual]);
     if (res !== true) {
       if (!message) {
         generatedMessage = true;
@@ -792,7 +873,7 @@ function hasMatchingError(actual, expected) {
   if (ObjectPrototypeIsPrototypeOf(Error, expected)) {
     return false;
   }
-  return expected.call({}, actual) === true;
+  return ReflectApply(expected, {}, [actual]) === true;
 }
 
 function expectsNoError(stackStartFn, actual, error, message) {
@@ -820,22 +901,51 @@ function expectsNoError(stackStartFn, actual, error, message) {
   throw actual;
 }
 
+/**
+ * Expects the function `promiseFn` to throw an error.
+ * @param {() => any} promiseFn
+ * @param {...any} [args]
+ * @returns {void}
+ */
 assert.throws = function throws(promiseFn, ...args) {
   expectsError(throws, getActual(promiseFn), ...args);
 };
 
+/**
+ * Expects `promiseFn` function or its value to reject.
+ * @param {() => Promise<any>} promiseFn
+ * @param {...any} [args]
+ * @returns {Promise<void>}
+ */
 assert.rejects = async function rejects(promiseFn, ...args) {
   expectsError(rejects, await waitForActual(promiseFn), ...args);
 };
 
+/**
+ * Asserts that the function `fn` does not throw an error.
+ * @param {() => any} fn
+ * @param {...any} [args]
+ * @returns {void}
+ */
 assert.doesNotThrow = function doesNotThrow(fn, ...args) {
   expectsNoError(doesNotThrow, getActual(fn), ...args);
 };
 
+/**
+ * Expects `fn` or its value to not reject.
+ * @param {() => Promise<any>} fn
+ * @param {...any} [args]
+ * @returns {Promise<void>}
+ */
 assert.doesNotReject = async function doesNotReject(fn, ...args) {
   expectsNoError(doesNotReject, await waitForActual(fn), ...args);
 };
 
+/**
+ * Throws `value` if the value is not `null` or `undefined`.
+ * @param {any} err
+ * @returns {void}
+ */
 assert.ifError = function ifError(err) {
   if (err !== null && err !== undefined) {
     let message = 'ifError got unwanted exception: ';
@@ -864,20 +974,21 @@ assert.ifError = function ifError(err) {
       // This will remove any duplicated frames from the error frames taken
       // from within `ifError` and add the original error frames to the newly
       // created ones.
-      const tmp2 = origStack.split('\n');
-      tmp2.shift();
+      const tmp2 = StringPrototypeSplit(origStack, '\n');
+      ArrayPrototypeShift(tmp2);
       // Filter all frames existing in err.stack.
-      let tmp1 = newErr.stack.split('\n');
+      let tmp1 = StringPrototypeSplit(newErr.stack, '\n');
       for (const errFrame of tmp2) {
         // Find the first occurrence of the frame.
-        const pos = tmp1.indexOf(errFrame);
+        const pos = ArrayPrototypeIndexOf(tmp1, errFrame);
         if (pos !== -1) {
           // Only keep new frames.
-          tmp1 = tmp1.slice(0, pos);
+          tmp1 = ArrayPrototypeSlice(tmp1, 0, pos);
           break;
         }
       }
-      newErr.stack = `${tmp1.join('\n')}\n${tmp2.join('\n')}`;
+      newErr.stack =
+        `${ArrayPrototypeJoin(tmp1, '\n')}\n${ArrayPrototypeJoin(tmp2, '\n')}`;
     }
 
     throw newErr;
@@ -919,24 +1030,44 @@ function internalMatch(string, regexp, message, fn) {
   }
 }
 
+/**
+ * Expects the `string` input to match the regular expression.
+ * @param {string} string
+ * @param {RegExp} regexp
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.match = function match(string, regexp, message) {
   internalMatch(string, regexp, message, match);
 };
 
+/**
+ * Expects the `string` input not to match the regular expression.
+ * @param {string} string
+ * @param {RegExp} regexp
+ * @param {string | Error} [message]
+ * @returns {void}
+ */
 assert.doesNotMatch = function doesNotMatch(string, regexp, message) {
   internalMatch(string, regexp, message, doesNotMatch);
 };
 
 assert.CallTracker = CallTracker;
 
-// Expose a strict only variant of assert
+/**
+ * Expose a strict only variant of assert.
+ * @param {...any} args
+ * @returns {void}
+ */
 function strict(...args) {
   innerOk(strict, args.length, ...args);
 }
+
 assert.strict = ObjectAssign(strict, assert, {
   equal: assert.strictEqual,
   deepEqual: assert.deepStrictEqual,
   notEqual: assert.notStrictEqual,
   notDeepEqual: assert.notDeepStrictEqual
 });
+
 assert.strict.strict = assert.strict;

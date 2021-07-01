@@ -59,7 +59,7 @@ import xml.etree.ElementTree
 # if empty, use defaults
 _valid_extensions = set([])
 
-__VERSION__ = '1.5.1'
+__VERSION__ = '1.5.4'
 
 try:
   xrange          # Python 2
@@ -69,7 +69,7 @@ except NameError:
 
 
 _USAGE = """
-Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit]
+Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit|sed|gsed]
                    [--filter=-x,+y,...]
                    [--counting=total|toplevel|detailed] [--root=subdir]
                    [--repository=path]
@@ -103,11 +103,16 @@ Syntax: cpplint.py [--verbose=#] [--output=emacs|eclipse|vs7|junit]
 
   Flags:
 
-    output=emacs|eclipse|vs7|junit
+    output=emacs|eclipse|vs7|junit|sed|gsed
       By default, the output is formatted to ease emacs parsing.  Visual Studio
       compatible output (vs7) may also be used.  Further support exists for
       eclipse (eclipse), and JUnit (junit). XML parsers such as those used
-      in Jenkins and Bamboo may also be used.  Other formats are unsupported.
+      in Jenkins and Bamboo may also be used.
+      The sed format outputs sed commands that should fix some of the errors.
+      Note that this requires gnu sed. If that is installed as gsed on your
+      system (common e.g. on macOS with homebrew) you can use the gsed output
+      format. Sed commands are written to stdout, not stderr, so you should be
+      able to pipe output straight to a shell to run the fixes.
 
     verbose=#
       Specify a number 0-5 to restrict errors to certain verbosity levels.
@@ -293,6 +298,7 @@ _ERROR_CATEGORIES = [
     'build/include_inline',
     'build/include_order',
     'build/include_what_you_use',
+    'build/namespaces_headers',
     'build/namespaces_literals',
     'build/namespaces',
     'build/printf_format',
@@ -351,6 +357,13 @@ _ERROR_CATEGORIES = [
     'whitespace/tab',
     'whitespace/todo',
     ]
+
+# keywords to use with --outputs which generate stdout for machine processing
+_MACHINE_OUTPUTS = [
+  'junit',
+  'sed',
+  'gsed'
+]
 
 # These error categories are no longer enforced by cpplint, but for backwards-
 # compatibility they may still appear in NOLINT comments.
@@ -817,6 +830,22 @@ _SEARCH_C_FILE = re.compile(r'\b(?:LINT_C_FILE|'
 # Match string that indicates we're working on a Linux Kernel file.
 _SEARCH_KERNEL_FILE = re.compile(r'\b(?:LINT_KERNEL_FILE)')
 
+# Commands for sed to fix the problem
+_SED_FIXUPS = {
+  'Remove spaces around =': r's/ = /=/',
+  'Remove spaces around !=': r's/ != /!=/',
+  'Remove space before ( in if (': r's/if (/if(/',
+  'Remove space before ( in for (': r's/for (/for(/',
+  'Remove space before ( in while (': r's/while (/while(/',
+  'Remove space before ( in switch (': r's/switch (/switch(/',
+  'Should have a space between // and comment': r's/\/\//\/\/ /',
+  'Missing space before {': r's/\([^ ]\){/\1 {/',
+  'Tab found, replace by spaces': r's/\t/  /g',
+  'Line ends in whitespace.  Consider deleting these extra spaces.': r's/\s*$//',
+  'You don\'t need a ; after a }': r's/};/}/',
+  'Missing space after ,': r's/,\([^ ]\)/, \1/g',
+}
+
 _NULL_TOKEN_PATTERN = re.compile(r'\bNULL\b')
 
 _V8_PERSISTENT_PATTERN = re.compile(r'\bv8::Persistent\b')
@@ -844,7 +873,7 @@ _repository = None
 # Files to exclude from linting. This is set by the --exclude flag.
 _excludes = None
 
-# Whether to suppress PrintInfo messages
+# Whether to supress all PrintInfo messages, UNRELATED to --quiet flag
 _quiet = False
 
 # The allowed line length of files.
@@ -1245,6 +1274,8 @@ class _CppLintState(object):
     # "eclipse" - format that eclipse can parse
     # "vs7" - format that Microsoft Visual Studio 7 can parse
     # "junit" - format that Jenkins, Bamboo, etc can parse
+    # "sed" - returns a gnu sed command to fix the problem
+    # "gsed" - like sed, but names the command gsed, e.g. for macOS homebrew users
     self.output_format = 'emacs'
 
     # For JUnit output, save errors and failures until the end so that they
@@ -1333,7 +1364,9 @@ class _CppLintState(object):
       self.PrintInfo('Total errors found: %d\n' % self.error_count)
 
   def PrintInfo(self, message):
-    if not _quiet and self.output_format != 'junit':
+    # _quiet does not represent --quiet flag.
+    # Hide infos from stdout to keep stdout pure for machine consumption
+    if not _quiet and self.output_format not in _MACHINE_OUTPUTS:
       sys.stdout.write(message)
 
   def PrintError(self, message):
@@ -1693,6 +1726,13 @@ def Error(filename, linenum, category, confidence, message):
     elif _cpplint_state.output_format == 'junit':
       _cpplint_state.AddJUnitFailure(filename, linenum, message, category,
           confidence)
+    elif _cpplint_state.output_format in ['sed', 'gsed']:
+      if message in _SED_FIXUPS:
+        sys.stdout.write(_cpplint_state.output_format + " -i '%s%s' %s # %s  [%s] [%d]\n" % (
+            linenum, _SED_FIXUPS[message], filename, message, category, confidence))
+      else:
+        sys.stderr.write('# %s:%s:  "%s"  [%s] [%d]\n' % (
+            filename, linenum, message, category, confidence))
     else:
       final_message = '%s:%s:  %s  [%s] [%d]\n' % (
           filename, linenum, message, category, confidence)
@@ -1833,7 +1873,7 @@ def FindNextMultiLineCommentEnd(lines, lineix):
 
 def RemoveMultiLineCommentsFromRange(lines, begin, end):
   """Clears a range of lines for multi-line comments."""
-  # Having // dummy comments makes the lines non-empty, so we will not get
+  # Having // <empty> comments makes the lines non-empty, so we will not get
   # unnecessary blank line warnings later in the code.
   for i in range(begin, end):
     lines[i] = '/**/'
@@ -2207,7 +2247,7 @@ def CheckForCopyright(filename, lines, error):
   """Logs an error if no Copyright message appears at the top of the file."""
 
   # We'll say it should occur by line 10. Don't forget there's a
-  # dummy line at the front.
+  # placeholder line at the front.
   for line in xrange(1, min(len(lines), 11)):
     if re.search(r'Copyright', lines[line], re.I): break
   else:                       # means no copyright line was found
@@ -2450,16 +2490,22 @@ def CheckHeaderFileIncluded(filename, include_state, error):
       continue
     headername = FileInfo(headerfile).RepositoryName()
     first_include = None
+    include_uses_unix_dir_aliases = False
     for section_list in include_state.include_list:
       for f in section_list:
-        if headername in f[0] or f[0] in headername:
+        include_text = f[0]
+        if "./" in include_text:
+          include_uses_unix_dir_aliases = True
+        if headername in include_text or include_text in headername:
           return
         if not first_include:
           first_include = f[1]
 
-    error(filename, first_include, 'build/include', 5,
-          '%s should include its header file %s' % (fileinfo.RepositoryName(),
-                                                    headername))
+    message = '%s should include its header file %s' % (fileinfo.RepositoryName(), headername)
+    if include_uses_unix_dir_aliases:
+      message += ". Relative paths like . and .. are not allowed."
+
+    error(filename, first_include, 'build/include', 5, message)
 
 
 def CheckForBadCharacters(filename, lines, error):
@@ -3125,7 +3171,7 @@ class NestingState(object):
     #   };
     class_decl_match = Match(
         r'^(\s*(?:template\s*<[\w\s<>,:=]*>\s*)?'
-        r'(class|struct)\s+(?:[A-Z_]+\s+)*(\w+(?:::\w+)*))'
+        r'(class|struct)\s+(?:[a-zA-Z0-9_]+\s+)*(\w+(?:::\w+)*))'
         r'(.*)$', line)
     if (class_decl_match and
         (not self.stack or self.stack[-1].open_parentheses == 0)):
@@ -3759,9 +3805,10 @@ def CheckSpacing(filename, clean_lines, linenum, nesting_state, error):
   # get rid of comments and strings
   line = clean_lines.elided[linenum]
 
-  # You shouldn't have spaces before your brackets, except maybe after
-  # 'delete []', 'return []() {};', or 'auto [abc, ...] = ...;'.
-  if Search(r'\w\s+\[', line) and not Search(r'(?:auto&?|delete|return)\s+\[', line):
+  # You shouldn't have spaces before your brackets, except for C++11 attributes
+  # or maybe after 'delete []', 'return []() {};', or 'auto [abc, ...] = ...;'.
+  if (Search(r'\w\s+\[(?!\[)', line) and
+      not Search(r'(?:auto&?|delete|return)\s+\[', line)):
     error(filename, linenum, 'whitespace/braces', 5,
           'Extra space before [')
 
@@ -4342,9 +4389,9 @@ def CheckTrailingSemicolon(filename, clean_lines, linenum, error):
 
   # Block bodies should not be followed by a semicolon.  Due to C++11
   # brace initialization, there are more places where semicolons are
-  # required than not, so we use a whitelist approach to check these
-  # rather than a blacklist.  These are the places where "};" should
-  # be replaced by just "}":
+  # required than not, so we explicitly list the allowed rules rather
+  # than listing the disallowed ones.  These are the places where "};"
+  # should be replaced by just "}":
   # 1. Some flavor of block following closing parenthesis:
   #    for (;;) {};
   #    while (...) {};
@@ -4400,11 +4447,11 @@ def CheckTrailingSemicolon(filename, clean_lines, linenum, error):
     #  - INTERFACE_DEF
     #  - EXCLUSIVE_LOCKS_REQUIRED, SHARED_LOCKS_REQUIRED, LOCKS_EXCLUDED:
     #
-    # We implement a whitelist of safe macros instead of a blacklist of
+    # We implement a list of safe macros instead of a list of
     # unsafe macros, even though the latter appears less frequently in
     # google code and would have been easier to implement.  This is because
-    # the downside for getting the whitelist wrong means some extra
-    # semicolons, while the downside for getting the blacklist wrong
+    # the downside for getting the allowed checks wrong means some extra
+    # semicolons, while the downside for getting disallowed checks wrong
     # would result in compile errors.
     #
     # In addition to macros, we also don't want to warn on
@@ -4890,7 +4937,7 @@ def CheckStyle(filename, clean_lines, linenum, file_extension, nesting_state,
   # if(match($0, " <<")) complain = 0;
   # if(match(prev, " +for \\(")) complain = 0;
   # if(prevodd && match(prevprev, " +for \\(")) complain = 0;
-  scope_or_label_pattern = r'\s*\w+\s*:\s*\\?$'
+  scope_or_label_pattern = r'\s*(?:public|private|protected|signals)(?:\s+(?:slots\s*)?)?:\s*\\?$'
   classinfo = nesting_state.InnermostClass()
   initial_spaces = 0
   cleansed_line = clean_lines.elided[linenum]
@@ -5422,7 +5469,7 @@ def CheckLanguage(filename, clean_lines, linenum, file_extension,
   if (IsHeaderExtension(file_extension)
       and Search(r'\bnamespace\s*{', line)
       and line[-1] != '\\'):
-    error(filename, linenum, 'build/namespaces', 4,
+    error(filename, linenum, 'build/namespaces_headers', 4,
           'Do not use unnamed namespaces in header files.  See '
           'https://google.github.io/styleguide/cppguide.html#Namespaces'
           ' for more information.')
@@ -5712,19 +5759,19 @@ def CheckForNonConstReference(filename, clean_lines, linenum,
   #
   # We also accept & in static_assert, which looks like a function but
   # it's actually a declaration expression.
-  whitelisted_functions = (r'(?:[sS]wap(?:<\w:+>)?|'
+  allowed_functions = (r'(?:[sS]wap(?:<\w:+>)?|'
                            r'operator\s*[<>][<>]|'
                            r'static_assert|COMPILE_ASSERT'
                            r')\s*\(')
-  if Search(whitelisted_functions, line):
+  if Search(allowed_functions, line):
     return
   elif not Search(r'\S+\([^)]*$', line):
-    # Don't see a whitelisted function on this line.  Actually we
+    # Don't see an allowed function on this line.  Actually we
     # didn't see any function name on this line, so this is likely a
     # multi-line parameter list.  Try a bit harder to catch this case.
     for i in xrange(2):
       if (linenum > i and
-          Search(whitelisted_functions, clean_lines.elided[linenum - i - 1])):
+          Search(allowed_functions, clean_lines.elided[linenum - i - 1])):
         return
 
   decls = ReplaceAll(r'{[^}]*}', ' ', line)  # exclude function body
@@ -6803,9 +6850,9 @@ def ParseArguments(args):
     if opt == '--version':
       PrintVersion()
     elif opt == '--output':
-      if val not in ('emacs', 'vs7', 'eclipse', 'junit'):
+      if val not in ('emacs', 'vs7', 'eclipse', 'junit', 'sed', 'gsed'):
         PrintUsage('The only allowed output formats are emacs, vs7, eclipse '
-                   'and junit.')
+                   'sed, gsed and junit.')
       output_format = val
     elif opt == '--quiet':
       quiet = True
@@ -6860,6 +6907,7 @@ def ParseArguments(args):
   _SetFilters(filters)
   _SetCountingStyle(counting_style)
 
+  filenames.sort()
   return filenames
 
 def _ExpandDirectories(filenames):

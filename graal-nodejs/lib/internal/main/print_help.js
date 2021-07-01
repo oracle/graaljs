@@ -1,6 +1,18 @@
 'use strict';
 
-/* eslint-disable no-restricted-globals */
+const {
+  ArrayPrototypeConcat,
+  ArrayPrototypeSort,
+  Boolean,
+  MathFloor,
+  MathMax,
+  ObjectKeys,
+  RegExp,
+  StringPrototypeTrimLeft,
+  StringPrototypeRepeat,
+  StringPrototypeReplace,
+  SafeMap,
+} = primordials;
 
 const { types } = internalBinding('options');
 const hasCrypto = Boolean(process.versions.openssl);
@@ -10,13 +22,16 @@ const {
 } = require('internal/bootstrap/pre_execution');
 
 const typeLookup = [];
-for (const key of Object.keys(types))
+for (const key of ObjectKeys(types))
   typeLookup[types[key]] = key;
 
 // Environment variables are parsed ad-hoc throughout the code base,
 // so we gather the documentation here.
 const { hasIntl, hasSmallICU, hasNodeOptions } = internalBinding('config');
-const envVars = new Map([
+const envVars = new SafeMap(ArrayPrototypeConcat([
+  ['FORCE_COLOR', { helpText: "when set to 'true', 1, 2, 3, or an empty " +
+   'string causes NO_COLOR and NODE_DISABLE_COLORS to be ignored.' }],
+  ['NO_COLOR', { helpText: 'Alias for NODE_DISABLE_COLORS' }],
   ['NODE_DEBUG', { helpText: "','-separated list of core modules that " +
     'should print debug information' }],
   ['NODE_DEBUG_NATIVE', { helpText: "','-separated list of C++ core debug " +
@@ -24,7 +39,7 @@ const envVars = new Map([
   ['NODE_DISABLE_COLORS', { helpText: 'set to 1 to disable colors in ' +
     'the REPL' }],
   ['NODE_EXTRA_CA_CERTS', { helpText: 'path to additional CA certificates ' +
-    'file' }],
+    'file. Only read once during process startup.' }],
   ['NODE_NO_WARNINGS', { helpText: 'set to 1 to silence process warnings' }],
   ['NODE_PATH', { helpText: `'${require('path').delimiter}'-separated list ` +
     'of directories prefixed to the module search path' }],
@@ -44,28 +59,30 @@ const envVars = new Map([
     'to' }],
   ['UV_THREADPOOL_SIZE', { helpText: 'sets the number of threads used in ' +
     'libuv\'s threadpool' }]
-].concat(hasIntl ? [
+], hasIntl ? [
   ['NODE_ICU_DATA', { helpText: 'data path for ICU (Intl object) data' +
     hasSmallICU ? '' : ' (will extend linked-in data)' }]
-] : []).concat(hasNodeOptions ? [
+] : []), (hasNodeOptions ? [
   ['NODE_OPTIONS', { helpText: 'set CLI options in the environment via a ' +
     'space-separated list' }]
-] : []).concat(hasCrypto ? [
+] : []), hasCrypto ? [
   ['OPENSSL_CONF', { helpText: 'load OpenSSL configuration from file' }],
   ['SSL_CERT_DIR', { helpText: 'sets OpenSSL\'s directory of trusted ' +
     'certificates when used in conjunction with --use-openssl-ca' }],
   ['SSL_CERT_FILE', { helpText: 'sets OpenSSL\'s trusted certificate file ' +
     'when used in conjunction with --use-openssl-ca' }],
-] : []));
+] : []);
 
 
 function indent(text, depth) {
-  return text.replace(/^/gm, ' '.repeat(depth));
+  return StringPrototypeReplace(text, /^/gm, StringPrototypeRepeat(' ', depth));
 }
 
 function fold(text, width) {
-  return text.replace(new RegExp(`([^\n]{0,${width}})( |$)`, 'g'),
-                      (_, newLine, end) => newLine + (end === ' ' ? '\n' : ''));
+  return StringPrototypeReplace(text,
+                                new RegExp(`([^\n]{0,${width}})( |$)`, 'g'),
+                                (_, newLine, end) =>
+                                  newLine + (end === ' ' ? '\n' : ''));
 }
 
 function getArgDescription(type) {
@@ -87,13 +104,15 @@ function getArgDescription(type) {
   }
 }
 
-function format({ options, aliases = new Map(), firstColumn, secondColumn }) {
+function format(
+  { options, aliases = new SafeMap(), firstColumn, secondColumn }
+) {
   let text = '';
   let maxFirstColumnUsed = 0;
 
   for (const [
     name, { helpText, type, value }
-  ] of [...options.entries()].sort()) {
+  ] of ArrayPrototypeSort([...options.entries()])) {
     if (!helpText) continue;
 
     let displayName = name;
@@ -127,14 +146,14 @@ function format({ options, aliases = new Map(), firstColumn, secondColumn }) {
     }
 
     text += displayName;
-    maxFirstColumnUsed = Math.max(maxFirstColumnUsed, displayName.length);
+    maxFirstColumnUsed = MathMax(maxFirstColumnUsed, displayName.length);
     if (displayName.length >= firstColumn)
-      text += '\n' + ' '.repeat(firstColumn);
+      text += '\n' + StringPrototypeRepeat(' ', firstColumn);
     else
-      text += ' '.repeat(firstColumn - displayName.length);
+      text += StringPrototypeRepeat(' ', firstColumn - displayName.length);
 
-    text += indent(fold(displayHelpText, secondColumn),
-                   firstColumn).trimLeft() + '\n';
+    text += StringPrototypeTrimLeft(
+      indent(fold(displayHelpText, secondColumn), firstColumn)) + '\n';
   }
 
   if (maxFirstColumnUsed < firstColumn - 4) {
@@ -154,9 +173,9 @@ function print(stream) {
   const { options, aliases } = require('internal/options');
 
   // Use 75 % of the available width, and at least 70 characters.
-  const width = Math.max(70, (stream.columns || 0) * 0.75);
-  const firstColumn = Math.floor(width * 0.4);
-  const secondColumn = Math.floor(width * 0.57);
+  const width = MathMax(70, (stream.columns || 0) * 0.75);
+  const firstColumn = MathFloor(width * 0.4);
+  const secondColumn = MathFloor(width * 0.57);
 
   options.set('-', { helpText: 'script read from stdin ' +
                                '(default if no file name is provided, ' +

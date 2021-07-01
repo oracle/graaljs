@@ -118,6 +118,7 @@ const int kMmapFdOffset = 0;
 int GetProtectionFromMemoryPermission(OS::MemoryPermission access) {
   switch (access) {
     case OS::MemoryPermission::kNoAccess:
+    case OS::MemoryPermission::kNoAccessWillJitLater:
       return PROT_NONE;
     case OS::MemoryPermission::kRead:
       return PROT_READ;
@@ -141,6 +142,11 @@ int GetFlagsForMemoryPermission(OS::MemoryPermission access) {
     flags |= MAP_LAZY;
 #endif  // V8_OS_QNX
   }
+#if V8_OS_MACOSX && V8_HOST_ARCH_ARM64 && defined(MAP_JIT)
+  if (access == OS::MemoryPermission::kNoAccessWillJitLater) {
+    flags |= MAP_JIT;
+  }
+#endif
   return flags;
 }
 
@@ -384,6 +390,16 @@ bool OS::SetPermissions(void* address, size_t size, MemoryPermission access) {
 
   int prot = GetProtectionFromMemoryPermission(access);
   int ret = mprotect(address, size, prot);
+
+  // MacOS 11.2 on Apple Silicon refuses to switch permissions from
+  // rwx to none. Just use madvise instead.
+#if defined(V8_OS_MACOSX)
+  if (ret != 0 && access == OS::MemoryPermission::kNoAccess) {
+    ret = madvise(address, size, MADV_FREE_REUSABLE);
+    return ret == 0;
+  }
+#endif
+
   if (ret == 0 && access == OS::MemoryPermission::kNoAccess) {
     // This is advisory; ignore errors and continue execution.
     USE(DiscardSystemPages(address, size));

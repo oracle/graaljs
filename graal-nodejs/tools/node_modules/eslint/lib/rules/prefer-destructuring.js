@@ -5,6 +5,18 @@
 "use strict";
 
 //------------------------------------------------------------------------------
+// Requirements
+//------------------------------------------------------------------------------
+
+const astUtils = require("./utils/ast-utils");
+
+//------------------------------------------------------------------------------
+// Helpers
+//------------------------------------------------------------------------------
+
+const PRECEDENCE_OF_ASSIGNMENT_EXPR = astUtils.getPrecedence({ type: "AssignmentExpression" });
+
+//------------------------------------------------------------------------------
 // Rule Definition
 //------------------------------------------------------------------------------
 
@@ -156,7 +168,7 @@ module.exports = {
          * Assignment expression is not fixed.
          * Array destructuring is not fixed.
          * Renamed property is not fixed.
-         * @param {ASTNode} node the the node to evaluate
+         * @param {ASTNode} node the node to evaluate
          * @returns {boolean} whether or not the node should be fixed
          */
         function shouldFix(node) {
@@ -185,9 +197,15 @@ module.exports = {
                 return null;
             }
 
+            let objectText = sourceCode.getText(rightNode.object);
+
+            if (astUtils.getPrecedence(rightNode.object) < PRECEDENCE_OF_ASSIGNMENT_EXPR) {
+                objectText = `(${objectText})`;
+            }
+
             return fixer.replaceText(
                 node,
-                `{${rightNode.property.name}} = ${sourceCode.getText(rightNode.object)}`
+                `{${rightNode.property.name}} = ${objectText}`
             );
         }
 
@@ -261,7 +279,7 @@ module.exports = {
          * @param {ASTNode} node the AssignmentExpression node
          * @returns {void}
          */
-        function checkAssigmentExpression(node) {
+        function checkAssignmentExpression(node) {
             if (node.operator === "=") {
                 performCheck(node.left, node.right, node);
             }
@@ -273,7 +291,7 @@ module.exports = {
 
         return {
             VariableDeclarator: checkVariableDeclarator,
-            AssignmentExpression: checkAssigmentExpression
+            AssignmentExpression: checkAssignmentExpression
         };
     }
 };

@@ -58,8 +58,6 @@ const debug = require("debug")("eslintrc:config-array-factory");
 // Helpers
 //------------------------------------------------------------------------------
 
-const eslintRecommendedPath = path.resolve(__dirname, "../../eslint/conf/eslint-recommended.js");
-const eslintAllPath = path.resolve(__dirname, "../../eslint/conf/eslint-all.js");
 const configFilenames = [
     ".eslintrc.js",
     ".eslintrc.cjs",
@@ -71,10 +69,11 @@ const configFilenames = [
 ];
 
 // Define types for VSCode IntelliSense.
-/** @typedef {import("../shared/types").ConfigData} ConfigData */
-/** @typedef {import("../shared/types").OverrideConfigData} OverrideConfigData */
-/** @typedef {import("../shared/types").Parser} Parser */
-/** @typedef {import("../shared/types").Plugin} Plugin */
+/** @typedef {import("./shared/types").ConfigData} ConfigData */
+/** @typedef {import("./shared/types").OverrideConfigData} OverrideConfigData */
+/** @typedef {import("./shared/types").Parser} Parser */
+/** @typedef {import("./shared/types").Plugin} Plugin */
+/** @typedef {import("./shared/types").Rule} Rule */
 /** @typedef {import("./config-array/config-dependency").DependentParser} DependentParser */
 /** @typedef {import("./config-array/config-dependency").DependentPlugin} DependentPlugin */
 /** @typedef {ConfigArray[0]} ConfigArrayElement */
@@ -84,6 +83,10 @@ const configFilenames = [
  * @property {Map<string,Plugin>} [additionalPluginPool] The map for additional plugins.
  * @property {string} [cwd] The path to the current working directory.
  * @property {string} [resolvePluginsRelativeTo] A path to the directory that plugins should be resolved from. Defaults to `cwd`.
+ * @property {Map<string,Rule>} builtInRules The rules that are built in to ESLint.
+ * @property {Object} [resolver=ModuleResolver] The module resolver object.
+ * @property {string} eslintAllPath The path to the definitions for eslint:all.
+ * @property {string} eslintRecommendedPath The path to the definitions for eslint:recommended.
  */
 
 /**
@@ -91,6 +94,10 @@ const configFilenames = [
  * @property {Map<string,Plugin>} additionalPluginPool The map for additional plugins.
  * @property {string} cwd The path to the current working directory.
  * @property {string | undefined} resolvePluginsRelativeTo An absolute path the the directory that plugins should be resolved from.
+ * @property {Map<string,Rule>} builtInRules The rules that are built in to ESLint.
+ * @property {Object} [resolver=ModuleResolver] The module resolver object.
+ * @property {string} eslintAllPath The path to the definitions for eslint:all.
+ * @property {string} eslintRecommendedPath The path to the definitions for eslint:recommended.
  */
 
 /**
@@ -274,14 +281,15 @@ function loadESLintIgnoreFile(filePath) {
  * Creates an error to notify about a missing config to extend from.
  * @param {string} configName The name of the missing config.
  * @param {string} importerName The name of the config that imported the missing config
+ * @param {string} messageTemplate The text template to source error strings from.
  * @returns {Error} The error object to throw
  * @private
  */
-function configMissingError(configName, importerName) {
+function configInvalidError(configName, importerName, messageTemplate) {
     return Object.assign(
         new Error(`Failed to load config "${configName}" to extend from.`),
         {
-            messageTemplate: "extend-config-missing",
+            messageTemplate,
             messageData: { configName, importerName }
         }
     );
@@ -414,7 +422,9 @@ class ConfigArrayFactory {
         cwd = process.cwd(),
         resolvePluginsRelativeTo,
         builtInRules,
-        resolver = ModuleResolver
+        resolver = ModuleResolver,
+        eslintAllPath,
+        eslintRecommendedPath
     } = {}) {
         internalSlotsMap.set(this, {
             additionalPluginPool,
@@ -423,7 +433,9 @@ class ConfigArrayFactory {
                 resolvePluginsRelativeTo &&
                 path.resolve(cwd, resolvePluginsRelativeTo),
             builtInRules,
-            resolver
+            resolver,
+            eslintAllPath,
+            eslintRecommendedPath
         });
     }
 
@@ -781,6 +793,8 @@ class ConfigArrayFactory {
      * @private
      */
     _loadExtendedBuiltInConfig(extendName, ctx) {
+        const { eslintAllPath, eslintRecommendedPath } = internalSlotsMap.get(this);
+
         if (extendName === "eslint:recommended") {
             return this._loadConfigData({
                 ...ctx,
@@ -796,7 +810,7 @@ class ConfigArrayFactory {
             });
         }
 
-        throw configMissingError(extendName, ctx.name);
+        throw configInvalidError(extendName, ctx.name, "extend-config-missing");
     }
 
     /**
@@ -808,6 +822,11 @@ class ConfigArrayFactory {
      */
     _loadExtendedPluginConfig(extendName, ctx) {
         const slashIndex = extendName.lastIndexOf("/");
+
+        if (slashIndex === -1) {
+            throw configInvalidError(extendName, ctx.filePath, "plugin-invalid");
+        }
+
         const pluginName = extendName.slice("plugin:".length, slashIndex);
         const configName = extendName.slice(slashIndex + 1);
 
@@ -828,7 +847,7 @@ class ConfigArrayFactory {
             });
         }
 
-        throw plugin.error || configMissingError(extendName, ctx.filePath);
+        throw plugin.error || configInvalidError(extendName, ctx.filePath, "extend-config-missing");
     }
 
     /**
@@ -861,7 +880,7 @@ class ConfigArrayFactory {
         } catch (error) {
             /* istanbul ignore else */
             if (error && error.code === "MODULE_NOT_FOUND") {
-                throw configMissingError(extendName, ctx.filePath);
+                throw configInvalidError(extendName, ctx.filePath, "extend-config-missing");
             }
             throw error;
         }

@@ -1,6 +1,5 @@
 'use strict';
-
-require('../common');
+const common = require('../common');
 const assert = require('assert');
 const path = require('path');
 const fs = require('fs').promises;
@@ -19,7 +18,7 @@ function getFileName() {
 const allocateEmptyBuffers = (combinedLength) => {
   const bufferArr = [];
   // Allocate two buffers, each half the size of exptectedBuff
-  bufferArr[0] = Buffer.alloc(Math.floor(combinedLength / 2)),
+  bufferArr[0] = Buffer.alloc(Math.floor(combinedLength / 2));
   bufferArr[1] = Buffer.alloc(combinedLength - bufferArr[0].length);
 
   return bufferArr;
@@ -64,4 +63,4 @@ const allocateEmptyBuffers = (combinedLength) => {
     assert(Buffer.concat(bufferArr).equals(await fs.readFile(filename)));
     handle.close();
   }
-})();
+})().then(common.mustCall());

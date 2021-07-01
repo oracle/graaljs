@@ -197,6 +197,13 @@ Enable experimental Source Map v3 support for stack traces.
 Currently, overriding `Error.prepareStackTrace` is ignored when the
 `--enable-source-maps` flag is set.
 
+### `--experimental-abortcontroller`
+<!-- YAML
+added: v14.17.0
+-->
+
+Enable experimental `AbortController` and `AbortSignal` support.
+
 ### `--experimental-import-meta-resolve`
 <!-- YAML
 added:
@@ -284,14 +291,14 @@ Enable experimental WebAssembly System Interface (WASI) support.
 added: v12.3.0
 -->
 
+Enable experimental WebAssembly module support.
+
 ### `--force-context-aware`
 <!-- YAML
 added: v12.12.0
 -->
 
 Disable loading native addons that are not [context-aware][].
-
-Enable experimental WebAssembly module support.
 
 ### `--force-fips`
 <!-- YAML
@@ -1121,6 +1128,9 @@ Preload the specified module at startup.
 Follows `require()`'s module resolution
 rules. `module` may be either a path to a file, or a node module name.
 
+Only CommonJS modules are supported. Attempting to preload a
+ES6 Module using `--require` will fail with an error.
+
 ### `-v`, `--version`
 <!-- YAML
 added: v0.1.3
@@ -1130,6 +1140,19 @@ Print node's version.
 
 ## Environment variables
 
+### `FORCE_COLOR=[1, 2, 3]`
+
+The `FORCE_COLOR` environment variable is used to
+enable ANSI colorized output. The value may be:
+
+* `1`, `true`, or the empty string `''` indicate 16-color support,
+* `2` to indicate 256-color support, or
+* `3` to indicate 16 million-color support.
+
+When `FORCE_COLOR` is used and set to a supported value, both the `NO_COLOR`,
+and `NODE_DISABLE_COLORS` environment variables are ignored.
+
+Any other value will result in colorized output being disabled.
 ### `NODE_DEBUG=module[,…]`
 <!-- YAML
 added: v0.1.32
@@ -1164,6 +1187,10 @@ options property is explicitly specified for a TLS or HTTPS client or server.
 
 This environment variable is ignored when `node` runs as setuid root or
 has Linux file capabilities set.
+
+The `NODE_EXTRA_CA_CERTS` environment variable is only read when the Node.js
+process is first launched. Changing the value at runtime using
+`process.env.NODE_EXTRA_CA_CERTS` has no effect on the current process.
 
 ### `NODE_ICU_DATA=file`
 <!-- YAML
@@ -1222,6 +1249,7 @@ Node.js options that are allowed are:
 * `--disable-proto`
 * `--enable-fips`
 * `--enable-source-maps`
+* `--experimental-abortcontroller`
 * `--experimental-import-meta-resolve`
 * `--experimental-json-modules`
 * `--experimental-loader`
@@ -1472,6 +1500,11 @@ and the line lengths of the source file (in the key `lineLengths`).
 }
 ```
 
+### `NO_COLOR=<any>`
+
+[`NO_COLOR`][]  is an alias for `NODE_DISABLE_COLORS`. The value of the
+environment variable is arbitrary.
+
 ### `OPENSSL_CONF=file`
 <!-- YAML
 added: v6.11.0
@@ -1566,6 +1599,7 @@ $ node --max-old-space-size=1536 index.js
 [`Atomics.wait()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics/wait
 [`Buffer`]: buffer.md#buffer_class_buffer
 [`NODE_OPTIONS`]: #cli_node_options_options
+[`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#buffer_class_slowbuffer
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#process_process_setuncaughtexceptioncapturecallback_fn
 [`tls.DEFAULT_MAX_VERSION`]: tls.md#tls_tls_default_max_version

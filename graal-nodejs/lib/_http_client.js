@@ -36,6 +36,7 @@ const {
 const net = require('net');
 const url = require('url');
 const assert = require('internal/assert');
+const { once } = require('internal/util');
 const {
   _checkIsHttpToken: checkIsHttpToken,
   debug,
@@ -51,7 +52,7 @@ const { Buffer } = require('buffer');
 const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
 const { URL, urlToOptions, searchParamsSymbol } = require('internal/url');
 const { kOutHeaders, kNeedDrain } = require('internal/http');
-const { connResetException, codes } = require('internal/errors');
+const { AbortError, connResetException, codes } = require('internal/errors');
 const {
   ERR_HTTP_HEADERS_SENT,
   ERR_INVALID_ARG_TYPE,
@@ -59,7 +60,10 @@ const {
   ERR_INVALID_PROTOCOL,
   ERR_UNESCAPED_CHARACTERS
 } = codes;
-const { validateInteger } = require('internal/validators');
+const {
+  validateInteger,
+  validateAbortSignal,
+} = require('internal/validators');
 const { getTimerDuration } = require('internal/timers');
 const {
   DTRACE_HTTP_CLIENT_REQUEST,
@@ -169,6 +173,15 @@ function ClientRequest(input, options, cb) {
   if (options.timeout !== undefined)
     this.timeout = getTimerDuration(options.timeout, 'timeout');
 
+  const signal = options.signal;
+  if (signal) {
+    validateAbortSignal(signal, 'options.signal');
+    const listener = (e) => this.destroy(new AbortError());
+    signal.addEventListener('abort', listener);
+    this.once('close', () => {
+      signal.removeEventListener('abort', listener);
+    });
+  }
   let method = options.method;
   const methodIsString = (typeof method === 'string');
   if (method !== null && method !== undefined && !methodIsString) {
@@ -223,8 +236,6 @@ function ClientRequest(input, options, cb) {
   this.reusedSocket = false;
   this.host = host;
   this.protocol = protocol;
-
-  let called = false;
 
   if (this.agent) {
     // If there is an agent we should default to Connection:keep-alive,
@@ -289,18 +300,6 @@ function ClientRequest(input, options, cb) {
                       options.headers);
   }
 
-  const oncreate = (err, socket) => {
-    if (called)
-      return;
-    called = true;
-    if (err) {
-      process.nextTick(() => this.emit('error', err));
-      return;
-    }
-    this.onSocket(socket);
-    this._deferToConnect(null, null, () => this._flush());
-  };
-
   // initiate connection
   if (this.agent) {
     this.agent.addRequest(this, options);
@@ -309,20 +308,27 @@ function ClientRequest(input, options, cb) {
     this._last = true;
     this.shouldKeepAlive = false;
     if (typeof options.createConnection === 'function') {
-      const newSocket = options.createConnection(options, oncreate);
-      if (newSocket && !called) {
-        called = true;
-        this.onSocket(newSocket);
-      } else {
-        return;
+      const oncreate = once((err, socket) => {
+        if (err) {
+          process.nextTick(() => this.emit('error', err));
+        } else {
+          this.onSocket(socket);
+        }
+      });
+
+      try {
+        const newSocket = options.createConnection(options, oncreate);
+        if (newSocket) {
+          oncreate(null, newSocket);
+        }
+      } catch (err) {
+        oncreate(err);
       }
     } else {
       debug('CLIENT use net.createConnection', options);
       this.onSocket(net.createConnection(options));
     }
   }
-
-  this._deferToConnect(null, null, () => this._flush());
 }
 ObjectSetPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
 ObjectSetPrototypeOf(ClientRequest, OutgoingMessage);
@@ -815,6 +821,7 @@ function onSocketNT(req, socket, err) {
     _destroy(req, null, err);
   } else {
     tickOnSocket(req, socket);
+    req._flush();
   }
 }
 

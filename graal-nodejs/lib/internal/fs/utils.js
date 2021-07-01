@@ -3,11 +3,13 @@
 const {
   ArrayIsArray,
   BigInt,
+  Date,
   DateNow,
   ErrorCaptureStackTrace,
   ObjectPrototypeHasOwnProperty,
   Number,
   NumberIsFinite,
+  NumberIsInteger,
   MathMin,
   ObjectSetPrototypeOf,
   ReflectOwnKeys,
@@ -37,6 +39,7 @@ const {
 const { once } = require('internal/util');
 const { toPathIfFileURL } = require('internal/url');
 const {
+  validateAbortSignal,
   validateBoolean,
   validateInt32,
   validateUint32
@@ -297,6 +300,10 @@ function getOptions(options, defaultOptions) {
 
   if (options.encoding !== 'buffer')
     assertEncoding(options.encoding);
+
+  if (options.signal !== undefined) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
   return options;
 }
 
@@ -344,6 +351,7 @@ function preprocessSymlinkDestination(path, type, linkPath) {
     // No preprocessing is needed on Unix.
     return path;
   }
+  path = '' + path;
   if (type === 'junction') {
     // Junctions paths need to be absolute and \\?\-prefixed.
     // A relative target is relative to the link's parent directory.
@@ -355,7 +363,7 @@ function preprocessSymlinkDestination(path, type, linkPath) {
     return pathModule.toNamespacedPath(path);
   }
   // Windows symlinks don't tolerate forward slashes.
-  return ('' + path).replace(/\//g, '\\');
+  return path.replace(/\//g, '\\');
 }
 
 // Constructor for file stats.
@@ -612,6 +620,12 @@ const validateOffsetLengthWrite = hideStackFrames(
     if (length > byteLength - offset) {
       throw new ERR_OUT_OF_RANGE('length', `<= ${byteLength - offset}`, length);
     }
+
+    if (length < 0) {
+      throw new ERR_OUT_OF_RANGE('length', '>= 0', length);
+    }
+
+    validateInt32(length, 'length', 0);
   }
 );
 
@@ -752,7 +766,7 @@ const getValidMode = hideStackFrames((mode, type) => {
   if (mode == null) {
     return def;
   }
-  if (Number.isInteger(mode) && mode >= min && mode <= max) {
+  if (NumberIsInteger(mode) && mode >= min && mode <= max) {
     return mode;
   }
   if (typeof mode !== 'number') {

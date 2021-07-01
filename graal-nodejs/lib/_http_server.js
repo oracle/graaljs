@@ -79,6 +79,10 @@ const { observerCounts, constants } = internalBinding('performance');
 const { setTimeout, clearTimeout } = require('timers');
 const { NODE_PERFORMANCE_ENTRY_TYPE_HTTP } = constants;
 
+const dc = require('diagnostics_channel');
+const onRequestStartChannel = dc.channel('http.server.request.start');
+const onResponseFinishChannel = dc.channel('http.server.response.finish');
+
 const kServerResponse = Symbol('ServerResponse');
 const kServerResponseStatistics = Symbol('ServerResponseStatistics');
 
@@ -394,8 +398,9 @@ Server.prototype[EE.captureRejectionSymbol] = function(err, event, ...args) {
       const [ , res] = args;
       if (!res.headersSent && !res.writableEnded) {
         // Don't leak headers.
-        for (const name of res.getHeaderNames()) {
-          res.removeHeader(name);
+        const names = res.getHeaderNames();
+        for (let i = 0; i < names.length; i++) {
+          res.removeHeader(names[i]);
         }
         res.statusCode = 500;
         res.end(STATUS_CODES[500]);
@@ -405,7 +410,7 @@ Server.prototype[EE.captureRejectionSymbol] = function(err, event, ...args) {
       break;
     default:
       net.Server.prototype[SymbolFor('nodejs.rejection')]
-        .call(this, err, event, ...args);
+        .apply(this, arguments);
   }
 };
 
@@ -754,6 +759,15 @@ function clearRequestTimeout(req) {
 }
 
 function resOnFinish(req, res, socket, state, server) {
+  if (onResponseFinishChannel.hasSubscribers) {
+    onResponseFinishChannel.publish({
+      request: req,
+      response: res,
+      socket,
+      server
+    });
+  }
+
   // Usually the first incoming element should be our request.  it may
   // be that in the case abortIncoming() was called that the incoming
   // array will be empty.
@@ -838,6 +852,15 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
 
   res.shouldKeepAlive = keepAlive;
   DTRACE_HTTP_SERVER_REQUEST(req, socket);
+
+  if (onRequestStartChannel.hasSubscribers) {
+    onRequestStartChannel.publish({
+      request: req,
+      response: res,
+      socket,
+      server
+    });
+  }
 
   if (socket._httpMessage) {
     // There are already pending outgoing res, append.

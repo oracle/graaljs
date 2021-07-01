@@ -1,32 +1,12 @@
 /**
- * @fileoverview Config to enable all rules.
- * @author Robert Fletcher
+ * @fileoverview Stub eslint:all config
+ * @author Nicholas C. Zakas
  */
 
 "use strict";
 
-//------------------------------------------------------------------------------
-// Requirements
-//------------------------------------------------------------------------------
-
-// FIXME: "../lib/rules" doesn't exist in this package
-const builtInRules = require("../lib/rules");
-
-//------------------------------------------------------------------------------
-// Helpers
-//------------------------------------------------------------------------------
-
-const allRules = {};
-
-for (const [ruleId, rule] of builtInRules) {
-    if (!rule.meta.deprecated) {
-        allRules[ruleId] = "error";
+module.exports = {
+    settings: {
+        "eslint:all": true
     }
-}
-
-//------------------------------------------------------------------------------
-// Public Interface
-//------------------------------------------------------------------------------
-
-/** @type {import("../lib/shared/types").ConfigData} */
-module.exports = { rules: allRules };
+};

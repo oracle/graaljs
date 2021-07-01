@@ -1,12 +1,15 @@
+// Flags: --experimental-abortcontroller
 'use strict';
 
 const common = require('../common');
 const assert = require('assert');
 const execFile = require('child_process').execFile;
+const { getEventListeners } = require('events');
 const { getSystemErrorName } = require('util');
 const fixtures = require('../common/fixtures');
 
 const fixture = fixtures.path('exit.js');
+const echoFixture = fixtures.path('echo.js');
 const execOpts = { encoding: 'utf8', shell: true };
 
 {
@@ -44,4 +47,45 @@ const execOpts = { encoding: 'utf8', shell: true };
 {
   // Verify the shell option works properly
   execFile(process.execPath, [fixture, 0], execOpts, common.mustSucceed());
+}
+
+{
+  // Verify that the signal option works properly
+  const ac = new AbortController();
+  const { signal } = ac;
+
+  const test = () => {
+    const check = common.mustCall((err) => {
+      assert.strictEqual(err.code, 'ABORT_ERR');
+      assert.strictEqual(err.name, 'AbortError');
+      assert.strictEqual(err.signal, undefined);
+    });
+    execFile(process.execPath, [echoFixture, 0], { signal }, check);
+  };
+
+  test();
+  ac.abort();
+  // Verify that it still works the same way now that the signal is aborted.
+  test();
+}
+
+{
+  // Verify that if something different than Abortcontroller.signal
+  // is passed, ERR_INVALID_ARG_TYPE is thrown
+  assert.throws(() => {
+    const callback = common.mustNotCall(() => {});
+
+    execFile(process.execPath, [echoFixture, 0], { signal: 'hello' }, callback);
+  }, { code: 'ERR_INVALID_ARG_TYPE', name: 'TypeError' });
+}
+{
+  // Verify that the process completing removes the abort listener
+  const ac = new AbortController();
+  const { signal } = ac;
+
+  const callback = common.mustCall((err) => {
+    assert.strictEqual(getEventListeners(ac.signal).length, 0);
+    assert.strictEqual(err, null);
+  });
+  execFile(process.execPath, [fixture, 0], { signal }, callback);
 }

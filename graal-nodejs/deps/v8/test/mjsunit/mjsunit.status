@@ -39,6 +39,15 @@
   'bugs/*': [FAIL],
 
   ##############################################################################
+  # LTS failing tests.
+  # Introduced in https://chromium-review.googlesource.com/c/v8/v8/+/2584242
+  'regress/wasm/regress-1146861': [SKIP],
+  # Introduced in https://chromium-review.googlesource.com/c/v8/v8/+/2656263
+  'regress/wasm/regress-1153442': [SKIP],
+  # Introduced in https://chromium-review.googlesource.com/c/v8/v8/+/2649176
+  'regress/wasm/regress-1161654': [SKIP],
+
+  ##############################################################################
   # Open bugs.
 
   # BUG(v8:2989).
@@ -72,6 +81,9 @@
   # https://crbug.com/v8/issues/10486
   # Enable once multi-byte prefixed opcodes are correctly handled
   'regress/wasm/regress-1065599': [SKIP],
+
+  # https://crbug.com/1166138
+  'regress/regress-1166138': SKIP,
 
   ##############################################################################
   # Tests where variants make no sense.

@@ -16,7 +16,9 @@ const ModuleFindPath = Module._findPath;
 const hacks = [
   'eslint-plugin-node-core',
   'eslint-plugin-markdown',
-  'babel-eslint',
+  '@babel/eslint-parser',
+  '@babel/plugin-syntax-class-properties',
+  '@babel/plugin-syntax-top-level-await',
 ];
 Module._findPath = (request, paths, isMain) => {
   const r = ModuleFindPath(request, paths, isMain);
@@ -37,15 +39,20 @@ Module._findPath = (request, paths, isMain) => {
 module.exports = {
   root: true,
   plugins: ['markdown', 'node-core'],
-  parser: 'babel-eslint',
-  parserOptions: { sourceType: 'script' },
+  parser: '@babel/eslint-parser',
+  parserOptions: {
+    babelOptions: {
+      plugins: [
+        Module._findPath('@babel/plugin-syntax-class-properties'),
+        Module._findPath('@babel/plugin-syntax-top-level-await'),
+      ],
+    },
+    requireConfigFile: false,
+    sourceType: 'script',
+  },
   overrides: [
     {
       files: [
-        'doc/api/esm.md',
-        'doc/api/module.md',
-        'doc/api/modules.md',
-        'doc/api/packages.md',
         'test/es-module/test-esm-type-flag.js',
         'test/es-module/test-esm-type-flag-alias.js',
         '*.mjs',
@@ -55,8 +62,23 @@ module.exports = {
     },
     {
       files: ['**/*.md'],
-      parserOptions: { ecmaFeatures: { impliedStrict: true } },
+      processor: 'markdown/markdown',
+    },
+    {
+      files: ['**/*.md/*.cjs', '**/*.md/*.js'],
+      parserOptions: {
+        sourceType: 'script',
+        ecmaFeatures: { impliedStrict: true }
+      },
       rules: { strict: 'off' },
+    },
+    {
+      files: [
+        '**/*.md/*.mjs',
+        'doc/api/esm.md/*.js',
+        'doc/api/packages.md/*.js',
+      ],
+      parserOptions: { sourceType: 'module' },
     },
   ],
   rules: {
@@ -150,6 +172,7 @@ module.exports = {
     'no-multiple-empty-lines': ['error', { max: 2, maxEOF: 0, maxBOF: 0 }],
     'no-new-require': 'error',
     'no-new-symbol': 'error',
+    'no-nonoctal-decimal-escape': 'error',
     'no-obj-calls': 'error',
     'no-octal': 'error',
     'no-path-concat': 'error',
@@ -226,6 +249,8 @@ module.exports = {
     'no-unreachable': 'error',
     'no-unsafe-finally': 'error',
     'no-unsafe-negation': 'error',
+    'no-unsafe-optional-chaining': 'error',
+    'no-unused-expressions': ['error', { allowShortCircuit: true }],
     'no-unused-labels': 'error',
     'no-unused-vars': ['error', { args: 'none', caughtErrors: 'all' }],
     'no-use-before-define': ['error', {
@@ -243,6 +268,7 @@ module.exports = {
     'no-void': 'error',
     'no-whitespace-before-property': 'error',
     'no-with': 'error',
+    'object-curly-newline': 'error',
     'object-curly-spacing': ['error', 'always'],
     'one-var': ['error', { initialized: 'never' }],
     'one-var-declaration-per-line': 'error',
@@ -275,13 +301,15 @@ module.exports = {
     'template-curly-spacing': 'error',
     'unicode-bom': 'error',
     'use-isnan': 'error',
-    'valid-typeof': 'error',
+    'valid-typeof': ['error', { requireStringLiterals: true }],
 
     // Custom rules from eslint-plugin-node-core
     'node-core/no-unescaped-regexp-dot': 'error',
     'node-core/no-duplicate-requires': 'error',
   },
   globals: {
+    AbortController: 'readable',
+    AbortSignal: 'readable',
     Atomics: 'readable',
     BigInt: 'readable',
     BigInt64Array: 'readable',

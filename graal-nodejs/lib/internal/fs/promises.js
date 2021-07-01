@@ -9,6 +9,9 @@ const kIoMaxLength = 2 ** 31 - 1;
 const kReadFileMaxChunkSize = 2 ** 14;
 const kWriteFileMaxChunkSize = 2 ** 14;
 
+// 2 ** 32 - 1
+const kMaxUserId = 4294967295;
+
 const {
   Error,
   MathMax,
@@ -30,12 +33,14 @@ const {
 } = internalBinding('constants').fs;
 const binding = internalBinding('fs');
 const { Buffer } = require('buffer');
+
+const { codes, hideStackFrames } = require('internal/errors');
 const {
   ERR_FS_FILE_TOO_LARGE,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_ARG_VALUE,
-  ERR_METHOD_NOT_IMPLEMENTED
-} = require('internal/errors').codes;
+  ERR_METHOD_NOT_IMPLEMENTED,
+} = codes;
 const { isArrayBufferView } = require('internal/util/types');
 const { rimrafPromises } = require('internal/fs/rimraf');
 const {
@@ -61,9 +66,9 @@ const {
 const { opendir } = require('internal/fs/dir');
 const {
   parseFileMode,
+  validateAbortSignal,
   validateBuffer,
   validateInteger,
-  validateUint32
 } = require('internal/validators');
 const pathModule = require('path');
 const { promisify } = require('internal/util');
@@ -82,6 +87,13 @@ const {
 
 const getDirectoryEntriesPromise = promisify(getDirents);
 const validateRmOptionsPromise = promisify(validateRmOptions);
+
+let DOMException;
+const lazyDOMException = hideStackFrames((message, name) => {
+  if (DOMException === undefined)
+    DOMException = internalBinding('messaging').DOMException;
+  return new DOMException(message, name);
+});
 
 class FileHandle extends JSTransferable {
   constructor(filehandle) {
@@ -241,12 +253,15 @@ async function fsCall(fn, handle, ...args) {
   }
 }
 
-async function writeFileHandle(filehandle, data) {
+async function writeFileHandle(filehandle, data, signal) {
   // `data` could be any kind of typed array.
   data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
   let remaining = data.length;
   if (remaining === 0) return;
   do {
+    if (signal?.aborted) {
+      throw new lazyDOMException('The operation was aborted', 'AbortError');
+    }
     const { bytesWritten } =
       await write(filehandle, data, 0,
                   MathMin(kWriteFileMaxChunkSize, data.length));
@@ -260,7 +275,16 @@ async function writeFileHandle(filehandle, data) {
 }
 
 async function readFileHandle(filehandle, options) {
+  const signal = options && options.signal;
+
+  if (signal && signal.aborted) {
+    throw lazyDOMException('The operation was aborted', 'AbortError');
+  }
   const statFields = await binding.fstat(filehandle.fd, false, kUsePromises);
+
+  if (signal && signal.aborted) {
+    throw lazyDOMException('The operation was aborted', 'AbortError');
+  }
 
   let size;
   if ((statFields[1/* mode */] & S_IFMT) === S_IFREG) {
@@ -278,6 +302,9 @@ async function readFileHandle(filehandle, options) {
     MathMin(size, kReadFileMaxChunkSize);
   let endOfFile = false;
   do {
+    if (signal && signal.aborted) {
+      throw lazyDOMException('The operation was aborted', 'AbortError');
+    }
     const buf = Buffer.alloc(chunkSize);
     const { bytesRead, buffer } =
       await read(filehandle, buf, 0, chunkSize, -1);
@@ -286,7 +313,7 @@ async function readFileHandle(filehandle, options) {
       chunks.push(buffer.slice(0, bytesRead));
   } while (!endOfFile);
 
-  const result = Buffer.concat(chunks);
+  const result = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
 
   return options.encoding ? result.toString(options.encoding) : result;
 }
@@ -339,7 +366,7 @@ async function read(handle, bufferOrOptions, offset, length, position) {
   if (offset == null) {
     offset = 0;
   } else {
-    validateInteger(offset, 'offset');
+    validateInteger(offset, 'offset', 0);
   }
 
   length |= 0;
@@ -382,7 +409,7 @@ async function write(handle, buffer, offset, length, position) {
     if (offset == null) {
       offset = 0;
     } else {
-      validateInteger(offset, 'offset');
+      validateInteger(offset, 'offset', 0);
     }
     if (typeof length !== 'number')
       length = buffer.length - offset;
@@ -555,22 +582,22 @@ async function lchmod(path, mode) {
 
 async function lchown(path, uid, gid) {
   path = getValidatedPath(path);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
   return binding.lchown(pathModule.toNamespacedPath(path),
                         uid, gid, kUsePromises);
 }
 
 async function fchown(handle, uid, gid) {
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
   return binding.fchown(handle.fd, uid, gid, kUsePromises);
 }
 
 async function chown(path, uid, gid) {
   path = getValidatedPath(path);
-  validateUint32(uid, 'uid');
-  validateUint32(gid, 'gid');
+  validateInteger(uid, 'uid', -1, kMaxUserId);
+  validateInteger(gid, 'gid', -1, kMaxUserId);
   return binding.chown(pathModule.toNamespacedPath(path),
                        uid, gid, kUsePromises);
 }
@@ -622,11 +649,17 @@ async function writeFile(path, data, options) {
     data = Buffer.from(data, options.encoding || 'utf8');
   }
 
+  validateAbortSignal(options.signal);
   if (path instanceof FileHandle)
-    return writeFileHandle(path, data);
+    return writeFileHandle(path, data, options.signal);
+
+  if (options.signal?.aborted) {
+    throw new lazyDOMException('The operation was aborted', 'AbortError');
+  }
 
   const fd = await open(path, flag, options.mode);
-  return PromisePrototypeFinally(writeFileHandle(fd, data), fd.close);
+  const { signal } = options;
+  return PromisePrototypeFinally(writeFileHandle(fd, data, signal), fd.close);
 }
 
 async function appendFile(path, data, options) {
@@ -642,6 +675,10 @@ async function readFile(path, options) {
 
   if (path instanceof FileHandle)
     return readFileHandle(path, options);
+
+  if (options.signal?.aborted) {
+    throw lazyDOMException('The operation was aborted', 'AbortError');
+  }
 
   const fd = await open(path, flag, 0o666);
   return PromisePrototypeFinally(readFileHandle(fd, options), fd.close);

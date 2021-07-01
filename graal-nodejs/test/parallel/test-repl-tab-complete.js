@@ -51,7 +51,12 @@ function getNoResultsFunction() {
 
 const works = [['inner.one'], 'inner.o'];
 const putIn = new ArrayStream();
-const testMe = repl.start('', putIn);
+const testMe = repl.start({
+  prompt: '',
+  input: putIn,
+  output: process.stdout,
+  allowBlockingCompletions: true
+});
 
 // Some errors are passed to the domain, but do not callback
 testMe._domain.on('error', assert.ifError);
@@ -532,7 +537,7 @@ testMe.complete('obj.', common.mustCall((error, data) => {
 
 // check Buffer.prototype.length not crashing.
 // Refs: https://github.com/nodejs/node/pull/11961
-putIn.run['.clear'];
+putIn.run(['.clear']);
 testMe.complete('Buffer.prototype.', common.mustCall());
 
 const testNonGlobal = repl.start({

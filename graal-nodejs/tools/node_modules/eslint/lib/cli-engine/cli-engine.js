@@ -19,14 +19,24 @@ const fs = require("fs");
 const path = require("path");
 const defaultOptions = require("../../conf/default-cli-options");
 const pkg = require("../../package.json");
-const ConfigOps = require("@eslint/eslintrc/lib/shared/config-ops");
-const naming = require("@eslint/eslintrc/lib/shared/naming");
-const ModuleResolver = require("../shared/relative-module-resolver");
+
+
+const {
+    Legacy: {
+        ConfigOps,
+        naming,
+        CascadingConfigArrayFactory,
+        IgnorePattern,
+        getUsedExtractedConfigs,
+        ModuleResolver
+    }
+} = require("@eslint/eslintrc");
+
+const { FileEnumerator } = require("./file-enumerator");
+
 const { Linter } = require("../linter");
 const builtInRules = require("../rules");
-const { CascadingConfigArrayFactory } = require("./cascading-config-array-factory");
-const { IgnorePattern, getUsedExtractedConfigs } = require("./config-array");
-const { FileEnumerator } = require("./file-enumerator");
+const loadRules = require("./load-rules");
 const hash = require("./hash");
 const LintResultCache = require("./lint-result-cache");
 
@@ -516,7 +526,7 @@ function directoryExists(resolvedPath) {
     try {
         return fs.statSync(resolvedPath).isDirectory();
     } catch (error) {
-        if (error && error.code === "ENOENT") {
+        if (error && (error.code === "ENOENT" || error.code === "ENOTDIR")) {
             return false;
         }
         throw error;
@@ -559,7 +569,11 @@ class CLIEngine {
             resolvePluginsRelativeTo: options.resolvePluginsRelativeTo,
             rulePaths: options.rulePaths,
             specificConfigPath: options.configFile,
-            useEslintrc: options.useEslintrc
+            useEslintrc: options.useEslintrc,
+            builtInRules,
+            loadRules,
+            eslintRecommendedPath: path.resolve(__dirname, "../../conf/eslint-recommended.js"),
+            eslintAllPath: path.resolve(__dirname, "../../conf/eslint-all.js")
         });
         const fileEnumerator = new FileEnumerator({
             configArrayFactory,
@@ -570,7 +584,7 @@ class CLIEngine {
             ignore: options.ignore
         });
         const lintResultCache =
-            options.cache ? new LintResultCache(cacheFilePath) : null;
+            options.cache ? new LintResultCache(cacheFilePath, options.cacheStrategy) : null;
         const linter = new Linter({ cwd: options.cwd });
 
         /** @type {ConfigArray[]} */

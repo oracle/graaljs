@@ -1277,7 +1277,11 @@ int Http2Session::HandleDataFrame(const nghttp2_frame* frame) {
       frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     stream->EmitRead(UV_EOF);
   } else if (frame->hd.length == 0) {
-    return 1;  // Consider 0-length frame without END_STREAM an error.
+    if (invalid_frame_count_++ > js_fields_->max_invalid_frames) {
+      Debug(this, "rejecting empty-frame-without-END_STREAM flood\n");
+      // Consider a flood of 0-length frames without END_STREAM an error.
+      return 1;
+    }
   }
   return 0;
 }
@@ -2975,7 +2979,7 @@ void Http2State::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 // TODO(addaleax): Remove once we're on C++17.
-constexpr FastStringKey Http2State::binding_data_name;
+constexpr FastStringKey Http2State::type_name;
 
 // Set up the process.binding('http2') binding.
 void Initialize(Local<Object> target,

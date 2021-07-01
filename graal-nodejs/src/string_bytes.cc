@@ -21,7 +21,7 @@
 
 #include "string_bytes.h"
 
-#include "base64.h"
+#include "base64-inl.h"
 #include "env-inl.h"
 #include "node_buffer.h"
 #include "node_errors.h"
@@ -250,8 +250,8 @@ static size_t hex_decode(char* buf,
                          const size_t srcLen) {
   size_t i;
   for (i = 0; i < len && i * 2 + 1 < srcLen; ++i) {
-    unsigned a = unhex(src[i * 2 + 0]);
-    unsigned b = unhex(src[i * 2 + 1]);
+    unsigned a = unhex(static_cast<uint8_t>(src[i * 2 + 0]));
+    unsigned b = unhex(static_cast<uint8_t>(src[i * 2 + 1]));
     if (!~a || !~b)
       return i;
     buf[i] = (a << 4) | b;

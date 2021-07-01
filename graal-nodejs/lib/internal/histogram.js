@@ -5,7 +5,7 @@ const {
 } = require('internal/util');
 
 const { format } = require('util');
-const { Map, Symbol } = primordials;
+const { NumberIsNaN, SafeMap, Symbol } = primordials;
 
 const {
   ERR_INVALID_ARG_TYPE,
@@ -19,11 +19,10 @@ const kHandle = Symbol('kHandle');
 // record various metrics. This Histogram class provides a
 // generally read-only view of the internal histogram.
 class Histogram {
-  #handle = undefined;
-  #map = new Map();
+  #map = new SafeMap();
 
   constructor(internal) {
-    this.#handle = internal;
+    this[kHandle] = internal;
   }
 
   [kInspect]() {
@@ -39,52 +38,48 @@ class Histogram {
   }
 
   get min() {
-    return this.#handle ? this.#handle.min() : undefined;
+    return this[kHandle]?.min();
   }
 
   get max() {
-    return this.#handle ? this.#handle.max() : undefined;
+    return this[kHandle]?.max();
   }
 
   get mean() {
-    return this.#handle ? this.#handle.mean() : undefined;
+    return this[kHandle]?.mean();
   }
 
   get exceeds() {
-    return this.#handle ? this.#handle.exceeds() : undefined;
+    return this[kHandle]?.exceeds();
   }
 
   get stddev() {
-    return this.#handle ? this.#handle.stddev() : undefined;
+    return this[kHandle]?.stddev();
   }
 
   percentile(percentile) {
     if (typeof percentile !== 'number')
       throw new ERR_INVALID_ARG_TYPE('percentile', 'number', percentile);
 
-    if (percentile <= 0 || percentile > 100)
+    if (NumberIsNaN(percentile) || percentile <= 0 || percentile > 100)
       throw new ERR_INVALID_ARG_VALUE.RangeError('percentile', percentile);
 
-    return this.#handle ? this.#handle.percentile(percentile) : undefined;
+    return this[kHandle]?.percentile(percentile);
   }
 
   get percentiles() {
     this.#map.clear();
-    if (this.#handle)
-      this.#handle.percentiles(this.#map);
+    this[kHandle]?.percentiles(this.#map);
     return this.#map;
   }
 
   reset() {
-    if (this.#handle)
-      this.#handle.reset();
+    this[kHandle]?.reset();
   }
 
   [kDestroy]() {
-    this.#handle = undefined;
+    this[kHandle] = undefined;
   }
-
-  get [kHandle]() { return this.#handle; }
 }
 
 module.exports = {

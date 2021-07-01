@@ -331,7 +331,7 @@ goto msbuild-found
 :msbuild-not-found
 echo Failed to find a suitable Visual Studio installation.
 echo Try to run in a "Developer Command Prompt" or consult
-echo https://github.com/nodejs/node/blob/master/BUILDING.md#windows
+echo https://github.com/nodejs/node/blob/HEAD/BUILDING.md#windows
 goto exit
 
 :msbuild-found
@@ -383,6 +383,8 @@ if "%target%"=="Build" (
   if defined cctest set target="Build"
 )
 if "%target%"=="node" if exist "%config%\cctest.exe" del "%config%\cctest.exe"
+@rem TODO(targos): Remove next line after MSBuild 16.10.1 is released.
+if "%target%"=="node" set target="Build"
 if defined msbuild_args set "extra_msbuild_args=%extra_msbuild_args% %msbuild_args%"
 @rem Setup env variables to use multiprocessor build
 set UseMultiToolTask=True
@@ -700,7 +702,7 @@ goto lint-js
 if not defined lint_js goto lint-md-build
 if not exist tools\node_modules\eslint goto no-lint
 echo running lint-js
-%node_exe% tools\node_modules\eslint\bin\eslint.js --cache --report-unused-disable-directives --rule "linebreak-style: 0" --ext=.js,.mjs,.md .eslintrc.js benchmark doc lib test tools
+%node_exe% tools\node_modules\eslint\bin\eslint.js --cache --report-unused-disable-directives --rule "linebreak-style: 0" .eslintrc.js benchmark doc lib test tools
 goto lint-md-build
 
 :no-lint

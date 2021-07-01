@@ -150,10 +150,16 @@ function validateBoolean(value, name) {
 }
 
 const validateObject = hideStackFrames(
-  (value, name, { nullable = false } = {}) => {
+  (value, name, {
+    nullable = false,
+    allowArray = false,
+    allowFunction = false,
+  } = {}) => {
     if ((!nullable && value === null) ||
-        ArrayIsArray(value) ||
-        typeof value !== 'object') {
+        (!allowArray && ArrayIsArray(value)) ||
+        (typeof value !== 'object' && (
+          !allowFunction || typeof value !== 'function'
+        ))) {
       throw new ERR_INVALID_ARG_TYPE(name, 'Object', value);
     }
   });
@@ -218,6 +224,15 @@ const validateCallback = hideStackFrames((callback) => {
     throw new ERR_INVALID_CALLBACK(callback);
 });
 
+const validateAbortSignal = hideStackFrames((signal, name) => {
+  if (signal !== undefined &&
+      (signal === null ||
+       typeof signal !== 'object' ||
+       !('aborted' in signal))) {
+    throw new ERR_INVALID_ARG_TYPE(name, 'AbortSignal', signal);
+  }
+});
+
 module.exports = {
   isInt32,
   isUint32,
@@ -236,4 +251,5 @@ module.exports = {
   validateString,
   validateUint32,
   validateCallback,
+  validateAbortSignal,
 };

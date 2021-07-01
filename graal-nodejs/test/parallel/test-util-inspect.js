@@ -210,6 +210,17 @@ assert(!/Object/.test(
                      'ArrayBuffer { (detached), byteLength: 0 }');
 }
 
+// Truncate output for ArrayBuffers using plural or singular bytes
+{
+  const ab = new ArrayBuffer(3);
+  assert.strictEqual(util.inspect(ab, { showHidden: true, maxArrayLength: 2 }),
+                     'ArrayBuffer { [Uint8Contents]' +
+                      ': <00 00 ... 1 more byte>, byteLength: 3 }');
+  assert.strictEqual(util.inspect(ab, { showHidden: true, maxArrayLength: 1 }),
+                     'ArrayBuffer { [Uint8Contents]' +
+                      ': <00 ... 2 more bytes>, byteLength: 3 }');
+}
+
 // Now do the same checks but from a different context.
 {
   const showHidden = false;
@@ -2011,6 +2022,11 @@ assert.strictEqual(util.inspect('"\'${a}'), "'\"\\'${a}'");
     rest[rest.length - 1] = rest[rest.length - 1].slice(0, -1);
     rest.length = 1;
   }
+  Object.setPrototypeOf(clazz, Map.prototype);
+  assert.strictEqual(
+    util.inspect(clazz),
+    ['[class', name, '[Map]', ...rest].join(' ') + ']'
+  );
   Object.setPrototypeOf(clazz, null);
   assert.strictEqual(
     util.inspect(clazz),
@@ -2910,6 +2926,12 @@ assert.strictEqual(
   assert.strictEqual(inspect(undetectable), '{}');
 }
 
+// Truncate output for Primitives with 1 character left
+{
+  assert.strictEqual(util.inspect('bl', { maxStringLength: 1 }),
+                     "'b'... 1 more character");
+}
+
 {
   const x = 'a'.repeat(1e6);
   assert.strictEqual(
@@ -3000,4 +3022,82 @@ assert.strictEqual(
 
   // Consistency check.
   assert(fullObjectGraph(global).has(Function.prototype));
+}
+
+{
+  // Confirm that own constructor value displays correctly.
+
+  function Fhqwhgads() {}
+
+  const sterrance = new Fhqwhgads();
+  sterrance.constructor = Fhqwhgads;
+
+  assert.strictEqual(
+    util.inspect(sterrance, { showHidden: true }),
+    'Fhqwhgads {\n' +
+      '  constructor: <ref *1> [Function: Fhqwhgads] {\n' +
+      '    [length]: 0,\n' +
+      "    [name]: 'Fhqwhgads',\n" +
+      '    [prototype]: { [constructor]: [Circular *1] }\n' +
+      '  }\n' +
+      '}'
+  );
+}
+
+{
+  // Confirm null prototype of generator prototype displays as expected.
+
+  function getProtoOfProto() {
+    return Object.getPrototypeOf(Object.getPrototypeOf(function* () {}));
+  }
+
+  function* generator() {}
+
+  const generatorPrototype = Object.getPrototypeOf(generator);
+  const originalProtoOfProto = Object.getPrototypeOf(generatorPrototype);
+  assert.strictEqual(getProtoOfProto(), originalProtoOfProto);
+  Object.setPrototypeOf(generatorPrototype, null);
+  assert.notStrictEqual(getProtoOfProto, originalProtoOfProto);
+
+  // This is the actual test. The other assertions in this block are about
+  // making sure the test is set up correctly and isn't polluting other tests.
+  assert.strictEqual(
+    util.inspect(generator, { showHidden: true }),
+    '[GeneratorFunction: generator] {\n' +
+    '  [length]: 0,\n' +
+    "  [name]: 'generator',\n" +
+    "  [prototype]: Object [Generator] { [Symbol(Symbol.toStringTag)]: 'Generator' },\n" + // eslint-disable-line max-len
+    "  [Symbol(Symbol.toStringTag)]: 'GeneratorFunction'\n" +
+    '}'
+  );
+
+  // Reset so we don't pollute other tests
+  Object.setPrototypeOf(generatorPrototype, originalProtoOfProto);
+  assert.strictEqual(getProtoOfProto(), originalProtoOfProto);
+}
+
+{
+  // Test for when breakLength results in a single column.
+  const obj = Array(9).fill('fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf');
+  assert.strictEqual(
+    util.inspect(obj, { breakLength: 256 }),
+    '[\n' +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf',\n" +
+    "  'fhqwhgadshgnsdhjsdbkhsdabkfabkveybvf'\n" +
+    ']'
+  );
+}
+
+{
+  assert.strictEqual(
+    util.inspect({ ['__proto__']: { a: 1 } }),
+    "{ ['__proto__']: { a: 1 } }"
+  );
 }

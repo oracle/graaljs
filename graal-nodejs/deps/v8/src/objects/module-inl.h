@@ -36,8 +36,9 @@ ACCESSORS(Module, exception, Object, kExceptionOffset)
 SMI_ACCESSORS(Module, status, kStatusOffset)
 SMI_ACCESSORS(Module, hash, kHashOffset)
 
-BOOL_ACCESSORS(SourceTextModule, flags, async, kAsyncBit)
-BOOL_ACCESSORS(SourceTextModule, flags, async_evaluating, kAsyncEvaluatingBit)
+BOOL_ACCESSORS(SourceTextModule, flags, async, AsyncBit::kShift)
+BIT_FIELD_ACCESSORS(SourceTextModule, flags, async_evaluating_ordinal,
+                    SourceTextModule::AsyncEvaluatingOrdinalBits)
 ACCESSORS(SourceTextModule, async_parent_modules, ArrayList,
           kAsyncParentModulesOffset)
 ACCESSORS(SourceTextModule, top_level_capability, HeapObject,
@@ -111,6 +112,14 @@ class UnorderedModuleSet
             ZoneAllocator<Handle<Module>>(zone)) {}
 };
 
+Handle<SourceTextModule> SourceTextModule::GetCycleRoot(
+    Isolate* isolate) const {
+  CHECK_GE(status(), kEvaluated);
+  DCHECK(!cycle_root().IsTheHole(isolate));
+  Handle<SourceTextModule> root(SourceTextModule::cast(cycle_root()), isolate);
+  return root;
+}
+
 void SourceTextModule::AddAsyncParentModule(Isolate* isolate,
                                             Handle<SourceTextModule> module,
                                             Handle<SourceTextModule> parent) {
@@ -130,6 +139,10 @@ Handle<SourceTextModule> SourceTextModule::GetAsyncParentModule(
 
 int SourceTextModule::AsyncParentModuleCount() {
   return async_parent_modules().Length();
+}
+
+bool SourceTextModule::IsAsyncEvaluating() const {
+  return async_evaluating_ordinal() >= kFirstAsyncEvaluatingOrdinal;
 }
 
 bool SourceTextModule::HasPendingAsyncDependencies() {

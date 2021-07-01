@@ -45,15 +45,24 @@ let debug = require('internal/util/debuglog').debuglog(
 );
 const { Buffer } = require('buffer');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
+
+const {
+  AbortError,
+  codes: errorCodes,
+} = require('internal/errors');
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_CHILD_PROCESS_IPC_REQUIRED,
   ERR_CHILD_PROCESS_STDIO_MAXBUFFER,
   ERR_INVALID_ARG_TYPE,
-  ERR_OUT_OF_RANGE
-} = require('internal/errors').codes;
+  ERR_OUT_OF_RANGE,
+} = errorCodes;
 const { clearTimeout, setTimeout } = require('timers');
-const { validateString, isInt32 } = require('internal/validators');
+const {
+  validateString,
+  isInt32,
+  validateAbortSignal,
+} = require('internal/validators');
 const child_process = require('internal/child_process');
 const {
   getValidStdio,
@@ -76,8 +85,7 @@ function fork(modulePath /* , args, options */) {
     args = arguments[pos++];
   }
 
-  if (pos < arguments.length &&
-      (arguments[pos] === undefined || arguments[pos] === null)) {
+  if (pos < arguments.length && arguments[pos] == null) {
     pos++;
   }
 
@@ -118,7 +126,7 @@ function fork(modulePath /* , args, options */) {
   options.execPath = options.execPath || process.execPath;
   options.shell = false;
 
-  return spawn(options.execPath, args, options);
+  return spawnWithSignal(options.execPath, args, options);
 }
 
 function _forkChild(fd, serializationMode) {
@@ -232,6 +240,9 @@ function execFile(file /* , args, options, callback */) {
   // Validate maxBuffer, if present.
   validateMaxBuffer(options.maxBuffer);
 
+  // Validate signal, if present
+  validateAbortSignal(options.signal, 'options.signal');
+
   options.killSignal = sanitizeKillSignal(options.killSignal);
 
   const child = spawn(file, args, {
@@ -343,11 +354,27 @@ function execFile(file /* , args, options, callback */) {
     }
   }
 
+  function abortHandler() {
+    if (!ex)
+      ex = new AbortError();
+    process.nextTick(() => kill());
+  }
+
   if (options.timeout > 0) {
     timeoutId = setTimeout(function delayedKill() {
       kill();
       timeoutId = null;
     }, options.timeout);
+  }
+  if (options.signal) {
+    if (options.signal.aborted) {
+      process.nextTick(abortHandler);
+    } else {
+      const childController = new AbortController();
+      options.signal.addEventListener('abort', abortHandler,
+                                      { signal: childController.signal });
+      child.once('close', () => childController.abort());
+    }
   }
 
   if (child.stdout) {
@@ -694,6 +721,30 @@ function sanitizeKillSignal(killSignal) {
   }
 }
 
+// This level of indirection is here because the other child_process methods
+// call spawn internally but should use different cancellation logic.
+function spawnWithSignal(file, args, options) {
+  const child = spawn(file, args, options);
+
+  if (options && options.signal) {
+    // Validate signal, if present
+    validateAbortSignal(options.signal, 'options.signal');
+    function kill() {
+      if (child._handle) {
+        child.kill('SIGTERM');
+        child.emit('error', new AbortError());
+      }
+    }
+    if (options.signal.aborted) {
+      process.nextTick(kill);
+    } else {
+      options.signal.addEventListener('abort', kill);
+      const remove = () => options.signal.removeEventListener('abort', kill);
+      child.once('close', remove);
+    }
+  }
+  return child;
+}
 module.exports = {
   _forkChild,
   ChildProcess,
@@ -702,6 +753,6 @@ module.exports = {
   execFileSync,
   execSync,
   fork,
-  spawn,
+  spawn: spawnWithSignal,
   spawnSync
 };

@@ -74,13 +74,8 @@ function getConditionsSet(conditions) {
 const realpathCache = new SafeMap();
 const packageJSONCache = new SafeMap();  /* string -> PackageConfig */
 
-function tryStatSync(path) {
-  try {
-    return statSync(path);
-  } catch {
-    return new Stats();
-  }
-}
+const tryStatSync =
+  (path) => statSync(path, { throwIfNoEntry: false }) ?? new Stats();
 
 function getPackageConfig(path, specifier, base) {
   const existing = packageJSONCache.get(path);
@@ -850,6 +845,7 @@ module.exports = {
   DEFAULT_CONDITIONS,
   defaultResolve,
   encodedSepRegEx,
+  getPackageScopeConfig,
   getPackageType,
   packageExportsResolve,
   packageImportsResolve

@@ -675,7 +675,9 @@ TLSSocket.prototype._init = function(socket, wrap) {
     if (event !== 'keylog')
       return;
 
-    ssl.enableKeylogCallback();
+    // Guard against enableKeylogCallback after destroy
+    if (!this._handle) return;
+    this._handle.enableKeylogCallback();
 
     // Remove this listener since it's no longer needed.
     this.removeListener('newListener', keylogNewListener);
@@ -719,7 +721,9 @@ TLSSocket.prototype._init = function(socket, wrap) {
       if (event !== 'session')
         return;
 
-      ssl.enableSessionCallbacks();
+      // Guard against enableSessionCallbacks after destroy
+      if (!this._handle) return;
+      this._handle.enableSessionCallbacks();
 
       // Remove this listener since it's no longer needed.
       this.removeListener('newListener', newListener);
@@ -1320,6 +1324,9 @@ Server.prototype.setSecureContext = function(options) {
   if (options.ticketKeys)
     this.ticketKeys = options.ticketKeys;
 
+  this.privateKeyIdentifier = options.privateKeyIdentifier;
+  this.privateKeyEngine = options.privateKeyEngine;
+
   this._sharedCreds = tls.createSecureContext({
     pfx: this.pfx,
     key: this.key,
@@ -1339,7 +1346,9 @@ Server.prototype.setSecureContext = function(options) {
     crl: this.crl,
     sessionIdContext: this.sessionIdContext,
     ticketKeys: this.ticketKeys,
-    sessionTimeout: this.sessionTimeout
+    sessionTimeout: this.sessionTimeout,
+    privateKeyIdentifier: this.privateKeyIdentifier,
+    privateKeyEngine: this.privateKeyEngine,
   });
 };
 
@@ -1362,6 +1371,9 @@ Server.prototype.getTicketKeys = function getTicketKeys() {
 
 
 Server.prototype.setTicketKeys = function setTicketKeys(keys) {
+  validateBuffer(keys);
+  assert(keys.byteLength === 48,
+         'Session ticket keys must be a 48-byte buffer');
   this._sharedCreds.context.setTicketKeys(keys);
 };
 
@@ -1405,6 +1417,11 @@ Server.prototype.setOptions = deprecate(function(options) {
   }
   if (options.pskCallback) this[kPskCallback] = options.pskCallback;
   if (options.pskIdentityHint) this[kPskIdentityHint] = options.pskIdentityHint;
+  if (options.sigalgs) this.sigalgs = options.sigalgs;
+  if (options.privateKeyIdentifier !== undefined)
+    this.privateKeyIdentifier = options.privateKeyIdentifier;
+  if (options.privateKeyEngine !== undefined)
+    this.privateKeyEngine = options.privateKeyEngine;
 }, 'Server.prototype.setOptions() is deprecated', 'DEP0122');
 
 // SNI Contexts High-Level API

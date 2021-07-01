@@ -5,7 +5,6 @@
 const common = require('../common');
 
 const assert = require('assert');
-const { URL } = require('url');
 
 const { SourceTextModule } = require('vm');
 
@@ -133,4 +132,4 @@ const finished = common.mustCall();
   await circular();
   await circular2();
   finished();
-})();
+})().then(common.mustCall());

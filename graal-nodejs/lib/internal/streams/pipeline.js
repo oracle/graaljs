@@ -5,8 +5,9 @@
 
 const {
   ArrayIsArray,
+  ReflectApply,
   SymbolAsyncIterator,
-  SymbolIterator
+  SymbolIterator,
 } = primordials;
 
 let eos;
@@ -77,10 +78,6 @@ function popCallback(streams) {
   return streams.pop();
 }
 
-function isPromise(obj) {
-  return !!(obj && typeof obj.then === 'function');
-}
-
 function isReadable(obj) {
   return !!(obj && typeof obj.pipe === 'function');
 }
@@ -125,6 +122,10 @@ async function pump(iterable, writable, finish) {
   }
   let error;
   try {
+    if (writable.writableNeedDrain === true) {
+      await EE.once(writable, 'drain');
+    }
+
     for await (const chunk of iterable) {
       if (!writable.write(chunk)) {
         if (writable.destroyed) return;
@@ -224,14 +225,19 @@ function pipeline(...streams) {
         const pt = new PassThrough({
           objectMode: true
         });
-        if (isPromise(ret)) {
-          ret
-            .then((val) => {
+
+        // Handle Promises/A+ spec, `then` could be a getter that throws on
+        // second use.
+        const then = ret?.then;
+        if (typeof then === 'function') {
+          ReflectApply(then, ret, [
+            (val) => {
               value = val;
               pt.end(val);
             }, (err) => {
               pt.destroy(err);
-            });
+            }
+          ]);
         } else if (isIterable(ret, true)) {
           finishCount++;
           pump(ret, pt, finish);

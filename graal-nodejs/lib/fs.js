@@ -71,6 +71,8 @@ const {
     ERR_INVALID_CALLBACK,
     ERR_FEATURE_UNAVAILABLE_ON_PLATFORM
   },
+  hideStackFrames,
+  uvErrmapGet,
   uvException
 } = require('internal/errors');
 
@@ -133,6 +135,13 @@ let ReadStream;
 let WriteStream;
 let rimraf;
 let rimrafSync;
+let DOMException;
+
+const lazyDOMException = hideStackFrames((message, name) => {
+  if (DOMException === undefined)
+    DOMException = internalBinding('messaging').DOMException;
+  return new DOMException(message, name);
+});
 
 // These have to be separate because of how graceful-fs happens to do it's
 // monkeypatching.
@@ -315,10 +324,18 @@ function readFile(path, options, callback) {
   const context = new ReadFileContext(callback, options.encoding);
   context.isUserFd = isFd(path); // File descriptor ownership
 
+  if (options.signal) {
+    context.signal = options.signal;
+  }
   if (context.isUserFd) {
     process.nextTick(function tick(context) {
       readFileAfterOpen.call({ context }, null, path);
     }, context);
+    return;
+  }
+
+  if (options.signal?.aborted) {
+    callback(lazyDOMException('The operation was aborted', 'AbortError'));
     return;
   }
 
@@ -422,9 +439,14 @@ function readFileSync(path, options) {
   return buffer;
 }
 
-function close(fd, callback) {
+function defaultCloseCallback(err) {
+  if (err != null) throw err;
+}
+
+function close(fd, callback = defaultCloseCallback) {
   validateInt32(fd, 'fd', 0);
-  callback = makeCallback(callback);
+  if (callback !== defaultCloseCallback)
+    callback = makeCallback(callback);
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
@@ -513,7 +535,7 @@ function read(fd, buffer, offset, length, position, callback) {
   if (offset == null) {
     offset = 0;
   } else {
-    validateInteger(offset, 'offset');
+    validateInteger(offset, 'offset', 0);
   }
 
   length |= 0;
@@ -567,7 +589,7 @@ function readSync(fd, buffer, offset, length, position) {
   if (offset == null) {
     offset = 0;
   } else {
-    validateInteger(offset, 'offset');
+    validateInteger(offset, 'offset', 0);
   }
 
   length |= 0;
@@ -645,7 +667,7 @@ function write(fd, buffer, offset, length, position, callback) {
     if (offset == null || typeof offset === 'function') {
       offset = 0;
     } else {
-      validateInteger(offset, 'offset');
+      validateInteger(offset, 'offset', 0);
     }
     if (typeof length !== 'number')
       length = buffer.length - offset;
@@ -693,7 +715,7 @@ function writeSync(fd, buffer, offset, length, position) {
     if (offset == null) {
       offset = 0;
     } else {
-      validateInteger(offset, 'offset');
+      validateInteger(offset, 'offset', 0);
     }
     if (typeof length !== 'number')
       length = buffer.byteLength - offset;
@@ -1061,7 +1083,20 @@ function stat(path, options = { bigint: false }, callback) {
   binding.stat(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
-function fstatSync(fd, options = { bigint: false }) {
+function hasNoEntryError(ctx) {
+  if (ctx.errno) {
+    const uvErr = uvErrmapGet(ctx.errno);
+    return uvErr && uvErr[0] === 'ENOENT';
+  }
+
+  if (ctx.error) {
+    return ctx.error.code === 'ENOENT';
+  }
+
+  return false;
+}
+
+function fstatSync(fd, options = { bigint: false, throwIfNoEntry: true }) {
   validateInt32(fd, 'fd', 0);
   const ctx = { fd };
   const stats = binding.fstat(fd, options.bigint, undefined, ctx);
@@ -1069,20 +1104,26 @@ function fstatSync(fd, options = { bigint: false }) {
   return getStatsFromBinding(stats);
 }
 
-function lstatSync(path, options = { bigint: false }) {
+function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   path = getValidatedPath(path);
   const ctx = { path };
   const stats = binding.lstat(pathModule.toNamespacedPath(path),
                               options.bigint, undefined, ctx);
+  if (options.throwIfNoEntry === false && hasNoEntryError(ctx)) {
+    return undefined;
+  }
   handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
 }
 
-function statSync(path, options = { bigint: false }) {
+function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   path = getValidatedPath(path);
   const ctx = { path };
   const stats = binding.stat(pathModule.toNamespacedPath(path),
                              options.bigint, undefined, ctx);
+  if (options.throwIfNoEntry === false && hasNoEntryError(ctx)) {
+    return undefined;
+  }
   handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
 }
@@ -1402,7 +1443,17 @@ function lutimesSync(path, atime, mtime) {
   handleErrorFromBinding(ctx);
 }
 
-function writeAll(fd, isUserFd, buffer, offset, length, callback) {
+function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
+  if (signal?.aborted) {
+    if (isUserFd) {
+      callback(lazyDOMException('The operation was aborted', 'AbortError'));
+    } else {
+      fs.close(fd, function() {
+        callback(lazyDOMException('The operation was aborted', 'AbortError'));
+      });
+    }
+    return;
+  }
   // write(fd, buffer, offset, length, position, callback)
   fs.write(fd, buffer, offset, length, null, (writeErr, written) => {
     if (writeErr) {
@@ -1422,7 +1473,7 @@ function writeAll(fd, isUserFd, buffer, offset, length, callback) {
     } else {
       offset += written;
       length -= written;
-      writeAll(fd, isUserFd, buffer, offset, length, callback);
+      writeAll(fd, isUserFd, buffer, offset, length, signal, callback);
     }
   });
 }
@@ -1439,16 +1490,22 @@ function writeFile(path, data, options, callback) {
 
   if (isFd(path)) {
     const isUserFd = true;
-    writeAll(path, isUserFd, data, 0, data.byteLength, callback);
+    const signal = options.signal;
+    writeAll(path, isUserFd, data, 0, data.byteLength, signal, callback);
     return;
   }
 
+  if (options.signal?.aborted) {
+    callback(lazyDOMException('The operation was aborted', 'AbortError'));
+    return;
+  }
   fs.open(path, flag, options.mode, (openErr, fd) => {
     if (openErr) {
       callback(openErr);
     } else {
       const isUserFd = false;
-      writeAll(fd, isUserFd, data, 0, data.byteLength, callback);
+      const signal = options.signal;
+      writeAll(fd, isUserFd, data, 0, data.byteLength, signal, callback);
     }
   });
 }
@@ -1529,6 +1586,17 @@ function watch(filename, options, listener) {
 
   if (listener) {
     watcher.addListener('change', listener);
+  }
+  if (options.signal) {
+    if (options.signal.aborted) {
+      process.nextTick(() => watcher.close());
+    } else {
+      const listener = () => watcher.close();
+      options.signal.addEventListener('abort', listener);
+      watcher.once('close', () => {
+        options.signal.removeEventListener('abort', listener);
+      });
+    }
   }
 
   return watcher;

@@ -11,8 +11,10 @@ const {
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   PromiseAll,
+  ReflectApply,
   SafeWeakMap,
   Symbol,
+  SymbolToStringTag,
   TypeError,
 } = primordials;
 
@@ -242,7 +244,7 @@ class Module {
     o.context = this.context;
 
     ObjectSetPrototypeOf(o, ObjectGetPrototypeOf(this));
-    ObjectDefineProperty(o, Symbol.toStringTag, {
+    ObjectDefineProperty(o, SymbolToStringTag, {
       value: constructor.name,
       configurable: true
     });
@@ -324,6 +326,8 @@ class SourceTextModule extends Module {
           throw new ERR_VM_MODULE_DIFFERENT_CONTEXT();
         }
         if (module.status === 'errored') {
+          // TODO(devsnek): replace with ERR_VM_MODULE_LINK_FAILURE
+          // and error cause proposal.
           throw new ERR_VM_MODULE_LINKING_ERRORED();
         }
         if (module.status === 'unlinked') {
@@ -444,7 +448,7 @@ class SyntheticModule extends Module {
 
 function importModuleDynamicallyWrap(importModuleDynamically) {
   const importModuleDynamicallyWrapper = async (...args) => {
-    const m = await importModuleDynamically(...args);
+    const m = await ReflectApply(importModuleDynamically, this, args);
     if (isModuleNamespaceObject(m)) {
       return m;
     }

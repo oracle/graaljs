@@ -283,6 +283,15 @@ added: v0.1.98
 The `rl.setPrompt()` method sets the prompt that will be written to `output`
 whenever `rl.prompt()` is called.
 
+### `rl.getPrompt()`
+<!-- YAML
+added: v14.17.0
+-->
+
+* Returns: {string} the current prompt string
+
+The `rl.getPrompt()` method returns the current prompt used by `rl.prompt()`.
+
 ### `rl.write(data[, key])`
 <!-- YAML
 added: v0.1.98
@@ -520,6 +529,7 @@ changes:
     **Default:** `500`.
   * `tabSize` {integer} The number of spaces a tab is equal to (minimum 1).
     **Default:** `8`.
+* Returns: {readline.Interface}
 
 The `readline.createInterface()` method creates a new `readline.Interface`
 instance.
@@ -545,6 +555,17 @@ If `terminal` is `true` for this instance then the `output` stream will get
 the best compatibility if it defines an `output.columns` property and emits
 a `'resize'` event on the `output` if or when the columns ever change
 ([`process.stdout`][] does this automatically when it is a TTY).
+
+When creating a `readline.Interface` using `stdin` as input, the program
+will not terminate until it receives `EOF` (<kbd>Ctrl</kbd>+<kbd>D</kbd> on
+Linux/macOS, <kbd>Ctrl</kbd>+<kbd>Z</kbd> followed by <kbd>Return</kbd> on
+Windows).
+If you want your application to exit without waiting for user input, you can
+[`unref()`][] the standard input stream:
+
+```js
+process.stdin.unref();
+```
 
 ### Use of the `completer` function
 
@@ -880,4 +901,5 @@ const { createInterface } = require('readline');
 [`process.stdin`]: process.md#process_process_stdin
 [`process.stdout`]: process.md#process_process_stdout
 [`rl.close()`]: #readline_rl_close
+[`unref()`]: net.md#net_socket_unref
 [reading files]: #readline_example_read_file_stream_line_by_line

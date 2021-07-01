@@ -24,6 +24,7 @@
 const {
   Array,
   ArrayIsArray,
+  ArrayPrototypeForEach,
   Error,
   MathFloor,
   MathMin,
@@ -34,11 +35,17 @@ const {
   ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
-  ObjectGetOwnPropertyDescriptor,
-  ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
+  StringPrototypeCharCodeAt,
+  StringPrototypeReplace,
+  StringPrototypeSlice,
+  StringPrototypeToLowerCase,
+  StringPrototypeTrim,
   SymbolSpecies,
   SymbolToPrimitive,
+  TypedArrayPrototypeGetByteLength,
+  TypedArrayPrototypeFill,
+  TypedArrayPrototypeSet,
   Uint8Array,
   Uint8ArrayPrototype,
 } = primordials;
@@ -109,13 +116,6 @@ const {
   markAsUntransferable,
   addBufferPrototypeMethods
 } = require('internal/buffer');
-
-const TypedArrayPrototype = ObjectGetPrototypeOf(Uint8ArrayPrototype);
-
-const TypedArrayProto_byteLength =
-      ObjectGetOwnPropertyDescriptor(TypedArrayPrototype,
-                                     'byteLength').get;
-const TypedArrayFill = TypedArrayPrototype.fill;
 
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
@@ -255,17 +255,14 @@ function _copyActual(source, target, targetStart, sourceStart, sourceEnd) {
     sourceEnd = sourceStart + target.length - targetStart;
 
   let nb = sourceEnd - sourceStart;
-  const targetLen = target.length - targetStart;
   const sourceLen = source.length - sourceStart;
-  if (nb > targetLen)
-    nb = targetLen;
   if (nb > sourceLen)
     nb = sourceLen;
 
   if (sourceStart !== 0 || sourceEnd < source.length)
     source = new Uint8Array(source.buffer, source.byteOffset + sourceStart, nb);
 
-  target.set(source, targetStart);
+  TypedArrayPrototypeSet(target, source, targetStart);
 
   return nb;
 }
@@ -499,7 +496,7 @@ function fromArrayLike(obj) {
     if (obj.length > (poolSize - poolOffset))
       createPool();
     const b = new FastBuffer(allocPool, poolOffset, obj.length);
-    b.set(obj, 0);
+    TypedArrayPrototypeSet(b, obj, 0);
     poolOffset += obj.length;
     alignPool();
     return b;
@@ -585,7 +582,7 @@ Buffer.concat = function concat(list, length) {
     // Zero-fill the remaining bytes if the specified `length` was more than
     // the actual total length, i.e. if we have some remaining allocated bytes
     // there were not initialized.
-    TypedArrayFill.call(buffer, 0, pos, length);
+    TypedArrayPrototypeFill(buffer, 0, pos, length);
   }
 
   return buffer;
@@ -593,9 +590,9 @@ Buffer.concat = function concat(list, length) {
 
 function base64ByteLength(str, bytes) {
   // Handle padding
-  if (str.charCodeAt(bytes - 1) === 0x3D)
+  if (StringPrototypeCharCodeAt(str, bytes - 1) === 0x3D)
     bytes--;
-  if (bytes > 1 && str.charCodeAt(bytes - 1) === 0x3D)
+  if (bytes > 1 && StringPrototypeCharCodeAt(str, bytes - 1) === 0x3D)
     bytes--;
 
   // Base64 ratio: 3/4
@@ -685,7 +682,7 @@ function getEncodingOps(encoding) {
     case 4:
       if (encoding === 'utf8') return encodingOps.utf8;
       if (encoding === 'ucs2') return encodingOps.ucs2;
-      encoding = encoding.toLowerCase();
+      encoding = StringPrototypeToLowerCase(encoding);
       if (encoding === 'utf8') return encodingOps.utf8;
       if (encoding === 'ucs2') return encodingOps.ucs2;
       break;
@@ -693,30 +690,32 @@ function getEncodingOps(encoding) {
       if (encoding === 'utf-8') return encodingOps.utf8;
       if (encoding === 'ascii') return encodingOps.ascii;
       if (encoding === 'ucs-2') return encodingOps.ucs2;
-      encoding = encoding.toLowerCase();
+      encoding = StringPrototypeToLowerCase(encoding);
       if (encoding === 'utf-8') return encodingOps.utf8;
       if (encoding === 'ascii') return encodingOps.ascii;
       if (encoding === 'ucs-2') return encodingOps.ucs2;
       break;
     case 7:
-      if (encoding === 'utf16le' || encoding.toLowerCase() === 'utf16le')
+      if (encoding === 'utf16le' ||
+          StringPrototypeToLowerCase(encoding) === 'utf16le')
         return encodingOps.utf16le;
       break;
     case 8:
-      if (encoding === 'utf-16le' || encoding.toLowerCase() === 'utf-16le')
+      if (encoding === 'utf-16le' ||
+          StringPrototypeToLowerCase(encoding) === 'utf-16le')
         return encodingOps.utf16le;
       break;
     case 6:
       if (encoding === 'latin1' || encoding === 'binary')
         return encodingOps.latin1;
       if (encoding === 'base64') return encodingOps.base64;
-      encoding = encoding.toLowerCase();
+      encoding = StringPrototypeToLowerCase(encoding);
       if (encoding === 'latin1' || encoding === 'binary')
         return encodingOps.latin1;
       if (encoding === 'base64') return encodingOps.base64;
       break;
     case 3:
-      if (encoding === 'hex' || encoding.toLowerCase() === 'hex')
+      if (encoding === 'hex' || StringPrototypeToLowerCase(encoding) === 'hex')
         return encodingOps.hex;
       break;
   }
@@ -829,28 +828,30 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
   const max = INSPECT_MAX_BYTES;
   const actualMax = MathMin(max, this.length);
   const remaining = this.length - max;
-  let str = this.hexSlice(0, actualMax).replace(/(.{2})/g, '$1 ').trim();
+  let str = StringPrototypeTrim(StringPrototypeReplace(
+    this.hexSlice(0, actualMax), /(.{2})/g, '$1 '));
   if (remaining > 0)
     str += ` ... ${remaining} more byte${remaining > 1 ? 's' : ''}`;
   // Inspect special properties as well, if possible.
   if (ctx) {
     let extras = false;
     const filter = ctx.showHidden ? ALL_PROPERTIES : ONLY_ENUMERABLE;
-    const obj = getOwnNonIndexProperties(this, filter).reduce((obj, key) => {
-      extras = true;
-      obj[key] = this[key];
-      return obj;
-    }, ObjectCreate(null));
+    const obj = ObjectCreate(null);
+    ArrayPrototypeForEach(getOwnNonIndexProperties(this, filter),
+                          (key) => {
+                            extras = true;
+                            obj[key] = this[key];
+                          });
     if (extras) {
       if (this.length !== 0)
         str += ', ';
       // '[Object: null prototype] {'.length === 26
       // This is guarded with a test.
-      str += utilInspect(obj, {
+      str += StringPrototypeSlice(utilInspect(obj, {
         ...ctx,
         breakLength: Infinity,
         compact: true
-      }).slice(27, -2);
+      }), 27, -2);
     }
   }
   return `<${this.constructor.name} ${str}>`;
@@ -994,12 +995,12 @@ function _fill(buf, value, offset, end, encoding) {
     } else if (value.length === 1) {
       // Fast path: If `value` fits into a single byte, use that numeric value.
       if (normalizedEncoding === 'utf8') {
-        const code = value.charCodeAt(0);
+        const code = StringPrototypeCharCodeAt(value, 0);
         if (code < 128) {
           value = code;
         }
       } else if (normalizedEncoding === 'latin1') {
-        value = value.charCodeAt(0);
+        value = StringPrototypeCharCodeAt(value, 0);
       }
     }
   } else {
@@ -1024,12 +1025,12 @@ function _fill(buf, value, offset, end, encoding) {
 
   if (typeof value === 'number') {
     // OOB check
-    const byteLen = TypedArrayProto_byteLength.call(buf);
+    const byteLen = TypedArrayPrototypeGetByteLength(buf);
     const fillLength = end - offset;
     if (offset > end || fillLength + offset > byteLen)
       throw new ERR_BUFFER_OUT_OF_BOUNDS();
 
-    TypedArrayFill.call(buf, value, offset, end);
+    TypedArrayPrototypeFill(buf, value, offset, end);
   } else {
     const res = bindingFill(buf, value, offset, end, encoding);
     if (res < 0) {
@@ -1205,13 +1206,51 @@ if (internalBinding('config').hasIntl) {
   };
 }
 
+let DOMException;
+
+const lazyInvalidCharError = hideStackFrames((message, name) => {
+  if (DOMException === undefined)
+    DOMException = internalBinding('messaging').DOMException;
+  throw new DOMException('Invalid character', 'InvalidCharacterError');
+});
+
+function btoa(input) {
+  // The implementation here has not been performance optimized in any way and
+  // should not be.
+  // Refs: https://github.com/nodejs/node/pull/38433#issuecomment-828426932
+  input = `${input}`;
+  for (let n = 0; n < input.length; n++) {
+    if (input[n].charCodeAt(0) > 0xff)
+      lazyInvalidCharError();
+  }
+  const buf = Buffer.from(input, 'latin1');
+  return buf.toString('base64');
+}
+
+const kBase64Digits =
+  'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+
+function atob(input) {
+  // The implementation here has not been performance optimized in any way and
+  // should not be.
+  // Refs: https://github.com/nodejs/node/pull/38433#issuecomment-828426932
+  input = `${input}`;
+  for (let n = 0; n < input.length; n++) {
+    if (!kBase64Digits.includes(input[n]))
+      lazyInvalidCharError();
+  }
+  return Buffer.from(input, 'base64').toString('latin1');
+}
+
 module.exports = {
   Buffer,
   SlowBuffer,
   transcode,
   // Legacy
   kMaxLength,
-  kStringMaxLength
+  kStringMaxLength,
+  btoa,
+  atob,
 };
 
 ObjectDefineProperties(module.exports, {

@@ -58,6 +58,7 @@ const {
   Promise,
   PromiseRace,
   RegExp,
+  RegExpPrototypeTest,
   Set,
   StringPrototypeCharAt,
   StringPrototypeIncludes,
@@ -267,6 +268,7 @@ function REPLServer(prompt,
     configurable: true
   });
 
+  this.allowBlockingCompletions = !!options.allowBlockingCompletions;
   this.useColors = !!options.useColors;
   this._domain = options.domain || domain.create();
   this.useGlobal = !!useGlobal;
@@ -612,7 +614,7 @@ function REPLServer(prompt,
         errStack = self.writer(e);
 
         // Remove one line error braces to keep the old style in place.
-        if (errStack[errStack.length - 1] === ']') {
+        if (errStack[0] === '[' && errStack[errStack.length - 1] === ']') {
           errStack = errStack.slice(1, -1);
         }
       }
@@ -863,8 +865,11 @@ function REPLServer(prompt,
         self.output.write(self.writer(ret) + '\n');
       }
 
-      // Display prompt again
-      self.displayPrompt();
+      // Display prompt again (unless we already did by emitting the 'error'
+      // event on the domain instance).
+      if (!e) {
+        self.displayPrompt();
+      }
     }
   });
 
@@ -1190,7 +1195,8 @@ function complete(line, callback) {
     if (completeOn.length) {
       filter = completeOn;
     }
-  } else if (requireRE.test(line)) {
+  } else if (RegExpPrototypeTest(requireRE, line) &&
+             this.allowBlockingCompletions) {
     // require('...<Tab>')
     const extensions = ObjectKeys(this.context.require.extensions);
     const indexes = extensions.map((extension) => `index${extension}`);
@@ -1248,7 +1254,8 @@ function complete(line, callback) {
     if (!subdir) {
       completionGroups.push(_builtinLibs);
     }
-  } else if (fsAutoCompleteRE.test(line)) {
+  } else if (RegExpPrototypeTest(fsAutoCompleteRE, line) &&
+             this.allowBlockingCompletions) {
     [completionGroups, completeOn] = completeFSFunctions(line);
   // Handle variable member lookup.
   // We support simple chained expressions like the following (no function

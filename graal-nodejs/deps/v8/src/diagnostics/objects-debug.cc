@@ -955,7 +955,8 @@ void Code::CodeVerify(Isolate* isolate) {
   // everything is set up.
   // CHECK_EQ(ReadOnlyHeap::Contains(*this), !IsExecutable());
   relocation_info().ObjectVerify(isolate);
-  CHECK(Code::SizeFor(body_size()) <= kMaxRegularHeapObjectSize ||
+  CHECK(Code::SizeFor(body_size()) <=
+            MemoryChunkLayout::MaxRegularCodeObjectSize() ||
         isolate->heap()->InSpace(*this, CODE_LO_SPACE));
   Address last_gc_pc = kNullAddress;
 
@@ -1350,7 +1351,8 @@ void SourceTextModule::SourceTextModuleVerify(Isolate* isolate) {
           (status() == kPreInstantiating && code().IsSharedFunctionInfo()) ||
           (status() == kUninstantiated && code().IsSharedFunctionInfo()));
     CHECK(top_level_capability().IsUndefined() && !AsyncParentModuleCount() &&
-          !pending_async_dependencies() && !async_evaluating());
+          !pending_async_dependencies());
+    CHECK(!IsAsyncEvaluating());
   }
 
   CHECK_EQ(requested_modules().length(), info().module_requests().length());
@@ -1665,12 +1667,13 @@ bool DescriptorArray::IsSortedNoDuplicates(int valid_entries) {
   uint32_t current = 0;
   for (int i = 0; i < number_of_descriptors(); i++) {
     Name key = GetSortedKey(i);
+    CHECK(key.HasHashCode());
     if (key == current_key) {
       Print();
       return false;
     }
     current_key = key;
-    uint32_t hash = GetSortedKey(i).Hash();
+    uint32_t hash = key.hash();
     if (hash < current) {
       Print();
       return false;
@@ -1689,7 +1692,8 @@ bool TransitionArray::IsSortedNoDuplicates(int valid_entries) {
 
   for (int i = 0; i < number_of_transitions(); i++) {
     Name key = GetSortedKey(i);
-    uint32_t hash = key.Hash();
+    CHECK(key.HasHashCode());
+    uint32_t hash = key.hash();
     PropertyKind kind = kData;
     PropertyAttributes attributes = NONE;
     if (!TransitionsAccessor::IsSpecialTransition(key.GetReadOnlyRoots(),

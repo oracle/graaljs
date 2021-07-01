@@ -23,6 +23,7 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeIndexOf,
   Boolean,
   Error,
   Number,
@@ -123,7 +124,7 @@ const DEFAULT_IPV6_ADDR = '::';
 
 const isWindows = process.platform === 'win32';
 
-function noop() {}
+const noop = () => {};
 
 function getFlags(ipv6Only) {
   return ipv6Only === true ? TCPConstants.UV_TCP_IPV6ONLY : 0;
@@ -588,7 +589,8 @@ Socket.prototype._read = function(n) {
 
 
 Socket.prototype.end = function(data, encoding, callback) {
-  stream.Duplex.prototype.end.call(this, data, encoding, callback);
+  stream.Duplex.prototype.end.call(this,
+                                   data, encoding, callback);
   DTRACE_NET_STREAM_END(this);
   return this;
 };
@@ -1689,7 +1691,7 @@ Server.prototype._setupWorker = function(socketList) {
   this._usingWorkers = true;
   this._workers.push(socketList);
   socketList.once('exit', (socketList) => {
-    const index = this._workers.indexOf(socketList);
+    const index = ArrayPrototypeIndexOf(this._workers, socketList);
     this._workers.splice(index, 1);
   });
 };

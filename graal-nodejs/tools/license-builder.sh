@@ -63,7 +63,7 @@ addlicense "llhttp" "deps/llhttp" "$(cat deps/llhttp/LICENSE-MIT)"
 addlicense "OpenSSL" "deps/openssl" \
            "$(sed -e '/^ \*\/$/,$d' -e '/^ [^*].*$/d' -e '/\/\*.*$/d' -e '/^$/d' -e 's/^[/ ]\* *//' "${rootdir}"/deps/openssl/openssl/LICENSE)"
 addlicense "Punycode.js" "lib/punycode.js" \
-           "$(curl -sL https://raw.githubusercontent.com/bestiejs/punycode.js/master/LICENSE-MIT.txt)"
+           "$(curl -sL https://raw.githubusercontent.com/bestiejs/punycode.js/HEAD/LICENSE-MIT.txt)"
 addlicense "V8" "deps/v8" "$(cat "${rootdir}"/deps/v8/LICENSE)"
 addlicense "SipHash" "deps/v8/src/third_party/siphash" \
            "$(sed -e '/You should have received a copy of the CC0/,$d' -e 's/^\/\* *//' -e 's/^ \* *//' deps/v8/src/third_party/siphash/halfsiphash.cc)"
@@ -83,7 +83,7 @@ addlicense "markupsafe" "tools/inspector_protocol/markupsafe" "$(cat "${rootdir}
 addlicense "cpplint.py" "tools/cpplint.py" \
            "$(sed -e '/^$/,$d' -e 's/^#$//' -e 's/^# //' "${rootdir}"/tools/cpplint.py | tail -n +3)"
 addlicense "ESLint" "tools/node_modules/eslint" "$(cat "${rootdir}"/tools/node_modules/eslint/LICENSE)"
-addlicense "babel-eslint" "tools/node_modules/babel-eslint" "$(cat "${rootdir}"/tools/node_modules/babel-eslint/LICENSE)"
+addlicense "Babel" "tools/node_modules/@babel" "$(cat "${rootdir}"/tools/node_modules/@babel/core/LICENSE)"
 addlicense "gtest" "test/cctest/gtest" "$(cat "${rootdir}"/test/cctest/gtest/LICENSE)"
 
 # nghttp2

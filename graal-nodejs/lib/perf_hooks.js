@@ -2,12 +2,19 @@
 
 const {
   ArrayIsArray,
+  ArrayPrototypeFilter,
+  ArrayPrototypeForEach,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
   Boolean,
   NumberIsSafeInteger,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
-  Set,
+  SafeSet,
   Symbol,
 } = primordials;
 
@@ -75,7 +82,6 @@ const kInsertEntry = Symbol('insert-entry');
 const kGetEntries = Symbol('get-entries');
 const kIndex = Symbol('index');
 const kMarks = Symbol('marks');
-const kCount = Symbol('count');
 
 const observers = {};
 const observerableTypes = [
@@ -166,50 +172,94 @@ function getMilestoneTimestamp(milestoneIdx) {
 }
 
 class PerformanceNodeTiming extends PerformanceEntry {
-  get name() {
-    return 'node';
-  }
+  constructor() {
+    super();
 
-  get entryType() {
-    return 'node';
-  }
+    ObjectDefineProperties(this, {
+      name: {
+        enumerable: true,
+        configurable: true,
+        value: 'node'
+      },
 
-  get startTime() {
-    return 0;
-  }
+      entryType: {
+        enumerable: true,
+        configurable: true,
+        value: 'node'
+      },
 
-  get duration() {
-    return now() - timeOrigin;
-  }
+      startTime: {
+        enumerable: true,
+        configurable: true,
+        value: 0
+      },
 
-  get nodeStart() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_NODE_START);
-  }
+      duration: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return now() - timeOrigin;
+        }
+      },
 
-  get v8Start() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_V8_START);
-  }
+      nodeStart: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_NODE_START);
+        }
+      },
 
-  get environment() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_ENVIRONMENT);
-  }
+      v8Start: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_V8_START);
+        }
+      },
 
-  get loopStart() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_START);
-  }
+      environment: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_ENVIRONMENT);
+        }
+      },
 
-  get loopExit() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
-  }
+      loopStart: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_START);
+        }
+      },
 
-  get bootstrapComplete() {
-    return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
-  }
+      loopExit: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(NODE_PERFORMANCE_MILESTONE_LOOP_EXIT);
+        }
+      },
 
-  get idleTime() {
-    return loopIdleTime();
-  }
+      bootstrapComplete: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return getMilestoneTimestamp(
+            NODE_PERFORMANCE_MILESTONE_BOOTSTRAP_COMPLETE);
+        }
+      },
 
+      idleTime: {
+        enumerable: true,
+        configurable: true,
+        get() {
+          return loopIdleTime();
+        }
+      }
+    });
+  }
   [kInspect]() {
     return {
       name: 'node',
@@ -236,11 +286,6 @@ class PerformanceObserverEntryList {
         writable: true,
         enumerable: false,
         value: {}
-      },
-      [kCount]: {
-        writable: true,
-        enumerable: false,
-        value: 0
       }
     });
     L.init(this[kEntries]);
@@ -249,11 +294,6 @@ class PerformanceObserverEntryList {
   [kInsertEntry](entry) {
     const item = { entry };
     L.append(this[kEntries], item);
-    this[kCount]++;
-  }
-
-  get length() {
-    return this[kCount];
   }
 
   [kGetEntries](name, type) {
@@ -328,13 +368,13 @@ class PerformanceObserver extends AsyncResource {
   disconnect() {
     const observerCountsGC = observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_GC];
     const types = this[kTypes];
-    for (const key of ObjectKeys(types)) {
+    ArrayPrototypeForEach(ObjectKeys(types), (key) => {
       const item = types[key];
       if (item) {
         L.remove(item);
         observerCounts[key]--;
       }
-    }
+    });
     this[kTypes] = {};
     if (observerCountsGC === 1 &&
       observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_GC] === 0) {
@@ -350,7 +390,9 @@ class PerformanceObserver extends AsyncResource {
     if (!ArrayIsArray(entryTypes)) {
       throw new ERR_INVALID_OPT_VALUE('entryTypes', entryTypes);
     }
-    const filteredEntryTypes = entryTypes.filter(filterTypes).map(mapTypes);
+    const filteredEntryTypes =
+      ArrayPrototypeMap(ArrayPrototypeFilter(entryTypes, filterTypes),
+                        mapTypes);
     if (filteredEntryTypes.length === 0) {
       throw new ERR_VALID_PERFORMANCE_ENTRY_TYPE();
     }
@@ -359,14 +401,14 @@ class PerformanceObserver extends AsyncResource {
     this[kBuffer][kEntries] = [];
     L.init(this[kBuffer][kEntries]);
     this[kBuffering] = Boolean(options.buffered);
-    for (const entryType of filteredEntryTypes) {
+    ArrayPrototypeForEach(filteredEntryTypes, (entryType) => {
       const list = getObserversList(entryType);
-      if (this[kTypes][entryType]) continue;
+      if (this[kTypes][entryType]) return;
       const item = { obs: this };
       this[kTypes][entryType] = item;
       L.append(list, item);
       observerCounts[entryType]++;
-    }
+    });
     if (observerCountsGC === 0 &&
       observerCounts[NODE_PERFORMANCE_ENTRY_TYPE_GC] === 1) {
       installGarbageCollectionTracking();
@@ -377,7 +419,7 @@ class PerformanceObserver extends AsyncResource {
 class Performance {
   constructor() {
     this[kIndex] = {
-      [kMarks]: new Set()
+      [kMarks]: new SafeSet()
     };
   }
 
@@ -544,7 +586,7 @@ function observersCallback(entry) {
 setupObservers(observersCallback);
 
 function filterTypes(i) {
-  return observerableTypes.indexOf(`${i}`) >= 0;
+  return ArrayPrototypeIncludes(observerableTypes, `${i}`);
 }
 
 function mapTypes(i) {
@@ -582,18 +624,19 @@ function sortedInsert(list, entry) {
   const entryStartTime = entry.startTime;
   if (list.length === 0 ||
       (list[list.length - 1].startTime < entryStartTime)) {
-    list.push(entry);
+    ArrayPrototypePush(list, entry);
     return;
   }
   if (list[0] && (list[0].startTime > entryStartTime)) {
-    list.unshift(entry);
+    ArrayPrototypeUnshift(list, entry);
     return;
   }
   const location = getInsertLocation(list, entryStartTime);
-  list.splice(location, 0, entry);
+  ArrayPrototypeSplice(list, location, 0, entry);
 }
 
 class ELDHistogram extends Histogram {
+  constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
   enable() { return this[kHandle].enable(); }
   disable() { return this[kHandle].disable(); }
 }

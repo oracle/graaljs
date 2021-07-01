@@ -38,7 +38,7 @@ module.exports = Writable;
 Writable.WritableState = WritableState;
 
 const EE = require('events');
-const Stream = require('internal/streams/legacy');
+const Stream = require('internal/streams/legacy').Stream;
 const { Buffer } = require('buffer');
 const destroyImpl = require('internal/streams/destroy');
 const {
@@ -408,7 +408,7 @@ function onwrite(stream, er) {
 
   if (er) {
     // Avoid V8 leak, https://github.com/nodejs/node/pull/34103#issuecomment-652002364
-    er.stack;
+    er.stack; // eslint-disable-line no-unused-expressions
 
     if (!state.errored) {
       state.errored = er;
@@ -748,6 +748,14 @@ ObjectDefineProperties(Writable.prototype, {
     }
   },
 
+  writableNeedDrain: {
+    get() {
+      const wState = this._writableState;
+      if (!wState) return false;
+      return !wState.destroyed && !wState.ending && wState.needDrain;
+    }
+  },
+
   writableHighWaterMark: {
     get() {
       return this._writableState && this._writableState.highWaterMark;
@@ -770,6 +778,7 @@ ObjectDefineProperties(Writable.prototype, {
 const destroy = destroyImpl.destroy;
 Writable.prototype.destroy = function(err, cb) {
   const state = this._writableState;
+
   if (!state.destroyed) {
     process.nextTick(errorBuffer, state, new ERR_STREAM_DESTROYED('write'));
   }

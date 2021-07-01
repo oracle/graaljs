@@ -24,8 +24,12 @@
 const {
   Array,
   ArrayIsArray,
+  ArrayPrototypePush,
+  FunctionPrototypeBind,
+  FunctionPrototypeCall,
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
+  ReflectApply,
 } = primordials;
 
 const errors = require('internal/errors');
@@ -48,6 +52,7 @@ const {
 } = errors.codes;
 const {
   isInt32,
+  validateAbortSignal,
   validateString,
   validateNumber,
   validatePort,
@@ -80,14 +85,18 @@ const RECV_BUFFER = true;
 const SEND_BUFFER = false;
 
 // Lazily loaded
-let cluster = null;
+let _cluster = null;
+function lazyLoadCluster() {
+  if (!_cluster) _cluster = require('cluster');
+  return _cluster;
+}
 
 const errnoException = errors.errnoException;
 const exceptionWithHostPort = errors.exceptionWithHostPort;
 
 
 function Socket(type, listener) {
-  EventEmitter.call(this);
+  FunctionPrototypeCall(EventEmitter, this);
   let lookup;
   let recvBufferSize;
   let sendBufferSize;
@@ -121,6 +130,20 @@ function Socket(type, listener) {
     recvBufferSize,
     sendBufferSize
   };
+
+  if (options?.signal !== undefined) {
+    const { signal } = options;
+    validateAbortSignal(signal, 'options.signal');
+    const onAborted = () => {
+      this.close();
+    };
+    if (signal.aborted) {
+      onAborted();
+    } else {
+      signal.addEventListener('abort', onAborted);
+      this.once('close', () => signal.removeEventListener('abort', onAborted));
+    }
+  }
 }
 ObjectSetPrototypeOf(Socket.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(Socket, EventEmitter);
@@ -181,8 +204,7 @@ function bufferSize(self, size, buffer) {
 
 // Query master process to get the server handle and utilize it.
 function bindServerHandle(self, options, errCb) {
-  if (!cluster)
-    cluster = require('cluster');
+  const cluster = lazyLoadCluster();
 
   const state = self[kStateSymbol];
   cluster._getServer(self, options, (err, handle) => {
@@ -220,8 +242,8 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
     }
 
     function onListening() {
-      removeListeners.call(this);
-      cb.call(this);
+      FunctionPrototypeCall(removeListeners, this);
+      FunctionPrototypeCall(cb, this);
     }
 
     this.on('error', removeListeners);
@@ -243,8 +265,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
     const exclusive = !!port.exclusive;
     const state = this[kStateSymbol];
 
-    if (!cluster)
-      cluster = require('cluster');
+    const cluster = lazyLoadCluster();
 
     if (cluster.isWorker && !exclusive) {
       bindServerHandle(this, {
@@ -306,8 +327,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
       return;
     }
 
-    if (!cluster)
-      cluster = require('cluster');
+    const cluster = lazyLoadCluster();
 
     let flags = 0;
     if (state.reuseAddr)
@@ -369,11 +389,12 @@ Socket.prototype.connect = function(port, address, callback) {
     this.bind({ port: 0, exclusive: true }, null);
 
   if (state.bindState !== BIND_STATE_BOUND) {
-    enqueue(this, _connect.bind(this, port, address, callback));
+    enqueue(this, FunctionPrototypeBind(_connect, this,
+                                        port, address, callback));
     return;
   }
 
-  _connect.call(this, port, address, callback);
+  ReflectApply(_connect, this, [port, address, callback]);
 };
 
 
@@ -498,13 +519,13 @@ function enqueue(self, toEnqueue) {
     self.once(EventEmitter.errorMonitor, onListenError);
     self.once('listening', onListenSuccess);
   }
-  state.queue.push(toEnqueue);
+  ArrayPrototypePush(state.queue, toEnqueue);
 }
 
 
 function onListenSuccess() {
   this.removeListener(EventEmitter.errorMonitor, onListenError);
-  clearQueue.call(this);
+  FunctionPrototypeCall(clearQueue, this);
 }
 
 
@@ -625,12 +646,13 @@ Socket.prototype.send = function(buffer,
     this.bind({ port: 0, exclusive: true }, null);
 
   if (list.length === 0)
-    list.push(Buffer.alloc(0));
+    ArrayPrototypePush(list, Buffer.alloc(0));
 
   // If the socket hasn't been bound yet, push the outbound packet onto the
   // send queue and send after binding is complete.
   if (state.bindState !== BIND_STATE_BOUND) {
-    enqueue(this, this.send.bind(this, list, port, address, callback));
+    enqueue(this, FunctionPrototypeBind(this.send, this,
+                                        list, port, address, callback));
     return;
   }
 
@@ -712,7 +734,7 @@ Socket.prototype.close = function(callback) {
     this.on('close', callback);
 
   if (queue !== undefined) {
-    queue.push(this.close.bind(this));
+    ArrayPrototypePush(queue, FunctionPrototypeBind(this.close, this));
     return this;
   }
 

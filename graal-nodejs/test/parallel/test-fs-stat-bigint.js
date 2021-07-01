@@ -122,6 +122,33 @@ if (!common.isWindows) {
   fs.closeSync(fd);
 }
 
+{
+  assert.throws(
+    () => fs.statSync('does_not_exist'),
+    { code: 'ENOENT' });
+  assert.strictEqual(
+    fs.statSync('does_not_exist', { throwIfNoEntry: false }),
+    undefined);
+}
+
+{
+  assert.throws(
+    () => fs.lstatSync('does_not_exist'),
+    { code: 'ENOENT' });
+  assert.strictEqual(
+    fs.lstatSync('does_not_exist', { throwIfNoEntry: false }),
+    undefined);
+}
+
+{
+  assert.throws(
+    () => fs.fstatSync(9999),
+    { code: 'EBADF' });
+  assert.throws(
+    () => fs.fstatSync(9999, { throwIfNoEntry: false }),
+    { code: 'EBADF' });
+}
+
 const runCallbackTest = (func, arg, done) => {
   const startTime = process.hrtime.bigint();
   func(arg, { bigint: true }, common.mustCall((err, bigintStats) => {
@@ -185,4 +212,4 @@ if (!common.isWindows) {
   const allowableDelta = Math.ceil(Number(endTime - startTime) / 1e6);
   verifyStats(bigintStats, numStats, allowableDelta);
   await handle.close();
-})();
+})().then(common.mustCall());

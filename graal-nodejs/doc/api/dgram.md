@@ -757,6 +757,7 @@ changes:
   * `recvBufferSize` {number} Sets the `SO_RCVBUF` socket value.
   * `sendBufferSize` {number} Sets the `SO_SNDBUF` socket value.
   * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
+  * `signal` {AbortSignal} An AbortSignal that may be used to close a socket.
 * `callback` {Function} Attached as a listener for `'message'` events. Optional.
 * Returns: {dgram.Socket}
 
@@ -767,6 +768,20 @@ method will bind the socket to the "all interfaces" address on a random port
 (it does the right thing for both `udp4` and `udp6` sockets). The bound address
 and port can be retrieved using [`socket.address().address`][] and
 [`socket.address().port`][].
+
+If the `signal` option is enabled, calling `.abort()` on the corresponding
+`AbortController` is similar to calling `.close()` on the socket:
+
+```js
+const controller = new AbortController();
+const { signal } = controller;
+const server = dgram.createSocket({ type: 'udp4', signal });
+server.on('message', (msg, rinfo) => {
+  console.log(`server got: ${msg} from ${rinfo.address}:${rinfo.port}`);
+});
+// Later, when you want to close the server.
+controller.abort();
+```
 
 ### `dgram.createSocket(type[, callback])`
 <!-- YAML
