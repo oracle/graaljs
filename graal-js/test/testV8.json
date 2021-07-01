@@ -87,10 +87,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/general/language_tags_with_preferred_values.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
