@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,8 +57,10 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class InitErrorObjectNode extends JavaScriptBaseNode {
+    private final JSContext context;
     @Child private PropertySetNode setException;
     @Child private PropertySetNode setFormattedStack;
     @Child private DynamicObjectLibrary setMessage;
@@ -67,8 +69,10 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     private final boolean defaultColumnNumber;
     @Child private CreateMethodPropertyNode setLineNumber;
     @Child private CreateMethodPropertyNode setColumnNumber;
+    @Child private InstallErrorCauseNode installErrorCauseNode;
 
     private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
+        this.context = context;
         this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
         this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
         this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
@@ -93,11 +97,18 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
     }
 
     public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt) {
+        return execute(errorObj, exception, messageOpt, errorsOpt, Undefined.instance);
+    }
+
+    public DynamicObject execute(DynamicObject errorObj, GraalJSException exception, String messageOpt, DynamicObject errorsOpt, Object options) {
         if (messageOpt != null) {
             setMessage.putWithFlags(errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
         }
         if (errorsOpt != null) {
             setErrorsNode().putWithFlags(errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
+        }
+        if (context.getContextOptions().isErrorCauseEnabled() && options != Undefined.instance) {
+            installErrorCause(errorObj, options);
         }
 
         setException.setValue(errorObj, exception);
@@ -111,6 +122,14 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             setColumnNumber.executeVoid(errorObj, defaultColumnNumber ? JSError.DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());
         }
         return errorObj;
+    }
+
+    private void installErrorCause(DynamicObject errorObj, Object options) {
+        if (installErrorCauseNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            installErrorCauseNode = insert(new InstallErrorCauseNode(context));
+        }
+        installErrorCauseNode.executeVoid(errorObj, options);
     }
 
     private DynamicObjectLibrary setErrorsNode() {

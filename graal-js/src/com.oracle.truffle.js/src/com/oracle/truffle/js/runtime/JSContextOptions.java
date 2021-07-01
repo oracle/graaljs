@@ -523,6 +523,12 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> OPERATOR_OVERLOADING = new OptionKey<>(false);
     @CompilationFinal private boolean operatorOverloading;
 
+    public static final String ERROR_CAUSE_NAME = JS_OPTION_PREFIX + "error-cause";
+    @Option(name = ERROR_CAUSE_NAME, category = OptionCategory.EXPERT, help = "" +
+                    "Enable the error cause proposal. Allows an error to be chained with a cause using the optional options parameter.") //
+    public static final OptionKey<Boolean> ERROR_CAUSE = new OptionKey<>(false);
+    @CompilationFinal private boolean errorCause;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -614,6 +620,7 @@ public final class JSContextOptions {
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
+        this.errorCause = readBooleanOption(ERROR_CAUSE);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -988,6 +995,10 @@ public final class JSContextOptions {
         return operatorOverloading;
     }
 
+    public boolean isErrorCauseEnabled() {
+        return errorCause;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1041,6 +1052,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
+        hash = 53 * hash + (this.errorCause ? 1 : 0);
         return hash;
     }
 
@@ -1201,6 +1213,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.operatorOverloading != other.operatorOverloading) {
+            return false;
+        }
+        if (this.errorCause != other.errorCause) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
