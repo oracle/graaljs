@@ -50,11 +50,13 @@ import java.util.Map;
 import java.util.MissingResourceException;
 import java.util.Set;
 import java.util.TreeMap;
+import java.time.ZoneId;
 
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
 import com.ibm.icu.text.NumberingSystem;
+import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -460,8 +462,14 @@ public final class IntlUtil {
                     builder.setUnicodeLocaleKeyword(key, type);
                 }
 
-                // Canonicalize transformed extension
-                String transformedExt = locale.getExtension('t');
+                // Validate and canonicalize the transformed extension.
+                // We cannot start with locale.getExtension('t') here. locale is
+                // canonicalized and ICU started (ICU-21406) to remove duplicate
+                // variants during canonicalization. Unfortunately, we have
+                // to detect the duplicates because ECMAScript specification
+                // refuses such locales as invalid explicitly =>
+                // we start with a non-canonicalized locale here.
+                String transformedExt = new ULocale(languageTag).getExtension('t');
                 if (transformedExt != null) {
                     builder.setExtension('t', normalizeTransformedExtension(transformedExt));
                 }
@@ -635,6 +643,32 @@ public final class IntlUtil {
         if (!isWellFormedUnitIdentifier(unitIdentifier)) {
             throw Errors.createRangeErrorInvalidUnitIdentifier(unitIdentifier);
         }
+    }
+
+    @TruffleBoundary
+    public static TimeZone getICUTimeZone(String tzId) {
+        assert tzId != null;
+        return TimeZone.getTimeZone(tzId);
+    }
+
+    @TruffleBoundary
+    public static TimeZone getICUTimeZone(ZoneId zoneId) {
+        return getICUTimeZone(toICUTimeZoneId(zoneId));
+    }
+
+    private static String toICUTimeZoneId(ZoneId zoneId) {
+        String tzid = zoneId.getId();
+        char c = tzid.charAt(0);
+        if (c == '+' || c == '-') {
+            tzid = "GMT" + tzid;
+        } else if (c == 'Z' && tzid.length() == 1) {
+            tzid = "UTC";
+        } else if (tzid.startsWith("UTC")) {
+            tzid = "GMT" + tzid.substring(3);
+        } else if (tzid.startsWith("UT")) {
+            tzid = "GMT" + tzid.substring(2);
+        }
+        return tzid;
     }
 
 }

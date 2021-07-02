@@ -42,15 +42,14 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.Year;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.util.Locale;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.ibm.icu.impl.Grego;
+import com.ibm.icu.text.DateFormat;
+import com.ibm.icu.util.GregorianCalendar;
+import com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -72,15 +71,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     public static final String CLASS_NAME = "Date";
     public static final String PROTOTYPE_NAME = "Date.prototype";
 
-    private static DateTimeFormatter jsDateFormat;
-    private static DateTimeFormatter jsDateFormatBeforeYear0;
-    private static DateTimeFormatter jsDateFormatAfterYear9999;
-    private static DateTimeFormatter jsDateFormatISO;
-    private static DateTimeFormatter jsShortDateFormat;
-    private static DateTimeFormatter jsShortDateLocalFormat;
-    private static DateTimeFormatter jsShortTimeFormat;
-    private static DateTimeFormatter jsShortTimeLocalFormat;
-    private static DateTimeFormatter jsDateToStringFormat;
     public static final JSDate INSTANCE = new JSDate();
 
     private static final int HOURS_PER_DAY = 24;
@@ -397,24 +387,53 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     public static long localTZA(double t, boolean isUTC, JSContext context) {
-        return localTZA(t, isUTC, context.getRealm().getLocalTimeZoneId());
+        return localTZA(t, isUTC, context.getRealm().getLocalTimeZone());
+    }
+
+    private static int getOffset(TimeZone timeZone, long date, int[] fields) {
+        Grego.timeToFields(date, fields);
+        return timeZone.getOffset(GregorianCalendar.AD, fields[0], fields[1], fields[2], fields[3], fields[5]);
+    }
+
+    private static int getOffset(TimeZone timeZone, long t, boolean isUTC) {
+        int rawOffset = timeZone.getRawOffset();
+        long date = isUTC ? (t + rawOffset) : t; // now in local standard millis
+
+        int[] fields = new int[6];
+        int offset = getOffset(timeZone, date, fields);
+
+        if (isUTC) {
+            return offset;
+        }
+
+        // getOffset() does not match the needs of ECMAScript specification
+        // when local time does not exist (during STD->DST transition) or when
+        // it occurs twice (during DST->STD transition). We have to check
+        // for these corner cases by looking back in time. This apporach
+        // is taken from TimeZone.getOffset() that does similar tricks
+        // (but is not ECMAScript compliant still).
+
+        if (offset != rawOffset) { // dstOffset != 0
+            int dstOffset = offset - rawOffset;
+            // dstOffset != 0 => good, we know how far back in time to look
+            return getOffset(timeZone, date - dstOffset, fields);
+        }
+
+        // dstOffset = 0, look back by standard DST savings
+        int dstSavings = timeZone.getDSTSavings();
+        offset = getOffset(timeZone, date - dstSavings, fields);
+        int dstOffset = offset - rawOffset;
+        if (dstOffset != 0 && dstOffset != dstSavings) {
+            // unexpected irregular (historical) DST => have to correct how far
+            // back in time we look
+            offset = getOffset(timeZone, date - dstOffset, fields);
+        }
+        return offset;
     }
 
     @TruffleBoundary
-    public static long localTZA(double t, boolean isUTC, ZoneId zoneId) {
-        ZoneOffset zoneOffset;
-        if (isUTC) {
-            zoneOffset = zoneId.getRules().getOffset(Instant.ofEpochMilli((long) t));
-        } else {
-            if (!(Math.abs(t) < MAX_DATE + MS_PER_DAY)) {
-                // No need to calculate the offset for times that will be time clipped after
-                // adjustment anyway.
-                return 0;
-            }
-            LocalDateTime localDateTime = LocalDateTime.of(yearFromTime((long) t), 1 + monthFromTime(t), dateFromTime(t), hourFromTime(t), minFromTime(t), secFromTime(t), msFromTime(t));
-            zoneOffset = zoneId.getRules().getOffset(localDateTime);
-        }
-        return zoneOffset.getTotalSeconds() * 1000L;
+    public static int localTZA(double t, boolean isUTC, TimeZone timeZone) {
+        return getOffset(timeZone, (long) t, isUTC);
     }
 
     // 15.9.1.10
@@ -647,26 +666,19 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     @TruffleBoundary
-    public static String formatLocal(DateTimeFormatter format, double time, JSRealm realm) {
-        return Instant.ofEpochMilli((long) time).atZone(realm.getLocalTimeZoneId()).format(format);
+    public static String format(DateFormat format, double time) {
+        return format.format(time);
     }
 
-    @TruffleBoundary
-    public static String formatUTC(DateTimeFormatter format, double time) {
-        return Instant.ofEpochMilli((long) time).atZone(ZoneOffset.UTC).format(format);
-    }
-
-    @TruffleBoundary
     public static String toString(double time, JSRealm realm) {
         if (Double.isNaN(time)) {
             return INVALID_DATE_STRING;
         }
-        return formatLocal(getDateToStringFormat(), time, realm);
+        return format(realm.getDateToStringFormat(), time);
     }
 
-    @TruffleBoundary
-    public static String toISOStringIntl(double time) {
-        return formatUTC(getJSDateFormat(time), time);
+    public static String toISOStringIntl(double time, JSRealm realm) {
+        return format(realm.getJSDateFormat(time), time);
     }
 
     public static boolean isTimeValid(double time) {
@@ -715,89 +727,13 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         }
     }
 
-    public static DateTimeFormatter getJSDateFormat(double time) {
-        long milliseconds = (long) time;
-        if (milliseconds < -62167219200000L) {
-            if (jsDateFormatBeforeYear0 == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsDateFormatBeforeYear0 = DateTimeFormatter.ofPattern("uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
-            }
-            return jsDateFormatBeforeYear0;
-        } else if (milliseconds >= 253402300800000L) {
-            if (jsDateFormatAfterYear9999 == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsDateFormatAfterYear9999 = DateTimeFormatter.ofPattern("+uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
-            }
-            return jsDateFormatAfterYear9999;
-        } else {
-            if (jsDateFormat == null) {
-                // UTC
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsDateFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US);
-            }
-            return jsDateFormat;
-        }
-    }
-
-    public static DateTimeFormatter getJSDateUTCFormat() {
-        if (jsDateFormatISO == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateFormatISO = DateTimeFormatter.ofPattern("EEE, dd MMM uuuu HH:mm:ss 'GMT'", Locale.US);
-        }
-        return jsDateFormatISO;
-    }
-
-    public static DateTimeFormatter getJSShortDateFormat() {
-        if (jsShortDateFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortDateFormat = DateTimeFormatter.ofPattern("EEE MMM dd uuuu", Locale.US);
-        }
-        return jsShortDateFormat;
-    }
-
-    public static DateTimeFormatter getJSShortDateLocalFormat() {
-        if (jsShortDateLocalFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortDateLocalFormat = DateTimeFormatter.ofPattern("uuuu-MM-dd", Locale.US);
-        }
-        return jsShortDateLocalFormat;
-    }
-
-    public static DateTimeFormatter getJSShortTimeFormat() {
-        if (jsShortTimeFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortTimeFormat = DateTimeFormatter.ofPattern("HH:mm:ss 'GMT'Z (z)", Locale.US);
-        }
-        return jsShortTimeFormat;
-    }
-
-    public static DateTimeFormatter getJSShortTimeLocalFormat() {
-        if (jsShortTimeLocalFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortTimeLocalFormat = DateTimeFormatter.ofPattern("HH:mm:ss", Locale.US);
-        }
-        return jsShortTimeLocalFormat;
-    }
-
-    public static DateTimeFormatter getDateToStringFormat() {
-        if (jsDateToStringFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateToStringFormat = DateTimeFormatter.ofPattern("EEE MMM dd uuuu HH:mm:ss 'GMT'Z (z)", Locale.US);
-        }
-        return jsDateToStringFormat;
-    }
-
     @TruffleBoundary
     @Override
     public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
         double time = getTimeMillisField(obj);
         String formattedDate;
         if (isTimeValid(time)) {
-            formattedDate = toISOStringIntl(time);
+            formattedDate = toISOStringIntl(time, context.getRealm());
         } else {
             formattedDate = INVALID_DATE_STRING;
         }
