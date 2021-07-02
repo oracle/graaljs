@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,17 +88,13 @@ public final class Scope {
 
     private Scope(Scope parent, int type, int flags) {
         this.parent = parent;
-        this.type = type | (isFunctionTopScope(type, parent) ? FUNCTION_TOP_SCOPE : 0);
+        this.type = type;
         this.symbols = EconomicMap.create();
         this.flags = flags;
     }
 
     private Scope(Scope parent, int type) {
         this(parent, type, parent == null ? 0 : parent.flags);
-    }
-
-    private static boolean isFunctionTopScope(int type, Scope parent) {
-        return (type & FUNCTION_PARAMETER_SCOPE) != 0 || ((type & FUNCTION_BODY_SCOPE) != 0 && (parent == null || !parent.isFunctionParameterScope()));
     }
 
     private static int computeFlags(Scope parent, int functionFlags) {
@@ -116,27 +112,32 @@ public final class Scope {
     }
 
     public static Scope createGlobal() {
-        return new Scope(null, FUNCTION_BODY_SCOPE | GLOBAL_SCOPE);
+        return new Scope(null, FUNCTION_BODY_SCOPE | GLOBAL_SCOPE | FUNCTION_TOP_SCOPE);
     }
 
     public static Scope createModule() {
-        return new Scope(null, FUNCTION_BODY_SCOPE | MODULE_SCOPE);
+        return new Scope(null, FUNCTION_BODY_SCOPE | MODULE_SCOPE | FUNCTION_TOP_SCOPE);
     }
 
-    public static Scope createFunctionBody(Scope parent, int functionFlags) {
-        return new Scope(parent, FUNCTION_BODY_SCOPE, computeFlags(parent, functionFlags));
+    public static Scope createFunctionBody(Scope parent, int functionFlags, boolean functionTopScope) {
+        assert functionTopScope || (parent.isFunctionParameterScope() && parent.isFunctionTopScope());
+        return new Scope(parent, FUNCTION_BODY_SCOPE | (functionTopScope ? FUNCTION_TOP_SCOPE : 0), computeFlags(parent, functionFlags));
+    }
+
+    public static Scope createFunctionBody(Scope parent) {
+        return createFunctionBody(parent, 0, true);
     }
 
     public static Scope createBlock(Scope parent) {
         return new Scope(parent, BLOCK_SCOPE);
     }
 
-    public static Scope createCatch(Scope parent) {
+    public static Scope createCatchParameter(Scope parent) {
         return new Scope(parent, CATCH_PARAMETER_SCOPE);
     }
 
-    public static Scope createParameter(Scope parent, int functionFlags) {
-        return new Scope(parent, FUNCTION_PARAMETER_SCOPE, computeFlags(parent, functionFlags));
+    public static Scope createFunctionParameter(Scope parent, int functionFlags) {
+        return new Scope(parent, FUNCTION_PARAMETER_SCOPE | FUNCTION_TOP_SCOPE, computeFlags(parent, functionFlags));
     }
 
     public static Scope createSwitchBlock(Scope parent) {
@@ -148,7 +149,7 @@ public final class Scope {
     }
 
     public static Scope createEval(Scope parent, boolean strict) {
-        return new Scope(parent, EVAL_SCOPE | (strict ? FUNCTION_BODY_SCOPE : 0));
+        return new Scope(parent, EVAL_SCOPE | (strict ? FUNCTION_BODY_SCOPE | FUNCTION_TOP_SCOPE : 0));
     }
 
     public Scope getParent() {
@@ -192,11 +193,11 @@ public final class Scope {
     }
 
     /**
-     * Add or overwrite an existing symbol in the block
+     * Add symbol to the scope if it does not already exist.
      */
     public Symbol putSymbol(final Symbol symbol) {
         assert !closed : "scope is closed";
-        Symbol existing = symbols.put(symbol.getName(), symbol);
+        Symbol existing = symbols.putIfAbsent(symbol.getName(), symbol);
         if (existing != null) {
             assert (existing.getFlags() & Symbol.KINDMASK) == (symbol.getFlags() & Symbol.KINDMASK) : symbol;
             return existing;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -165,13 +165,8 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
      */
     public static final int IS_PROGRAM = 1 << 13;
 
-    /**
-     * Flag indicating whether this function uses the local variable symbol for itself. Only named
-     * function expressions can have this flag set if they reference themselves (e.g.
-     * <code>(function f() { return f })</code>). Declared functions will use the symbol in their
-     * parent scope instead when they reference themselves by name.
-     */
-    public static final int USES_SELF_SYMBOL = 1 << 14;
+    /** Does this function have closures? */
+    public static final int HAS_CLOSURES = 1 << 14;
 
     /** Does this function use the "this" keyword? */
     public static final int USES_THIS = 1 << 15;
@@ -237,6 +232,13 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     /** Is this function a class field initializer? */
     public static final int IS_CLASS_FIELD_INITIALIZER = 1 << 30;
+
+    /**
+     * All flags that may be set during parsing of an arrow head cover grammar and that have to be
+     * propagated to the enclosing function if the expression ends up not being an arrow function.
+     */
+    public static final int ARROW_HEAD_FLAGS = USES_THIS | USES_ARGUMENTS | USES_SUPER |
+                    HAS_EVAL | HAS_ARROW_EVAL | HAS_NESTED_EVAL | HAS_SCOPE_BLOCK | HAS_CLOSURES;
 
     /**
      * Constructor
@@ -561,7 +563,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
         // uses "arguments" or calls eval, but it does not redefine "arguments", and finally, it's
         // not a script, since for top-level scripts, "arguments" is picked up from a global
         // property instead.
-        return getFlag(MAYBE_NEEDS_ARGUMENTS) && !getFlag(DEFINES_ARGUMENTS) && !isProgram();
+        return getFlag(MAYBE_NEEDS_ARGUMENTS) && !getFlag(DEFINES_ARGUMENTS | IS_ARROW | IS_CLASS_FIELD_INITIALIZER) && !isProgram();
     }
 
     /**
@@ -786,5 +788,9 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
 
     public boolean isClassFieldInitializer() {
         return getFlag(IS_CLASS_FIELD_INITIALIZER);
+    }
+
+    public boolean hasClosures() {
+        return getFlag(HAS_CLOSURES);
     }
 }

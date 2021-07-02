@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,14 @@ interface ParserContextNode {
      * @return The flags for this node
      */
     int getFlags();
+
+    /**
+     * Returns a single flag
+     *
+     * @param flag
+     * @return A single flag
+     */
+    int getFlag(final int flag);
 
     /**
      * @param flag The flag to set

@@ -97,6 +97,13 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private boolean hasParameterExpressions;
     private boolean containsDefaultParameter;
 
+    /**
+     * If true, this is a provisional function produced by an arrow head cover grammar. Once the
+     * ambiguity is resolved, the flag is cleared.
+     */
+    private boolean coverArrowHead;
+    private long yieldOrAwaitInParameters;
+
     private Module module;
     private String internalName;
 
@@ -163,10 +170,31 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
+     * @return true if the function has a direct eval call.
+     */
+    public boolean hasEval() {
+        return getFlag(FunctionNode.HAS_EVAL) != 0;
+    }
+
+    /**
      * @return true if the function has nested evals
      */
     public boolean hasNestedEval() {
         return getFlag(FunctionNode.HAS_NESTED_EVAL) != 0;
+    }
+
+    /**
+     * @return true if the function has a direct eval call nested in an arrow function.
+     */
+    public boolean hasArrowEval() {
+        return getFlag(FunctionNode.HAS_ARROW_EVAL) != 0;
+    }
+
+    /**
+     * @return true if the function uses this.
+     */
+    public boolean usesThis() {
+        return getFlag(FunctionNode.USES_THIS) != 0;
     }
 
     /**
@@ -212,13 +240,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     /**
-     * Set last token
-     *
-     * @param token New last token
+     * @return lastToken Function's first token
      */
-    public void setLastToken(final long token) {
-        this.lastToken = token;
-
+    public long getFirstToken() {
+        return token;
     }
 
     /**
@@ -226,6 +251,15 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
      */
     public long getLastToken() {
         return lastToken;
+    }
+
+    /**
+     * Set last token
+     *
+     * @param token New last token
+     */
+    public void setLastToken(final long token) {
+        this.lastToken = token;
     }
 
     /**
@@ -413,7 +447,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public ParserContextBlockNode createParameterBlock() {
         assert bodyScope == null : "parameter block must be created before body block";
-        parameterBlock = new ParserContextBlockNode(token, Scope.createParameter(parentScope, getFlags()));
+        parameterBlock = new ParserContextBlockNode(token, Scope.createFunctionParameter(parentScope, getFlags()));
         parameterBlock.setFlag(Block.IS_PARAMETER_BLOCK | Block.IS_SYNTHETIC);
         return parameterBlock;
     }
@@ -441,13 +475,12 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 assert !parent.hasSymbol(Parser.ARGUMENTS_NAME);
                 parent.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
             }
-            parent.close();
             parameters = Collections.emptyList();
         } else {
             parent = parentScope;
         }
 
-        Scope scope = Scope.createFunctionBody(parent, getFlags());
+        Scope scope = Scope.createFunctionBody(parent, getFlags(), !hasParameterExpressions());
         if (!hasParameterExpressions()) {
             // finalize parameters
             if (parameters != null) {
@@ -483,7 +516,27 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     }
 
     private boolean needsArguments() {
-        return getFlag(FunctionNode.DEFINES_ARGUMENTS) == 0 && getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0;
+        return getFlag(FunctionNode.USES_ARGUMENTS | FunctionNode.HAS_EVAL) != 0 &&
+                        getFlag(FunctionNode.DEFINES_ARGUMENTS | FunctionNode.IS_ARROW | FunctionNode.IS_CLASS_FIELD_INITIALIZER) == 0;
+    }
+
+    public void finishBodyScope() {
+        assert !isScriptOrModule();
+        if (needsArguments()) {
+            if (hasParameterExpressions()) {
+                Scope parameterScope = getParameterScope();
+                if (!parameterScope.hasSymbol(Parser.ARGUMENTS_NAME) && !bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
+                    parameterScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_LET | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+                }
+            } else {
+                if (!bodyScope.hasSymbol(Parser.ARGUMENTS_NAME)) {
+                    bodyScope.putSymbol(new Symbol(Parser.ARGUMENTS_NAME, Symbol.IS_VAR | Symbol.IS_ARGUMENTS | Symbol.HAS_BEEN_DECLARED));
+                }
+            }
+        }
+        if (hasParameterExpressions()) {
+            getParameterScope().close();
+        }
     }
 
     public String getInternalName() {
@@ -492,6 +545,51 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
 
     public void setInternalName(String internalName) {
         this.internalName = internalName;
+    }
+
+    public boolean isCoverArrowHead() {
+        return coverArrowHead;
+    }
+
+    public void setCoverArrowHead(boolean coverArrowHead) {
+        this.coverArrowHead = coverArrowHead;
+    }
+
+    public void setYieldOrAwaitInParameters(long yieldOrAwaitInParameters) {
+        // Record only the first yield or await token.
+        assert this.yieldOrAwaitInParameters == 0L;
+        this.yieldOrAwaitInParameters = yieldOrAwaitInParameters;
+    }
+
+    public long getYieldOrAwaitInParameters() {
+        return yieldOrAwaitInParameters;
+    }
+
+    /**
+     * Propagate relevant flags to the enclosing function.
+     */
+    public void propagateFlagsToParent(ParserContextFunctionNode parent) {
+        // Propagate the presence of eval to all parents.
+        if (hasEval() || hasNestedEval()) {
+            parent.setFlag(FunctionNode.HAS_NESTED_EVAL | FunctionNode.HAS_SCOPE_BLOCK);
+        }
+        if (isArrow()) {
+            // Propagate the presence of eval to the first non-arrow and all arrow parents in
+            // between as HAS_ARROW_EVAL.
+            // This ensures that `this`, `new.target`, and `super` are available to the eval
+            // even if the parent does not use them (and does not have an eval itself).
+            // e.g.:
+            // function fun(){ return (() => eval("this"))(); };
+            // function fun(){ return eval("() => this")(); };
+            // (() => (() => eval("this"))())();
+            if (hasEval() || hasArrowEval()) {
+                parent.setFlag(FunctionNode.HAS_ARROW_EVAL);
+            }
+            // Propagate use of `this` up to the first non-arrow and all arrow parents in between.
+            if (usesThis()) {
+                parent.setFlag(FunctionNode.USES_THIS);
+            }
+        }
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {
