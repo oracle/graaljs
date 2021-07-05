@@ -1200,16 +1200,19 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
     }
 
     public abstract static class ConstructFinalizationRegistryNode extends ConstructWithNewTargetNode {
+
+        @Child protected IsCallableNode isCallableNode = IsCallableNode.create();
+
         public ConstructFinalizationRegistryNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
         }
 
-        @Specialization(guards = {"isCallable(cleanupCallback)"})
+        @Specialization(guards = {"isCallableNode.executeBoolean(cleanupCallback)"})
         protected DynamicObject constructFinalizationRegistry(DynamicObject newTarget, TruffleObject cleanupCallback) {
             return swapPrototype(JSFinalizationRegistry.create(getContext(), cleanupCallback), newTarget);
         }
 
-        @Specialization(guards = {"!isCallable(cleanupCallback)"})
+        @Specialization(guards = {"!isCallableNode.executeBoolean(cleanupCallback)"})
         protected DynamicObject constructFinalizationRegistryNonObject(@SuppressWarnings("unused") DynamicObject newTarget, @SuppressWarnings("unused") Object cleanupCallback) {
             throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
         }
