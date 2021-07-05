@@ -139,6 +139,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (isJSWebAssemblyInstance(thiz)) {
                         return ((JSWebAssemblyInstanceObject) thiz).getExports();
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createTypeError("WebAssembly.Instance.exports(): Receiver is not a WebAssembly.Instance", this);
                     }
                 }
@@ -205,9 +206,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Override
             public Object execute(VirtualFrame frame) {
                 if ("i64".equals(returnType)) {
+                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Return type is i64");
                 }
                 if (argTypes.indexOf("i64") != -1) {
+                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Argument type is i64");
                 }
 
@@ -229,8 +232,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     try {
                         wasmResult = InteropLibrary.getUncached(export).execute(export, wasmArgs);
                     } catch (GraalJSException jsex) {
+                        CompilerDirectives.transferToInterpreter();
                         throw jsex;
                     } catch (AbstractTruffleException tex) {
+                        CompilerDirectives.transferToInterpreter();
                         ExceptionType type = InteropLibrary.getUncached(tex).getExceptionType(tex);
                         if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                             throw tex;
@@ -272,6 +277,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 Object module = descriptorInterop.readMember(descriptor, "module");
                 Object moduleImportObject = JSObject.get(truffleImportObject, module);
                 if (!(moduleImportObject instanceof TruffleObject)) {
+                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeErrorNotAnObject(moduleImportObject);
                 }
 
@@ -282,6 +288,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
                 if ("function".equals(externType)) {
                     if (!JSRuntime.isCallable(value)) {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not callable");
                     }
                     String typeInfo = (String) descriptorInterop.readMember(descriptor, "type");
@@ -290,6 +297,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (JSRuntime.isNumber(value)) {
                         String valueType = (String) descriptorInterop.readMember(descriptor, "type");
                         if ("i64".equals(valueType)) {
+                            CompilerDirectives.transferToInterpreter();
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
                         }
                         Object webAssemblyValue = toWebAssemblyValue(value, valueType);
@@ -302,12 +310,14 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else if (JSWebAssemblyGlobal.isJSWebAssemblyGlobal(value)) {
                         wasmValue = ((JSWebAssemblyGlobalObject) value).getWASMGlobal();
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not WebAssembly.Global object");
                     }
                 } else if ("memory".equals(externType)) {
                     if (JSWebAssemblyMemory.isJSWebAssemblyMemory(value)) {
                         wasmValue = ((JSWebAssemblyMemoryObject) value).getWASMMemory();
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not WebAssembly.Memory object");
                     }
                 } else {
@@ -315,6 +325,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (JSWebAssemblyTable.isJSWebAssemblyTable(value)) {
                         wasmValue = ((JSWebAssemblyTableObject) value).getWASMTable();
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not WebAssembly.Table object");
                     }
                 }
@@ -368,9 +379,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Override
             public Object execute(VirtualFrame frame) {
                 if ("i64".equals(returnType)) {
+                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Return type is i64");
                 }
                 if (argTypes.indexOf("i64") != -1) {
+                    CompilerDirectives.transferToInterpreter();
                     throw Errors.createTypeError("Argument type is i64");
                 }
 

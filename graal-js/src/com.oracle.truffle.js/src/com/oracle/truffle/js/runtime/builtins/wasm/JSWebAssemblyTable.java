@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -132,6 +133,7 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
                             throw Errors.shouldNotReachHere(ex);
                         }
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createTypeError("WebAssembly.Table.length(): Receiver is not a WebAssembly.Table", this);
                     }
                 }

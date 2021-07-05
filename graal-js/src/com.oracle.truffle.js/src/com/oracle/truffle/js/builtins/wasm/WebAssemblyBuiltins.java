@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -53,6 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyCompileNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyInstantiateNodeGen;
@@ -76,6 +76,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
@@ -137,6 +138,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         @Child NewPromiseCapabilityNode newPromiseCapability;
         @Child JSFunctionCallNode promiseResolutionCallNode;
         @Child TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public PromisifiedBuiltinNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -153,6 +155,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 Object resolution = process(argument);
                 promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), resolution));
             } catch (Throwable ex) {
+                errorBranch.enter();
                 InteropLibrary interop = InteropLibrary.getUncached(ex);
                 if (interop.isException(ex)) {
                     try {
@@ -218,6 +221,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         @Child ExportByteSourceNode exportByteSourceNode;
         @Child IsObjectNode isObjectNode;
         @Child PerformPromiseThenNode performPromiseThenNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public WebAssemblyInstantiateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -282,6 +286,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                     Object wasmModule = InteropLibrary.getUncached(compile).execute(compile, wasmByteSource);
                     return new InstantiatedSourceInfo(wasmModule, importObject);
                 } catch (AbstractTruffleException ex) {
+                    errorBranch.enter();
                     ExceptionType type = InteropLibrary.getUncached(ex).getExceptionType(ex);
                     if (type == ExceptionType.PARSE_ERROR) {
                         throw Errors.createCompileError(ex, this);
@@ -294,15 +299,17 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             }
         }
 
-        static Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
+        protected Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
             Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, wasmModule, importObject);
             Object instantiate = context.getRealm().getWASMInstantiateFunction();
             Object wasmInstance;
             try {
                 wasmInstance = InteropLibrary.getUncached(instantiate).execute(instantiate, wasmModule, wasmImportObject);
             } catch (GraalJSException jsex) {
+                errorBranch.enter();
                 throw jsex;
             } catch (AbstractTruffleException ex) {
+                errorBranch.enter();
                 throw Errors.createLinkError(ex, null);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

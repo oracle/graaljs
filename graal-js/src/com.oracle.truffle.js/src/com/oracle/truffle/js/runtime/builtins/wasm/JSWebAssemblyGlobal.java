@@ -41,12 +41,14 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
@@ -138,6 +140,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                             throw Errors.shouldNotReachHere(ex);
                         }
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createTypeError("get WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
                     }
                 }
@@ -152,6 +155,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+                private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -163,6 +167,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                         try {
                             Object value;
                             if (JSArguments.getUserArgumentCount(args) == 0) {
+                                errorBranch.enter();
                                 throw Errors.createTypeError("set WebAssembly.Global.value: Argument 0 is required");
                             } else {
                                 value = JSArguments.getUserArgument(args, 0);
@@ -173,6 +178,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         } catch (Throwable throwable) {
+                            errorBranch.enter();
                             if (TryCatchNode.shouldCatch(throwable)) {
                                 throw Errors.createTypeError(throwable, this);
                             } else {
@@ -180,6 +186,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                             }
                         }
                     } else {
+                        errorBranch.enter();
                         throw Errors.createTypeError("set WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
                     }
                 }
