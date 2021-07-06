@@ -46,6 +46,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
@@ -82,6 +83,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private InitializeInstanceElementsNode staticFieldsNode;
     @Child private PropertySetNode setPrivateBrandNode;
     @Child private SetFunctionNameNode setFunctionName;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     private final boolean hasName;
     private final int instanceFieldCount;
@@ -127,13 +129,16 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 protoParent = Null.instance;
             } else if (!JSRuntime.isConstructor(superclass)) {
                 // 6.f. if IsConstructor(superclass) is false, throw a TypeError.
+                errorBranch.enter();
                 throw Errors.createTypeError("not a constructor", this);
             } else if (JSRuntime.isGenerator(superclass)) {
                 // 6.g.i. if superclass.[[FunctionKind]] is "generator", throw a TypeError
+                errorBranch.enter();
                 throw Errors.createTypeError("class cannot extend a generator function", this);
             } else {
                 protoParent = getPrototypeNode.getValue(superclass);
                 if (protoParent != Null.instance && !JSRuntime.isObject(protoParent)) {
+                    errorBranch.enter();
                     throw Errors.createTypeError("protoParent is neither Object nor Null", this);
                 }
                 constructorParent = superclass;
