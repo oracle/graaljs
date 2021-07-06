@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.Symbol;
  */
 public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     protected final boolean convertToPropertyKey;
+    protected final boolean convertStringToIndex;
 
     public abstract Object execute(Object operand);
 
@@ -65,16 +66,21 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return result instanceof Long;
     }
 
-    protected ToArrayIndexNode(boolean convertToPropertyKey) {
+    protected ToArrayIndexNode(boolean convertToPropertyKey, boolean convertStringToIndex) {
         this.convertToPropertyKey = convertToPropertyKey;
+        this.convertStringToIndex = convertStringToIndex;
     }
 
     public static ToArrayIndexNode create() {
-        return ToArrayIndexNodeGen.create(true);
+        return ToArrayIndexNodeGen.create(true, true);
     }
 
     public static ToArrayIndexNode createNoToPropertyKey() {
-        return ToArrayIndexNodeGen.create(false);
+        return ToArrayIndexNodeGen.create(false, true);
+    }
+
+    public static ToArrayIndexNode createNoStringToIndex() {
+        return ToArrayIndexNodeGen.create(true, false);
     }
 
     @Specialization(guards = "isIntArrayIndex(value)")
@@ -116,7 +122,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isArrayIndexLengthInRange(index)")
+    @Specialization(guards = {"convertStringToIndex", "isArrayIndexLengthInRange(index)"})
     protected static Object convertFromString(String index,
                     @Cached("create()") BranchProfile startsWithDigitBranch,
                     @Cached("create()") BranchProfile isArrayIndexBranch,
@@ -133,7 +139,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return index;
     }
 
-    @Specialization(guards = "!isArrayIndexLengthInRange(index)")
+    @Specialization(guards = {"!convertStringToIndex || !isArrayIndexLengthInRange(index)"})
     protected static Object convertFromStringNotInRange(String index) {
         return index;
     }

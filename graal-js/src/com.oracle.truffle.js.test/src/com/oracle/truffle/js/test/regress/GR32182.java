@@ -120,4 +120,25 @@ public class GR32182 {
             assertEquals("element1", array.get(0));
         }
     }
+
+    @Test
+    public void testJavaMapReadWriteNumericIndexString() {
+        try (Context ctx = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).allowMapAccess(true).build()).build()) {
+            Map<String, Object> map = new HashMap<>();
+            ctx.getBindings("js").putMember("map", map);
+
+            Value result;
+            ctx.eval("js", "map['42'] = 'someValue';");
+            assertEquals("someValue", ctx.eval("js", "map['42'];").asString());
+            result = ctx.eval("js", "map[42];");
+            assertTrue(result.toString(), result.isNull());
+
+            map.clear();
+
+            ctx.eval("js", "map[42] = 'someValue';");
+            assertEquals("someValue", ctx.eval("js", "map[42];").asString());
+            result = ctx.eval("js", "map['42'];");
+            assertTrue(result.toString(), result.isNull());
+        }
+    }
 }
