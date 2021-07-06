@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,18 +100,24 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
             PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) frame.getArguments()[1];
             Completion resumptionValue = (Completion) frame.getArguments()[2];
             writeAsyncResult.executeWrite(asyncFrame, resumptionValue);
+
+            JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(asyncFrame.getArguments(), 0);
             try {
                 functionBody.execute(asyncFrame);
-                Object maybeRecord = JSArguments.getUserArgument(asyncFrame.getArguments(), 0);
-                assert maybeRecord instanceof JSModuleRecord;
-                JSModuleRecord moduleRecord = (JSModuleRecord) maybeRecord;
+
+                assert promiseCapability != null;
                 DynamicObject result = context.getEvaluator().getModuleNamespace(moduleRecord);
                 promiseCapabilityResolve(callResolveNode, promiseCapability, result);
             } catch (YieldException e) {
-                assert e.isAwait();
-                // no-op: we called await, so we will resume later.
+                assert promiseCapability == null ? e.isYield() : e.isAwait();
+                if (e.isYield()) {
+                    moduleRecord.setEnvironment(JSFrameUtil.castMaterializedFrame(asyncFrame));
+                } else {
+                    assert e.isAwait();
+                    // no-op: we called await, so we will resume later.
+                }
             } catch (Throwable e) {
-                if (shouldCatch(e)) {
+                if (promiseCapability != null && shouldCatch(e)) {
                     promiseCapabilityReject(callRejectNode, promiseCapability, getErrorObjectNode.execute(e));
                 } else {
                     throw e;
@@ -178,21 +184,17 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
         MaterializedFrame moduleFrame = moduleRecord.getEnvironment() != null ? moduleRecord.getEnvironment() : frame.materialize();
         PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getUserArgument(frame.getArguments(), 1);
+        ensureAsyncCallTargetInitialized();
+        if (promiseCapability != null) {
+            writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, moduleFrame));
+        }
+        Completion unusedInitialResult = null;
+        asyncCallNode.call(moduleFrame, promiseCapability, unusedInitialResult);
         if (promiseCapability == null) {
             // no capability provided: we are initializing the module.
-            try {
-                return moduleBodyNode.execute(moduleFrame);
-            } catch (YieldException e) {
-                assert e.isYield();
-                moduleRecord.setEnvironment(moduleFrame);
-                return Undefined.instance;
-            }
+            return Undefined.instance;
         } else {
             // capability was provided: we are executing the module as an async function.
-            ensureAsyncCallTargetInitialized();
-            writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, moduleFrame));
-            Completion unusedInitialResult = null;
-            asyncCallNode.call(moduleFrame, promiseCapability, unusedInitialResult);
             return promiseCapability.getPromise();
         }
     }
