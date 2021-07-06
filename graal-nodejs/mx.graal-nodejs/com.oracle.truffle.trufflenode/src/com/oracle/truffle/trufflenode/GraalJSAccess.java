@@ -3373,7 +3373,7 @@ public final class GraalJSAccess {
         builder.mimeType(JavaScriptLanguage.MODULE_MIME_TYPE);
         Source source = builder.build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+        JSModuleData parsedModule = realm.getContext().getEvaluator().parseModule(realm.getContext(), source);
         JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
         return moduleRecord;
     }
