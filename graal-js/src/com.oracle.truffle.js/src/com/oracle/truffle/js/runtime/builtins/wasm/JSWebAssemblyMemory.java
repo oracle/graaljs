@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -130,6 +131,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
                     if (isJSWebAssemblyMemory(thiz)) {
                         return ((JSWebAssemblyMemoryObject) thiz).getBufferObject();
                     } else {
+                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createTypeError("WebAssembly.Memory.buffer: Receiver is not a WebAssembly.Memory", this);
                     }
                 }

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltinsFactory.WebAssemblyMemoryGrowNodeGen;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -95,6 +96,7 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     public abstract static class WebAssemblyMemoryGrowNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toDeltaNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public WebAssemblyMemoryGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -104,6 +106,7 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected Object grow(Object thiz, Object delta) {
             if (!JSWebAssemblyMemory.isJSWebAssemblyMemory(thiz)) {
+                errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Memory.grow(): Receiver is not a WebAssembly.Memory");
             }
             JSWebAssemblyMemoryObject memory = (JSWebAssemblyMemoryObject) thiz;
@@ -117,6 +120,7 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
+                errorBranch.enter();
                 if (TryCatchNode.shouldCatch(throwable)) {
                     throw Errors.createRangeError(throwable, this);
                 } else {

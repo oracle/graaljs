@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.HasOnlyShapePropertiesNode;
+import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -119,6 +120,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private HasOnlyShapePropertiesNode hasOnlyShapePropertiesNode;
         @Child private ListGetNode listGet;
         @Child private ListSizeNode listSize;
+        @Child private JSGetOwnPropertyNode getOwnPropertyNode;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final BranchProfile growProfile = BranchProfile.create();
         private final ConditionProfile fastOwnKeysProfile = ConditionProfile.createBinaryProfile();
@@ -133,6 +135,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context);
             this.getPrototypeNode = GetPrototypeNode.create();
             this.hasOnlyShapePropertiesNode = HasOnlyShapePropertiesNode.create();
+            this.getOwnPropertyNode = JSGetOwnPropertyNode.create();
             this.listGet = ListGetNode.create();
             this.listSize = ListSizeNode.create();
         }
@@ -214,7 +217,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         }
                     }
 
-                    PropertyDescriptor desc = JSObject.getOwnProperty(object, key);
+                    PropertyDescriptor desc = getOwnPropertyNode.execute(object, key);
                     // desc can be null if obj is a Proxy or the property has been deleted
                     if (desc != null) {
                         state.addVisitedKey(key);

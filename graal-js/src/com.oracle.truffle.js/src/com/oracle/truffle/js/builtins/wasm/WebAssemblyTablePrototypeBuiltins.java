@@ -44,6 +44,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGetNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltinsFactory.WebAssemblyTableGrowNodeGen;
@@ -107,6 +108,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class WebAssemblyTableGrowNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toDeltaNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public WebAssemblyTableGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -116,6 +118,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object grow(Object thiz, Object delta) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
+                errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.grow(): Receiver is not a WebAssembly.Table");
             }
             int deltaInt = toDeltaNode.executeInt(delta);
@@ -126,6 +129,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
+                errorBranch.enter();
                 if (TryCatchNode.shouldCatch(throwable)) {
                     throw Errors.createRangeError(throwable, this);
                 } else {
@@ -138,6 +142,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class WebAssemblyTableGetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public WebAssemblyTableGetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -147,6 +152,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object get(Object thiz, Object index) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
+                errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.get(): Receiver is not a WebAssembly.Table");
             }
             int indexInt = toIndexNode.executeInt(index);
@@ -161,6 +167,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
+                errorBranch.enter();
                 if (TryCatchNode.shouldCatch(throwable)) {
                     throw Errors.createRangeError(throwable, this);
                 } else {
@@ -172,6 +179,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class WebAssemblyTableSetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public WebAssemblyTableSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -181,6 +189,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object set(Object thiz, Object index, Object value) {
             if (!JSWebAssemblyTable.isJSWebAssemblyTable(thiz)) {
+                errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.set(): Receiver is not a WebAssembly.Table");
             }
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
@@ -191,6 +200,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else if (JSWebAssembly.isExportedFunction(value)) {
                 wasmFunction = JSWebAssembly.getExportedFunction((DynamicObject) value);
             } else {
+                errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function");
             }
             try {
@@ -199,6 +209,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
+                errorBranch.enter();
                 if (TryCatchNode.shouldCatch(throwable)) {
                     throw Errors.createRangeError(throwable, this);
                 } else {

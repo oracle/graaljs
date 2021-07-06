@@ -49,6 +49,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -135,7 +136,8 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
                     @Cached("create()") BranchProfile hasEnumerableBranch,
                     @Cached("create()") BranchProfile hasConfigurableBranch,
                     @Cached("create()") BranchProfile hasValueBranch,
-                    @Cached("create()") BranchProfile hasWritableBranch) {
+                    @Cached("create()") BranchProfile hasWritableBranch,
+                    @Cached("create()") IsCallableNode isCallable) {
         initialize();
         PropertyDescriptor desc = PropertyDescriptor.createEmpty();
 
@@ -166,7 +168,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         if (hasGet) {
             hasGetBranch.enter();
             Object getter = getGet(obj);
-            if (!JSRuntime.isCallable(getter) && getter != Undefined.instance) {
+            if (!isCallable.executeBoolean(getter) && getter != Undefined.instance) {
                 errorBranch.enter();
                 throw Errors.createTypeError("Getter must be a function");
             }
@@ -177,7 +179,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         if (hasSet) {
             hasSetBranch.enter();
             Object setter = getSet(obj);
-            if (!JSRuntime.isCallable(setter) && setter != Undefined.instance) {
+            if (!isCallable.executeBoolean(setter) && setter != Undefined.instance) {
                 errorBranch.enter();
                 throw Errors.createTypeError("Setter must be a function");
             }
