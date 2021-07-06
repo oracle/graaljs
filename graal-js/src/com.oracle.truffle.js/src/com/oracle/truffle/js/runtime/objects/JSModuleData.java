@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,42 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.js.parser.ir.Module;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
-public interface JSModuleLoader {
-    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier);
+/**
+ * ES module data that can be shared across contexts.
+ */
+public final class JSModuleData extends ScriptOrModule {
 
-    JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData);
+    /** Module parse node. */
+    private final Module module;
+
+    private final JSFunctionData functionData;
+    private final FrameDescriptor frameDescriptor;
+
+    public JSModuleData(Module module, Source source, JSFunctionData functionData, FrameDescriptor frameDescriptor) {
+        super(functionData.getContext(), source);
+        this.module = module;
+        this.functionData = functionData;
+        this.frameDescriptor = frameDescriptor;
+    }
+
+    public Module getModule() {
+        return module;
+    }
+
+    public JSFunctionData getFunctionData() {
+        return functionData;
+    }
+
+    public FrameDescriptor getFrameDescriptor() {
+        return frameDescriptor;
+    }
+
+    public boolean isTopLevelAsync() {
+        return functionData.isAsync();
+    }
 }

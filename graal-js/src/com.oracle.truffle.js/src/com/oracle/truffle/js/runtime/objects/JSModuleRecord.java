@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
@@ -65,8 +63,7 @@ public final class JSModuleRecord extends ScriptOrModule {
         Evaluated,
     }
 
-    /** Module parse node. */
-    private final Object module;
+    private final JSModuleData parsedModule;
     private final JSModuleLoader moduleLoader;
 
     /** Module's instantiation/evaluation status. */
@@ -76,9 +73,6 @@ public final class JSModuleRecord extends ScriptOrModule {
     private Throwable evaluationError;
     /** Implementation-specific: The result of ModuleExecution if no exception occurred. */
     private Object executionResult;
-
-    private JSFunctionData functionData;
-    private FrameDescriptor frameDescriptor;
 
     /** Lazily initialized Module Namespace object ({@code [[Namespace]]}). */
     private DynamicObject namespace;
@@ -106,15 +100,16 @@ public final class JSModuleRecord extends ScriptOrModule {
      */
     private Object topLevelAwaitModuleLoadingContinuation;
 
-    public JSModuleRecord(Object module, JSContext context, JSModuleLoader moduleLoader, Source source) {
-        super(context, source);
-        this.module = module;
+    public JSModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader) {
+        super(parsedModule.getContext(), parsedModule.getSource());
+        this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
+        this.async = parsedModule.isTopLevelAsync();
         setUninstantiated();
     }
 
-    public Object getModule() {
-        return module;
+    public com.oracle.js.parser.ir.Module getModule() {
+        return parsedModule.getModule();
     }
 
     public JSModuleLoader getModuleLoader() {
@@ -122,23 +117,15 @@ public final class JSModuleRecord extends ScriptOrModule {
     }
 
     public JSFunctionData getFunctionData() {
-        assert functionData != null;
-        return functionData;
-    }
-
-    public void setFunctionData(JSFunctionData functionData) {
-        assert this.functionData == null;
-        this.functionData = functionData;
+        return parsedModule.getFunctionData();
     }
 
     public FrameDescriptor getFrameDescriptor() {
-        assert frameDescriptor != null;
-        return frameDescriptor;
+        return parsedModule.getFrameDescriptor();
     }
 
-    public void setFrameDescriptor(FrameDescriptor frameDescriptor) {
-        assert this.frameDescriptor == null;
-        this.frameDescriptor = frameDescriptor;
+    public JSModuleData getModuleData() {
+        return parsedModule;
     }
 
     public Status getStatus() {
@@ -178,7 +165,7 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public void setEnvironment(MaterializedFrame environment) {
         assert this.environment == null;
-        assert this.frameDescriptor == environment.getFrameDescriptor();
+        assert this.getFrameDescriptor() == environment.getFrameDescriptor();
         this.environment = environment;
     }
 
@@ -240,7 +227,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     // ##### Top-level await
 
     // [[Async]]
-    private boolean async = false;
+    private final boolean async;
     // [[AsyncEvaluating]]
     private boolean asyncEvaluating = false;
     // [[TopLevelCapability]]
@@ -297,10 +284,6 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public boolean isTopLevelAsync() {
         return async;
-    }
-
-    public void setTopLevelAsync() {
-        async = true;
     }
 
     public void setExecutionContinuation(Object continuation) {
