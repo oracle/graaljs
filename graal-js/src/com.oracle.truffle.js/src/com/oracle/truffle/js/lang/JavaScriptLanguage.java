@@ -190,45 +190,60 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             return createEmptyScript(context).getCallTarget();
         }
 
-        RootNode rootNode = new RootNode(this) {
-            @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
-            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
-            @Child private ImportValueNode importValueNode = ImportValueNode.create();
-            @CompilationFinal private ContextReference<JSRealm> contextReference;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (contextReference == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    contextReference = lookupContextReference(JavaScriptLanguage.class);
-                }
-                JSRealm realm = contextReference.get();
-                assert realm.getContext() == context : "unexpected JSContext";
-                try {
-                    interopBoundaryEnter(realm);
-                    Object[] arguments = frame.getArguments();
-                    for (int i = 0; i < arguments.length; i++) {
-                        arguments[i] = importValueNode.executeWithTarget(arguments[i]);
-                    }
-                    arguments = program.argumentsToRunWithArguments(realm, arguments);
-                    Object result = directCallNode.call(arguments);
-                    return exportValueNode.execute(result);
-                } finally {
-                    interopBoundaryExit(realm);
-                }
-            }
-
-            @Override
-            public boolean isInternal() {
-                return true;
-            }
-
-            @Override
-            protected boolean isInstrumentable() {
-                return false;
-            }
-        };
+        RootNode rootNode = new ParsedProgramRoot(this, context, program);
         return Truffle.getRuntime().createCallTarget(rootNode);
+    }
+
+    private final class ParsedProgramRoot extends RootNode {
+        private final JSContext context;
+        private final ScriptNode program;
+        @Child private DirectCallNode directCallNode;
+        @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+        @Child private ImportValueNode importValueNode = ImportValueNode.create();
+        @CompilationFinal private ContextReference<JSRealm> contextReference;
+
+        private ParsedProgramRoot(TruffleLanguage<?> language, JSContext context, ScriptNode program) {
+            super(language);
+            this.context = context;
+            this.program = program;
+            this.directCallNode = DirectCallNode.create(program.getCallTarget());
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            if (contextReference == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                contextReference = lookupContextReference(JavaScriptLanguage.class);
+            }
+            JSRealm realm = contextReference.get();
+            assert realm.getContext() == context : "unexpected JSContext";
+            try {
+                interopBoundaryEnter(realm);
+                Object[] arguments = frame.getArguments();
+                for (int i = 0; i < arguments.length; i++) {
+                    arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+                }
+                arguments = program.argumentsToRunWithArguments(realm, arguments);
+                Object result = directCallNode.call(arguments);
+                return exportValueNode.execute(result);
+            } finally {
+                interopBoundaryExit(realm);
+            }
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
+        @Override
+        protected boolean isInstrumentable() {
+            return false;
+        }
+    }
+
+    public static CallTarget getParsedProgramCallTarget(RootNode rootNode) {
+        return ((ParsedProgramRoot) rootNode).directCallNode.getCallTarget();
     }
 
     @TruffleBoundary
