@@ -25,6 +25,10 @@ test-cli-eval: FAIL
 test-cli-syntax-piped-bad: FAIL
 test-repl-pretty-custom-stack: FAIL
 test-repl-pretty-stack: FAIL
+# Cannot convert undefined or null to object versus String.prototype.match called on null or undefined
+test-errors-systemerror: FAIL
+# Invalid array buffer length versus Array buffer allocation failed
+test-fs-write-buffer-large: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
