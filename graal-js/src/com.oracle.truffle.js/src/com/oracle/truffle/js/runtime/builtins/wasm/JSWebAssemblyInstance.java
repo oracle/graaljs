@@ -202,6 +202,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
         String returnType = typeInfo.substring(idxClose + 1);
         int argCount = argTypes.length() / 3;
+        boolean returnTypeIsI64 = "i64".equals(returnType);
+        boolean anyArgTypeIsI64 = argTypes.indexOf("i64") != -1;
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
@@ -211,11 +213,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if ("i64".equals(returnType)) {
+                if (returnTypeIsI64) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Return type is i64");
                 }
-                if (argTypes.indexOf("i64") != -1) {
+                if (anyArgTypeIsI64) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Argument type is i64");
                 }
@@ -376,6 +378,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
         String returnType = typeInfo.substring(idxClose + 1);
         int argCount = argTypes.length() / 3;
+        boolean returnTypeIsI64 = "i64".equals(returnType);
+        boolean anyArgTypeIsI64 = argTypes.indexOf("i64") != -1;
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
@@ -385,11 +389,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if ("i64".equals(returnType)) {
+                if (returnTypeIsI64) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Return type is i64");
                 }
-                if (argTypes.indexOf("i64") != -1) {
+                if (anyArgTypeIsI64) {
                     errorBranch.enter();
                     throw Errors.createTypeError("Argument type is i64");
                 }
