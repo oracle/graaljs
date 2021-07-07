@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -206,6 +207,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
+            @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -234,7 +236,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 try {
                     Object wasmResult;
                     try {
-                        wasmResult = InteropLibrary.getUncached(export).execute(export, wasmArgs);
+                        wasmResult = exportFunctionLib.execute(export, wasmArgs);
                     } catch (GraalJSException jsex) {
                         errorBranch.enter();
                         throw jsex;
