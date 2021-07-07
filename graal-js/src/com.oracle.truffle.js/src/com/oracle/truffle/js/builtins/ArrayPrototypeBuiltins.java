@@ -367,8 +367,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected long getLength(Object thisObject) {
             if (isTypedArrayImplementation) {
                 // %TypedArray%.prototype.* don't access the "length" property
-                JSTypedArrayObject typedArrayObject = validateTypedArray(thisObject);
-                return typedArrayGetLength(typedArrayObject);
+                return typedArrayGetLength((JSTypedArrayObject) thisObject);
             } else {
                 if (getLengthNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -376,6 +375,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 return getLengthNode.executeLong(thisObject);
             }
+        }
+
+        protected final Object toObjectOrValidateTypedArray(Object thisObj) {
+            return isTypedArrayImplementation ? validateTypedArray(thisObj) : toObject(thisObj);
         }
 
         protected final boolean isCallable(Object callback) {
@@ -946,7 +949,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object sliceGeneric(Object thisObj, Object begin, Object end,
                         @Cached("create()") JSToIntegerAsLongNode toIntegerAsLong) {
-            Object thisArrayObj = toObject(thisObj);
+            Object thisArrayObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(thisArrayObj);
             long startPos = begin != Undefined.instance ? JSRuntime.getOffset(toIntegerAsLong.executeLong(begin), len, offsetProfile1) : 0;
 
@@ -1508,7 +1511,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object indexOf(Object thisObj, Object[] args) {
-            Object thisJSObject = toObject(thisObj);
+            Object thisJSObject = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(thisJSObject);
             if (len == 0) {
                 return -1;
@@ -1610,7 +1613,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected String join(Object thisObj, Object joinStr) {
-            final Object thisJSObject = toObject(thisObj);
+            final Object thisJSObject = toObjectOrValidateTypedArray(thisObj);
             final long length = getLength(thisJSObject);
             final String joinSeparator = joinStr == Undefined.instance ? "," : getSeparatorToString().executeString(joinStr);
 
@@ -1766,7 +1769,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected String toLocaleString(VirtualFrame frame, Object thisObj,
                         @Cached("create()") JSToStringNode toStringNode) {
-            Object arrayObj = toObject(thisObj);
+            Object arrayObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(arrayObj);
             if (len == 0) {
                 return "";
@@ -2133,10 +2136,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected boolean every(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
             return (boolean) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, true);
@@ -2165,7 +2165,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected DynamicObject filter(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
@@ -2238,9 +2238,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object forEach(Object thisObj, Object callback, Object thisArg) {
             Object thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
             return forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, Undefined.instance);
@@ -2264,10 +2261,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected boolean some(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
             return (boolean) forEachIndexCall(thisJSObj, callbackFn, thisArg, 0, length, false);
@@ -2293,10 +2287,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object map(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
@@ -2471,7 +2462,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected Object flatMap(Object thisObj, Object callback, Object thisArg,
                         @Cached("createFlattenIntoArrayNode(getContext())") FlattenIntoArrayNode flattenIntoArrayNode) {
-
             Object thisJSObj = toObject(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
@@ -2532,7 +2522,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object find(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
@@ -2564,7 +2554,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object findIndex(Object thisObj, Object callback, Object thisArg) {
-            Object thisJSObj = toObject(thisObj);
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
@@ -2596,7 +2586,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin, isTypedArrayImplementation);
         }
 
-        @Specialization(guards = "isJSFastArray(thisObj)", assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
+        @Specialization(guards = {"!isTypedArrayImplementation", "isJSFastArray(thisObj)"}, assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
         protected DynamicObject sortArray(final DynamicObject thisObj, final Object compare,
                         @Cached("create(getContext())") JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
                         @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
@@ -2637,7 +2627,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected Object sort(Object thisObj, final Object comparefn,
                         @Cached("createBinaryProfile()") ConditionProfile isJSObject) {
             checkCompareFunction(comparefn);
-            Object thisJSObj = toObject(thisObj);
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             if (isJSObject.profile(JSDynamicObject.isJSDynamicObject(thisJSObj))) {
                 return sortJSObject(comparefn, (DynamicObject) thisJSObj);
             } else {
@@ -2875,10 +2865,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object reduce(Object thisObj, Object callback, Object... initialValueOpt) {
-            Object thisJSObj = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(thisJSObj);
-            }
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long length = getLength(thisJSObj);
             Object callbackFn = checkCallbackIsFunction(callback);
 
@@ -2960,7 +2947,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object fill(Object thisObj, Object value, Object start, Object end) {
-            Object thisJSObj = toObject(thisObj);
+            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(thisJSObj);
             long lStart = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile1);
             long lEnd = end == Undefined.instance ? len : JSRuntime.getOffset(toIntegerAsLong(end), len, offsetProfile2);
@@ -2988,7 +2975,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object copyWithin(Object thisObj, Object target, Object start, Object end) {
-            Object obj = toObject(thisObj);
+            Object obj = toObjectOrValidateTypedArray(thisObj);
             long len = getLength(obj);
             long to = JSRuntime.getOffset(toIntegerAsLong(target), len, offsetProfile1);
             long from = JSRuntime.getOffset(toIntegerAsLong(start), len, offsetProfile2);
@@ -3037,7 +3024,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected boolean includes(Object thisValue, Object searchElement, Object fromIndex,
                         @Cached("createSameValueZero()") JSIdenticalNode identicalNode) {
-            Object thisObj = toObject(thisValue);
+            Object thisObj = toObjectOrValidateTypedArray(thisValue);
             long len = getLength(thisObj);
             if (len == 0) {
                 return false;
@@ -3225,10 +3212,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization
         protected Object at(Object thisObj, Object index) {
-            final Object o = toObject(thisObj);
-            if (isTypedArrayImplementation) {
-                validateTypedArray(o);
-            }
+            final Object o = toObjectOrValidateTypedArray(thisObj);
             final long length = getLength(o);
             long relativeIndex = toIntegerAsLong(index);
             long k;
