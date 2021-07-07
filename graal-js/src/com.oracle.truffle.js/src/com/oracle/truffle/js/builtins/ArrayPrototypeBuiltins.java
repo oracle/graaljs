@@ -51,6 +51,7 @@ import java.util.EnumSet;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -2203,6 +2204,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             ScriptArray array = resultArrayTypeProfile.profile(arrayGetArrayType(resultArray));
             for (long i = 0; i < resultLen; i++) {
                 typedArray.setElement(typedResult, i, array.getElement(resultArray, i), true);
+                TruffleSafepoint.poll(this);
             }
             return typedResult;
         }
@@ -2972,6 +2974,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, value);
+                TruffleSafepoint.poll(this);
             }
             reportLoopCount(lEnd - lStart);
             return thisJSObj;
@@ -3025,6 +3028,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 from += direction;
                 to += direction;
                 count--;
+                TruffleSafepoint.poll(this);
             }
             reportLoopCount(expectedCount);
             return obj;
@@ -3070,6 +3074,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     return true;
                 }
                 k++;
+                TruffleSafepoint.poll(this);
             }
             reportLoopCount(len - startIdx);
             return false;
@@ -3162,6 +3167,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     lower++;
                     upper--;
                 }
+                TruffleSafepoint.poll(this);
             }
             reportLoopCount(lower);
             return array;

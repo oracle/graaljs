@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -197,8 +198,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
     protected final Object callback(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult) {
         if (callbackNode == null) {
+            TruffleSafepoint.poll(this);
             return callbackThisArg;
         } else {
+            // no safepoint polling necessary, call cares for that
             return callbackNode.apply(index, value, target, callback, callbackThisArg, currentResult);
         }
     }

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -175,7 +176,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
-        protected static DynamicObject doForeignMap(Object thisObj,
+        protected DynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
                         @Cached BranchProfile growProfile) {
@@ -190,6 +191,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     } catch (StopIterationException e) {
                         break;
                     }
+                    TruffleSafepoint.poll(this);
                 }
                 for (Object key : keys.toArray()) {
                     try {
@@ -197,6 +199,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     } catch (UnknownKeyException e) {
                         continue;
                     }
+                    TruffleSafepoint.poll(this);
                 }
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "clear", null);

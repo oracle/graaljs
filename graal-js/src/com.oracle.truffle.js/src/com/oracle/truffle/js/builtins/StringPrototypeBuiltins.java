@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -1146,6 +1147,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             stringBuilderProfile.append(builder, toString(thisObj));
             for (Object o : args) {
                 stringBuilderProfile.append(builder, toString2Node.executeString(o));
+                TruffleSafepoint.poll(this);
             }
             return stringBuilderProfile.toString(builder);
         }
@@ -2474,6 +2476,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 if (thisObj.charAt(i) != searchStr.charAt(i)) {
                     return false;
                 }
+                TruffleSafepoint.poll(this);
             }
             return true;
         }
@@ -2624,10 +2627,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @TruffleBoundary
-        private static String repeatImpl(String str, int repeatCount) {
+        private String repeatImpl(String str, int repeatCount) {
             StringBuilder sb = new StringBuilder(str.length() * repeatCount);
             for (int i = 0; i < repeatCount; i++) {
                 sb.append(str);
+                TruffleSafepoint.poll(this);
             }
             return sb.toString();
         }
