@@ -102,8 +102,8 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
             Object callResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey));
             boolean trapResult = toBooleanNode.executeBoolean(callResult);
             if (!trapResult) {
-                errorBranch.enter();
                 if (!JSProxy.checkPropertyIsSettable(target, propertyKey)) {
+                    errorBranch.enter();
                     throw Errors.createTypeError("Proxy can't successfully access a non-writable, non-configurable property", this);
                 }
             }

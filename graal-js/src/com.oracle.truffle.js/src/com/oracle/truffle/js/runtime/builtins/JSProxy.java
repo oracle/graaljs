@@ -92,6 +92,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
     public static final HiddenKey REVOKED_CALLABLE = new HiddenKey("RevokedCallable");
 
+    @TruffleBoundary
     public static boolean checkPropertyIsSettable(Object truffleTarget, Object key) {
         assert JSRuntime.isPropertyKey(key);
         if (!JSDynamicObject.isJSDynamicObject(truffleTarget)) {

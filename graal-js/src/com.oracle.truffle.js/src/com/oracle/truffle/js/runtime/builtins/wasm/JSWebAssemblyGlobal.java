@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
@@ -128,6 +127,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalGetValue, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
+                private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -140,7 +140,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                             throw Errors.shouldNotReachHere(ex);
                         }
                     } else {
-                        CompilerDirectives.transferToInterpreter();
+                        errorBranch.enter();
                         throw Errors.createTypeError("get WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
                     }
                 }

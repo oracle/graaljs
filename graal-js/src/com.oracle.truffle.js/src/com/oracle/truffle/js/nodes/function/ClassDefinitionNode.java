@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -54,6 +56,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -61,8 +64,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
-
-import java.util.Set;
 
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
@@ -83,6 +84,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private InitializeInstanceElementsNode staticFieldsNode;
     @Child private PropertySetNode setPrivateBrandNode;
     @Child private SetFunctionNameNode setFunctionName;
+    @Child private IsConstructorNode isConstructorNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     private final boolean hasName;
@@ -107,6 +109,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
+        this.isConstructorNode = IsConstructorNode.create();
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
@@ -127,7 +130,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             Object superclass = classHeritageNode.execute(frame);
             if (superclass == Null.instance) {
                 protoParent = Null.instance;
-            } else if (!JSRuntime.isConstructor(superclass)) {
+            } else if (!isConstructorNode.executeBoolean(superclass)) {
                 // 6.f. if IsConstructor(superclass) is false, throw a TypeError.
                 errorBranch.enter();
                 throw Errors.createTypeError("not a constructor", this);

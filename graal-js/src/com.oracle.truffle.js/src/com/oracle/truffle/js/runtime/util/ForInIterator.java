@@ -79,6 +79,7 @@ public class ForInIterator {
         visitedShapes[visitedShapesSize++] = shape;
     }
 
+    @TruffleBoundary
     public boolean addVisitedKey(final Object key) {
         if (visitedKeys == null) {
             visitedKeys = Boundaries.economicSetCreate();
@@ -86,6 +87,7 @@ public class ForInIterator {
         return Boundaries.economicSetAdd(visitedKeys, key);
     }
 
+    @TruffleBoundary
     public boolean isVisitedKey(final Object key) {
         return (visitedShapesSize > 0 && visitedShapeSetContainsKey(visitedShapes, visitedShapesSize, key)) ||
                         (visitedKeys != null && Boundaries.economicSetContains(visitedKeys, key));
