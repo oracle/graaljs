@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -210,6 +211,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            @CompilationFinal(dimensions = 1) String[] argTypesArray = splitArgTypes(argTypes);
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -232,7 +234,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else {
                         wasmArg = Undefined.instance;
                     }
-                    wasmArgs[i] = toWebAssemblyValueNode.execute(wasmArg, argTypes.substring(3 * i, 3 * (i + 1)));
+                    wasmArgs[i] = toWebAssemblyValueNode.execute(wasmArg, argTypesArray[i]);
                 }
 
                 try {
@@ -417,6 +419,15 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
         return JSFunction.create(context.getRealm(), functionData);
+    }
+
+    static String[] splitArgTypes(String argTypes) {
+        int argCount = argTypes.length() / 3;
+        String[] argTypesArray = new String[argCount];
+        for (int i = 0; i < argCount; i++) {
+            argTypesArray[i] = argTypes.substring(3 * i, 3 * (i + 1));
+        }
+        return argTypesArray;
     }
 
 }
