@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -123,6 +124,11 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @Specialization
+    public boolean typedArray(JSTypedArrayObject object, long index) {
+        return index >= 0 && index < JSArrayBufferView.typedArrayGetLength(object);
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedObjectType != null", "cachedObjectType.isInstance(object)", "cachedName.equals(propertyName)"}, limit = "1")
     public boolean objectStringCached(DynamicObject object, String propertyName,
@@ -152,7 +158,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return hasPropertyGeneric(object, propertyName);
     }
 
-    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSFastArray(object)"})
+    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSFastArray(object)", "!isJSArrayBufferView(object)"})
     public boolean objectLong(DynamicObject object, long propertyIdx) {
         if (hasOwnProperty) {
             return JSObject.hasOwnProperty(object, propertyIdx, classProfile);
