@@ -3019,7 +3019,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             while (count > 0) {
-                if (hasProperty(obj, from)) {
+                if (isTypedArrayImplementation || hasProperty(obj, from)) {
                     Object fromVal = read(obj, from);
                     write(obj, to, fromVal);
                 } else {
