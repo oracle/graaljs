@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
+import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -173,6 +174,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSlowArray;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -344,12 +346,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private ArraySpeciesConstructorNode arraySpeciesCreateNode;
         @Child private IsCallableNode isCallableNode;
         protected final BranchProfile errorBranch = BranchProfile.create();
-        private final ValueProfile typedArrayTypeProfile;
 
         public BasicArrayOperation(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin);
             this.isTypedArrayImplementation = isTypedArrayImplementation;
-            this.typedArrayTypeProfile = isTypedArrayImplementation ? ValueProfile.createClassProfile() : null;
         }
 
         public BasicArrayOperation(JSContext context, JSBuiltin builtin) {
@@ -367,17 +367,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected long getLength(Object thisObject) {
             if (isTypedArrayImplementation) {
                 // %TypedArray%.prototype.* don't access the "length" property
-                if (!JSArrayBufferView.isJSArrayBufferView(thisObject)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("typed array expected");
-                }
-                DynamicObject dynObj = (DynamicObject) thisObject;
-                if (JSArrayBufferView.hasDetachedBuffer(dynObj, getContext())) {
-                    errorBranch.enter();
-                    throw Errors.createTypeErrorDetachedBuffer();
-                }
-                TypedArray typedArray = typedArrayTypeProfile.profile(JSArrayBufferView.typedArrayGetArrayType(dynObj));
-                return typedArray.length(dynObj);
+                JSTypedArrayObject typedArrayObject = validateTypedArray(thisObject);
+                return typedArrayGetLength(typedArrayObject);
             } else {
                 if (getLengthNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -421,15 +412,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         /**
          * ES2016, 22.2.3.5.1 ValidateTypedArray(O).
          */
-        protected final void validateTypedArray(Object obj) {
+        protected final JSTypedArrayObject validateTypedArray(Object obj) {
             if (!JSArrayBufferView.isJSArrayBufferView(obj)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
-            if (JSArrayBufferView.hasDetachedBuffer((DynamicObject) obj, getContext())) {
+            JSTypedArrayObject typedArrayObject = (JSTypedArrayObject) obj;
+            if (JSArrayBufferView.hasDetachedBuffer(typedArrayObject, getContext())) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorDetachedBuffer();
             }
+            return typedArrayObject;
         }
 
         protected void reportLoopCount(long count) {
