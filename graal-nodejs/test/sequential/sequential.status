@@ -25,6 +25,9 @@ test-gc-http-client: SKIP
 test-heapdump: SKIP
 test-heapdump-flag: SKIP
 
+# Custom MicrotaskQueue is not supported
+test-vm-timeout-escape-promise-module-2: FAIL
+
 # Profiling is not supported
 test-worker-prof: FAIL
 

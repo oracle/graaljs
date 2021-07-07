@@ -94,7 +94,6 @@ test-worker-message-port-wasm-threads: FAIL
 # Custom MicrotaskQueue is not supported
 test-vm-timeout-escape-promise: FAIL
 test-vm-timeout-escape-promise-module: FAIL
-test-vm-timeout-escape-promise-module-2: FAIL
 test-vm-timeout-escape-promise-2: FAIL
 
 # Contains an unused invalid regular expression
