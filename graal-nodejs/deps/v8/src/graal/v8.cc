@@ -2560,13 +2560,19 @@ namespace v8 {
     Maybe<bool> ValueDeserializer::ReadHeader(Local<Context> context) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         JNI_CALL_VOID(graal_isolate, GraalAccessMethod::value_deserializer_read_header, private_->deserializer);
-        return graal_isolate->GetJNIEnv()->ExceptionCheck() ? Nothing<bool>() : Just<bool>(true);
+        if (graal_isolate->GetJNIEnv()->ExceptionCheck()) {
+            return Nothing<bool>();
+        }
+        return Just<bool>(true);
     }
 
     MaybeLocal<Value> ValueDeserializer::ReadValue(Local<Context> context) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         GraalContext* graal_context = reinterpret_cast<GraalContext*> (*context);
         JNI_CALL(jobject, java_value, graal_isolate, GraalAccessMethod::value_deserializer_read_value, Object, graal_context->GetJavaObject(), private_->deserializer);
+        if (graal_isolate->GetJNIEnv()->ExceptionCheck()) {
+            return MaybeLocal<Value>();
+        }
         GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_value);
         Local<Value> v8_value = reinterpret_cast<Value*> (graal_value);
         return v8_value;
@@ -2575,6 +2581,11 @@ namespace v8 {
     bool ValueDeserializer::ReadDouble(double* value) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         JNI_CALL(jdouble, result, graal_isolate, GraalAccessMethod::value_deserializer_read_double, Double, private_->deserializer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return false;
+        }
         *value = result;
         return true;
     }
@@ -2582,6 +2593,11 @@ namespace v8 {
     bool ValueDeserializer::ReadUint32(uint32_t* value) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         JNI_CALL(jint, result, graal_isolate, GraalAccessMethod::value_deserializer_read_uint32, Int, private_->deserializer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return false;
+        }
         *value = result;
         return true;
     }
@@ -2589,6 +2605,11 @@ namespace v8 {
     bool ValueDeserializer::ReadUint64(uint64_t* value) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         JNI_CALL(jlong, result, graal_isolate, GraalAccessMethod::value_deserializer_read_uint64, Long, private_->deserializer);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return false;
+        }
         *value = result;
         return true;
     }
@@ -2596,6 +2617,11 @@ namespace v8 {
     bool ValueDeserializer::ReadRawBytes(size_t length, const void** data) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (private_->isolate);
         JNI_CALL(jint, position, graal_isolate, GraalAccessMethod::value_deserializer_read_raw_bytes, Int, private_->deserializer, (jint) length);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        if (env->ExceptionCheck()) {
+            env->ExceptionClear();
+            return false;
+        }
         *data = private_->data + position;
         return true;
     }
