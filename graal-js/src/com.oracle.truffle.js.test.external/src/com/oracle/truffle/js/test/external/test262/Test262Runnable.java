@@ -229,11 +229,15 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.Locale-info",
                     "IsHTMLDDA",
+                    "Object.hasOwn",
+                    "Temporal",
                     "align-detached-buffer-semantics-with-web-reality",
                     "arbitrary-module-namespace-names",
                     "class-fields-private-in",
                     "error-cause",
                     "import-assertions",
+                    "json-modules",
+                    "resizable-arraybuffer",
                     "tail-call-optimization",
     }));
     private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
