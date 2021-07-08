@@ -126,6 +126,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -3373,7 +3374,14 @@ public final class GraalJSAccess {
         builder.mimeType(JavaScriptLanguage.MODULE_MIME_TYPE);
         Source source = builder.build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        JSModuleData parsedModule = realm.getContext().getEvaluator().parseModule(realm.getContext(), source);
+        TruffleContext truffleContext = realm.getEnv().getContext();
+        Object prev = truffleContext.enter(null);
+        JSModuleData parsedModule;
+        try {
+            parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+        } finally {
+            truffleContext.leave(null, prev);
+        }
         JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
         return moduleRecord;
     }
