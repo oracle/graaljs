@@ -733,7 +733,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
             } while (fromIndex < size);
-            if (getContext().isOptionRegexpStaticResult() && matchStart >= 0) {
+            if (getContext().isOptionRegexpStaticResult() && matchStart >= 0 && matchStart < size) {
                 getContext().getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, str, matchStart, lastRegexResult);
             }
             if (matchStart != matchEnd || prevMatchEnd < size) {
@@ -743,8 +743,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private String removeStickyFlag(Object tRegexFlags) {
-            char[] flags = new char[5];
+            char[] flags = new char[6];
             int len = 0;
+            if (flagsAccessor.hasIndices(tRegexFlags)) {
+                flags[len++] = 'd';
+            }
             if (flagsAccessor.global(tRegexFlags)) {
                 flags[len++] = 'g';
             }

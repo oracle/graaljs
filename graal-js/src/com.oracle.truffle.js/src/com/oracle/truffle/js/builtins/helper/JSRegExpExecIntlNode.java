@@ -189,6 +189,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         private final JSContext context;
         private final boolean doStaticResultUpdate;
         private final ValueProfile compiledRegexProfile = ValueProfile.createIdentityProfile();
+        private final ConditionProfile areLegacyFeaturesEnabled = ConditionProfile.createBinaryProfile();
 
         JSRegExpExecIntlIgnoreLastIndexNode(JSContext context, boolean doStaticResultUpdate) {
             this.context = context;
@@ -209,7 +210,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             Object compiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(regExp));
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                context.getRealm().setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                JSRealm thisRealm = context.getRealm();
+                if (thisRealm == JSRegExp.getRealm(regExp)) {
+                    if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
+                        thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
+                    } else {
+                        thisRealm.invalidateStaticRegexResult();
+                    }
+                }
             }
             return result;
         }
