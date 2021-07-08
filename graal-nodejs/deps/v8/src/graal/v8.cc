@@ -356,6 +356,12 @@ namespace v8 {
         reinterpret_cast<GraalFunctionTemplate*> (this)->Inherit(parent);
     }
 
+    void FunctionTemplate::SetLength(int length) {
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalFunctionTemplate*> (this)->Isolate();
+        Isolate* isolate = reinterpret_cast<Isolate*> (graal_isolate);
+        Set(String::NewFromUtf8Literal(isolate, "length"), Integer::New(isolate, length), static_cast<PropertyAttribute> (PropertyAttribute::DontEnum | PropertyAttribute::ReadOnly));
+    }
+
     internal::Address* HandleScope::CreateHandle(internal::Isolate* isolate, internal::Address value) {
         GraalHandleContent* graal_original = reinterpret_cast<GraalHandleContent*> (value);
         GraalHandleContent* graal_copy = graal_original->Copy(false);

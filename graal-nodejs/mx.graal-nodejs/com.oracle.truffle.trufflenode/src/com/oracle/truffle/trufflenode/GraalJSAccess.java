@@ -1885,10 +1885,8 @@ public final class GraalJSAccess {
                     if (!template.hasPropertyHandler()) {
                         JSObjectUtil.putHiddenProperty(obj, name, processedValue);
                     } // else set on the proxy/handler
-                } else if (JSObject.hasOwnProperty(obj, name)) {
-                    JSObject.set(obj, name, processedValue);
                 } else {
-                    JSObjectUtil.putDataProperty(context, obj, name, processedValue, attributes);
+                    JSObject.defineOwnProperty(obj, name, PropertyDescriptor.createData(processedValue, attributes));
                 }
             }
         }
