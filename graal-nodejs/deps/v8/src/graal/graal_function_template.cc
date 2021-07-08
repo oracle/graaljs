@@ -134,3 +134,7 @@ void GraalFunctionTemplate::Inherit(v8::Local<v8::FunctionTemplate> parent) {
     jobject java_parent = reinterpret_cast<GraalFunctionTemplate*> (*parent)->GetJavaObject();
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::function_template_inherit, GetJavaObject(), java_parent);
 }
+
+void GraalFunctionTemplate::ReadOnlyPrototype() {
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::function_template_read_only_prototype, GetJavaObject());
+}

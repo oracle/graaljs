@@ -1696,6 +1696,12 @@ public final class GraalJSAccess {
                     JSObject.setPrototype(proto, parentProto);
                 }
             }
+
+            if (template.hasReadOnlyPrototype()) {
+                PropertyDescriptor desc = PropertyDescriptor.createEmpty();
+                desc.setWritable(false);
+                JSObject.defineOwnProperty(obj, JSObject.PROTOTYPE, desc);
+            }
         }
 
         return template.getFunctionObject(jsRealm);
@@ -1739,6 +1745,11 @@ public final class GraalJSAccess {
             }
         }
         return false;
+    }
+
+    public void functionTemplateReadOnlyPrototype(Object templateObj) {
+        FunctionTemplate template = (FunctionTemplate) templateObj;
+        template.markPrototypeReadOnly();
     }
 
     public Object objectTemplateNew() {

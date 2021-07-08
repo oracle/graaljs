@@ -356,6 +356,10 @@ namespace v8 {
         reinterpret_cast<GraalFunctionTemplate*> (this)->Inherit(parent);
     }
 
+    void FunctionTemplate::ReadOnlyPrototype() {
+        reinterpret_cast<GraalFunctionTemplate*> (this)->ReadOnlyPrototype();
+    }
+
     void FunctionTemplate::SetLength(int length) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalFunctionTemplate*> (this)->Isolate();
         Isolate* isolate = reinterpret_cast<Isolate*> (graal_isolate);
