@@ -3613,6 +3613,14 @@ namespace v8 {
         TRACE
     }
 
+    Isolate::SafeForTerminationScope::SafeForTerminationScope(v8::Isolate* isolate) {
+        TRACE
+    }
+
+    Isolate::SafeForTerminationScope::~SafeForTerminationScope() {
+        TRACE
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
