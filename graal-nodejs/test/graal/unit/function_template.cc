@@ -119,6 +119,26 @@ EXPORT_TO_JS(GetFunction) {
     args.GetReturnValue().Set(functionTemplate->GetFunction(context).ToLocalChecked());
 }
 
+// FunctionTemplate::ReadOnlyPrototype
+
+EXPORT_TO_JS(GetFunctionWithReadOnlyPrototype) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
+    functionTemplate->ReadOnlyPrototype();
+    args.GetReturnValue().Set(functionTemplate->GetFunction(context).ToLocalChecked());
+}
+
+// FunctionTemplate::SetLength
+
+EXPORT_TO_JS(GetFunctionWithLength) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<FunctionTemplate> functionTemplate = FunctionTemplate::New(isolate, FunctionTemplate_Function);
+    functionTemplate->SetLength(args[0].As<Int32>()->Value());
+    args.GetReturnValue().Set(functionTemplate->GetFunction(context).ToLocalChecked());
+}
+
 // FunctionTemplate::InstanceTemplate
 
 EXPORT_TO_JS(CheckInstanceTemplate) {
