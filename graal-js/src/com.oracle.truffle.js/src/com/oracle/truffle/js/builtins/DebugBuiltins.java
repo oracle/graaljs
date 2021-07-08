@@ -111,6 +111,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -625,16 +626,16 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                         throw Errors.createSyntaxError(String.format("Could not find imported module %s", specifier));
                     }
                     String code = JSRuntime.toString(moduleEntry);
-                    return Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
+                    return Source.newBuilder(JavaScriptLanguage.ID, code, name).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
                 }
 
                 @Override
                 public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
-                    return moduleMap.computeIfAbsent(specifier, (key) -> evaluator.parseModule(context, resolveModuleSource(referencingModule, key), this));
+                    return moduleMap.computeIfAbsent(specifier, (key) -> new JSModuleRecord(evaluator.envParseModule(context.getRealm(), resolveModuleSource(referencingModule, key)), this));
                 }
 
                 @Override
-                public JSModuleRecord loadModule(Source moduleSource) {
+                public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
                     throw new UnsupportedOperationException();
                 }
             };

@@ -104,6 +104,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
@@ -241,8 +242,7 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     @Override
     public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames) {
-        String mimeType = source.getMimeType();
-        if (MODULE_MIME_TYPE.equals(mimeType) || (mimeType == null && source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX))) {
+        if (isModuleSource(source)) {
             return fakeScriptForModule(context, source);
         }
         try {
@@ -252,31 +252,54 @@ public final class GraalJSEvaluator implements JSParser {
         }
     }
 
+    private static boolean isModuleSource(Source source) {
+        String mimeType = source.getMimeType();
+        return MODULE_MIME_TYPE.equals(mimeType) || (mimeType == null && source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX));
+    }
+
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
-        RootNode rootNode = new JavaScriptRootNode(context.getLanguage(), JSBuiltin.createSourceSection(), null) {
-            @Child private PerformPromiseThenNode performPromiseThenNode = PerformPromiseThenNode.create(context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-                return evalModule(realm);
-            }
-
-            @TruffleBoundary
-            private Object evalModule(JSRealm realm) {
-                JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
-                moduleInstantiation(realm, moduleRecord);
-                Object promise = moduleEvaluation(realm, moduleRecord);
-                if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
-                    DynamicObject onRejected = createTopLevelAwaitReject(context);
-                    DynamicObject onAccepted = createTopLevelAwaitResolve(context);
-                    performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
-                }
-                return promise;
-            }
-        };
+        JSModuleData parsedModule = parseModule(context, source);
+        RootNode rootNode = new ModuleScriptRoot(context, parsedModule, source);
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(rootNode), 0, "");
         return ScriptNode.fromFunctionData(context, functionData);
+    }
+
+    private final class ModuleScriptRoot extends JavaScriptRootNode {
+        private final JSContext context;
+        private final JSModuleData parsedModule;
+        private final Source source;
+        @Child private PerformPromiseThenNode performPromiseThenNode;
+
+        private ModuleScriptRoot(JSContext context, JSModuleData parsedModule, Source source) {
+            super(context.getLanguage(), JSBuiltin.createSourceSection(), null);
+            this.context = context;
+            this.parsedModule = parsedModule;
+            this.source = source;
+            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
+            return evalModule(realm);
+        }
+
+        @TruffleBoundary
+        private Object evalModule(JSRealm realm) {
+            JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source, parsedModule);
+            moduleInstantiation(realm, moduleRecord);
+            Object promise = moduleEvaluation(realm, moduleRecord);
+            if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
+                DynamicObject onRejected = createTopLevelAwaitReject(context);
+                DynamicObject onAccepted = createTopLevelAwaitResolve(context);
+                performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
+            }
+            return promise;
+        }
+
+        JSModuleData getModuleData() {
+            return parsedModule;
+        }
     }
 
     private static DynamicObject createTopLevelAwaitReject(JSContext context) {
@@ -351,12 +374,23 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader) {
+    public JSModuleData parseModule(JSContext context, Source source) {
         try {
-            return JavaScriptTranslator.translateModule(NodeFactory.getInstance(context), context, source, moduleLoader);
+            return JavaScriptTranslator.translateModule(NodeFactory.getInstance(context), context, source);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage(), e, null);
         }
+
+    }
+
+    @TruffleBoundary
+    @Override
+    public JSModuleData envParseModule(JSRealm realm, Source source) {
+        assert isModuleSource(source) : source;
+        CallTarget parseResult = realm.getEnv().parsePublic(source);
+        CallTarget moduleScriptCallTarget = JavaScriptLanguage.getParsedProgramCallTarget(((RootCallTarget) parseResult).getRootNode());
+        ModuleScriptRoot moduleScriptRoot = (ModuleScriptRoot) ((RootCallTarget) moduleScriptCallTarget).getRootNode();
+        return moduleScriptRoot.getModuleData();
     }
 
     @TruffleBoundary
@@ -381,7 +415,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         exportStarSet.add(moduleRecord);
         Collection<String> exportedNames = new HashSet<>();
-        Module module = (Module) moduleRecord.getModule();
+        Module module = moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getLocalExportEntries()) {
             // Assert: module provides the direct binding for this export.
             exportedNames.add(exportEntry.getExportName());
@@ -431,7 +465,7 @@ public final class GraalJSEvaluator implements JSParser {
             return ExportResolution.notFound();
         }
         resolveSet.add(resolved);
-        Module module = (Module) referencingModule.getModule();
+        Module module = referencingModule.getModule();
         for (ExportEntry exportEntry : module.getLocalExportEntries()) {
             if (exportEntry.getExportName().equals(exportName)) {
                 // Assert: module provides the direct binding for this export.
@@ -534,7 +568,7 @@ public final class GraalJSEvaluator implements JSParser {
         index++;
         stack.push(moduleRecord);
 
-        Module module = (Module) moduleRecord.getModule();
+        Module module = moduleRecord.getModule();
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             index = innerModuleInstantiation(realm, requiredModule, stack, index);
@@ -563,7 +597,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     private void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() == Status.Linking;
-        Module module = (Module) moduleRecord.getModule();
+        Module module = moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
             ExportResolution resolution = resolveExport(moduleRecord, exportEntry.getExportName());
             if (resolution.isNull() || resolution.isAmbiguous()) {
@@ -681,7 +715,7 @@ public final class GraalJSEvaluator implements JSParser {
         index++;
         stack.push(moduleRecord);
 
-        Module module = (Module) moduleRecord.getModule();
+        Module module = moduleRecord.getModule();
         for (String requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             // Note: Instantiate must have completed successfully prior to invoking this method,

@@ -126,6 +126,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
@@ -221,6 +222,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
@@ -3362,17 +3364,26 @@ public final class GraalJSAccess {
     }
 
     public Object moduleCompile(Object context, Object sourceCode, Object name, Object hostDefinedOptions) {
-        JSContext jsContext = ((JSRealm) context).getContext();
-        NodeFactory factory = NodeFactory.getInstance(jsContext);
+        JSRealm realm = (JSRealm) context;
         String moduleName = (String) name;
         Source.LiteralBuilder builder = Source.newBuilder(JavaScriptLanguage.ID, (String) sourceCode, moduleName);
         try {
             builder = builder.uri(new URI(moduleName));
         } catch (URISyntaxException usex) {
         }
+        builder.mimeType(JavaScriptLanguage.MODULE_MIME_TYPE);
         Source source = builder.build();
         hostDefinedOptionsMap.put(source, hostDefinedOptions);
-        return JavaScriptTranslator.translateModule(factory, jsContext, source, getModuleLoader());
+        TruffleContext truffleContext = realm.getEnv().getContext();
+        Object prev = truffleContext.enter(null);
+        JSModuleData parsedModule;
+        try {
+            parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+        } finally {
+            truffleContext.leave(null, prev);
+        }
+        JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
+        return moduleRecord;
     }
 
     public void moduleInstantiate(Object context, Object module, long resolveCallback) {
@@ -3443,12 +3454,12 @@ public final class GraalJSAccess {
 
     public int moduleGetRequestsLength(Object module) {
         JSModuleRecord record = (JSModuleRecord) module;
-        return ((Module) record.getModule()).getRequestedModules().size();
+        return record.getModule().getRequestedModules().size();
     }
 
     public String moduleGetRequest(Object module, int index) {
         JSModuleRecord record = (JSModuleRecord) module;
-        return ((Module) record.getModule()).getRequestedModules().get(index);
+        return record.getModule().getRequestedModules().get(index);
     }
 
     public Object moduleGetNamespace(Object module) {
@@ -3470,8 +3481,6 @@ public final class GraalJSAccess {
         }
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
-        final JSModuleRecord moduleRecord = new JSModuleRecord(moduleNode, mainJSContext, getModuleLoader(), source);
-        moduleRecord.setFrameDescriptor(frameDescriptor);
         JavaScriptRootNode rootNode = new JavaScriptRootNode(mainJSContext.getLanguage(), source.createUnavailableSection(), frameDescriptor) {
             @Override
             public Object execute(VirtualFrame frame) {
@@ -3493,7 +3502,8 @@ public final class GraalJSAccess {
         };
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
         JSFunctionData functionData = JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
-        moduleRecord.setFunctionData(functionData);
+        final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
+        final JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
         return moduleRecord;
     }
 
@@ -3781,7 +3791,7 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord loadModule(Source moduleSource) {
+        public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
             throw new UnsupportedOperationException();
         }
     }

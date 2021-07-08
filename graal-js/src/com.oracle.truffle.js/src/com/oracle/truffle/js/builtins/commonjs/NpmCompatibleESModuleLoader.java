@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,25 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin.log;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MAIN_PROPERTY_NAME;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MODULE_VALUE;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_TYPE_PROPERTY_NAME;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getNodeModulesPaths;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadAsFile;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadIndex;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadJsonObject;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileSystemNotFoundException;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -54,29 +73,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
-import java.util.List;
-
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin.log;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MAIN_PROPERTY_NAME;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MODULE_VALUE;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_TYPE_PROPERTY_NAME;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getNodeModulesPaths;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadAsFile;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadIndex;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadJsonObject;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
 
@@ -163,7 +164,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             moduleBody.append("export default builtinModule;");
             src = Source.newBuilder(ID, moduleBody.toString(), specifier + "-internal.mjs").build();
         }
-        JSModuleRecord record = realm.getContext().getEvaluator().parseModule(realm.getContext(), src, this);
+        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
+        JSModuleRecord record = new JSModuleRecord(parsedModule, this);
         moduleMap.put(specifier, record);
         return record;
     }
