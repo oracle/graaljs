@@ -1034,10 +1034,6 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "mjsunit/regress/regress-1075514.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/regress/regress-10931.js",
     "status" : "SKIP",
     "comment" : "takes too long on Graal.js"
