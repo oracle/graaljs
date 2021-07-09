@@ -226,9 +226,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             case eval:
                 return JSGlobalIndirectEvalNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case serialize:
-                return JSGlobalSerializeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return JSGlobalSerializeNodeGen.create(context, builtin,
+                                args().fixedArgs(1).createArgumentNodes(context));
             case deserialize:
-                return JSGlobalDeserializeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+                return JSGlobalDeserializeNodeGen.create(context, builtin,
+                                args().fixedArgs(1).createArgumentNodes(context));
             case escape:
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case unescape:

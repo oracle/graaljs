@@ -38,52 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import * as module from 'functionexportmodule.js'; // import everything that the module exports
 
-// 3 module blocks mimicking the function export test, resulting in 3 promise
-// objects with the desired values: 121, 5, 11
+ function simple() {
+    return 2+3;
+ }
 
-var squareTest = (async function() {
-    const moduleBlock = module { export var t = 11; };
-
-    return await import(moduleBlock);
-})();
-
-var diagTest = (async function() {
-    const moduleBlock = module { export var x = 3;
-        export var y = 4; };
-
-    return await import(moduleBlock); 
-})();
-
-var sqrtTest = (async function() {
-    const moduleBlock = module { export var v = 121; };
-
-    return await import(moduleBlock);
-})();
-
-var moduleBlock = module { };
-
-var sq;
-var dg;
-var st;
-
-if (moduleBlock instanceof ModuleBlock) {
-    sq = squareTest.then(function(value) { return module.square(value.t); });    
-} else {
-    sq = 0;
-}
-
-if (Object.getPrototypeOf(moduleBlock) === ModuleBlock.prototype) {
-    dg = diagTest.then(value => module.diag(value.x, value.y));
-} else {
-    dg = 0;
-}
-
-if (moduleBlock.constructor.prototype === Object.prototype) {
-    st = sqrtTest.then(value => module.sqrt(value.v));
-} else {
-    st = 0;
-}
-
-[sq, dg, st];
+ simple();

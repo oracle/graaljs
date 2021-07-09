@@ -76,6 +76,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.LongStream;
 
 /**
  * Various tests for EcmaScript 6 module loading via {@link Source}.
@@ -325,6 +326,243 @@ public class ESModuleTest {
         } finally {
             deleteFiles(allFilesArray);
         }
+    }
+
+    /**
+     * Benchmarktest for overhead, is kept running 1000 times each for comparison: 1. Regular file
+     * without imports and exports 2. Regular file with module import 3. Regular file without
+     * imports and exports but module block encapsulation 4. regular file with module import
+     * containing a module block encapsulation
+     */
+    @Test
+    public void testModuleBlockBenchmark() throws IOException {
+        File[] allFilesArray = null;
+
+        TestOutput out = new TestOutput();
+
+        long[] durations = new long[50];
+        long startTime, endTime;
+        long timeConversion = 10;
+
+        System.out.println("Benchmark for module blocks with k-means algorithm: ");
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansRegular.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            // initial eval
+            context.eval(mainSource);
+
+            // warmup
+            for (int i = 0; i < 20; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
+
+            // benchmark
+            for (int i = 0; i < durations.length; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / timeConversion;
+            }
+
+            System.out.println("Regular kMeans execution: " + LongStream.of(durations).summaryStatistics());
+            LongStream.of(durations).forEach(System.out::println);
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+
+        out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansModuleBlock.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            // initial eval
+            context.eval(mainSource);
+
+            // warmup
+            for (int i = 0; i < 20; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
+
+            // benchmark
+            for (int i = 0; i < durations.length; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / timeConversion;
+            }
+
+            System.out.println("ModuleBlock kMeans execution: " + LongStream.of(durations).summaryStatistics());
+            LongStream.of(durations).forEach(System.out::println);
+
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+
+        out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansModuleImport.js",
+                            "resources/moduleBlock/benchmark/kMeansModule.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            // initial eval
+            context.eval(mainSource);
+
+            // warmup
+            for (int i = 0; i < 20; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
+
+            // benchmark
+            for (int i = 0; i < durations.length; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / timeConversion;
+            }
+
+            System.out.println("Module kMeans execution: " + LongStream.of(durations).summaryStatistics());
+            LongStream.of(durations).forEach(System.out::println);
+
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+
+        out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansModuleModuleBlockImport.js",
+                            "resources/moduleBlock/benchmark/kMeansModuleModuleBlock.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            // initial eval
+            context.eval(mainSource);
+
+            // warmup
+            for (int i = 0; i < 20; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
+
+            // benchmark
+            for (int i = 0; i < durations.length; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / timeConversion;
+            }
+
+            System.out.println("Module ModuleBlock kMeans execution: " + LongStream.of(durations).summaryStatistics());
+            LongStream.of(durations).forEach(System.out::println);
+
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+
+        System.out.println("Benchmark for module blocks with toy function returning 5:");
+
+        out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/toy/regular.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            // initial eval
+            context.eval(mainSource);
+
+            // warmup
+            for (int i = 0; i < 20; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
+
+            // benchmark
+            for (int i = 0; i < durations.length; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / timeConversion;
+            }
+
+            System.out.println("Regular toy function call: " + LongStream.of(durations).summaryStatistics());
+            LongStream.of(durations).forEach(System.out::println);
+
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+
+        out = new TestOutput();
+
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
+            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/toy/regularModuleBlock.js");
+
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+
+            // initial eval
+            context.eval(mainSource);
+
+            // warmup
+            for (int i = 0; i < 20; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
+
+            // benchmark
+            for (int i = 0; i < durations.length; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / timeConversion;
+            }
+
+            System.out.println("Module block toy function call: " + LongStream.of(durations).summaryStatistics());
+            LongStream.of(durations).forEach(System.out::println);
+
+        } finally {
+            deleteFiles(allFilesArray);
+        }
+
     }
 
     /**

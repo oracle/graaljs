@@ -38,7 +38,6 @@ public class JSModuleBlock extends JSNonProxy implements JSConstructorFactory.De
 
     @Override
     public DynamicObject createPrototype(JSRealm realm, DynamicObject constructor) {
-        JSContext ctx = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
 
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, ModuleBlockPrototypeBuiltins.BUILTINS);
@@ -56,11 +55,8 @@ public class JSModuleBlock extends JSNonProxy implements JSConstructorFactory.De
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    // TODO
     public static boolean isJSModuleBlock(Object obj) {
-
-        return true;
-        // return obj instanceof JSModuleBlockObject;
+        return obj instanceof JSModuleBlockObject;
     }
 
 }

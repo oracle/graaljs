@@ -666,7 +666,7 @@ public class JSRealm {
             this.finalizationRegistryPrototype = null;
         }
 
-        if (!isModuleBlockAvailable()) {
+        if (isModuleBlockAvailable()) {
             ctor = JSModuleBlock.createConstructor(this);
             this.moduleBlockConstructor = ctor.getFunctionObject();
             this.moduleBlockPrototype = ctor.getPrototype();
@@ -1411,6 +1411,7 @@ public class JSRealm {
             putGlobalProperty(JSWeakRef.CLASS_NAME, getWeakRefConstructor());
             putGlobalProperty(JSFinalizationRegistry.CLASS_NAME, getFinalizationRegistryConstructor());
         }
+
         if (context.getContextOptions().isGraalBuiltin()) {
             putGraalObject();
         }
@@ -1422,17 +1423,19 @@ public class JSRealm {
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyModuleConstructor), webAssemblyModuleConstructor, JSAttributes.getDefaultNotEnumerable());
             JSObjectUtil.putDataProperty(context, webAssemblyObject, JSFunction.getName(webAssemblyTableConstructor), webAssemblyTableConstructor, JSAttributes.getDefaultNotEnumerable());
         }
+
         if (context.getContextOptions().isOperatorOverloading()) {
             JSObjectUtil.putFunctionsFromContainer(this, global, OperatorsBuiltins.BUILTINS);
+        }
+
+        if (isModuleBlockAvailable()) {
+            putGlobalProperty(JSModuleBlock.CLASS_NAME, getModuleBlockConstructor());
         }
 
         if (context.getContextOptions().isProfileTime()) {
             System.out.println("SetupGlobals: " + (System.nanoTime() - time) / 1000000);
         }
 
-        if (isModuleBlockAvailable()) {
-            putGlobalProperty(JSModuleBlock.CLASS_NAME, getModuleBlockConstructor());
-        }
     }
 
     private void initGlobalNashornExtensions() {
