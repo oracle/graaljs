@@ -238,22 +238,23 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         state.dateStyle = dateStyleOpt;
         state.timeStyle = timeStyleOpt;
 
+        DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
+        String hcDefault = toJSHourCycle(patternGenerator.getDefaultHourCycle());
+        if (hc == null) {
+            hc = hcDefault;
+        }
+        if (hour12Opt != null) {
+            boolean h11or23 = IntlUtil.H11.equals(hcDefault) || IntlUtil.H23.equals(hcDefault);
+            if (hour12Opt) {
+                hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
+            } else {
+                hc = h11or23 ? IntlUtil.H23 : IntlUtil.H24;
+            }
+        }
+
         DateFormat dateFormat;
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
-                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
-                String hcDefault = toJSHourCycle(patternGenerator.getDefaultHourCycle());
-                if (hc == null) {
-                    hc = hcDefault;
-                }
-                if (hour12Opt != null) {
-                    boolean h11or23 = IntlUtil.H11.equals(hcDefault) || IntlUtil.H23.equals(hcDefault);
-                    if (hour12Opt) {
-                        hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
-                    } else {
-                        hc = h11or23 ? IntlUtil.H23 : IntlUtil.H24;
-                    }
-                }
                 String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, tzNameOpt);
 
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
@@ -306,25 +307,14 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             } else {
                 dateFormat = DateFormat.getDateTimeInstance(dateFormatStyle(dateStyleOpt), dateFormatStyle(timeStyleOpt), javaLocale);
             }
-            String pattern = ((SimpleDateFormat) dateFormat).toPattern();
-            if (hour12Opt != null) {
-                if (containsOneOf(pattern, "HK")) {
-                    hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
-                } else {
-                    hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
-                }
-            }
-            String patternHourCycle = hourCycleFromPattern(pattern);
-            if (hc == null) {
-                hc = patternHourCycle;
-            } else if (!hc.equals(patternHourCycle)) {
-                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
-                String baseSkeleton = patternGenerator.getSkeleton(pattern);
-                String skeleton = replaceHourCycle(baseSkeleton, hc);
-                String bestPattern = patternGenerator.getBestPattern(skeleton);
-                dateFormat = new SimpleDateFormat(bestPattern, javaLocale);
-            }
             state.hourCycle = hc;
+        }
+
+        String pattern = ((SimpleDateFormat) dateFormat).toPattern();
+        if (!Objects.equals(state.hourCycle, hourCycleFromPattern(pattern))) {
+            String skeleton = patternGenerator.getSkeleton(pattern);
+            String bestPattern = patternGenerator.getBestPattern(replaceHourCycle(skeleton, hc), DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+            dateFormat = new SimpleDateFormat(replaceHourCycle(bestPattern, hc), javaLocale);
         }
 
         state.dateFormat = dateFormat;

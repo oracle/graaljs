@@ -27,10 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/date-format/en-format-range-to-parts.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -47,16 +43,8 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "intl/date-format/hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/date-format/resolved-options.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "intl/date-format/time_style_hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "intl/date-format/timezone-name-extended.js",
     "status" : "FAIL",
