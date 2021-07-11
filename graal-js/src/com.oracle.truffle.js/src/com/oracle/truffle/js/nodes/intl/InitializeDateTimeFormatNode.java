@@ -80,6 +80,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getYearOption;
     @Child GetStringOptionNode getMonthOption;
     @Child GetStringOptionNode getDayOption;
+    @Child GetStringOptionNode getDayPeriodOption;
     @Child GetStringOptionNode getHourOption;
     @Child GetStringOptionNode getMinuteOption;
     @Child GetStringOptionNode getSecondOption;
@@ -115,6 +116,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.getYearOption = GetStringOptionNode.create(context, IntlUtil.YEAR, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getMonthOption = GetStringOptionNode.create(context, IntlUtil.MONTH, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC, IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
         this.getDayOption = GetStringOptionNode.create(context, IntlUtil.DAY, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getDayPeriodOption = GetStringOptionNode.create(context, IntlUtil.DAY_PERIOD, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
         this.getHourOption = GetStringOptionNode.create(context, IntlUtil.HOUR, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getMinuteOption = GetStringOptionNode.create(context, IntlUtil.MINUTE, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getSecondOption = GetStringOptionNode.create(context, IntlUtil.SECOND, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
@@ -166,6 +168,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String yearOpt = getYearOption.executeValue(options);
             String monthOpt = getMonthOption.executeValue(options);
             String dayOpt = getDayOption.executeValue(options);
+            String dayPeriodOpt = getDayPeriodOption.executeValue(options);
             String hourOpt = getHourOption.executeValue(options);
             String minuteOpt = getMinuteOption.executeValue(options);
             String secondOpt = getSecondOption.executeValue(options);
@@ -176,14 +179,14 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String dateStyleOpt = getDateStyleOption.executeValue(options);
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
-            if ((dateStyleOpt != null || timeStyleOpt != null) && (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || hourOpt != null ||
-                            minuteOpt != null || secondOpt != null || tzNameOpt != null)) {
+            if ((dateStyleOpt != null || timeStyleOpt != null) && (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || dayPeriodOpt != null ||
+                            hourOpt != null || minuteOpt != null || secondOpt != null || tzNameOpt != null)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
             }
 
-            JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt, tzNameOpt,
-                            timeZone, calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
+            JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt,
+                            tzNameOpt, timeZone, calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
 
         } catch (MissingResourceException e) {
             errorBranch.enter();

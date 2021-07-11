@@ -100,6 +100,7 @@ public final class IntlUtil {
     public static final String CURRENCY_SIGN = "currencySign";
     public static final String DATE_STYLE = "dateStyle";
     public static final String DAY = "day";
+    public static final String DAY_PERIOD = "dayPeriod";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
     public static final String DISJUNCTION = "disjunction";

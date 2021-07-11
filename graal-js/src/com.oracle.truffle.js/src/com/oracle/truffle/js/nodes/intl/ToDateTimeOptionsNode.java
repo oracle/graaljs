@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -96,6 +96,7 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "day"));
             }
             if (required.equals("time") || required.equals("any")) {
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "dayPeriod"));
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "hour"));
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "minute"));
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "second"));

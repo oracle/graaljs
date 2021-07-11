@@ -173,6 +173,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     String yearOpt,
                     String monthOpt,
                     String dayOpt,
+                    String dayPeriodOpt,
                     String hourOpt,
                     String hcOpt,
                     Boolean hour12Opt,
@@ -253,7 +254,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                         hc = h11or23 ? IntlUtil.H23 : IntlUtil.H24;
                     }
                 }
-                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, minuteOpt, secondOpt, tzNameOpt);
+                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, tzNameOpt);
 
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
@@ -276,6 +277,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
                 if (containsOneOf(baseSkeleton, "dDFg")) {
                     state.day = dayOpt;
+                }
+
+                if (containsOneOf(baseSkeleton, "Bb")) {
+                    state.dayPeriod = dayPeriodOpt;
                 }
 
                 if (containsOneOf(baseSkeleton, "hHKk")) {
@@ -508,6 +513,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return "";
     }
 
+    private static String dayPeriodOptToSkeleton(String dayPeriodOpt) {
+        if (dayPeriodOpt == null) {
+            return "";
+        }
+        switch (dayPeriodOpt) {
+            case IntlUtil.NARROW:
+                return "BBBBB";
+            case IntlUtil.SHORT:
+                return "B";
+            case IntlUtil.LONG:
+                return "BBBB";
+        }
+        return "";
+    }
+
     private static String hourOptToSkeleton(String hourOpt, String hcOpt) {
         if (hourOpt == null) {
             return "";
@@ -580,10 +600,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return "";
     }
 
-    private static String makeSkeleton(String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String hourOpt, String hcOpt, String minuteOpt,
+    private static String makeSkeleton(String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String dayPeriodOpt, String hourOpt, String hcOpt, String minuteOpt,
                     String secondOpt, String timeZoneNameOpt) {
         return weekdayOptToSkeleton(weekdayOpt) + eraOptToSkeleton(eraOpt) + yearOptToSkeleton(yearOpt) + monthOptToSkeleton(monthOpt) + dayOptToSkeleton(dayOpt) +
-                        hourOptToSkeleton(hourOpt, hcOpt) + minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt) +
+                        dayPeriodOptToSkeleton(dayPeriodOpt) + hourOptToSkeleton(hourOpt, hcOpt) + minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt) +
                         timeZoneNameOptToSkeleton(timeZoneNameOpt);
     }
 
@@ -659,6 +679,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         CompilerAsserts.neverPartOfCompilation();
         EconomicMap<DateFormat.Field, String> map = EconomicMap.create(14);
         map.put(DateFormat.Field.AM_PM, "dayPeriod");
+        map.put(DateFormat.Field.AM_PM_MIDNIGHT_NOON, "dayPeriod");
+        map.put(DateFormat.Field.FLEXIBLE_DAY_PERIOD, "dayPeriod");
         map.put(DateFormat.Field.ERA, "era");
         map.put(DateFormat.Field.YEAR, "year");
         map.put(DateFormat.Field.RELATED_YEAR, "relatedYear");
@@ -770,6 +792,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         private String year;
         private String month;
         private String day;
+        private String dayPeriod;
         private String hour;
         private String minute;
         private String second;
@@ -811,6 +834,9 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             }
             if (day != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.DAY, day, JSAttributes.getDefault());
+            }
+            if (dayPeriod != null) {
+                JSObjectUtil.defineDataProperty(result, IntlUtil.DAY_PERIOD, dayPeriod, JSAttributes.getDefault());
             }
             if (hour != null) {
                 JSObjectUtil.defineDataProperty(result, IntlUtil.HOUR, hour, JSAttributes.getDefault());
