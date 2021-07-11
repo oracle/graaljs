@@ -1856,10 +1856,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-07-08"
   }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
     "filePath" : "intl402/ListFormat/constructor/constructor/options-getoptionsobject.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-05-27"

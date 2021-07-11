@@ -240,9 +240,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         DateFormat dateFormat;
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
-                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, hour12Opt, minuteOpt, secondOpt, tzNameOpt);
-
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
+                String hcDefault = toJSHourCycle(patternGenerator.getDefaultHourCycle());
+                if (hc == null) {
+                    hc = hcDefault;
+                }
+                if (hour12Opt != null) {
+                    boolean h11or23 = IntlUtil.H11.equals(hcDefault) || IntlUtil.H23.equals(hcDefault);
+                    if (hour12Opt) {
+                        hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
+                    } else {
+                        hc = h11or23 ? IntlUtil.H23 : IntlUtil.H24;
+                    }
+                }
+                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, hourOpt, hc, minuteOpt, secondOpt, tzNameOpt);
+
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
@@ -268,14 +280,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
                 if (containsOneOf(baseSkeleton, "hHKk")) {
                     state.hour = hourOpt;
-                    if (hour12Opt != null) {
-                        if (containsOneOf(baseSkeleton, "HK")) {
-                            hc = hour12Opt ? IntlUtil.H11 : IntlUtil.H23;
-                        } else {
-                            hc = hour12Opt ? IntlUtil.H12 : IntlUtil.H24;
-                        }
-                    }
-                    state.hourCycle = (hc == null) ? hourCycleFromPattern(baseSkeleton) : hc;
+                    state.hourCycle = hc;
                 }
 
                 if (baseSkeleton.contains("m")) {
@@ -353,6 +358,21 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         } else {
             assert IntlUtil.SHORT.equals(style);
             return DateFormat.SHORT;
+        }
+    }
+
+    private static String toJSHourCycle(DateFormat.HourCycle hourCycle) {
+        switch (hourCycle) {
+            case HOUR_CYCLE_11:
+                return IntlUtil.H11;
+            case HOUR_CYCLE_12:
+                return IntlUtil.H12;
+            case HOUR_CYCLE_23:
+                return IntlUtil.H23;
+            case HOUR_CYCLE_24:
+                return IntlUtil.H24;
+            default:
+                throw Errors.shouldNotReachHere(Objects.toString(hourCycle));
         }
     }
 
@@ -488,58 +508,35 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return "";
     }
 
-    private static String hourOptToSkeleton(String hourOpt, String hcOpt, Boolean hour12Opt) {
+    private static String hourOptToSkeleton(String hourOpt, String hcOpt) {
         if (hourOpt == null) {
             return "";
         }
         switch (hourOpt) {
             case IntlUtil._2_DIGIT:
-                if (hcOpt == null) {
-                    if (hour12Opt != null) {
-                        if (hour12Opt) {
-                            return "KK";
-                        } else {
-                            return "HH";
-                        }
-                    } else {
-                        return "jj";
-                    }
-                } else {
-                    switch (hcOpt) {
-                        case IntlUtil.H11:
-                            return "KK";
-                        case IntlUtil.H12:
-                            return "hh";
-                        case IntlUtil.H23:
-                            return "HH";
-                        case IntlUtil.H24:
-                            return "kk";
-                    }
+                switch (hcOpt) {
+                    case IntlUtil.H11:
+                        return "KK";
+                    case IntlUtil.H12:
+                        return "hh";
+                    case IntlUtil.H23:
+                        return "HH";
+                    case IntlUtil.H24:
+                        return "kk";
                 }
                 break;
             case IntlUtil.NUMERIC:
-                if (hcOpt == null) {
-                    if (hour12Opt != null) {
-                        if (hour12Opt) {
-                            return "K";
-                        } else {
-                            return "H";
-                        }
-                    } else {
-                        return "j";
-                    }
-                } else {
-                    switch (hcOpt) {
-                        case IntlUtil.H11:
-                            return "K";
-                        case IntlUtil.H12:
-                            return "h";
-                        case IntlUtil.H23:
-                            return "H";
-                        case IntlUtil.H24:
-                            return "k";
-                    }
+                switch (hcOpt) {
+                    case IntlUtil.H11:
+                        return "K";
+                    case IntlUtil.H12:
+                        return "h";
+                    case IntlUtil.H23:
+                        return "H";
+                    case IntlUtil.H24:
+                        return "k";
                 }
+                break;
         }
         return "";
     }
@@ -583,11 +580,11 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return "";
     }
 
-    private static String makeSkeleton(String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String hourOpt, String hcOpt, Boolean hour12Opt, String minuteOpt,
+    private static String makeSkeleton(String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String hourOpt, String hcOpt, String minuteOpt,
                     String secondOpt, String timeZoneNameOpt) {
         return weekdayOptToSkeleton(weekdayOpt) + eraOptToSkeleton(eraOpt) + yearOptToSkeleton(yearOpt) + monthOptToSkeleton(monthOpt) + dayOptToSkeleton(dayOpt) +
-                        hourOptToSkeleton(hourOpt, hcOpt, hour12Opt) +
-                        minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt) + timeZoneNameOptToSkeleton(timeZoneNameOpt);
+                        hourOptToSkeleton(hourOpt, hcOpt) + minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt) +
+                        timeZoneNameOptToSkeleton(timeZoneNameOpt);
     }
 
     private static UnmodifiableEconomicMap<String, String> initCanonicalTimeZoneIDMap() {
