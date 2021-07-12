@@ -115,6 +115,7 @@ public class Test262Runnable extends TestRunnable {
                     "Int8Array",
                     "Intl.DateTimeFormat-datetimestyle",
                     "Intl.DateTimeFormat-dayPeriod",
+                    "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.DisplayNames",
                     "Intl.ListFormat",
                     "Intl.Locale",
@@ -228,7 +229,6 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Intl.DateTimeFormat-formatRange",
-                    "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.Locale-info",
                     "IsHTMLDDA",
                     "Object.hasOwn",
