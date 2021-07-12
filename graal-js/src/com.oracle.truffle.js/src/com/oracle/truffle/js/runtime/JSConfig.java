@@ -93,7 +93,7 @@ public final class JSConfig {
     public static final int DictionaryObjectTransitionThreshold = 1024;
     public static final boolean MergeShapes = true;
     // GR-31859
-    public static boolean MergeCompatibleLocations = false;
+    public static boolean MergeCompatibleLocations = true;
 
     // LazyString options
     public static final boolean LazyStrings = true;
