@@ -816,7 +816,7 @@
   }, {
     "filePath" : "mjsunit/harmony/error-cause.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/function-tostring.js",
     "status" : "FAIL",

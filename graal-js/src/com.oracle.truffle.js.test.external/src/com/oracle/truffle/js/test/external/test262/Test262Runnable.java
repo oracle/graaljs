@@ -190,6 +190,7 @@ public class Test262Runnable extends TestRunnable {
                     "destructuring-assignment",
                     "destructuring-binding",
                     "dynamic-import",
+                    "error-cause",
                     "export-star-as-namespace-from-module",
                     "for-in-order",
                     "for-of",
@@ -234,7 +235,6 @@ public class Test262Runnable extends TestRunnable {
                     "align-detached-buffer-semantics-with-web-reality",
                     "arbitrary-module-namespace-names",
                     "class-fields-private-in",
-                    "error-cause",
                     "import-assertions",
                     "json-modules",
                     "resizable-arraybuffer",
@@ -275,6 +275,9 @@ public class Test262Runnable extends TestRunnable {
         Map<String, String> extraOptions = new HashMap<>(4);
         if (flags.contains(CAN_BLOCK_IS_FALSE_FLAG)) {
             extraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
+        }
+        if (features.contains("error-cause")) {
+            extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
