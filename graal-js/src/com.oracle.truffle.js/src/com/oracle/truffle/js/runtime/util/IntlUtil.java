@@ -111,6 +111,7 @@ public final class IntlUtil {
     public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
     public static final String FORMAT_MATCHER = "formatMatcher";
+    public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
     public static final String FULL = "full";
     public static final String GRANULARITY = "granularity";
     public static final String GRAPHEME = "grapheme";

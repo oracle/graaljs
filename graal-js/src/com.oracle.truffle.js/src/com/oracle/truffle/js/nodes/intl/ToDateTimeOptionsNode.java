@@ -100,6 +100,7 @@ public abstract class ToDateTimeOptionsNode extends JavaScriptBaseNode {
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "hour"));
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "minute"));
                 needDefaults &= JSGuards.isUndefined(JSObject.get(options, "second"));
+                needDefaults &= JSGuards.isUndefined(JSObject.get(options, "fractionalSecondDigits"));
             }
         }
         Object dateStyle = JSObject.get(options, "dateStyle");
