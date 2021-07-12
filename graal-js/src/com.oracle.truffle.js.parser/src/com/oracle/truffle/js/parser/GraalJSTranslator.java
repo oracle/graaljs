@@ -3294,14 +3294,20 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (context.isOptionDisableWith()) {
             throw Errors.createSyntaxError("with statement is disabled.");
         }
-        JavaScriptNode withExpression = transform(withNode.getExpression());
-        JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
-        String withVarName = makeUniqueTempVarNameForStatement(withNode);
-        environment.declareInternalSlot(withVarName);
-        JavaScriptNode writeWith = environment.findLocalVar(withVarName).createWriteNode(toObject);
-        try (EnvironmentCloseable withEnv = enterWithEnvironment(withVarName)) {
-            JavaScriptNode withBody = transform(withNode.getBody());
-            return tagStatement(factory.createWith(writeWith, wrapClearAndGetCompletionValue(withBody)), withNode);
+        // Store with object in synthetic block environment that can be captured by closures.
+        Environment withParentEnv = lc.getCurrentFunction().hasClosures() ? new BlockEnvironment(environment, factory, context) : environment;
+        try (EnvironmentCloseable withParent = new EnvironmentCloseable(withParentEnv)) {
+            JavaScriptNode withExpression = transform(withNode.getExpression());
+            JavaScriptNode toObject = factory.createToObjectFromWith(context, withExpression, true);
+            String withVarName = makeUniqueTempVarNameForStatement(withNode);
+            environment.declareInternalSlot(withVarName);
+            JavaScriptNode writeWith = environment.findLocalVar(withVarName).createWriteNode(toObject);
+            JavaScriptNode withStatement;
+            try (EnvironmentCloseable withEnv = enterWithEnvironment(withVarName)) {
+                JavaScriptNode withBody = transform(withNode.getBody());
+                withStatement = tagStatement(factory.createWith(writeWith, wrapClearAndGetCompletionValue(withBody)), withNode);
+            }
+            return withParent.wrapBlockScope(withStatement);
         }
     }
 
