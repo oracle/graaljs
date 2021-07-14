@@ -572,8 +572,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIsSubsetOfNode extends JSSetNewOperation {
 
-        private BranchProfile needCreateNewBranch = BranchProfile.create();
-        private BranchProfile isObjectError = BranchProfile.create();
+        private final BranchProfile needCreateNewBranch = BranchProfile.create();
+        private final BranchProfile isObjectError = BranchProfile.create();
 
         public JSSetIsSubsetOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -625,7 +625,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIsSupersetOfNode extends JSSetNewOperation {
 
-        private BranchProfile hasError = BranchProfile.create();
+        private final BranchProfile hasError = BranchProfile.create();
 
         public JSSetIsSupersetOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -670,7 +670,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIsDisjointFromNode extends JSSetNewOperation {
 
-        private BranchProfile hasError = BranchProfile.create();
+        private final BranchProfile hasError = BranchProfile.create();
 
         public JSSetIsDisjointFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
