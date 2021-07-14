@@ -199,6 +199,7 @@ public class Test262Runnable extends TestRunnable {
                     "hashbang",
                     "host-gc-required",
                     "intl-normative-optional",
+                    "import-assertions",
                     "import.meta",
                     "json-superset",
                     "legacy-regexp",
@@ -235,7 +236,6 @@ public class Test262Runnable extends TestRunnable {
                     "align-detached-buffer-semantics-with-web-reality",
                     "arbitrary-module-namespace-names",
                     "class-fields-private-in",
-                    "import-assertions",
                     "json-modules",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
@@ -278,6 +278,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("error-cause")) {
             extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
+        }
+        if (features.contains("import-assertions")) {
+            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();

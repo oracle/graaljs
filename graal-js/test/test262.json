@@ -2028,6 +2028,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
   }, {
+    "filePath" : "language/module-code/eval-gtbndng-indirect-faux-assertion.js",
+    "status" : "FAIL",
+    "comment" : "Tries to redefine the assert property on the globalThis object, which is not allowed in this context"
+  }, {
     "filePath" : "language/module-code/top-level-await/dfs-invariant.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-05-27"

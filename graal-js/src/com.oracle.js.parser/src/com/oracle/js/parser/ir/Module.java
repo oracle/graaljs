@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 
 package com.oracle.js.parser.ir;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Module information.
@@ -57,22 +59,22 @@ public final class Module {
 
     public static final class ExportEntry {
         private final String exportName;
-        private final String moduleRequest;
+        private final ModuleRequest moduleRequest;
         private final String importName;
         private final String localName;
 
-        private ExportEntry(String exportName, String moduleRequest, String importName, String localName) {
+        private ExportEntry(String exportName, ModuleRequest moduleRequest, String importName, String localName) {
             this.exportName = exportName;
             this.moduleRequest = moduleRequest;
             this.importName = importName;
             this.localName = localName;
         }
 
-        public static ExportEntry exportStarFrom(String moduleRequest) {
+        public static ExportEntry exportStarFrom(ModuleRequest moduleRequest) {
             return new ExportEntry(null, moduleRequest, STAR_NAME, null);
         }
 
-        public static ExportEntry exportStarAsNamespaceFrom(String exportName, String moduleRequest) {
+        public static ExportEntry exportStarAsNamespaceFrom(String exportName, ModuleRequest moduleRequest) {
             return new ExportEntry(exportName, moduleRequest, STAR_NAME, null);
         }
 
@@ -92,11 +94,11 @@ public final class Module {
             return exportSpecifier(exportName, exportName);
         }
 
-        public static ExportEntry exportIndirect(String exportName, String moduleRequest, String importName) {
+        public static ExportEntry exportIndirect(String exportName, ModuleRequest moduleRequest, String importName) {
             return new ExportEntry(exportName, moduleRequest, importName, null);
         }
 
-        public ExportEntry withFrom(@SuppressWarnings("hiding") String moduleRequest) {
+        public ExportEntry withFrom(@SuppressWarnings("hiding") ModuleRequest moduleRequest) {
             return new ExportEntry(exportName, moduleRequest, localName, null);
         }
 
@@ -104,7 +106,7 @@ public final class Module {
             return exportName;
         }
 
-        public String getModuleRequest() {
+        public ModuleRequest getModuleRequest() {
             return moduleRequest;
         }
 
@@ -123,11 +125,11 @@ public final class Module {
     }
 
     public static final class ImportEntry {
-        private final String moduleRequest;
+        private final ModuleRequest moduleRequest;
         private final String importName;
         private final String localName;
 
-        private ImportEntry(String moduleRequest, String importName, String localName) {
+        private ImportEntry(ModuleRequest moduleRequest, String importName, String localName) {
             this.moduleRequest = moduleRequest;
             this.importName = importName;
             this.localName = localName;
@@ -149,11 +151,11 @@ public final class Module {
             return importSpecifier(importName, importName);
         }
 
-        public ImportEntry withFrom(@SuppressWarnings("hiding") String moduleRequest) {
+        public ImportEntry withFrom(@SuppressWarnings("hiding") ModuleRequest moduleRequest) {
             return new ImportEntry(moduleRequest, importName, localName);
         }
 
-        public String getModuleRequest() {
+        public ModuleRequest getModuleRequest() {
             return moduleRequest;
         }
 
@@ -171,7 +173,37 @@ public final class Module {
         }
     }
 
-    private final List<String> requestedModules;
+    public static final class ModuleRequest {
+        private final String specifier;
+        private Map<String, String> assertions;
+
+        private ModuleRequest(String specifier, Map<String, String> assertions) {
+            this.specifier = specifier;
+            this.assertions = assertions;
+        }
+
+        public static ModuleRequest create(String specifier) {
+            return new ModuleRequest(specifier, Collections.emptyMap());
+        }
+
+        public static ModuleRequest create(String specifier, Map<String, String> assertions) {
+            return new ModuleRequest(specifier, assertions);
+        }
+
+        public String getSpecifier() {
+            return specifier;
+        }
+
+        public Map<String, String> getAssertions() {
+            return assertions;
+        }
+
+        public void setAssertions(Map<String, String> assertions) {
+            this.assertions = assertions;
+        }
+    }
+
+    private final List<ModuleRequest> requestedModules;
     private final List<ImportEntry> importEntries;
     private final List<ExportEntry> localExportEntries;
     private final List<ExportEntry> indirectExportEntries;
@@ -179,7 +211,7 @@ public final class Module {
     private final List<ImportNode> imports;
     private final List<ExportNode> exports;
 
-    public Module(List<String> requestedModules, List<ImportEntry> importEntries, List<ExportEntry> localExportEntries, List<ExportEntry> indirectExportEntries,
+    public Module(List<ModuleRequest> requestedModules, List<ImportEntry> importEntries, List<ExportEntry> localExportEntries, List<ExportEntry> indirectExportEntries,
                     List<ExportEntry> starExportEntries, List<ImportNode> imports, List<ExportNode> exports) {
         this.requestedModules = requestedModules;
         this.importEntries = importEntries;
@@ -190,7 +222,7 @@ public final class Module {
         this.exports = exports;
     }
 
-    public List<String> getRequestedModules() {
+    public List<ModuleRequest> getRequestedModules() {
         return requestedModules;
     }
 

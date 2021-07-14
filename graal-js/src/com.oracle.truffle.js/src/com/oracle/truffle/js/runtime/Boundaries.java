@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime;
 
 import java.nio.ByteBuffer;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -287,6 +288,11 @@ public final class Boundaries {
     @TruffleBoundary
     public static <K, V> Set<Map.Entry<K, V>> mapEntrySet(Map<K, V> map) {
         return map.entrySet();
+    }
+
+    @TruffleBoundary
+    public static <K, V> HashMap<K, V> hashMapCreate() {
+        return new HashMap<>();
     }
 
     @TruffleBoundary

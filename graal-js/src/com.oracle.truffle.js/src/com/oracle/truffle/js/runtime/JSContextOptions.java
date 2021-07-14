@@ -529,6 +529,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ERROR_CAUSE = new OptionKey<>(false);
     @CompilationFinal private boolean errorCause;
 
+    public static final String IMPORT_ASSERTIONS_NAME = JS_OPTION_PREFIX + "import-assertions";
+    @Option(name = IMPORT_ASSERTIONS_NAME, category = OptionCategory.USER, help = "Enable import assertions") public static final OptionKey<Boolean> IMPORT_ASSERTIONS = new OptionKey<>(false);
+    @CompilationFinal private boolean importAssertions;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -621,6 +625,7 @@ public final class JSContextOptions {
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = readBooleanOption(ERROR_CAUSE);
+        this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -999,6 +1004,10 @@ public final class JSContextOptions {
         return errorCause;
     }
 
+    public boolean isImportAssertions() {
+        return importAssertions;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1053,6 +1062,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         hash = 53 * hash + (this.errorCause ? 1 : 0);
+        hash = 53 * hash + (this.importAssertions ? 1 : 0);
         return hash;
     }
 
@@ -1216,6 +1226,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.errorCause != other.errorCause) {
+            return false;
+        }
+        if (this.importAssertions != other.importAssertions) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

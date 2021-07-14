@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
@@ -53,9 +54,9 @@ public interface ImportModuleDynamicallyCallback {
      *
      * @param realm The caller realm.
      * @param referrer Script or Module that calls import().
-     * @param specifier The name of the module to be imported.
+     * @param moduleRequest The name of the module to be imported and its assertions.
      * @return a promise from the module loader that will be resolved with the module namespace
      *         object when the module is loaded successfully or rejected on error.
      */
-    DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier);
+    DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest);
 }

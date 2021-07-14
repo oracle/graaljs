@@ -50,6 +50,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,6 +61,7 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -395,13 +397,27 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, String specifier) {
+    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+        filterSupportedImportAssertions(context, moduleRequest);
         JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : context.getRealm().getModuleLoader();
-        return moduleLoader.resolveImportedModule(referrer, specifier);
+        return moduleLoader.resolveImportedModule(referrer, moduleRequest.getSpecifier());
     }
 
-    private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier) {
-        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, specifier);
+    private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, ModuleRequest moduleRequest) {
+        filterSupportedImportAssertions(referencingModule.getContext(), moduleRequest);
+        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, moduleRequest.getSpecifier());
+    }
+
+    private static void filterSupportedImportAssertions(final JSContext context, final ModuleRequest moduleRequest) {
+        Map<String, String> supportedAssertions = new HashMap<>();
+        for (Map.Entry<String, String> assertion : moduleRequest.getAssertions().entrySet()) {
+            String key = assertion.getKey();
+            String value = assertion.getValue();
+            if (context.getSupportedImportAssertions().contains(key)) {
+                supportedAssertions.put(key, value);
+            }
+        }
+        moduleRequest.setAssertions(supportedAssertions);
     }
 
     Collection<String> getExportedNames(JSModuleRecord moduleRecord) {
@@ -569,7 +585,7 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         Module module = moduleRecord.getModule();
-        for (String requestedModule : module.getRequestedModules()) {
+        for (ModuleRequest requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             index = innerModuleInstantiation(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
@@ -716,7 +732,7 @@ public final class GraalJSEvaluator implements JSParser {
         stack.push(moduleRecord);
 
         Module module = moduleRecord.getModule();
-        for (String requestedModule : module.getRequestedModules()) {
+        for (ModuleRequest requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             // Note: Instantiate must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
