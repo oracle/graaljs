@@ -107,16 +107,6 @@ suite = {
       "checkstyle" : "com.oracle.truffle.trufflenode",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
-    "com.oracle.truffle.trufflenode.jniboundaryprofiler" : {
-      "subDir" : "mx.graal-nodejs",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "com.oracle.truffle.trufflenode"
-      ],
-      "checkstyle" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "8+",
-      "workingSets" : "Truffle,JavaScript,NodeJS",
-    },
     "com.oracle.truffle.trufflenode.test" : {
       "subDir" : "mx.graal-nodejs",
       "sourceDirs" : ["src"],
@@ -149,17 +139,6 @@ suite = {
       "description" : "Graal Node.js",
       "maven" : {
         "artifactId" : "graal-nodejs",
-      }
-    },
-    "TRUFFLENODE_JNI_BOUNDARY_PROFILER" : {
-      "subdir" : "mx.graal-nodejs",
-      "dependencies" : ["com.oracle.truffle.trufflenode.jniboundaryprofiler"],
-      "distDependencies" : [
-        "TRUFFLENODE"
-      ],
-      "description" : "Graal Node.js JNI Boundary Profiler Agent",
-      "maven" : {
-        "artifactId" : "graal-nodejs-jniboundaryprofiler",
       }
     },
     "TRUFFLENODE_GRAALVM_SUPPORT" : {
