@@ -130,10 +130,6 @@
     },
     "comment" : "GR-22846"
   }, {
-    "filePath" : "built-ins/Date/UTC/fp-evaluation-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "built-ins/Function/internals/Call/class-ctor-realm.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-05-27"

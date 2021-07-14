@@ -472,11 +472,11 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         if (!isFinite(hour) || !isFinite(min) || !isFinite(sec) || !isFinite(ms)) {
             return Double.NaN;
         }
-        long h = doubleToLong(hour);
-        long m = doubleToLong(min);
-        long s = doubleToLong(sec);
-        long milli = doubleToLong(ms);
-        return h * MS_PER_HOUR + m * MS_PER_MINUTE + s * MS_PER_SECOND + (double) milli;
+        double h = JSRuntime.truncateDouble(hour);
+        double m = JSRuntime.truncateDouble(min);
+        double s = JSRuntime.truncateDouble(sec);
+        double milli = JSRuntime.truncateDouble(ms);
+        return h * MS_PER_HOUR + m * MS_PER_MINUTE + s * MS_PER_SECOND + milli;
     }
 
     // 15.9.1.12
@@ -485,9 +485,9 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         if (!isFinite(year) || !isFinite(month) || !isFinite(date)) {
             return Double.NaN;
         }
-        double y = doubleToLong(year);
-        double m = doubleToLong(month);
-        double dt = doubleToLong(date);
+        double y = JSRuntime.truncateDouble(year);
+        double m = JSRuntime.truncateDouble(month);
+        double dt = JSRuntime.truncateDouble(date);
 
         double ym = y + floor(m / 12);
         int mn = (int) (m % 12);
@@ -501,11 +501,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
         double t = LocalDate.of((int) ym, mn + 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli();
         return day(t) + dt - 1;
-    }
-
-    private static long doubleToLong(double value) {
-        assert !Double.isNaN(value);
-        return (long) value;
     }
 
     // 15.9.1.13
