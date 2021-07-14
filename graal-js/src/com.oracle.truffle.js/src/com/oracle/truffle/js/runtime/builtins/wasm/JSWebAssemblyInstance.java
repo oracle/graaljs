@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
@@ -133,13 +134,15 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     private static DynamicObject createExportsGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyInstanceGetExports, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                private final BranchProfile errorBranch = BranchProfile.create();
+
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
                     if (isJSWebAssemblyInstance(thiz)) {
                         return ((JSWebAssemblyInstanceObject) thiz).getExports();
                     } else {
-                        CompilerDirectives.transferToInterpreter();
+                        errorBranch.enter();
                         throw Errors.createTypeError("WebAssembly.Instance.exports(): Receiver is not a WebAssembly.Instance", this);
                     }
                 }
@@ -202,15 +205,16 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 if ("i64".equals(returnType)) {
-                    CompilerDirectives.transferToInterpreter();
+                    errorBranch.enter();
                     throw Errors.createTypeError("Return type is i64");
                 }
                 if (argTypes.indexOf("i64") != -1) {
-                    CompilerDirectives.transferToInterpreter();
+                    errorBranch.enter();
                     throw Errors.createTypeError("Argument type is i64");
                 }
 
@@ -232,10 +236,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     try {
                         wasmResult = InteropLibrary.getUncached(export).execute(export, wasmArgs);
                     } catch (GraalJSException jsex) {
-                        CompilerDirectives.transferToInterpreter();
+                        errorBranch.enter();
                         throw jsex;
                     } catch (AbstractTruffleException tex) {
-                        CompilerDirectives.transferToInterpreter();
+                        errorBranch.enter();
                         ExceptionType type = InteropLibrary.getUncached(tex).getExceptionType(tex);
                         if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                             throw tex;
@@ -375,15 +379,16 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Node.Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             @Node.Child JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
+            private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
                 if ("i64".equals(returnType)) {
-                    CompilerDirectives.transferToInterpreter();
+                    errorBranch.enter();
                     throw Errors.createTypeError("Return type is i64");
                 }
                 if (argTypes.indexOf("i64") != -1) {
-                    CompilerDirectives.transferToInterpreter();
+                    errorBranch.enter();
                     throw Errors.createTypeError("Argument type is i64");
                 }
 
