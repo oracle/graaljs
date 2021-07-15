@@ -4,7 +4,7 @@ suite = {
   "name" : "graal-js",
 
   "version" : "21.2.0",
-  "release" : True,
+  "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
   "developer" : {
