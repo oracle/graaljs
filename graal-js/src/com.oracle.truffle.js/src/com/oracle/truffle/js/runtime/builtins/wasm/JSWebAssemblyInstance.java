@@ -42,14 +42,13 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -272,12 +271,13 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return result;
     }
 
-    public static Object transformImportObject(JSContext context, Object wasmModule, Object importObject) {
+    @CompilerDirectives.TruffleBoundary
+    public static Object transformImportObject(JSContext context, JSRealm realm, Object wasmModule, Object importObject) {
         try {
-            TruffleObject truffleImportObject = (TruffleObject) importObject;
-            DynamicObject transformedImportObject = JSOrdinary.create(context);
+            InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
+            DynamicObject transformedImportObject = JSOrdinary.create(context, realm);
 
-            Object importsFn = context.getRealm().getWASMModuleImportsFunction();
+            Object importsFn = realm.getWASMModuleImportsFunction();
             Object imports = InteropLibrary.getUncached(importsFn).execute(importsFn, wasmModule);
             InteropLibrary importsInterop = InteropLibrary.getUncached(imports);
             long size = importsInterop.getArraySize(imports);
@@ -285,21 +285,20 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 Object descriptor = importsInterop.readArrayElement(imports, i);
                 InteropLibrary descriptorInterop = InteropLibrary.getUncached(descriptor);
 
-                Object module = descriptorInterop.readMember(descriptor, "module");
-                Object moduleImportObject = JSObject.get(truffleImportObject, module);
-                if (!(moduleImportObject instanceof TruffleObject)) {
-                    CompilerDirectives.transferToInterpreter();
+                String module = asString(descriptorInterop.readMember(descriptor, "module"));
+                Object moduleImportObject = JSRuntime.importValue(importObjectInterop.readMember(importObject, module));
+                InteropLibrary moduleImportObjectInterop = InteropLibrary.getUncached(moduleImportObject);
+                if (!moduleImportObjectInterop.hasMembers(moduleImportObject)) {
                     throw Errors.createTypeErrorNotAnObject(moduleImportObject);
                 }
 
-                Object name = descriptorInterop.readMember(descriptor, "name");
-                Object value = JSObject.get((TruffleObject) moduleImportObject, name);
-                Object externType = descriptorInterop.readMember(descriptor, "kind");
+                String name = asString(descriptorInterop.readMember(descriptor, "name"));
+                Object value = JSRuntime.importValue(moduleImportObjectInterop.readMember(moduleImportObject, name));
+                String externType = asString(descriptorInterop.readMember(descriptor, "kind"));
                 Object wasmValue;
 
                 if ("function".equals(externType)) {
                     if (!JSRuntime.isCallable(value)) {
-                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not callable");
                     }
                     String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
@@ -308,12 +307,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (JSRuntime.isNumber(value)) {
                         String valueType = asString(descriptorInterop.readMember(descriptor, "type"));
                         if ("i64".equals(valueType)) {
-                            CompilerDirectives.transferToInterpreter();
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
                         }
                         Object webAssemblyValue = toWebAssemblyValue(value, valueType);
                         try {
-                            Object createGlobal = context.getRealm().getWASMGlobalConstructor();
+                            Object createGlobal = realm.getWASMGlobalConstructor();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
@@ -321,14 +319,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     } else if (JSWebAssemblyGlobal.isJSWebAssemblyGlobal(value)) {
                         wasmValue = ((JSWebAssemblyGlobalObject) value).getWASMGlobal();
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not WebAssembly.Global object");
                     }
                 } else if ("memory".equals(externType)) {
                     if (JSWebAssemblyMemory.isJSWebAssemblyMemory(value)) {
                         wasmValue = ((JSWebAssemblyMemoryObject) value).getWASMMemory();
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not WebAssembly.Memory object");
                     }
                 } else {
@@ -336,7 +332,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (JSWebAssemblyTable.isJSWebAssemblyTable(value)) {
                         wasmValue = ((JSWebAssemblyTableObject) value).getWASMTable();
                     } else {
-                        CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not WebAssembly.Table object");
                     }
                 }
@@ -345,7 +340,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 if (JSObject.hasOwnProperty(transformedImportObject, module)) {
                     transformedModule = (DynamicObject) JSObject.get(transformedImportObject, module);
                 } else {
-                    transformedModule = JSOrdinary.create(context);
+                    transformedModule = JSOrdinary.create(context, realm);
                     JSObject.set(transformedImportObject, module, transformedModule);
                 }
                 JSObject.set(transformedModule, name, wasmValue);
