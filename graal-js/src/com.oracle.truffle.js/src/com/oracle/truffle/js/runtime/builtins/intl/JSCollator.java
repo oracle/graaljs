@@ -149,8 +149,8 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
     // localeMatcher unused as our lookup matcher and best fit matcher are the same at the moment
     @TruffleBoundary
-    public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, Boolean optkn, String optkf,
-                    String sensitivity, Boolean ignorePunctuation) {
+    public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, String optco, Boolean optkn,
+                    String optkf, String sensitivity, Boolean ignorePunctuation) {
         state.initializedCollator = true;
         state.usage = usage;
         Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
@@ -190,15 +190,16 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
             state.caseFirst = kf;
         }
 
-        // Set collator.[[Usage]] to usage.
+        String collation = (optco == null) ? selectedLocale.getUnicodeLocaleType("co") : optco;
+        if (!VALID_COLLATION_TYPES.contains(collation)) {
+            collation = null;
+        }
+
         // "search" maps to -u-co-search, "sort" means the default behavior
         boolean searchUsage = IntlUtil.SEARCH.equals(usage);
-        if (!searchUsage) {
-            String coType = selectedLocale.getUnicodeLocaleType("co");
-            if (VALID_COLLATION_TYPES.contains(coType)) {
-                builder.setUnicodeLocaleKeyword("co", coType);
-                state.collation = coType;
-            }
+        if (!searchUsage && collation != null) {
+            state.collation = collation;
+            builder.setUnicodeLocaleKeyword("co", collation);
         }
 
         if (sensitivity != null) {

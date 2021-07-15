@@ -1852,10 +1852,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "intl402/Collator/constructor-options-throwing-getters.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "intl402/DateTimeFormat/constructor-options-style-conflict.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-07-08"
