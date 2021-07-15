@@ -6,6 +6,7 @@ The main focus is on user-observable behavior of the engine.
 ## Version 21.3.0
 * Implemented the [Error Cause](https://github.com/tc39/proposal-error-cause) proposal. It is available behind the experimental option `--js.error-cause`.
 * Implemented the [Import Assertions](https://tc39.es/proposal-import-assertions) proposal. It is available behind the experimental option `--js.import-assertions`.
+* Added support for `collation` option of `Intl.Collator`.
 
 ## Version 21.2.0
 * Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
