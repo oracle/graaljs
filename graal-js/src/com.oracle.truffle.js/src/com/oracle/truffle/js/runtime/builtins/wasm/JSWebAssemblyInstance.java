@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -168,16 +169,16 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             for (long i = 0; i < size; i++) {
                 Object exportInfo = exportsInterop.readArrayElement(exportsInfo, i);
                 InteropLibrary exportInterop = InteropLibrary.getUncached(exportInfo);
-                String name = (String) exportInterop.readMember(exportInfo, "name");
-                String externtype = (String) exportInterop.readMember(exportInfo, "kind");
+                String name = asString(exportInterop.readMember(exportInfo, "name"));
+                String externtype = asString(exportInterop.readMember(exportInfo, "kind"));
                 Object externval = wasmExportsInterop.readMember(wasmExports, name);
                 Object value;
 
                 if ("function".equals(externtype)) {
-                    String typeInfo = (String) exportInterop.readMember(exportInfo, "type");
+                    String typeInfo = asString(exportInterop.readMember(exportInfo, "type"));
                     value = exportFunction(context, externval, typeInfo);
                 } else if ("global".equals(externtype)) {
-                    String valueType = (String) exportInterop.readMember(exportInfo, "type");
+                    String valueType = asString(exportInterop.readMember(exportInfo, "type"));
                     value = JSWebAssemblyGlobal.create(context, externval, valueType);
                 } else if ("memory".equals(externtype)) {
                     value = JSWebAssemblyMemory.create(context, externval);
@@ -301,11 +302,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         CompilerDirectives.transferToInterpreter();
                         throw Errors.createLinkError("Imported value is not callable");
                     }
-                    String typeInfo = (String) descriptorInterop.readMember(descriptor, "type");
+                    String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
                     wasmValue = createHostFunction(context, value, typeInfo);
                 } else if ("global".equals(externType)) {
                     if (JSRuntime.isNumber(value)) {
-                        String valueType = (String) descriptorInterop.readMember(descriptor, "type");
+                        String valueType = asString(descriptorInterop.readMember(descriptor, "type"));
                         if ("i64".equals(valueType)) {
                             CompilerDirectives.transferToInterpreter();
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
@@ -428,6 +429,13 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
             argTypesArray[i] = argTypes.substring(3 * i, 3 * (i + 1));
         }
         return argTypesArray;
+    }
+
+    private static String asString(Object string) throws UnsupportedMessageException {
+        if (string instanceof String) {
+            return (String) string;
+        }
+        return InteropLibrary.getUncached(string).asString(string);
     }
 
 }
