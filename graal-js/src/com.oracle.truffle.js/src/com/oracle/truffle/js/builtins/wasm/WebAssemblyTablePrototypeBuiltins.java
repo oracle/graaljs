@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -159,11 +160,13 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             try {
                 Object getFn = InteropLibrary.getUncached(wasmTable).readMember(wasmTable, "get");
-                Object result = InteropLibrary.getUncached(getFn).execute(getFn, indexInt);
-                if (!InteropLibrary.getUncached(result).isExecutable(result)) {
+                Object fn = InteropLibrary.getUncached(getFn).execute(getFn, indexInt);
+                if (!InteropLibrary.getUncached(fn).isExecutable(fn)) {
                     return Null.instance;
                 }
-                return result;
+                Object funcTypeFn = getContext().getRealm().getWASMFuncType();
+                String funcType = (String) InteropLibrary.getUncached(funcTypeFn).execute(funcTypeFn, fn);
+                return JSWebAssemblyInstance.exportFunction(getContext(), fn, funcType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
