@@ -27,10 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/date-format/en-format-range-to-parts.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
@@ -47,16 +43,8 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
-    "filePath" : "intl/date-format/hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/date-format/resolved-options.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "intl/date-format/time_style_hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
   }, {
     "filePath" : "intl/date-format/timezone-name-extended.js",
     "status" : "FAIL",
@@ -160,7 +148,7 @@
   }, {
     "filePath" : "intl/regress-10438.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "intl/regress-10526.js",
     "status" : "FAIL",
@@ -172,11 +160,7 @@
   }, {
     "filePath" : "intl/regress-10613.js",
     "status" : "FAIL",
-    "comment" : "new test failures (update 2020-07-22)"
-  }, {
-    "filePath" : "intl/regress-10836.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Different error message expected, passes otherwise"
   }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",

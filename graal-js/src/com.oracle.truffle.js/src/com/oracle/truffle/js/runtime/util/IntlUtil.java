@@ -100,6 +100,7 @@ public final class IntlUtil {
     public static final String CURRENCY_SIGN = "currencySign";
     public static final String DATE_STYLE = "dateStyle";
     public static final String DAY = "day";
+    public static final String DAY_PERIOD = "dayPeriod";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
     public static final String DISJUNCTION = "disjunction";
@@ -110,6 +111,7 @@ public final class IntlUtil {
     public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
     public static final String FORMAT_MATCHER = "formatMatcher";
+    public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
     public static final String FULL = "full";
     public static final String GRANULARITY = "granularity";
     public static final String GRAPHEME = "grapheme";
