@@ -74,6 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -274,7 +275,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     @CompilerDirectives.TruffleBoundary
     public static Object transformImportObject(JSContext context, JSRealm realm, Object wasmModule, Object importObject) {
         try {
-            InteropLibrary importObjectInterop = InteropLibrary.getUncached(importObject);
             DynamicObject transformedImportObject = JSOrdinary.create(context, realm);
 
             Object importsFn = realm.getWASMModuleImportsFunction();
@@ -286,14 +286,14 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 InteropLibrary descriptorInterop = InteropLibrary.getUncached(descriptor);
 
                 String module = asString(descriptorInterop.readMember(descriptor, "module"));
-                Object moduleImportObject = JSRuntime.importValue(importObjectInterop.readMember(importObject, module));
+                Object moduleImportObject = JSInteropUtil.get(importObject, module);
                 InteropLibrary moduleImportObjectInterop = InteropLibrary.getUncached(moduleImportObject);
                 if (!moduleImportObjectInterop.hasMembers(moduleImportObject)) {
                     throw Errors.createTypeErrorNotAnObject(moduleImportObject);
                 }
 
                 String name = asString(descriptorInterop.readMember(descriptor, "name"));
-                Object value = JSRuntime.importValue(moduleImportObjectInterop.readMember(moduleImportObject, name));
+                Object value = JSInteropUtil.get(moduleImportObject, name);
                 String externType = asString(descriptorInterop.readMember(descriptor, "kind"));
                 Object wasmValue;
 

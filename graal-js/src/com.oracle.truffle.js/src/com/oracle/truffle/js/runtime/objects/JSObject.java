@@ -54,7 +54,6 @@ import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -87,7 +86,6 @@ import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 /**
@@ -341,25 +339,6 @@ public abstract class JSObject extends JSDynamicObject {
     public static Object get(DynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         return JSObject.getJSClass(obj).get(obj, key);
-    }
-
-    @TruffleBoundary
-    public static Object get(TruffleObject obj, Object key) {
-        assert JSRuntime.isPropertyKey(key);
-        if (JSDynamicObject.isJSDynamicObject(obj)) {
-            return get((DynamicObject) obj, key);
-        } else {
-            return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
-        }
-    }
-
-    @TruffleBoundary
-    public static Object get(TruffleObject obj, long index) {
-        if (JSDynamicObject.isJSDynamicObject(obj)) {
-            return get((DynamicObject) obj, index);
-        } else {
-            return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
-        }
     }
 
     @TruffleBoundary
