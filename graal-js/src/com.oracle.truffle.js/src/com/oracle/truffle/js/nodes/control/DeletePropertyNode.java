@@ -69,12 +69,12 @@ import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -329,20 +329,23 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     protected boolean foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                     @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode,
-                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
-                    @Cached ExportValueNode exportKey) {
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        Object propertyKey;
         if (interop.hasArrayElements(target)) {
-            Object index = toArrayIndexNode.execute(key);
-            if (index instanceof Long) {
-                return arrayElementLong(target, (Long) index, interop);
+            Object indexOrPropertyKey = toArrayIndexNode.execute(key);
+            if (indexOrPropertyKey instanceof Long) {
+                return arrayElementLong(target, (long) indexOrPropertyKey, interop);
+            } else {
+                propertyKey = indexOrPropertyKey;
+                assert JSRuntime.isPropertyKey(propertyKey);
             }
+        } else {
+            propertyKey = toPropertyKeyNode.execute(key);
         }
         if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
-            Object exportedKey = exportKey.execute(key);
-            return hashEntry(target, exportedKey, interop);
+            return hashEntry(target, propertyKey, interop);
         }
         if (interop.hasMembers(target)) {
-            Object propertyKey = toPropertyKeyNode.execute(key);
             if (propertyKey instanceof String) {
                 return member(target, (String) propertyKey, interop);
             } else {

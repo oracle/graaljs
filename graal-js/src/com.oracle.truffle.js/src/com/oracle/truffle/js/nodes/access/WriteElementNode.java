@@ -75,7 +75,6 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
@@ -1824,20 +1823,18 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
         @Child private InteropLibrary setterInterop;
-        @Child private ExportValueNode exportKey;
+        @Child private JSToPropertyKeyNode toPropertyKey;
         @Child private ExportValueNode exportValue;
-        @Child private JSToStringNode toStringNode;
         @Child private ToArrayIndexNode toArrayIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
 
         TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
             this.targetClass = targetClass;
-            this.exportKey = ExportValueNode.create();
+            this.toPropertyKey = JSToPropertyKeyNode.create();
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.toStringNode = JSToStringNode.create();
         }
 
         @Override
@@ -1846,48 +1843,58 @@ public class WriteElementNode extends JSTargetableNode {
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this, root.getContext());
             }
-            Object convertedKey = exportKey.execute(index);
-            if (convertedKey instanceof Symbol) {
-                return;
-            }
+            Object propertyKey;
             Object exportedValue = exportValue.execute(value);
             if (interop.hasArrayElements(truffleObject)) {
-                Object maybeIndex = toArrayIndex(convertedKey);
-                if (maybeIndex instanceof Long) {
+                Object indexOrPropertyKey = toArrayIndex(index);
+                if (indexOrPropertyKey instanceof Long) {
                     try {
-                        interop.writeArrayElement(truffleObject, (long) maybeIndex, exportedValue);
+                        interop.writeArrayElement(truffleObject, (long) indexOrPropertyKey, exportedValue);
                         return;
                     } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
                         if (root.isStrict) {
                             errorBranch.enter();
                             throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                        } else {
+                            return;
                         }
                     }
+                } else {
+                    propertyKey = indexOrPropertyKey;
+                    assert JSRuntime.isPropertyKey(propertyKey);
                 }
+            } else {
+                propertyKey = toPropertyKey.execute(index);
             }
             if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
-                    interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
+                    interop.writeHashEntry(truffleObject, propertyKey, exportedValue);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     if (root.isStrict) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
-                    }
-                }
-            } else {
-                String propertyKey = toStringNode.executeString(convertedKey);
-                if (root.context.isOptionNashornCompatibilityMode()) {
-                    if (tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context)) {
+                    } else {
                         return;
                     }
                 }
-                try {
-                    interop.writeMember(truffleObject, propertyKey, exportedValue);
-                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                    if (root.isStrict) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
-                    }
+            }
+            if (propertyKey instanceof Symbol) {
+                return;
+            }
+            String stringKey = (String) propertyKey;
+            if (root.context.isOptionNashornCompatibilityMode()) {
+                if (tryInvokeSetter(truffleObject, stringKey, exportedValue, root.context)) {
+                    return;
+                }
+            }
+            try {
+                interop.writeMember(truffleObject, stringKey, exportedValue);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                if (root.isStrict) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                } else {
+                    return;
                 }
             }
         }

@@ -131,14 +131,45 @@ public class GR32182 {
             ctx.eval("js", "map['42'] = 'someValue';");
             assertEquals("someValue", ctx.eval("js", "map['42'];").asString());
             result = ctx.eval("js", "map[42];");
-            assertTrue(result.toString(), result.isNull());
+            assertEquals(result.toString(), "someValue", result.asString());
+            assertEquals(map.toString(), "someValue", map.get("42"));
 
             map.clear();
 
             ctx.eval("js", "map[42] = 'someValue';");
             assertEquals("someValue", ctx.eval("js", "map[42];").asString());
             result = ctx.eval("js", "map['42'];");
-            assertTrue(result.toString(), result.isNull());
+            assertEquals(result.toString(), "someValue", result.asString());
+            assertEquals(map.toString(), "someValue", map.get("42"));
+        }
+    }
+
+    @Test
+    public void testJavaMapReadWriteNumericIndex() {
+        try (Context ctx = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).allowMapAccess(true).build()).build()) {
+            Map<String, Object> map = new HashMap<>();
+            ctx.getBindings("js").putMember("map", map);
+            ctx.eval("js", "map[42] = 'someValue';");
+            assertEquals(map.toString(), "someValue", map.get("42"));
+            assertEquals("someValue", ctx.eval("js", "map[42];").asString());
+            assertEquals("someValue", ctx.eval("js", "map[Math.sqrt(42*42)];").asString());
+            ctx.eval("js", "map[Math.sqrt(42*42)] = 'otherValue';");
+            assertEquals(map.toString(), "otherValue", map.get("42"));
+            assertEquals("otherValue", ctx.eval("js", "map[Math.sqrt(42*42)];").asString());
+            assertEquals("otherValue", ctx.eval("js", "map[42];").asString());
+        }
+    }
+
+    @Test
+    public void testJavaMapSymbolIndex() {
+        try (Context ctx = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).allowMapAccess(true).build()).build()) {
+            Map<Object, Object> map = new HashMap<>();
+            ctx.getBindings("js").putMember("map", map);
+            ctx.eval("js", "map[Symbol.iterator] = 'someValue';");
+            assertEquals("someValue", ctx.eval("js", "map[Symbol.iterator];").asString());
+            assertEquals(map.toString(), 1, map.size());
+            assertTrue(ctx.eval("js", "delete map[Symbol.iterator];").asBoolean());
+            assertEquals(map.toString(), 0, map.size());
         }
     }
 }
