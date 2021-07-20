@@ -111,6 +111,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
     public abstract static class WebAssemblyTableGrowNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toDeltaNode;
         private final BranchProfile errorBranch = BranchProfile.create();
+        @Child InteropLibrary tableGrowLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -126,8 +127,8 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             int deltaInt = toDeltaNode.executeInt(delta);
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             try {
-                Object growFn = InteropLibrary.getUncached(wasmTable).readMember(wasmTable, "grow");
-                return InteropLibrary.getUncached(growFn).execute(growFn, deltaInt);
+                Object growFn = getContext().getRealm().getWASMTableGrow();
+                return tableGrowLib.execute(growFn, wasmTable, deltaInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
@@ -145,7 +146,6 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
     public abstract static class WebAssemblyTableGetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
-        @Child InteropLibrary wasmTableLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         @Child InteropLibrary tableGetLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         @Child InteropLibrary wasmFnLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         @Child InteropLibrary funcTypeLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -164,8 +164,8 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             int indexInt = toIndexNode.executeInt(index);
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             try {
-                Object getFn = wasmTableLib.readMember(wasmTable, "get");
-                Object fn = tableGetLib.execute(getFn, indexInt);
+                Object getFn = getContext().getRealm().getWASMTableRead();
+                Object fn = tableGetLib.execute(getFn, wasmTable, indexInt);
                 if (!wasmFnLib.isExecutable(fn)) {
                     return Null.instance;
                 }
@@ -188,6 +188,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
     public abstract static class WebAssemblyTableSetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
+        @Child InteropLibrary tableSetLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableSetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -212,8 +213,8 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createTypeError("WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function");
             }
             try {
-                Object setFn = InteropLibrary.getUncached(wasmTable).readMember(wasmTable, "set");
-                InteropLibrary.getUncached(setFn).execute(setFn, indexInt, wasmFunction);
+                Object setFn = getContext().getRealm().getWASMTableWrite();
+                tableSetLib.execute(setFn, wasmTable, indexInt, wasmFunction);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {

@@ -2670,6 +2670,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child JSToStringNode toStringNode;
         @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
         @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
+        @Child InteropLibrary tableAllocLib;
 
         public ConstructWebAssemblyTableNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
@@ -2680,6 +2681,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.toStringNode = JSToStringNode.create();
             this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'initial'");
             this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Table(): Property 'maximum'");
+            this.tableAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -2714,8 +2716,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             Object wasmTable;
             try {
-                Object createTable = getContext().getRealm().getWASMTableConstructor();
-                wasmTable = InteropLibrary.getUncached(createTable).execute(createTable, initialInt, maximumInt);
+                Object createTable = getContext().getRealm().getWASMTableAlloc();
+                wasmTable = tableAllocLib.execute(createTable, initialInt, maximumInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

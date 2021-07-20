@@ -372,7 +372,11 @@ public class JSRealm {
     private final Object wasmModuleCustomSectionsFunction;
     private final Object wasmGlobalConstructor;
     private final Object wasmMemoryConstructor;
-    private final Object wasmTableConstructor;
+    private final Object wasmTableAlloc;
+    private final Object wasmTableGrow;
+    private final Object wasmTableRead;
+    private final Object wasmTableWrite;
+    private final Object wasmTableLength;
     private final Object wasmFuncType;
 
     private final DynamicObject webAssemblyObject;
@@ -727,7 +731,11 @@ public class JSRealm {
                 wasmValidateFunction = wasmInterop.readMember(wasmObject, "validate");
                 wasmGlobalConstructor = wasmInterop.readMember(wasmObject, "Global");
                 wasmMemoryConstructor = wasmInterop.readMember(wasmObject, "Memory");
-                wasmTableConstructor = wasmInterop.readMember(wasmObject, "Table");
+                wasmTableAlloc = wasmInterop.readMember(wasmObject, "table_alloc");
+                wasmTableGrow = wasmInterop.readMember(wasmObject, "table_grow");
+                wasmTableRead = wasmInterop.readMember(wasmObject, "table_read");
+                wasmTableWrite = wasmInterop.readMember(wasmObject, "table_write");
+                wasmTableLength = wasmInterop.readMember(wasmObject, "table_size");
                 wasmFuncType = wasmInterop.readMember(wasmObject, "func_type");
                 Object wasmModuleConstructor = wasmInterop.readMember(wasmObject, "Module");
                 InteropLibrary moduleInterop = InteropLibrary.getUncached(wasmModuleConstructor);
@@ -763,7 +771,11 @@ public class JSRealm {
             this.wasmModuleCustomSectionsFunction = null;
             this.wasmGlobalConstructor = null;
             this.wasmMemoryConstructor = null;
-            this.wasmTableConstructor = null;
+            this.wasmTableAlloc = null;
+            this.wasmTableGrow = null;
+            this.wasmTableRead = null;
+            this.wasmTableWrite = null;
+            this.wasmTableLength = null;
             this.wasmFuncType = null;
 
             this.webAssemblyObject = null;
@@ -2461,8 +2473,24 @@ public class JSRealm {
         return wasmMemoryConstructor;
     }
 
-    public Object getWASMTableConstructor() {
-        return wasmTableConstructor;
+    public Object getWASMTableAlloc() {
+        return wasmTableAlloc;
+    }
+
+    public Object getWASMTableGrow() {
+        return wasmTableGrow;
+    }
+
+    public Object getWASMTableRead() {
+        return wasmTableRead;
+    }
+
+    public Object getWASMTableWrite() {
+        return wasmTableWrite;
+    }
+
+    public Object getWASMTableLength() {
+        return wasmTableLength;
     }
 
     public Object getWASMFuncType() {
