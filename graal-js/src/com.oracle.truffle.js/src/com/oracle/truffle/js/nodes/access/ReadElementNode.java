@@ -1583,7 +1583,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         private final Class<?> targetClass;
 
         @Child private InteropLibrary interop;
-        @Child private JSToPropertyKeyNode toPropertyKey;
+        @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private ImportValueNode importValueNode;
         @Child private InteropLibrary getterInterop;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
@@ -1598,7 +1598,6 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             this.targetClass = targetClass;
             this.importValueNode = ImportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.toPropertyKey = JSToPropertyKeyNode.create();
         }
 
         @Override
@@ -1628,7 +1627,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     return Undefined.instance;
                 }
             } else {
-                propertyKey = toPropertyKey.execute(key);
+                propertyKey = toPropertyKey(key);
             }
             if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
@@ -1753,6 +1752,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 toArrayIndexNode = insert(ToArrayIndexNode.create());
             }
             return toArrayIndexNode.execute(maybeIndex);
+        }
+
+        private Object toPropertyKey(Object index) {
+            if (toPropertyKeyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
+            }
+            return toPropertyKeyNode.execute(index);
         }
     }
 

@@ -1823,7 +1823,7 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
         @Child private InteropLibrary setterInterop;
-        @Child private JSToPropertyKeyNode toPropertyKey;
+        @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private ExportValueNode exportValue;
         @Child private ToArrayIndexNode toArrayIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
@@ -1831,7 +1831,6 @@ public class WriteElementNode extends JSTargetableNode {
         TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
             this.targetClass = targetClass;
-            this.toPropertyKey = JSToPropertyKeyNode.create();
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -1864,7 +1863,7 @@ public class WriteElementNode extends JSTargetableNode {
                     assert JSRuntime.isPropertyKey(propertyKey);
                 }
             } else {
-                propertyKey = toPropertyKey.execute(index);
+                propertyKey = toPropertyKey(index);
             }
             if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
@@ -1945,6 +1944,14 @@ public class WriteElementNode extends JSTargetableNode {
                 toArrayIndexNode = insert(ToArrayIndexNode.create());
             }
             return toArrayIndexNode.execute(index);
+        }
+
+        private Object toPropertyKey(Object index) {
+            if (toPropertyKeyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
+            }
+            return toPropertyKeyNode.execute(index);
         }
     }
 
