@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
     private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
 
@@ -66,7 +66,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
     protected InitializeSegmenterNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getGranularityOption = GetStringOptionNode.create(context, "granularity", new String[]{IntlUtil.GRAPHEME, IntlUtil.WORD, IntlUtil.SENTENCE}, IntlUtil.GRAPHEME);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
     }
@@ -85,7 +85,7 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
             JSSegmenter.InternalState state = JSSegmenter.getInternalState(segmenterObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String optGranularity = getGranularityOption.executeValue(options);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
     private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
     @Child GetStringOptionNode getNumberingSystemOption;
@@ -68,7 +68,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
     protected InitializeRelativeTimeFormatNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
         this.getNumericOption = GetStringOptionNode.create(context, "numeric", new String[]{IntlUtil.ALWAYS, IntlUtil.AUTO}, IntlUtil.ALWAYS);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
@@ -89,7 +89,7 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
             JSRelativeTimeFormat.InternalState state = JSRelativeTimeFormat.getInternalState(relativeTimeFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String numberingSystem = getNumberingSystemOption.executeValue(options);
