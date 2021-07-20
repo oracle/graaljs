@@ -1667,8 +1667,7 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         private final Class<?> stringClass;
-        private final BranchProfile intIndexBranch = BranchProfile.create();
-        private final BranchProfile stringIndexBranch = BranchProfile.create();
+        private final ConditionProfile isIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isImmutable = ConditionProfile.createBinaryProfile();
         @Child private ToArrayIndexNode toArrayIndexNode;
 
@@ -1682,8 +1681,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
             Object convertedIndex = toArrayIndexNode.execute(index);
-            if (convertedIndex instanceof Long) {
-                intIndexBranch.enter();
+            if (isIndexProfile.profile(convertedIndex instanceof Long)) {
                 long longIndex = (long) convertedIndex;
                 if (isImmutable.profile(longIndex >= 0 && longIndex < JSRuntime.length(charSequence))) {
                     // cannot set characters of immutable strings
@@ -1693,7 +1691,6 @@ public class WriteElementNode extends JSTargetableNode {
                     return;
                 }
             }
-            stringIndexBranch.enter();
             JSObject.setWithReceiver(JSString.create(root.context, charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
