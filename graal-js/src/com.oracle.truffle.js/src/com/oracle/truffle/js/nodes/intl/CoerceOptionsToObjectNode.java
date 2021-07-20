@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -49,8 +49,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
 public abstract class CoerceOptionsToObjectNode extends JavaScriptBaseNode {
-
-    @Child JSToObjectNode toObjectNode;
     private final JSContext context;
 
     public JSContext getContext() {
@@ -71,15 +69,9 @@ public abstract class CoerceOptionsToObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isUndefined(opts)")
-    public DynamicObject fromOtherThenUndefined(Object opts) {
-        return toDynamicObject(opts);
+    public DynamicObject fromOtherThanUndefined(Object opts,
+                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
+        return (DynamicObject) toObjectNode.execute(opts);
     }
 
-    private DynamicObject toDynamicObject(Object o) {
-        if (toObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-        }
-        return (DynamicObject) toObjectNode.execute(o);
-    }
 }
