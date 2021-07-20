@@ -56,7 +56,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
     private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
+    @Child GetOptionsObjectNode getOptionsObjectNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
 
@@ -67,7 +67,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
     protected InitializeListFormatNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
+        this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CONJUNCTION, IntlUtil.DISJUNCTION, IntlUtil.UNIT}, IntlUtil.CONJUNCTION);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
@@ -89,7 +89,7 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
             JSListFormat.InternalState state = JSListFormat.getInternalState(listFormatObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
+            Object options = getOptionsObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
