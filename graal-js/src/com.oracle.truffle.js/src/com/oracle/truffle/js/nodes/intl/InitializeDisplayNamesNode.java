@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,16 +46,16 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     private final JSContext context;
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child JSToObjectNode toObjectNode;
+    @Child GetOptionsObjectNode getOptionsObjectNode;
     @Child GetStringOptionNode getLocaleMatcherOption;
     @Child GetStringOptionNode getStyleOption;
     @Child GetStringOptionNode getTypeOption;
@@ -65,7 +65,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     protected InitializeDisplayNamesNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.toObjectNode = JSToObjectNode.createToObject(context);
+        this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY}, null);
@@ -82,7 +82,11 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     public DynamicObject initializeDisplayNames(DynamicObject displayNamesObject, Object localesArg, Object optionsArg) {
         try {
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            Object options = toObjectNode.execute(optionsArg);
+            if (optionsArg == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeError("options not specified");
+            }
+            Object options = getOptionsObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String optStyle = getStyleOption.executeValue(options);

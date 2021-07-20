@@ -59,7 +59,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
 
     @Child GetStringOptionNode getUsageOption;
     @Child GetStringOptionNode getLocaleMatcherOption;
@@ -73,7 +73,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     protected InitializeCollatorNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getUsageOption = GetStringOptionNode.create(context, IntlUtil.USAGE, new String[]{IntlUtil.SORT, IntlUtil.SEARCH}, IntlUtil.SORT);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.COLLATION, null, null);
@@ -96,7 +96,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         try {
             JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
             String usage = getUsageOption.executeValue(options);
             String optLocaleMatcher = getLocaleMatcherOption.executeValue(options);
             String optco = getCollationOption.executeValue(options);

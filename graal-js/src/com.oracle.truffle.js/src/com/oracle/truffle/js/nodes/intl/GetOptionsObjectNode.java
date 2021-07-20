@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,46 +40,45 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public abstract class CreateOptionsObjectNode extends JavaScriptBaseNode {
-
-    @Child JSToObjectNode toObjectNode;
+public abstract class GetOptionsObjectNode extends JavaScriptBaseNode {
     private final JSContext context;
 
-    public JSContext getContext() {
-        return context;
-    }
-
-    public CreateOptionsObjectNode(JSContext context) {
-        super();
+    public GetOptionsObjectNode(JSContext context) {
         this.context = context;
     }
 
-    public abstract DynamicObject execute(Object opts);
+    public abstract Object execute(Object options);
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = "isUndefined(opts)")
-    public DynamicObject fromUndefined(Object opts) {
-        return JSOrdinary.createWithNullPrototype(getContext());
+    @Specialization(guards = "isUndefined(options)")
+    public Object fromUndefined(@SuppressWarnings("unused") Object options) {
+        return JSOrdinary.createWithNullPrototype(context);
     }
 
-    @Specialization(guards = "!isUndefined(opts)")
-    public DynamicObject fromOtherThenUndefined(Object opts) {
-        return toDynamicObject(opts);
+    @Specialization
+    public Object fromJSObject(JSObject options) {
+        return options;
     }
 
-    private DynamicObject toDynamicObject(Object o) {
-        if (toObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+    @Specialization(guards = "!isUndefined(options)", replaces = "fromJSObject")
+    public Object fromOther(Object options,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached BranchProfile errorBranch) {
+        if (isObjectNode.executeBoolean(options)) {
+            return options;
+        } else {
+            errorBranch.enter();
+            throw Errors.createTypeErrorNotAnObject(options, this);
         }
-        return (DynamicObject) toObjectNode.execute(o);
     }
+
 }

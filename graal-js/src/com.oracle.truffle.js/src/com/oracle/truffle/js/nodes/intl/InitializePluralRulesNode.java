@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
 
@@ -71,7 +71,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
     protected InitializePluralRulesNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER,
                         new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.CARDINAL, IntlUtil.ORDINAL}, IntlUtil.CARDINAL);
@@ -92,7 +92,7 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
             JSPluralRules.InternalState state = JSPluralRules.getInternalState(pluralRulesObj);
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
 
             getLocaleMatcherOption.executeValue(options);
             String optType = getTypeOption.executeValue(options);
