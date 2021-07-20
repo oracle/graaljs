@@ -94,10 +94,6 @@
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/list-format/getoptionsobject.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
-  }, {
     "filePath" : "intl/locale/locale-calendars.js",
     "status" : "FAIL",
     "comment" : "update 2021-07-07"
@@ -201,10 +197,6 @@
     "filePath" : "intl/relative-time-format/default-locale-pt-BR.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "intl/segmenter/getoptionsobject.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
   }, {
     "filePath" : "intl/segmenter/grapheme-containing.js",
     "status" : "FAIL",

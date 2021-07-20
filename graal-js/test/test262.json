@@ -1852,10 +1852,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "intl402/ListFormat/constructor/constructor/options-getoptionsobject.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
     "filePath" : "intl402/NumberFormat/dft-currency-mnfd-range-check-mxfd.js",
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
