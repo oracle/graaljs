@@ -373,6 +373,7 @@ public class JSRealm {
     private final Object wasmGlobalConstructor;
     private final Object wasmMemoryConstructor;
     private final Object wasmTableConstructor;
+    private final Object wasmFuncType;
 
     private final DynamicObject webAssemblyObject;
     private final DynamicObject webAssemblyGlobalConstructor;
@@ -727,6 +728,7 @@ public class JSRealm {
                 wasmGlobalConstructor = wasmInterop.readMember(wasmObject, "Global");
                 wasmMemoryConstructor = wasmInterop.readMember(wasmObject, "Memory");
                 wasmTableConstructor = wasmInterop.readMember(wasmObject, "Table");
+                wasmFuncType = wasmInterop.readMember(wasmObject, "func_type");
                 Object wasmModuleConstructor = wasmInterop.readMember(wasmObject, "Module");
                 InteropLibrary moduleInterop = InteropLibrary.getUncached(wasmModuleConstructor);
                 wasmModuleExportsFunction = moduleInterop.readMember(wasmModuleConstructor, "exports");
@@ -762,6 +764,7 @@ public class JSRealm {
             this.wasmGlobalConstructor = null;
             this.wasmMemoryConstructor = null;
             this.wasmTableConstructor = null;
+            this.wasmFuncType = null;
 
             this.webAssemblyObject = null;
             this.webAssemblyGlobalConstructor = null;
@@ -2460,6 +2463,10 @@ public class JSRealm {
 
     public Object getWASMTableConstructor() {
         return wasmTableConstructor;
+    }
+
+    public Object getWASMFuncType() {
+        return wasmFuncType;
     }
 
     public DynamicObject getWebAssemblyModulePrototype() {

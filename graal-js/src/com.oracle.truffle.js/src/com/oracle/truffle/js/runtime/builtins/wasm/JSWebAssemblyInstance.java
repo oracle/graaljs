@@ -194,7 +194,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static Object exportFunction(JSContext context, Object export, String typeInfo) {
+    public static Object exportFunction(JSContext context, Object export, String typeInfo) {
         int idxOpen = typeInfo.indexOf('(');
         int idxClose = typeInfo.indexOf(')');
         String name = typeInfo.substring(0, idxOpen);

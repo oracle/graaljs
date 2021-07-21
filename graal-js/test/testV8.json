@@ -3467,7 +3467,7 @@
     "filePath" : "mjsunit/wasm/import-table.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/indirect-calls.js",

@@ -54,9 +54,11 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -143,6 +145,10 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
     public abstract static class WebAssemblyTableGetNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
+        @Child InteropLibrary wasmTableLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child InteropLibrary tableGetLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child InteropLibrary wasmFnLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+        @Child InteropLibrary funcTypeLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyTableGetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -158,12 +164,14 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             int indexInt = toIndexNode.executeInt(index);
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             try {
-                Object getFn = InteropLibrary.getUncached(wasmTable).readMember(wasmTable, "get");
-                Object result = InteropLibrary.getUncached(getFn).execute(getFn, indexInt);
-                if (!InteropLibrary.getUncached(result).isExecutable(result)) {
+                Object getFn = wasmTableLib.readMember(wasmTable, "get");
+                Object fn = tableGetLib.execute(getFn, indexInt);
+                if (!wasmFnLib.isExecutable(fn)) {
                     return Null.instance;
                 }
-                return result;
+                Object funcTypeFn = getContext().getRealm().getWASMFuncType();
+                String funcType = (String) funcTypeLib.execute(funcTypeFn, fn);
+                return JSWebAssemblyInstance.exportFunction(getContext(), fn, funcType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
