@@ -61,6 +61,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -2879,26 +2880,8 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object importValue(Object value) {
-        if (value == null) {
-            return Null.instance;
-        } else if (value instanceof Integer || value instanceof Double || value instanceof String || value instanceof Boolean || value instanceof TruffleObject) {
-            return value;
-        } else if (value instanceof Character) {
-            return String.valueOf(value);
-        } else if (value instanceof Long) {
-            long longValue = (long) value;
-            if (longIsRepresentableAsInt(longValue)) {
-                return (int) longValue;
-            } else {
-                return longValue;
-            }
-        } else if (value instanceof Byte || value instanceof Short) {
-            return ((Number) value).intValue();
-        } else if (value instanceof Float) {
-            return ((Number) value).doubleValue();
-        } else {
-            throw Errors.createTypeErrorUnsupportedInteropType(value);
-        }
+        assert value != null;
+        return ImportValueNode.getUncached().executeWithTarget(value);
     }
 
     public static boolean intIsRepresentableAsFloat(int value) {

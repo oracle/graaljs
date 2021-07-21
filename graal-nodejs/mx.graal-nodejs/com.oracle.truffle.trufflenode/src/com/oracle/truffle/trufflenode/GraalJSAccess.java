@@ -219,6 +219,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -840,7 +841,7 @@ public final class GraalJSAccess {
             } else {
                 truffleObject = JSRuntime.toObject(mainJSContext, object);
             }
-            value = JSObject.get(truffleObject, propertyKey);
+            value = JSInteropUtil.get(truffleObject, propertyKey);
         }
         return processReturnValue(value);
     }

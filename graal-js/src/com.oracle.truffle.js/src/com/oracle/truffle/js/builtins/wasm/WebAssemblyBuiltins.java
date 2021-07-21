@@ -300,8 +300,9 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         }
 
         protected Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
-            Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, wasmModule, importObject);
-            Object instantiate = context.getRealm().getWASMInstantiateFunction();
+            JSRealm realm = context.getRealm();
+            Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, realm, wasmModule, importObject);
+            Object instantiate = realm.getWASMInstantiateFunction();
             Object wasmInstance;
             try {
                 wasmInstance = InteropLibrary.getUncached(instantiate).execute(instantiate, wasmModule, wasmImportObject);

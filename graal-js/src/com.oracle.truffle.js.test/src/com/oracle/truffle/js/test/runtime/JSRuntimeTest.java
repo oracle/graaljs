@@ -83,10 +83,10 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSSymbolObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
@@ -162,8 +162,6 @@ public class JSRuntimeTest extends JSTest {
     @Test
     public void testImportValue() {
         testHelper.getJSContext(); // initialize JSContext
-
-        assertEquals(Null.instance, JSRuntime.importValue(null));
 
         assertEquals(42, JSRuntime.importValue(42));
         assertEquals("42", JSRuntime.importValue("42"));

@@ -2571,9 +2571,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
             Object wasmInstance;
             Object wasmModule = module.getWASMModule();
+            JSRealm realm = getContext().getRealm();
             try {
-                Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(getContext(), wasmModule, importObject);
-                Object instantiate = getContext().getRealm().getWASMInstantiateFunction();
+                Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(getContext(), realm, wasmModule, importObject);
+                Object instantiate = realm.getWASMInstantiateFunction();
                 try {
                     wasmInstance = InteropLibrary.getUncached(instantiate).execute(instantiate, wasmModule, wasmImportObject);
                 } catch (GraalJSException jsex) {

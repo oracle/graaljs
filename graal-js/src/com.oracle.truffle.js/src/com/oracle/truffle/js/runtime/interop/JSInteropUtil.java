@@ -55,7 +55,10 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class for interop operations. Provides methods that can be used in Cached annotations of
@@ -72,6 +75,25 @@ public final class JSInteropUtil {
             return interop.getArraySize(foreignObj);
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(foreignObj, e, "getArraySize", originatingNode);
+        }
+    }
+
+    @TruffleBoundary
+    public static Object get(Object obj, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
+            return JSObject.get((JSDynamicObject) obj, key);
+        } else {
+            return JSInteropUtil.readMemberOrDefault(obj, key, Undefined.instance);
+        }
+    }
+
+    @TruffleBoundary
+    public static Object get(Object obj, long index) {
+        if (JSDynamicObject.isJSDynamicObject(obj)) {
+            return JSObject.get((JSDynamicObject) obj, index);
+        } else {
+            return JSInteropUtil.readArrayElementOrDefault(obj, index, Undefined.instance);
         }
     }
 
