@@ -130,10 +130,6 @@
     "status" : "FAIL",
     "comment" : "update 2021-07-07"
   }, {
-    "filePath" : "intl/number-format/check-minimum-fraction-digits.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
     "comment" : "suspicious performance test"

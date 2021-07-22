@@ -1852,10 +1852,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2020-11-23"
   }, {
-    "filePath" : "intl402/NumberFormat/dft-currency-mnfd-range-check-mxfd.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",
     "comment" : "ICU-21086: RelativeDateTimeFormatter should respect minimumGroupingDigits"
