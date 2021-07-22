@@ -403,6 +403,10 @@ public final class JSGuards {
         return JSRuntime.isArrayIndex(i);
     }
 
+    public static boolean isBigIntArrayIndex(BigInt i) {
+        return i.fitsInLong() && JSRuntime.isArrayIndex(i.longValue());
+    }
+
     public static boolean isArgumentsDisconnected(DynamicObject argumentsArray) {
         return JSArgumentsArray.hasDisconnectedIndices(argumentsArray);
     }
@@ -464,10 +468,6 @@ public final class JSGuards {
 
     public static boolean isJSObjectShape(Shape shape) {
         return shape.getDynamicType() instanceof JSClass;
-    }
-
-    public static boolean isArrayIndexLengthInRange(String str) {
-        return JSRuntime.arrayIndexLengthInRange(str);
     }
 
     public static boolean hasOverloadedOperators(Object value) {
