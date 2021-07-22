@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSNumberFormat;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -61,6 +63,7 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
     @Child DefaultNumberOptionNode getMxsdDNO;
     @Child DefaultNumberOptionNode getMnfdDNO;
     @Child DefaultNumberOptionNode getMxfdDNO;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected SetNumberFormatDigitOptionsNode(JSContext context) {
         this.getMinIntDigitsOption = GetNumberOptionNode.create(context, IntlUtil.MINIMUM_INTEGER_DIGITS);
@@ -94,9 +97,16 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
             intlObj.setMinimumSignificantDigits(mnsd);
             intlObj.setMaximumSignificantDigits(mxsd);
         } else if (mnfdValue != Undefined.instance || mxfdValue != Undefined.instance) {
-            int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, mnfdDefault);
-            int mxfdActualDefualt = Math.max(mnfd, mxfdDefault);
-            int mxfd = getMxfdDNO.executeInt(mxfdValue, mnfd, 20, mxfdActualDefualt);
+            int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, -1);
+            int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 20, -1);
+            if (mnfd == -1) {
+                mnfd = Math.min(mnfdDefault, mxfd);
+            } else if (mxfd == -1) {
+                mxfd = Math.max(mxfdDefault, mnfd);
+            } else if (mnfd > mxfd) {
+                errorBranch.enter();
+                throw Errors.createRangeError("minimumFractionDigits higher than maximumFractionDigits");
+            }
             intlObj.setMinimumFractionDigits(mnfd);
             intlObj.setMaximumFractionDigits(mxfd);
         } else if (!compactNotation) {
