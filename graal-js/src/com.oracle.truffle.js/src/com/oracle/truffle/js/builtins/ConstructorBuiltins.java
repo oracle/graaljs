@@ -322,7 +322,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         // --- not new.target-capable below ---
         TypedArray(0),
         Symbol(0),
-        ModuleBlock(1),
+        ModuleBlock(0),
 
         // non-standard (Nashorn) extensions
         JSAdapter(1),

@@ -498,6 +498,10 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> NEW_SET_METHODS = new OptionKey<>(false);
     @CompilationFinal private boolean newSetMethods;
 
+    public static final String MODULE_BLOCKS_NAME = JS_OPTION_PREFIX + "module-blocks";
+    @Option(name = MODULE_BLOCKS_NAME, category = OptionCategory.USER, help = "Enable the use of module blocks.") public static final OptionKey<Boolean> MODULE_BLOCKS = new OptionKey<>(false);
+    @CompilationFinal private boolean moduleBlocks;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -613,6 +617,7 @@ public final class JSContextOptions {
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
+        this.moduleBlocks = readBooleanOption(MODULE_BLOCKS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
@@ -984,6 +989,10 @@ public final class JSContextOptions {
         return newSetMethods;
     }
 
+    public boolean isModuleBlocks() {
+        return moduleBlocks;
+    }
+
     public boolean isOperatorOverloading() {
         return operatorOverloading;
     }
@@ -1040,6 +1049,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.webAssembly ? 1 : 0);
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
+        hash = 53 * hash + (this.moduleBlocks ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         return hash;
     }
@@ -1198,6 +1208,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.newSetMethods != other.newSetMethods) {
+            return false;
+        }
+        if (this.moduleBlocks != other.moduleBlocks) {
             return false;
         }
         if (this.operatorOverloading != other.operatorOverloading) {

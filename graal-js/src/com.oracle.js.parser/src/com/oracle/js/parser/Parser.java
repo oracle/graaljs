@@ -246,6 +246,8 @@ public class Parser extends AbstractParser {
     private static final String MESSAGE_EXPECTED_OPERAND = "expected.operand";
     private static final String MESSAGE_PROPERTY_REDEFINITON = "property.redefinition";
 
+    private static final String MODULE = "module";
+
     /** Current env. */
     private final ScriptEnvironment env;
 
@@ -3632,11 +3634,11 @@ public class Parser extends AbstractParser {
                 final long identToken = token;
                 String identString = (String) getValue(identToken);
 
-                if (identString.equals("module") && lookahead().equals(LBRACE)) {
+                if (identString.equals(MODULE) && lookahead().equals(LBRACE)) {
                     nextOrEOL();
                     expect(LBRACE);
 
-                    return module(source.getName() + "#L" + line + "T" + start, true);
+                    return module(source.getName() + "#L" + line, true);
                 }
 
                 final IdentNode ident = identifierReference(yield, await);
@@ -6321,27 +6323,16 @@ public class Parser extends AbstractParser {
         final int functionLine = line;
 
         final Scope moduleScope = Scope.createModule();
-        final ParserContextFunctionNode script;
 
         final IdentNode ident = moduleBlock ? new IdentNode(functionToken, finish, moduleName) : null;
 
-        if (moduleBlock) {
-            script = createParserContextFunctionNode(
-                            ident,
-                            functionToken,
-                            FunctionNode.IS_MODULE_BLOCK,
-                            functionLine,
-                            Collections.<IdentNode> emptyList(), 0, moduleScope);
+        final ParserContextFunctionNode script = createParserContextFunctionNode(
+                        ident,
+                        functionToken,
+                        moduleBlock ? FunctionNode.IS_MODULE_BLOCK : FunctionNode.IS_MODULE,
+                        functionLine,
+                        Collections.<IdentNode> emptyList(), 0, moduleScope);
 
-        } else {
-            script = createParserContextFunctionNode(
-                            ident,
-                            functionToken,
-                            FunctionNode.IS_MODULE,
-                            functionLine,
-                            Collections.<IdentNode> emptyList(), 0, moduleScope);
-
-        }
         script.setInternalName(moduleName);
 
         lc.push(script);
@@ -6359,11 +6350,9 @@ public class Parser extends AbstractParser {
 
             addFunctionDeclarations(script);
         } finally {
-            if (moduleBlock) {
-                functionDeclarations = Collections.emptyList();
-            } else {
-                functionDeclarations = null;
-            }
+
+            // module blocks expect an empty list otherwise evaluating the code fails
+            functionDeclarations = moduleBlock ? Collections.emptyList() : null;
 
             restoreBlock(body);
             lc.pop(script);

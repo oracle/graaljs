@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,4 +62,12 @@ var five = test.then( function(moduleBlock) {
     return moduleBlock.resolved;
 }).then(resolved => resolved+1);
 
-[five];
+var eleven = test.then( function(moduleBlock) {
+    return moduleBlock.resolved;
+}).then(resolved => resolved+7);
+
+var aLot = test.then( function(moduleBlock) {
+    return moduleBlock.resolved;
+}).then(resolved => resolved+117);
+
+[aLot, five, eleven];

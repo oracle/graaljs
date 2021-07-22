@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -215,18 +215,13 @@ public class ESModuleTest {
         }
     }
 
-    /**
-     * Test basic module block features via mimicking the {@code} testFunctionExport() +
-     */
-    @Test
-    public void testModuleBlockMimicFunctionExport() throws IOException {
+    private static void testModuleBlockMainMethod(String main, String module) throws IOException {
         File[] allFilesArray = null;
 
         TestOutput out = new TestOutput();
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockFunctionExportTestMimic.js",
-                            "resources" + "/functionexportmodule.js");
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME, "true").build()) {
+            allFilesArray = prepareTestFileAndModules(main, module);
 
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
 
@@ -239,9 +234,22 @@ public class ESModuleTest {
             System.out.println("Square test: " + v.getArrayElement(0));
             System.out.println("Diagonal test: " + v.getArrayElement(1));
             System.out.println("Sqrt test: " + v.getArrayElement(2));
+
+            assertTrue(v.getArrayElement(0).toString().contains("121"));
+            assertTrue(v.getArrayElement(1).toString().contains("5"));
+            assertTrue(v.getArrayElement(2).toString().contains("11"));
         } finally {
             deleteFiles(allFilesArray);
         }
+    }
+
+    /**
+     * Test basic module block features via mimicking the {@code} testFunctionExport() +
+     */
+    @Test
+    public void testModuleBlockMimicFunctionExport() throws IOException {
+        testModuleBlockMainMethod("resources/moduleBlock/moduleBlockFunctionExportTestMimic.js",
+                        "resources/functionexportmodule.js");
     }
 
     /**
@@ -249,29 +257,8 @@ public class ESModuleTest {
      */
     @Test
     public void testModuleBlockPrototype() throws IOException {
-        File[] allFilesArray = null;
-
-        TestOutput out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockPrototype.js",
-                            "resources" + "/functionexportmodule.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            Value v = context.eval(mainSource);
-
-            System.out.println(out);
-
-            assertTrue(v.hasArrayElements());
-
-            System.out.println("Square test: " + v.getArrayElement(0));
-            System.out.println("Diagonal test: " + v.getArrayElement(1));
-            System.out.println("Sqrt test: " + v.getArrayElement(2));
-        } finally {
-            deleteFiles(allFilesArray);
-        }
+        testModuleBlockMainMethod("resources/moduleBlock/moduleBlockPrototype.js",
+                        "resources/functionexportmodule.js");
     }
 
     /**
@@ -279,28 +266,8 @@ public class ESModuleTest {
      */
     @Test
     public void testModuleBlockAsync() throws IOException {
-        File[] allFilesArray = null;
-
-        TestOutput out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockAsync.js",
-                            "resources" + "/functionexportmodule.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            Value v = context.eval(mainSource);
-
-            System.out.println(out);
-
-            assertTrue(v.hasArrayElements());
-
-            System.out.println("Async test: " + v.getArrayElement(0));
-
-        } finally {
-            deleteFiles(allFilesArray);
-        }
+        testModuleBlockMainMethod("resources/moduleBlock/moduleBlockAsync.js",
+                        "resources/functionexportmodule.js");
     }
 
     /**
@@ -308,261 +275,86 @@ public class ESModuleTest {
      */
     @Test
     public void testModuleBlockComparison() throws IOException {
+        testModuleBlockMainMethod("resources/moduleBlock/moduleBlockComparison.js",
+                        "resources/functionexportmodule.js");
+    }
+
+    /**
+     * Helper method executing a benchmark for a main .js-file and a module. The result is printed
+     * to the console with a summary statistic. The time unit is 10 ns.
+     *
+     * @param main
+     * @param module
+     * @throws IOException
+     */
+    private static void benchmark(String main, String module) throws IOException {
+        final int RUNS = 50;
+        final int WARMUP = 20;
+
+        final long TIME_CONVERSION = 10;
+
         File[] allFilesArray = null;
 
         TestOutput out = new TestOutput();
 
+        long[] durations = new long[RUNS];
+        long startTime, endTime;
+
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/moduleBlockComparison.js",
-                            "resources" + "/functionexportmodule.js");
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME, "true").build()) {
+            allFilesArray = prepareTestFileAndModules(main, module);
 
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
 
-            Value v = context.eval(mainSource);
+            // initial eval
+            context.eval(mainSource);
 
-            System.out.println(out);
+            // warmup
+            for (int i = 0; i < WARMUP; i++) {
+                context.parse(mainSource);
+                context.eval(mainSource);
+            }
 
+            // benchmark
+            for (int i = 0; i < RUNS; i++) {
+                startTime = System.nanoTime();
+
+                context.parse(mainSource);
+                context.eval(mainSource);
+
+                endTime = System.nanoTime();
+
+                durations[i] = (endTime - startTime) / TIME_CONVERSION;
+            }
+
+            System.out.println(main.substring(main.lastIndexOf("/") + 1) + " execution times: " + LongStream.of(durations).summaryStatistics());
         } finally {
             deleteFiles(allFilesArray);
         }
     }
 
     /**
-     * Benchmarktest for overhead, is kept running 1000 times each for comparison: 1. Regular file
+     * Benchmark test for overhead, is kept running 50 times each for comparison: 1. Regular file
      * without imports and exports 2. Regular file with module import 3. Regular file without
      * imports and exports but module block encapsulation 4. regular file with module import
      * containing a module block encapsulation
      */
     @Test
     public void testModuleBlockBenchmark() throws IOException {
-        File[] allFilesArray = null;
+        System.out.println("Benchmark for module blocks with k-means algorithm and a toy example: ");
 
-        TestOutput out = new TestOutput();
+        benchmark("resources/moduleBlock/benchmark/kMeansRegular.js", "resources/moduleBlock/benchmark/kMeansRegular.js");
 
-        long[] durations = new long[50];
-        long startTime, endTime;
-        long timeConversion = 10;
+        benchmark("resources/moduleBlock/benchmark/kMeansModuleBlock.js", "resources/moduleBlock/benchmark/kMeansModuleBlock.js");
 
-        System.out.println("Benchmark for module blocks with k-means algorithm: ");
+        benchmark("resources/moduleBlock/benchmark/kMeansModuleImport.js", "resources/moduleBlock/benchmark/kMeansModule.js");
 
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansRegular.js");
+        benchmark("resources/moduleBlock/benchmark/kMeansModuleModuleBlockImport.js",
+                        "resources/moduleBlock/benchmark/kMeansModuleModuleBlock.js");
 
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+        benchmark("resources/moduleBlock/benchmark/toy/regular.js", "resources/moduleBlock/benchmark/toy/regular.js");
 
-            // initial eval
-            context.eval(mainSource);
-
-            // warmup
-            for (int i = 0; i < 20; i++) {
-                context.parse(mainSource);
-                context.eval(mainSource);
-            }
-
-            // benchmark
-            for (int i = 0; i < durations.length; i++) {
-                startTime = System.nanoTime();
-
-                context.parse(mainSource);
-                context.eval(mainSource);
-
-                endTime = System.nanoTime();
-
-                durations[i] = (endTime - startTime) / timeConversion;
-            }
-
-            System.out.println("Regular kMeans execution: " + LongStream.of(durations).summaryStatistics());
-            LongStream.of(durations).forEach(System.out::println);
-        } finally {
-            deleteFiles(allFilesArray);
-        }
-
-        out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansModuleBlock.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            // initial eval
-            context.eval(mainSource);
-
-            // warmup
-            for (int i = 0; i < 20; i++) {
-                context.parse(mainSource);
-                context.eval(mainSource);
-            }
-
-            // benchmark
-            for (int i = 0; i < durations.length; i++) {
-                startTime = System.nanoTime();
-
-                context.parse(mainSource);
-                context.eval(mainSource);
-
-                endTime = System.nanoTime();
-
-                durations[i] = (endTime - startTime) / timeConversion;
-            }
-
-            System.out.println("ModuleBlock kMeans execution: " + LongStream.of(durations).summaryStatistics());
-            LongStream.of(durations).forEach(System.out::println);
-
-        } finally {
-            deleteFiles(allFilesArray);
-        }
-
-        out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansModuleImport.js",
-                            "resources/moduleBlock/benchmark/kMeansModule.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            // initial eval
-            context.eval(mainSource);
-
-            // warmup
-            for (int i = 0; i < 20; i++) {
-                context.parse(mainSource);
-                context.eval(mainSource);
-            }
-
-            // benchmark
-            for (int i = 0; i < durations.length; i++) {
-                startTime = System.nanoTime();
-
-                context.parse(mainSource);
-                context.eval(mainSource);
-
-                endTime = System.nanoTime();
-
-                durations[i] = (endTime - startTime) / timeConversion;
-            }
-
-            System.out.println("Module kMeans execution: " + LongStream.of(durations).summaryStatistics());
-            LongStream.of(durations).forEach(System.out::println);
-
-        } finally {
-            deleteFiles(allFilesArray);
-        }
-
-        out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/kMeansModuleModuleBlockImport.js",
-                            "resources/moduleBlock/benchmark/kMeansModuleModuleBlock.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            // initial eval
-            context.eval(mainSource);
-
-            // warmup
-            for (int i = 0; i < 20; i++) {
-                context.parse(mainSource);
-                context.eval(mainSource);
-            }
-
-            // benchmark
-            for (int i = 0; i < durations.length; i++) {
-                startTime = System.nanoTime();
-
-                context.parse(mainSource);
-                context.eval(mainSource);
-
-                endTime = System.nanoTime();
-
-                durations[i] = (endTime - startTime) / timeConversion;
-            }
-
-            System.out.println("Module ModuleBlock kMeans execution: " + LongStream.of(durations).summaryStatistics());
-            LongStream.of(durations).forEach(System.out::println);
-
-        } finally {
-            deleteFiles(allFilesArray);
-        }
-
-        System.out.println("Benchmark for module blocks with toy function returning 5:");
-
-        out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/toy/regular.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            // initial eval
-            context.eval(mainSource);
-
-            // warmup
-            for (int i = 0; i < 20; i++) {
-                context.parse(mainSource);
-                context.eval(mainSource);
-            }
-
-            // benchmark
-            for (int i = 0; i < durations.length; i++) {
-                startTime = System.nanoTime();
-
-                context.parse(mainSource);
-                context.eval(mainSource);
-
-                endTime = System.nanoTime();
-
-                durations[i] = (endTime - startTime) / timeConversion;
-            }
-
-            System.out.println("Regular toy function call: " + LongStream.of(durations).summaryStatistics());
-            LongStream.of(durations).forEach(System.out::println);
-
-        } finally {
-            deleteFiles(allFilesArray);
-        }
-
-        out = new TestOutput();
-
-        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
-            allFilesArray = prepareTestFileAndModules("resources/moduleBlock/benchmark/toy/regularModuleBlock.js");
-
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
-
-            // initial eval
-            context.eval(mainSource);
-
-            // warmup
-            for (int i = 0; i < 20; i++) {
-                context.parse(mainSource);
-                context.eval(mainSource);
-            }
-
-            // benchmark
-            for (int i = 0; i < durations.length; i++) {
-                startTime = System.nanoTime();
-
-                context.parse(mainSource);
-                context.eval(mainSource);
-
-                endTime = System.nanoTime();
-
-                durations[i] = (endTime - startTime) / timeConversion;
-            }
-
-            System.out.println("Module block toy function call: " + LongStream.of(durations).summaryStatistics());
-            LongStream.of(durations).forEach(System.out::println);
-
-        } finally {
-            deleteFiles(allFilesArray);
-        }
-
+        benchmark("resources/moduleBlock/benchmark/toy/regularModuleBlock.js", "resources/moduleBlock/benchmark/toy/regularModuleBlock.js");
     }
 
     /**
@@ -596,7 +388,7 @@ public class ESModuleTest {
             String mainFilePath = allFilesArray[0].getAbsolutePath();
             String[] mainFileBaseAndExtension = baseAndExtension(mainFilePath);
             File mainFileWithMjsExtension = new File(mainFileBaseAndExtension[0] + ".mjs");
-            // noinspection ResultOfMethodCallIgnored
+            // no inspection ResultOfMethodCallIgnored
             allFilesArray[0].renameTo(mainFileWithMjsExtension);
             Source mainSource = Source.newBuilder(ID, mainFileWithMjsExtension).build();
             Value v = context.eval(mainSource);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,6 +67,14 @@
 
     console.assert(await import(m1) === await import(m2), "The same module block imported twice is not the same.");
 })();
+
+var moduleTest = (async function() {
+    const moduleBlock = module { };
+
+    return await import(moduleBlock);
+})();
+
+[moduleTest.then(v=>121), moduleTest.then(v=>5), moduleTest.then(v=>11)];
 
 // This test can be conducted as soon as the realms proposal: https://github.com/tc39/proposal-realms is implemented
 /*

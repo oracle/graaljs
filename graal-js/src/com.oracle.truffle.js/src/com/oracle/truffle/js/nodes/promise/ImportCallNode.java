@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -133,6 +134,18 @@ public class ImportCallNode extends JavaScriptNode {
             Object executedBody = ((JavaScriptNode) bodyNode).execute(frame);
 
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText.toString(), (String) moduleBlockName).build();
+
+            // TODO
+            /*
+             * System.out.println("TESTING: " + JSObject.hasProperty((DynamicObject) specifier,
+             * ModuleBlockNode.getModuleBodyKey().getName())); System.out.println("TESTING2: " +
+             * JSObject.isJSObject(specifier)); JSObject.ownPropertyKeys((DynamicObject)
+             * specifier).stream().forEach(System.out::println); System.out.println("Keys: " +
+             * JSObject.ownPropertyKeys((DynamicObject) specifier).size());
+             * 
+             * System.out.println("Length: " + JSObject.getKeyArray((DynamicObject)
+             * specifier).length);
+             */
 
             return hostImportModuleDynamically(referencingScriptOrModule, specifier, source);
         }
@@ -221,18 +234,18 @@ public class ImportCallNode extends JavaScriptNode {
         if (context.isOptionTopLevelAwait()) {
             Triple<ScriptOrModule, String, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, specifier, promiseCapability);
             PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
-            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(RootType.TLA), true);
+            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(RootType.TopLevelAwait), true);
             return promiseReactionJobNode.execute(startModuleLoad, request);
         } else {
             Pair<ScriptOrModule, String> request = new Pair<>(referencingScriptOrModule, specifier);
-            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(RootType.IMD), true), request);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(RootType.ImportModuleDynamically), true), request);
         }
     }
 
     public DynamicObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, DynamicObject specifier, Source source, PromiseCapabilityRecord promiseCapability) {
         Triple<ScriptOrModule, DynamicObject, Source> request = new Triple<>(referencingScriptOrModule, specifier, source);
 
-        return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(RootType.MB), true), request);
+        return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(RootType.ModuleBlock), true), request);
     }
 
     /**
@@ -245,9 +258,9 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private static enum RootType {
-        IMD,
-        TLA,
-        MB;
+        ImportModuleDynamically,
+        TopLevelAwait,
+        ModuleBlock;
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context, RootType type) {
@@ -338,12 +351,18 @@ public class ImportCallNode extends JavaScriptNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                @SuppressWarnings("unchecked")
-                Triple<ScriptOrModule, DynamicObject, Source> request = (Triple<ScriptOrModule, DynamicObject, Source>) argumentNode.execute(frame);
+                // @SuppressWarnings("unchecked")
+                assert argumentNode.execute(frame) instanceof Triple<?, ?, ?>;
+                Triple<?, ?, ?> request = (Triple<?, ?, ?>) argumentNode.execute(frame);
 
-                ScriptOrModule referencingScriptOrModule = request.getFirst();
-                DynamicObject moduleBlock = request.getSecond();
-                Source source = request.getThird();
+                assert request.getFirst() instanceof ScriptOrModule;
+                ScriptOrModule referencingScriptOrModule = (ScriptOrModule) request.getFirst();
+
+                assert request.getSecond() instanceof DynamicObject;
+                DynamicObject moduleBlock = (DynamicObject) request.getSecond();
+
+                assert request.getThird() instanceof Source;
+                Source source = (Source) request.getThird();
 
                 JSModuleRecord test = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleBlock, source);
 
@@ -369,13 +388,13 @@ public class ImportCallNode extends JavaScriptNode {
 
         JavaScriptRootNode root;
         switch (type) {
-            case TLA:
+            case TopLevelAwait:
                 root = new TopLevelAwaitImportModuleDynamicallyRootNode();
                 break;
-            case IMD:
+            case ImportModuleDynamically:
                 root = new ImportModuleDynamicallyRootNode();
                 break;
-            case MB:
+            case ModuleBlock:
                 root = new ModuleBlockRootNode();
                 break;
             default:

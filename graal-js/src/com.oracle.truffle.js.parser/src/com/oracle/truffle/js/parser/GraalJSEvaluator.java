@@ -134,7 +134,6 @@ public final class GraalJSEvaluator implements JSParser {
         return parseEval(context, lastNode, source, false, null);
     }
 
-    // TODO
     @Override
     public JavaScriptNode parseModuleBlock(JSContext context, Source source) {
         NodeFactory nodeFactory = NodeFactory.getInstance(context);

@@ -2473,11 +2473,8 @@ public class JSRealm {
         return foreignIterablePrototype;
     }
 
-    // TODO
     private boolean isModuleBlockAvailable() {
-        return true;
-        // return truffleLanguageEnv.isPolyglotBindingsAccessAllowed() &&
-        // truffleLanguageEnv.getInternalLanguages().get("moduleBlock") != null;
+        return getContext().getContextOptions().isModuleBlocks();
     }
 
     public final DynamicObject getModuleBlockConstructor() {
