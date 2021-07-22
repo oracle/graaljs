@@ -3772,8 +3772,9 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
+        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
+            String specifier = moduleRequest.getSpecifier();
             if (referrerCache == null) {
                 referrerCache = new HashMap<>();
                 cache.put(referrer, referrerCache);

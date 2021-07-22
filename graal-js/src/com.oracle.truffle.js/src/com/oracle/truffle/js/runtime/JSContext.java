@@ -430,6 +430,8 @@ public class JSContext {
 
     private final Set<String> supportedImportAssertions;
 
+    private static final String TYPE_IMPORT_ASSERTION = "type";
+
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
      * tree but in shared object factories for the purpose of adding properties to newly allocated
@@ -592,6 +594,9 @@ public class JSContext {
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
 
         this.supportedImportAssertions = contextOptions.isImportAssertions() ? new HashSet<>() : Collections.emptySet();
+        if (contextOptions.isImportAssertions()) {
+            supportedImportAssertions.add(TYPE_IMPORT_ASSERTION);
+        }
 
         if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
@@ -1745,5 +1750,9 @@ public class JSContext {
 
     public final Set<String> getSupportedImportAssertions() {
         return supportedImportAssertions;
+    }
+
+    public static String getTypeImportAssertion() {
+        return TYPE_IMPORT_ASSERTION;
     }
 }

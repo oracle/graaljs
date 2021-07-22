@@ -530,8 +530,14 @@ public final class JSContextOptions {
     @CompilationFinal private boolean errorCause;
 
     public static final String IMPORT_ASSERTIONS_NAME = JS_OPTION_PREFIX + "import-assertions";
-    @Option(name = IMPORT_ASSERTIONS_NAME, category = OptionCategory.USER, help = "Enable import assertions") public static final OptionKey<Boolean> IMPORT_ASSERTIONS = new OptionKey<>(false);
+    @Option(name = IMPORT_ASSERTIONS_NAME, category = OptionCategory.USER, help = "Enable import assertions") //
+    public static final OptionKey<Boolean> IMPORT_ASSERTIONS = new OptionKey<>(false);
     @CompilationFinal private boolean importAssertions;
+
+    public static final String JSON_MODULES_NAME = JS_OPTION_PREFIX + "json-modules";
+    @Option(name = JSON_MODULES_NAME, category = OptionCategory.USER, help = "Enable loading of json modules") //
+    public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(false);
+    @CompilationFinal private boolean jsonModules;
 
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
@@ -626,6 +632,7 @@ public final class JSContextOptions {
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = readBooleanOption(ERROR_CAUSE);
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
+        this.jsonModules = readBooleanOption(JSON_MODULES);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -1008,6 +1015,10 @@ public final class JSContextOptions {
         return importAssertions;
     }
 
+    public boolean isJsonModules() {
+        return jsonModules;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1063,6 +1074,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         hash = 53 * hash + (this.errorCause ? 1 : 0);
         hash = 53 * hash + (this.importAssertions ? 1 : 0);
+        hash = 53 * hash + (this.jsonModules ? 1 : 0);
         return hash;
     }
 
@@ -1229,6 +1241,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.importAssertions != other.importAssertions) {
+            return false;
+        }
+        if (this.jsonModules != other.jsonModules) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

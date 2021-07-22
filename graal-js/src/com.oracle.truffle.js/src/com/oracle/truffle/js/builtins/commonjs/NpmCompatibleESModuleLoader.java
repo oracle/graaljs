@@ -59,6 +59,7 @@ import java.net.URI;
 import java.nio.file.FileSystemNotFoundException;
 import java.util.List;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -96,26 +97,28 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
      * @see <a href="https://nodejs.org/api/esm.html#esm_resolver_algorithm">Resolver algorithm</a>
      *
      * @param referencingModule Referencing ES Module.
-     * @param specifier ES Modules specifier.
+     * @param moduleRequest ES Modules Request.
      * @return ES Module record for this module.
      */
     @TruffleBoundary
     @Override
-    public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
+    public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+        String specifier = moduleRequest.getSpecifier();
         log("IMPORT resolve ", specifier);
         if (isCoreModule(specifier)) {
-            return loadCoreModule(referencingModule, specifier);
+            return loadCoreModule(referencingModule, moduleRequest);
         }
         try {
             TruffleFile file = resolveURL(referencingModule, specifier);
-            return loadModuleFromUrl(referencingModule, specifier, file, file.getPath());
+            return loadModuleFromUrl(referencingModule, moduleRequest, file, file.getPath());
         } catch (IOException e) {
             log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
             throw Errors.createErrorFromException(e);
         }
     }
 
-    private JSModuleRecord loadCoreModule(ScriptOrModule referencingModule, String specifier) {
+    private JSModuleRecord loadCoreModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+        String specifier = moduleRequest.getSpecifier();
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {
@@ -130,7 +133,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 // Load from URI
                 TruffleFile file = resolveURL(referencingModule, moduleReplacementName);
                 try {
-                    return loadModuleFromUrl(referencingModule, specifier, file, file.getPath());
+                    return loadModuleFromUrl(referencingModule, moduleRequest, file, file.getPath());
                 } catch (IOException e) {
                     throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
                 }

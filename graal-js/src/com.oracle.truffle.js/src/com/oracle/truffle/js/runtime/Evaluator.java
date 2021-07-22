@@ -93,6 +93,8 @@ public interface Evaluator {
      */
     JSModuleData envParseModule(JSRealm realm, Source source);
 
+    JSModuleRecord parseJSONModule(JSRealm realm, Source source);
+
     JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referencingScriptOrModule, Module.ModuleRequest moduleRequest);
 
     void moduleInstantiation(JSRealm realm, JSModuleRecord moduleRecord);
