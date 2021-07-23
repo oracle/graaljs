@@ -169,19 +169,15 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
     protected final Object doNonArrayIndex(Object value,
                     @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
                     @Cached JSToPropertyKeyNode toPropertyKey,
-                    @Cached ConditionProfile arrayIndexLengthInRangeBranch,
-                    @Cached ConditionProfile startsWithDigitBranch,
-                    @Cached BranchProfile isArrayIndexBranch) {
+                    @Cached("createNoToPropertyKey()") ToArrayIndexNode recursive) {
         CompilerAsserts.partialEvaluationConstant(convertToPropertyKey);
         if (convertToPropertyKey) {
             Object propertyKey = toPropertyKey.execute(value);
-            if (convertStringToIndex && propertyKey instanceof String) {
-                String stringKey = (String) propertyKey;
-                if (arrayIndexLengthInRangeBranch.profile(JSRuntime.arrayIndexLengthInRange(stringKey))) {
-                    return convertFromString(stringKey, startsWithDigitBranch, isArrayIndexBranch);
-                }
+            if (convertStringToIndex) {
+                return recursive.execute(propertyKey);
+            } else {
+                return propertyKey;
             }
-            return propertyKey;
         } else {
             return value;
         }
