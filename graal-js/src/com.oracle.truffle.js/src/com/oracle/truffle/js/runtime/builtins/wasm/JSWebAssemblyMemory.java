@@ -43,8 +43,6 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropException;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -113,7 +111,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSWebAssemblyMemoryObject create(JSContext context, Object wasmMemory) {
-        DynamicObject bufferObject = createBufferObject(context, wasmMemory);
+        DynamicObject bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, wasmMemory);
         JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
         JSWebAssemblyMemoryObject object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory, bufferObject);
@@ -142,16 +140,6 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         });
 
         return JSFunction.create(realm, getterData);
-    }
-
-    public static DynamicObject createBufferObject(JSContext context, Object wasmMemory) {
-        try {
-            Object bufferFn = InteropLibrary.getUncached(wasmMemory).readMember(wasmMemory, BUFFER);
-            Object wasmBuffer = InteropLibrary.getUncached(bufferFn).execute(bufferFn);
-            return JSArrayBuffer.createInteropArrayBuffer(context, wasmBuffer);
-        } catch (InteropException ex) {
-            throw Errors.shouldNotReachHere(ex);
-        }
     }
 
 }

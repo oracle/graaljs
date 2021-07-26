@@ -68,7 +68,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     public void resetBufferObject() {
         DynamicObject oldBufferObject = bufferObject;
         JSArrayBuffer.detachArrayBuffer(oldBufferObject);
-        bufferObject = JSWebAssemblyMemory.createBufferObject(JSObject.getJSContext(oldBufferObject), wasmMemory);
+        bufferObject = JSArrayBuffer.createInteropArrayBuffer(JSObject.getJSContext(oldBufferObject), wasmMemory);
     }
 
 }
