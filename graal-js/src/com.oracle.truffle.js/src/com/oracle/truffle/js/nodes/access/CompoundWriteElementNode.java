@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index, Object receiver) {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndex(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)), receiver);
+        return super.executeWithTargetAndIndex(frame, target, writeIndex(frame, toArrayIndex(index)), receiver);
     }
 
     @Override
@@ -82,7 +82,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndexInt(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)), receiver);
+        return super.executeWithTargetAndIndexInt(frame, target, writeIndex(frame, toArrayIndex(index)), receiver);
     }
 
     @Override
@@ -94,7 +94,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
         requireObjectCoercible(target, index);
-        return super.executeWithTargetAndIndexDouble(frame, target, writeIndex(frame, toArrayIndexNode().execute(index)), receiver);
+        return super.executeWithTargetAndIndexDouble(frame, target, writeIndex(frame, toArrayIndex(index)), receiver);
     }
 
     @Override
@@ -119,8 +119,11 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(targetNode, materializedTags), cloneUninitialized(indexNode, materializedTags), cloneUninitialized(valueNode, materializedTags),
-                        cloneUninitialized(writeIndexNode, materializedTags), getContext(), isStrict(), writeOwn());
+        return create(cloneUninitialized(targetNode, materializedTags),
+                        cloneUninitialized(indexNode, materializedTags),
+                        cloneUninitialized(valueNode, materializedTags),
+                        cloneUninitialized(writeIndexNode, materializedTags),
+                        getContext(), isStrict(), writeOwn());
     }
 
     @Override

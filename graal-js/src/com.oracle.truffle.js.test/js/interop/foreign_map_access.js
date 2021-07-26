@@ -18,10 +18,22 @@ foreignMap.put(13.37, 3.14);
 
 assertSame("value", foreignMap["key"]);
 assertSame("value", foreignMap.key);
-assertSame(42, foreignMap[obj]);
+assertSame("value", foreignMap.get("key"));
+
+assertSame(42, foreignMap.get(obj));
+assertSame(undefined, foreignMap[obj]);
+foreignMap[obj] = 43;
+assertSame(43, foreignMap[obj]);
+assertSame(43, foreignMap['[object Object]']);
+
+assertSame(3.14, foreignMap.get(13.37));
+assertSame(undefined, foreignMap[13.37]);
+foreignMap[13.37] = 3.14;
 assertSame(3.14, foreignMap[13.37]);
+
 assertSame(undefined, foreignMap['unknown']);
 assertSame(undefined, foreignMap.unknown);
+assertSame(null, foreignMap.get("unknown"));
 
 foreignMap["key2"] = "value2"
 foreignMap.key3 = "value3"

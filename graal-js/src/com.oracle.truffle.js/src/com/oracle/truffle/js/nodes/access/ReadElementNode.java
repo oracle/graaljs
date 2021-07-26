@@ -71,11 +71,9 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -1585,13 +1583,12 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         private final Class<?> targetClass;
 
         @Child private InteropLibrary interop;
-        @Child private InteropLibrary keyInterop;
-        @Child private ExportValueNode exportKeyNode;
+        @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private ImportValueNode importValueNode;
         @Child private InteropLibrary getterInterop;
         @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
         @Child private ReadElementNode readFromPrototypeNode;
-        @Child private JSToStringNode toStringNode;
+        @Child private ToArrayIndexNode toArrayIndexNode;
 
         private final BranchProfile errorBranch = BranchProfile.create();
         @CompilationFinal private boolean optimistic = true;
@@ -1599,11 +1596,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         ForeignObjectReadElementTypeCacheNode(Class<?> targetClass, ReadElementTypeCacheNode next) {
             super(next);
             this.targetClass = targetClass;
-            this.exportKeyNode = ExportValueNode.create();
             this.importValueNode = ImportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.toStringNode = JSToStringNode.create();
         }
 
         @Override
@@ -1613,32 +1607,41 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 errorBranch.enter();
                 throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
             }
-            Object exportedKey = exportKeyNode.execute(index);
-            Object foreignResult = getImpl(truffleObject, exportedKey, root);
+            Object foreignResult = getImpl(truffleObject, index, root);
             return importValueNode.executeWithTarget(foreignResult);
         }
 
-        private Object getImpl(Object truffleObject, Object exportedKey, ReadElementNode root) {
-            if (exportedKey instanceof Symbol) {
-                return maybeReadFromPrototype(truffleObject, exportedKey, root.context);
-            }
+        private Object getImpl(Object truffleObject, Object key, ReadElementNode root) {
+            Object propertyKey;
             boolean hasArrayElements = interop.hasArrayElements(truffleObject);
-            if (hasArrayElements && keyInterop.fitsInLong(exportedKey)) {
+            if (hasArrayElements) {
                 try {
-                    return interop.readArrayElement(truffleObject, keyInterop.asLong(exportedKey));
+                    Object indexOrPropertyKey = toArrayIndex(key);
+                    if (indexOrPropertyKey instanceof Long) {
+                        return interop.readArrayElement(truffleObject, (long) indexOrPropertyKey);
+                    } else {
+                        propertyKey = indexOrPropertyKey;
+                        assert JSRuntime.isPropertyKey(propertyKey);
+                    }
                 } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
-            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            } else {
+                propertyKey = toPropertyKey(key);
+            }
+            if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
-                    return interop.readHashValue(truffleObject, exportedKey);
+                    return interop.readHashValue(truffleObject, propertyKey);
                 } catch (UnknownKeyException e) {
                     // fall through: still need to try members
                 } catch (UnsupportedMessageException e) {
                     return Undefined.instance;
                 }
             }
-            String stringKey = toStringNode.executeString(exportedKey);
+            if (propertyKey instanceof Symbol) {
+                return maybeReadFromPrototype(truffleObject, propertyKey, root.context);
+            }
+            String stringKey = (String) propertyKey;
             if (hasArrayElements && JSAbstractArray.LENGTH.equals(stringKey)) {
                 return getSize(truffleObject);
             }
@@ -1741,6 +1744,22 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Override
         public boolean guard(Object target) {
             return targetClass.isInstance(target) && !JSDynamicObject.isJSDynamicObject(target);
+        }
+
+        private Object toArrayIndex(Object maybeIndex) {
+            if (toArrayIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toArrayIndexNode = insert(ToArrayIndexNode.create());
+            }
+            return toArrayIndexNode.execute(maybeIndex);
+        }
+
+        private Object toPropertyKey(Object index) {
+            if (toPropertyKeyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
+            }
+            return toPropertyKeyNode.execute(index);
         }
     }
 

@@ -117,7 +117,7 @@ public class MapTest {
                         "}; str;";
         try (Context context = JSTest.newContextBuilder("js").allowHostAccess(HostAccess.ALL).allowHostClassLookup(c -> true).build()) {
             Value result = context.eval("js", source);
-            Assert.assertEquals("1AA", result.asString());
+            Assert.assertEquals("1undefinedA", result.asString());
         }
     }
 

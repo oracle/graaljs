@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Import Assertions](https://tc39.es/proposal-import-assertions) proposal. It is available behind the experimental option `--js.import-assertions`.
 * Added support for `collation` option of `Intl.Collator`.
 * Added support for `dayPeriod` and `fractionalSecondDigits` options of `Intl.DateTimeFormat`.
+* Changed foreign hash map access using `map[key]` syntax to convert the key to a string or symbol.
 
 ## Version 21.2.0
 * Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.

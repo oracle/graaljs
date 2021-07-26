@@ -75,7 +75,6 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
@@ -174,12 +173,12 @@ public class WriteElementNode extends JSTargetableNode {
         this.requireObjectCoercibleNode = RequireObjectCoercibleNode.create();
     }
 
-    protected final ToArrayIndexNode toArrayIndexNode() {
+    protected final Object toArrayIndex(Object index) {
         if (toArrayIndexNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toArrayIndexNode = insert(ToArrayIndexNode.create());
+            toArrayIndexNode = insert(ToArrayIndexNode.createNoStringToIndex());
         }
-        return toArrayIndexNode;
+        return toArrayIndexNode.execute(index);
     }
 
     protected final void requireObjectCoercible(Object target, int index) {
@@ -280,7 +279,7 @@ public class WriteElementNode extends JSTargetableNode {
                 return executeWithTargetAndIndex(frame, target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index), receiver);
+                return executeWithTargetAndIndex(frame, target, toArrayIndex(index), receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -289,7 +288,7 @@ public class WriteElementNode extends JSTargetableNode {
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
-                return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(e.getResult()), receiver);
+                return executeWithTargetAndIndex(frame, target, toArrayIndex(e.getResult()), receiver);
             }
             requireObjectCoercible(target, index);
             return executeWithTargetAndIndex(frame, target, index, receiver);
@@ -297,7 +296,7 @@ public class WriteElementNode extends JSTargetableNode {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndex(frame, target, toArrayIndexNode().execute(index), receiver);
+            return executeWithTargetAndIndex(frame, target, toArrayIndex(index), receiver);
         }
     }
 
@@ -312,7 +311,7 @@ public class WriteElementNode extends JSTargetableNode {
                 return executeWithTargetAndIndexInt(frame, target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index), receiver);
+                return executeWithTargetAndIndexInt(frame, target, toArrayIndex(index), receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -321,7 +320,7 @@ public class WriteElementNode extends JSTargetableNode {
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
-                return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(e.getResult()), receiver);
+                return executeWithTargetAndIndexInt(frame, target, toArrayIndex(e.getResult()), receiver);
             }
             requireObjectCoercible(target, index);
             return executeWithTargetAndIndexInt(frame, target, index, receiver);
@@ -329,7 +328,7 @@ public class WriteElementNode extends JSTargetableNode {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndexInt(frame, target, toArrayIndexNode().execute(index), receiver);
+            return executeWithTargetAndIndexInt(frame, target, toArrayIndex(index), receiver);
         }
     }
 
@@ -344,7 +343,7 @@ public class WriteElementNode extends JSTargetableNode {
                 return executeWithTargetAndIndexDouble(frame, target, (int) index, receiver);
             } else {
                 indexState = INDEX_OBJECT;
-                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index), receiver);
+                return executeWithTargetAndIndexDouble(frame, target, toArrayIndex(index), receiver);
             }
         } else if (is == INDEX_INT) {
             int index;
@@ -353,7 +352,7 @@ public class WriteElementNode extends JSTargetableNode {
             } catch (UnexpectedResultException e) {
                 indexState = INDEX_OBJECT;
                 requireObjectCoercible(target, e.getResult());
-                return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(e.getResult()), receiver);
+                return executeWithTargetAndIndexDouble(frame, target, toArrayIndex(e.getResult()), receiver);
             }
             requireObjectCoercible(target, index);
             return executeWithTargetAndIndexDouble(frame, target, index, receiver);
@@ -361,7 +360,7 @@ public class WriteElementNode extends JSTargetableNode {
             assert is == INDEX_OBJECT;
             Object index = indexNode.execute(frame);
             requireObjectCoercible(target, index);
-            return executeWithTargetAndIndexDouble(frame, target, toArrayIndexNode().execute(index), receiver);
+            return executeWithTargetAndIndexDouble(frame, target, toArrayIndex(index), receiver);
         }
     }
 
@@ -1668,22 +1667,23 @@ public class WriteElementNode extends JSTargetableNode {
 
     private static class StringWriteElementTypeCacheNode extends ToPropertyKeyCachedWriteElementTypeCacheNode {
         private final Class<?> stringClass;
-        private final BranchProfile intIndexBranch = BranchProfile.create();
-        private final BranchProfile stringIndexBranch = BranchProfile.create();
+        private final ConditionProfile isIndexProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isImmutable = ConditionProfile.createBinaryProfile();
+        @Child private ToArrayIndexNode toArrayIndexNode;
 
         StringWriteElementTypeCacheNode(Class<?> stringClass, WriteElementTypeCacheNode next) {
             super(next);
             this.stringClass = stringClass;
+            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             CharSequence charSequence = (CharSequence) stringClass.cast(target);
-            if (index instanceof Integer) {
-                intIndexBranch.enter();
-                int intIndex = (int) index;
-                if (isImmutable.profile(intIndex >= 0 && intIndex < JSRuntime.length(charSequence))) {
+            Object convertedIndex = toArrayIndexNode.execute(index);
+            if (isIndexProfile.profile(convertedIndex instanceof Long)) {
+                long longIndex = (long) convertedIndex;
+                if (isImmutable.profile(longIndex >= 0 && longIndex < JSRuntime.length(charSequence))) {
                     // cannot set characters of immutable strings
                     if (root.isStrict) {
                         throw Errors.createTypeErrorNotWritableProperty(Boundaries.stringValueOf(index), charSequence, this);
@@ -1691,7 +1691,6 @@ public class WriteElementNode extends JSTargetableNode {
                     return;
                 }
             }
-            stringIndexBranch.enter();
             JSObject.setWithReceiver(JSString.create(root.context, charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
@@ -1821,19 +1820,17 @@ public class WriteElementNode extends JSTargetableNode {
         @Child private InteropLibrary interop;
         @Child private InteropLibrary keyInterop;
         @Child private InteropLibrary setterInterop;
-        @Child private ExportValueNode exportKey;
+        @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private ExportValueNode exportValue;
-        @Child private JSToStringNode toStringNode;
+        @Child private ToArrayIndexNode toArrayIndexNode;
         private final BranchProfile errorBranch = BranchProfile.create();
 
         TruffleObjectWriteElementTypeCacheNode(Class<?> targetClass, WriteElementTypeCacheNode next) {
             super(next);
             this.targetClass = targetClass;
-            this.exportKey = ExportValueNode.create();
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.toStringNode = JSToStringNode.create();
         }
 
         @Override
@@ -1842,43 +1839,58 @@ public class WriteElementNode extends JSTargetableNode {
             if (interop.isNull(truffleObject)) {
                 throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this, root.getContext());
             }
-            Object convertedKey = exportKey.execute(index);
-            if (convertedKey instanceof Symbol) {
-                return;
-            }
+            Object propertyKey;
             Object exportedValue = exportValue.execute(value);
-            if (interop.hasArrayElements(truffleObject) && keyInterop.fitsInLong(convertedKey)) {
-                try {
-                    interop.writeArrayElement(truffleObject, keyInterop.asLong(convertedKey), exportedValue);
-                } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
-                    if (root.isStrict) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+            if (interop.hasArrayElements(truffleObject)) {
+                Object indexOrPropertyKey = toArrayIndex(index);
+                if (indexOrPropertyKey instanceof Long) {
+                    try {
+                        interop.writeArrayElement(truffleObject, (long) indexOrPropertyKey, exportedValue);
+                        return;
+                    } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
+                        if (root.isStrict) {
+                            errorBranch.enter();
+                            throw Errors.createTypeErrorInteropException(truffleObject, e, "writeArrayElement", this);
+                        } else {
+                            return;
+                        }
                     }
+                } else {
+                    propertyKey = indexOrPropertyKey;
+                    assert JSRuntime.isPropertyKey(propertyKey);
                 }
-            } else if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            } else {
+                propertyKey = toPropertyKey(index);
+            }
+            if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
-                    interop.writeHashEntry(truffleObject, convertedKey, exportedValue);
+                    interop.writeHashEntry(truffleObject, propertyKey, exportedValue);
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     if (root.isStrict) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
-                    }
-                }
-            } else {
-                String propertyKey = toStringNode.executeString(convertedKey);
-                if (root.context.isOptionNashornCompatibilityMode()) {
-                    if (tryInvokeSetter(truffleObject, propertyKey, exportedValue, root.context)) {
+                    } else {
                         return;
                     }
                 }
-                try {
-                    interop.writeMember(truffleObject, propertyKey, exportedValue);
-                } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
-                    if (root.isStrict) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
-                    }
+            }
+            if (propertyKey instanceof Symbol) {
+                return;
+            }
+            String stringKey = (String) propertyKey;
+            if (root.context.isOptionNashornCompatibilityMode()) {
+                if (tryInvokeSetter(truffleObject, stringKey, exportedValue, root.context)) {
+                    return;
+                }
+            }
+            try {
+                interop.writeMember(truffleObject, stringKey, exportedValue);
+            } catch (UnknownIdentifierException | UnsupportedTypeException | UnsupportedMessageException e) {
+                if (root.isStrict) {
+                    errorBranch.enter();
+                    throw Errors.createTypeErrorInteropException(truffleObject, e, "writeMember", this);
+                } else {
+                    return;
                 }
             }
         }
@@ -1921,6 +1933,22 @@ public class WriteElementNode extends JSTargetableNode {
                 }
             }
             return false;
+        }
+
+        private Object toArrayIndex(Object index) {
+            if (toArrayIndexNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toArrayIndexNode = insert(ToArrayIndexNode.create());
+            }
+            return toArrayIndexNode.execute(index);
+        }
+
+        private Object toPropertyKey(Object index) {
+            if (toPropertyKeyNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
+            }
+            return toPropertyKeyNode.execute(index);
         }
     }
 
