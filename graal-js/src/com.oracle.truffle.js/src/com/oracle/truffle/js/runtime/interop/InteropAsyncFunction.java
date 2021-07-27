@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,11 +41,10 @@
 package com.oracle.truffle.js.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -97,12 +96,13 @@ public final class InteropAsyncFunction extends InteropFunction {
 
     @ExportMessage
     Object execute(Object[] arguments,
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropExecuteNode callNode,
                     @Cached ExportValueNode exportNode,
-                    @Cached(value = "create(realm.getContext())") UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
-        assert realm.getContext().getContextOptions().interopCompletePromises();
+                    @Cached UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        assert language.getJSContext().getContextOptions().interopCompletePromises();
+        JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         Object result;
         try {

@@ -333,7 +333,6 @@ public class JSContext {
     private static final int REALM_INITIALIZING = 1;
     private static final int REALM_INITIALIZED = 2;
 
-    private final ContextReference<JSRealm> contextRef;
     @CompilationFinal private AllocationReporter allocationReporter;
 
     private final JSContextOptions contextOptions;
@@ -448,7 +447,6 @@ public class JSContext {
         }
 
         this.language = lang;
-        this.contextRef = getContextReference(lang);
         this.initialEnvironment = env;
 
         this.sharedRootNode = new SharedRootNode();
@@ -601,11 +599,6 @@ public class JSContext {
         if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static ContextReference<JSRealm> getContextReference(JavaScriptLanguage lang) {
-        return lang.getContextReference();
     }
 
     public final Evaluator getEvaluator() {
@@ -789,9 +782,9 @@ public class JSContext {
     /**
      * Get the current Realm using {@link ContextReference}.
      */
-    public JSRealm getRealm() {
+    private JSRealm getRealm() {
         assert realmInit.get() == REALM_INITIALIZED : "getRealm() while initializing Realm";
-        JSRealm currentRealm = contextRef.get();
+        JSRealm currentRealm = JSRealm.get(null);
         assert currentRealm != null;
         return currentRealm;
     }
@@ -1248,7 +1241,7 @@ public class JSContext {
         return result;
     }
 
-    public JSAgent getJSAgent() {
+    private JSAgent getJSAgent() {
         return getRealm().getAgent();
     }
 

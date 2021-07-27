@@ -2263,7 +2263,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
-        return factory.createCallApplyArguments(context, (JSFunctionCallNode) factory.createFunctionCall(context, function, args));
+        return factory.createCallApplyArguments((JSFunctionCallNode) factory.createFunctionCall(context, function, args));
     }
 
     private JavaScriptNode createCallDirectSuper(JavaScriptNode function, JavaScriptNode[] args) {

@@ -820,7 +820,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             String thisStr = JSRuntime.toStringIsString(thisObj);
             if (root.getKey() instanceof String) {
-                Object boxedString = root.getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
+                Object boxedString = root.getRealm().getEnv().asBoxedGuestValue(thisStr);
                 try {
                     return interop.readMember(boxedString, (String) root.getKey());
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
@@ -999,7 +999,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
         private Object tryGetters(Object thisObj, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = context.getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 Object result = tryInvokeGetter(thisObj, "get", root);
                 if (result != null) {
@@ -1387,7 +1387,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     kind = CONSTRUCTOR;
                 }
             }
-            JSRealm realm = JSFunction.getRealm(functionObj, context);
+            JSRealm realm = JSFunction.getRealm(functionObj, context, this);
             // Function kind guaranteed by shape check, see JSFunction
             DynamicObject prototype;
             if (kind == CONSTRUCTOR) {
@@ -1699,7 +1699,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         if (JSConfig.SubstrateVM) {
             return null;
         }
-        if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
+        if (context.isOptionNashornCompatibilityMode() && getRealm().isJavaInteropEnabled()) {
             if (JSRuntime.isString(thisObj) && isMethod()) {
                 return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
             }

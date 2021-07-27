@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,8 +76,8 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     private JSSymbol() {
     }
 
-    public static DynamicObject create(JSContext context, Symbol symbol) {
-        DynamicObject mapObj = JSSymbolObject.create(context.getRealm(), context.getSymbolFactory(), symbol);
+    public static DynamicObject create(JSContext context, JSRealm realm, Symbol symbol) {
+        DynamicObject mapObj = JSSymbolObject.create(realm, context.getSymbolFactory(), symbol);
         assert isJSSymbol(mapObj);
         return context.trackAllocation(mapObj);
     }
@@ -146,7 +146,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
         return "[" + CLASS_NAME + "]";
     }
 

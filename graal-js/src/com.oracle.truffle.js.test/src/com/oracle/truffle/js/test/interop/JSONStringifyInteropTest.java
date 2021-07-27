@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,14 +57,13 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.test.JSTest;
 
@@ -177,9 +176,9 @@ public class JSONStringifyInteropTest {
         @ExportMessage
         @TruffleBoundary
         final Object getMembers(@SuppressWarnings("unused") boolean includeInternal,
-                        @CachedContext(JavaScriptLanguage.class) JSRealm realm) {
+                        @CachedLibrary("this") InteropLibrary self) {
             Set<String> keys = invocables.keySet();
-            TruffleLanguage.Env env = realm.getEnv();
+            TruffleLanguage.Env env = JSRealm.get(self).getEnv();
             return env.asGuestValue(keys.toArray(new Object[keys.size()]));
         }
     }

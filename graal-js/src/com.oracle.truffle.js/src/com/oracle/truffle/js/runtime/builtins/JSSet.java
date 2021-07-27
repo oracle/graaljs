@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -80,8 +81,7 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
     private JSSet() {
     }
 
-    public static DynamicObject create(JSContext context) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getSetFactory();
         DynamicObject obj = factory.initProto(new JSSetObject(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSSet(obj);
@@ -180,8 +180,8 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {
             JSHashMap set = JSSet.getInternalSet(obj);

@@ -91,7 +91,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
     /**
      * @see GraalJSAccess#objectTemplateInstantiate
      */
-    public static ObjectTemplateNode fromObjectTemplate(ObjectTemplate template, JSContext context, GraalJSAccess graalJSAccess) {
+    public static ObjectTemplateNode fromObjectTemplate(ObjectTemplate template, JSContext context, GraalJSAccess graalJSAccess, JSRealm realm) {
         List<ObjectLiteralNode.ObjectLiteralMemberNode> members = new ArrayList<>();
 
         for (Accessor accessor : template.getAccessors()) {
@@ -113,7 +113,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
             if (propertyValue instanceof FunctionTemplate) {
                 // process all found FunctionTemplates, recursively
                 FunctionTemplate functionTempl = (FunctionTemplate) propertyValue;
-                valueNode = JSConstantNode.create(graalJSAccess.functionTemplateGetFunction(context.getRealm(), functionTempl));
+                valueNode = JSConstantNode.create(graalJSAccess.functionTemplateGetFunction(realm, functionTempl));
             } else {
                 valueNode = JSConstantNode.create(propertyValue);
             }
@@ -121,7 +121,6 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
             int attributes = value.getAttributes();
             if (propertyValue instanceof Pair) {
                 Pair<?, ?> pair = (Pair<?, ?>) propertyValue;
-                JSRealm realm = context.getRealm();
                 Object getterTemplate = pair.getFirst();
                 Object setterTemplate = pair.getSecond();
                 Object getter = (getterTemplate == null) ? Undefined.instance : graalJSAccess.functionTemplateGetFunction(realm, getterTemplate);

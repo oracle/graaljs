@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,6 +74,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.control.ReturnException;
 import com.oracle.truffle.js.nodes.control.YieldException;
@@ -88,7 +89,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class FineGrainedAccessTest {
@@ -505,7 +505,7 @@ public abstract class FineGrainedAccessTest {
 
     protected static final Consumer<Event> assertGlobalObjectInput = (e) -> {
         assertTrue(JSDynamicObject.isJSDynamicObject(e.val));
-        DynamicObject globalObject = JSObject.getJSContext((DynamicObject) e.val).getRealm().getGlobalObject();
+        DynamicObject globalObject = JavaScriptLanguage.getCurrentJSRealm().getGlobalObject();
         assertEquals(globalObject, e.val);
     };
 

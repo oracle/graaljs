@@ -75,7 +75,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     private DynamicObject getNativeUtf8Write() {
-        return GraalJSAccess.getRealmEmbedderData(getContext().getRealm()).getNativeUtf8Write();
+        return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Write();
     }
 
     @Specialization(guards = "accept(target)")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,18 @@
  */
 package com.oracle.truffle.trufflenode.serialization;
 
+import java.io.UnsupportedEncodingException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -76,14 +83,6 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
 
-import java.io.UnsupportedEncodingException;
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Map;
-
 /**
  * Implementation of {@code v8::(internal::)ValueSerializer}.
  */
@@ -108,9 +107,9 @@ public class Serializer {
     private final Env env;
     private final GraalJSAccess access;
 
-    public Serializer(JSContext mainJSContext, GraalJSAccess access, long delegate) {
+    public Serializer(Env env, GraalJSAccess access, long delegate) {
         this.delegate = delegate;
-        this.env = mainJSContext.getRealm().getEnv();
+        this.env = env;
         this.access = access;
     }
 

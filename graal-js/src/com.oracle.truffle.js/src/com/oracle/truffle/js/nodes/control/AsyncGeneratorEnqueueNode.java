@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,10 +71,8 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
     private final ConditionProfile notExecutingProf = ConditionProfile.createBinaryProfile();
-    private final JSContext context;
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
-        this.context = context;
         this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
         this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
         this.hasAsyncGeneratorInternalSlotsNode = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_QUEUE_ID);
@@ -120,7 +118,7 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     }
 
     private Object badGeneratorError(PromiseCapabilityRecord promiseCapability) {
-        Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(context);
+        Object badGeneratorError = Errors.createTypeErrorAsyncGeneratorObjectExpected().getErrorObjectEager(getRealm());
         Object reject = promiseCapability.getReject();
         callPromiseRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, reject, badGeneratorError));
         return promiseCapability.getPromise();

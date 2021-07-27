@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,8 +104,7 @@ public final class JSModuleNamespace extends JSNonProxy {
         return ((JSModuleNamespaceObject) obj).getExports();
     }
 
-    public static DynamicObject create(JSContext context, JSModuleRecord module, Map<String, ExportResolution> exports) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject create(JSContext context, JSRealm realm, JSModuleRecord module, Map<String, ExportResolution> exports) {
         JSObjectFactory factory = context.getModuleNamespaceFactory();
         DynamicObject obj = JSModuleNamespaceObject.create(realm, factory, module, exports);
         assert isJSModuleNamespace(obj);
@@ -136,7 +135,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
         return "[" + CLASS_NAME + "]";
     }
 

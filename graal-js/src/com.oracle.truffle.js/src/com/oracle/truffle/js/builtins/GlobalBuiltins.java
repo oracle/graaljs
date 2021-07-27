@@ -424,7 +424,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private Object execIntl(String cmd, String input) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             DynamicObject globalObj = realm.getGlobalObject();
             StringTokenizer tok = new StringTokenizer(cmd);
@@ -1207,7 +1207,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object indirectEvalString(String source) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             return parseIndirectEval(realm, source).runEval(callNode, realm);
         }
 
@@ -1324,7 +1324,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected Object print(Object[] arguments) {
             // without a StringBuilder, synchronization fails testnashorn JDK-8041998.js
             StringBuilder builder = new StringBuilder();
-            JSConsoleUtil consoleUtil = getContext().getRealm().getConsoleUtil();
+            JSConsoleUtil consoleUtil = getRealm().getConsoleUtil();
             if (consoleUtil.getConsoleIndentation() > 0) {
                 consoleIndentation.enter();
                 Boundaries.builderAppend(builder, consoleUtil.getConsoleIndentationString());
@@ -1345,7 +1345,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         private Object printIntl(StringBuilder builder) {
             builder.append(JSRuntime.LINE_SEPARATOR);
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             PrintWriter writer = useErr ? realm.getErrorWriter() : realm.getOutputWriter();
             writer.print(builder.toString());
             writer.flush();
@@ -1362,7 +1362,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization
         protected Object loadString(String path, Object[] args) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             return loadFromPath(path, realm, args);
         }
 
@@ -1374,7 +1374,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "isForeignObject(scriptObj)")
         protected Object loadTruffleObject(Object scriptObj, Object[] args,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(scriptObj)) {
                 Object hostObject = env.asHostObject(scriptObj);
@@ -1395,7 +1395,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization(guards = "isJSObject(scriptObj)")
         protected Object loadScriptObj(DynamicObject scriptObj, Object[] args,
                         @Cached("create()") JSToStringNode sourceToStringNode) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             if (JSObject.hasProperty(scriptObj, EVAL_OBJ_FILE_NAME) && JSObject.hasProperty(scriptObj, EVAL_OBJ_SOURCE)) {
                 Object scriptNameObj = JSObject.get(scriptObj, EVAL_OBJ_FILE_NAME);
                 Object sourceObj = JSObject.get(scriptObj, EVAL_OBJ_SOURCE);
@@ -1442,7 +1442,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             TruffleContext childContext = childRealm.getTruffleContext();
             Object prev = childContext.enter(this);
             try {
-                DynamicObject argumentsArray = JSArray.createConstant(getContext(), args);
+                DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
                 return loadStringImpl(getContext(), fileName, source).run(childRealm);
@@ -1458,7 +1458,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             TruffleContext childContext = childRealm.getTruffleContext();
             Object prev = childContext.enter(this);
             try {
-                DynamicObject argumentsArray = JSArray.createConstant(getContext(), args);
+                DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
                 Source source = sourceFromPath(path, childRealm);
@@ -1538,10 +1538,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         private Object doReadLine(String promptString) {
             if (promptString != null) {
-                getContext().getRealm().getOutputWriter().print(promptString);
+                getRealm().getOutputWriter().print(promptString);
             }
             try {
-                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getContext().getRealm().getEnv().in()));
+                final BufferedReader inReader = new BufferedReader(new InputStreamReader(getRealm().getEnv().in()));
                 String result = inReader.readLine();
                 return result == null ? (returnNullWhenEmpty ? Null.instance : Undefined.instance) : result;
             } catch (Exception ex) {
@@ -1587,7 +1587,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected String read(Object fileParam) {
-            TruffleFile file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
+            TruffleFile file = getFileFromArgument(fileParam, getRealm().getEnv());
 
             try {
                 return readImpl(file.newBufferedReader());
@@ -1623,7 +1623,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected final DynamicObject readbuffer(Object fileParam) {
-            TruffleFile file = getFileFromArgument(fileParam, getContext().getRealm().getEnv());
+            JSRealm realm = getRealm();
+            TruffleFile file = getFileFromArgument(fileParam, realm.getEnv());
 
             try {
                 final byte[] bytes = file.readAllBytes();
@@ -1633,9 +1634,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                     ByteBuffer buffer = ByteBuffer.allocateDirect(bytes.length);
                     buffer.put(bytes);
                     asBaseBuffer(buffer).rewind();
-                    arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), buffer);
+                    arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), realm, buffer);
                 } else {
-                    arrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), bytes);
+                    arrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), realm, bytes);
                 }
                 return arrayBuffer;
             } catch (Exception ex) {
@@ -1662,24 +1663,23 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private void doImport(Object globalContextBindings) {
-            DynamicObject globalObject = getContext().getRealm().getGlobalObject();
-            Bindings bindings = (Bindings) getContext().getRealm().getEnv().asHostObject(globalContextBindings);
+            JSRealm realm = getRealm();
+            DynamicObject globalObject = realm.getGlobalObject();
+            Bindings bindings = (Bindings) realm.getEnv().asHostObject(globalContextBindings);
             for (Map.Entry<String, Object> entry : bindings.entrySet()) {
                 String key = entry.getKey();
                 if (!globalObject.getShape().hasProperty(key) && !JSObject.getPrototype(globalObject).getShape().hasProperty(key)) {
-                    JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(getContext(), bindings, key), JSAttributes.getDefault());
+                    JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(bindings, key), JSAttributes.getDefault());
                 }
             }
         }
 
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
 
-            private final JSContext context;
             private final Bindings globalContextBindings;
             private final String key;
 
-            ScriptEngineGlobalScopeBindingsPropertyProxy(JSContext context, Bindings globalContextBindings, String key) {
-                this.context = context;
+            ScriptEngineGlobalScopeBindingsPropertyProxy(Bindings globalContextBindings, String key) {
                 this.globalContextBindings = globalContextBindings;
                 this.key = key;
             }
@@ -1691,7 +1691,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 if (value == null) {
                     return Undefined.instance;
                 }
-                return JSRuntime.importValue(context.getRealm().getEnv().asGuestValue(value));
+                return JSRuntime.importValue(JSRealm.get(null).getEnv().asGuestValue(value));
             }
 
             @Override

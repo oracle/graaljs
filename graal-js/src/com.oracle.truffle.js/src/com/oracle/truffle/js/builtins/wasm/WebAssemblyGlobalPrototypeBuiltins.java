@@ -110,7 +110,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             Object wasmGlobal = ((JSWebAssemblyGlobalObject) thiz).getWASMGlobal();
             try {
-                Object globalRead = getContext().getRealm().getWASMGlobalRead();
+                Object globalRead = getRealm().getWASMGlobalRead();
                 return toJSValueNode.convert(globalReadLib.execute(globalRead, wasmGlobal));
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

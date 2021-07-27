@@ -265,7 +265,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         private Object wrap(Class<? extends Object> class1) {
-            return getContext().getRealm().getEnv().asGuestValue(class1);
+            return getRealm().getEnv().asGuestValue(class1);
         }
     }
 
@@ -337,7 +337,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected Object dumpFunctionTree(DynamicObject functionObj) {
             CallTarget target = JSFunction.getCallTarget(functionObj);
             if (target instanceof RootCallTarget) {
-                NodeUtil.printTree(getContext().getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
+                NodeUtil.printTree(getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
                 return Undefined.instance;
             } else {
                 throw Errors.shouldNotReachHere();
@@ -395,7 +395,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @Specialization
         protected Object printObject(DynamicObject object, Object level0) {
             int level = level0 == Undefined.instance ? 1 : JSRuntime.toInt32(level0);
-            getContext().getRealm().getOutputWriter().println(debugPrint(object, 0, level));
+            getRealm().getOutputWriter().println(debugPrint(object, 0, level));
             return Undefined.instance;
         }
 
@@ -616,8 +616,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         protected String loadModule(Object nameObj, Object modulesSourceMapObj) {
             String name = JSRuntime.toString(nameObj);
             DynamicObject modulesSourceMap = (DynamicObject) modulesSourceMapObj;
-            JSContext context = getContext();
-            Evaluator evaluator = context.getEvaluator();
+            Evaluator evaluator = getContext().getEvaluator();
             JSModuleLoader moduleLoader = new JSModuleLoader() {
                 private final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
 
@@ -633,7 +632,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 @Override
                 public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
                     return moduleMap.computeIfAbsent(moduleRequest.getSpecifier(),
-                                    (key) -> new JSModuleRecord(evaluator.envParseModule(context.getRealm(), resolveModuleSource(referencingModule, key)), this));
+                                    (key) -> new JSModuleRecord(evaluator.envParseModule(JSRealm.get(null), resolveModuleSource(referencingModule, key)), this));
                 }
 
                 @Override
@@ -642,7 +641,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 }
             };
             JSModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
-            JSRealm realm = context.getRealm();
+            JSRealm realm = getRealm();
             evaluator.moduleInstantiation(realm, module);
             evaluator.moduleEvaluation(realm, module);
             return String.valueOf(module);
@@ -658,7 +657,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         @Specialization
         protected Object systemProperties() {
-            DynamicObject result = JSOrdinary.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext(), getRealm());
             for (Map.Entry<Object, Object> entry : System.getProperties().entrySet()) {
                 Object key = entry.getKey();
                 Object value = entry.getValue();

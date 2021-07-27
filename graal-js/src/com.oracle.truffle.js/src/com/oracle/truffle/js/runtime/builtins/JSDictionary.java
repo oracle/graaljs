@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public final class JSDictionary extends JSNonProxy {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
         return defaultToString(obj);
     }
 
@@ -412,9 +412,8 @@ public final class JSDictionary extends JSNonProxy {
         return JSObjectUtil.getProtoChildShape(prototype, JSDictionary.INSTANCE, context);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getDictionaryObjectFactory();
-        JSRealm realm = context.getRealm();
         DynamicObject obj = JSOrdinaryObject.create(factory.getShape(realm));
         factory.initProto(obj, realm);
         JSObjectUtil.putHiddenProperty(obj, HASHMAP_PROPERTY_NAME, newHashMap());

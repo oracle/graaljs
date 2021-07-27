@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,7 +104,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
     private DynamicObject createPromiseResolveFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveFunction, (c) -> createPromiseResolveFunctionImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
         setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;
@@ -164,7 +164,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     return fulfillPromise(promise, resolution);
                 }
                 DynamicObject job = promiseResolveThenableJob(promise, resolution, then);
-                context.promiseEnqueueJob(context.getRealm(), job);
+                context.promiseEnqueueJob(getRealm(), job);
                 return Undefined.instance;
             }
 
@@ -214,7 +214,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     setThenNode = insert(PropertySetNode.createSetHidden(THEN_KEY, context));
                 }
                 JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseResolveThenableJob, (c) -> createPromiseResolveThenableJobImpl(c));
-                DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+                DynamicObject function = JSFunction.create(getRealm(), functionData);
                 setPromiseNode.setValue(function, promise);
                 setThenableNode.setValue(function, thenable);
                 setThenNode.setValue(function, then);
@@ -254,7 +254,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
 
     private DynamicObject createPromiseRejectFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseRejectFunction, (c) -> createPromiseRejectFunctionImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setPromiseNode.setValue(function, promise);
         setAlreadyResolvedNode.setValue(function, alreadyResolved);
         return function;

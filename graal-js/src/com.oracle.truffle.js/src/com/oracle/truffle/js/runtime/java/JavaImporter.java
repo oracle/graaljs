@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JavaImporter extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -79,8 +78,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
         return CLASS_NAME;
     }
 
-    public static DynamicObject create(JSContext context, Object[] value) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
         JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
         factory.initProto(obj, realm);
@@ -102,7 +100,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     public Object getOwnHelper(DynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
         if (name instanceof String) {
             Object[] imports = getImports(store);
-            JSRealm realm = JSObject.getJSContext(store).getRealm();
+            JSRealm realm = JSRealm.get(null);
             // Nashorn searches the imports from the last one
             for (int i = imports.length - 1; i >= 0; i--) {
                 Object anImport = imports[i];
@@ -130,7 +128,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects) {
         return "[JavaImporter]";
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.js.builtins.helper;
 
-import static com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -72,7 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSRegExp;
  * <li>None of the given properties have been overwritten in the prototype or the object</li>
  * </ul>
  */
-public abstract class IsPristineObjectNode extends Node {
+public abstract class IsPristineObjectNode extends JavaScriptBaseNode {
 
     private final JSClass jsClass;
     private final Shape initialPrototypeShape;
@@ -97,7 +97,7 @@ public abstract class IsPristineObjectNode extends Node {
 
     public static IsPristineObjectNode createRegExpExecAndMatch(JSContext context) {
         assert context.getEcmaScriptVersion() >= 6;
-        return IsPristineObjectNode.create(JSRegExp.INSTANCE, context.getRealm().getInitialRegExpPrototypeShape(),
+        return IsPristineObjectNode.create(JSRegExp.INSTANCE, JSRealm.get(null).getInitialRegExpPrototypeShape(),
                         Symbol.SYMBOL_MATCH,
                         RegExpPrototypeBuiltins.RegExpPrototype.exec.getKey(),
                         JSRegExp.FLAGS,

@@ -164,7 +164,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
      * Eager access to the ErrorObject. Use only if you must get a non-null error object. Could
      * result in an error object from the wrong realm, thus non spec-compliant.
      */
-    public Object getErrorObjectEager(@SuppressWarnings("unused") JSContext context) {
+    public Object getErrorObjectEager(@SuppressWarnings("unused") JSRealm currentRealm) {
         return getErrorObject();
     }
 
@@ -365,7 +365,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                             DynamicObject function = (DynamicObject) functionObj;
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
                             if (functionData.isBuiltin()) {
-                                if (JSFunction.isStrictBuiltin(function)) {
+                                if (JSFunction.isStrictBuiltin(function, JSRealm.get(null))) {
                                     inStrictMode = true;
                                 }
                             } else if (functionData.isStrict()) {

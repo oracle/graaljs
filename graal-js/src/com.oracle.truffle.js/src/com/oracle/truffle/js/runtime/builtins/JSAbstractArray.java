@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -769,8 +770,8 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             return JSRuntime.objectToConsoleString(obj, null, depth, allowSideEffects);

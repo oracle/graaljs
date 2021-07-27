@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
     @Override
     protected DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledResolveElement, (c) -> createResolveElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
@@ -82,7 +82,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
     @Override
     protected Object createRejectElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllSettledRejectElement, (c) -> createRejectElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
@@ -113,7 +113,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, args.values.toArray());
+                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;
@@ -149,7 +149,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 args.values.set(args.index, obj);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, args.values.toArray());
+                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;

@@ -59,7 +59,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -136,18 +135,17 @@ final class CommonJSResolution {
      *       6. THROW "not found"
      *@formatter:on
      *
-     * @param context A valid JS Context.
      * @param moduleIdentifier The module identifier to be resolved.
      * @param entryPath The initial directory from which the resolution algorithm is executed.
      * @return A {@link TruffleFile} for the module executable file, or {@code null} if the module cannot be resolved.
      */
     @CompilerDirectives.TruffleBoundary
-    static TruffleFile resolve(JSContext context, String moduleIdentifier, TruffleFile entryPath) {
+    static TruffleFile resolve(JSRealm realm, String moduleIdentifier, TruffleFile entryPath) {
         // 1. If X is an empty module
         if ("".equals(moduleIdentifier)) {
             return null;
         }
-        TruffleLanguage.Env env = context.getRealm().getEnv();
+        TruffleLanguage.Env env = realm.getEnv();
         // 2. If X begins with '/'
         TruffleFile currentWorkingPath = entryPath;
         if (moduleIdentifier.charAt(0) == '/') {
@@ -155,7 +153,7 @@ final class CommonJSResolution {
         }
         // 3. If X begins with './' or '/' or '../'
         if (isPathFileName(moduleIdentifier)) {
-            TruffleFile module = loadAsFileOrDirectory(context, env, joinPaths(env, currentWorkingPath, moduleIdentifier));
+            TruffleFile module = loadAsFileOrDirectory(realm, joinPaths(env, currentWorkingPath, moduleIdentifier));
             // XXX(db) The Node.js informal spec says we should throw if module is null here.
             // Node v12.x, however, does not throw and attempts to load as a folder.
             if (module != null) {
@@ -163,10 +161,10 @@ final class CommonJSResolution {
             }
         }
         // 4. 5. 6. Try loading as a folder, or throw if not existing
-        return loadNodeModulesOrSelfReference(context, env, moduleIdentifier, currentWorkingPath);
+        return loadNodeModulesOrSelfReference(realm, moduleIdentifier, currentWorkingPath);
     }
 
-    private static TruffleFile loadNodeModulesOrSelfReference(JSContext cx, TruffleLanguage.Env env, String moduleIdentifier, TruffleFile startFolder) {
+    private static TruffleFile loadNodeModulesOrSelfReference(JSRealm realm, String moduleIdentifier, TruffleFile startFolder) {
         /* @formatter:off
          *
          * 1. let DIRS = NODE_MODULES_PATHS(START)
@@ -178,7 +176,7 @@ final class CommonJSResolution {
          */
         List<TruffleFile> nodeModulesPaths = getNodeModulesPaths(startFolder);
         for (TruffleFile s : nodeModulesPaths) {
-            TruffleFile module = loadAsFileOrDirectory(cx, env, joinPaths(env, s, moduleIdentifier));
+            TruffleFile module = loadAsFileOrDirectory(realm, joinPaths(realm.getEnv(), s, moduleIdentifier));
             if (module != null) {
                 return module;
             }
@@ -253,10 +251,10 @@ final class CommonJSResolution {
         return list;
     }
 
-    private static TruffleFile loadAsFileOrDirectory(JSContext cx, TruffleLanguage.Env env, TruffleFile modulePath) {
-        TruffleFile maybeFile = loadAsFile(env, modulePath);
+    private static TruffleFile loadAsFileOrDirectory(JSRealm realm, TruffleFile modulePath) {
+        TruffleFile maybeFile = loadAsFile(realm.getEnv(), modulePath);
         if (maybeFile == null) {
-            return loadAsDirectory(cx, env, modulePath);
+            return loadAsDirectory(realm, modulePath);
         } else {
             return maybeFile;
         }
@@ -272,10 +270,11 @@ final class CommonJSResolution {
         return paths;
     }
 
-    private static TruffleFile loadAsDirectory(JSContext cx, TruffleLanguage.Env env, TruffleFile modulePath) {
+    private static TruffleFile loadAsDirectory(JSRealm realm, TruffleFile modulePath) {
+        TruffleLanguage.Env env = realm.getEnv();
         TruffleFile packageJson = joinPaths(env, modulePath, PACKAGE_JSON);
         if (fileExists(packageJson)) {
-            DynamicObject jsonObj = loadJsonObject(packageJson, cx);
+            DynamicObject jsonObj = loadJsonObject(packageJson, realm);
             if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                 Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
                 if (!JSRuntime.isString(main)) {
@@ -295,11 +294,10 @@ final class CommonJSResolution {
         return null;
     }
 
-    public static DynamicObject loadJsonObject(TruffleFile jsonFile, JSContext context) {
+    public static DynamicObject loadJsonObject(TruffleFile jsonFile, JSRealm realm) {
         try {
             if (fileExists(jsonFile)) {
                 Source source = null;
-                JSRealm realm = context.getRealm();
                 TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(jsonFile.toString(), realm.getEnv());
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);

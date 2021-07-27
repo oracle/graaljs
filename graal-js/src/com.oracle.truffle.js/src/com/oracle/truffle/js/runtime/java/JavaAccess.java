@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import java.lang.reflect.Proxy;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.js.runtime.JSContext;
 
 /**
  * Java interop access check utility methods.
@@ -100,8 +99,7 @@ public final class JavaAccess {
         sm.checkPermission(new RuntimePermission(PERMISSION_JAVA_REFLECTION));
     }
 
-    public static boolean isReflectionAllowed(JSContext context) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
+    public static boolean isReflectionAllowed(TruffleLanguage.Env env) {
         if (env != null && env.isHostLookupAllowed()) {
             try {
                 Object found = env.lookupHostSymbol(Class.class.getName());
@@ -115,10 +113,10 @@ public final class JavaAccess {
     }
 
     @TruffleBoundary
-    public static void checkAccess(Class<?>[] types, JSContext context) {
+    public static void checkAccess(Class<?>[] types, TruffleLanguage.Env env) {
         final SecurityManager sm = System.getSecurityManager();
         if (sm != null) {
-            boolean allowReflection = JavaAccess.isReflectionAllowed(context);
+            boolean allowReflection = JavaAccess.isReflectionAllowed(env);
             for (final Class<?> type : types) {
                 // check for classes, interfaces in reflection
                 JavaAccess.checkReflectionAccess(type, true, allowReflection);

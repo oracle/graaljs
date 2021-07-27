@@ -356,7 +356,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         protected DynamicObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
-            DynamicObject dateTimeFormatObj = JSDateTimeFormat.create(getContext());
+            DynamicObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
             initDateTimeFormatNode.executeInit(dateTimeFormatObj, locales, options);
             return dateTimeFormatObj;
         }
@@ -399,9 +399,9 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 if (isNaN.profile(Double.isNaN(t))) {
                     return JSDate.INVALID_DATE_STRING;
                 }
-                return JSDate.format(getContext().getRealm().getJSDateUTCFormat(), t);
+                return JSDate.format(getRealm().getJSDateUTCFormat(), t);
             } else {
-                return JSDate.toString(t, getContext().getRealm());
+                return JSDate.toString(t, getRealm());
             }
         }
     }
@@ -422,7 +422,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
-            return JSDateTimeFormat.format(getContext(), formatter, t);
+            return JSDateTimeFormat.format(formatter, t);
         }
     }
 
@@ -438,7 +438,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.format(getContext().getRealm().getJSShortDateFormat(), t);
+            return JSDate.format(getRealm().getJSShortDateFormat(), t);
         }
     }
 
@@ -454,7 +454,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.format(getContext().getRealm().getJSShortTimeFormat(), t);
+            return JSDate.format(getRealm().getJSShortTimeFormat(), t);
         }
     }
 
@@ -470,7 +470,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.format(getContext().getRealm().getJSShortDateLocalFormat(), t);
+            return JSDate.format(getRealm().getJSShortDateLocalFormat(), t);
         }
     }
 
@@ -490,7 +490,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
-            return JSDateTimeFormat.format(getContext(), formatter, t);
+            return JSDateTimeFormat.format(formatter, t);
         }
     }
 
@@ -506,7 +506,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            return JSDate.format(getContext().getRealm().getJSShortTimeLocalFormat(), t);
+            return JSDate.format(getRealm().getJSShortTimeLocalFormat(), t);
         }
     }
 
@@ -526,7 +526,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSDate.INVALID_DATE_STRING;
             }
             DynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
-            return JSDateTimeFormat.format(getContext(), formatter, t);
+            return JSDateTimeFormat.format(formatter, t);
         }
     }
 
@@ -540,7 +540,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         protected String doOperation(Object thisDate) {
             double t = asDateMillis(thisDate);
             checkTimeValid(t);
-            return JSDate.toISOStringIntl(t, getContext().getRealm());
+            return JSDate.toISOStringIntl(t, getRealm());
         }
     }
 
@@ -556,7 +556,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            t = isUTC ? t : JSDate.localTime(t, getContext());
+            t = isUTC ? t : JSDate.localTime(t, this);
             return JSDate.yearFromTime((long) t);
         }
     }
@@ -573,7 +573,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            t = JSDate.localTime(t, getContext());
+            t = JSDate.localTime(t, this);
             return JSDate.yearFromTime((long) t) - 1900d;
         }
     }
@@ -590,7 +590,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (Double.isNaN(t)) {
                 return Double.NaN;
             }
-            t = isUTC ? t : JSDate.localTime(t, getContext());
+            t = isUTC ? t : JSDate.localTime(t, this);
             return JSDate.monthFromTime(t);
         }
     }
@@ -607,7 +607,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            t = isUTC ? t : JSDate.localTime(t, getContext());
+            t = isUTC ? t : JSDate.localTime(t, this);
             return JSDate.dateFromTime(t);
         }
     }
@@ -624,7 +624,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            t = isUTC ? t : JSDate.localTime(t, getContext());
+            t = isUTC ? t : JSDate.localTime(t, this);
             return JSDate.weekDay(t);
         }
     }
@@ -642,7 +642,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return Double.NaN;
             }
             if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+                t = JSDate.localTime(t, this);
             }
             return JSDate.hourFromTime(t);
         }
@@ -661,7 +661,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return Double.NaN;
             }
             if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+                t = JSDate.localTime(t, this);
             }
             return JSDate.minFromTime(t);
         }
@@ -680,7 +680,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return Double.NaN;
             }
             if (!isUTC) {
-                t = JSDate.localTime(t, getContext());
+                t = JSDate.localTime(t, this);
             }
             return JSDate.secFromTime(t);
         }
@@ -724,7 +724,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double doOperation(Object thisDate, Object date) {
-            return JSDate.setDate(asDate(thisDate), toDouble(date), isUTC, getContext());
+            return JSDate.setDate(asDate(thisDate), toDouble(date), isUTC, this);
         }
     }
 
@@ -736,7 +736,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double setYear(Object thisDate, Object year) {
-            return JSDate.setYear(asDate(thisDate), toDouble(year), getContext());
+            return JSDate.setYear(asDate(thisDate), toDouble(year), this);
         }
     }
 
@@ -752,7 +752,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             double iYear = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double iMonth = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double iDay = toDouble(JSRuntime.getArgOrUndefined(args, 2));
-            return JSDate.setFullYear(asDate, iYear, iMonth, args.length >= 2, iDay, args.length >= 3, isUTC, getContext());
+            return JSDate.setFullYear(asDate, iYear, iMonth, args.length >= 2, iDay, args.length >= 3, isUTC, this);
         }
     }
 
@@ -767,7 +767,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             DynamicObject date = asDate(thisDate);
             double month = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double date2 = toDouble(JSRuntime.getArgOrUndefined(args, 1));
-            return JSDate.setMonth(date, month, date2, args.length >= 2, isUTC, getContext());
+            return JSDate.setMonth(date, month, date2, args.length >= 2, isUTC, this);
         }
     }
 
@@ -784,7 +784,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             double min = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 2));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 3));
-            return JSDate.setHours(date, hour, min, args.length >= 2, sec, args.length >= 3, ms, args.length >= 4, isUTC, getContext());
+            return JSDate.setHours(date, hour, min, args.length >= 2, sec, args.length >= 3, ms, args.length >= 4, isUTC, this);
         }
     }
 
@@ -800,7 +800,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             double min = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 1));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 2));
-            return JSDate.setMinutes(date, min, sec, args.length >= 2, ms, args.length >= 3, isUTC, getContext());
+            return JSDate.setMinutes(date, min, sec, args.length >= 2, ms, args.length >= 3, isUTC, this);
         }
     }
 
@@ -815,7 +815,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             DynamicObject date = asDate(thisDate);
             double sec = toDouble(JSRuntime.getArgOrUndefined(args, 0));
             double ms = toDouble(JSRuntime.getArgOrUndefined(args, 1));
-            return JSDate.setSeconds(date, sec, ms, args.length >= 2, isUTC, getContext());
+            return JSDate.setSeconds(date, sec, ms, args.length >= 2, isUTC, this);
         }
     }
 
@@ -827,7 +827,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected double setMilliseconds(Object thisDate, Object ms) {
-            return JSDate.setMilliseconds(asDate(thisDate), toDouble(ms), isUTC, getContext());
+            return JSDate.setMilliseconds(asDate(thisDate), toDouble(ms), isUTC, this);
         }
     }
 
@@ -843,7 +843,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return Double.NaN;
             }
-            return (t - JSDate.localTime(t, getContext())) / JSDate.MS_PER_MINUTE;
+            return (t - JSDate.localTime(t, this)) / JSDate.MS_PER_MINUTE;
         }
     }
 

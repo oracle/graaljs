@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,12 +86,12 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
 
     @Specialization(replaces = "doCached")
     protected DynamicObject doUncached(VirtualFrame frame) {
-        DynamicObject cached = Boundaries.mapGet(context.getRealm().getTemplateRegistry(), identity);
+        DynamicObject cached = Boundaries.mapGet(getRealm().getTemplateRegistry(), identity);
         if (cached != null) {
             return cached;
         }
         cached = buildTemplateObject(frame);
-        Boundaries.mapPut(context.getRealm().getTemplateRegistry(), identity, cached);
+        Boundaries.mapPut(getRealm().getTemplateRegistry(), identity, cached);
         return cached;
     }
 

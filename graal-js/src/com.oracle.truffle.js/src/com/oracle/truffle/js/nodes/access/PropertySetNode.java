@@ -1143,7 +1143,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
         private boolean tryInvokeSetter(Object thisObj, Object value, PropertySetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = context.getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 String setterKey = root.getAccessorKey("set");
                 if (setterKey == null) {

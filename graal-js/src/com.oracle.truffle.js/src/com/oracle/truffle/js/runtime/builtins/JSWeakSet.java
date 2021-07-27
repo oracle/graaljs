@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.WeakSetPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -61,8 +62,7 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     private JSWeakSet() {
     }
 
-    public static DynamicObject create(JSContext context) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getWeakSetFactory();
         DynamicObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
         assert isJSWeakSet(obj);
@@ -113,8 +113,8 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {
             return getClassName();

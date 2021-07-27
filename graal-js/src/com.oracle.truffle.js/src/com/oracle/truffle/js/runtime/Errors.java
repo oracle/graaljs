@@ -67,8 +67,9 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createAggregateError(Object errors, String message, JSContext context) {
-        JSRealm realm = context.getRealm();
+    public static JSException createAggregateError(Object errors, String message, Node originatingNode) {
+        JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
+        JSRealm realm = JSRealm.get(originatingNode);
         DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSError.setMessage(errorObj, message);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
@@ -78,8 +79,9 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createAggregateError(Object errors, JSContext context) {
-        JSRealm realm = context.getRealm();
+    public static JSException createAggregateError(Object errors, Node originatingNode) {
+        JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
+        JSRealm realm = JSRealm.get(originatingNode);
         DynamicObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
         JSObjectUtil.putDataProperty(context, errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
         JSException exception = JSException.create(JSErrorType.AggregateError, null, errorObj, realm);

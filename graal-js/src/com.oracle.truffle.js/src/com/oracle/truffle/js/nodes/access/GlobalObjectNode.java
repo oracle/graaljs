@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -48,20 +50,15 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.runtime.JSContext;
-
-import java.util.Set;
 
 @NodeInfo(cost = NodeCost.NONE)
 public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
-    private final JSContext context;
 
-    protected GlobalObjectNode(JSContext context) {
-        this.context = context;
+    protected GlobalObjectNode() {
     }
 
-    public static GlobalObjectNode create(JSContext context) {
-        return new GlobalObjectNode(context);
+    public static GlobalObjectNode create() {
+        return new GlobalObjectNode();
     }
 
     @Override
@@ -79,15 +76,7 @@ public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
     }
 
     public DynamicObject executeDynamicObject() {
-        return getGlobalObject(context);
-    }
-
-    public static DynamicObject getGlobalObject(JSContext context) {
-        return context.getRealm().getGlobalObject();
-    }
-
-    final JSContext getContext() {
-        return context;
+        return getRealm().getGlobalObject();
     }
 
     @Override
@@ -97,6 +86,6 @@ public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context);
+        return create();
     }
 }

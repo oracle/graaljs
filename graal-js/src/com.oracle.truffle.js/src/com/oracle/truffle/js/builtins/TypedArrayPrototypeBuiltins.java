@@ -517,12 +517,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 InteropLibrary interop = getInterop();
                 clonedArrayBuffer = cloneInteropArrayBuffer(sourceBuffer, srcByteLength, srcByteOffset, interop);
             } else if (isDirectProf.profile(sourceArray.isDirect())) {
-                clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength);
+                clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength);
                 ByteBuffer clonedBackingBuffer = JSArrayBuffer.getDirectByteBuffer(clonedArrayBuffer);
                 ByteBuffer sourceBackingBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);
                 Boundaries.byteBufferPutSlice(clonedBackingBuffer, 0, sourceBackingBuffer, srcByteOffset, srcByteOffset + srcByteLength);
             } else {
-                clonedArrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
+                clonedArrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
                 byte[] clonedBackingBuffer = JSArrayBuffer.getByteArray(clonedArrayBuffer);
                 byte[] sourceBackingBuffer = JSArrayBuffer.getByteArray(sourceBuffer);
                 System.arraycopy(sourceBackingBuffer, srcByteOffset, clonedBackingBuffer, 0, srcByteLength);
@@ -535,7 +535,9 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             boolean direct = getContext().isOptionDirectByteBuffer();
             TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
             TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct, false);
-            DynamicObject clonedArrayBuffer = direct ? JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength) : JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
+            DynamicObject clonedArrayBuffer = direct
+                            ? JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength)
+                            : JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
             for (int i = 0; i < srcByteLength; i++) {
                 int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, srcByteOffset, i, interop);
                 ((TypedArray.TypedIntArray) clonedType).setIntImpl(clonedArrayBuffer, 0, i, value, interop);

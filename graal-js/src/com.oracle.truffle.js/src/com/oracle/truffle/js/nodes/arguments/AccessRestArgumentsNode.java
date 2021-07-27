@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 
@@ -72,10 +73,11 @@ public class AccessRestArgumentsNode extends AccessIndexedArgumentNode {
     public Object execute(VirtualFrame frame) {
         Object[] jsArguments = frame.getArguments();
         int restLength = JSArguments.getUserArgumentCount(jsArguments) - index - trailingArgCount;
+        JSRealm realm = getRealm();
         if (profile(restLength > 0)) {
-            return JSArray.create(context, ConstantObjectArray.createConstantObjectArray(), JSArguments.extractUserArguments(jsArguments, index, trailingArgCount), restLength);
+            return JSArray.create(context, realm, ConstantObjectArray.createConstantObjectArray(), JSArguments.extractUserArguments(jsArguments, index, trailingArgCount), restLength);
         } else {
-            return JSArray.createEmptyZeroLength(context);
+            return JSArray.createEmptyZeroLength(context, realm);
         }
     }
 

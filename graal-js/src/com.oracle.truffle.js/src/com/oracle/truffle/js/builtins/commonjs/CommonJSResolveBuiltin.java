@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRealm;
 
 public abstract class CommonJSResolveBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -57,8 +58,9 @@ public abstract class CommonJSResolveBuiltin extends GlobalBuiltins.JSFileLoadin
 
     @Specialization
     protected String resolve(String moduleIdentifier) {
-        TruffleFile cwd = CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext());
-        TruffleFile maybeModule = CommonJSResolution.resolve(getContext(), moduleIdentifier, cwd);
+        JSRealm realm = getRealm();
+        TruffleFile cwd = CommonJSRequireBuiltin.getModuleResolveCurrentWorkingDirectory(getContext(), realm.getEnv());
+        TruffleFile maybeModule = CommonJSResolution.resolve(realm, moduleIdentifier, cwd);
         if (maybeModule == null) {
             throw fail(moduleIdentifier);
         } else {

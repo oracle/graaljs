@@ -123,7 +123,8 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
                 if (remainingElementsCount.value == 0) {
-                    throw Errors.createAggregateError(JSArray.createConstantObjectArray(context, errors.toArray()), context);
+                    DynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors.toArray());
+                    throw Errors.createAggregateError(errorsArray, this);
                 }
                 return resultCapability.getPromise();
             }
@@ -139,7 +140,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
 
     protected DynamicObject createRejectElementFunction(int index, SimpleArrayList<Object> errors, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAnyRejectElement, (c) -> createRejectElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new RejectElementArgs(index, errors, resultCapability, remainingElementsCount));
         return function;
     }
@@ -154,7 +155,7 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
             @Child private JavaScriptNode errorNode = AccessIndexedArgumentNode.create(0);
             @Child private PropertyGetNode getArgs = PropertyGetNode.createGetHidden(REJECT_ELEMENT_ARGS_KEY, context);
             @Child private JSFunctionCallNode callReject = JSFunctionCallNode.createCall();
-            @Child private ErrorStackTraceLimitNode stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
+            @Child private ErrorStackTraceLimitNode stackTraceLimitNode = ErrorStackTraceLimitNode.create();
             @Child private InitErrorObjectNode initErrorObjectNode = InitErrorObjectNode.create(context);
 
             @Override
@@ -177,8 +178,8 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
 
             private DynamicObject createAggregateError(Object[] errors) {
                 int stackTraceLimit = stackTraceLimitNode.executeInt();
-                JSRealm realm = context.getRealm();
-                DynamicObject errorsArray = JSArray.createConstantObjectArray(context, errors);
+                JSRealm realm = getRealm();
+                DynamicObject errorsArray = JSArray.createConstantObjectArray(context, getRealm(), errors);
                 DynamicObject aggregateErrorObject = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
                 String message = null;
                 DynamicObject errorFunction = realm.getErrorConstructor(JSErrorType.AggregateError);

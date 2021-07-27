@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
@@ -79,8 +80,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
     private JSMap() {
     }
 
-    public static DynamicObject create(JSContext context) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getMapFactory();
         DynamicObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
         assert isJSMap(obj);
@@ -157,8 +157,8 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[" + getClassName() + "]";
         } else {
             JSHashMap map = JSMap.getInternalMap(obj);

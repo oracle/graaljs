@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,9 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -67,9 +67,10 @@ public final class NIOBuffer extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static DynamicObject create(JSContext context) {
+    private static DynamicObject create(JSRealm realm) {
+        JSContext context = realm.getContext();
         DynamicObject obj = JSOrdinary.createWithNullPrototype(context);
-        JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, NIO_BUFFER_BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, NIO_BUFFER_BUILTINS);
         return obj;
     }
 
@@ -79,9 +80,7 @@ public final class NIOBuffer extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(JSContext context) {
-        JSRealm realm = context.getRealm();
-
+    public static Object createInitFunction(JSRealm realm) {
         // This JS function will be executed at node.js bootstrap time to register
         // the "default" Buffer API functions.
         JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
@@ -91,13 +90,13 @@ public final class NIOBuffer extends JSNonProxy {
                 assert args.length == 4;
                 DynamicObject nativeUtf8Write = (DynamicObject) args[2];
                 DynamicObject nativeUtf8Slice = (DynamicObject) args[3];
-                RealmData embedderData = GraalJSAccess.getRealmEmbedderData(context.getRealm());
+                RealmData embedderData = GraalJSAccess.getRealmEmbedderData(getRealm());
                 embedderData.setNativeUtf8Write(nativeUtf8Write);
                 embedderData.setNativeUtf8Slice(nativeUtf8Slice);
-                return create(context);
+                return create(getRealm());
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "NIOBufferBuiltinsInitFunction");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(wrapperNode), 2, "NIOBufferBuiltinsInitFunction");
         return JSFunction.create(realm, functionData);
     }
 

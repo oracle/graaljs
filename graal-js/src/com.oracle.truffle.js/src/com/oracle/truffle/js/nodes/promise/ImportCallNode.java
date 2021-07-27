@@ -236,7 +236,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private DynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
-        JSRealm realm = context.getRealm();
+        JSRealm realm = getRealm();
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
             DynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, moduleRequest);
             if (promise == null) {
@@ -304,7 +304,7 @@ public class ImportCallNode extends JavaScriptNode {
      */
     private DynamicObject createImportModuleDynamicallyHandler() {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.ImportModuleDynamically, (c) -> createImportModuleDynamicallyHandlerImpl(c));
-        return JSFunction.create(context.getRealm(), functionData);
+        return JSFunction.create(getRealm(), functionData);
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
@@ -318,7 +318,7 @@ public class ImportCallNode extends JavaScriptNode {
                 ScriptOrModule referencingScriptOrModule = request.getFirst();
                 ModuleRequest moduleRequest = request.getSecond();
                 JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
-                return finishDynamicImport(context.getRealm(), moduleRecord, referencingScriptOrModule, moduleRequest);
+                return finishDynamicImport(getRealm(), moduleRecord, referencingScriptOrModule, moduleRequest);
             }
 
             protected Object finishDynamicImport(JSRealm realm, JSModuleRecord moduleRecord, ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest) {
@@ -350,7 +350,7 @@ public class ImportCallNode extends JavaScriptNode {
                 PromiseCapabilityRecord moduleLoadedCapability = request.getThird();
                 try {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
-                    JSRealm realm = context.getRealm();
+                    JSRealm realm = getRealm();
                     if (moduleRecord.isTopLevelAsync()) {
                         context.getEvaluator().moduleInstantiation(realm, moduleRecord);
                         Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);

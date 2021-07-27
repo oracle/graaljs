@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -152,7 +152,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         }
 
         public JSConsoleUtil getConsoleUtil() {
-            return getContext().getRealm().getConsoleUtil();
+            return getRealm().getConsoleUtil();
         }
 
     }
@@ -192,7 +192,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @Specialization
         @TruffleBoundary
         protected DynamicObject clear() {
-            PrintWriter writer = getContext().getRealm().getOutputWriter();
+            PrintWriter writer = getRealm().getOutputWriter();
             writer.append("\033[H\033[2J");
             writer.flush();
             return Undefined.instance;
@@ -220,7 +220,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
             }
             countMap.put(key, ++count);
 
-            PrintWriter writer = getContext().getRealm().getOutputWriter();
+            PrintWriter writer = getRealm().getOutputWriter();
             writer.append(console.getConsoleIndentationString());
             writer.append(key);
             writer.append(": ");
@@ -298,7 +298,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         @TruffleBoundary
         protected DynamicObject time(Object label) {
             String key = label == Undefined.instance ? DEFAULT : toStringNode.executeString(label);
-            getConsoleUtil().getTimeMap().put(key, getContext().getRealm().currentTimeMillis());
+            getConsoleUtil().getTimeMap().put(key, getRealm().currentTimeMillis());
             return Undefined.instance;
         }
     }
@@ -320,7 +320,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
             Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
                 long start = timeMap.remove(key);
-                long end = getContext().getRealm().currentTimeMillis();
+                long end = getRealm().currentTimeMillis();
                 long delta = end - start;
                 printNode.executeObjectArray(new Object[]{key + ":", String.valueOf(delta) + "ms"});
             }
@@ -346,7 +346,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
             Map<String, Long> timeMap = getConsoleUtil().getTimeMap();
             if (timeMap.containsKey(key)) {
                 long start = timeMap.get(key);
-                long end = getContext().getRealm().currentTimeMillis();
+                long end = getRealm().currentTimeMillis();
                 long delta = end - start;
 
                 Object[] arr = new Object[Math.max(2, data.length + 1)]; // add two, ignore first

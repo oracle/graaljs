@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,7 +135,7 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     public static Object getJavaClassOrConstructorOrSubPackage(JSContext context, DynamicObject thisObj, String name) {
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         if (context.isOptionNashornCompatibilityMode() && Boundaries.stringEndsWith(name, ")")) {
             // constructor directly? e.g. java.awt["Color(int,int,int)"]
             int openParen = name.indexOf('(');

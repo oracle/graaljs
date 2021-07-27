@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,6 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.test.JSTest;
@@ -65,10 +64,13 @@ public class JSObjectTest extends JSTest {
         super.close();
     }
 
+    private DynamicObject createOrdinaryObject() {
+        return JSOrdinary.create(testHelper.getJSContext(), testHelper.getRealm());
+    }
+
     @Test
     public void testSetGet() {
-        JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSOrdinary.create(context);
+        DynamicObject obj = createOrdinaryObject();
         JSObject.set(obj, "x", 10);
         assertEquals(10, JSObject.get(obj, "x"));
         JSObject.set(obj, "y", 20);
@@ -78,8 +80,7 @@ public class JSObjectTest extends JSTest {
 
     @Test
     public void testRemove() {
-        JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSOrdinary.create(context);
+        DynamicObject obj = createOrdinaryObject();
         JSObject.set(obj, "x", 10);
         JSObject.set(obj, "y", 20);
         assertEquals(10, JSObject.get(obj, "x"));
@@ -95,8 +96,7 @@ public class JSObjectTest extends JSTest {
 
     @Test
     public void testRemove2() {
-        JSContext context = testHelper.getJSContext();
-        DynamicObject obj = JSOrdinary.create(context);
+        DynamicObject obj = createOrdinaryObject();
         JSObject.set(obj, "x", 10);
         JSObject.set(obj, "y", 20);
         assertEquals(10, JSObject.get(obj, "x"));
@@ -130,8 +130,7 @@ public class JSObjectTest extends JSTest {
 
     @Test
     public void propertyTest() {
-        JSContext context = testHelper.getJSContext();
-        DynamicObject po = JSOrdinary.create(context);
+        DynamicObject po = createOrdinaryObject();
         for (int i = 0; i < 10000; i++) {
             JSObject.set(po, String.valueOf(i), i);
         }

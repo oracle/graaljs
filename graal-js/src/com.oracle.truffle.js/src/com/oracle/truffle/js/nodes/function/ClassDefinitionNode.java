@@ -123,7 +123,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     public DynamicObject executeWithClassName(VirtualFrame frame, Object className) {
-        JSRealm realm = context.getRealm();
+        JSRealm realm = getRealm();
         Object protoParent = realm.getObjectPrototype();
         Object constructorParent = realm.getFunctionPrototype();
         if (classHeritageNode != null) {

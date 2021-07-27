@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,7 +130,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         protected final DynamicObject speciesConstructor(DynamicObject promise) {
-            return speciesConstructorNode.speciesConstructor(promise, getContext().getRealm().getPromiseConstructor());
+            return speciesConstructorNode.speciesConstructor(promise, getRealm().getPromiseConstructor());
         }
     }
 
@@ -226,7 +226,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             } else {
                 functionData = getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseCatchFinally, (c) -> createPromiseFinallyFunction(c, false));
             }
-            DynamicObject function = JSFunction.create(getContext().getRealm(), functionData);
+            DynamicObject function = JSFunction.create(getRealm(), functionData);
             setConstructor.setValue(function, constructor);
             setOnFinally.setValue(function, onFinally);
             return function;
@@ -264,7 +264,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                     } else {
                         functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseThrower, (c) -> createThrower(c));
                     }
-                    DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+                    DynamicObject function = JSFunction.create(getRealm(), functionData);
                     setValue.setValue(function, value);
                     return function;
                 }

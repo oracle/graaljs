@@ -55,7 +55,6 @@ import org.graalvm.polyglot.Context;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -169,6 +168,8 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     private final Assumption promiseJobsQueueEmptyAssumption;
 
+    private static final LanguageReference<JavaScriptLanguage> REFERENCE = LanguageReference.create(JavaScriptLanguage.class);
+
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
         ArrayList<OptionDescriptor> options = new ArrayList<>();
@@ -203,7 +204,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         @Child private DirectCallNode directCallNode;
         @Child private ExportValueNode exportValueNode = ExportValueNode.create();
         @Child private ImportValueNode importValueNode = ImportValueNode.create();
-        @CompilationFinal private ContextReference<JSRealm> contextReference;
 
         private ParsedProgramRoot(TruffleLanguage<?> language, JSContext context, ScriptNode program) {
             super(language);
@@ -214,11 +214,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (contextReference == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextReference = lookupContextReference(JavaScriptLanguage.class);
-            }
-            JSRealm realm = contextReference.get();
+            JSRealm realm = JSRealm.get(this);
             assert realm.getContext() == context : "unexpected JSContext";
             try {
                 interopBoundaryEnter(realm);
@@ -476,7 +472,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         context.enter();
         try {
             context.initialize(ID);
-            return getCurrentContext(JavaScriptLanguage.class);
+            return JSRealm.get(null);
         } finally {
             context.leave();
         }
@@ -519,6 +515,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public JSContext getJSContext() {
         return Objects.requireNonNull(languageContext);
+    }
+
+    public static JavaScriptLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     public boolean bindMemberFunctions() {

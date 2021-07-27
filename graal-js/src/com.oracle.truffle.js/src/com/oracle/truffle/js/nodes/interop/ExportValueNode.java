@@ -41,13 +41,11 @@
 package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -80,37 +78,32 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value, Object thiz, boolean bindMemberFunctions);
 
-    public static boolean isInteropCompletePromises(JavaScriptLanguage lang) {
-        return lang.getJSContext().getContextOptions().interopCompletePromises();
+    protected final boolean isInteropCompletePromises() {
+        return getLanguage().getJSContext().getContextOptions().interopCompletePromises();
     }
 
-    @Specialization(guards = {"!bindFunctions", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
-    protected static DynamicObject doFunctionNoBind(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
-                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
+    @Specialization(guards = {"!bindFunctions", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
+    protected static DynamicObject doFunctionNoBind(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
-    @Specialization(guards = {"bindFunctions", "isUndefined(thiz)", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
-    protected static DynamicObject doFunctionUndefinedThis(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
-                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
+    @Specialization(guards = {"bindFunctions", "isUndefined(thiz)", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
+    protected static DynamicObject doFunctionUndefinedThis(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
-    @Specialization(guards = {"bindFunctions", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
-    protected static TruffleObject doBindUnboundFunction(JSFunctionObject function, Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
-                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
+    @Specialization(guards = {"bindFunctions", "!isUndefined(thiz)", "!isBoundJSFunction(function)", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
+    protected static TruffleObject doBindUnboundFunction(JSFunctionObject function, Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return new InteropBoundFunction(function, thiz);
     }
 
-    @Specialization(guards = {"bindFunctions", "isBoundJSFunction(function)", "!isInteropCompletePromises(language) || !isAsyncFunction(function)"})
-    protected static DynamicObject doBoundFunction(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
-                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
+    @Specialization(guards = {"bindFunctions", "isBoundJSFunction(function)", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
+    protected static DynamicObject doBoundFunction(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return function;
     }
 
-    @Specialization(guards = {"isInteropCompletePromises(language)", "isAsyncFunction(function)"})
-    protected static TruffleObject doAsyncFunction(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions,
-                    @CachedLanguage @SuppressWarnings("unused") JavaScriptLanguage language) {
+    @Specialization(guards = {"isInteropCompletePromises()", "isAsyncFunction(function)"})
+    protected static TruffleObject doAsyncFunction(JSFunctionObject function, @SuppressWarnings("unused") Object thiz, @SuppressWarnings("unused") boolean bindFunctions) {
         return new InteropAsyncFunction(function);
     }
 

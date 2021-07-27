@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,17 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerDirectives.*;
-import com.oracle.truffle.api.dsl.*;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.*;
-import com.oracle.truffle.js.nodes.*;
-import com.oracle.truffle.js.runtime.*;
-import com.oracle.truffle.js.runtime.builtins.*;
-import com.oracle.truffle.js.runtime.objects.*;
-
 import java.util.Set;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NodeChild;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * This node can be used to add a {@link JSFunction} to the queue of pending tasks in a given
@@ -71,7 +72,7 @@ public abstract class JSEnqueueJobNode extends JavaScriptNode {
     @TruffleBoundary
     @Specialization(guards = {"isJSFunction(function)"})
     protected Object doOther(Object function) {
-        context.promiseEnqueueJob(context.getRealm(), (DynamicObject) function);
+        context.promiseEnqueueJob(getRealm(), (DynamicObject) function);
         return Undefined.instance;
     }
 

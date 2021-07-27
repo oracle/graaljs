@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,7 +143,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
-                result = JSArray.createConstantObjectArray(getContext(), new Object[]{elementKey, elementValue});
+                result = JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{elementKey, elementValue});
             }
             return createIterResultObjectNode.execute(frame, result, false);
         }

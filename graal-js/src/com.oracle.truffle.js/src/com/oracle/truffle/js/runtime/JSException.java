@@ -190,10 +190,10 @@ public final class JSException extends GraalJSException {
 
     @TruffleBoundary
     @Override
-    public Object getErrorObjectEager(JSContext context) {
+    public Object getErrorObjectEager(JSRealm currentRealm) {
         DynamicObject jserror = exceptionObj;
         if (jserror == null) { // not thread safe, but should be all right in this case
-            JSRealm innerRealm = this.realm != null ? this.realm : context.getRealm();
+            JSRealm innerRealm = this.realm != null ? this.realm : currentRealm;
             String message = getRawMessage();
             exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
         }

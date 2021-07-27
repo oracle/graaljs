@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,9 +59,8 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     private JSWeakRef() {
     }
 
-    public static DynamicObject create(JSContext context, Object referent) {
+    public static DynamicObject create(JSContext context, JSRealm realm, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getWeakRefFactory();
         DynamicObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
         assert isJSWeakRef(obj);
@@ -106,7 +105,7 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
         return "[" + getClassName() + "]";
     }
 

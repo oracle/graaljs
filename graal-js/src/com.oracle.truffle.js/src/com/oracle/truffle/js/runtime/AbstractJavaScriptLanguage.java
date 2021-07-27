@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,15 +46,15 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     public static JSRealm getCurrentJSRealm() {
-        return getCurrentContext(JavaScriptLanguage.class);
+        return JSRealm.get(null);
     }
 
     public static JavaScriptLanguage getCurrentLanguage() {
-        return getCurrentLanguage(JavaScriptLanguage.class);
+        return JavaScriptLanguage.get(null);
     }
 
     public static TruffleLanguage.Env getCurrentEnv() {
-        return getCurrentContext(JavaScriptLanguage.class).getEnv();
+        return getCurrentJSRealm().getEnv();
     }
 
     public abstract boolean isMultiContext();

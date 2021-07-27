@@ -460,7 +460,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Cached JSClassProfile jsclassProfile,
                         @Cached ListSizeNode listSize) {
             List<Object> list = JSObject.ownPropertyKeys((DynamicObject) target, jsclassProfile);
-            return JSArray.createLazyArray(getContext(), list, listSize.execute(list));
+            return JSArray.createLazyArray(getContext(), getRealm(), list, listSize.execute(list));
         }
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")

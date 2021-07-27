@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -1683,7 +1682,7 @@ public class WriteElementNode extends JSTargetableNode {
                     return;
                 }
             }
-            JSObject.setWithReceiver(JSString.create(root.context, charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), charSequence), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1696,7 +1695,7 @@ public class WriteElementNode extends JSTargetableNode {
                 }
                 return;
             } else {
-                JSObject.setWithReceiver(JSString.create(root.context, charSequence), index, value, target, root.isStrict, classProfile, root);
+                JSObject.setWithReceiver(JSString.create(root.context, getRealm(), charSequence), index, value, target, root.isStrict, classProfile, root);
             }
         }
 
@@ -1717,13 +1716,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) target;
-            JSObject.setWithReceiver(JSNumber.create(root.context, number), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Number number = (Number) target;
-            JSObject.setWithReceiver(JSNumber.create(root.context, number), index, value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSNumber.create(root.context, getRealm(), number), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1740,13 +1739,13 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
-            JSObject.setWithReceiver(JSBoolean.create(root.context, bool), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSBoolean.create(root.context, getRealm(), bool), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             Boolean bool = (Boolean) target;
-            JSObject.setWithReceiver(JSBoolean.create(root.context, bool), index, value, target, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSBoolean.create(root.context, getRealm(), bool), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1766,7 +1765,7 @@ public class WriteElementNode extends JSTargetableNode {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.setWithReceiver(JSSymbol.create(root.context, symbol), toPropertyKey(index), value, receiver, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSSymbol.create(root.context, getRealm(), symbol), toPropertyKey(index), value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1775,7 +1774,7 @@ public class WriteElementNode extends JSTargetableNode {
                 throw Errors.createTypeError("cannot set element on Symbol in strict mode", this);
             }
             Symbol symbol = (Symbol) target;
-            JSObject.setWithReceiver(JSSymbol.create(root.context, symbol), index, value, receiver, root.isStrict, classProfile, root);
+            JSObject.setWithReceiver(JSSymbol.create(root.context, getRealm(), symbol), index, value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1792,13 +1791,15 @@ public class WriteElementNode extends JSTargetableNode {
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, Object index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
-            JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
+            JSContext context = root.context;
+            JSObject.setWithReceiver(JSBigInt.create(context, getRealm(), bigInt), toPropertyKey(index), value, target, root.isStrict, classProfile, root);
         }
 
         @Override
         protected void executeWithTargetAndIndexUnguarded(Object target, long index, Object value, Object receiver, WriteElementNode root) {
             BigInt bigInt = (BigInt) target;
-            JSObject.setWithReceiver(JSBigInt.create(root.context, bigInt), index, value, target, root.isStrict, classProfile, root);
+            JSContext context = root.context;
+            JSObject.setWithReceiver(JSBigInt.create(context, getRealm(), bigInt), index, value, target, root.isStrict, classProfile, root);
         }
 
         @Override
@@ -1904,7 +1905,7 @@ public class WriteElementNode extends JSTargetableNode {
 
         private boolean tryInvokeSetter(Object thisObj, String key, Object value, JSContext context) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = context.getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 String setterKey = PropertyCacheNode.getAccessorKey("set", key);
                 if (setterKey == null) {
@@ -1984,7 +1985,7 @@ public class WriteElementNode extends JSTargetableNode {
         return valueNode.isResultAlwaysOfType(clazz);
     }
 
-    public static WriteElementNode createCachedInterop(LanguageReference<JavaScriptLanguage> languageRef) {
-        return create(languageRef.get().getJSContext(), true);
+    public static WriteElementNode createCachedInterop() {
+        return create(JavaScriptLanguage.get(null).getJSContext(), true);
     }
 }

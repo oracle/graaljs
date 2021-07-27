@@ -127,7 +127,7 @@ public final class ForeignIterablePrototypeBuiltins extends JSBuiltinsContainer.
                 errorBranch.enter();
                 throw Errors.createTypeErrorInteropException(target, e, "getIterator", null);
             }
-            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory());
+            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
             setEnumerateIteratorNode.setValue(iteratorObj, iterator);
             return iteratorObj;
         }

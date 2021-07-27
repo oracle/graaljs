@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltins;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -99,8 +100,8 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     private JSString() {
     }
 
-    public static DynamicObject create(JSContext context, CharSequence value) {
-        DynamicObject stringObj = JSStringObject.create(context.getRealm(), context.getStringFactory(), value);
+    public static DynamicObject create(JSContext context, JSRealm realm, CharSequence value) {
+        DynamicObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
         assert isJSString(stringObj);
         return context.trackAllocation(stringObj);
     }
@@ -292,8 +293,8 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[" + CLASS_NAME + " " + getCharSequence(obj) + "]";
         } else {
             String primitiveValue = JSString.getString(obj);

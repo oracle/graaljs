@@ -236,11 +236,11 @@ public final class JSFunction extends JSNonProxy {
     /**
      * Version optimized for a single Realm.
      */
-    public static JSRealm getRealm(DynamicObject functionObj, JSContext context) {
+    public static JSRealm getRealm(DynamicObject functionObj, JSContext context, Node node) {
         assert isJSFunction(functionObj);
         JSRealm realm;
         if (context.isSingleRealm()) {
-            realm = context.getRealm();
+            realm = JSRealm.get(node);
             assert realm == getRealm(functionObj);
         } else {
             realm = getRealm(functionObj);
@@ -312,7 +312,7 @@ public final class JSFunction extends JSNonProxy {
         assert JSFunction.isJSFunction(thisFnObj);
         JSContext context = realm.getContext();
         DynamicObject proto = JSObject.getPrototype(thisFnObj);
-        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, null, null);
+        DynamicObject boundFunction = boundFunctionCreate(context, thisFnObj, thisArg, boundArguments, proto, null, null, null);
 
         long length = 0;
         boolean targetHasLength = JSObject.hasOwnProperty(thisFnObj, JSFunction.LENGTH);
@@ -339,7 +339,7 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static DynamicObject boundFunctionCreate(JSContext context, DynamicObject boundTargetFunction, Object boundThis, Object[] boundArguments, DynamicObject proto,
-                    ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile) {
+                    ConditionProfile isAsyncProfile, ConditionProfile setProtoProfile, Node node) {
         assert JSFunction.isJSFunction(boundTargetFunction);
         CompilerAsserts.partialEvaluationConstant(context);
 
@@ -350,7 +350,7 @@ public final class JSFunction extends JSNonProxy {
             int length = Math.max(0, JSFunction.getLength(boundTargetFunction) - boundArguments.length);
             functionData = makeBoundFunctionData(context, length, constructor, isAsync, functionData.getName());
         }
-        JSRealm realm = getRealm(boundTargetFunction, context);
+        JSRealm realm = getRealm(boundTargetFunction, context, node);
         DynamicObject boundFunction = JSFunction.createBound(context, realm, functionData, boundTargetFunction, boundThis, boundArguments);
         boolean needSetProto = proto != realm.getFunctionPrototype();
         if ((setProtoProfile == null ? needSetProto : setProtoProfile.profile(needSetProto))) {
@@ -668,7 +668,7 @@ public final class JSFunction extends JSNonProxy {
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
         SourceSection ssect = rn.getSourceSection();
         String source;
@@ -897,9 +897,7 @@ public final class JSFunction extends JSNonProxy {
                         Frame frame = frameInstance.getFrame(FrameInstance.FrameAccess.READ_WRITE);
                         DynamicObject function = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
                         if (function == thiz) {
-                            JSFunctionData functionData = JSFunction.getFunctionData(function);
-                            JSContext context = functionData.getContext();
-                            JSRealm realm = context.getRealm();
+                            JSRealm realm = JSRealm.get(null);
                             Object[] userArguments = JSArguments.extractUserArguments(frame.getArguments());
                             return JSArgumentsArray.createNonStrictSlow(realm, userArguments, function);
                         }
@@ -949,7 +947,7 @@ public final class JSFunction extends JSNonProxy {
                             }
                             JSFunctionData functionData = JSFunction.getFunctionData(function);
                             if (JSFunction.isBuiltinSourceSection(ss)) {
-                                JSRealm realm = functionData.getContext().getRealm();
+                                JSRealm realm = JSRealm.get(null);
                                 if (function == realm.getEvalFunctionObject()) {
                                     return null; // skip eval()
                                 }
@@ -959,7 +957,7 @@ public final class JSFunction extends JSNonProxy {
                                 if (functionData.getName().startsWith("[Symbol.")) {
                                     return null;
                                 }
-                                if (isStrictBuiltin(function)) {
+                                if (isStrictBuiltin(function, realm)) {
                                     return Null.instance; // do not go beyond a strict builtin
                                 }
                             } else if (functionData.isStrict()) {
@@ -979,9 +977,8 @@ public final class JSFunction extends JSNonProxy {
     }
 
     // V8 distinguishes strict and sloppy builtins, see mjsunit/function-caller.js
-    public static boolean isStrictBuiltin(DynamicObject function) {
+    public static boolean isStrictBuiltin(DynamicObject function, JSRealm realm) {
         JSFunctionData functionData = JSFunction.getFunctionData(function);
-        JSRealm realm = functionData.getContext().getRealm();
         PropertyDescriptor desc = JSObject.getOwnProperty(realm.getArrayPrototype(), functionData.getName());
         return desc != null && desc.isDataDescriptor() && desc.getValue() == function;
     }

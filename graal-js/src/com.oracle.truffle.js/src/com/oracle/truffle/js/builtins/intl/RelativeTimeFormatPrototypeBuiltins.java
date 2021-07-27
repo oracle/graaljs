@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -104,7 +104,7 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
 
         @Specialization(guards = "isJSRelativeTimeFormat(relativeTimeFormat)")
         public Object doResolvedOptions(DynamicObject relativeTimeFormat) {
-            return JSRelativeTimeFormat.resolvedOptions(getContext(), relativeTimeFormat);
+            return JSRelativeTimeFormat.resolvedOptions(getContext(), getRealm(), relativeTimeFormat);
         }
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")
@@ -143,7 +143,9 @@ public final class RelativeTimeFormatPrototypeBuiltins extends JSBuiltinsContain
         public Object doFormatToParts(DynamicObject relativeTimeFormat, Object value, Object unit,
                         @Cached("create()") JSToStringNode toStringNode,
                         @Cached("create()") JSToNumberNode toNumberNode) {
-            return JSRelativeTimeFormat.formatToParts(getContext(), relativeTimeFormat, JSRuntime.doubleValue(toNumberNode.executeNumber(value)), toStringNode.executeString(unit));
+            double amount = JSRuntime.doubleValue(toNumberNode.executeNumber(value));
+            String unitString = toStringNode.executeString(unit);
+            return JSRelativeTimeFormat.formatToParts(getContext(), getRealm(), relativeTimeFormat, amount, unitString);
         }
 
         @Specialization(guards = "!isJSRelativeTimeFormat(bummer)")

@@ -66,7 +66,7 @@ public final class RegexCompilerInterface {
         validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices());
         Object compiledRegex;
         try {
-            compiledRegex = context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
+            compiledRegex = JSRealm.get(null).getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }
@@ -88,7 +88,7 @@ public final class RegexCompilerInterface {
             validateFlags(flags, ecmaScriptVersion, true, context.isOptionRegexpMatchIndices());
         }
         try {
-            context.getRealm().getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
+            JSRealm.get(null).getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }

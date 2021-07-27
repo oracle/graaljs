@@ -231,7 +231,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object polyglotBindings;
             try {
-                polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
+                polyglotBindings = getRealm().getEnv().getPolyglotBindings();
             } catch (SecurityException e) {
                 throw Errors.createErrorFromException(e);
             }
@@ -273,7 +273,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
                         @Shared("importValue") @Cached ImportValueNode importValueNode) {
             Object polyglotBindings;
             try {
-                polyglotBindings = getContext().getRealm().getEnv().getPolyglotBindings();
+                polyglotBindings = getRealm().getEnv().getPolyglotBindings();
             } catch (SecurityException e) {
                 throw Errors.createErrorFromException(e);
             }
@@ -774,7 +774,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             getContext().checkEvalAllowed();
             Source source = Source.newBuilder(languageId, sourceText, Evaluator.EVAL_SOURCE_NAME).mimeType(mimeType).build();
 
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             try {
                 return env.parsePublic(source);
             } catch (IllegalStateException ex) {
@@ -815,7 +815,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
         private CallTarget evalFileIntl(String fileName, String languageId, String mimeType) {
             CompilerAsserts.neverPartOfCompilation();
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             Source source;
             try {
                 source = Source.newBuilder(languageId, env.getPublicTruffleFile(fileName)).mimeType(mimeType).build();
@@ -869,7 +869,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         @TruffleBoundary
         @Specialization
         protected Object keys(TruffleObject obj) {
-            return JSArray.createConstantObjectArray(getContext(), JSInteropUtil.keys(obj).toArray());
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), JSInteropUtil.keys(obj).toArray());
         }
 
         @SuppressWarnings("unused")

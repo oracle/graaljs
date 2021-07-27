@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -56,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getPromiseResult;
 
-    private static final UnwrapPromiseNode UNCACHED = create(null);
+    private static final UnwrapPromiseNode UNCACHED = UnwrapPromiseNodeGen.create(null);
 
     protected UnwrapPromiseNode(JSContext context) {
         if (context != null) {
@@ -64,8 +65,8 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
         }
     }
 
-    public static UnwrapPromiseNode create(JSContext context) {
-        return UnwrapPromiseNodeGen.create(context);
+    public static UnwrapPromiseNode create() {
+        return UnwrapPromiseNodeGen.create(JavaScriptLanguage.get(null).getJSContext());
     }
 
     public final Object execute(DynamicObject promise) {

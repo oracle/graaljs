@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -108,9 +108,8 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm, PluralRulesFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getPluralRulesFactory();
         JSPluralRulesObject obj = new JSPluralRulesObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
@@ -142,11 +141,11 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         private final List<Object> pluralCategories = new LinkedList<>();
 
         @Override
-        void fillResolvedOptions(JSContext context, DynamicObject result) {
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
-            super.fillResolvedOptions(context, result);
-            JSObjectUtil.defineDataProperty(result, "pluralCategories", JSRuntime.createArrayFromList(context, pluralCategories), JSAttributes.getDefault());
+        void fillResolvedOptions(JSContext context, JSRealm realm, DynamicObject result) {
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
+            super.fillResolvedOptions(context, realm, result);
+            JSObjectUtil.defineDataProperty(context, result, "pluralCategories", JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -165,9 +164,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, DynamicObject pluralRulesObj) {
+    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject pluralRulesObj) {
         InternalState state = getInternalState(pluralRulesObj);
-        return state.toResolvedOptionsObject(context);
+        return state.toResolvedOptionsObject(context, realm);
     }
 
     public static InternalState getInternalState(DynamicObject obj) {

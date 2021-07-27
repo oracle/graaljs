@@ -513,7 +513,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 if (JSDynamicObject.isJSDynamicObject(ctor)) {
                     DynamicObject ctorObj = (DynamicObject) ctor;
                     if (JSFunction.isJSFunction(ctorObj) && JSFunction.isConstructor(ctorObj)) {
-                        JSRealm thisRealm = context.getRealm();
+                        JSRealm thisRealm = getRealm();
                         JSRealm ctorRealm = JSFunction.getRealm(ctorObj);
                         if (thisRealm != ctorRealm) {
                             differentRealm.enter();
@@ -566,7 +566,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected final DynamicObject getDefaultConstructor(DynamicObject thisObj) {
             assert JSArrayBufferView.isJSArrayBufferView(thisObj);
             TypedArray arrayType = JSArrayBufferView.typedArrayGetArrayType(thisObj);
-            return context.getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
+            return getRealm().getArrayBufferViewConstructor(arrayType.getFactory());
         }
 
         /**
@@ -1322,7 +1322,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (isCallable(join)) {
                 return callJoin(arrayObj, join);
             } else {
-                Object toString = getToStringProperty(getContext().getRealm().getObjectPrototype());
+                Object toString = getToStringProperty(getRealm().getObjectPrototype());
                 return callToString(arrayObj, toString);
             }
         }
@@ -1625,7 +1625,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             final long length = getLength(thisJSObject);
             final String joinSeparator = joinStr == Undefined.instance ? "," : getSeparatorToString().executeString(joinStr);
 
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             if (!realm.joinStackPush(thisObj, stackGrowProfile)) {
                 // join is in progress on thisObj already => break the cycle
                 return "";
@@ -1782,7 +1782,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (len == 0) {
                 return "";
             }
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             if (!realm.joinStackPush(thisObj, stackGrowProfile)) {
                 // join is in progress on thisObj already => break the cycle
                 return "";
@@ -1936,7 +1936,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         final boolean mustUseElementwise(DynamicObject obj, ScriptArray array, GetPrototypeNode getPrototypeNode) {
             return array instanceof SparseArray ||
                             array.isLengthNotWritable() ||
-                            getPrototypeNode.executeJSObject(obj) != getContext().getRealm().getArrayPrototype() ||
+                            getPrototypeNode.executeJSObject(obj) != getRealm().getArrayPrototype() ||
                             !getContext().getArrayPrototypeNoElementsAssumption().isValid() ||
                             (!getContext().getFastArrayAssumption().isValid() && JSSlowArray.isJSSlowArray(obj));
         }
@@ -2183,7 +2183,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             DynamicObject resultArray;
             if (isTypedArrayImplementation) {
-                resultArray = JSArray.createEmpty(getContext(), 0);
+                resultArray = JSArray.createEmpty(getContext(), getRealm(), 0);
             } else {
                 resultArray = (DynamicObject) getArraySpeciesConstructorNode().arraySpeciesCreate(thisJSObj, 0);
             }
@@ -3172,7 +3172,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public static class CreateArrayIteratorNode extends JavaScriptBaseNode {
-        private final JSContext context;
         private final int iterationKind;
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setNextIndexNode;
@@ -3180,7 +3179,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Child private PropertySetNode setIterationKindNode;
 
         protected CreateArrayIteratorNode(JSContext context, int iterationKind) {
-            this.context = context;
             this.iterationKind = iterationKind;
             this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
@@ -3194,7 +3192,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public DynamicObject execute(VirtualFrame frame, Object array) {
             assert JSGuards.isJSObject(array) || JSGuards.isForeignObject(array);
-            DynamicObject iterator = createObjectNode.execute(frame, context.getRealm().getArrayIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getArrayIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, array);
             setNextIndexNode.setValue(iterator, 0L);
             setIterationKindNode.setValueInt(iterator, iterationKind);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,7 +98,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
             DynamicObject proxy = proxyCreateNode.execute(Undefined.instance, target, handler);
 
             JSFunctionData revokerFunctionData = getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ProxyRevokerFunction, c -> createProxyRevokerFunctionImpl(c));
-            DynamicObject revoker = JSFunction.create(getContext().getRealm(), revokerFunctionData);
+            DynamicObject revoker = JSFunction.create(getRealm(), revokerFunctionData);
             setRevocableProxySlotNode.setValue(revoker, proxy);
 
             DynamicObject result = createObjectNode.execute(frame);

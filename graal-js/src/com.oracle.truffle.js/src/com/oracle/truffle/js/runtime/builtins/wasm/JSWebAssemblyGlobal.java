@@ -116,8 +116,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyGlobalObject create(JSContext context, Object wasmGlobal, String valueType) {
-        JSRealm realm = context.getRealm();
+    public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, String valueType) {
         JSObjectFactory factory = context.getWebAssemblyGlobalFactory();
         JSWebAssemblyGlobalObject object = new JSWebAssemblyGlobalObject(factory.getShape(realm), wasmGlobal, valueType);
         factory.initProto(object, realm);

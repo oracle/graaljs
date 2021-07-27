@@ -761,8 +761,8 @@ public class NodeFactory {
         return JSPrepareThisNode.createPrepareThisBinding(context, child);
     }
 
-    public JavaScriptNode createGlobalObject(JSContext context) {
-        return GlobalObjectNode.create(context);
+    public JavaScriptNode createGlobalObject() {
+        return GlobalObjectNode.create();
     }
 
     public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount, int trailingArgumentCount) {
@@ -1071,8 +1071,8 @@ public class NodeFactory {
         return new AccessArgumentsArrayDirectlyNode(writeArguments, readArguments, leadingArgCount, trailingArgCount);
     }
 
-    public JavaScriptNode createCallApplyArguments(JSContext context, JSFunctionCallNode callNode) {
-        return CallApplyArgumentsNode.create(context, callNode);
+    public JavaScriptNode createCallApplyArguments(JSFunctionCallNode callNode) {
+        return CallApplyArgumentsNode.create(callNode);
     }
 
     public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {

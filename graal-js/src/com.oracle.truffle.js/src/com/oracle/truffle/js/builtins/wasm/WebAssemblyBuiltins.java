@@ -150,7 +150,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         protected abstract Object process(Object argument);
 
         protected DynamicObject promisify(Object argument) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
             try {
                 Object resolution = process(argument);
@@ -208,10 +208,11 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             try {
                 Object byteSource = exportByteSourceNode.execute(argument);
 
-                Object decode = getContext().getRealm().getWASMModuleDecode();
+                JSRealm realm = getRealm();
+                Object decode = realm.getWASMModuleDecode();
                 Object wasmModule = decodeModuleLib.execute(decode, byteSource);
 
-                return JSWebAssemblyModule.create(getContext(), wasmModule);
+                return JSWebAssemblyModule.create(getContext(), realm, wasmModule);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -252,20 +253,9 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             }
 
             JSContext context = getContext();
-            JSRealm realm = context.getRealm();
+            JSRealm realm = getRealm();
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblySourceInstantiation, (c) -> {
-                CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
-                        Object jsInstance = instantiateModule(context, info.getWasmModule(), info.getImportObject());
-                        return toJSInstantiatedSource(context, info.getWasmModule(), jsInstance);
-                    }
-                });
-                return JSFunctionData.createCallOnly(c, callTarget, 1, "");
-            });
-
+            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblySourceInstantiation, (c) -> createSourceInstantiationImpl(c));
             performPromiseThenNode.execute(promise, JSFunction.create(realm, functionData), Undefined.instance, promiseCapability);
             return promiseCapability.getPromise();
         }
@@ -288,7 +278,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             Object wasmByteSource = exportByteSourceNode.execute(byteSourceOrModule);
 
             try {
-                Object decode = getContext().getRealm().getWASMModuleDecode();
+                Object decode = getRealm().getWASMModuleDecode();
                 try {
                     Object wasmModule = decodeModuleLib.execute(decode, wasmByteSource);
                     return new InstantiatedSourceInfo(wasmModule, importObject);
@@ -307,7 +297,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         }
 
         protected Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
-            JSRealm realm = context.getRealm();
+            JSRealm realm = getRealm();
             Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, realm, wasmModule, importObject);
             Object instantiate = realm.getWASMModuleInstantiate();
             Object wasmInstance;
@@ -323,16 +313,28 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                 throw Errors.shouldNotReachHere(ex);
             }
 
-            return JSWebAssemblyInstance.create(context, wasmInstance, wasmModule);
+            return JSWebAssemblyInstance.create(context, realm, wasmInstance, wasmModule);
         }
 
-        static Object toJSInstantiatedSource(JSContext context, Object wasmModule, Object jsInstance) {
-            DynamicObject instantiatedSource = JSOrdinary.create(context);
-            JSObject.set(instantiatedSource, "module", JSWebAssemblyModule.create(context, wasmModule));
-            JSObject.set(instantiatedSource, "instance", jsInstance);
-            return instantiatedSource;
-        }
+        private JSFunctionData createSourceInstantiationImpl(JSContext context) {
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
+                    Object jsInstance = instantiateModule(context, info.getWasmModule(), info.getImportObject());
+                    return toJSInstantiatedSource(info.getWasmModule(), jsInstance);
+                }
 
+                Object toJSInstantiatedSource(Object wasmModule, Object jsInstance) {
+                    JSRealm realm = getRealm();
+                    DynamicObject instantiatedSource = JSOrdinary.create(context, realm);
+                    JSObject.set(instantiatedSource, "module", JSWebAssemblyModule.create(context, realm, wasmModule));
+                    JSObject.set(instantiatedSource, "instance", jsInstance);
+                    return instantiatedSource;
+                }
+            });
+            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        }
     }
 
     public abstract static class WebAssemblyValidateNode extends JSBuiltinNode {
@@ -348,7 +350,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
         private Object validateImpl(Object byteSource) {
             try {
-                Object validate = getContext().getRealm().getWASMModuleValidate();
+                Object validate = getRealm().getWASMModuleValidate();
                 return validateModuleLib.execute(validate, byteSource);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

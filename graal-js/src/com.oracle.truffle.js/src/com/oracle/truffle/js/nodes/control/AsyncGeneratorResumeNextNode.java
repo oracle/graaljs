@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -159,7 +159,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 promiseResolveNode = insert(PromiseResolveNode.create(context));
             }
-            return promiseResolveNode.execute(context.getRealm().getPromiseConstructor(), value);
+            return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
         } else {
             if (callPromiseResolveNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -235,7 +235,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
 
     private DynamicObject createAsyncGeneratorReturnProcessorFulfilledFunction(DynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnFulfilled, (c) -> createAsyncGeneratorReturnProcessorFulfilledImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setGeneratorNode.setValue(function, generator);
         return function;
     }
@@ -262,7 +262,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
 
     private DynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(DynamicObject generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncGeneratorReturnRejected, (c) -> createAsyncGeneratorReturnProcessorRejectedImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setGeneratorNode.setValue(function, generator);
         return function;
     }

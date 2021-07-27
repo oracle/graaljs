@@ -101,7 +101,7 @@ public abstract class GetAsyncIteratorNode extends GetIteratorNode {
         if (!JSDynamicObject.isJSDynamicObject(syncIterator)) {
             throw Errors.createTypeErrorNotAnObject(syncIterator, this);
         }
-        DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory());
+        DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
         setState.setValue(obj, syncIteratorRecord);
         return obj;
     }
