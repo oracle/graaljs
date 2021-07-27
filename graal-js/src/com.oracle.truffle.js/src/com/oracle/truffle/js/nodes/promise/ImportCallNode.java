@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -71,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -120,7 +122,8 @@ public class ImportCallNode extends JavaScriptNode {
         Object specifier = argRefNode.execute(frame);
         String specifierString;
 
-        if (specifier instanceof DynamicObject && DynamicObjectLibrary.getUncached().containsKey((DynamicObject) specifier, (Object) ModuleBlockNode.getModuleBodyKey())) {
+        if (specifier instanceof DynamicObject && JSObjectUtil.hasHiddenProperty((DynamicObject) specifier,
+                        ModuleBlockNode.getModuleBodyKey())) {
             // read the hidden key from 'specifier'
             this.body = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleBodyKey(), this.context);
             PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), this.context);
@@ -134,18 +137,6 @@ public class ImportCallNode extends JavaScriptNode {
             Object executedBody = ((JavaScriptNode) bodyNode).execute(frame);
 
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText.toString(), (String) moduleBlockName).build();
-
-            // TODO
-            /*
-             * System.out.println("TESTING: " + JSObject.hasProperty((DynamicObject) specifier,
-             * ModuleBlockNode.getModuleBodyKey().getName())); System.out.println("TESTING2: " +
-             * JSObject.isJSObject(specifier)); JSObject.ownPropertyKeys((DynamicObject)
-             * specifier).stream().forEach(System.out::println); System.out.println("Keys: " +
-             * JSObject.ownPropertyKeys((DynamicObject) specifier).size());
-             * 
-             * System.out.println("Length: " + JSObject.getKeyArray((DynamicObject)
-             * specifier).length);
-             */
 
             return hostImportModuleDynamically(referencingScriptOrModule, specifier, source);
         }
@@ -351,7 +342,6 @@ public class ImportCallNode extends JavaScriptNode {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                // @SuppressWarnings("unchecked")
                 assert argumentNode.execute(frame) instanceof Triple<?, ?, ?>;
                 Triple<?, ?, ?> request = (Triple<?, ?, ?>) argumentNode.execute(frame);
 

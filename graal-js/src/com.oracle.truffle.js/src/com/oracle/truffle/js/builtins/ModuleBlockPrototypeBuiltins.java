@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSModuleBlock;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
  * Contains builtins for %ModuleBlock%.prototype.
@@ -102,7 +103,8 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             // Type check, then check for hidden property body and return hidden property
             // sourceText
 
-            if (DynamicObjectLibrary.getUncached().containsKey((DynamicObject) thisModuleBlock, (Object) ModuleBlockNode.getModuleBodyKey())) {
+            if (JSObjectUtil.hasHiddenProperty((DynamicObject) thisModuleBlock,
+                            ModuleBlockNode.getModuleBodyKey())) {
                 PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), this.getContext());
 
                 Object sourceCode = getSourceCode.getValue(thisModuleBlock);

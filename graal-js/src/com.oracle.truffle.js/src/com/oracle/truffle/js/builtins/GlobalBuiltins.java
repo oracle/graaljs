@@ -1309,6 +1309,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(context, builtin);
         }
 
+        @Specialization
         protected byte[] serialize(Object value) {
             if (DynamicObjectLibrary.getUncached().containsKey((DynamicObject) value, (Object) ModuleBlockNode.getModuleBodyKey())) {
                 PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), getContext());
@@ -1318,7 +1319,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return ("module {" + sourceCode.toString() + "}").getBytes();
             }
 
-            // TODO Errors.createTypeError("Not a ModuleBlock");
+            Errors.createTypeError("Not a ModuleBlock");
 
             return null;
         }
@@ -1333,10 +1334,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             super(context, builtin);
         }
 
+        @Specialization
         protected JavaScriptNode deserialize(Object value) {
+            assert value instanceof byte[];
             String sourceCode = new String((byte[]) value, StandardCharsets.UTF_8);
 
-            // get from sourcecode string to module block via parsing and then translating
+            // turn from sourcecode string to module block via parsing and then translating
 
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "moduleBlock").build();
 
