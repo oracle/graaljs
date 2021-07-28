@@ -2607,6 +2607,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child PropertyGetNode getMaximumNode;
         @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
         @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
+        @Child InteropLibrary memAllocLib;
 
         public ConstructWebAssemblyMemoryNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
@@ -2615,6 +2616,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.getMaximumNode = PropertyGetNode.create("maximum", context);
             this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Memory(): Property 'initial'");
             this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Memory(): Property 'maximum'");
+            this.memAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -2645,8 +2647,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             Object wasmMemory;
             try {
-                Object createMemory = getContext().getRealm().getWASMMemoryConstructor();
-                wasmMemory = InteropLibrary.getUncached(createMemory).execute(createMemory, initialInt, maximumInt);
+                Object createMemory = getContext().getRealm().getWASMMemAlloc();
+                wasmMemory = memAllocLib.execute(createMemory, initialInt, maximumInt);
             } catch (AbstractTruffleException tex) {
                 throw Errors.createRangeError("WebAssembly.Memory(): could not allocate memory");
             } catch (InteropException ex) {

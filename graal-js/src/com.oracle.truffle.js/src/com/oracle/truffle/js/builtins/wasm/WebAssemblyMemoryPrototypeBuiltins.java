@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
@@ -97,6 +98,7 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public abstract static class WebAssemblyMemoryGrowNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toDeltaNode;
         private final BranchProfile errorBranch = BranchProfile.create();
+        @Child InteropLibrary memGrowLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyMemoryGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -113,8 +115,8 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
             int deltaInt = toDeltaNode.executeInt(delta);
             Object wasmMemory = memory.getWASMMemory();
             try {
-                Object growFn = InteropLibrary.getUncached(wasmMemory).readMember(wasmMemory, "grow");
-                Object result = InteropLibrary.getUncached(growFn).execute(growFn, deltaInt);
+                Object growFn = getContext().getRealm().getWASMMemGrow();
+                Object result = memGrowLib.execute(growFn, wasmMemory, deltaInt);
                 memory.resetBufferObject();
                 return result;
             } catch (InteropException ex) {
