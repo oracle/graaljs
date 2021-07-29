@@ -502,6 +502,11 @@ public final class JSContextOptions {
     @Option(name = MODULE_BLOCKS_NAME, category = OptionCategory.USER, help = "Enable the use of module blocks.") public static final OptionKey<Boolean> MODULE_BLOCKS = new OptionKey<>(false);
     @CompilationFinal private boolean moduleBlocks;
 
+    public static final String EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API = JS_OPTION_PREFIX + "experimental-module-block-serialization-api";
+    @Option(name = EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API, category = OptionCategory.EXPERT, help = "Enable serialize and deserialize api for module blocks.") public static final OptionKey<Boolean> EXPERIMENTAL_MODULE_BLOCKS = new OptionKey<>(
+                    false);
+    @CompilationFinal private boolean moduleBlocksSerializationAPI;
+
     public enum UnhandledRejectionsTrackingMode {
         NONE,
         WARN,
@@ -618,6 +623,7 @@ public final class JSContextOptions {
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.moduleBlocks = readBooleanOption(MODULE_BLOCKS);
+        this.moduleBlocksSerializationAPI = readBooleanOption(EXPERIMENTAL_MODULE_BLOCKS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
@@ -993,6 +999,10 @@ public final class JSContextOptions {
         return moduleBlocks;
     }
 
+    public boolean isExperimentalModuleBlocks() {
+        return moduleBlocksSerializationAPI;
+    }
+
     public boolean isOperatorOverloading() {
         return operatorOverloading;
     }
@@ -1050,6 +1060,7 @@ public final class JSContextOptions {
         hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
         hash = 53 * hash + (this.newSetMethods ? 1 : 0);
         hash = 53 * hash + (this.moduleBlocks ? 1 : 0);
+        hash = 53 * hash + (this.moduleBlocksSerializationAPI ? 1 : 0);
         hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
         return hash;
     }
@@ -1211,6 +1222,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.moduleBlocks != other.moduleBlocks) {
+            return false;
+        }
+        if (this.moduleBlocksSerializationAPI != other.moduleBlocksSerializationAPI) {
             return false;
         }
         if (this.operatorOverloading != other.operatorOverloading) {

@@ -220,7 +220,9 @@ public class ESModuleTest {
 
         TestOutput out = new TestOutput();
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
-                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME, "true").build()) {
+                        JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API,
+                                        "true").option(
+                                                        JSContextOptions.MODULE_BLOCKS_NAME, "true").build()) {
             allFilesArray = prepareTestFileAndModules(main, module);
 
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
@@ -276,6 +278,24 @@ public class ESModuleTest {
     @Test
     public void testModuleBlockComparison() throws IOException {
         testModuleBlockMainMethod("resources/moduleBlock/moduleBlockComparison.js",
+                        "resources/functionexportmodule.js");
+    }
+
+    /**
+     * Test serialize and deserialize
+     */
+    @Test
+    public void testSerializationFramework() throws IOException {
+        testModuleBlockMainMethod("resources/moduleBlock/moduleBlockSerialize.js",
+                        "resources/moduleBlock/moduleBlockSerializeModule.js");
+    }
+
+    /**
+     * Test module block toString
+     */
+    @Test
+    public void testModuleBlocktoString() throws IOException {
+        testModuleBlockMainMethod("resources/moduleBlock/moduleBlockToString.js",
                         "resources/functionexportmodule.js");
     }
 

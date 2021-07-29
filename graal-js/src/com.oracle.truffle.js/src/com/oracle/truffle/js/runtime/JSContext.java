@@ -1744,4 +1744,8 @@ public class JSContext {
     public boolean isWaitAsyncEnabled() {
         return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
     }
+
+    public boolean isExperimentalModuleBlocks() {
+        return getContextOptions().isExperimentalModuleBlocks();
+    }
 }

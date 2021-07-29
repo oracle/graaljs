@@ -103,6 +103,8 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalSerializeNodeGen;
+import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDeserializeNodeGen;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
@@ -1305,13 +1307,18 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public abstract static class JSGlobalSerializeNode extends JSBuiltinNode {
 
+        protected JSContext context_;
+
         protected JSGlobalSerializeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            context_ = context;
         }
 
-        @Specialization
+        @Specialization(guards = "context_.isExperimentalModuleBlocks()")
         protected byte[] serialize(Object value) {
-            if (DynamicObjectLibrary.getUncached().containsKey((DynamicObject) value, (Object) ModuleBlockNode.getModuleBodyKey())) {
+            assert value instanceof DynamicObject;
+            if (JSObjectUtil.hasHiddenProperty((DynamicObject) value,
+                            ModuleBlockNode.getModuleBodyKey())) {
                 PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), getContext());
 
                 Object sourceCode = getSourceCode.getValue(value);
@@ -1330,11 +1337,14 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
      */
     public abstract static class JSGlobalDeserializeNode extends JSBuiltinNode {
 
+        protected JSContext context_;
+
         protected JSGlobalDeserializeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            context_ = context;
         }
 
-        @Specialization
+        @Specialization(guards = "context_.isExperimentalModuleBlocks()")
         protected JavaScriptNode deserialize(Object value) {
             assert value instanceof byte[];
             String sourceCode = new String((byte[]) value, StandardCharsets.UTF_8);
@@ -1342,6 +1352,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             // turn from sourcecode string to module block via parsing and then translating
 
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "moduleBlock").build();
+
+            System.out.println(source.getCharacters());
 
             return getContext().getEvaluator().parseModuleBlock(getContext(), source);
         }
