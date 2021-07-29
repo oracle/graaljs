@@ -2519,10 +2519,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructWebAssemblyModuleNode extends ConstructWithNewTargetNode {
         @Child ExportByteSourceNode exportByteSourceNode;
+        @Child InteropLibrary decodeModuleLib;
 
         public ConstructWebAssemblyModuleNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
             this.exportByteSourceNode = ExportByteSourceNode.create(context, "WebAssembly.Module(): Argument 0 must be a buffer source", "WebAssembly.Module(): BufferSource argument is empty");
+            this.decodeModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -2530,8 +2532,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object byteSource = exportByteSourceNode.execute(bytes);
             Object wasmModule;
             try {
-                Object compile = getContext().getRealm().getWASMCompileFunction();
-                wasmModule = InteropLibrary.getUncached(compile).execute(compile, byteSource);
+                Object decode = getContext().getRealm().getWASMModuleDecode();
+                wasmModule = decodeModuleLib.execute(decode, byteSource);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (AbstractTruffleException tex) {
@@ -2557,10 +2559,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
     public abstract static class ConstructWebAssemblyInstanceNode extends ConstructWithNewTargetNode {
         @Child IsObjectNode isObjectNode;
+        @Child InteropLibrary instantiateModuleLib;
 
         public ConstructWebAssemblyInstanceNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
             this.isObjectNode = IsObjectNode.create();
+            this.instantiateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -2574,9 +2578,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSRealm realm = getContext().getRealm();
             try {
                 Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(getContext(), realm, wasmModule, importObject);
-                Object instantiate = realm.getWASMInstantiateFunction();
+                Object instantiate = realm.getWASMModuleInstantiate();
                 try {
-                    wasmInstance = InteropLibrary.getUncached(instantiate).execute(instantiate, wasmModule, wasmImportObject);
+                    wasmInstance = instantiateModuleLib.execute(instantiate, wasmModule, wasmImportObject);
                 } catch (GraalJSException jsex) {
                     throw jsex;
                 } catch (AbstractTruffleException tex) {
@@ -2740,6 +2744,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child PropertyGetNode getValueNode;
         @Child PropertyGetNode getMutableNode;
         @Child ToWebAssemblyValueNode toWebAssemblyValueNode;
+        @Child InteropLibrary globalAllocLib;
 
         public ConstructWebAssemblyGlobalNode(JSContext context, JSBuiltin builtin, boolean newTargetCase) {
             super(context, builtin, newTargetCase);
@@ -2749,6 +2754,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.getValueNode = PropertyGetNode.create("value", context);
             this.getMutableNode = PropertyGetNode.create("mutable", context);
             this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+            this.globalAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -2772,8 +2778,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             Object wasmGlobal;
             try {
-                Object createGlobal = getContext().getRealm().getWASMGlobalConstructor();
-                wasmGlobal = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, mutable, webAssemblyValue);
+                Object createGlobal = getContext().getRealm().getWASMGlobalAlloc();
+                wasmGlobal = globalAllocLib.execute(createGlobal, valueType, mutable, webAssemblyValue);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

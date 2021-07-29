@@ -49,6 +49,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
@@ -94,10 +95,12 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     public abstract static class WebAssemblyGlobalValueOfNode extends JSBuiltinNode {
         @Child ToJSValueNode toJSValueNode;
+        @Child InteropLibrary globalReadLib;
 
         public WebAssemblyGlobalValueOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toJSValueNode = ToJSValueNode.create();
+            globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -107,8 +110,8 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             }
             Object wasmGlobal = ((JSWebAssemblyGlobalObject) thiz).getWASMGlobal();
             try {
-                Object valueOfFn = InteropLibrary.getUncached(wasmGlobal).readMember(wasmGlobal, "valueOf");
-                return toJSValueNode.convert(InteropLibrary.getUncached(valueOfFn).execute(valueOfFn));
+                Object globalRead = getContext().getRealm().getWASMGlobalRead();
+                return toJSValueNode.convert(globalReadLib.execute(globalRead, wasmGlobal));
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

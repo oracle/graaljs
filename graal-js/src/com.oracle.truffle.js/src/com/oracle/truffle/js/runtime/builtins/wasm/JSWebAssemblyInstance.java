@@ -159,7 +159,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     private static Object createExportsObject(JSContext context, Object wasmInstance, Object wasmModule) {
         DynamicObject exports = JSOrdinary.createWithNullPrototype(context);
         try {
-            Object exportsFunction = context.getRealm().getWASMModuleExportsFunction();
+            Object exportsFunction = context.getRealm().getWASMModuleExports();
             Object exportsInfo = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, wasmModule);
             Object wasmExports = InteropLibrary.getUncached(wasmInstance).readMember(wasmInstance, "exports");
             InteropLibrary wasmExportsInterop = InteropLibrary.getUncached(wasmExports);
@@ -277,7 +277,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         try {
             DynamicObject transformedImportObject = JSOrdinary.create(context, realm);
 
-            Object importsFn = realm.getWASMModuleImportsFunction();
+            Object importsFn = realm.getWASMModuleImports();
             Object imports = InteropLibrary.getUncached(importsFn).execute(importsFn, wasmModule);
             InteropLibrary importsInterop = InteropLibrary.getUncached(imports);
             long size = importsInterop.getArraySize(imports);
@@ -311,7 +311,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         }
                         Object webAssemblyValue = toWebAssemblyValue(value, valueType);
                         try {
-                            Object createGlobal = realm.getWASMGlobalConstructor();
+                            Object createGlobal = realm.getWASMGlobalAlloc();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
