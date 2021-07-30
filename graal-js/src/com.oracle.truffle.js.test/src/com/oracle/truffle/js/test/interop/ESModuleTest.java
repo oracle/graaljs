@@ -221,8 +221,7 @@ public class ESModuleTest {
         TestOutput out = new TestOutput();
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).allowIO(true).err(out).out(out).option(
                         JSContextOptions.CONSOLE_NAME, "true").option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API,
-                                        "true").option(
-                                                        JSContextOptions.MODULE_BLOCKS_NAME, "true").build()) {
+                                        "true").option(JSContextOptions.MODULE_BLOCKS_NAME, "true").build()) {
             allFilesArray = prepareTestFileAndModules(main, module);
 
             Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();

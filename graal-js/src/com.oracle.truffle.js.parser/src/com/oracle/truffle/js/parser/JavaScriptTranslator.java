@@ -122,6 +122,8 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, context.getParserOptions().putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, 0, null, true);
 
+        FunctionRootNode functionRoot = translator.translateModule(parsed); // <- works
+
         return translator.enterFunctionNode(parsed);
     }
 

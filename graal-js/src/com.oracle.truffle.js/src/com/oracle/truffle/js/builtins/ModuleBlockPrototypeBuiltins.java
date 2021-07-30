@@ -40,18 +40,29 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.nio.charset.StandardCharsets;
+
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.builtins.ModuleBlockPrototypeBuiltinsFactory.JSGlobalDeserializeNodeGen;
+import com.oracle.truffle.js.builtins.ModuleBlockPrototypeBuiltinsFactory.JSGlobalSerializeNodeGen;
 import com.oracle.truffle.js.builtins.ModuleBlockPrototypeBuiltinsFactory.JSModuleBlockToStringNodeGen;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.module.ModuleBlockNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSModuleBlock;
+import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
@@ -66,7 +77,10 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public enum ModuleBlockPrototype implements BuiltinEnum<ModuleBlockPrototype> {
-        toString(0);
+        toString(0),
+        // ModuleBlock methods
+        serialize(1),
+        deserialize(1);
 
         private final int length;
 
@@ -85,6 +99,12 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         switch (builtinEnum) {
             case toString:
                 return JSModuleBlockToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case serialize:
+                return JSGlobalSerializeNodeGen.create(context, builtin,
+                                args().fixedArgs(1).createArgumentNodes(context));
+            case deserialize:
+                return JSGlobalDeserializeNodeGen.create(context, builtin,
+                                args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -102,6 +122,8 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected String doOperation(Object thisModuleBlock) {
             // Type check, then check for hidden property body and return hidden property
             // sourceText
+
+            System.out.println("In toString.");
 
             if (JSObjectUtil.hasHiddenProperty((DynamicObject) thisModuleBlock,
                             ModuleBlockNode.getModuleBodyKey())) {
@@ -124,5 +146,74 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             throw Errors.createTypeError("Not a module block");
         }
 
+    }
+
+    /**
+     * Implementation of Module Block serialize-method
+     */
+    public abstract static class JSGlobalSerializeNode extends JSBuiltinNode {
+
+        protected JSContext context_;
+
+        protected JSGlobalSerializeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            context_ = context;
+        }
+
+        @Specialization(guards = "context_.isExperimentalModuleBlocks()")
+        protected String doOperation(Object value) {
+            assert value instanceof DynamicObject;
+            if (JSObjectUtil.hasHiddenProperty((DynamicObject) value,
+                            ModuleBlockNode.getModuleBodyKey())) {
+                PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), getContext());
+
+                Object sourceCode = getSourceCode.getValue(value);
+
+                return (sourceCode.toString());
+            } else {
+                return "Can't touch this";
+            }
+
+            // Errors.createTypeError("Not a ModuleBlock");
+
+            // return null;
+        }
+    }
+
+    /**
+     * Implementation of Module Block deserialize-method
+     */
+    public abstract static class JSGlobalDeserializeNode extends JSBuiltinNode {
+
+        protected JSContext context_;
+
+        protected JSGlobalDeserializeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            context_ = context;
+        }
+
+        @Specialization(guards = "context_.isExperimentalModuleBlocks()")
+        protected Object doOperation(Object value) {
+            System.out.println("In deserialize node. " + value.toString());
+
+            assert value instanceof String;
+            String sourceCode = (String) value;// new String((byte[]) value,
+            // StandardCharsets.UTF_8);
+
+            // turn from sourcecode string to module block via parsing and then translating
+
+            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "moduleBlock").build();
+
+            JSRealm realm = context_.getRealm();
+
+            JSModuleRecord moduleRecord = getContext().getEvaluator().parseModule(getContext(), source, DefaultESModuleLoader.create(context_.getRealm()));
+
+            context_.getEvaluator().moduleInstantiation(realm, moduleRecord);
+            context_.getEvaluator().moduleEvaluation(realm, moduleRecord);
+
+            DynamicObject dyn = context_.getEvaluator().getModuleNamespace(moduleRecord);
+
+            return dyn;
+        }
     }
 }

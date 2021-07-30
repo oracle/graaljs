@@ -42,6 +42,7 @@
 var moduleBlockOne = module { export var test = 42; };
 
 var one = 0;
+var two = 0;
 
 if (moduleBlockOne.toString() === "module { export var test = 42; }") {
     one = 5;
@@ -49,4 +50,12 @@ if (moduleBlockOne.toString() === "module { export var test = 42; }") {
     one = 0;
 }
 
-[121,one,11];
+console.log(ModuleBlock.prototype);
+
+if (ModuleBlock.prototype.toString() === "ModuleBlock.prototype") {
+    two = 121;
+} else {
+    two = 0;
+}
+
+[two,one,11];

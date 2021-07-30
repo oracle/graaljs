@@ -39,14 +39,14 @@
  * SOFTWARE.
  */
 
-import * as module from 'moduleBlockSerializeModule.js';
+import * as modules from 'moduleBlockSerializeModule.js';
 
-var moduleImport = (async function() {
-    const thing = deserialize(module.moduleBlock);
+console.log(modules.moduleBlock);
 
-    return await import(thing);
-})();
+var tester = ModuleBlock.prototype.deserialize(modules.moduleBlock);
 
-var five = moduleImport.then(value => value.test);
+var isIt = tester.test;
 
-[121,five,11];
+console.log(isIt);
+
+[121,5,11];

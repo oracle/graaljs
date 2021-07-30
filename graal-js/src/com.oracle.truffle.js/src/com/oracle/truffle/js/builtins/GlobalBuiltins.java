@@ -103,8 +103,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
-import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalSerializeNodeGen;
-import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalDeserializeNodeGen;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.helper.FloatParser;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
@@ -181,10 +179,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         decodeURIComponent(1),
         eval(1),
 
-        // ModuleBlock methods
-        serialize(1),
-        deserialize(1),
-
         // Annex B
         escape(1),
         unescape(1);
@@ -227,12 +221,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 return JSGlobalDecodeURINodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case eval:
                 return JSGlobalIndirectEvalNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case serialize:
-                return JSGlobalSerializeNodeGen.create(context, builtin,
-                                args().fixedArgs(1).createArgumentNodes(context));
-            case deserialize:
-                return JSGlobalDeserializeNodeGen.create(context, builtin,
-                                args().fixedArgs(1).createArgumentNodes(context));
+
             case escape:
                 return JSGlobalUnEscapeNodeGen.create(context, builtin, false, args().fixedArgs(1).createArgumentNodes(context));
             case unescape:
@@ -1299,63 +1288,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @Override
         public boolean isCallerSensitive() {
             return getContext().isOptionV8CompatibilityMode();
-        }
-    }
-
-    /**
-     * Implementation of Module Block serialize-method
-     */
-    public abstract static class JSGlobalSerializeNode extends JSBuiltinNode {
-
-        protected JSContext context_;
-
-        protected JSGlobalSerializeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            context_ = context;
-        }
-
-        @Specialization(guards = "context_.isExperimentalModuleBlocks()")
-        protected byte[] serialize(Object value) {
-            assert value instanceof DynamicObject;
-            if (JSObjectUtil.hasHiddenProperty((DynamicObject) value,
-                            ModuleBlockNode.getModuleBodyKey())) {
-                PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), getContext());
-
-                Object sourceCode = getSourceCode.getValue(value);
-
-                return ("module {" + sourceCode.toString() + "}").getBytes();
-            }
-
-            Errors.createTypeError("Not a ModuleBlock");
-
-            return null;
-        }
-    }
-
-    /**
-     * Implementation of Module Block deserialize-method
-     */
-    public abstract static class JSGlobalDeserializeNode extends JSBuiltinNode {
-
-        protected JSContext context_;
-
-        protected JSGlobalDeserializeNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-            context_ = context;
-        }
-
-        @Specialization(guards = "context_.isExperimentalModuleBlocks()")
-        protected JavaScriptNode deserialize(Object value) {
-            assert value instanceof byte[];
-            String sourceCode = new String((byte[]) value, StandardCharsets.UTF_8);
-
-            // turn from sourcecode string to module block via parsing and then translating
-
-            Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "moduleBlock").build();
-
-            System.out.println(source.getCharacters());
-
-            return getContext().getEvaluator().parseModuleBlock(getContext(), source);
         }
     }
 

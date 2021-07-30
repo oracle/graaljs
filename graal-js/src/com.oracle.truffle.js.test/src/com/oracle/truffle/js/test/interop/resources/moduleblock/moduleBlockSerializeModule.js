@@ -39,6 +39,8 @@
  * SOFTWARE.
  */
 
-//var moduleTest = module { export var test = 5; };
+var moduleTest = module { export var test = 5; };
 
-export var moduleBlock = serialize(module { });
+var test = ModuleBlock.prototype.serialize(moduleTest);
+
+export var moduleBlock = ModuleBlock.prototype.serialize(moduleTest);
