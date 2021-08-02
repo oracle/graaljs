@@ -409,6 +409,9 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private static void filterSupportedImportAssertions(final JSContext context, final ModuleRequest moduleRequest) {
+        if (moduleRequest.getAssertions().isEmpty()) {
+            return;
+        }
         Map<String, String> supportedAssertions = new HashMap<>();
         for (Map.Entry<String, String> assertion : moduleRequest.getAssertions().entrySet()) {
             String key = assertion.getKey();
