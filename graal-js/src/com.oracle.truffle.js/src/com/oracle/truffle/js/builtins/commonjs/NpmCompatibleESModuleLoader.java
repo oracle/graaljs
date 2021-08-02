@@ -108,7 +108,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         }
         try {
             TruffleFile file = resolveURL(referencingModule, specifier);
-            return loadModuleFromUrl(specifier, file, file.getPath());
+            return loadModuleFromUrl(referencingModule, specifier, file, file.getPath());
         } catch (IOException e) {
             log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
             throw Errors.createErrorFromException(e);
@@ -130,7 +130,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 // Load from URI
                 TruffleFile file = resolveURL(referencingModule, moduleReplacementName);
                 try {
-                    return loadModuleFromUrl(specifier, file, file.getPath());
+                    return loadModuleFromUrl(referencingModule, specifier, file, file.getPath());
                 } catch (IOException e) {
                     throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
                 }
