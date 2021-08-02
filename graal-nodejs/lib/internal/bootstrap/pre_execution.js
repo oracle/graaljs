@@ -7,6 +7,7 @@ const {
   SafeMap,
   SafeWeakMap,
   StringPrototypeStartsWith,
+  globalThis,
 } = primordials;
 
 const {
@@ -297,7 +298,7 @@ function initializeDeprecations() {
   // deprecation path for these in ES Modules.
   // See https://github.com/nodejs/node/pull/26334.
   let _process = process;
-  ObjectDefineProperty(global, 'process', {
+  ObjectDefineProperty(globalThis, 'process', {
     get() {
       return _process;
     },
@@ -309,7 +310,7 @@ function initializeDeprecations() {
   });
 
   let _Buffer = Buffer;
-  ObjectDefineProperty(global, 'Buffer', {
+  ObjectDefineProperty(globalThis, 'Buffer', {
     get() {
       return _Buffer;
     },
@@ -328,7 +329,7 @@ function initializeAbortController() {
       AbortController,
       AbortSignal
     } = require('internal/abort_controller');
-    ObjectDefineProperties(global, {
+    ObjectDefineProperties(globalThis, {
       AbortController: {
         writable: true,
         enumerable: false,

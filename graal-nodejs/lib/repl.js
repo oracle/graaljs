@@ -43,6 +43,7 @@
 'use strict';
 
 const {
+  ArrayPrototypeForEach,
   Error,
   MathMax,
   NumberIsNaN,
@@ -67,6 +68,7 @@ const {
   SyntaxError,
   SyntaxErrorPrototype,
   WeakSet,
+  globalThis,
 } = primordials;
 
 const {
@@ -988,7 +990,7 @@ REPLServer.prototype.close = function close() {
 REPLServer.prototype.createContext = function() {
   let context;
   if (this.useGlobal) {
-    context = global;
+    context = globalThis;
   } else {
     sendInspectorCommand((session) => {
       session.post('Runtime.enable');
@@ -1000,13 +1002,13 @@ REPLServer.prototype.createContext = function() {
     }, () => {
       context = vm.createContext();
     });
-    for (const name of ObjectGetOwnPropertyNames(global)) {
+    ArrayPrototypeForEach(ObjectGetOwnPropertyNames(globalThis), (name) => {
       // Only set properties that do not already exist as a global builtin.
       if (!globalBuiltins.has(name)) {
         ObjectDefineProperty(context, name,
-                             ObjectGetOwnPropertyDescriptor(global, name));
+                             ObjectGetOwnPropertyDescriptor(globalThis, name));
       }
-    }
+    });
     context.global = context;
     const _console = new Console(this.output);
     ObjectDefineProperty(context, 'console', {
