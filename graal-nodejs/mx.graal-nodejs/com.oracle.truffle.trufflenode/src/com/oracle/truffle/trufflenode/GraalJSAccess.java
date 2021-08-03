@@ -3784,6 +3784,16 @@ public final class GraalJSAccess {
         public JSModuleRecord loadModule(Source moduleSource) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public JSModuleRecord resolveImportedModuleBlock(JSModuleRecord moduleBlock, DynamicObject specifier) {
+            return moduleBlock;
+        }
+
+        @Override
+        public JSModuleRecord resolveImportedModuleBlock(Source source, DynamicObject specifier) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     /**
