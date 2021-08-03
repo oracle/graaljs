@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.UserScriptException;
-
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -54,6 +47,13 @@ import java.nio.file.FileSystemException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.UserScriptException;
 
 public class DefaultESModuleLoader implements JSModuleLoader {
 
@@ -103,7 +103,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 }
             }
             String canonicalPath = moduleFile.getPath();
-            return loadModuleFromUrl(specifier, moduleFile, canonicalPath);
+            return loadModuleFromUrl(referrer, specifier, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
             String fileName = fsex.getFile();
             if (Objects.equals(fsex.getMessage(), fileName)) {
@@ -124,7 +124,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
     }
 
-    protected JSModuleRecord loadModuleFromUrl(String specifier, TruffleFile moduleFile, String canonicalPath) throws IOException {
+    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, String specifier, TruffleFile moduleFile, String canonicalPath) throws IOException {
         JSModuleRecord existingModule = moduleMap.get(canonicalPath);
         if (existingModule != null) {
             return existingModule;
@@ -133,6 +133,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
         JSModuleRecord newModule = new JSModuleRecord(parsedModule, this);
         moduleMap.put(canonicalPath, newModule);
+
+        if (referrer instanceof JSModuleRecord) {
+            ((JSModuleRecord) referrer).getModuleData().rememberImportedModuleSource(specifier, source);
+        }
         return newModule;
     }
 
