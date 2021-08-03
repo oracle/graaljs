@@ -76,6 +76,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.stream.LongStream;
 
 /**
@@ -232,9 +234,11 @@ public class ESModuleTest {
 
             assertTrue(v.hasArrayElements());
 
-            System.out.println("Square test: " + v.getArrayElement(0));
-            System.out.println("Diagonal test: " + v.getArrayElement(1));
-            System.out.println("Sqrt test: " + v.getArrayElement(2));
+            /*
+             * Test output: System.out.println("Square test: " + v.getArrayElement(0));
+             * System.out.println("Diagonal test: " + v.getArrayElement(1));
+             * System.out.println("Sqrt test: " + v.getArrayElement(2));
+             */
 
             assertTrue(v.getArrayElement(0).toString().contains("121"));
             assertTrue(v.getArrayElement(1).toString().contains("5"));
@@ -346,7 +350,9 @@ public class ESModuleTest {
                 durations[i] = (endTime - startTime) / TIME_CONVERSION;
             }
 
-            System.out.println(main.substring(main.lastIndexOf("/") + 1) + " execution times: " + LongStream.of(durations).summaryStatistics());
+            // Test output
+            // System.out.println(main.substring(main.lastIndexOf("/") + 1) + " execution times: " +
+            // LongStream.of(durations).summaryStatistics());
         } finally {
             deleteFiles(allFilesArray);
         }
@@ -360,8 +366,6 @@ public class ESModuleTest {
      */
     @Test
     public void testModuleBlockBenchmark() throws IOException {
-        System.out.println("Benchmark for module blocks with k-means algorithm and a toy example: ");
-
         benchmark("resources/moduleBlock/benchmark/kMeansRegular.js", "resources/moduleBlock/benchmark/kMeansRegular.js");
 
         benchmark("resources/moduleBlock/benchmark/kMeansModuleBlock.js", "resources/moduleBlock/benchmark/kMeansModuleBlock.js");
@@ -564,6 +568,159 @@ public class ESModuleTest {
             commonCheck(v);
         } finally {
             deleteFiles(allFilesArray);
+        }
+    }
+
+    /**
+     * Data can be exchanged between different threads running isolated, share-nothing, Graal.js
+     * contexts. Java synchronization can be used to exchange data between them.
+     */
+    @Test(timeout = 10000)
+    public void moduleBlockSimplePingPong() {
+        final BlockingQueue<Value> queue = new ArrayBlockingQueue<>(1024);
+
+        SimpleProducer p = new SimpleProducer(queue);
+        SimpleConsumer c = new SimpleConsumer(queue);
+
+        c.start();
+        p.start();
+        try {
+            p.join();
+            c.join();
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+        assertEquals(p.sent, 128);
+        assertEquals(c.received, 128);
+    }
+
+    static class SimpleProducer extends Thread {
+
+        private int sent;
+        private final BlockingQueue<Value> queue;
+
+        SimpleProducer(BlockingQueue<Value> queue) {
+            this.queue = queue;
+        }
+
+        @Override
+        public void run() {
+            Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME,
+                            "true").option(JSContextOptions.EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API,
+                                            "true").build();
+            cx.getBindings("js").putMember("queue", queue);
+            try {
+                sent = cx.eval("js", " var sent = 127;" +
+                                "var moduleBlock = module { export var test = 128; };" +
+                                "var moduleString = ModuleBlock.prototype.serialize(moduleBlock);" +
+                                "   queue.put(moduleString);" +
+                                "++sent;").asInt();
+            } finally {
+                cx.close();
+            }
+        }
+
+    }
+
+    class SimpleConsumer extends Thread {
+
+        private int received;
+        private final BlockingQueue<Value> queue;
+
+        SimpleConsumer(BlockingQueue<Value> queue) {
+            this.queue = queue;
+        }
+
+        @Override
+        public void run() {
+            Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME,
+                            "true").option(JSContextOptions.EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API,
+                                            "true").build();
+            cx.getBindings("js").putMember("queue", queue);
+            try {
+                received = cx.eval("js", "var received = 0;" +
+                                "   var moduleString = queue.take();" +
+                                "   var module = ModuleBlock.prototype.deserialize(moduleString);" +
+                                "module.test;").asInt();
+            } finally {
+                cx.close();
+            }
+        }
+    }
+
+    /**
+     * Data can be exchanged between different threads running isolated, share-nothing, Graal.js
+     * contexts. Java synchronization can be used to exchange data between them.
+     */
+    @Test(timeout = 10000)
+    public void moduleBlockFibonacciPingPong() {
+        final BlockingQueue<Value> queue = new ArrayBlockingQueue<>(1024);
+
+        Producer p = new Producer(queue);
+        Consumer c = new Consumer(queue);
+
+        c.start();
+        p.start();
+        try {
+            p.join();
+            c.join();
+        } catch (InterruptedException e) {
+            throw new AssertionError(e);
+        }
+        assertEquals(p.result, 10946);
+        assertEquals(c.result, 10946);
+    }
+
+    class Producer extends Thread {
+
+        private int result;
+        private final BlockingQueue<Value> queue;
+
+        Producer(BlockingQueue<Value> queue) {
+            this.queue = queue;
+        }
+
+        @Override
+        public void run() {
+            Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME,
+                            "true").option(JSContextOptions.EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API,
+                                            "true").build();
+            cx.getBindings("js").putMember("queue", queue);
+
+            try {
+                result = cx.eval("js", "var moduleBlock = module { export function fib(N) { " +
+                                "var a  = 1, b = 0, temp;" +
+                                "while(N>=0) { temp = a; a = a + b; b = temp; N--; } return b; } };" +
+                                "var moduleString = ModuleBlock.prototype.serialize(moduleBlock);" + "queue.put(moduleString);" +
+                                "queue.take();").asInt();
+            } finally {
+                cx.close();
+            }
+        }
+    }
+
+    class Consumer extends Thread {
+        private int result;
+        private final BlockingQueue<Value> queue;
+
+        Consumer(BlockingQueue<Value> queue) {
+            this.queue = queue;
+        }
+
+        @Override
+        public void run() {
+            Context cx = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").option(JSContextOptions.MODULE_BLOCKS_NAME,
+                            "true").option(JSContextOptions.EXPERIMENTAL_MODULE_BLOCK_SERIALIZATION_API,
+                                            "true").build();
+            cx.getBindings("js").putMember("queue", queue);
+
+            try {
+                result = cx.eval("js", "var number = 20;" + "var moduleString = queue.take();" + "var module = ModuleBlock.prototype.deserialize(moduleString);" +
+                                "var fibonacci = module.fib(number);" +
+                                "queue.put(fibonacci); fibonacci;").asInt();
+            } finally {
+                cx.close();
+            }
         }
     }
 }

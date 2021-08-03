@@ -59,7 +59,9 @@ import com.oracle.truffle.js.nodes.module.ModuleBlockNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSModuleBlock;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -122,9 +124,6 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected String doOperation(Object thisModuleBlock) {
             // Type check, then check for hidden property body and return hidden property
             // sourceText
-
-            System.out.println("In toString.");
-
             if (JSObjectUtil.hasHiddenProperty((DynamicObject) thisModuleBlock,
                             ModuleBlockNode.getModuleBodyKey())) {
                 PropertyGetNode getSourceCode = PropertyGetNode.createGetHidden(ModuleBlockNode.getModuleSourceKey(), this.getContext());
@@ -169,14 +168,12 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                 Object sourceCode = getSourceCode.getValue(value);
 
-                return (sourceCode.toString());
-            } else {
-                return "Can't touch this";
+                return sourceCode.toString();
             }
 
-            // Errors.createTypeError("Not a ModuleBlock");
+            Errors.createTypeError("Not a ModuleBlock");
 
-            // return null;
+            return null;
         }
     }
 
@@ -194,14 +191,11 @@ public class ModuleBlockPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "context_.isExperimentalModuleBlocks()")
         protected Object doOperation(Object value) {
-            System.out.println("In deserialize node. " + value.toString());
-
             assert value instanceof String;
-            String sourceCode = (String) value;// new String((byte[]) value,
-            // StandardCharsets.UTF_8);
+
+            String sourceCode = (String) value;
 
             // turn from sourcecode string to module block via parsing and then translating
-
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "moduleBlock").build();
 
             JSRealm realm = context_.getRealm();
