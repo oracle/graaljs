@@ -57,6 +57,9 @@ test-heapdump-async-hooks-init-promise: SKIP
 test-http2-ping-settings-heapdump: SKIP
 test-v8-getheapsnapshot-twice: SKIP
 
+# https://example.com does not work in CI
+test-https-agent-unref-socket: SKIP
+
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
 
