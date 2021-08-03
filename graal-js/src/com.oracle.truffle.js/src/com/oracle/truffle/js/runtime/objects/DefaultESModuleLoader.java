@@ -142,13 +142,13 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         if (!doesModuleTypeMatchAssertionType(assertedType, moduleType)) {
             throw Errors.createTypeError("Invalid module type was asserted");
         }
+        JSModuleRecord newModule;
         if (isModuleType(moduleType, JSON_MODULE_TYPE)) {
-            JSModuleRecord jsonModule = realm.getContext().getEvaluator().parseJSONModule(realm, source);
-            moduleMap.put(canonicalPath, jsonModule);
-            return jsonModule;
+            newModule = realm.getContext().getEvaluator().parseJSONModule(realm, source);
+        } else {
+            JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+            newModule = new JSModuleRecord(parsedModule, this);
         }
-        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
-        JSModuleRecord newModule = new JSModuleRecord(parsedModule, this);
         moduleMap.put(canonicalPath, newModule);
 
         if (referrer instanceof JSModuleRecord) {
