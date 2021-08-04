@@ -57,6 +57,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -727,11 +728,28 @@ public abstract class TestSuite {
                 List<TestFile> addTests = new ArrayList<>(unexpectedlyFailed.size());
                 for (TestFile testFile : unexpectedlyFailed) {
                     TestFile failingTestFile = new TestFile(testFile.getFilePath());
-                    failingTestFile.setStatus(TestFile.Status.FAIL);
+                    if (config.isPolyglot()) {
+                        EnumMap<TestFile.StatusOverrideCondition, TestFile.Status> statusOverrides = new EnumMap<>(TestFile.StatusOverrideCondition.class);
+                        statusOverrides.put(TestFile.StatusOverrideCondition.POLYGLOT, TestFile.Status.FAIL);
+                        failingTestFile.setStatusOverrides(statusOverrides);
+                        failingTestFile.setStatus(TestFile.Status.SKIP);
+                    } else {
+                        failingTestFile.setStatus(TestFile.Status.FAIL);
+                    }
                     if (!comment.isEmpty()) {
                         failingTestFile.setComment(comment);
                     }
                     addTests.add(failingTestFile);
+                }
+                if (config.isPolyglot()) {
+                    for (TestFile testFile : unexpectedlyPassed) {
+                        TestFile passingTestFile = new TestFile(testFile.getFilePath());
+                        EnumMap<TestFile.StatusOverrideCondition, TestFile.Status> statusOverrides = new EnumMap<>(TestFile.StatusOverrideCondition.class);
+                        statusOverrides.put(TestFile.StatusOverrideCondition.POLYGLOT, TestFile.Status.PASS);
+                        passingTestFile.setStatusOverrides(statusOverrides);
+                        addTests.add(passingTestFile);
+                    }
+                    unexpectedlyPassed.clear();
                 }
                 regenerateConfig(addTests, unexpectedlyPassed);
             }
