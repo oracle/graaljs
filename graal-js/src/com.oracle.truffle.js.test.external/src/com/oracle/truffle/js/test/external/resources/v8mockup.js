@@ -59,7 +59,18 @@ var isTurboFanned = function() {
 
 // ---------------------- d8 global object ---------------------- //
 
-var d8 = { file: { execute: load } };
+var d8 = {
+    file: {
+        execute: function(path) {
+            load(path);
+            // Ensures that assertTraps() checks just the error type
+            // (WebAssembly.RuntimeError) and not the exact error message
+            if (path.endsWith('wasm-module-builder.js')) {
+                kTrapMsgs = [];
+            }
+        }
+    }
+};
 
 // ---------------------- other mockup functions ---------------- //
 
