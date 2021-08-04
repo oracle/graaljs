@@ -2175,9 +2175,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-6931.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-694433.js",
     "status" : "SKIP",
@@ -2406,9 +2405,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-769637.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-775366.js",
     "status" : "SKIP",
@@ -2591,9 +2589,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-834693.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-836141.js",
     "status" : "SKIP",
@@ -2616,7 +2613,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-842501.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-843563.js",
@@ -3130,16 +3127,14 @@
     "filePath" : "mjsunit/wasm/bounds-check-64bit.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/bounds-check-turbofan.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/bulk-memory.js",
     "status" : "SKIP",
@@ -3198,9 +3193,8 @@
     "filePath" : "mjsunit/wasm/divrem-trap.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/embenchen/box2d.js",
     "status" : "SKIP",
@@ -3406,16 +3400,14 @@
     "filePath" : "mjsunit/wasm/grow-memory-in-branch.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-in-call.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-in-loop.js",
     "status" : "SKIP",
@@ -3426,9 +3418,8 @@
     "filePath" : "mjsunit/wasm/grow-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
     "status" : "SKIP",
@@ -3517,9 +3508,8 @@
     "filePath" : "mjsunit/wasm/large-offset.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/lazy-compilation.js",
     "status" : "SKIP",
@@ -3618,7 +3608,7 @@
     "filePath" : "mjsunit/wasm/module-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/multiple-code-spaces.js",
