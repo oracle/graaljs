@@ -43,6 +43,7 @@ package com.oracle.truffle.trufflenode.buffer;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
@@ -56,12 +57,14 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
 public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
     protected static final Charset utf8 = Charset.forName("UTF-8");
 
     @Child protected ArrayBufferViewGetByteLengthNode getLenNode;
+    @Child private ArrayBufferGetContentsNode interopArrayBufferGetContents;
 
     public NIOBufferAccessNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -103,5 +106,13 @@ public abstract class NIOBufferAccessNode extends JSBuiltinNode {
 
     protected static boolean accept(DynamicObject target) {
         return JSArrayBufferView.isJSArrayBufferView(target);
+    }
+
+    protected final ByteBuffer interopArrayBufferGetContents(DynamicObject arrayBuffer) {
+        if (interopArrayBufferGetContents == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            interopArrayBufferGetContents = insert(ArrayBufferGetContentsNode.create());
+        }
+        return interopArrayBufferGetContents.execute(arrayBuffer);
     }
 }
