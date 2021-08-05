@@ -96,7 +96,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -149,7 +148,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE,
                 JavaScriptLanguage.JSON_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
-public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
+public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
@@ -434,7 +433,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         multiContext = true;
     }
 
-    @Override
     public boolean isMultiContext() {
         return multiContext;
     }
@@ -462,6 +460,22 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     @Override
     protected Object getScope(JSRealm context) {
         return context.getTopScopeObject();
+    }
+
+    public static JSRealm getCurrentJSRealm() {
+        return JSRealm.get(null);
+    }
+
+    public static JavaScriptLanguage getCurrentLanguage() {
+        return JavaScriptLanguage.get(null);
+    }
+
+    public static TruffleLanguage.Env getCurrentEnv() {
+        return getCurrentJSRealm().getEnv();
+    }
+
+    public String getTruffleLanguageHome() {
+        return getLanguageHome();
     }
 
     public static JSContext getJSContext(Context context) {
