@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -127,6 +128,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalGetValue, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
+                @Child InteropLibrary globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
                 private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
@@ -134,8 +136,9 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                     Object thiz = JSFrameUtil.getThisObj(frame);
                     if (isJSWebAssemblyGlobal(thiz)) {
                         Object wasmGlobal = ((JSWebAssemblyGlobalObject) thiz).getWASMGlobal();
+                        Object globalRead = realm.getWASMGlobalRead();
                         try {
-                            return toJSValueNode.execute(InteropLibrary.getUncached(wasmGlobal).readMember(wasmGlobal, "value"));
+                            return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         }
@@ -155,6 +158,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+                @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
                 private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
@@ -173,7 +177,8 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                                 value = JSArguments.getUserArgument(args, 0);
                             }
                             Object webAssemblyValue = toWebAssemblyValueNode.execute(value, global.getValueType());
-                            InteropLibrary.getUncached(wasmGlobal).writeMember(wasmGlobal, "value", webAssemblyValue);
+                            Object globalWrite = realm.getWASMGlobalWrite();
+                            globalWriteLib.execute(globalWrite, wasmGlobal, webAssemblyValue);
                             return Undefined.instance;
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);

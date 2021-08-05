@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleCustomSectionsNodeGen;
@@ -111,6 +112,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class WebAssemblyModuleExportsNode extends JSBuiltinNode {
+        @Child InteropLibrary moduleExportsLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyModuleExportsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -119,8 +121,8 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object exportsOfModule(JSWebAssemblyModuleObject moduleObject) {
             try {
-                Object exportsFunction = getContext().getRealm().getWASMModuleExportsFunction();
-                Object wasmExports = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, moduleObject.getWASMModule());
+                Object exportsFunction = getContext().getRealm().getWASMModuleExports();
+                Object wasmExports = moduleExportsLib.execute(exportsFunction, moduleObject.getWASMModule());
                 return toJSExports(wasmExports);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -156,6 +158,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class WebAssemblyModuleImportsNode extends JSBuiltinNode {
+        @Child InteropLibrary moduleImportsLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyModuleImportsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -164,8 +167,8 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object importsOfModule(JSWebAssemblyModuleObject moduleObject) {
             try {
-                Object importsFunction = getContext().getRealm().getWASMModuleImportsFunction();
-                Object wasmImports = InteropLibrary.getUncached(importsFunction).execute(importsFunction, moduleObject.getWASMModule());
+                Object importsFunction = getContext().getRealm().getWASMModuleImports();
+                Object wasmImports = moduleImportsLib.execute(importsFunction, moduleObject.getWASMModule());
                 return toJSImports(wasmImports);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -202,10 +205,12 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class WebAssemblyModuleCustomSectionsNode extends JSBuiltinNode {
         @Child JSToStringNode toStringNode;
+        @Child InteropLibrary customSectionsLib;
 
         public WebAssemblyModuleCustomSectionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toStringNode = JSToStringNode.create();
+            customSectionsLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -215,8 +220,8 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
             }
             String name = toStringNode.executeString(sectionName);
             try {
-                Object customSectionsFunction = getContext().getRealm().getWASMModuleCustomSectionsFunction();
-                Object wasmCustomSections = InteropLibrary.getUncached(customSectionsFunction).execute(customSectionsFunction, moduleObject.getWASMModule(), name);
+                Object customSectionsFunction = getContext().getRealm().getWASMCustomSections();
+                Object wasmCustomSections = customSectionsLib.execute(customSectionsFunction, moduleObject.getWASMModule(), name);
                 return toJSArrayOfArrayBuffers(wasmCustomSections);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

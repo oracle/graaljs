@@ -364,13 +364,6 @@ public class JSRealm {
     private String staticRegexResultOriginalInputString;
 
     /** WebAssembly support. */
-    private final Object wasmCompileFunction;
-    private final Object wasmInstantiateFunction;
-    private final Object wasmValidateFunction;
-    private final Object wasmModuleExportsFunction;
-    private final Object wasmModuleImportsFunction;
-    private final Object wasmModuleCustomSectionsFunction;
-    private final Object wasmGlobalConstructor;
     private final Object wasmTableAlloc;
     private final Object wasmTableGrow;
     private final Object wasmTableRead;
@@ -379,6 +372,15 @@ public class JSRealm {
     private final Object wasmFuncType;
     private final Object wasmMemAlloc;
     private final Object wasmMemGrow;
+    private final Object wasmGlobalAlloc;
+    private final Object wasmGlobalRead;
+    private final Object wasmGlobalWrite;
+    private final Object wasmModuleDecode;
+    private final Object wasmModuleInstantiate;
+    private final Object wasmModuleValidate;
+    private final Object wasmModuleExports;
+    private final Object wasmModuleImports;
+    private final Object wasmCustomSections;
 
     private final DynamicObject webAssemblyObject;
     private final DynamicObject webAssemblyGlobalConstructor;
@@ -727,10 +729,6 @@ public class JSRealm {
 
             try {
                 InteropLibrary wasmInterop = InteropLibrary.getUncached(wasmObject);
-                wasmCompileFunction = wasmInterop.readMember(wasmObject, "compile");
-                wasmInstantiateFunction = wasmInterop.readMember(wasmObject, "instantiate");
-                wasmValidateFunction = wasmInterop.readMember(wasmObject, "validate");
-                wasmGlobalConstructor = wasmInterop.readMember(wasmObject, "Global");
                 wasmTableAlloc = wasmInterop.readMember(wasmObject, "table_alloc");
                 wasmTableGrow = wasmInterop.readMember(wasmObject, "table_grow");
                 wasmTableRead = wasmInterop.readMember(wasmObject, "table_read");
@@ -739,11 +737,15 @@ public class JSRealm {
                 wasmFuncType = wasmInterop.readMember(wasmObject, "func_type");
                 wasmMemAlloc = wasmInterop.readMember(wasmObject, "mem_alloc");
                 wasmMemGrow = wasmInterop.readMember(wasmObject, "mem_grow");
-                Object wasmModuleConstructor = wasmInterop.readMember(wasmObject, "Module");
-                InteropLibrary moduleInterop = InteropLibrary.getUncached(wasmModuleConstructor);
-                wasmModuleExportsFunction = moduleInterop.readMember(wasmModuleConstructor, "exports");
-                wasmModuleImportsFunction = moduleInterop.readMember(wasmModuleConstructor, "imports");
-                wasmModuleCustomSectionsFunction = moduleInterop.readMember(wasmModuleConstructor, "customSections");
+                wasmGlobalAlloc = wasmInterop.readMember(wasmObject, "global_alloc");
+                wasmGlobalRead = wasmInterop.readMember(wasmObject, "global_read");
+                wasmGlobalWrite = wasmInterop.readMember(wasmObject, "global_write");
+                wasmModuleDecode = wasmInterop.readMember(wasmObject, "module_decode");
+                wasmModuleInstantiate = wasmInterop.readMember(wasmObject, "module_instantiate");
+                wasmModuleValidate = wasmInterop.readMember(wasmObject, "module_validate");
+                wasmModuleExports = wasmInterop.readMember(wasmObject, "module_exports");
+                wasmModuleImports = wasmInterop.readMember(wasmObject, "module_imports");
+                wasmCustomSections = wasmInterop.readMember(wasmObject, "custom_sections");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -765,13 +767,6 @@ public class JSRealm {
             this.webAssemblyGlobalConstructor = ctor.getFunctionObject();
             this.webAssemblyGlobalPrototype = ctor.getPrototype();
         } else {
-            this.wasmCompileFunction = null;
-            this.wasmInstantiateFunction = null;
-            this.wasmValidateFunction = null;
-            this.wasmModuleExportsFunction = null;
-            this.wasmModuleImportsFunction = null;
-            this.wasmModuleCustomSectionsFunction = null;
-            this.wasmGlobalConstructor = null;
             this.wasmTableAlloc = null;
             this.wasmTableGrow = null;
             this.wasmTableRead = null;
@@ -780,6 +775,15 @@ public class JSRealm {
             this.wasmFuncType = null;
             this.wasmMemAlloc = null;
             this.wasmMemGrow = null;
+            this.wasmGlobalAlloc = null;
+            this.wasmGlobalRead = null;
+            this.wasmGlobalWrite = null;
+            this.wasmModuleDecode = null;
+            this.wasmModuleInstantiate = null;
+            this.wasmModuleValidate = null;
+            this.wasmModuleExports = null;
+            this.wasmModuleImports = null;
+            this.wasmCustomSections = null;
 
             this.webAssemblyObject = null;
             this.webAssemblyGlobalConstructor = null;
@@ -2444,32 +2448,28 @@ public class JSRealm {
         return truffleLanguageEnv.isPolyglotBindingsAccessAllowed() && truffleLanguageEnv.getInternalLanguages().get("wasm") != null;
     }
 
-    public Object getWASMCompileFunction() {
-        return wasmCompileFunction;
+    public Object getWASMModuleDecode() {
+        return wasmModuleDecode;
     }
 
-    public Object getWASMInstantiateFunction() {
-        return wasmInstantiateFunction;
+    public Object getWASMModuleInstantiate() {
+        return wasmModuleInstantiate;
     }
 
-    public Object getWASMValidateFunction() {
-        return wasmValidateFunction;
+    public Object getWASMModuleValidate() {
+        return wasmModuleValidate;
     }
 
-    public Object getWASMModuleExportsFunction() {
-        return wasmModuleExportsFunction;
+    public Object getWASMModuleExports() {
+        return wasmModuleExports;
     }
 
-    public Object getWASMModuleImportsFunction() {
-        return wasmModuleImportsFunction;
+    public Object getWASMModuleImports() {
+        return wasmModuleImports;
     }
 
-    public Object getWASMModuleCustomSectionsFunction() {
-        return wasmModuleCustomSectionsFunction;
-    }
-
-    public Object getWASMGlobalConstructor() {
-        return wasmGlobalConstructor;
+    public Object getWASMCustomSections() {
+        return wasmCustomSections;
     }
 
     public Object getWASMTableAlloc() {
@@ -2502,6 +2502,18 @@ public class JSRealm {
 
     public Object getWASMMemGrow() {
         return wasmMemGrow;
+    }
+
+    public Object getWASMGlobalAlloc() {
+        return wasmGlobalAlloc;
+    }
+
+    public Object getWASMGlobalRead() {
+        return wasmGlobalRead;
+    }
+
+    public Object getWASMGlobalWrite() {
+        return wasmGlobalWrite;
     }
 
     public DynamicObject getWebAssemblyModulePrototype() {
