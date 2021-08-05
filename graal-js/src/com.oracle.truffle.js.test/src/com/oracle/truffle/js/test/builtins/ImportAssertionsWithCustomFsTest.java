@@ -71,21 +71,27 @@ import java.util.Set;
 public class ImportAssertionsWithCustomFsTest {
 
     private static void executeTest(TestTuple source) throws IOException {
+        executeTest(source, "./test.js");
+    }
+
+    private static void executeTest(TestTuple source, String importName) throws IOException {
         TestFileSystem fs = new TestFileSystem();
-        fs.add("./test.js", source.fileContent);
+        fs.add(importName, source.fileContent);
         if (source.additionalModuleName != null) {
             fs.add(source.additionalModuleName, source.additionalModuleBody);
         }
         if (source.isAsync) {
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).out(out).option(JSContextOptions.CONSOLE_NAME, "true").option(
-                            JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").build()) {
+                            JSContextOptions.INTEROP_COMPLETE_PROMISES_NAME, "false").option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").option(JSContextOptions.JSON_MODULES_NAME,
+                                            "true").build()) {
                 Value asyncFn = context.eval(JavaScriptLanguage.ID, source.statement);
                 asyncFn.executeVoid();
             }
             Assert.assertEquals(source.expectedValue + "\n", out.toString());
         } else {
-            try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").build()) {
+            try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).option(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true").option(JSContextOptions.JSON_MODULES_NAME,
+                            "true").build()) {
                 Value v = context.eval(Source.newBuilder(JavaScriptLanguage.ID, source.statement, "exec.mjs").build());
                 Assert.assertEquals(source.expectedValue, v.asString());
             }
@@ -99,14 +105,19 @@ public class ImportAssertionsWithCustomFsTest {
     }
 
     private static TestTuple[] getTestTuples(String assertVal) {
+        return getTestTuples(assertVal, "./test.js");
+    }
+
+    private static TestTuple[] getTestTuples(String assertVal, String importName) {
         TestTuple[] testTuples = new TestTuple[5];
-        testTuples[0] = new TestTuple("import { val } from './test.js' assert " + assertVal + "; val;", "export const val = 'value';", "value");
-        testTuples[1] = new TestTuple("import json from './test.js' assert " + assertVal + "; json.val;", "let json = { val: 'value' }; export { json as default };", "value");
-        testTuples[2] = new TestTuple("import { val } from './test.js'; val;", "export { val } from './test2.js' assert " + assertVal + ";", "value", "./test2.js", "export const val = 'value';",
+        testTuples[0] = new TestTuple("import { val } from '" + importName + "' assert " + assertVal + "; val;", "export const val = 'value';", "value");
+        testTuples[1] = new TestTuple("import json from '" + importName + "' assert " + assertVal + "; json.val;", "let json = { val: 'value' }; export { json as default };", "value");
+        testTuples[2] = new TestTuple("import { val } from '" + importName + "'; val;", "export { val } from './test2.js' assert " + assertVal + ";", "value", "./test2.js",
+                        "export const val = 'value';",
                         false);
-        testTuples[3] = new TestTuple("(async function () { let {default:json} = await import('./test.js', { assert: " + assertVal + " } ); console.log(json.val); });",
+        testTuples[3] = new TestTuple("(async function () { let {default:json} = await import('" + importName + "', { assert: " + assertVal + " } ); console.log(json.val); });",
                         "let json = { val: 'value' }; export { json as default };", "value", true);
-        testTuples[4] = new TestTuple("(async function () { let {default:json} = await import('./test.js', { assert: " + assertVal + " }, ); console.log(json.val);});",
+        testTuples[4] = new TestTuple("(async function () { let {default:json} = await import('" + importName + "', { assert: " + assertVal + " }, ); console.log(json.val);});",
                         "let json = { val: 'value' }; export { json as default };", "value", true);
         return testTuples;
     }
@@ -123,53 +134,48 @@ public class ImportAssertionsWithCustomFsTest {
     }
 
     @Test
-    public void testAssertTypeJson() throws IOException {
-        executeStatements("{ type: 'json' }");
-    }
-
-    @Test
     public void testAssertTypeJsonDanglingComma() throws IOException {
-        executeStatements("{ type: 'json', }");
+        executeStatements("{ test: 'test', }");
     }
 
     @Test
     public void testAssertStringJson() throws IOException {
-        executeStatements("{ 'type': 'json' }");
+        executeStatements("{ 'test': 'test' }");
     }
 
     @Test
     public void testAssertStringJsonDanglingComma() throws IOException {
-        executeStatements("{ 'type': 'json', }");
+        executeStatements("{ 'test': 'test', }");
     }
 
     @Test
     public void testAssertTypeManyAttributes() throws IOException {
-        executeStatements("{ type: 'json', atr1: 'atr1', atr2: 'atr2' }");
+        executeStatements("{ test: 'test', atr1: 'atr1', atr2: 'atr2' }");
     }
 
     @Test
     public void testAssertTypeManyAttributesDanglingComma() throws IOException {
-        executeStatements("{ type: 'json', atr1: 'atr1', atr2: 'atr2', }");
+        executeStatements("{ test: 'test', atr1: 'atr1', atr2: 'atr2', }");
     }
 
     @Test
     public void testAssertStringManyAttributes() throws IOException {
-        executeStatements("{ 'type': 'json', 'atr1': 'atr1', 'atr2': 'atr2' }");
+        executeStatements("{ 'test': 'test', 'atr1': 'atr1', 'atr2': 'atr2' }");
     }
 
     @Test
     public void testAssertStringManyAttributesDanglingComma() throws IOException {
-        executeStatements("{ 'type': 'json', 'atr1': 'atr1', 'atr2': 'atr2', }");
+        executeStatements("{ 'test': 'test', 'atr1': 'atr1', 'atr2': 'atr2', }");
     }
 
     @Test
     public void testAssertMixedManyAttributes() throws IOException {
-        executeStatements("{ type: 'json', 'atr1': 'atr1', atr2: 'atr2' }");
+        executeStatements("{ test: 'test', 'atr1': 'atr1', atr2: 'atr2' }");
     }
 
     @Test
     public void testAssertMixedManyAttributesDanglingComma() throws IOException {
-        executeStatements("{ type: 'json', 'atr1': 'atr1', atr2: 'atr2', }");
+        executeStatements("{ test: 'test', 'atr1': 'atr1', atr2: 'atr2', }");
     }
 
     @Test
@@ -187,9 +193,18 @@ public class ImportAssertionsWithCustomFsTest {
         executeTest(t3);
     }
 
+    @Test
+    public void testJSONImport() throws IOException {
+        TestTuple[] tests = getTestTuples("{ type: 'json' }", "./test.json");
+        tests[1].fileContent = "{ \"val\": \"value\"}";
+        executeTest(tests[1], "./test.json");
+        tests[3].fileContent = "{ \"val\": \"value\"}";
+        executeTest(tests[3], "./test.json");
+    }
+
     private static class TestTuple {
         public final String statement;
-        public final String fileContent;
+        public String fileContent;
         public final String expectedValue;
         public final String additionalModuleName;
         public final String additionalModuleBody;

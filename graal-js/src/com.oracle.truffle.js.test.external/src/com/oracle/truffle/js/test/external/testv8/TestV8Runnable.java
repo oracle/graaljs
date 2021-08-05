@@ -174,6 +174,7 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (flags.contains(HARMONY_IMPORT_ASSERTIONS)) {
             extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
+            extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
         }
 
         if (supported) {

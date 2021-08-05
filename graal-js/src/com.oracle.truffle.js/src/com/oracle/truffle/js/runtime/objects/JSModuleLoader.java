@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.source.Source;
 
 public interface JSModuleLoader {
-    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier);
+    JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest);
 
     JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData);
 }

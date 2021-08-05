@@ -806,38 +806,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-2.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-3.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-4.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-dynamic-11.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-dynamic-3.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-dynamic-4.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-dynamic-5.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-assertions-dynamic-6.mjs",
-    "status" : "FAIL",
-    "comment" : "Requires JSON modules"
-  }, {
     "filePath" : "mjsunit/harmony/modules-import-rqstd-order-async-cycle.mjs",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"

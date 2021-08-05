@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -630,8 +631,8 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 }
 
                 @Override
-                public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
-                    return moduleMap.computeIfAbsent(specifier,
+                public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+                    return moduleMap.computeIfAbsent(moduleRequest.getSpecifier(),
                                     (key) -> new JSModuleRecord(evaluator.envParseModule(context.getRealm(), resolveModuleSource(referencingModule, key)), this));
                 }
 
@@ -640,7 +641,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                     throw new UnsupportedOperationException();
                 }
             };
-            JSModuleRecord module = moduleLoader.resolveImportedModule(null, name);
+            JSModuleRecord module = moduleLoader.resolveImportedModule(null, ModuleRequest.create(name));
             JSRealm realm = context.getRealm();
             evaluator.moduleInstantiation(realm, module);
             evaluator.moduleEvaluation(realm, module);

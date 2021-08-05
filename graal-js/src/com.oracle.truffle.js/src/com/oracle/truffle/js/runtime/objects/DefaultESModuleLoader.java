@@ -40,6 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.UserScriptException;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -48,14 +57,10 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import com.oracle.truffle.api.TruffleFile;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.UserScriptException;
-
 public class DefaultESModuleLoader implements JSModuleLoader {
+
+    private static final int JS_MODULE_TYPE = 1 << 0;
+    private static final int JSON_MODULE_TYPE = 1 << 1;
 
     protected final JSRealm realm;
     protected final Map<String, JSModuleRecord> moduleMap = new HashMap<>();
@@ -82,9 +87,10 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     @Override
-    public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, String specifier) {
+    public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
         String refPath = referrer == null ? null : referrer.getSource().getPath();
         try {
+            String specifier = moduleRequest.getSpecifier();
             TruffleFile moduleFile;
             URI maybeUri = asURI(specifier);
             if (refPath == null) {
@@ -103,7 +109,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 }
             }
             String canonicalPath = moduleFile.getPath();
-            return loadModuleFromUrl(referrer, specifier, moduleFile, canonicalPath);
+            return loadModuleFromUrl(referrer, moduleRequest, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
             String fileName = fsex.getFile();
             if (Objects.equals(fsex.getMessage(), fileName)) {
@@ -124,20 +130,52 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
     }
 
-    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, String specifier, TruffleFile moduleFile, String canonicalPath) throws IOException {
+    protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile moduleFile, String canonicalPath) throws IOException {
         JSModuleRecord existingModule = moduleMap.get(canonicalPath);
         if (existingModule != null) {
             return existingModule;
         }
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(specifier).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
-        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
-        JSModuleRecord newModule = new JSModuleRecord(parsedModule, this);
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(moduleRequest.getSpecifier()).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
+        Map<String, String> assertions = moduleRequest.getAssertions();
+        int moduleType = getModuleType(moduleFile.detectMimeType());
+        String assertedType = assertions.get(JSContext.getTypeImportAssertion());
+        if (!doesModuleTypeMatchAssertionType(assertedType, moduleType)) {
+            throw Errors.createTypeError("Invalid module type was asserted");
+        }
+        JSModuleRecord newModule;
+        if (isModuleType(moduleType, JSON_MODULE_TYPE)) {
+            newModule = realm.getContext().getEvaluator().parseJSONModule(realm, source);
+        } else {
+            JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, source);
+            newModule = new JSModuleRecord(parsedModule, this);
+        }
         moduleMap.put(canonicalPath, newModule);
 
         if (referrer instanceof JSModuleRecord) {
-            ((JSModuleRecord) referrer).getModuleData().rememberImportedModuleSource(specifier, source);
+            ((JSModuleRecord) referrer).getModuleData().rememberImportedModuleSource(moduleRequest.getSpecifier(), source);
         }
         return newModule;
+    }
+
+    private static boolean doesModuleTypeMatchAssertionType(String assertedType, int moduleType) {
+        if (assertedType == null) {
+            return true;
+        }
+        if (assertedType.equals("json")) {
+            return isModuleType(moduleType, JSON_MODULE_TYPE);
+        }
+        return false;
+    }
+
+    private int getModuleType(String mimeType) {
+        if (JavaScriptLanguage.JSON_MIME_TYPE.equals(mimeType) && realm.getContext().getContextOptions().isJsonModules()) {
+            return JSON_MODULE_TYPE;
+        }
+        return JS_MODULE_TYPE;
+    }
+
+    private static boolean isModuleType(int moduleType, int expectedType) {
+        return (moduleType & expectedType) != 0;
     }
 
     @Override

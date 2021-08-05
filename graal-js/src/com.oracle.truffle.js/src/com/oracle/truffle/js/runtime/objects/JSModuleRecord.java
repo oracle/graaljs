@@ -81,6 +81,9 @@ public final class JSModuleRecord extends ScriptOrModule {
     /** Lazily initialized import.meta object ({@code [[ImportMeta]]}). */
     private DynamicObject importMeta;
 
+    // [HostDefined]
+    private Object hostDefined;
+
     /**
      * Auxiliary field used during Instantiate and Evaluate only. If [[Status]] is "instantiating"
      * or "evaluating", this nonnegative number records the point at which the module was first
@@ -105,7 +108,13 @@ public final class JSModuleRecord extends ScriptOrModule {
         this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
         this.async = parsedModule.isTopLevelAsync();
+        this.hostDefined = null;
         setUninstantiated();
+    }
+
+    public JSModuleRecord(JSModuleData moduleData, JSModuleLoader moduleLoader, Object hostDefined) {
+        this(moduleData, moduleLoader);
+        this.hostDefined = hostDefined;
     }
 
     public com.oracle.js.parser.ir.Module getModule() {
@@ -167,6 +176,10 @@ public final class JSModuleRecord extends ScriptOrModule {
         assert this.environment == null;
         assert this.getFrameDescriptor() == environment.getFrameDescriptor();
         this.environment = environment;
+    }
+
+    public Object getHostDefined() {
+        return this.hostDefined;
     }
 
     public int getDFSIndex() {

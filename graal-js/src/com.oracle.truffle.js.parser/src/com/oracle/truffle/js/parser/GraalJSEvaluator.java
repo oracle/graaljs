@@ -67,6 +67,8 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -397,15 +399,55 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
+    public JSModuleRecord parseJSONModule(JSRealm realm, Source source) {
+        assert isModuleSource(source) : source;
+        Object json = JSFunction.call(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), source.getCharacters().toString()));
+        return createSyntheticJSONModule(realm, source, json);
+    }
+
+    private static JSModuleRecord createSyntheticJSONModule(JSRealm realm, Source source, Object hostDefined) {
+        final String exportName = "default";
+        FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
+        FrameSlot slot = frameDescriptor.addFrameSlot(exportName);
+        List<ExportEntry> localExportEntries = Collections.singletonList(ExportEntry.exportSpecifier(exportName));
+        Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        JavaScriptRootNode rootNode = new JavaScriptRootNode(realm.getContext().getLanguage(), source.createUnavailableSection(), frameDescriptor) {
+            private final FrameSlot defaultSlot = slot;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+                if (module.getEnvironment() == null) {
+                    assert module.getStatus() == Status.Linking;
+                    module.setEnvironment(frame.materialize());
+                } else {
+                    assert module.getStatus() == Status.Evaluating;
+                    setSyntheticModuleExport(module);
+                }
+                return Undefined.instance;
+            }
+
+            private void setSyntheticModuleExport(JSModuleRecord module) {
+                module.getEnvironment().setObject(defaultSlot, module.getHostDefined());
+            }
+        };
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), callTarget, 0, "");
+        final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
+        return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
+    }
+
+    @TruffleBoundary
+    @Override
     public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, ModuleRequest moduleRequest) {
         filterSupportedImportAssertions(context, moduleRequest);
         JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : context.getRealm().getModuleLoader();
-        return moduleLoader.resolveImportedModule(referrer, moduleRequest.getSpecifier());
+        return moduleLoader.resolveImportedModule(referrer, moduleRequest);
     }
 
     private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, ModuleRequest moduleRequest) {
         filterSupportedImportAssertions(referencingModule.getContext(), moduleRequest);
-        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, moduleRequest.getSpecifier());
+        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, moduleRequest);
     }
 
     private static void filterSupportedImportAssertions(final JSContext context, final ModuleRequest moduleRequest) {

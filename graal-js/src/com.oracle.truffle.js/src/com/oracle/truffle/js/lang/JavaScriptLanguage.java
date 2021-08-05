@@ -148,13 +148,16 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, implementationName = JavaScriptLanguage.IMPLEMENTATION_NAME, characterMimeTypes = {
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
-                JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
+                JavaScriptLanguage.MODULE_MIME_TYPE,
+                JavaScriptLanguage.JSON_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
 public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
+    public static final String JSON_MIME_TYPE = "application/json";
     public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
+    public static final String JSON_SOURCE_NAME_SUFFIX = ".json";
     public static final String INTERNAL_SOURCE_URL_PREFIX = "internal:";
 
     public static final String NAME = "JavaScript";
