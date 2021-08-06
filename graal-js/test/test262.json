@@ -1761,96 +1761,12 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/every/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/every/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/filter/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/filter/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/find/BigInt/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/find/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/findIndex/BigInt/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/findIndex/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/forEach/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/forEach/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduce/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduce/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduceRight/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduceRight/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/some/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/some/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/BigInt/key-is-numericindex-desc-configurable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/key-is-numericindex-desc-configurable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/key-is-numericindex.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",

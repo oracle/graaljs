@@ -535,10 +535,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/element-accessor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/elements-kind.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
@@ -648,19 +644,17 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-detached.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/es6/typedarray-every.js",
+    "status" : "FAIL"
+  }, {
+    "filePath" : "mjsunit/es6/typedarray-filter.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/typedarray-foreach.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/typedarray-from.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
+    "filePath" : "mjsunit/es6/typedarray-map.js",
+    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/typedarray-set-bytelength-not-smi.js",
     "status" : "FAIL",
@@ -1446,10 +1440,6 @@
     "status" : "FAIL",
     "comment" : "needs larger stack, at least 12m is needed"
   }, {
-    "filePath" : "mjsunit/regress/regress-904707.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "mjsunit/regress/regress-923723.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1666,10 +1656,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-691323.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-07-07)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-714696.js",
     "status" : "FAIL"
   }, {
@@ -1756,17 +1742,9 @@
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.AssertionError at com.oracle.js.parser.ParserContext.pop(ParserContext.java:111), com.oracle.js.parser.Parser.restoreBlock(Parser.java:666), com.oracle.js.parser.Parser.program(Parser.java:954), com.oracle.js.parser.Parser.parse(Parser.java:405), com.oracle.js.parser.Parser.parse(Parser.java:332), com.oracle.truffle.js.parser.GraalJSParserHelper.parseSource(GraalJSParserHelper.java:108), com.oracle.truffle.js.parser.GraalJSParserHelper.parseScript(GraalJSParserHelper.java:84), com.oracle.truffle.js.parser.JavaScriptTranslator.translateScript(JavaScriptTranslator.java:98), com.oracle.truffle.js.parser.JavaScriptTranslator.translateEvalScript(JavaScriptTranslator.java:89), com.oracle.truffle.js.parser.GraalJSEvaluator.parseEval(GraalJSEvaluator.java:220)"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-915783.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-9161.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-917980.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-918301.js",
     "status" : "SKIP",
@@ -2209,7 +2187,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-717194.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-722445.js",
@@ -2837,7 +2815,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-crbug-816961.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "PASS"
+      "POLYGLOT" : "FAIL"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-969498.js",
