@@ -963,6 +963,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long size = startPos <= endPos ? endPos - startPos : 0;
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisArrayObj, size);
             if (sizeIsZero.profile(size > 0)) {
+                if (isTypedArrayImplementation) {
+                    checkHasDetachedBuffer((DynamicObject) thisObj);
+                }
                 forEachIndexCall(thisArrayObj, null, startPos, startPos, endPos, resultArray);
             }
             if (!isTypedArrayImplementation) {
@@ -1574,6 +1577,11 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Override
+        protected boolean shouldCheckHasProperty() {
+            return true;
+        }
+
+        @Override
         protected final MaybeResultNode makeMaybeResultNode() {
             return new ForEachIndexCallNode.MaybeResultNode() {
                 @Child private JSIdenticalNode doIdenticalNode = JSIdenticalNode.createStrictEqualityComparison();
@@ -2115,11 +2123,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private ForEachIndexCallNode makeForEachIndexCallNode() {
-            return ForEachIndexCallNode.create(getContext(), makeCallbackNode(), makeMaybeResultNode(), isForward());
+            return ForEachIndexCallNode.create(getContext(), makeCallbackNode(), makeMaybeResultNode(), isForward(), shouldCheckHasProperty());
         }
 
         protected boolean isForward() {
             return true;
+        }
+
+        protected boolean shouldCheckHasProperty() {
+            return !isTypedArrayImplementation;
         }
 
         protected CallbackNode makeCallbackNode() {
@@ -2371,7 +2383,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private ForEachIndexCallNode makeForEachIndexCallNode() {
-            return ForEachIndexCallNode.create(context, makeCallbackNode(), makeMaybeResultNode(), true);
+            return ForEachIndexCallNode.create(context, makeCallbackNode(), makeMaybeResultNode(), true, true);
         }
 
         protected CallbackNode makeCallbackNode() {
@@ -2906,7 +2918,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     public MaybeResult<Object> apply(long index, Object value, Object callbackResult, Object currentResult) {
                         return MaybeResult.returnResult(new Pair<>(index, value));
                     }
-                }, isForward()));
+                }, isForward(), shouldCheckHasProperty()));
             }
             return forEachIndexFindInitialNode;
         }
@@ -2988,29 +3000,34 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             long count = Math.min(finalIdx - from, len - to);
             long expectedCount = count;
-
-            long direction;
-            if (from < to && to < (from + count)) {
-                direction = -1;
-                from = from + count - 1;
-                to = to + count - 1;
-            } else {
-                direction = 1;
-            }
-
-            while (count > 0) {
-                if (isTypedArrayImplementation || hasProperty(obj, from)) {
-                    Object fromVal = read(obj, from);
-                    write(obj, to, fromVal);
-                } else {
-                    deletePropertyNode.executeEvaluated(obj, to);
+            if (count > 0) {
+                if (isTypedArrayImplementation) {
+                    checkHasDetachedBuffer((DynamicObject) thisObj);
                 }
-                from += direction;
-                to += direction;
-                count--;
-                TruffleSafepoint.poll(this);
+
+                long direction;
+                if (from < to && to < (from + count)) {
+                    direction = -1;
+                    from = from + count - 1;
+                    to = to + count - 1;
+                } else {
+                    direction = 1;
+                }
+
+                while (count > 0) {
+                    if (isTypedArrayImplementation || hasProperty(obj, from)) {
+                        Object fromVal = read(obj, from);
+                        write(obj, to, fromVal);
+                    } else {
+                        deletePropertyNode.executeEvaluated(obj, to);
+                    }
+                    from += direction;
+                    to += direction;
+                    count--;
+                    TruffleSafepoint.poll(this);
+                }
+                reportLoopCount(expectedCount);
             }
-            reportLoopCount(expectedCount);
             return obj;
         }
     }

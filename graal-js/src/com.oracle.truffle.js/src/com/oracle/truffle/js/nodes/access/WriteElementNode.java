@@ -1497,11 +1497,6 @@ public class WriteElementNode extends JSTargetableNode {
             this.interop = arrayType.isInterop() ? InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit) : InteropLibrary.getUncached();
         }
 
-        protected void checkDetachedArrayBuffer(DynamicObject target, WriteElementNode root) {
-            if (JSArrayBufferView.hasDetachedBuffer(target, root.context)) {
-                throw Errors.createTypeErrorDetachedBuffer();
-            }
-        }
     }
 
     private abstract static class AbstractTypedIntArrayWriteElementCacheNode extends AbstractTypedArrayWriteElementCacheNode {
@@ -1515,8 +1510,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected final boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             TypedIntArray typedArray = (TypedIntArray) cast(array);
             int iValue = toInt(value); // could throw
-            checkDetachedArrayBuffer(target, root);
-            if (inBoundsProfile.profile(typedArray.hasElement(target, index))) {
+            if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsProfile.profile(typedArray.hasElement(target, index))) {
                 typedArray.setInt(target, (int) index, iValue, interop);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
@@ -1555,8 +1549,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected final boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             TypedBigIntArray typedArray = (TypedBigIntArray) cast(array);
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
-            checkDetachedArrayBuffer(target, root);
-            if (inBoundsProfile.profile(typedArray.hasElement(target, index))) {
+            if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsProfile.profile(typedArray.hasElement(target, index))) {
                 typedArray.setBigInt(target, (int) index, biValue, interop);
             }
             return true;
@@ -1629,8 +1622,7 @@ public class WriteElementNode extends JSTargetableNode {
         protected boolean executeSetArray(DynamicObject target, ScriptArray array, long index, Object value, WriteElementNode root) {
             TypedFloatArray typedArray = (TypedFloatArray) cast(array);
             double dValue = toDouble(value); // could throw
-            checkDetachedArrayBuffer(target, root);
-            if (inBoundsProfile.profile(typedArray.hasElement(target, index))) {
+            if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsProfile.profile(typedArray.hasElement(target, index))) {
                 typedArray.setDouble(target, (int) index, dValue, interop);
             } else {
                 // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)

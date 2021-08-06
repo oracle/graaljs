@@ -55,7 +55,6 @@ import com.oracle.truffle.js.nodes.array.JSArrayNextElementIndexNode;
 import com.oracle.truffle.js.nodes.array.JSArrayPreviousElementIndexNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -116,19 +115,21 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private ImportValueNode toJSTypeNode;
     @Child private InteropLibrary interop;
     protected final JSContext context;
+    protected final boolean checkHasProperty;
 
-    protected ForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode) {
+    protected ForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean checkHasProperty) {
         this.callbackNode = callbackArgumentsNode;
         this.maybeResultNode = maybeResultNode;
         this.context = context;
+        this.checkHasProperty = checkHasProperty;
         this.readElementNode = ReadElementNode.ReadElementArrayDispatchNode.create();
     }
 
-    public static ForEachIndexCallNode create(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean forward) {
+    public static ForEachIndexCallNode create(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean forward, boolean checkHasProperty) {
         if (forward) {
-            return new ForwardForEachIndexCallNode(context, callbackArgumentsNode, maybeResultNode);
+            return new ForwardForEachIndexCallNode(context, callbackArgumentsNode, maybeResultNode, checkHasProperty);
         } else {
-            return new BackwardForEachIndexCallNode(context, callbackArgumentsNode, maybeResultNode);
+            return new BackwardForEachIndexCallNode(context, callbackArgumentsNode, maybeResultNode, checkHasProperty);
         }
     }
 
@@ -190,10 +191,8 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
         }
     }
 
-    protected final void checkHasDetachedBuffer(Object view) {
-        if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.hasDetachedBuffer((DynamicObject) view)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
+    protected final boolean hasDetachedBuffer(Object view) {
+        return !context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBufferView.isJSArrayBufferView(view) && JSArrayBufferView.hasDetachedBuffer((DynamicObject) view);
     }
 
     protected final Object callback(long index, Object value, Object target, Object callback, Object callbackThisArg, Object currentResult) {
@@ -223,8 +222,8 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
 
         @Child private JSArrayNextElementIndexNode nextElementIndexNode;
 
-        public ForwardForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode) {
-            super(context, callbackArgumentsNode, maybeResultNode);
+        public ForwardForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean checkHasProperty) {
+            super(context, callbackArgumentsNode, maybeResultNode, checkHasProperty);
         }
 
         @Override
@@ -233,10 +232,12 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             Object currentResult = initialResult;
             long count = 0;
             while (loopCond.profile(index < length && index <= lastElementIndex(target, length))) {
+                if (checkHasProperty && hasDetachedBuffer(target)) {
+                    break; // detached buffer does not have numeric properties
+                }
                 Object value = readElementInBounds(target, index);
                 Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                 MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
-                checkHasDetachedBuffer(target);
                 currentResult = maybeResult.get();
                 if (maybeResult.isPresent()) {
                     break;
@@ -254,11 +255,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             boolean isForeign = JSRuntime.isForeignObject(target);
             boolean isForeignArray = isForeign && getInterop().hasArrayElements(target);
             for (long index = fromIndex; index < length; index++) {
-                if (hasProperty(target, index)) {
+                if (!checkHasProperty || hasProperty(target, index)) {
                     Object value = getElement(target, index, isForeign, isForeignArray);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
-                    checkHasDetachedBuffer(target);
                     currentResult = maybeResult.get();
                     if (maybeResult.isPresent()) {
                         break;
@@ -281,8 +281,8 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     protected static final class BackwardForEachIndexCallNode extends ForEachIndexCallNode {
         @Child protected JSArrayPreviousElementIndexNode previousElementIndexNode;
 
-        public BackwardForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode) {
-            super(context, callbackArgumentsNode, maybeResultNode);
+        public BackwardForEachIndexCallNode(JSContext context, CallbackNode callbackArgumentsNode, MaybeResultNode maybeResultNode, boolean checkHasProperty) {
+            super(context, callbackArgumentsNode, maybeResultNode, checkHasProperty);
         }
 
         @Override
@@ -293,10 +293,12 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             Object currentResult = initialResult;
             long count = 0;
             while (loopCond.profile(index >= 0 && index >= firstElementIndex(target, length))) {
+                if (checkHasProperty && hasDetachedBuffer(target)) {
+                    break; // detached buffer does not have numeric properties
+                }
                 Object value = readElementInBounds(target, index);
                 Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                 MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
-                checkHasDetachedBuffer(target);
                 currentResult = maybeResult.get();
                 if (maybeResult.isPresent()) {
                     break;
@@ -314,11 +316,10 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             boolean isForeign = JSRuntime.isForeignObject(target);
             boolean isForeignArray = isForeign && getInterop().hasArrayElements(target);
             for (long index = fromIndex; index >= 0; index--) {
-                if (hasProperty(target, index)) {
+                if (!checkHasProperty || hasProperty(target, index)) {
                     Object value = getElement(target, index, isForeign, isForeignArray);
                     Object callbackResult = callback(index, value, target, callback, callbackThisArg, currentResult);
                     MaybeResult<Object> maybeResult = maybeResultNode.apply(index, value, callbackResult, currentResult);
-                    checkHasDetachedBuffer(target);
                     currentResult = maybeResult.get();
                     if (maybeResult.isPresent()) {
                         break;
