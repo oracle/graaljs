@@ -122,7 +122,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected int heapArrayBuffer(Object thisObj) {
             byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && byteArray == null) {
-                return handleDetachedBuffer();
+                return 0;
             }
             return byteArray.length;
         }
@@ -131,7 +131,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected int directArrayBuffer(Object thisObj) {
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && byteBuffer == null) {
-                return handleDetachedBuffer();
+                return 0;
             }
             return byteBuffer.capacity();
         }
@@ -141,7 +141,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             Object buffer = JSArrayBuffer.getInteropBuffer(thisObj);
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && buffer == null) {
-                return handleDetachedBuffer();
+                return 0;
             }
             try {
                 long bufferSize = interop.getBufferSize(buffer);
@@ -158,13 +158,6 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             throw Errors.createTypeErrorArrayBufferExpected();
         }
 
-        private int handleDetachedBuffer() {
-            if (getContext().isOptionV8CompatibilityMode()) {
-                return 0;
-            } else {
-                throw Errors.createTypeErrorDetachedBuffer();
-            }
-        }
     }
 
     public abstract static class JSArrayBufferOperation extends JSBuiltinNode {

@@ -612,6 +612,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
             };
         }
+
+        @Override
+        protected boolean shouldCheckHasProperty() {
+            return false;
+        }
+
     }
 
     public abstract static class JSArrayBufferViewReverseNode extends JSArrayOperation {

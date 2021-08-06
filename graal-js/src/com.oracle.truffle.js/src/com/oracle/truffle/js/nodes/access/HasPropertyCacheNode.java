@@ -49,12 +49,10 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
@@ -152,22 +150,6 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             return false;
-        }
-    }
-
-    public static final class ArrayBufferViewHasNonIntegerIndexNode extends LinkedHasPropertyCacheNode {
-
-        public ArrayBufferViewHasNonIntegerIndexNode(ReceiverCheckNode shapeCheckNode) {
-            super(shapeCheckNode);
-        }
-
-        @Override
-        protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
-            if (JSArrayBufferView.hasDetachedBuffer((DynamicObject) thisObj)) {
-                throw Errors.createTypeErrorDetachedBuffer();
-            } else {
-                return false;
-            }
         }
     }
 
@@ -313,8 +295,6 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                 return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedHasPropertyCacheNode(receiverCheck);
-            } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
-                return new ArrayBufferViewHasNonIntegerIndexNode(shapeCheck);
             } else {
                 return new AbsentHasPropertyCacheNode(shapeCheck);
             }

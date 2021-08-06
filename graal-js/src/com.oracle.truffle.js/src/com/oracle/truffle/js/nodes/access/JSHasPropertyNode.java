@@ -125,8 +125,9 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public boolean typedArray(JSTypedArrayObject object, long index) {
-        return index >= 0 && index < JSArrayBufferView.typedArrayGetLength(object);
+    public boolean typedArray(JSTypedArrayObject object, long index,
+                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
+        return !JSArrayBufferView.hasDetachedBuffer(object, languageRef.get().getJSContext()) && index >= 0 && index < JSArrayBufferView.typedArrayGetLength(object);
     }
 
     @SuppressWarnings("unused")
