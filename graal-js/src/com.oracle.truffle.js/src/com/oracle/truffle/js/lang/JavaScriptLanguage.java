@@ -332,7 +332,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         }
 
         // make sure initial environment is cleared otherwise
-        // otherwise it might leak data
+        // it might leak data
         context.clearInitialEnvironment();
 
         return realm;
