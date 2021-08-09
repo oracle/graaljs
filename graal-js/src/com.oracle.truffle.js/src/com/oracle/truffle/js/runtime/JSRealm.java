@@ -385,6 +385,7 @@ public class JSRealm {
     private final Object wasmModuleExports;
     private final Object wasmModuleImports;
     private final Object wasmCustomSections;
+    private final Object wasmInstanceExport;
 
     private final DynamicObject webAssemblyObject;
     private final DynamicObject webAssemblyGlobalConstructor;
@@ -750,6 +751,7 @@ public class JSRealm {
                 wasmModuleExports = wasmInterop.readMember(wasmObject, "module_exports");
                 wasmModuleImports = wasmInterop.readMember(wasmObject, "module_imports");
                 wasmCustomSections = wasmInterop.readMember(wasmObject, "custom_sections");
+                wasmInstanceExport = wasmInterop.readMember(wasmObject, "instance_export");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -788,6 +790,7 @@ public class JSRealm {
             this.wasmModuleExports = null;
             this.wasmModuleImports = null;
             this.wasmCustomSections = null;
+            this.wasmInstanceExport = null;
 
             this.webAssemblyObject = null;
             this.webAssemblyGlobalConstructor = null;
@@ -2520,6 +2523,10 @@ public class JSRealm {
 
     public Object getWASMGlobalWrite() {
         return wasmGlobalWrite;
+    }
+
+    public Object getWASMInstanceExport() {
+        return wasmInstanceExport;
     }
 
     public DynamicObject getWebAssemblyModulePrototype() {
