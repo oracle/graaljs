@@ -1238,6 +1238,14 @@ public final class GraalJSAccess {
         return DirectByteBufferHelper.allocateDirect(byteLength);
     }
 
+    public long arrayBufferByteLength(Object arrayBuffer) {
+        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+            return ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+        } else {
+            return JSArrayBuffer.getDirectByteLength(arrayBuffer);
+        }
+    }
+
     public Object arrayBufferGetContents(Object arrayBuffer) {
         if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
             return interopArrayBufferGetContents(arrayBuffer);
