@@ -188,7 +188,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @TruffleBoundary
     private JSStackTraceElement[] getJSStackTrace(DynamicObject skipUpTo, boolean customSkip) {
         assert stackTraceLimit > 0;
-        JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+        JSContext context = JavaScriptLanguage.getCurrentLanguage().getJSContext();
         boolean nashornMode = context.isOptionNashornCompatibilityMode();
         // Nashorn does not support skipping of frames
         DynamicObject skipFramesUpTo = nashornMode ? Undefined.instance : skipUpTo;
@@ -262,7 +262,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
-        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        int stackTraceLimit = JavaScriptLanguage.get(originatingNode).getJSContext().getContextOptions().getStackTraceLimit();
         return UserScriptException.createCapture("", originatingNode, stackTraceLimit).getJSStackTrace();
     }
 
@@ -726,7 +726,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public String getMethodName() {
-            return getMethodName(JavaScriptLanguage.getCurrentJSRealm().getContext());
+            return getMethodName(JavaScriptLanguage.getCurrentLanguage().getJSContext());
         }
 
         @TruffleBoundary

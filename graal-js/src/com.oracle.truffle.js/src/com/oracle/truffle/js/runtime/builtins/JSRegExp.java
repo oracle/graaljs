@@ -142,7 +142,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) object;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             } else {
                 String input = groups.getInputString();
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);

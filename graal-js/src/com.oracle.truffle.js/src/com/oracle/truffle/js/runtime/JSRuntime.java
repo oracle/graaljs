@@ -346,7 +346,7 @@ public final class JSRuntime {
                 return Null.instance;
             } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
                 return JSRuntime.importValue(javaObject);
-            } else if (JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
+            } else if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
                 return ((Number) javaObject).doubleValue();
             } else {
                 return JSRuntime.toJSNull(javaObject.toString());

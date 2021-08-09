@@ -73,7 +73,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -276,7 +275,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 c = c.nextNode;
             }
             if (c == null) {
-                if (cachedCount < JavaScriptLanguage.getCurrentJSRealm().getContext().getFunctionCacheLimit() && !generic) {
+                if (cachedCount < getLanguage().getJSContext().getFunctionCacheLimit() && !generic) {
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeDirectCall((DynamicObject) function, currentHead);
                     }

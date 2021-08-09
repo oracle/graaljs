@@ -258,8 +258,8 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorNotObjectCoercible(Object value, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
-        return createTypeErrorNotObjectCoercible(value, originatingNode, realm.getContext());
+        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
+        return createTypeErrorNotObjectCoercible(value, originatingNode, language.getJSContext());
     }
 
     @TruffleBoundary
@@ -361,7 +361,8 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj, Node originatingNode) {
         String message;
-        if (JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode()) {
+        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
+        if (language.getJSContext().isOptionNashornCompatibilityMode()) {
             message = keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj);
         } else {
             message = "Cannot assign to read only property '" + key.toString() + "' of " + JSRuntime.safeToString(thisObj);
@@ -409,8 +410,8 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createReferenceErrorNotDefined(Object key, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm(); // slow
-        return createReferenceErrorNotDefined(realm.getContext(), key, originatingNode);
+        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
+        return createReferenceErrorNotDefined(language.getJSContext(), key, originatingNode);
     }
 
     @TruffleBoundary
@@ -430,8 +431,8 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm(); // slow
-        return createTypeErrorCannotSetProperty(key, object, originatingNode, realm.getContext());
+        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
+        return createTypeErrorCannotSetProperty(key, object, originatingNode, language.getJSContext());
     }
 
     @TruffleBoundary
@@ -449,7 +450,9 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorCannotSetAccessorProperty(Object key, DynamicObject store) {
         assert JSRuntime.isPropertyKey(key);
-        String message = JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode() ? "Cannot set property \"%s\" of %s that has only a getter"
+        JavaScriptLanguage language = JavaScriptLanguage.get(null);
+        String message = language.getJSContext().isOptionNashornCompatibilityMode()
+                        ? "Cannot set property \"%s\" of %s that has only a getter"
                         : "Cannot set property %s of %s which has only a getter";
         return Errors.createTypeErrorFormat(message, key, JSObject.defaultToString(store));
     }

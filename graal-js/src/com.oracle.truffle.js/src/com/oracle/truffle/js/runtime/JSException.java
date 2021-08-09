@@ -125,12 +125,12 @@ public final class JSException extends GraalJSException {
     }
 
     public static JSException create(JSErrorType type, String message, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        JSRealm realm = JSRealm.get(originatingNode);
         return fillInStackTrace(new JSException(type, message, originatingNode, null, realm, getStackTraceLimit(realm)), false);
     }
 
     public static JSException create(JSErrorType type, String message, Throwable cause, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        JSRealm realm = JSRealm.get(originatingNode);
         return fillInStackTrace(new JSException(type, message, cause, originatingNode, realm, getStackTraceLimit(realm)), false);
     }
 

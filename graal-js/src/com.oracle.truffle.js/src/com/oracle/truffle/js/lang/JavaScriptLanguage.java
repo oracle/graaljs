@@ -262,7 +262,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                assert JavaScriptLanguage.getCurrentJSRealm().getContext() == context : "unexpected JSContext";
+                assert JavaScriptLanguage.get(this).getJSContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
                 return exportValueNode.execute(result);
             }

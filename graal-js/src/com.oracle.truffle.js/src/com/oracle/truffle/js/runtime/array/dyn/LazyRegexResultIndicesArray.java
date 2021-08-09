@@ -110,7 +110,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index) {
-        return materializeGroup(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexUtil.TRegexResultAccessor.getUncached(), object, index);
+        return materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexUtil.TRegexResultAccessor.getUncached(), object, index);
     }
 
     @Override
@@ -182,7 +182,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     protected static Object[] materializeFull(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int groupCount) {
         Object[] result = new Object[groupCount];
         for (int i = 0; i < groupCount; ++i) {
-            result[i] = materializeGroup(JavaScriptLanguage.getCurrentJSRealm().getContext(), resultAccessor, object, i);
+            result[i] = materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), resultAccessor, object, i);
         }
         return result;
     }
