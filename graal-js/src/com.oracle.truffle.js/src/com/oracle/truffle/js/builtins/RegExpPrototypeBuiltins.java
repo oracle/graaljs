@@ -1220,7 +1220,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     namedCaptures = toObject(namedCaptures);
                 }
                 ReplaceStringParser.process(replaceString, (int) toLength(getLength(result)), namedCaptures != Undefined.instance, dollarProfile,
-                                new ReplaceStringConsumer(accumulatedResult, s, replaceString, position, position + matchLength, result, (DynamicObject) namedCaptures), this);
+                                new ReplaceStringConsumer(accumulatedResult, s, replaceString, position, Math.min(position + matchLength, s.length()), result, (DynamicObject) namedCaptures), this);
                 return position + matchLength;
             }
             return nextSourcePosition;
