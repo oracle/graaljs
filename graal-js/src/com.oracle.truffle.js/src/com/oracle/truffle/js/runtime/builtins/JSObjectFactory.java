@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -264,6 +265,7 @@ public abstract class JSObjectFactory {
 
         @Override
         protected final Shape getShape(JSRealm realm, DynamicObject prototype) {
+            CompilerAsserts.partialEvaluationConstant(this);
             if (context.isMultiContext()) {
                 if (factory == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
