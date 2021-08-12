@@ -144,7 +144,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         if (rawBuffer == null) {
             interopBranch.enter();
             interopBuffer = true;
-            rawBuffer = GraalJSAccess.interopArrayBufferGetContents(arrayBuffer);
+            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
         int destLimit = Math.min(bufferLen, destOffset + bytes);
         ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);

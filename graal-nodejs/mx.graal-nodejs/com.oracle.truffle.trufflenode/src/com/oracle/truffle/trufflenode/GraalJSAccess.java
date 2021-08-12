@@ -140,7 +140,6 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
@@ -156,9 +155,11 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
 import com.oracle.truffle.js.parser.GraalJSEvaluator;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
@@ -248,6 +249,7 @@ import com.oracle.truffle.trufflenode.info.PropertyHandler;
 import com.oracle.truffle.trufflenode.info.Script;
 import com.oracle.truffle.trufflenode.info.UnboundScript;
 import com.oracle.truffle.trufflenode.info.Value;
+import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
@@ -1246,6 +1248,14 @@ public final class GraalJSAccess {
         return DirectByteBufferHelper.allocateDirect(byteLength);
     }
 
+    public long arrayBufferByteLength(Object arrayBuffer) {
+        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
+            return ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+        } else {
+            return JSArrayBuffer.getDirectByteLength(arrayBuffer);
+        }
+    }
+
     public Object arrayBufferGetContents(Object arrayBuffer) {
         if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
             return interopArrayBufferGetContents(arrayBuffer);
@@ -1254,19 +1264,32 @@ public final class GraalJSAccess {
         }
     }
 
-    public static ByteBuffer interopArrayBufferGetContents(Object arrayBuffer) {
+    private Object interopArrayBufferGetContents(Object arrayBuffer) {
         assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
-        JSArrayBufferObject.Interop interopBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
-        ByteBuffer byteBuffer = DirectByteBufferHelper.allocateDirect(interopBuffer.getByteLength());
-        InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
-        try {
-            for (int i = 0; i < byteBuffer.capacity(); i++) {
-                byteBuffer.put(interop.readBufferByte(interopBuffer, i));
-            }
-        } catch (InteropException iex) {
-            throw Errors.shouldNotReachHere(iex);
+        Object interopBuffer = JSArrayBufferObject.getInteropBuffer(arrayBuffer);
+        RealmData realmEmbedderData = getRealmEmbedderData(mainJSRealm);
+        DynamicObject function = realmEmbedderData.getArrayBufferGetContentsFunction();
+        if (function == null) {
+            function = JSFunction.create(mainJSRealm, getContextEmbedderData(mainJSContext).getOrCreateFunctionData(
+                            ContextData.FunctionKey.ArrayBufferGetContents, GraalJSAccess::createInteropBufferGetContents));
+            realmEmbedderData.setArrayBufferGetContentsFunction(function);
         }
-        return byteBuffer;
+        return JSFunction.call(JSArguments.createOneArg(Undefined.instance, function, interopBuffer));
+    }
+
+    private static JSFunctionData createInteropBufferGetContents(JSContext context) {
+        class InteropArrayBufferGetContents extends JavaScriptRootNode {
+            @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
+            @Child private ArrayBufferGetContentsNode bufferGetContents = ArrayBufferGetContentsNode.create();
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object value = valueNode.execute(frame);
+                return bufferGetContents.execute(value);
+            }
+        }
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new InteropArrayBufferGetContents());
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {

@@ -162,6 +162,7 @@ enum GraalAccessMethod {
     array_buffer_new,
     array_buffer_new_buffer,
     array_buffer_new_backing_store,
+    array_buffer_byte_length,
     array_buffer_get_contents,
     array_buffer_view_buffer,
     array_buffer_view_byte_length,

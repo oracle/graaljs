@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,15 +52,16 @@ GraalHandleContent* GraalArrayBuffer::CopyImpl(jobject java_object_copy) {
 size_t GraalArrayBuffer::ByteLength() const {
     GraalIsolate* graal_isolate = Isolate();
     jobject java_buffer;
+    jlong capacity;
     if (IsDirect()) {
         java_buffer = graal_isolate->JNIGetObjectFieldOrCall(GetJavaObject(), GraalAccessField::array_buffer_byte_buffer, GraalAccessMethod::array_buffer_get_contents);
+        JNIEnv* env = graal_isolate->GetJNIEnv();
+        capacity = env->GetDirectBufferCapacity(java_buffer);
+        env->DeleteLocalRef(java_buffer);
     } else {
-        JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, GetJavaObject());
-        java_buffer = java_not_direct_buffer;
+        JNI_CALL(jlong, byte_length, graal_isolate, GraalAccessMethod::array_buffer_byte_length, Long, GetJavaObject());
+        capacity = byte_length;
     }
-    JNIEnv* env = graal_isolate->GetJNIEnv();
-    jlong capacity = env->GetDirectBufferCapacity(java_buffer);
-    env->DeleteLocalRef(java_buffer);
     return capacity;
 }
 

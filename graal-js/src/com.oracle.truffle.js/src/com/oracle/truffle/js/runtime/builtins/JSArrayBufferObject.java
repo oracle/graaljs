@@ -534,8 +534,15 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        long getBufferSize() {
-            return isDetached() ? 0 : getByteLength();
+        long getBufferSize(
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) {
+            if (isDetached()) {
+                errorBranch.enter();
+                return 0;
+            } else {
+                return getByteLength(interop);
+            }
         }
 
         @ExportMessage

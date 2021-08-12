@@ -107,7 +107,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         DynamicObject arrayBuffer = getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
         if (rawBuffer == null) {
-            rawBuffer = GraalJSAccess.interopArrayBufferGetContents(arrayBuffer);
+            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
         int byteOffset = getOffset(target);
         int actualEnd = end;
