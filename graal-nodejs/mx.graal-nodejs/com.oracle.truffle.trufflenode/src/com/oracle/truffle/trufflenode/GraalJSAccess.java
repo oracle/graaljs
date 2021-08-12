@@ -3092,7 +3092,11 @@ public final class GraalJSAccess {
     }
 
     private void exit(int status) {
-        evaluator.close();
+        try {
+            evaluator.close();
+        } catch (Throwable t) {
+            t.printStackTrace();
+        }
         System.exit(status);
     }
 
