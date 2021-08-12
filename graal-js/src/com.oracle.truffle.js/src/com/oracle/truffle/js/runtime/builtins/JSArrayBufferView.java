@@ -56,6 +56,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -319,29 +320,28 @@ public final class JSArrayBufferView extends JSNonProxy {
         return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
-    public static DynamicObject createArrayBufferView(JSContext context, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+    public static DynamicObject createArrayBufferView(JSContext context, JSRealm realm, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
         CompilerAsserts.partialEvaluationConstant(arrayType);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         JSObjectFactory objectFactory = context.getArrayBufferViewFactory(arrayType.getFactory());
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length);
+        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length);
     }
 
-    public static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
-        JSRealm realm = context.getRealm();
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, realm, objectFactory.getPrototype(realm));
+    public static DynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+                    DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, objectFactory.getPrototype(realm));
     }
 
-    public static DynamicObject createArrayBufferViewWithProto(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
-                    DynamicObject prototype) {
-        JSRealm realm = context.getRealm();
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, realm, prototype);
+    public static DynamicObject createArrayBufferViewWithProto(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+                    DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, DynamicObject prototype) {
+        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, prototype);
     }
 
-    private static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
-                    JSRealm realm, DynamicObject prototype) {
+    private static DynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+                    DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, DynamicObject prototype) {
         assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
         assert offset != 0 == arrayType.hasOffset();
@@ -618,8 +618,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             return JSRuntime.objectToConsoleString(obj, typedArrayGetName(obj), depth, allowSideEffects);

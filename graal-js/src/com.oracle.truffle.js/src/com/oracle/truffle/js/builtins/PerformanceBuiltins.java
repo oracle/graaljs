@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ public final class PerformanceBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization
         protected double now() {
-            long ns = getContext().getRealm().nanoTime();
+            long ns = getRealm().nanoTime();
             return ns / (double) JSRealm.NANOSECONDS_PER_MILLISECOND;
         }
     }

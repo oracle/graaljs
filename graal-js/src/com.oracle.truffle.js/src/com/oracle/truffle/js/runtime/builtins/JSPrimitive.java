@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -63,9 +64,12 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
 
         if (key instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
-            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
-                if (propertyValue == null) {
-                    return getJavaProperty(thisObj, (String) key, context);
+            if (context.isOptionNashornCompatibilityMode()) {
+                JSRealm realm = JSRealm.get(null);
+                if (realm.isJavaInteropEnabled()) {
+                    if (propertyValue == null) {
+                        return getJavaProperty(thisObj, (String) key, realm);
+                    }
                 }
             }
         }
@@ -73,9 +77,9 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
         return propertyValue;
     }
 
-    private static Object getJavaProperty(Object thisObj, String name, JSContext context) {
+    private static Object getJavaProperty(Object thisObj, String name, JSRealm realm) {
         String thisStr = (String) thisObj;
-        Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
+        Object boxedString = realm.getEnv().asBoxedGuestValue(thisStr);
         try {
             return InteropLibrary.getFactory().getUncached().readMember(boxedString, name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
@@ -88,11 +92,14 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
     public Object getMethodHelper(DynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         if (key instanceof String && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
-            if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
-                if (hasOwnProperty(store, key)) {
-                    Object method = getJavaMethod(thisObj, (String) key, context);
-                    if (method != null) {
-                        return method;
+            if (context.isOptionNashornCompatibilityMode()) {
+                JSRealm realm = JSRealm.get(null);
+                if (realm.isJavaInteropEnabled()) {
+                    if (hasOwnProperty(store, key)) {
+                        Object method = getJavaMethod(thisObj, (String) key, realm);
+                        if (method != null) {
+                            return method;
+                        }
                     }
                 }
             }
@@ -101,9 +108,9 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
         return super.getMethodHelper(store, thisObj, key, encapsulatingNode);
     }
 
-    private static Object getJavaMethod(Object thisObj, String name, JSContext context) {
+    private static Object getJavaMethod(Object thisObj, String name, JSRealm realm) {
         String thisStr = (String) thisObj;
-        Object boxedString = context.getRealm().getEnv().asBoxedGuestValue(thisStr);
+        Object boxedString = realm.getEnv().asBoxedGuestValue(thisStr);
         try {
             return InteropLibrary.getFactory().getUncached().readMember(boxedString, name);
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {

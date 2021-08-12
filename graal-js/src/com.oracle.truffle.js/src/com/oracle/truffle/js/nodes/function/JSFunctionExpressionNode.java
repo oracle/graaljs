@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,7 +146,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return JSFunction.create(functionData.getContext().getRealm(), functionData, frame.materialize());
+            return JSFunction.create(getRealm(), functionData, frame.materialize());
         }
 
         @Override
@@ -165,7 +165,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return JSFunction.create(functionData.getContext().getRealm(), functionData);
+            return JSFunction.create(getRealm(), functionData);
         }
 
         @Override
@@ -184,7 +184,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
         @Override
         public Object execute(VirtualFrame frame) {
-            return JSFunction.createLexicalThis(functionData.getContext().getRealm(), functionData, functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME,
+            return JSFunction.createLexicalThis(getRealm(), functionData, functionData.needsParentFrame() ? frame.materialize() : JSFrameUtil.NULL_MATERIALIZED_FRAME,
                             thisNode.execute(frame));
         }
 

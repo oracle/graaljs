@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,7 +101,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isJSLocale(localeObject)")
         public Object doLocale(DynamicObject localeObject) {
             String maximizedLocale = JSLocale.getInternalState(localeObject).maximize();
-            return JSFunction.construct(getContext().getRealm().getLocaleConstructor(), new Object[]{maximizedLocale});
+            return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{maximizedLocale});
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -119,7 +119,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "isJSLocale(localeObject)")
         public Object doLocale(DynamicObject localeObject) {
             String minimizedLocale = JSLocale.getInternalState(localeObject).minimize();
-            return JSFunction.construct(getContext().getRealm().getLocaleConstructor(), new Object[]{minimizedLocale});
+            return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{minimizedLocale});
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")

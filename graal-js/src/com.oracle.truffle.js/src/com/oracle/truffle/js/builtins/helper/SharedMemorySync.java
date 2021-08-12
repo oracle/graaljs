@@ -107,8 +107,8 @@ public final class SharedMemorySync {
 
     // ##### Atomic CAS primitives
     @TruffleBoundary
-    public static boolean compareAndSwapInt(JSContext cx, DynamicObject target, int intArrayOffset, int initial, int result) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static boolean compareAndSwapInt(JSAgent agent, DynamicObject target, int intArrayOffset, int initial, int result) {
+        agent.atomicSectionEnter(target);
         try {
             int value = doVolatileGet(target, intArrayOffset);
             if (value == initial) {
@@ -117,13 +117,13 @@ public final class SharedMemorySync {
             }
             return false;
         } finally {
-            cx.getJSAgent().atomicSectionLeave(target);
+            agent.atomicSectionLeave(target);
         }
     }
 
     @TruffleBoundary
-    public static boolean compareAndSwapBigInt(JSContext cx, DynamicObject target, int intArrayOffset, BigInt initial, BigInt result) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static boolean compareAndSwapBigInt(JSAgent agent, DynamicObject target, int intArrayOffset, BigInt initial, BigInt result) {
+        agent.atomicSectionEnter(target);
         try {
             BigInt value = doVolatileGetBigInt(target, intArrayOffset);
             if (value.compareTo(initial) == 0) {
@@ -132,25 +132,25 @@ public final class SharedMemorySync {
             }
             return false;
         } finally {
-            cx.getJSAgent().atomicSectionLeave(target);
+            agent.atomicSectionLeave(target);
         }
     }
 
     // ##### Atomic Fetch-or-Get primitives
     @TruffleBoundary
-    public static long atomicFetchOrGetUnsigned(JSContext cx, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static long atomicFetchOrGetUnsigned(JSAgent agent, DynamicObject target, int intArrayOffset, Object expected, Object replacement) {
+        agent.atomicSectionEnter(target);
         long read = JSRuntime.toUInt32(doVolatileGet(target, intArrayOffset));
         if (read == JSRuntime.toUInt32(expected)) {
             doVolatilePut(target, intArrayOffset, (int) JSRuntime.toUInt32(replacement));
         }
-        cx.getJSAgent().atomicSectionLeave(target);
+        agent.atomicSectionLeave(target);
         return read;
     }
 
     @TruffleBoundary
-    public static long atomicFetchOrGetLong(JSContext cx, DynamicObject target, int intArrayOffset, long expected, long replacement) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static long atomicFetchOrGetLong(JSAgent agent, DynamicObject target, int intArrayOffset, long expected, long replacement) {
+        agent.atomicSectionEnter(target);
         try {
             int read = doVolatileGet(target, intArrayOffset);
             if (read == expected) {
@@ -158,13 +158,13 @@ public final class SharedMemorySync {
             }
             return read;
         } finally {
-            cx.getJSAgent().atomicSectionLeave(target);
+            agent.atomicSectionLeave(target);
         }
     }
 
     @TruffleBoundary
-    public static int atomicFetchOrGetInt(JSContext cx, DynamicObject target, int intArrayOffset, int expected, int replacement) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static int atomicFetchOrGetInt(JSAgent agent, DynamicObject target, int intArrayOffset, int expected, int replacement) {
+        agent.atomicSectionEnter(target);
         try {
             int read = doVolatileGet(target, intArrayOffset);
             if (read == expected) {
@@ -172,13 +172,13 @@ public final class SharedMemorySync {
             }
             return read;
         } finally {
-            cx.getJSAgent().atomicSectionLeave(target);
+            agent.atomicSectionLeave(target);
         }
     }
 
     @TruffleBoundary
-    public static int atomicFetchOrGetShort(JSContext cx, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static int atomicFetchOrGetShort(JSAgent agent, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
+        agent.atomicSectionEnter(target);
         int read = doVolatileGet(target, intArrayOffset);
         read = sign ? read : read & 0xFFFF;
         int expectedChopped = sign ? (short) expected : expected & 0xFFFF;
@@ -186,13 +186,13 @@ public final class SharedMemorySync {
             int signed = sign ? replacement : replacement & 0xFFFF;
             SharedMemorySync.doVolatilePut(target, intArrayOffset, (short) signed);
         }
-        cx.getJSAgent().atomicSectionLeave(target);
+        agent.atomicSectionLeave(target);
         return read;
     }
 
     @TruffleBoundary
-    public static int atomicFetchOrGetByte(JSContext cx, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static int atomicFetchOrGetByte(JSAgent agent, DynamicObject target, int intArrayOffset, int expected, int replacement, boolean sign) {
+        agent.atomicSectionEnter(target);
         try {
             int read = doVolatileGet(target, intArrayOffset);
             read = sign ? read : read & 0xFF;
@@ -203,13 +203,13 @@ public final class SharedMemorySync {
             }
             return read;
         } finally {
-            cx.getJSAgent().atomicSectionLeave(target);
+            agent.atomicSectionLeave(target);
         }
     }
 
     @TruffleBoundary
-    public static BigInt atomicFetchOrGetBigInt(JSContext cx, DynamicObject target, int intArrayOffset, BigInt expected, BigInt replacement) {
-        cx.getJSAgent().atomicSectionEnter(target);
+    public static BigInt atomicFetchOrGetBigInt(JSAgent agent, DynamicObject target, int intArrayOffset, BigInt expected, BigInt replacement) {
+        agent.atomicSectionEnter(target);
         try {
             BigInt read = doVolatileGetBigInt(target, intArrayOffset);
             if (read.compareTo(expected) == 0) {
@@ -217,39 +217,38 @@ public final class SharedMemorySync {
             }
             return read;
         } finally {
-            cx.getJSAgent().atomicSectionLeave(target);
+            agent.atomicSectionLeave(target);
         }
     }
 
     // ##### Thread Wake/Park primitives
 
     @SuppressWarnings("unused")
-    public static JSAgentWaiterListEntry getWaiterList(JSContext cx, DynamicObject target, int indexPos) {
+    public static JSAgentWaiterListEntry getWaiterList(JSContext context, JSAgent agent, DynamicObject target, int indexPos) {
         DynamicObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(arrayBuffer);
-        int offset = JSArrayBufferView.getByteOffset(target, cx);
+        int offset = JSArrayBufferView.getByteOffset(target, context);
         int bytesPerElement = JSArrayBufferView.typedArrayGetArrayType(target).bytesPerElement();
         return waiterList.getListForIndex(indexPos * bytesPerElement + offset);
     }
 
     @TruffleBoundary
-    public static void enterCriticalSection(JSContext cx, JSAgentWaiterListEntry wl) {
-        assert !cx.getJSAgent().inCriticalSection();
-        cx.getJSAgent().criticalSectionEnter(wl);
+    public static void enterCriticalSection(JSAgent agent, JSAgentWaiterListEntry wl) {
+        assert !agent.inCriticalSection();
+        agent.criticalSectionEnter(wl);
     }
 
     @TruffleBoundary
-    public static void leaveCriticalSection(JSContext cx, JSAgentWaiterListEntry wl) {
-        cx.getJSAgent().criticalSectionLeave(wl);
+    public static void leaveCriticalSection(JSAgent agent, JSAgentWaiterListEntry wl) {
+        agent.criticalSectionLeave(wl);
     }
 
-    public static boolean agentCanSuspend(JSContext cx) {
-        return cx.getJSAgent().canBlock();
+    public static boolean agentCanSuspend(JSAgent agent) {
+        return agent.canBlock();
     }
 
     @TruffleBoundary
-    public static void addWaiter(JSContext cx, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord, boolean isAsync) {
-        JSAgent agent = cx.getJSAgent();
+    public static void addWaiter(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord, boolean isAsync) {
         assert agent.inCriticalSection();
         assert !wl.contains(waiterRecord);
         wl.add(waiterRecord);
@@ -260,16 +259,15 @@ public final class SharedMemorySync {
     }
 
     @TruffleBoundary
-    public static void removeWaiter(JSContext cx, JSAgentWaiterListEntry wl, WaiterRecord w) {
-        assert cx.getJSAgent().inCriticalSection();
+    public static void removeWaiter(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord w) {
+        assert agent.inCriticalSection();
         assert wl.contains(w);
         wl.remove(w);
     }
 
     /* ECMA2022 25.4.1.9 - Suspend returns true if agent was woken by another agent */
     @TruffleBoundary
-    public static boolean suspendAgent(JSContext cx, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord) {
-        JSAgent agent = cx.getJSAgent();
+    public static boolean suspendAgent(JSAgent agent, JSAgentWaiterListEntry wl, WaiterRecord waiterRecord) {
         assert agent.inCriticalSection();
         assert agent.getSignifier() == waiterRecord.getAgentSignifier();
         assert wl.contains(waiterRecord);
@@ -281,21 +279,21 @@ public final class SharedMemorySync {
         } catch (InterruptedException e) {
             interrupt = true;
         }
-        cx.getJSAgent().criticalSectionEnter(wl);
+        agent.criticalSectionEnter(wl);
         return interrupt;
     }
 
     /* ECMA2022 25.4.1.10 - Wake up another agent */
     @TruffleBoundary
-    public static void notifyWaiter(JSContext cx, WaiterRecord waiterRecord) {
-        assert cx.getJSAgent().inCriticalSection();
+    public static void notifyWaiter(JSAgent agent, WaiterRecord waiterRecord) {
+        assert agent.inCriticalSection();
         assert waiterRecord.getPromiseCapability() == null;
-        cx.getJSAgent().wakeAgent(waiterRecord.getAgentSignifier());
+        agent.wakeAgent(waiterRecord.getAgentSignifier());
     }
 
     @TruffleBoundary
-    public static WaiterRecord[] removeWaiters(JSContext cx, JSAgentWaiterListEntry wl, int count) {
-        assert cx.getJSAgent().inCriticalSection();
+    public static WaiterRecord[] removeWaiters(JSAgent agent, JSAgentWaiterListEntry wl, int count) {
+        assert agent.inCriticalSection();
         int c = 0;
         Iterator<WaiterRecord> iter = wl.iterator();
         List<WaiterRecord> list = new LinkedList<>();

@@ -107,4 +107,14 @@ public abstract class JavaScriptRootNode extends RootNode {
     public static List<TruffleStackTraceElement> findAsynchronousFrames(JavaScriptRootNode rootNode, Frame frame) {
         return rootNode.findAsynchronousFrames(frame);
     }
+
+    protected final JSRealm getRealm() {
+        return JSRealm.get(this);
+    }
+
+    @SuppressWarnings("all")
+    protected final JavaScriptLanguage getLanguage() {
+        return JavaScriptLanguage.get(this);
+    }
+
 }

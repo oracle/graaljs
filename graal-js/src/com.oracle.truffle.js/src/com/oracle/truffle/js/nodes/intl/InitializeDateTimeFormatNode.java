@@ -210,7 +210,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             }
             return IntlUtil.getICUTimeZone(tzId);
         } else {
-            return context.getRealm().getLocalTimeZone();
+            return getRealm().getLocalTimeZone();
         }
     }
 

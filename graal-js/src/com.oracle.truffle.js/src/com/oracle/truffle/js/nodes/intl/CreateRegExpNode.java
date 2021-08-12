@@ -77,7 +77,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
     protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
-        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, null, legacyFeaturesEnabled);
+        JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
@@ -85,7 +85,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
     @Specialization(guards = {"hasNamedCG(compiledRegex)"})
     protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
         Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        JSRegExpObject reObj = JSRegExp.create(context, compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
+        JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }

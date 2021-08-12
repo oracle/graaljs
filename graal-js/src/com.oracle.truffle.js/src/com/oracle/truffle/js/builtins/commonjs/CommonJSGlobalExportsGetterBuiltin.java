@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,7 @@ public abstract class CommonJSGlobalExportsGetterBuiltin extends GlobalBuiltins.
 
     @CompilerDirectives.TruffleBoundary
     private DynamicObject getExportsObject() {
-        DynamicObject moduleObject = CommonJSGlobalModuleGetterBuiltin.getOrCreateModuleObject(getContext());
+        DynamicObject moduleObject = CommonJSGlobalModuleGetterBuiltin.getOrCreateModuleObject(getContext(), getRealm());
         assert moduleObject != Undefined.instance && moduleObject != null;
         return (DynamicObject) JSObject.get(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME);
     }

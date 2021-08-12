@@ -53,6 +53,7 @@ import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
@@ -112,12 +113,13 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeError("WebAssembly.Memory.grow(): Receiver is not a WebAssembly.Memory");
             }
             JSWebAssemblyMemoryObject memory = (JSWebAssemblyMemoryObject) thiz;
+            JSRealm realm = getRealm();
             int deltaInt = toDeltaNode.executeInt(delta);
             Object wasmMemory = memory.getWASMMemory();
             try {
-                Object growFn = getContext().getRealm().getWASMMemGrow();
+                Object growFn = realm.getWASMMemGrow();
                 Object result = memGrowLib.execute(growFn, wasmMemory, deltaInt);
-                memory.resetBufferObject();
+                memory.resetBufferObject(getContext(), realm);
                 return result;
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

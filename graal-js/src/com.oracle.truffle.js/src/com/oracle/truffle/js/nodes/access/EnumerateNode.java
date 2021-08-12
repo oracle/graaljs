@@ -194,7 +194,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
     }
 
     private DynamicObject enumerateString(String string) {
-        return newForInIterator(JSString.create(context, string));
+        return newForInIterator(JSString.create(context, getRealm(), string));
     }
 
     private DynamicObject newEmptyIterator() {
@@ -206,7 +206,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setEnumerateIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context));
         }
-        DynamicObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory());
+        DynamicObject obj = JSOrdinary.create(context, context.getEnumerateIteratorFactory(), getRealm());
         setEnumerateIteratorNode.setValue(obj, iterator);
         return obj;
     }
@@ -216,7 +216,7 @@ public abstract class EnumerateNode extends JavaScriptNode {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             setForInIteratorNode = insert(PropertySetNode.createSetHidden(JSRuntime.FOR_IN_ITERATOR_ID, context));
         }
-        DynamicObject iteratorObj = JSOrdinary.create(context, context.getForInIteratorFactory());
+        DynamicObject iteratorObj = JSOrdinary.create(context, context.getForInIteratorFactory(), getRealm());
         setForInIteratorNode.setValue(iteratorObj, new ForInIterator(obj, values));
         return iteratorObj;
     }

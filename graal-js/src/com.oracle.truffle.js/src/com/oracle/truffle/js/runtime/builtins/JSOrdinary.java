@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -75,12 +76,8 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     private JSOrdinary() {
     }
 
-    public static DynamicObject create(JSContext context) {
-        return create(context, context.getRealm());
-    }
-
-    public static DynamicObject create(JSContext context, JSObjectFactory factory) {
-        return createWithRealm(context, factory, context.getRealm());
+    public static DynamicObject create(JSContext context, JSObjectFactory factory, JSRealm realm) {
+        return createWithRealm(context, factory, realm);
     }
 
     public static DynamicObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm) {
@@ -185,8 +182,8 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             return JSRuntime.objectToConsoleString(obj, null, depth, allowSideEffects);

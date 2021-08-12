@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -120,9 +120,8 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getLocaleFactory();
         JSLocaleObject obj = new JSLocaleObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);

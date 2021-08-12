@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,7 +193,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         }
 
         if (!JSConfig.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
-            TruffleLanguage.Env env = context.getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (isHostClassProf.profile(count == 1 && env.isHostObject(target) && env.asHostObject(target) instanceof Class<?>)) {
                 Class<?> javaType = (Class<?>) env.asHostObject(target);
                 if (isAbstractProf.profile(Modifier.isAbstract(javaType.getModifiers()) && !javaType.isArray())) {
@@ -218,7 +218,7 @@ public abstract class JSNewNode extends JavaScriptNode {
         // Equivalent to Java.extend(type)
         Class<?>[] types = new Class<?>[]{type};
         try {
-            JavaAccess.checkAccess(types, context);
+            JavaAccess.checkAccess(types, env);
             return env.createHostAdapterClass(types);
         } catch (Exception ex) {
             throw Errors.createTypeError(ex.getMessage(), ex, this);

@@ -110,8 +110,8 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         return null;
     }
 
-    protected static JSRealm topLevelRealm(JSContext context) {
-        JSRealm realm = context.getRealm();
+    protected static JSRealm topLevelRealm(JSRealm currentRealm) {
+        JSRealm realm = currentRealm;
         while (realm.getParent() != null) {
             realm = realm.getParent();
         }
@@ -139,8 +139,9 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object createRealm() {
-            JSRealm newRealm = getContext().getRealm().createChildRealm();
-            return topLevelRealm(getContext()).getIndexFromRealmList(newRealm);
+            JSRealm currentRealm = getRealm();
+            JSRealm newRealm = currentRealm.createChildRealm();
+            return topLevelRealm(currentRealm).getIndexFromRealmList(newRealm);
         }
     }
 
@@ -153,7 +154,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object dispose(Object index) {
-            JSRealm topLevelRealm = topLevelRealm(getContext());
+            JSRealm topLevelRealm = topLevelRealm(getRealm());
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
             topLevelRealm.removeFromRealmList(realmIndex);
             return Undefined.instance;
@@ -169,7 +170,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object global(Object index) {
-            JSRealm topLevelRealm = topLevelRealm(getContext());
+            JSRealm topLevelRealm = topLevelRealm(getRealm());
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
             JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
             return jsrealm.getGlobalObject();
@@ -186,7 +187,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object current() {
-            JSRealm topLevelRealm = topLevelRealm(getContext());
+            JSRealm topLevelRealm = topLevelRealm(getRealm());
             return topLevelRealm.getIndexFromRealmList(topLevelRealm.getCurrentV8Realm());
         }
     }
@@ -200,7 +201,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object eval(Object index, Object code) {
-            JSRealm topLevelRealm = topLevelRealm(getContext());
+            JSRealm topLevelRealm = topLevelRealm(getRealm());
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
             JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
             String sourceText = JSRuntime.toString(code);

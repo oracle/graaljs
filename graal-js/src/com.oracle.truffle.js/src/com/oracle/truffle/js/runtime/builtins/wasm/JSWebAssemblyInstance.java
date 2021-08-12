@@ -125,10 +125,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyInstanceObject create(JSContext context, Object wasmInstance, Object wasmModule) {
-        JSRealm realm = context.getRealm();
+    public static JSWebAssemblyInstanceObject create(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
         JSObjectFactory factory = context.getWebAssemblyInstanceFactory();
-        Object exportsObject = createExportsObject(context, wasmInstance, wasmModule);
+        Object exportsObject = createExportsObject(context, realm, wasmInstance, wasmModule);
         JSWebAssemblyInstanceObject object = new JSWebAssemblyInstanceObject(factory.getShape(realm), wasmInstance, exportsObject);
         factory.initProto(object, realm);
         return context.trackAllocation(object);
@@ -156,10 +155,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return JSFunction.create(realm, getterData);
     }
 
-    private static Object createExportsObject(JSContext context, Object wasmInstance, Object wasmModule) {
+    private static Object createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
         DynamicObject exports = JSOrdinary.createWithNullPrototype(context);
         try {
-            Object exportsFunction = context.getRealm().getWASMModuleExports();
+            Object exportsFunction = realm.getWASMModuleExports();
             Object exportsInfo = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, wasmModule);
             Object wasmExports = InteropLibrary.getUncached(wasmInstance).readMember(wasmInstance, "exports");
             InteropLibrary wasmExportsInterop = InteropLibrary.getUncached(wasmExports);
@@ -176,15 +175,15 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
                 if ("function".equals(externtype)) {
                     String typeInfo = asString(exportInterop.readMember(exportInfo, "type"));
-                    value = exportFunction(context, externval, typeInfo);
+                    value = exportFunction(context, realm, externval, typeInfo);
                 } else if ("global".equals(externtype)) {
                     String valueType = asString(exportInterop.readMember(exportInfo, "type"));
-                    value = JSWebAssemblyGlobal.create(context, externval, valueType);
+                    value = JSWebAssemblyGlobal.create(context, realm, externval, valueType);
                 } else if ("memory".equals(externtype)) {
-                    value = JSWebAssemblyMemory.create(context, externval);
+                    value = JSWebAssemblyMemory.create(context, realm, externval);
                 } else {
                     assert "table".equals(externtype);
-                    value = JSWebAssemblyTable.create(context, externval);
+                    value = JSWebAssemblyTable.create(context, realm, externval);
                 }
 
                 JSObject.set(exports, name, value);
@@ -197,7 +196,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static Object exportFunction(JSContext context, Object export, String typeInfo) {
+    public static Object exportFunction(JSContext context, JSRealm realm, Object export, String typeInfo) {
         int idxOpen = typeInfo.indexOf('(');
         int idxClose = typeInfo.indexOf(')');
         String name = typeInfo.substring(0, idxOpen);
@@ -267,7 +266,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         });
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        DynamicObject result = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject result = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
         return result;
     }
@@ -302,7 +301,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         throw Errors.createLinkError("Imported value is not callable");
                     }
                     String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
-                    wasmValue = createHostFunction(context, value, typeInfo);
+                    wasmValue = createHostFunction(context, realm, value, typeInfo);
                 } else if ("global".equals(externType)) {
                     if (JSRuntime.isNumber(value)) {
                         String valueType = asString(descriptorInterop.readMember(descriptor, "type"));
@@ -367,7 +366,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static Object createHostFunction(JSContext context, Object fn, String typeInfo) {
+    private static Object createHostFunction(JSContext context, JSRealm realm, Object fn, String typeInfo) {
         assert JSRuntime.isCallable(fn);
 
         int idxOpen = typeInfo.indexOf('(');
@@ -414,7 +413,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         });
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        return JSFunction.create(context.getRealm(), functionData);
+        return JSFunction.create(realm, functionData);
     }
 
     static String[] splitArgTypes(String argTypes) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -53,9 +55,6 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadPropertyTag;
-import com.oracle.truffle.js.runtime.JSContext;
-
-import java.util.Set;
 
 public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
@@ -63,14 +62,14 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     @Child private JSConstantNode constantNode;
     private final String propertyName;
 
-    protected GlobalConstantNode(JSContext context, String propertyName, JSConstantNode constantNode) {
-        this.globalObjectNode = GlobalObjectNode.create(context);
+    protected GlobalConstantNode(String propertyName, JSConstantNode constantNode) {
+        this.globalObjectNode = GlobalObjectNode.create();
         this.constantNode = constantNode;
         this.propertyName = propertyName;
     }
 
-    public static JSTargetableNode createGlobalConstant(JSContext ctx, String propertyName, Object value) {
-        return new GlobalConstantNode(ctx, propertyName, JSConstantNode.create(value));
+    public static JSTargetableNode createGlobalConstant(String propertyName, Object value) {
+        return new GlobalConstantNode(propertyName, JSConstantNode.create(value));
     }
 
     @Override
@@ -129,7 +128,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GlobalConstantNode(globalObjectNode.getContext(), propertyName, cloneUninitialized(constantNode, materializedTags));
+        return new GlobalConstantNode(propertyName, cloneUninitialized(constantNode, materializedTags));
     }
 
     static final class LineNumberNode extends JSConstantNode {
@@ -195,10 +194,8 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
     }
 
     static final class DirNameNode extends JSConstantNode {
-        private final JSContext context;
 
-        DirNameNode(JSContext context) {
-            this.context = context;
+        DirNameNode() {
         }
 
         @Override
@@ -222,7 +219,7 @@ public class GlobalConstantNode extends JSTargetableNode implements ReadNode {
             if (path.startsWith("file:")) {
                 path = path.substring("file:".length());
             }
-            Env env = context.getRealm().getEnv();
+            Env env = getRealm().getEnv();
             String fileSeparator = env.getFileNameSeparator();
             if (fileSeparator.equals("\\") && path.startsWith("/")) {
                 // on Windows, remove first "/" from /c:/test/dir/ style paths

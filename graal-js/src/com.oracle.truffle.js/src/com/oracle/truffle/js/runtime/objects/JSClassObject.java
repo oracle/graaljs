@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -166,7 +166,7 @@ public abstract class JSClassObject extends JSObject {
 
     @Override
     public String toDisplayStringImpl(int depth, boolean allowSideEffects) {
-        return getJSClass().toDisplayStringImpl(this, depth, allowSideEffects, JSObject.getJSContext(this));
+        return getJSClass().toDisplayStringImpl(this, depth, allowSideEffects);
     }
 
     @Override

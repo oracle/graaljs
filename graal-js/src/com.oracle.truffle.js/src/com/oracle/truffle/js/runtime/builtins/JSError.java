@@ -50,6 +50,7 @@ import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
@@ -105,7 +106,7 @@ public final class JSError extends JSNonProxy {
                 if (truffleException == null) {
                     value = Undefined.instance;
                 } else {
-                    JSRealm realm = currentRealm(store);
+                    JSRealm realm = JSRealm.get(null);
                     value = prepareStack(realm, store, truffleException);
                 }
                 // FORMATTED_STACK_NAME could have been set during invocation
@@ -118,10 +119,6 @@ public final class JSError extends JSNonProxy {
                 }
             }
             return value;
-        }
-
-        private JSRealm currentRealm(DynamicObject store) {
-            return JSObject.getJSContext(store).getRealm();
         }
 
         @Override
@@ -343,7 +340,7 @@ public final class JSError extends JSNonProxy {
         for (int i = 0; i < stackTrace.length; i++) {
             elements[i] = prepareStackElement(realm, stackTrace[i]);
         }
-        return JSArray.createConstant(realm.getContext(), elements);
+        return JSArray.createConstant(realm.getContext(), realm, elements);
     }
 
     private static Object prepareStackElement(JSRealm realm, JSStackTraceElement stackTraceElement) {
@@ -452,9 +449,9 @@ public final class JSError extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
-            return super.toDisplayStringImpl(obj, depth, allowSideEffects, context);
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
+            return super.toDisplayStringImpl(obj, depth, allowSideEffects);
         } else {
             Object name = getPropertyWithoutSideEffect(obj, NAME);
             Object message = getPropertyWithoutSideEffect(obj, MESSAGE);

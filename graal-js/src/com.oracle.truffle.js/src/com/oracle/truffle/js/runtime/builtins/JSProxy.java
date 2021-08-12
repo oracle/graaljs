@@ -53,6 +53,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -124,8 +125,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         return CLASS_NAME;
     }
 
-    public static DynamicObject create(JSContext context, Object target, DynamicObject handler) {
-        return JSProxyObject.create(context.getRealm(), context.getProxyFactory(), target, handler);
+    public static DynamicObject create(JSContext context, JSRealm realm, Object target, DynamicObject handler) {
+        return JSProxyObject.create(realm, context.getProxyFactory(), target, handler);
     }
 
     public static Object getTarget(DynamicObject obj) {
@@ -562,8 +563,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             Object target = getTarget(obj);
@@ -831,7 +832,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             return JSRuntime.call(target, holder, arguments);
         }
         JSContext ctx = JSObject.getJSContext(proxyObj);
-        return JSRuntime.call(trap, handler, new Object[]{target, holder, JSArray.createConstant(ctx, arguments)});
+        return JSRuntime.call(trap, handler, new Object[]{target, holder, JSArray.createConstant(ctx, JSRealm.get(null), arguments)});
     }
 
     @TruffleBoundary
@@ -847,7 +848,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             return JSRuntime.construct(target, arguments);
         }
         JSContext ctx = JSObject.getJSContext(proxyObj);
-        Object result = JSRuntime.call(trap, handler, new Object[]{target, JSArray.createConstant(ctx, arguments), newTarget});
+        Object result = JSRuntime.call(trap, handler, new Object[]{target, JSArray.createConstant(ctx, JSRealm.get(null), arguments), newTarget});
         if (!JSRuntime.isObject(result)) {
             throw Errors.createTypeErrorNotAnObject(result);
         }

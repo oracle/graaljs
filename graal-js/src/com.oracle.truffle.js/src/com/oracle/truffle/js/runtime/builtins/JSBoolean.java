@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -65,8 +66,8 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     private JSBoolean() {
     }
 
-    public static DynamicObject create(JSContext context, boolean value) {
-        DynamicObject obj = JSBooleanObject.create(context.getRealm(), context.getBooleanFactory(), value);
+    public static DynamicObject create(JSContext context, JSRealm realm, boolean value) {
+        DynamicObject obj = JSBooleanObject.create(realm, context.getBooleanFactory(), value);
         assert isJSBoolean(obj);
         return context.trackAllocation(obj);
     }
@@ -124,8 +125,8 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[Boolean " + valueOf(obj) + "]";
         } else {
             boolean primitiveValue = JSBoolean.valueOf(obj);

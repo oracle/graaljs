@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,7 +97,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
         public Object doResolvedOptions(DynamicObject numberFormat) {
-            return JSNumberFormat.resolvedOptions(getContext(), numberFormat);
+            return JSNumberFormat.resolvedOptions(getContext(), getRealm(), numberFormat);
         }
 
         @Fallback
@@ -114,7 +114,7 @@ public final class NumberFormatPrototypeBuiltins extends JSBuiltinsContainer.Swi
 
         @Specialization(guards = {"isJSNumberFormat(numberFormat)"})
         public Object doFormatToParts(DynamicObject numberFormat, Object value) {
-            return JSNumberFormat.formatToParts(getContext(), numberFormat, value);
+            return JSNumberFormat.formatToParts(getContext(), getRealm(), numberFormat, value);
         }
 
         @Fallback

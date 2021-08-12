@@ -383,7 +383,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         protected final Object constructSet(Object... arguments) {
-            Object ctr = getContext().getRealm().getSetConstructor();
+            Object ctr = getRealm().getSetConstructor();
             return JSRuntime.construct(ctr, arguments);
         }
 
@@ -761,7 +761,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @Specialization(guards = "isJSSet(set)")
         protected DynamicObject doSet(VirtualFrame frame, DynamicObject set) {
-            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getSetIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getSetIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, set);
             setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);

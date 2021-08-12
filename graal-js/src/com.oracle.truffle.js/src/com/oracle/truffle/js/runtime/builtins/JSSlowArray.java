@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -160,7 +160,7 @@ public final class JSSlowArray extends JSAbstractArray {
 
         boolean succeeded = jsDefineProperty(thisObj, index, descriptor, false);
         if (!succeeded) {
-            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+            JSContext context = JavaScriptLanguage.getCurrentLanguage().getJSContext();
             return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property" : "Cannot redefine property");
         }
         return true;
@@ -206,7 +206,7 @@ public final class JSSlowArray extends JSAbstractArray {
         arraySetArrayType(thisObj, internalArray.setLength(thisObj, newLen, doThrow));
 
         if (!deleteSucceeded) {
-            JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+            JSContext context = JavaScriptLanguage.getCurrentLanguage().getJSContext();
             return DefinePropertyUtil.reject(doThrow, context.isOptionNashornCompatibilityMode() ? "cannot set property: length" : CANNOT_REDEFINE_PROPERTY_LENGTH);
         }
         return true;

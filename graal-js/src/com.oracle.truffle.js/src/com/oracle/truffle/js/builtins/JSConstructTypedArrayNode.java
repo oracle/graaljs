@@ -275,7 +275,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         long length = sourceType.length(arrayBufferView);
 
         DynamicObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
-        DynamicObject defaultBufferConstructor = getContext().getRealm().getArrayBufferConstructor();
+        DynamicObject defaultBufferConstructor = getRealm().getArrayBufferConstructor();
         DynamicObject bufferConstructor;
         if (JSSharedArrayBuffer.isJSSharedArrayBuffer(srcData)) {
             bufferConstructor = defaultBufferConstructor;
@@ -403,7 +403,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached ImportValueNode importValue,
                     @Cached("createBinaryProfile()") ConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {
-            DynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), object);
+            DynamicObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), object);
             long bufferByteLength = getBufferSizeSafe(object, interop);
             return doArrayBufferImpl(arrayBuffer, byteOffset0, length0, newTarget, bufferByteLength, false, true, lengthIsUndefined);
         }
@@ -465,10 +465,11 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         checkLengthLimit(length, elementSize);
         int byteLength = toByteLength((int) length, elementSize);
         assert length <= Integer.MAX_VALUE && byteLength >= 0 && byteLength <= Integer.MAX_VALUE;
+        JSRealm realm = getRealm();
         if (getContext().isOptionDirectByteBuffer()) {
-            return JSArrayBuffer.createDirectArrayBuffer(getContext(), byteLength);
+            return JSArrayBuffer.createDirectArrayBuffer(getContext(), realm, byteLength);
         } else {
-            return JSArrayBuffer.createArrayBuffer(getContext(), byteLength);
+            return JSArrayBuffer.createArrayBuffer(getContext(), realm, byteLength);
         }
     }
 
@@ -552,13 +553,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         @Specialization(guards = "isDefaultPrototype(proto)")
         DynamicObject doDefaultProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, @SuppressWarnings("unused") DynamicObject proto) {
             JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
-            return JSArrayBufferView.createArrayBufferView(context, objectFactory, arrayBuffer, typedArray, offset, length);
+            return JSArrayBufferView.createArrayBufferView(context, getRealm(), objectFactory, arrayBuffer, typedArray, offset, length);
         }
 
         @Specialization(guards = {"!isDefaultPrototype(proto)", "context.isMultiContext()"})
         DynamicObject doMultiContext(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
             JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
-            return JSArrayBufferView.createArrayBufferViewWithProto(context, objectFactory, arrayBuffer, typedArray, offset, length, proto);
+            return JSArrayBufferView.createArrayBufferViewWithProto(context, getRealm(), objectFactory, arrayBuffer, typedArray, offset, length, proto);
         }
 
         @SuppressWarnings("unused")
@@ -566,16 +567,16 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         DynamicObject doCachedProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto,
                         @Cached("proto") DynamicObject cachedProto,
                         @Cached("makeObjectFactory(cachedProto)") JSObjectFactory objectFactory) {
-            return JSArrayBufferView.createArrayBufferView(context, objectFactory, arrayBuffer, typedArray, offset, length);
+            return JSArrayBufferView.createArrayBufferView(context, getRealm(), objectFactory, arrayBuffer, typedArray, offset, length);
         }
 
         @Specialization(guards = {"!isDefaultPrototype(proto)", "!context.isMultiContext()"}, replaces = "doCachedProto")
         DynamicObject doUncachedProto(DynamicObject arrayBuffer, TypedArray typedArray, int offset, int length, DynamicObject proto) {
-            return JSArrayBufferView.createArrayBufferView(context, makeObjectFactory(proto), arrayBuffer, typedArray, offset, length);
+            return JSArrayBufferView.createArrayBufferView(context, getRealm(), makeObjectFactory(proto), arrayBuffer, typedArray, offset, length);
         }
 
         boolean isDefaultPrototype(DynamicObject proto) {
-            return proto == context.getRealm().getArrayBufferViewPrototype(factory);
+            return proto == getRealm().getArrayBufferViewPrototype(factory);
         }
 
         @TruffleBoundary

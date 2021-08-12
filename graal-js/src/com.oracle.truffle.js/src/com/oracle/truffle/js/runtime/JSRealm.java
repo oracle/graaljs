@@ -77,10 +77,12 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.LanguageInfo;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
@@ -202,6 +204,8 @@ public class JSRealm {
     public static final String CONSOLE_CLASS_NAME = "Console";
 
     private static final String GRAALVM_VERSION = HomeFinder.getInstance().getVersion();
+
+    private static final ContextReference<JSRealm> REFERENCE = ContextReference.create(JavaScriptLanguage.class);
 
     private final JSContext context;
 
@@ -823,6 +827,10 @@ public class JSRealm {
 
     public final JSContext getContext() {
         return context;
+    }
+
+    public static JSRealm get(Node node) {
+        return REFERENCE.get(node);
     }
 
     public final DynamicObject lookupFunction(JSBuiltinsContainer container, String methodName) {
@@ -1880,7 +1888,7 @@ public class JSRealm {
             putGlobalProperty("$OPTIONS", optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
             // $ARG
-            DynamicObject arguments = JSArray.createConstant(context, getEnv().getApplicationArguments());
+            DynamicObject arguments = JSArray.createConstant(context, this, getEnv().getApplicationArguments());
 
             putGlobalProperty("$ARG", arguments, JSAttributes.configurableNotEnumerableWritable());
 
@@ -1995,7 +2003,7 @@ public class JSRealm {
     }
 
     public void setArguments(Object[] arguments) {
-        JSObjectUtil.defineDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, arguments),
+        JSObjectUtil.defineDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, this, arguments),
                         context.isOptionV8CompatibilityModeInContextInit() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
     }
 
@@ -2403,19 +2411,17 @@ public class JSRealm {
     private static class RealmSharedPropertyProxy implements PropertyProxy {
         @Override
         public Object get(DynamicObject store) {
-            JSContext context = JSObject.getJSContext(store);
-            return topLevelRealm(context).v8RealmShared;
+            return topLevelRealm().v8RealmShared;
         }
 
         @Override
         public boolean set(DynamicObject store, Object value) {
-            JSContext context = JSObject.getJSContext(store);
-            topLevelRealm(context).v8RealmShared = value;
+            topLevelRealm().v8RealmShared = value;
             return true;
         }
 
-        private static JSRealm topLevelRealm(JSContext context) {
-            JSRealm realm = context.getRealm();
+        private static JSRealm topLevelRealm() {
+            JSRealm realm = JSRealm.get(null);
             while (realm.getParent() != null) {
                 realm = realm.getParent();
             }

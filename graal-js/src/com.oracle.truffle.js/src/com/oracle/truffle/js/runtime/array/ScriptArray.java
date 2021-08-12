@@ -100,7 +100,7 @@ public abstract class ScriptArray {
 
     @TruffleBoundary
     private static void setElementFrozenStrict(long index) {
-        JSContext context = JavaScriptLanguage.getCurrentJSRealm().getContext();
+        JSContext context = JavaScriptLanguage.getCurrentLanguage().getJSContext();
         if (context.isOptionNashornCompatibilityMode()) {
             throw Errors.createTypeErrorFormat("Cannot set property \"%d\" of frozen array", index);
         } else {
@@ -332,7 +332,7 @@ public abstract class ScriptArray {
             return null;
         });
         nodeStream = StreamSupport.stream(stackTrace.spliterator(), false).filter(fi -> fi.getCallNode() != null).map(fi -> fi.getCallNode());
-        int stackTraceLimit = JavaScriptLanguage.getCurrentJSRealm().getContext().getContextOptions().getStackTraceLimit();
+        int stackTraceLimit = JavaScriptLanguage.getCurrentLanguage().getJSContext().getContextOptions().getStackTraceLimit();
         StackTraceElement[] array = nodeStream.filter(n -> n.getEncapsulatingSourceSection() != null).map(node -> {
             SourceSection callNodeSourceSection = node.getEncapsulatingSourceSection();
             String declaringClass = "js";

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -246,7 +246,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     private DynamicObject promiseResolve(Object value) {
         if (context.usePromiseResolve()) {
-            return promiseResolveNode.execute(context.getRealm().getPromiseConstructor(), value);
+            return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
         } else {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability();
             Object resolve = promiseCapability.getResolve();
@@ -311,7 +311,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     private DynamicObject createAwaitFulfilledFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AwaitFulfilled, (c) -> createAwaitFulfilledImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);
@@ -370,7 +370,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
 
     private DynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AwaitRejected, (c) -> createAwaitRejectedImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setAsyncTargetNode.setValue(function, resumeTarget);
         setAsyncContextNode.setValue(function, asyncContext);
         setAsyncGeneratorNode.setValue(function, generator);

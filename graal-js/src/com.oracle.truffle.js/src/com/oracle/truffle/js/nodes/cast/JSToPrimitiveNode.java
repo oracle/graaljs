@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -54,7 +52,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
@@ -208,12 +205,11 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     protected Object doTruffleJavaObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef,
                     @Cached("create()") ImportValueNode toJSType) {
         if (interop.isNull(object)) {
             return Null.instance;
         }
-        JSRealm realm = contextRef.get();
+        JSRealm realm = getRealm();
         TruffleLanguage.Env env = realm.getEnv();
         if (env.isHostObject(object)) {
             Object javaObject = env.asHostObject(object);

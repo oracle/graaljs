@@ -46,7 +46,6 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.IsNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -54,25 +53,23 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class ErrorStackTraceLimitNode extends JavaScriptBaseNode {
-    private final JSContext context;
     @Child private DynamicObjectLibrary getStackTraceLimit;
     @Child private IsNumberNode isNumber;
     @Child private JSToIntegerAsLongNode toInteger;
 
-    protected ErrorStackTraceLimitNode(JSContext context) {
-        this.context = context;
+    protected ErrorStackTraceLimitNode() {
         this.getStackTraceLimit = JSObjectUtil.createDispatched(JSError.STACK_TRACE_LIMIT_PROPERTY_NAME);
         this.isNumber = IsNumberNode.create();
         this.toInteger = JSToIntegerAsLongNode.create();
     }
 
-    public static ErrorStackTraceLimitNode create(JSContext context) {
-        return ErrorStackTraceLimitNodeGen.create(context);
+    public static ErrorStackTraceLimitNode create() {
+        return ErrorStackTraceLimitNodeGen.create();
     }
 
     @Specialization
     public int doInt() {
-        DynamicObject errorConstructor = context.getRealm().getErrorConstructor(JSErrorType.Error);
+        DynamicObject errorConstructor = getRealm().getErrorConstructor(JSErrorType.Error);
         if (JSProperty.isData(getStackTraceLimit.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object value = getStackTraceLimit.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
             if (isNumber.execute(value)) {

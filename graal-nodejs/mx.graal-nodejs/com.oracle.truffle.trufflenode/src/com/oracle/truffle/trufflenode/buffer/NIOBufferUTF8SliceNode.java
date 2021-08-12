@@ -66,7 +66,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
     }
 
     private DynamicObject getNativeUtf8Slice() {
-        return GraalJSAccess.getRealmEmbedderData(getContext().getRealm()).getNativeUtf8Slice();
+        return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Slice();
     }
 
     @Specialization(guards = {"accept(target)"})

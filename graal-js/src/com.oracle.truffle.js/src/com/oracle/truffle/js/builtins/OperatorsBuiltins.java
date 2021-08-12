@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -55,7 +57,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -91,8 +92,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
 
 public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
@@ -171,7 +170,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 }
             });
             JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), callTarget, 0, "");
-            return JSFunction.create(getContext().getRealm(), constructorFunctionData);
+            return JSFunction.create(getRealm(), constructorFunctionData);
         }
     }
 
@@ -232,8 +231,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
         @Specialization(guards = {"!isJSObject(prototype)"})
         public JSOverloadedOperatorsObject createDefaultProto(@SuppressWarnings("unused") Object prototype,
-                        @CachedContext(JavaScriptLanguage.class) @SuppressWarnings("unused") JSRealm realm,
-                        @Cached("getShapeWithDefaultProto(realm)") Shape cachedShape) {
+                        @Cached("getShapeWithDefaultProto(getRealm())") Shape cachedShape) {
             return JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
         }
     }
@@ -268,7 +266,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         public abstract OperatorSet execute(Object table, Object[] extraTables);
 
         @Specialization
-        protected OperatorSet construct(Object table, Object[] extraTables, @CachedContext(JavaScriptLanguage.class) JSRealm realm) {
+        protected OperatorSet construct(Object table, Object[] extraTables) {
 
             int operatorCounter = getContext().getOperatorCounter();
 
@@ -317,7 +315,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (!isJSConstructor(leftType)) {
                         throw Errors.createTypeError("the left: value must be an ECMAScript constructor", this);
                     }
-                    OperatorSet leftSet = getOperatorSetOfClass(realm, (DynamicObject) leftType);
+                    OperatorSet leftSet = getOperatorSetOfClass(getRealm(), (DynamicObject) leftType);
                     if (leftSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the left: value %s must be a class with operators overloaded", getClassName(leftType)), this);
                     }
@@ -344,7 +342,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     if (!isJSConstructor(rightType)) {
                         throw Errors.createTypeError("the right: value must be an ECMAScript constructor", this);
                     }
-                    OperatorSet rightSet = getOperatorSetOfClass(realm, (DynamicObject) rightType);
+                    OperatorSet rightSet = getOperatorSetOfClass(getRealm(), (DynamicObject) rightType);
                     if (rightSet == null) {
                         throw Errors.createTypeError(Boundaries.stringFormat("the right: value %s must be a class with operators overloaded", getClassName(rightType)), this);
                     }

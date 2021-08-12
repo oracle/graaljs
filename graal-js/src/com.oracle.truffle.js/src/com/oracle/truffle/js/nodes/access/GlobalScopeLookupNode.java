@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.NeverValidAssumption;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Dead;
@@ -91,7 +90,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
                     @Cached("getPropertyCacheLimit()") int cacheLimit) {
         assert !exists || dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());
         if (dead) {
-            throw Errors.createReferenceErrorNotDefined(JavaScriptLanguage.getCurrentJSRealm().getContext(), varName, this);
+            throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
         }
         if (constAssignment) {
             throw Errors.createTypeErrorConstReassignment(varName, scope, this);
@@ -100,7 +99,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
     }
 
     protected int getPropertyCacheLimit() {
-        return JavaScriptLanguage.getCurrentJSRealm().getContext().getPropertyCacheLimit();
+        return getLanguage().getJSContext().getPropertyCacheLimit();
     }
 
     @Specialization(replaces = "doCached")
@@ -110,7 +109,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         if (property != null) {
             if (JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
                 errorBranch.enter();
-                throw Errors.createReferenceErrorNotDefined(JavaScriptLanguage.getCurrentJSRealm().getContext(), varName, this);
+                throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
             } else if (write && JSProperty.isConst(property)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorConstReassignment(varName, scope, this);

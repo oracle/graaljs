@@ -191,7 +191,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             // Throwable#getStackTrace(), transform it a bit and turn it into a JSArray
             Object exception = JSDynamicObject.getOrNull(thisObj, JSError.EXCEPTION_PROPERTY_NAME);
             Object[] stackTrace = getStackTraceFromThrowable(exception);
-            return JSArray.createConstant(getContext(), stackTrace);
+            return JSArray.createConstant(getContext(), getRealm(), stackTrace);
         }
 
         @TruffleBoundary

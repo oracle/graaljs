@@ -142,7 +142,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) object;
             Object regexResult = groups.getRegexResult();
             if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
             } else {
                 String input = groups.getInputString();
                 return materializeNode.materializeGroup(regexResult, groupIndex, input);
@@ -187,9 +187,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
      * {@link TruffleBoundary} in cases when your regular expression has no named capture groups,
      * consider using the {@code com.oracle.truffle.js.nodes.intl.CreateRegExpNode}.
      */
-    public static DynamicObject create(JSContext ctx, Object compiledRegex) {
+    public static DynamicObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
         JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
-        DynamicObject obj = create(ctx, compiledRegex, groupsFactory);
+        DynamicObject obj = create(ctx, realm, compiledRegex, groupsFactory);
         JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         assert isJSRegExp(obj);
         return obj;
@@ -198,15 +198,14 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static DynamicObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory) {
-        return create(context, compiledRegex, groupsFactory, true);
+    public static DynamicObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
+        return create(context, realm, compiledRegex, groupsFactory, true);
     }
 
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
-    public static JSRegExpObject create(JSContext context, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-        JSRealm realm = context.getRealm();
+    public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
         JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
         assert isJSRegExp(regExp);
         return context.trackAllocation(regExp);
@@ -222,8 +221,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         initialize(ctx, thisObj, regex);
     }
 
-    public static DynamicObject createGroupsObject(JSContext context, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
         DynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
         return context.trackAllocation(obj);
     }
@@ -394,8 +392,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return "[RegExp " + prototypeToString(obj) + "]";
         } else {
             return prototypeToString(obj);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -60,7 +62,8 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
 
     @Specialization(guards = "isUndefined(opts)")
     protected Object getSupportedLocales(Object locales, @SuppressWarnings("unused") Object opts) {
-        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), IntlUtil.BEST_FIT));
+        List<Object> supportedLocals = IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), IntlUtil.BEST_FIT);
+        return JSRuntime.createArrayFromList(getContext(), getRealm(), supportedLocals);
     }
 
     @Specialization(guards = "!isUndefined(opts)")
@@ -69,7 +72,8 @@ public abstract class SupportedLocalesOfNode extends JSBuiltinNode {
                     @Cached("createMatcherGetter(getContext())") GetStringOptionNode getMatcherNode) {
 
         String matcher = getMatcherNode.executeValue(toObjectNode.execute(opts));
-        return JSRuntime.createArrayFromList(getContext(), IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), matcher));
+        List<Object> supportedLocales = IntlUtil.supportedLocales(getContext(), toCanonicalizedLocaleListNode.executeLanguageTags(locales), matcher);
+        return JSRuntime.createArrayFromList(getContext(), getRealm(), supportedLocales);
     }
 
     protected static GetStringOptionNode createMatcherGetter(JSContext context) {

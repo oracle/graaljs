@@ -401,23 +401,23 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         protected int doCASInt8(DynamicObject target, int index, int expected, int replacement, boolean signed) {
-            return SharedMemorySync.atomicFetchOrGetByte(getContext(), target, index, (byte) expected, replacement, signed);
+            return SharedMemorySync.atomicFetchOrGetByte(getRealm().getAgent(), target, index, (byte) expected, replacement, signed);
         }
 
         protected int doCASInt16(DynamicObject target, int index, int expected, int replacement, boolean signed) {
-            return SharedMemorySync.atomicFetchOrGetShort(getContext(), target, index, expected, replacement, signed);
+            return SharedMemorySync.atomicFetchOrGetShort(getRealm().getAgent(), target, index, expected, replacement, signed);
         }
 
         protected Object doCASUint32(DynamicObject target, int index, Object expected, Object replacement) {
-            return SafeInteger.valueOf(SharedMemorySync.atomicFetchOrGetUnsigned(getContext(), target, index, expected, replacement));
+            return SafeInteger.valueOf(SharedMemorySync.atomicFetchOrGetUnsigned(getRealm().getAgent(), target, index, expected, replacement));
         }
 
         protected int doCASInt(DynamicObject target, int index, int expected, int replacement) {
-            return SharedMemorySync.atomicFetchOrGetInt(getContext(), target, index, expected, replacement);
+            return SharedMemorySync.atomicFetchOrGetInt(getRealm().getAgent(), target, index, expected, replacement);
         }
 
         protected BigInt doCASBigInt(DynamicObject target, int index, BigInt expected, BigInt replacement) {
-            return SharedMemorySync.atomicFetchOrGetBigInt(getContext(), target, index, expected, replacement);
+            return SharedMemorySync.atomicFetchOrGetBigInt(getRealm().getAgent(), target, index, expected, replacement);
         }
 
         @TruffleBoundary
@@ -891,22 +891,24 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         }
 
         private int atomicDoInt(DynamicObject target, int index, int value) {
+            JSAgent agent = getRealm().getAgent();
             int initial;
             int result;
             do {
                 initial = SharedMemorySync.doVolatileGet(target, index);
                 result = intOperator.applyAsInt(initial, value);
-            } while (!SharedMemorySync.compareAndSwapInt(getContext(), target, index, initial, result));
+            } while (!SharedMemorySync.compareAndSwapInt(agent, target, index, initial, result));
             return initial;
         }
 
         private BigInt atomicDoBigInt(DynamicObject target, int index, BigInt value) {
+            JSAgent agent = getRealm().getAgent();
             BigInt initial;
             BigInt result;
             do {
                 initial = SharedMemorySync.doVolatileGetBigInt(target, index);
                 result = bigIntOperator.apply(initial, value);
-            } while (!SharedMemorySync.compareAndSwapBigInt(getContext(), target, index, initial, result));
+            } while (!SharedMemorySync.compareAndSwapBigInt(agent, target, index, initial, result));
             return initial;
         }
 
@@ -1074,15 +1076,16 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return 0;
             }
 
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            JSAgent agent = getRealm().getAgent();
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
 
-            SharedMemorySync.enterCriticalSection(getContext(), wl);
+            SharedMemorySync.enterCriticalSection(agent, wl);
             try {
-                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(getContext(), wl, c);
+                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(agent, wl, c);
                 int n;
                 for (n = 0; n < waiters.length; n++) {
                     if (waiters[n].getPromiseCapability() == null) {
-                        SharedMemorySync.notifyWaiter(getContext(), waiters[n]);
+                        SharedMemorySync.notifyWaiter(agent, waiters[n]);
                     } else {
                         waiters[n].setNotified();
                         if (Double.isInfinite(waiters[n].getTimeout())) {
@@ -1092,7 +1095,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 }
                 return n;
             } finally {
-                SharedMemorySync.leaveCriticalSection(getContext(), wl);
+                SharedMemorySync.leaveCriticalSection(agent, wl);
             }
         }
     }
@@ -1148,11 +1151,12 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 t = Math.max(q, 0);
             }
 
-            if (!isAsync && !SharedMemorySync.agentCanSuspend(getContext())) {
+            JSAgent agent = getRealm().getAgent();
+            if (!isAsync && !SharedMemorySync.agentCanSuspend(agent)) {
                 errorBranch.enter();
                 throw createTypeErrorUnsupported();
             }
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
 
             PromiseCapabilityRecord promiseCapability = null;
             DynamicObject resultObject = null;
@@ -1163,7 +1167,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 resultObject = ordinaryObjectCreate(frame);
             }
 
-            SharedMemorySync.enterCriticalSection(getContext(), wl);
+            SharedMemorySync.enterCriticalSection(agent, wl);
             try {
                 Object w = loadNode.executeWithBufferAndIndex(frame, maybeTarget, i);
                 boolean isNotEqual = isInt32 ? !(w instanceof Integer) || (int) w != (int) v
@@ -1184,18 +1188,17 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                     createValuePropertyNode.executeVoid(resultObject, TIMED_OUT);
                     return resultObject;
                 }
-                JSAgent agent = getContext().getJSAgent();
                 int id = agent.getSignifier();
                 WaiterRecord waiterRecord = WaiterRecord.create(id, promiseCapability, t, OK, wl, agent);
-                SharedMemorySync.addWaiter(getContext(), wl, waiterRecord, isAsync);
+                SharedMemorySync.addWaiter(agent, wl, waiterRecord, isAsync);
 
                 if (!isAsyncProfile.profile(isAsync)) {
-                    boolean awoken = SharedMemorySync.suspendAgent(getContext(), wl, waiterRecord);
+                    boolean awoken = SharedMemorySync.suspendAgent(agent, wl, waiterRecord);
                     if (awokenProfile.profile(awoken)) {
                         assert !wl.contains(waiterRecord);
                         return OK;
                     } else {
-                        SharedMemorySync.removeWaiter(getContext(), wl, waiterRecord);
+                        SharedMemorySync.removeWaiter(agent, wl, waiterRecord);
                         return TIMED_OUT;
                     }
                 }
@@ -1203,7 +1206,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 createValuePropertyNode.executeVoid(resultObject, waiterRecord.getPromiseCapability().getPromise());
                 return resultObject;
             } finally {
-                SharedMemorySync.leaveCriticalSection(getContext(), wl);
+                SharedMemorySync.leaveCriticalSection(agent, wl);
             }
         }
 

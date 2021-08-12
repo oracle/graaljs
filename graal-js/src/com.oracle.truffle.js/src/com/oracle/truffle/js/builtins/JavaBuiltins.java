@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -236,7 +236,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization
         @TruffleBoundary
         protected Object type(String name) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             Object javaType = lookupJavaType(name, env);
             if (javaType == null) {
                 throw Errors.createTypeErrorClassNotFound(name);
@@ -302,7 +302,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization(guards = "isJavaInteropClass(type)")
         protected String typeNameJavaInteropClass(Object type) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             return ((Class<?>) env.asHostObject(type)).getName();
         }
 
@@ -312,7 +312,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         protected final boolean isJavaInteropClass(Object obj) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
         }
     }
@@ -350,7 +350,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 typesLength = arguments.length;
             }
 
-            final TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            final TruffleLanguage.Env env = getRealm().getEnv();
             final Class<?>[] types = new Class<?>[typesLength];
             for (int i = 0; i < typesLength; i++) {
                 if (!isType(arguments[i], env)) {
@@ -361,7 +361,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             }
 
             try {
-                JavaAccess.checkAccess(types, getContext());
+                JavaAccess.checkAccess(types, env);
                 if (classOverrides != null) {
                     return env.createHostAdapterClassWithStaticOverrides(types, classOverrides);
                 } else {
@@ -414,14 +414,15 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected DynamicObject from(Object javaArray) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            JSRealm realm = getRealm();
+            TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(javaArray)) {
                 try {
                     long size = interop.getArraySize(javaArray);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
                         throw Errors.createRangeErrorInvalidArrayLength();
                     }
-                    DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), size);
+                    DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), realm, size);
                     for (int i = 0; i < size; i++) {
                         Object element = foreignConvert(interop.readArrayElement(javaArray, i));
                         write(jsArray, i, element);
@@ -434,7 +435,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 if (hostObject instanceof List<?>) {
                     List<?> javaList = (List<?>) hostObject;
                     int len = Boundaries.listSize(javaList);
-                    DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), len);
+                    DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), realm, len);
                     fromList(javaList, len, jsArrayObj);
                     return jsArrayObj;
                 }
@@ -479,7 +480,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization(guards = {"isJSObject(jsObj)"})
         protected Object to(Object jsObj, Object toType) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(toType)) {
                 if (isJavaArrayClass(toType, env)) {
                     return toArray(jsObj, toType, env);
@@ -555,7 +556,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected final boolean isType(Object obj) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
         }
     }
@@ -568,7 +569,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected final boolean isJavaObject(Object obj) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             return env.isHostObject(obj) || env.isHostFunction(obj);
         }
     }
@@ -580,7 +581,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected boolean isJavaMethod(Object obj) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             return env.isHostFunction(obj);
         }
     }
@@ -592,7 +593,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected boolean isJavaFunction(Object obj) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             return env.isHostFunction(obj) || (env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>);
         }
     }
@@ -633,7 +634,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 throw Errors.createTypeErrorNotAFunction(func);
             }
             if (lock != Undefined.instance) {
-                unwrapAndCheckLockObject(lock, getContext().getRealm().getEnv());
+                unwrapAndCheckLockObject(lock, getRealm().getEnv());
             }
             JSRealm realm = realmNode.execute(frame);
             JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((DynamicObject) func);
@@ -647,19 +648,18 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @TruffleBoundary
         private JSFunctionData createSynchronizedWrapper(DynamicObject func) {
-            final JSContext context = getContext();
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getContext().getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thisObj = JSFrameUtil.getThisObj(frame);
-                    Object lock = unwrapAndCheckLockObject(thisObj, context.getRealm().getEnv());
+                    Object lock = unwrapAndCheckLockObject(thisObj, getRealm().getEnv());
                     Object[] arguments = JSArguments.create(thisObj, func, JSArguments.extractUserArguments(frame.getArguments()));
                     synchronized (lock) {
                         return JSFunction.call(arguments);
                     }
                 }
             });
-            return JSFunctionData.createCallOnly(context, callTarget, 0, "synchronizedWrapper");
+            return JSFunctionData.createCallOnly(getContext(), callTarget, 0, "synchronizedWrapper");
         }
 
         static Object unwrapJavaObject(Object object, TruffleLanguage.Env env) {
@@ -686,7 +686,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization
         protected Object doString(String fileName) {
-            TruffleLanguage.Env env = getContext().getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             try {
                 TruffleFile file = env.getPublicTruffleFile(fileName);
                 env.addToHostClassPath(file);

@@ -441,7 +441,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = "isJSMap(map)")
         protected DynamicObject doMap(VirtualFrame frame, DynamicObject map) {
-            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getMapIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getMapIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, map);
             setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);
@@ -466,7 +466,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", null);
             }
 
-            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory());
+            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
             setEnumerateIteratorNode.setValue(iteratorObj, iterator);
             return iteratorObj;
         }

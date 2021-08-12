@@ -122,7 +122,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             DynamicObject generatorObject = (DynamicObject) arguments[1];
             Completion completion = (Completion) arguments[2];
 
-            final JSRealm currentRealm = context.getRealm();
+            final JSRealm currentRealm = getRealm();
             final JSRealm realm;
             final boolean enterContext;
             if (context.neverCreatedChildRealms()) {

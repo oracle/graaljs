@@ -83,18 +83,19 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSAgent;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.JSAgentWaiterList.JSAgentWaiterListEntry;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -325,8 +326,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object runMicrotasks() {
-            JSContext context = getContext();
-            context.processAllPendingPromiseJobs(context.getRealm());
+            getContext().processAllPendingPromiseJobs(getRealm());
             return Undefined.instance;
         }
     }
@@ -340,7 +340,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob(getContext().getRealm(), (DynamicObject) function);
+                getContext().promiseEnqueueJob(getRealm(), (DynamicObject) function);
             }
             return 0;
         }
@@ -362,7 +362,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization(guards = "isJSObject(syncIterator)")
         protected Object createAsyncFromSyncIterator(DynamicObject syncIterator) {
             JSContext context = getContext();
-            DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory());
+            DynamicObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
             IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
             setState.setValue(obj, syncIteratorRecord);
             return obj;
@@ -425,7 +425,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @SuppressWarnings("unchecked")
         protected Object setTimeout(Object callback) {
             assert JSRuntime.isCallable(callback);
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             List<Object> embedderData = (List<Object>) realm.getEmbedderData();
             if (embedderData == null) {
                 embedderData = new ArrayList<>();
@@ -483,7 +483,8 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                         @Cached("create()") JSToIndexNode toIndexNode) {
             DynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
+            JSAgent agent = getRealm().getAgent();
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
             return wl.size();
         }
 
@@ -500,8 +501,9 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                         @Cached("create()") JSToIndexNode toIndexNode) {
             DynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
-            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
-            return getContext().getJSAgent().getAsyncWaitersToBeResolved(wl);
+            JSAgent agent = getRealm().getAgent();
+            JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), agent, target, i);
+            return agent.getAsyncWaitersToBeResolved(wl);
         }
     }
 
@@ -515,7 +517,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object setAllowAtomicsWait(Object allow) {
-            getContext().getJSAgent().setCanBlock(toBooleanNode.executeBoolean(allow));
+            getRealm().getAgent().setCanBlock(toBooleanNode.executeBoolean(allow));
             return Undefined.instance;
         }
 

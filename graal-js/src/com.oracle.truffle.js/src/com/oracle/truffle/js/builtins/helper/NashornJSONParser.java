@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import com.oracle.js.parser.Source;
 import com.oracle.js.parser.Token;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -142,7 +143,7 @@ public class NashornJSONParser {
     }
 
     private Object parseObject() {
-        DynamicObject jsobject = JSOrdinary.create(context);
+        DynamicObject jsobject = JSOrdinary.create(context, JSRealm.get(null));
 
         int state = STATE_EMPTY;
 
@@ -197,7 +198,7 @@ public class NashornJSONParser {
     }
 
     private Object parseArray() {
-        DynamicObject jsarray = JSArray.createEmptyZeroLength(context);
+        DynamicObject jsarray = JSArray.createEmptyZeroLength(context, JSRealm.get(null));
         ScriptArray arrayData = arrayGetArrayType(jsarray);
 
         int state = STATE_EMPTY;

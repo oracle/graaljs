@@ -130,6 +130,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -991,11 +992,12 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private <T> DynamicObject split(String thisStr, int limit, Splitter<T> splitter, T separator) {
+            JSRealm realm = getRealm();
             if (zeroLimit.profile(limit == 0)) {
-                return JSArray.createEmptyZeroLength(getContext());
+                return JSArray.createEmptyZeroLength(getContext(), realm);
             }
             Object[] splits = splitter.split(thisStr, limit, separator, this);
-            return JSArray.createConstant(getContext(), splits);
+            return JSArray.createConstant(getContext(), realm, splits);
         }
 
         public TRegexUtil.TRegexCompiledRegexAccessor getCompiledRegexAccessor() {
@@ -2244,7 +2246,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 lastIndex = thisIndex + (thisIndex == lastIndex ? 1 : 0);
                 result = matchIgnoreLastIndex(regExp, input, lastIndex);
             }
-            return JSArray.createConstant(getContext(), Boundaries.listToArray(matches));
+            return JSArray.createConstant(getContext(), getRealm(), Boundaries.listToArray(matches));
         }
 
     }
@@ -2377,7 +2379,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private DynamicObject createCollator(Object locales, Object options) {
-            DynamicObject collatorObj = JSCollator.create(getContext());
+            DynamicObject collatorObj = JSCollator.create(getContext(), getRealm());
             initCollatorNode.executeInit(collatorObj, locales, options);
             return collatorObj;
         }
@@ -2777,7 +2779,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
      * String.prototype.matchAll draft proposal.
      */
     public static class CreateRegExpStringIteratorNode extends JavaScriptBaseNode {
-        private final JSContext context;
         @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
         @Child private PropertySetNode setIteratingRegExpNode;
         @Child private PropertySetNode setIteratedStringNode;
@@ -2786,7 +2787,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Child private PropertySetNode setDoneNode;
 
         public CreateRegExpStringIteratorNode(JSContext context) {
-            this.context = context;
             // The CreateRegExpStringIteratorNode is used only in the MatchAllIteratorNode, where
             // it is lazily constructed just before its first execution. Furthermore, an execution
             // of the CreateRegExpStringIteratorNode necessitates the execution of all its children,
@@ -2801,7 +2801,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         public DynamicObject createIterator(VirtualFrame frame, Object regex, String string, Boolean global, Boolean fullUnicode) {
-            DynamicObject regExpStringIteratorPrototype = context.getRealm().getRegExpStringIteratorPrototype();
+            DynamicObject regExpStringIteratorPrototype = getRealm().getRegExpStringIteratorPrototype();
             DynamicObject iterator = createObjectNode.execute(frame, regExpStringIteratorPrototype);
             setIteratingRegExpNode.setValue(iterator, regex);
             setIteratedStringNode.setValue(iterator, string);
@@ -2826,7 +2826,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected DynamicObject doString(VirtualFrame frame, String string) {
-            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getStringIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getStringIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, string);
             setNextIndexNode.setValueInt(iterator, 0);
             return iterator;

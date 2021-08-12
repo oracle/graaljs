@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -71,14 +72,14 @@ public class TruffleJSONParser {
         this.context = context;
     }
 
-    public Object parse(String value) {
+    public Object parse(String value, JSRealm realm) {
         this.pos = 0;
         this.parseDepth = 0;
         this.parseStr = value;
         this.len = parseStr.length();
         try {
             skipWhitespace();
-            Object result = parseJSONValue();
+            Object result = parseJSONValue(realm);
             skipWhitespace();
             if (posValid()) {
                 throw Errors.createSyntaxError("JSON cannot be fully parsed");
@@ -102,15 +103,15 @@ public class TruffleJSONParser {
         return context.isOptionNashornCompatibilityMode() ? "Unexpected end of input" : "Unexpected end of JSON input";
     }
 
-    protected Object parseJSONValue() {
+    protected Object parseJSONValue(JSRealm realm) {
         char c = get();
 
         if (isStringQuote(c)) {
             return parseJSONString();
         } else if (isObjectStart(c)) {
-            return parseJSONObject();
+            return parseJSONObject(realm);
         } else if (isArrayStart(c)) {
-            return parseJSONArray();
+            return parseJSONArray(realm);
         } else if (isNullLiteral(c)) {
             return parseNullLiteral();
         } else if (isBooleanLiteral(c)) {
@@ -133,14 +134,14 @@ public class TruffleJSONParser {
         return c == '[';
     }
 
-    private Object parseJSONObject() {
+    private Object parseJSONObject(JSRealm realm) {
         assert isObjectStart(get());
         incDepth();
         skipChar('{');
         skipWhitespace();
-        DynamicObject object = JSOrdinary.create(context);
+        DynamicObject object = JSOrdinary.create(context, realm);
         if (get() != '}') {
-            parseJSONMemberList(object);
+            parseJSONMemberList(object, realm);
             if (get() != '}') {
                 if (get() == '"') {
                     unexpectedString();
@@ -155,33 +156,33 @@ public class TruffleJSONParser {
         return object;
     }
 
-    private void parseJSONMemberList(DynamicObject object) {
-        Member member = parseJSONMember();
+    private void parseJSONMemberList(DynamicObject object, JSRealm realm) {
+        Member member = parseJSONMember(realm);
         JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
         while (get() == ',') {
             skipChar(',');
             skipWhitespace();
-            member = parseJSONMember();
+            member = parseJSONMember(realm);
             JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
         }
     }
 
-    private Member parseJSONMember() {
+    private Member parseJSONMember(JSRealm realm) {
         String jsonString = parseJSONString();
         expectChar(':');
         skipWhitespace();
-        Object jsonValue = parseJSONValue();
+        Object jsonValue = parseJSONValue(realm);
         return new Member(jsonString, jsonValue);
     }
 
-    private Object parseJSONArray() {
+    private Object parseJSONArray(JSRealm realm) {
         assert isArrayStart(get());
         incDepth();
         skipChar('[');
         skipWhitespace();
-        DynamicObject array = JSArray.createEmptyZeroLength(context);
+        DynamicObject array = JSArray.createEmptyZeroLength(context, realm);
         if (get() != ']') {
-            parseJSONElementList(array);
+            parseJSONElementList(array, realm);
             if (get() != ']') {
                 error("closing quote ] expected");
             }
@@ -211,15 +212,15 @@ public class TruffleJSONParser {
         this.parseDepth--;
     }
 
-    protected ScriptArray parseJSONElementList(DynamicObject arrayObject) {
+    protected ScriptArray parseJSONElementList(DynamicObject arrayObject, JSRealm realm) {
         int index = 0;
         ScriptArray scriptArray = JSAbstractArray.arrayGetArrayType(arrayObject);
-        scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(), false);
+        scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(realm), false);
         while (get() == ',') {
             skipChar(',');
             skipWhitespace();
             index++;
-            scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(), false);
+            scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(realm), false);
         }
         JSAbstractArray.arraySetArrayType(arrayObject, scriptArray);
         return scriptArray;

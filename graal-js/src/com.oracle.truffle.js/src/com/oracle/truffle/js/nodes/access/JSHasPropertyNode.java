@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,7 +49,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -125,9 +122,8 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    public boolean typedArray(JSTypedArrayObject object, long index,
-                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
-        return !JSArrayBufferView.hasDetachedBuffer(object, languageRef.get().getJSContext()) && index >= 0 && index < JSArrayBufferView.typedArrayGetLength(object);
+    public boolean typedArray(JSTypedArrayObject object, long index) {
+        return !JSArrayBufferView.hasDetachedBuffer(object, getLanguage().getJSContext()) && index >= 0 && index < JSArrayBufferView.typedArrayGetLength(object);
     }
 
     @SuppressWarnings("unused")
@@ -182,8 +178,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                    @Cached("create()") JSHasPropertyNode hasInPrototype,
-                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
+                    @Cached("create()") JSHasPropertyNode hasInPrototype) {
         if (isForeignValueOfTypeObject(object, interop)) {
             if (propertyName instanceof Number && interop.hasArrayElements(object)) {
                 long index = JSRuntime.longValue((Number) propertyName);
@@ -192,7 +187,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                 if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
                     return true;
                 }
-                if (languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
                     DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
                     return hasInPrototype.executeBoolean(prototype, propertyName);
                 } else {

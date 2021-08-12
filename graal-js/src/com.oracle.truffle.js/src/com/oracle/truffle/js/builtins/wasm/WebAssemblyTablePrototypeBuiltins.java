@@ -56,6 +56,7 @@ import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
@@ -127,7 +128,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
             int deltaInt = toDeltaNode.executeInt(delta);
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             try {
-                Object growFn = getContext().getRealm().getWASMTableGrow();
+                Object growFn = getRealm().getWASMTableGrow();
                 return tableGrowLib.execute(growFn, wasmTable, deltaInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
@@ -161,17 +162,18 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Table.get(): Receiver is not a WebAssembly.Table");
             }
+            JSRealm realm = getRealm();
             int indexInt = toIndexNode.executeInt(index);
             Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
             try {
-                Object getFn = getContext().getRealm().getWASMTableRead();
+                Object getFn = realm.getWASMTableRead();
                 Object fn = tableGetLib.execute(getFn, wasmTable, indexInt);
                 if (!wasmFnLib.isExecutable(fn)) {
                     return Null.instance;
                 }
-                Object funcTypeFn = getContext().getRealm().getWASMFuncType();
+                Object funcTypeFn = realm.getWASMFuncType();
                 String funcType = (String) funcTypeLib.execute(funcTypeFn, fn);
-                return JSWebAssemblyInstance.exportFunction(getContext(), fn, funcType);
+                return JSWebAssemblyInstance.exportFunction(getContext(), realm, fn, funcType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
@@ -213,7 +215,7 @@ public class WebAssemblyTablePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createTypeError("WebAssembly.Table.set(): Argument 1 must be null or a WebAssembly function");
             }
             try {
-                Object setFn = getContext().getRealm().getWASMTableWrite();
+                Object setFn = getRealm().getWASMTableWrite();
                 tableSetLib.execute(setFn, wasmTable, indexInt, wasmFunction);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);

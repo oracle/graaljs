@@ -110,9 +110,8 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyMemoryObject create(JSContext context, Object wasmMemory) {
-        DynamicObject bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, wasmMemory);
-        JSRealm realm = context.getRealm();
+    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory) {
+        DynamicObject bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
         JSWebAssemblyMemoryObject object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory, bufferObject);
         factory.initProto(object, realm);

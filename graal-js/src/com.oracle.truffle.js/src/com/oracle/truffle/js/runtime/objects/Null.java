@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.AbstractJSClass;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
@@ -88,7 +87,7 @@ public final class Null {
         }
 
         @Override
-        public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects, JSContext context) {
+        public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects) {
             return object == Undefined.instance ? "[object Undefined]" : "[object Null]";
         }
 

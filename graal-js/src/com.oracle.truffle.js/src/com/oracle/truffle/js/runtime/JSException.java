@@ -125,12 +125,12 @@ public final class JSException extends GraalJSException {
     }
 
     public static JSException create(JSErrorType type, String message, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        JSRealm realm = JSRealm.get(originatingNode);
         return fillInStackTrace(new JSException(type, message, originatingNode, null, realm, getStackTraceLimit(realm)), false);
     }
 
     public static JSException create(JSErrorType type, String message, Throwable cause, Node originatingNode) {
-        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        JSRealm realm = JSRealm.get(originatingNode);
         return fillInStackTrace(new JSException(type, message, cause, originatingNode, realm, getStackTraceLimit(realm)), false);
     }
 
@@ -190,10 +190,10 @@ public final class JSException extends GraalJSException {
 
     @TruffleBoundary
     @Override
-    public Object getErrorObjectEager(JSContext context) {
+    public Object getErrorObjectEager(JSRealm currentRealm) {
         DynamicObject jserror = exceptionObj;
         if (jserror == null) { // not thread safe, but should be all right in this case
-            JSRealm innerRealm = this.realm != null ? this.realm : context.getRealm();
+            JSRealm innerRealm = this.realm != null ? this.realm : currentRealm;
             String message = getRawMessage();
             exceptionObj = jserror = JSError.createFromJSException(this, innerRealm, (message == null) ? "" : message);
         }

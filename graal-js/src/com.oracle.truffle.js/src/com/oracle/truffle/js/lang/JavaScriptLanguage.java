@@ -55,7 +55,6 @@ import org.graalvm.polyglot.Context;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -97,7 +96,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -150,7 +148,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
                 JavaScriptLanguage.TEXT_MIME_TYPE,
                 JavaScriptLanguage.MODULE_MIME_TYPE,
                 JavaScriptLanguage.JSON_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
-public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
+public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
@@ -168,6 +166,8 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private volatile boolean multiContext;
 
     private final Assumption promiseJobsQueueEmptyAssumption;
+
+    private static final LanguageReference<JavaScriptLanguage> REFERENCE = LanguageReference.create(JavaScriptLanguage.class);
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -203,7 +203,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         @Child private DirectCallNode directCallNode;
         @Child private ExportValueNode exportValueNode = ExportValueNode.create();
         @Child private ImportValueNode importValueNode = ImportValueNode.create();
-        @CompilationFinal private ContextReference<JSRealm> contextReference;
 
         private ParsedProgramRoot(TruffleLanguage<?> language, JSContext context, ScriptNode program) {
             super(language);
@@ -214,11 +213,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            if (contextReference == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                contextReference = lookupContextReference(JavaScriptLanguage.class);
-            }
-            JSRealm realm = contextReference.get();
+            JSRealm realm = JSRealm.get(this);
             assert realm.getContext() == context : "unexpected JSContext";
             try {
                 interopBoundaryEnter(realm);
@@ -267,7 +262,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                assert JavaScriptLanguage.getCurrentJSRealm().getContext() == context : "unexpected JSContext";
+                assert JavaScriptLanguage.get(this).getJSContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
                 return exportValueNode.execute(result);
             }
@@ -438,7 +433,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         multiContext = true;
     }
 
-    @Override
     public boolean isMultiContext() {
         return multiContext;
     }
@@ -468,6 +462,22 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return context.getTopScopeObject();
     }
 
+    public static JSRealm getCurrentJSRealm() {
+        return JSRealm.get(null);
+    }
+
+    public static JavaScriptLanguage getCurrentLanguage() {
+        return JavaScriptLanguage.get(null);
+    }
+
+    public static TruffleLanguage.Env getCurrentEnv() {
+        return getCurrentJSRealm().getEnv();
+    }
+
+    public String getTruffleLanguageHome() {
+        return getLanguageHome();
+    }
+
     public static JSContext getJSContext(Context context) {
         return getJSRealm(context).getContext();
     }
@@ -476,7 +486,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         context.enter();
         try {
             context.initialize(ID);
-            return getCurrentContext(JavaScriptLanguage.class);
+            return JSRealm.get(null);
         } finally {
             context.leave();
         }
@@ -519,6 +529,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public JSContext getJSContext() {
         return Objects.requireNonNull(languageContext);
+    }
+
+    public static JavaScriptLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     public boolean bindMemberFunctions() {

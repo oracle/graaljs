@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -327,15 +327,15 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                 Object key = JSObject.get(ownKeys2, i);
                 JSObject.set(ownKeys2, i, JSRuntime.toString(key));
             }
-            ownKeys = concatArrays(ownKeys, ownKeys2, context);
+            ownKeys = concatArrays(ownKeys, ownKeys2);
         }
         if (ownKeys == null) {
-            ownKeys = JSArray.createEmpty(context, 0);
+            ownKeys = JSArray.createEmpty(context, getRealm(), 0);
         }
         return ownKeys;
     }
 
-    private static DynamicObject concatArrays(DynamicObject array1, DynamicObject array2, JSContext context) {
+    private DynamicObject concatArrays(DynamicObject array1, DynamicObject array2) {
         if (JSRuntime.isArray(array1)) {
             if (JSRuntime.isArray(array2)) {
                 List<Object> keys = new ArrayList<>(Arrays.asList(JSArray.toArray(array1)));
@@ -344,7 +344,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                         keys.add(key);
                     }
                 }
-                return JSArray.createConstant(context, keys.toArray());
+                return JSArray.createConstant(context, getRealm(), keys.toArray());
             } else {
                 return array1;
             }

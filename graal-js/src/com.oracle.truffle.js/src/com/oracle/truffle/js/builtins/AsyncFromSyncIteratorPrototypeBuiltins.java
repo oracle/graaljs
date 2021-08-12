@@ -170,7 +170,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         }
 
         protected void promiseCapabilityReject(PromiseCapabilityRecord promiseCapability, GraalJSException exception) {
-            Object result = exception.getErrorObjectEager(getContext());
+            Object result = exception.getErrorObjectEager(getRealm());
             promiseCapabilityRejectImpl(promiseCapability, result);
         }
 
@@ -201,7 +201,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                 promiseCapabilityReject(promiseCapability, e);
                 return promiseCapability.getPromise();
             }
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             DynamicObject valueWrapper;
             if (getContext().usePromiseResolve()) {
                 valueWrapper = promiseResolveNode.execute(realm.getPromiseConstructor(), returnValue);

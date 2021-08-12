@@ -113,6 +113,7 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -405,7 +406,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached ListSizeNode listSize,
                         @Cached ListGetNode listGet,
                         @Cached JSClassProfile classProfile) {
-            DynamicObject retObj = JSOrdinary.create(getContext());
+            DynamicObject retObj = JSOrdinary.create(getContext(), getRealm());
 
             List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(thisObj, classProfile);
             int size = listSize.execute(ownPropertyKeys);
@@ -427,7 +428,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary members,
                         @Cached("create()") ImportValueNode toJSType,
                         @Cached BranchProfile errorBranch) {
-            DynamicObject result = JSOrdinary.create(getContext());
+            DynamicObject result = JSOrdinary.create(getContext(), getRealm());
 
             try {
                 if (interop.hasMembers(thisObj)) {
@@ -500,7 +501,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
                         @Cached @Shared("listSize") ListSizeNode listSize) {
             List<Object> ownPropertyKeys = jsclassProfile.getJSClass(thisObj).getOwnPropertyKeys(thisObj, !symbols, symbols);
-            return JSArray.createLazyArray(getContext(), ownPropertyKeys, listSize.execute(ownPropertyKeys));
+            return JSArray.createLazyArray(getContext(), getRealm(), ownPropertyKeys, listSize.execute(ownPropertyKeys));
         }
 
         @Specialization(guards = {"!isJSObject(thisObj)", "!isForeignObject(thisObj)"})
@@ -514,7 +515,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isForeignObject(thisObj)", "symbols"})
         protected DynamicObject getForeignObjectSymbols(@SuppressWarnings("unused") Object thisObj) {
             // TruffleObjects can never have symbols.
-            return JSArray.createConstantEmptyArray(getContext());
+            return JSArray.createConstantEmptyArray(getContext(), getRealm());
         }
 
         @Specialization(guards = {"isForeignObject(thisObj)", "!symbols"}, limit = "InteropLibraryLimit")
@@ -543,7 +544,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             } else {
                 array = ScriptArray.EMPTY_OBJECT_ARRAY;
             }
-            return JSArray.createConstant(getContext(), array);
+            return JSArray.createConstant(getContext(), getRealm(), array);
         }
     }
 
@@ -798,11 +799,12 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected DynamicObject keysDynamicObject(DynamicObject thisObj) {
             UnmodifiableArrayList<? extends Object> keyList = enumerableOwnPropertyNames(toOrAsJSObject(thisObj));
             int len = keyList.size();
+            JSRealm realm = getRealm();
             if (hasElements.profile(len > 0)) {
                 assert keyList.stream().allMatch(String.class::isInstance);
-                return JSArray.createConstant(getContext(), keyList.toArray());
+                return JSArray.createConstant(getContext(), realm, keyList.toArray());
             }
-            return JSArray.createEmptyChecked(getContext(), 0);
+            return JSArray.createEmptyChecked(getContext(), realm, 0);
         }
 
         @Specialization
@@ -851,14 +853,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                             assert InteropLibrary.getFactory().getUncached().isString(key);
                             keys.add(asStringKey(key), growProfile);
                         }
-                        return JSArray.createConstant(getContext(), keys.toArray());
+                        return JSArray.createConstant(getContext(), getRealm(), keys.toArray());
                     }
                     // fall through
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                     // fall through
                 }
             }
-            return JSArray.createEmptyZeroLength(getContext());
+            return JSArray.createEmptyZeroLength(getContext(), getRealm());
         }
 
         private UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject obj) {
@@ -1060,10 +1062,11 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached("createBinaryProfile()") ConditionProfile lengthZero) {
             UnmodifiableArrayList<? extends Object> list = enumerableOwnPropertyNames(obj);
             int len = list.size();
+            JSRealm realm = getRealm();
             if (lengthZero.profile(len == 0)) {
-                return JSArray.createEmptyChecked(getContext(), 0);
+                return JSArray.createEmptyChecked(getContext(), realm, 0);
             }
-            return JSArray.createConstant(getContext(), list.toArray());
+            return JSArray.createConstant(getContext(), realm, list.toArray());
         }
 
         protected UnmodifiableArrayList<? extends Object> enumerableOwnPropertyNames(DynamicObject obj) {
@@ -1081,6 +1084,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached ImportValueNode importValue,
                         @Cached BranchProfile growProfile,
                         @Cached BranchProfile errorBranch) {
+            JSRealm realm = getRealm();
             try {
                 Object keysObj = interop.getMembers(thisObj);
                 long size = members.getArraySize(keysObj);
@@ -1094,13 +1098,13 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                     String stringKey = asStringKey(key);
                     Object value = importValue.executeWithTarget(interop.readMember(thisObj, stringKey));
                     if (entries) {
-                        value = JSArray.createConstant(getContext(), new Object[]{key, value});
+                        value = JSArray.createConstant(getContext(), realm, new Object[]{key, value});
                     }
                     values.add(value, growProfile);
                 }
-                return JSArray.createConstant(getContext(), values.toArray());
+                return JSArray.createConstant(getContext(), realm, values.toArray());
             } catch (UnsupportedMessageException | InvalidArrayIndexException | UnknownIdentifierException e) {
-                return JSArray.createEmptyZeroLength(getContext());
+                return JSArray.createEmptyZeroLength(getContext(), realm);
             }
         }
 
@@ -1151,7 +1155,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected DynamicObject entries(Object iterable) {
             requireObjectCoercibleNode.executeVoid(iterable);
-            DynamicObject obj = JSOrdinary.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext(), getRealm());
             return addEntriesFromIterable(obj, iterable);
         }
 
@@ -1266,7 +1270,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (interop.hasMembers(source)) {
                 try {
                     boolean extensible = JSObject.isExtensible(target, targetProfile);
-                    boolean hostObject = getContext().getRealm().getEnv().isHostObject(source);
+                    boolean hostObject = getRealm().getEnv().isHostObject(source);
                     Object keysObj = interop.getMembers(source);
                     long size = members.getArraySize(keysObj);
                     for (int i = 0; i < size; i++) {

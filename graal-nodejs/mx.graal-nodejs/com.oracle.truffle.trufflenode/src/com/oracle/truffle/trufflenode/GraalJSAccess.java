@@ -944,7 +944,7 @@ public final class GraalJSAccess {
         int flags = propertyAttributes(attributes);
         Accessor accessor = new Accessor(this, name, getterPtr, setterPtr, data, null, flags);
         Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
-        JSRealm realm = context.getRealm();
+        JSRealm realm = getCurrentRealm();
         DynamicObject getter = functionFromFunctionData(realm, accessorFunctions.getFirst(), dynamicObject);
         DynamicObject setter = functionFromFunctionData(realm, accessorFunctions.getSecond(), dynamicObject);
         JSObjectUtil.putAccessorProperty(context, dynamicObject, accessor.getName(), getter, setter, flags);
@@ -1001,6 +1001,10 @@ public final class GraalJSAccess {
         }
     }
 
+    private static JSRealm getCurrentRealm() {
+        return JSRealm.get(null);
+    }
+
     public Object objectGetOwnPropertyNames(Object object) {
         Object[] namesArray;
         if (JSDynamicObject.isJSDynamicObject(object)) {
@@ -1035,7 +1039,7 @@ public final class GraalJSAccess {
                 namesArray = new Object[0];
             }
         }
-        return JSArray.createConstantObjectArray(mainJSContext, namesArray);
+        return JSArray.createConstantObjectArray(mainJSContext, getCurrentRealm(), namesArray);
     }
 
     public Object objectGetPropertyNames(Object object, boolean ownOnly,
@@ -1118,7 +1122,7 @@ public final class GraalJSAccess {
                 propertyNames = new Object[0];
             }
         }
-        return JSArray.createConstantObjectArray(mainJSContext, propertyNames);
+        return JSArray.createConstantObjectArray(mainJSContext, getCurrentRealm(), propertyNames);
     }
 
     private void convertArrayIndicesToNumbers(Object[] namesArray) {
@@ -1209,11 +1213,13 @@ public final class GraalJSAccess {
     }
 
     public Object arrayNew(Object context, int length) {
-        return JSArray.createConstantEmptyArray(((JSRealm) context).getContext(), length);
+        JSRealm realm = (JSRealm) context;
+        return JSArray.createConstantEmptyArray(realm.getContext(), realm, length);
     }
 
     public Object arrayNewFromElements(Object context, Object[] elements) {
-        return JSArray.createConstantObjectArray(((JSRealm) context).getContext(), elements);
+        JSRealm realm = (JSRealm) context;
+        return JSArray.createConstantObjectArray(realm.getContext(), realm, elements);
     }
 
     public long arrayLength(Object object) {
@@ -1225,13 +1231,15 @@ public final class GraalJSAccess {
         if (pointer != 0) {
             deallocator.register(byteBuffer, pointer);
         }
-        DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
+        JSRealm realm = (JSRealm) context;
+        DynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(realm.getContext(), realm, byteBuffer);
         JSObjectUtil.putHiddenProperty(arrayBuffer, EXTERNALIZED_KEY, pointer == 0);
         return arrayBuffer;
     }
 
     public Object arrayBufferNew(Object context, int byteLength) {
-        return JSArrayBuffer.createDirectArrayBuffer(((JSRealm) context).getContext(), byteLength);
+        JSRealm realm = (JSRealm) context;
+        return JSArrayBuffer.createDirectArrayBuffer(realm.getContext(), realm, byteLength);
     }
 
     public Object arrayBufferNewBackingStore(int byteLength) {
@@ -1351,7 +1359,8 @@ public final class GraalJSAccess {
 
     public Object sharedArrayBufferNew(Object context, Object buffer, long pointer, boolean externalized) {
         ByteBuffer byteBuffer = (ByteBuffer) buffer;
-        DynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(((JSRealm) context).getContext(), byteBuffer);
+        JSRealm realm = (JSRealm) context;
+        DynamicObject sharedArrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(realm.getContext(), realm, byteBuffer);
         JSObjectUtil.putHiddenProperty(sharedArrayBuffer, EXTERNALIZED_KEY, externalized);
         if (externalized) {
             updateWaiterList(sharedArrayBuffer, pointer);
@@ -1385,11 +1394,12 @@ public final class GraalJSAccess {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
+        JSRealm realm = getCurrentRealm();
         boolean detached = JSArrayBuffer.isDetachedBuffer(dynamicObject);
         if (detached) {
-            dynamicObject = JSArrayBuffer.createDirectArrayBuffer(context, 0);
+            dynamicObject = JSArrayBuffer.createDirectArrayBuffer(context, realm, 0);
         }
-        DynamicObject result = JSArrayBufferView.createArrayBufferView(context, dynamicObject, arrayType, offset, length);
+        DynamicObject result = JSArrayBufferView.createArrayBufferView(context, realm, dynamicObject, arrayType, offset, length);
         if (detached) {
             JSArrayBuffer.detachArrayBuffer(dynamicObject);
         }
@@ -1442,8 +1452,8 @@ public final class GraalJSAccess {
 
     public Object dataViewNew(Object arrayBuffer, int offset, int length) {
         DynamicObject dynamicObject = (DynamicObject) arrayBuffer;
-        JSContext context = JSObject.getJSContext(dynamicObject);
-        return JSDataView.createDataView(context, dynamicObject, offset, length);
+        JSRealm realm = getCurrentRealm();
+        return JSDataView.createDataView(realm.getContext(), realm, dynamicObject, offset, length);
     }
 
     public Object externalNew(Object context, long pointer) {
@@ -1459,7 +1469,8 @@ public final class GraalJSAccess {
     }
 
     public Object dateNew(Object context, double value) {
-        return JSDate.create(((JSRealm) context).getContext(), value);
+        JSRealm realm = (JSRealm) context;
+        return JSDate.create(realm.getContext(), realm, value);
     }
 
     public double dateValueOf(Object date) {
@@ -1778,8 +1789,8 @@ public final class GraalJSAccess {
 
     @CompilerDirectives.TruffleBoundary
     public DynamicObject propertyHandlerInstantiate(JSContext context, JSRealm realm, ObjectTemplate template, DynamicObject target, boolean global) {
-        DynamicObject handler = JSUncheckedProxyHandler.create(context);
-        DynamicObject proxy = JSProxy.create(context, target, handler);
+        DynamicObject handler = JSUncheckedProxyHandler.create(context, realm);
+        DynamicObject proxy = JSProxy.create(context, realm, target, handler);
 
         DynamicObject getter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
                         this,
@@ -1939,7 +1950,7 @@ public final class GraalJSAccess {
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         Evaluator nodeEvaluator = jsContext.getEvaluator();
-        Object extraArgument = getExtraArgumentOfInternalScript(sourceName, jsContext);
+        Object extraArgument = getExtraArgumentOfInternalScript(sourceName, realm);
         Object[] extensions;
         ByteBuffer snapshot = null;
         if (extraArgument == null) {
@@ -1950,7 +1961,7 @@ public final class GraalJSAccess {
             }
         } else {
             assert exts.length == 0;
-            DynamicObject graalExtension = JSOrdinary.create(jsContext);
+            DynamicObject graalExtension = JSOrdinary.create(jsContext, realm);
             JSObject.set(graalExtension, "graalExtension", extraArgument);
             extensions = new Object[]{graalExtension};
         }
@@ -2070,7 +2081,7 @@ public final class GraalJSAccess {
         try {
             Object result;
             if (boundScript.isGraalInternal()) {
-                result = scriptRunInternal(scriptNode, arguments);
+                result = scriptRunInternal(scriptNode, realm, arguments);
             } else {
                 result = scriptNode.run(arguments);
             }
@@ -2080,10 +2091,9 @@ public final class GraalJSAccess {
         }
     }
 
-    private Object scriptRunInternal(ScriptNode scriptNode, Object[] arguments) {
+    private Object scriptRunInternal(ScriptNode scriptNode, JSRealm realm, Object[] arguments) {
         // Internal scripts are allowed to access implementation classes
         JSContext context = scriptNode.getContext();
-        JSRealm realm = context.getRealm();
         final DynamicObject moduleFunction = (DynamicObject) scriptNode.run(arguments);
 
         JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
@@ -2091,7 +2101,7 @@ public final class GraalJSAccess {
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 DynamicObject thisObject = (DynamicObject) JSArguments.getThisObject(args);
-                Object result = JSFunction.call(moduleFunction, thisObject, getInternalModuleUserArguments(args, scriptNode));
+                Object result = JSFunction.call(moduleFunction, thisObject, getInternalModuleUserArguments(args, scriptNode, getRealm()));
                 return result;
             }
         };
@@ -2099,20 +2109,21 @@ public final class GraalJSAccess {
         return JSFunction.create(realm, functionData);
     }
 
-    private Object getExtraArgumentOfInternalScript(String moduleName, JSContext context) {
+    private Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
         Object extraArgument = null;
+        JSContext context = realm.getContext();
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
             // NIO-based buffer APIs in internal/graal/buffer.js are initialized by passing one
             // extra argument to the module loading function.
-            extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(context) : Null.instance;
+            extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
-            DynamicObject setBreakPoint = JSFunction.create(context.getRealm(), setBreakPointData);
+            DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
             extraArgument = setBreakPoint;
         } else if ("internal/worker/io.js".equals(moduleName) || "internal/main/worker_thread.js".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
-            extraArgument = SharedMemMessagingBindings.createInitFunction(this, context);
+            extraArgument = SharedMemMessagingBindings.createInitFunction(this, realm);
         } else if ("inspector.js".equals(moduleName)) {
             TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
@@ -2121,10 +2132,10 @@ public final class GraalJSAccess {
     }
 
     @TruffleBoundary
-    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node) {
+    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node, JSRealm realm) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         String moduleName = node.getRootNode().getSourceSection().getSource().getName();
-        Object extraArgument = getExtraArgumentOfInternalScript(moduleName, node.getContext());
+        Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
         if (extraArgument == null) {
             return userArgs;
         }
@@ -2292,13 +2303,12 @@ public final class GraalJSAccess {
             exit(1);
         }
         JSRealm jsRealm = (JSRealm) context;
-        JSContext jsContext = jsRealm.getContext();
         if (!(throwable instanceof GraalJSException)) {
             isolateInternalErrorCheck(throwable);
             throwable = JSException.create(JSErrorType.Error, throwable.getMessage(), throwable, null);
         }
         GraalJSException truffleException = (GraalJSException) throwable;
-        Object exceptionObject = truffleException.getErrorObjectEager(jsContext);
+        Object exceptionObject = truffleException.getErrorObjectEager(jsRealm);
         if (JSRuntime.isObject(exceptionObject) && JSError.getException((DynamicObject) exceptionObject) == null) {
             JSObjectUtil.putHiddenProperty((DynamicObject) exceptionObject, JSError.EXCEPTION_PROPERTY_NAME, truffleException);
         }
@@ -2634,7 +2644,7 @@ public final class GraalJSAccess {
                 global = propertyHandlerInstantiate(context, realm, template, global, true);
                 realm.setGlobalObject(global);
             } else {
-                DynamicObject prototype = JSOrdinary.create(context);
+                DynamicObject prototype = JSOrdinary.create(context, realm);
                 objectTemplateInstantiate(realm, template, prototype);
                 JSObject.setPrototype(global, prototype);
             }
@@ -2756,7 +2766,7 @@ public final class GraalJSAccess {
                     if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                         throw atex;
                     }
-                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
+                    mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
                 } else {
                     throw atex;
                 }
@@ -2886,13 +2896,13 @@ public final class GraalJSAccess {
             }
             resetSharedBuffer();
             sharedBuffer.putInt(kind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE ? 1 : 0);
-            return JSArray.createConstantObjectArray(context, entries.toArray());
+            return JSArray.createConstantObjectArray(context, getCurrentRealm(), entries.toArray());
         }
         if (JSWeakMap.isJSWeakMap(object) || JSWeakSet.isJSWeakSet(object)) {
             // Implementation of these collections does not allow to preview entries
             resetSharedBuffer();
             sharedBuffer.putInt(0);
-            return JSArray.createConstantEmptyArray(context);
+            return JSArray.createConstantEmptyArray(context, getCurrentRealm());
         }
         return null;
     }
@@ -3117,27 +3127,28 @@ public final class GraalJSAccess {
         double total = runtime.totalMemory();
         double used = total - runtime.freeMemory();
 
-        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
-        JSObject.set(result, "total", createMemoryInfoObject(used, total));
+        JSRealm realm = getCurrentRealm();
+        DynamicObject result = JSOrdinary.create(mainJSContext, realm);
+        JSObject.set(result, "total", createMemoryInfoObject(used, total, realm));
 
         if (detailed) {
-            JSObject.set(result, "current", createMemoryInfoObject(used, total));
+            JSObject.set(result, "current", createMemoryInfoObject(used, total, realm));
 
             int contexts = childContextSet.size();
             Object[] array = new Object[contexts];
             for (int i = 0; i < contexts; i++) {
-                array[i] = createMemoryInfoObject(0, total);
+                array[i] = createMemoryInfoObject(0, total, realm);
             }
 
-            JSObject.set(result, "other", JSArray.createConstantObjectArray(mainJSContext, array));
+            JSObject.set(result, "other", JSArray.createConstantObjectArray(mainJSContext, realm, array));
         }
 
         promiseResolverResolve(resolver, result);
     }
 
-    private Object createMemoryInfoObject(double used, double total) {
-        Object range = JSArray.createConstantDoubleArray(mainJSContext, new double[]{used, total});
-        DynamicObject result = JSOrdinary.create(mainJSContext, mainJSRealm);
+    private Object createMemoryInfoObject(double used, double total, JSRealm realm) {
+        Object range = JSArray.createConstantDoubleArray(mainJSContext, realm, new double[]{used, total});
+        DynamicObject result = JSOrdinary.create(mainJSContext, realm);
         JSObject.set(result, "jsMemoryEstimate", used);
         JSObject.set(result, "jsMemoryRange", range);
         return result;
@@ -3177,7 +3188,8 @@ public final class GraalJSAccess {
     }
 
     public Object booleanObjectNew(Object context, boolean value) {
-        return JSBoolean.create(((JSRealm) context).getContext(), value);
+        JSRealm jsRealm = (JSRealm) context;
+        return JSBoolean.create(jsRealm.getContext(), jsRealm, value);
     }
 
     public boolean booleanObjectValueOf(Object object) {
@@ -3185,7 +3197,8 @@ public final class GraalJSAccess {
     }
 
     public Object stringObjectNew(Object context, Object value) {
-        return JSString.create(((JSRealm) context).getContext(), (String) value);
+        JSRealm jsRealm = (JSRealm) context;
+        return JSString.create(jsRealm.getContext(), jsRealm, (String) value);
     }
 
     public String stringObjectValueOf(Object object) {
@@ -3193,7 +3206,8 @@ public final class GraalJSAccess {
     }
 
     public Object numberObjectNew(Object context, double value) {
-        return JSNumber.create(((JSRealm) context).getContext(), value);
+        JSRealm jsRealm = (JSRealm) context;
+        return JSNumber.create(jsRealm.getContext(), jsRealm, value);
     }
 
     private static String regexpFlagsToString(int flags) {
@@ -3215,13 +3229,14 @@ public final class GraalJSAccess {
     }
 
     public Object regexpNew(Object context, Object pattern, int flags) {
-        JSContext jsContext = ((JSRealm) context).getContext();
-        return regexpCreate(jsContext, (String) pattern, flags);
+        JSRealm jsRealm = (JSRealm) context;
+        JSContext jsContext = jsRealm.getContext();
+        return regexpCreate(jsContext, jsRealm, (String) pattern, flags);
     }
 
-    public static Object regexpCreate(JSContext context, String pattern, int v8Flags) {
+    public static Object regexpCreate(JSContext context, JSRealm realm, String pattern, int v8Flags) {
         Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
-        return JSRegExp.create(context, compiledRegexp);
+        return JSRegExp.create(context, realm, compiledRegexp);
     }
 
     @TruffleBoundary
@@ -3293,8 +3308,9 @@ public final class GraalJSAccess {
     }
 
     public Object jsonParse(Object context, Object string) {
-        TruffleJSONParser parser = new TruffleJSONParser(((JSRealm) context).getContext());
-        return parser.parse((String) string);
+        JSRealm realm = (JSRealm) context;
+        TruffleJSONParser parser = new TruffleJSONParser(realm.getContext());
+        return parser.parse((String) string, realm);
     }
 
     public String jsonStringify(Object context, Object object, String gap) {
@@ -3449,7 +3465,7 @@ public final class GraalJSAccess {
         JSModuleRecord record = (JSModuleRecord) module;
         Throwable evaluationError = record.getEvaluationError();
         if (evaluationError instanceof GraalJSException) {
-            return ((GraalJSException) evaluationError).getErrorObjectEager(record.getContext());
+            return ((GraalJSException) evaluationError).getErrorObjectEager(getCurrentRealm());
         }
         return evaluationError;
     }
@@ -3493,7 +3509,7 @@ public final class GraalJSAccess {
                     return Undefined.instance;
                 } else {
                     assert module.getStatus() == Status.Evaluating;
-                    return invokeEvaluationStepsCallback(mainJSContext.getRealm(), module);
+                    return invokeEvaluationStepsCallback(getRealm(), module);
                 }
             }
 
@@ -3539,7 +3555,8 @@ public final class GraalJSAccess {
     }
 
     public Object valueSerializerNew(long delegatePointer) {
-        return new Serializer(mainJSContext, this, delegatePointer);
+        TruffleLanguage.Env env = getCurrentRealm().getEnv();
+        return new Serializer(env, this, delegatePointer);
     }
 
     public int valueSerializerSize(Object serializer) {
@@ -3591,7 +3608,7 @@ public final class GraalJSAccess {
     }
 
     public Object valueDeserializerReadValue(Object context, Object deserializer) {
-        return ((Deserializer) deserializer).readValue(((JSRealm) context).getContext());
+        return ((Deserializer) deserializer).readValue((JSRealm) context);
     }
 
     public int valueDeserializerReadUint32(Object deserializer) {
@@ -3619,8 +3636,9 @@ public final class GraalJSAccess {
     }
 
     public Object mapNew(Object context) {
-        JSContext jsContext = ((JSRealm) context).getContext();
-        return JSMap.create(jsContext);
+        JSRealm jsRealm = (JSRealm) context;
+        JSContext jsContext = jsRealm.getContext();
+        return JSMap.create(jsContext, jsRealm);
     }
 
     public void mapSet(Object set, Object key, Object value) {
@@ -3629,8 +3647,9 @@ public final class GraalJSAccess {
     }
 
     public Object setNew(Object context) {
-        JSContext jsContext = ((JSRealm) context).getContext();
-        return JSSet.create(jsContext);
+        JSRealm jsRealm = (JSRealm) context;
+        JSContext jsContext = jsRealm.getContext();
+        return JSSet.create(jsContext, jsRealm);
     }
 
     public void setAdd(Object set, Object key) {
@@ -3788,7 +3807,8 @@ public final class GraalJSAccess {
                 System.err.println("Cannot resolve module outside module instantiation!");
                 System.exit(1);
             }
-            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, referrer.getContext().getRealm(), specifier, referrer);
+            JSRealm realm = JSRealm.get(null);
+            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, referrer);
             referrerCache.put(specifier, result);
             return result;
         }

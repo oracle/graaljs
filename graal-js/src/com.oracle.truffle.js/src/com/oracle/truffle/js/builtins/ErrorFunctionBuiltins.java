@@ -80,7 +80,7 @@ public final class ErrorFunctionBuiltins extends JSBuiltinsContainer.Lambda {
         public ErrorCaptureStackTraceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.initErrorObjectNode = InitErrorObjectNode.create(context);
-            this.stackTraceLimitNode = ErrorStackTraceLimitNode.create(context);
+            this.stackTraceLimitNode = ErrorStackTraceLimitNode.create();
         }
 
         @Specialization

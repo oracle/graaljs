@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -54,7 +52,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -130,11 +127,10 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
 
     @ExportMessage
     public Object readArrayElement(long index,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Cached ExportValueNode exportNode,
-                    @CachedLibrary("this") InteropLibrary thisLibrary) throws InvalidArrayIndexException, UnsupportedMessageException {
-        if (index < 0 || index >= thisLibrary.getArraySize(this)) {
+                    @CachedLibrary("this") InteropLibrary self,
+                    @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Cached ExportValueNode exportNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+        if (index < 0 || index >= self.getArraySize(this)) {
             throw InvalidArrayIndexException.create(index);
         }
         Object result;
@@ -160,8 +156,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     public void writeArrayElement(long index, Object value,
                     @Shared("elementInfo") @Cached ArrayElementInfoNode elements,
                     @Cached ImportValueNode castValueNode,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
+                    @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         elements.executeCheck(this, index, ArrayElementInfoNode.WRITABLE);
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {

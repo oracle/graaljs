@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,23 +43,22 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.lang.ref.ReferenceQueue;
 import java.util.List;
 
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSFinalizationRegistryObject extends JSNonProxyObject {
-    TruffleObject cleanupCallback;
+    Object cleanupCallback;
     List<FinalizationRecord> cells;
     ReferenceQueue<Object> referenceQueue;
 
-    protected JSFinalizationRegistryObject(Shape shape, TruffleObject cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+    protected JSFinalizationRegistryObject(Shape shape, Object cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
         super(shape);
         this.cleanupCallback = cleanupCallback;
         this.cells = cells;
         this.referenceQueue = referenceQueue;
     }
 
-    public TruffleObject getCleanupCallback() {
+    public Object getCleanupCallback() {
         return cleanupCallback;
     }
 

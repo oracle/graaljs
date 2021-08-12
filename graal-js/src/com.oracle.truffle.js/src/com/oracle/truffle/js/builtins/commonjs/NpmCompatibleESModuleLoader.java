@@ -269,7 +269,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             TruffleFile moduleFolder = joinPaths(env, modulePath, packageSpecifier);
             TruffleFile packageJson = joinPaths(env, moduleFolder, PACKAGE_JSON);
             if (CommonJSResolution.fileExists(packageJson)) {
-                DynamicObject jsonObj = loadJsonObject(packageJson, realm.getContext());
+                DynamicObject jsonObj = loadJsonObject(packageJson, realm);
                 if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
                     Object type = JSObject.get(jsonObj, PACKAGE_JSON_TYPE_PROPERTY_NAME);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,15 +45,13 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
-import com.oracle.truffle.api.dsl.CachedContext;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -106,9 +104,9 @@ public final class JSDateObject extends JSNonProxyObject {
 
     @ExportMessage
     public LocalDate asDate(
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
+                    @CachedLibrary("this") InteropLibrary self) throws UnsupportedMessageException {
         if (isDate()) {
-            return JSDate.asLocalDate(this, contextRef.get());
+            return JSDate.asLocalDate(this, JSRealm.get(self));
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -116,9 +114,9 @@ public final class JSDateObject extends JSNonProxyObject {
 
     @ExportMessage
     public LocalTime asTime(
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
+                    @CachedLibrary("this") InteropLibrary self) throws UnsupportedMessageException {
         if (isDate()) {
-            return JSDate.asLocalTime(this, contextRef.get());
+            return JSDate.asLocalTime(this, JSRealm.get(self));
         } else {
             throw UnsupportedMessageException.create();
         }
@@ -126,9 +124,9 @@ public final class JSDateObject extends JSNonProxyObject {
 
     @ExportMessage
     public ZoneId asTimeZone(
-                    @CachedContext(JavaScriptLanguage.class) ContextReference<JSRealm> contextRef) throws UnsupportedMessageException {
+                    @CachedLibrary("this") InteropLibrary self) throws UnsupportedMessageException {
         if (isDate()) {
-            return contextRef.get().getLocalTimeZoneId();
+            return JSRealm.get(self).getLocalTimeZoneId();
         } else {
             throw UnsupportedMessageException.create();
         }

@@ -63,6 +63,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -607,12 +608,12 @@ public final class IntlUtil {
         return IntlUtil.selectedLocale(ctx, locales).stripExtensions();
     }
 
-    public static DynamicObject makePart(JSContext context, String type, String value) {
-        return makePart(context, type, value, null);
+    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value) {
+        return makePart(context, realm, type, value, null);
     }
 
-    public static DynamicObject makePart(JSContext context, String type, String value, String unit) {
-        DynamicObject p = JSOrdinary.create(context);
+    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
+        DynamicObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, TYPE, type);
         JSObject.set(p, VALUE, value);
         if (unit != null) {

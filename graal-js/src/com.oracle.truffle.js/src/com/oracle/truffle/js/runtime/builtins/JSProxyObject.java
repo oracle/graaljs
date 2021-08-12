@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,9 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -99,10 +98,11 @@ public final class JSProxyObject extends JSClassObject {
 
     @ExportMessage
     public Object execute(Object[] args,
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropExecuteNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(this, Undefined.instance, args);
@@ -119,10 +119,11 @@ public final class JSProxyObject extends JSClassObject {
 
     @ExportMessage
     public Object instantiate(Object[] args,
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInstantiateNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(this, args);

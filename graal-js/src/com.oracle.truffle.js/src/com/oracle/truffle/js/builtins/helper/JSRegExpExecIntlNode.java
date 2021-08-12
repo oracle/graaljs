@@ -210,7 +210,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             Object compiledRegex = compiledRegexProfile.profile(JSRegExp.getCompiledRegex(regExp));
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (doStaticResultUpdate && context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                JSRealm thisRealm = context.getRealm();
+                JSRealm thisRealm = getRealm();
                 if (thisRealm == JSRegExp.getRealm(regExp)) {
                     if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
@@ -236,7 +236,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
         // created for the same regular expression.
         @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex")
-        static DynamicObject doCachedGroupsFactory(JSContext context,
+        final DynamicObject doCachedGroupsFactory(JSContext context,
                         @SuppressWarnings("unused") DynamicObject regExp,
                         Object regexResult,
                         String input,
@@ -244,20 +244,20 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") Object cachedCompiledRegex,
                         @Cached("getGroupsFactory(regExp)") JSObjectFactory cachedGroupsFactory,
                         @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
-            return doIt(context, cachedGroupsFactory, regexResult, input, isIndices);
+            return doIt(context, getRealm(), cachedGroupsFactory, regexResult, input, isIndices);
         }
 
         @Specialization
         @TruffleBoundary
-        static DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult, String input, boolean isIndices) {
-            return doIt(context, JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
+        final DynamicObject doVaryingGroupsFactory(JSContext context, DynamicObject regExp, Object regexResult, String input, boolean isIndices) {
+            return doIt(context, getRealm(), JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
         }
 
-        private static DynamicObject doIt(JSContext context, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
+        private static DynamicObject doIt(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, String input, boolean isIndices) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {
-                return JSRegExp.createGroupsObject(context, groupsFactory, regexResult, input, isIndices);
+                return JSRegExp.createGroupsObject(context, realm, groupsFactory, regexResult, input, isIndices);
             }
         }
     }
@@ -339,9 +339,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 lastIndex = 0;
             }
 
+            JSRealm thisRealm = getRealm();
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                JSRealm thisRealm = context.getRealm();
                 if (thisRealm == JSRegExp.getRealm(regExp)) {
                     if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
@@ -359,7 +359,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                     return result;
                 }
                 int groupCount = compiledRegexAccessor.groupCount(compiledRegex);
-                return getMatchResult(regExp, result, groupCount, input, hasIndices);
+                return getMatchResult(regExp, result, groupCount, input, hasIndices, thisRealm);
             } else {
                 if (ecmaScriptVersion < 8 || global || sticky) {
                     setLastIndex(regExp, 0);
@@ -369,9 +369,9 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
         }
 
         // converts RegexResult into DynamicObject
-        private DynamicObject getMatchResult(JSRegExpObject regExp, Object regexResult, int groupCount, String inputStr, boolean hasIndices) {
+        private DynamicObject getMatchResult(JSRegExpObject regExp, Object regexResult, int groupCount, String inputStr, boolean hasIndices, JSRealm realm) {
             DynamicObject groups = getGroupsObject(regExp, regexResult, inputStr, false);
-            DynamicObject resultArray = JSArray.createLazyRegexArray(context, groupCount);
+            DynamicObject resultArray = JSArray.createLazyRegexArray(context, realm, groupCount);
             setRegexResultNode.setValue(resultArray, regexResult);
             setRegexOriginalInputNode.setValue(resultArray, inputStr);
             setIndexNode.putConstant(resultArray, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault() | JSProperty.PROXY);
@@ -379,7 +379,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             setGroupsNode.put(resultArray, JSRegExp.GROUPS, groups);
             if (context.isOptionRegexpMatchIndices() && hasIndices) {
                 DynamicObject indicesGroups = getGroupsObject(regExp, regexResult, inputStr, true);
-                DynamicObject indicesArray = JSArray.createLazyRegexIndicesArray(context, groupCount);
+                DynamicObject indicesArray = JSArray.createLazyRegexIndicesArray(context, realm, groupCount);
                 setIndicesRegexResultNode.put(indicesArray, JSRegExp.GROUPS_RESULT_ID, regexResult);
                 setIndicesGroupsNode.put(indicesArray, JSRegExp.GROUPS, indicesGroups);
                 setIndicesNode.put(resultArray, JSRegExp.INDICES, indicesArray);

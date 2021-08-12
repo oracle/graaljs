@@ -271,7 +271,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         private DynamicObject constructNewArrayBuffer(DynamicObject thisObj, int newLen) {
-            DynamicObject defaultConstructor = getContext().getRealm().getArrayBufferConstructor();
+            DynamicObject defaultConstructor = getRealm().getArrayBufferConstructor();
             DynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
             return (DynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
         }
@@ -367,7 +367,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected Object sliceTruffleBuffer(Object thisObj, Object begin0, Object end0,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("srcBufferLib") InteropLibrary srcBufferLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("dstBufferLib") InteropLibrary dstBufferLib) {
-            return sliceInterop(JSArrayBuffer.createInteropArrayBuffer(getContext(), thisObj), begin0, end0, srcBufferLib, dstBufferLib);
+            return sliceInterop(JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), thisObj), begin0, end0, srcBufferLib, dstBufferLib);
         }
 
         @Fallback

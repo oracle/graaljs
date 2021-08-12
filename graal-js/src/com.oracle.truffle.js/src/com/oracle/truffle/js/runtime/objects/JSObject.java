@@ -45,17 +45,15 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -155,11 +153,15 @@ public abstract class JSObject extends JSDynamicObject {
         return names.toArray(EMPTY_STRING_ARRAY);
     }
 
+    public static JavaScriptLanguage language(InteropLibrary node) {
+        return JavaScriptLanguage.get(node);
+    }
+
     @ExportMessage
     public final Object readMember(String key,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Cached(value = "languageRef.get().bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @CachedLibrary("this") @SuppressWarnings("unused") InteropLibrary self,
+                    @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
         DynamicObject target = this;
         Object result;
@@ -184,8 +186,7 @@ public abstract class JSObject extends JSDynamicObject {
     public final void writeMember(String key, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Cached ImportValueNode castValueNode,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "createCachedInterop(languageRef)", uncached = "getUncachedWrite()") WriteElementNode writeNode)
+                    @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode)
                     throws UnknownIdentifierException, UnsupportedMessageException {
         DynamicObject target = this;
         if (testIntegrityLevel(true)) {
@@ -230,10 +231,11 @@ public abstract class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public final Object invokeMember(String id, Object[] args,
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInvokeNode callNode,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(this, id, args);
@@ -263,16 +265,18 @@ public abstract class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public boolean hasIterator(
-                    @CachedLanguage JavaScriptLanguage language,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached @Shared("getIterator") JSInteropGetIteratorNode getIteratorNode) {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
         return getIteratorNode.hasIterator(this, language);
     }
 
     @ExportMessage
     public Object getIterator(
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached @Shared("getIterator") JSInteropGetIteratorNode getIteratorNode) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
             return getIteratorNode.getIterator(this, language);
@@ -549,7 +553,7 @@ public abstract class JSObject extends JSDynamicObject {
     @ExportMessage.Ignore
     @TruffleBoundary
     public static String toDisplayString(DynamicObject obj, int depth, boolean allowSideEffects) {
-        return JSObject.getJSClass(obj).toDisplayStringImpl(obj, depth, allowSideEffects, JavaScriptLanguage.getCurrentLanguage().getJSContext());
+        return JSObject.getJSClass(obj).toDisplayStringImpl(obj, depth, allowSideEffects);
     }
 
     /**

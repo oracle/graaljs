@@ -40,6 +40,12 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.Stack;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -63,12 +69,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-
-import java.util.Map;
-import java.util.Objects;
-import java.util.Stack;
-
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
 
 public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadingOperation {
 
@@ -132,11 +132,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     private static final String JSON_EXT = ".json";
     private static final String NODE_EXT = ".node";
 
-    private final TruffleFile modulesResolutionCwd;
-
     @TruffleBoundary
-    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context) {
-        TruffleLanguage.Env env = context.getRealm().getEnv();
+    static TruffleFile getModuleResolveCurrentWorkingDirectory(JSContext context, TruffleLanguage.Env env) {
         String currentFileNameFromStack = CommonJSResolution.getCurrentFileNameFromStack();
         if (currentFileNameFromStack == null) {
             String cwdOption = context.getContextOptions().getRequireCwd();
@@ -150,29 +147,29 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     CommonJSRequireBuiltin(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
-        this.modulesResolutionCwd = getModuleResolveCurrentWorkingDirectory(context);
     }
 
     @Specialization
     protected Object require(DynamicObject currentRequire, String moduleIdentifier) {
-        TruffleLanguage.Env env = getContext().getRealm().getEnv();
+        JSRealm realm = getRealm();
+        TruffleLanguage.Env env = realm.getEnv();
         TruffleFile resolutionEntryPath = getModuleResolutionEntryPath(currentRequire, env);
-        return requireImpl(moduleIdentifier, resolutionEntryPath);
+        return requireImpl(moduleIdentifier, resolutionEntryPath, realm);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object requireImpl(String moduleIdentifier, TruffleFile entryPath) {
+    private Object requireImpl(String moduleIdentifier, TruffleFile entryPath, JSRealm realm) {
         log("required module '", moduleIdentifier, "'                                core:", isCoreModule(moduleIdentifier), " from path ", entryPath);
         if (isCoreModule(moduleIdentifier)) {
             String moduleReplacementName = getContext().getContextOptions().getCommonJSRequireBuiltins().get(moduleIdentifier);
             if (moduleReplacementName != null && !"".equals(moduleReplacementName)) {
-                return requireImpl(moduleReplacementName, modulesResolutionCwd);
+                return requireImpl(moduleReplacementName, getModuleResolveCurrentWorkingDirectory(getContext(), realm.getEnv()), realm);
             }
             // no core module replacement alias was found: continue and search in the FS.
         }
         TruffleFile maybeModule = null;
         try {
-            maybeModule = CommonJSResolution.resolve(getContext(), moduleIdentifier, entryPath);
+            maybeModule = CommonJSResolution.resolve(realm, moduleIdentifier, entryPath);
         } catch (SecurityException | IllegalArgumentException | UnsupportedOperationException e) {
             // Module resolution does not execute JS code. Therefore, an exception at this stage is
             // either IO-related (e.g., file not found) or was raised in a custom Truffle FS.
@@ -195,7 +192,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     }
 
     private Object evalJavaScriptFile(TruffleFile modulePath, String moduleIdentifier) {
-        JSRealm realm = getContext().getRealm();
+        JSRealm realm = getRealm();
         TruffleFile normalizedPath = modulePath.normalize();
         // If cached, return from cache. This is by design to avoid infinite require loops.
         Map<TruffleFile, DynamicObject> commonJSCache = realm.getCommonJSRequireCache();
@@ -216,8 +213,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         DynamicObject exportsBuiltin = createExportsBuiltin(realm);
         DynamicObject moduleBuiltin = createModuleBuiltin(realm, exportsBuiltin, filenameBuiltin);
         DynamicObject requireBuiltin = createRequireBuiltin(realm, moduleBuiltin, filenameBuiltin);
-        DynamicObject env = JSOrdinary.create(getContext());
-        JSObject.set(env, ENV_PROPERTY_NAME, JSOrdinary.create(getContext()));
+        DynamicObject env = JSOrdinary.create(getContext(), getRealm());
+        JSObject.set(env, ENV_PROPERTY_NAME, JSOrdinary.create(getContext(), getRealm()));
         // Parse the module
         CharSequence characters = MODULE_PREAMBLE + source.getCharacters() + MODULE_END;
         Source moduleSources = Source.newBuilder(JavaScriptLanguage.ID, characters, filenameBuiltin).mimeType(JavaScriptLanguage.TEXT_MIME_TYPE).build();
@@ -248,7 +245,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
         try {
             if (fileExists(jsonFile)) {
                 Source source;
-                JSRealm realm = getContext().getRealm();
+                JSRealm realm = getRealm();
                 TruffleFile file = GlobalBuiltins.resolveRelativeFilePath(jsonFile.toString(), realm.getEnv());
                 if (file.isRegularFile()) {
                     source = sourceFromTruffleFile(file);
@@ -341,7 +338,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
             // dirname not a string. Use default cwd.
         }
         // This is not a nested `require()` call, so we use the default cwd.
-        return getModuleResolveCurrentWorkingDirectory(getContext());
+        return getModuleResolveCurrentWorkingDirectory(getContext(), env);
     }
 
     private static TruffleFile getParent(TruffleLanguage.Env env, String fileName) {

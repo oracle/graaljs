@@ -316,7 +316,7 @@ public class TryCatchNode extends StatementNode implements ResumableNode {
             if (errorObj == null) {
                 JSRealm realm = exception.getRealm();
                 if (realm == null) {
-                    realm = context.getRealm();
+                    realm = getRealm();
                 }
                 String message = exception.getRawMessage();
                 assert message != null;
