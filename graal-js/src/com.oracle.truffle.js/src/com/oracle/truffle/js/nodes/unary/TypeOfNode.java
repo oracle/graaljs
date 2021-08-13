@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -175,7 +174,6 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSSymbol.TYPE_NAME;
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected String doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
