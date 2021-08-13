@@ -244,6 +244,13 @@ public final class JSRuntime {
             return JSOrdinary.TYPE_NAME;
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
+            JSRealm realm = JSRealm.get(null);
+            if (realm.getContext().isOptionNashornCompatibilityMode()) {
+                TruffleLanguage.Env env = realm.getEnv();
+                if (env.isHostSymbol(value)) {
+                    return JSFunction.TYPE_NAME;
+                }
+            }
             TruffleObject object = (TruffleObject) value;
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (interop.isBoolean(object)) {

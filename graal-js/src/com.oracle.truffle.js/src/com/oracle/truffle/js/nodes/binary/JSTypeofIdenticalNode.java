@@ -48,6 +48,7 @@ import com.oracle.js.parser.ir.BinaryNode;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.UnaryNode;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -314,13 +315,24 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             } else if (type == Type.Number) {
                 return interop.isNumber(value);
             } else if (type == Type.Function) {
-                return interop.isExecutable(value) || interop.isInstantiable(value);
+                return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
             } else if (type == Type.Object) {
-                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value);
+                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value) &&
+                                !isHostSymbolInNashornCompatMode(value);
             } else {
                 return false;
             }
         }
+    }
+
+    private boolean isHostSymbolInNashornCompatMode(Object value) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            TruffleLanguage.Env env = getRealm().getEnv();
+            if (env.isHostSymbol(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {
