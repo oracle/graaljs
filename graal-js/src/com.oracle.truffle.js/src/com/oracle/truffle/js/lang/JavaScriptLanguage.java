@@ -55,7 +55,6 @@ import org.graalvm.polyglot.Context;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -97,7 +96,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.WritePropertyTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteVariableTag;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.AbstractJavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -148,13 +146,16 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @TruffleLanguage.Registration(id = JavaScriptLanguage.ID, name = JavaScriptLanguage.NAME, implementationName = JavaScriptLanguage.IMPLEMENTATION_NAME, characterMimeTypes = {
                 JavaScriptLanguage.APPLICATION_MIME_TYPE,
                 JavaScriptLanguage.TEXT_MIME_TYPE,
-                JavaScriptLanguage.MODULE_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
-public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
+                JavaScriptLanguage.MODULE_MIME_TYPE,
+                JavaScriptLanguage.JSON_MIME_TYPE}, defaultMimeType = JavaScriptLanguage.APPLICATION_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.SHARED, dependentLanguages = "regex", fileTypeDetectors = JSFileTypeDetector.class)
+public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String TEXT_MIME_TYPE = "text/javascript";
     public static final String APPLICATION_MIME_TYPE = "application/javascript";
     public static final String MODULE_MIME_TYPE = "application/javascript+module";
+    public static final String JSON_MIME_TYPE = "application/json";
     public static final String SCRIPT_SOURCE_NAME_SUFFIX = ".js";
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
+    public static final String JSON_SOURCE_NAME_SUFFIX = ".json";
     public static final String INTERNAL_SOURCE_URL_PREFIX = "internal:";
 
     public static final String NAME = "JavaScript";
@@ -165,6 +166,8 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
     private volatile boolean multiContext;
 
     private final Assumption promiseJobsQueueEmptyAssumption;
+
+    private static final LanguageReference<JavaScriptLanguage> REFERENCE = LanguageReference.create(JavaScriptLanguage.class);
 
     public static final OptionDescriptors OPTION_DESCRIPTORS;
     static {
@@ -190,45 +193,55 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
             return createEmptyScript(context).getCallTarget();
         }
 
-        RootNode rootNode = new RootNode(this) {
-            @Child private DirectCallNode directCallNode = DirectCallNode.create(program.getCallTarget());
-            @Child private ExportValueNode exportValueNode = ExportValueNode.create();
-            @Child private ImportValueNode importValueNode = ImportValueNode.create();
-            @CompilationFinal private ContextReference<JSRealm> contextReference;
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (contextReference == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    contextReference = lookupContextReference(JavaScriptLanguage.class);
-                }
-                JSRealm realm = contextReference.get();
-                assert realm.getContext() == context : "unexpected JSContext";
-                try {
-                    interopBoundaryEnter(realm);
-                    Object[] arguments = frame.getArguments();
-                    for (int i = 0; i < arguments.length; i++) {
-                        arguments[i] = importValueNode.executeWithTarget(arguments[i]);
-                    }
-                    arguments = program.argumentsToRunWithArguments(realm, arguments);
-                    Object result = directCallNode.call(arguments);
-                    return exportValueNode.execute(result);
-                } finally {
-                    interopBoundaryExit(realm);
-                }
-            }
-
-            @Override
-            public boolean isInternal() {
-                return true;
-            }
-
-            @Override
-            protected boolean isInstrumentable() {
-                return false;
-            }
-        };
+        RootNode rootNode = new ParsedProgramRoot(this, context, program);
         return Truffle.getRuntime().createCallTarget(rootNode);
+    }
+
+    private final class ParsedProgramRoot extends RootNode {
+        private final JSContext context;
+        private final ScriptNode program;
+        @Child private DirectCallNode directCallNode;
+        @Child private ExportValueNode exportValueNode = ExportValueNode.create();
+        @Child private ImportValueNode importValueNode = ImportValueNode.create();
+
+        private ParsedProgramRoot(TruffleLanguage<?> language, JSContext context, ScriptNode program) {
+            super(language);
+            this.context = context;
+            this.program = program;
+            this.directCallNode = DirectCallNode.create(program.getCallTarget());
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            JSRealm realm = JSRealm.get(this);
+            assert realm.getContext() == context : "unexpected JSContext";
+            try {
+                interopBoundaryEnter(realm);
+                Object[] arguments = frame.getArguments();
+                for (int i = 0; i < arguments.length; i++) {
+                    arguments[i] = importValueNode.executeWithTarget(arguments[i]);
+                }
+                arguments = program.argumentsToRunWithArguments(realm, arguments);
+                Object result = directCallNode.call(arguments);
+                return exportValueNode.execute(result);
+            } finally {
+                interopBoundaryExit(realm);
+            }
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+
+        @Override
+        protected boolean isInstrumentable() {
+            return false;
+        }
+    }
+
+    public static CallTarget getParsedProgramCallTarget(RootNode rootNode) {
+        return ((ParsedProgramRoot) rootNode).directCallNode.getCallTarget();
     }
 
     @TruffleBoundary
@@ -249,7 +262,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                assert JavaScriptLanguage.getCurrentJSRealm().getContext() == context : "unexpected JSContext";
+                assert JavaScriptLanguage.get(this).getJSContext() == context : "unexpected JSContext";
                 Object result = expression.execute(frame);
                 return exportValueNode.execute(result);
             }
@@ -312,6 +325,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         if (env.err() != realm.getErrorStream()) {
             realm.setErrorWriter(null, env.err());
         }
+
+        // make sure initial environment is cleared otherwise
+        // it might leak data
+        context.clearInitialEnvironment();
 
         return realm;
     }
@@ -416,7 +433,6 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         multiContext = true;
     }
 
-    @Override
     public boolean isMultiContext() {
         return multiContext;
     }
@@ -446,6 +462,22 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         return context.getTopScopeObject();
     }
 
+    public static JSRealm getCurrentJSRealm() {
+        return JSRealm.get(null);
+    }
+
+    public static JavaScriptLanguage getCurrentLanguage() {
+        return JavaScriptLanguage.get(null);
+    }
+
+    public static TruffleLanguage.Env getCurrentEnv() {
+        return getCurrentJSRealm().getEnv();
+    }
+
+    public String getTruffleLanguageHome() {
+        return getLanguageHome();
+    }
+
     public static JSContext getJSContext(Context context) {
         return getJSRealm(context).getContext();
     }
@@ -454,7 +486,7 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
         context.enter();
         try {
             context.initialize(ID);
-            return getCurrentContext(JavaScriptLanguage.class);
+            return JSRealm.get(null);
         } finally {
             context.leave();
         }
@@ -497,6 +529,10 @@ public final class JavaScriptLanguage extends AbstractJavaScriptLanguage {
 
     public JSContext getJSContext() {
         return Objects.requireNonNull(languageContext);
+    }
+
+    public static JavaScriptLanguage get(Node node) {
+        return REFERENCE.get(node);
     }
 
     public boolean bindMemberFunctions() {

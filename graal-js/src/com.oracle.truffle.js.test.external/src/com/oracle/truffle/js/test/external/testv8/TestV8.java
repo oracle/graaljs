@@ -67,7 +67,7 @@ public class TestV8 extends TestSuite {
 
     private static final String SUITE_NAME = "testv8";
     private static final String SUITE_DESCRIPTION = "Google V8 testsuite";
-    private static final String DEFAULT_LOC = Paths.get("lib", "testv8", "testv8-20210215").toString();
+    private static final String DEFAULT_LOC = Paths.get("lib", "testv8", "testv8-20210709").toString();
     private static final String DEFAULT_CONFIG_LOC = "test";
     private static final String TESTS_REL_LOC = "test";
     private static final String HARNESS_REL_LOC = "";

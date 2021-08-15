@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,9 +118,8 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         return INSTANCE.createConstructorAndPrototype(realm, RelativeTimeFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getRelativeTimeFormatFactory();
         JSRelativeTimeFormatObject obj = new JSRelativeTimeFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
@@ -155,7 +154,7 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static DynamicObject formatToParts(JSContext context, DynamicObject relativeTimeFormatObj, double amount, String unit) {
+    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject relativeTimeFormatObj, double amount, String unit) {
         ensureFiniteNumber(amount);
         InternalState state = getInternalState(relativeTimeFormatObj);
         RelativeDateTimeFormatter relativeDateTimeFormatter = state.getRelativeDateTimeFormatter();
@@ -171,21 +170,21 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         if (numberPresentInFormattedText) {
 
             if (numberIndex > 0) {
-                resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(0, numberIndex)));
+                resultParts.add(IntlUtil.makePart(context, realm, "literal", formattedText.substring(0, numberIndex)));
             }
 
             String esUnit = icuUnit.toString().toLowerCase();
             AttributedCharacterIterator iterator = numberFormat.formatToCharacterIterator(positiveAmount);
             String formatted = numberFormat.format(positiveAmount);
-            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, iterator, positiveAmount, formatted, esUnit, false));
+            resultParts.addAll(JSNumberFormat.innerFormatToParts(context, realm, iterator, positiveAmount, formatted, esUnit, false));
 
             if (numberIndex + formattedNumber.length() < formattedText.length()) {
-                resultParts.add(IntlUtil.makePart(context, "literal", formattedText.substring(numberIndex + formattedNumber.length(), formattedText.length())));
+                resultParts.add(IntlUtil.makePart(context, realm, "literal", formattedText.substring(numberIndex + formattedNumber.length(), formattedText.length())));
             }
         } else {
-            resultParts.add(IntlUtil.makePart(context, "literal", formattedText));
+            resultParts.add(IntlUtil.makePart(context, realm, "literal", formattedText));
         }
-        return JSArray.createConstant(context, resultParts.toArray());
+        return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
     public static class InternalState extends JSNumberFormat.BasicInternalState {
@@ -196,12 +195,12 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         private String numeric;
 
         @Override
-        DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSOrdinary.create(context);
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMBERING_SYSTEM, getNumberingSystem(), JSAttributes.getDefault());
+        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            DynamicObject result = JSOrdinary.create(context, realm);
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, getLocale(), JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.NUMBERING_SYSTEM, getNumberingSystem(), JSAttributes.getDefault());
             return result;
         }
 
@@ -234,9 +233,9 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, DynamicObject relativeTimeFormatObj) {
+    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject relativeTimeFormatObj) {
         InternalState state = getInternalState(relativeTimeFormatObj);
-        return state.toResolvedOptionsObject(context);
+        return state.toResolvedOptionsObject(context, realm);
     }
 
     public static InternalState getInternalState(DynamicObject obj) {

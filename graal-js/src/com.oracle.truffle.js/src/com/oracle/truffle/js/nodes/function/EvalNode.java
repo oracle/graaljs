@@ -118,7 +118,7 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     protected final boolean isEvalOverridden(Object function) {
-        return function != context.getRealm().getEvalFunctionObject();
+        return function != getRealm().getEvalFunctionObject();
     }
 
     public static EvalNode create(JSContext context, JavaScriptNode functionNode, JavaScriptNode[] args, JavaScriptNode thisObject, Object env) {
@@ -228,7 +228,7 @@ public abstract class EvalNode extends JavaScriptNode {
 
         private Object directEvalImpl(VirtualFrame frame, CharSequence sourceCode) {
             final Source source = sourceFromString(sourceCode);
-            JSRealm realm = context.getRealm();
+            JSRealm realm = getRealm();
             Object evalThis = thisNode.execute(frame);
             ScriptNode script = context.getEvaluator().parseDirectEval(context, getParent(), source, currEnv);
             return script.runEval(callNode, realm, evalThis, frame.materialize());

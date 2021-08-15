@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -249,7 +249,11 @@ class ParserContext {
     public ParserContextFunctionNode getCurrentFunction() {
         for (int i = sp - 1; i >= 0; i--) {
             if (stack[i] instanceof ParserContextFunctionNode) {
-                return (ParserContextFunctionNode) stack[i];
+                ParserContextFunctionNode function = (ParserContextFunctionNode) stack[i];
+                if (function.isCoverArrowHead()) {
+                    continue;
+                }
+                return function;
             }
         }
         return null;
@@ -332,6 +336,46 @@ class ParserContext {
      */
     public Iterator<ParserContextClassNode> getClasses() {
         return new NodeIterator<>(ParserContextClassNode.class);
+    }
+
+    /**
+     * Returns an iterator over all nodes in the context.
+     */
+    public Iterator<ParserContextNode> getAllNodes() {
+        return new NodeIterator<>(ParserContextNode.class);
+    }
+
+    /**
+     * Sets function flags on the current function or provisional arrow function in the context.
+     */
+    public ParserContextFunctionNode setCurrentFunctionFlag(int flag) {
+        for (int i = sp - 1; i >= 0; i--) {
+            if (stack[i] instanceof ParserContextFunctionNode) {
+                ParserContextFunctionNode fn = (ParserContextFunctionNode) stack[i];
+                fn.setFlag(flag);
+                return fn;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Propagate relevant flags from the innermost function to its parent function.
+     */
+    public void propagateFunctionFlags() {
+        ParserContextFunctionNode current = null;
+        for (int i = sp - 1; i >= 0; i--) {
+            if (stack[i] instanceof ParserContextFunctionNode) {
+                ParserContextFunctionNode f = (ParserContextFunctionNode) stack[i];
+                if (current == null) {
+                    current = f;
+                } else {
+                    ParserContextFunctionNode parent = f;
+                    current.propagateFlagsToParent(parent);
+                    break;
+                }
+            }
+        }
     }
 
     private class NodeIterator<T extends ParserContextNode> implements Iterator<T> {

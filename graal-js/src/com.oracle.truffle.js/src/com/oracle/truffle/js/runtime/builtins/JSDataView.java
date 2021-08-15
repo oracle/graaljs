@@ -85,11 +85,9 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return JSDataViewObject.getArrayBuffer(thisObj);
     }
 
-    public static DynamicObject createDataView(JSContext context, DynamicObject arrayBuffer, int offset, int length) {
+    public static DynamicObject createDataView(JSContext context, JSRealm realm, DynamicObject arrayBuffer, int offset, int length) {
         assert offset >= 0 && offset + length <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
 
-        // (arrayBuffer, length, offset)
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDataViewFactory();
         DynamicObject dataView = JSDataViewObject.create(realm, factory, (JSArrayBufferObject) arrayBuffer, length, offset);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -162,11 +163,6 @@ public abstract class JSObjectFactory {
         return getShape(realm, getPrototype(realm));
     }
 
-    public final Shape getShape() {
-        JSRealm realm = context.getRealm();
-        return getShape(realm, getPrototype(realm));
-    }
-
     public final <T extends DynamicObject> T initProto(T obj, JSRealm realm) {
         return initProto(obj, getPrototype(realm));
     }
@@ -269,6 +265,7 @@ public abstract class JSObjectFactory {
 
         @Override
         protected final Shape getShape(JSRealm realm, DynamicObject prototype) {
+            CompilerAsserts.partialEvaluationConstant(this);
             if (context.isMultiContext()) {
                 if (factory == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();

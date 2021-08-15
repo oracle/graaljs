@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.WeakHashMap;
+import java.util.concurrent.atomic.AtomicReferenceArray;
+import java.util.function.Function;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.object.Shape;
@@ -61,8 +63,17 @@ public final class ContextData {
     private final Map<Source, ScriptNode> scriptNodeCache = new WeakHashMap<>();
     private final List<Pair<JSFunctionData, JSFunctionData>> accessorPairs = new ArrayList<>();
     private final Shape externalObjectShape;
+    private final JSContext context;
+    private final AtomicReferenceArray<JSFunctionData> accessFunctionData = new AtomicReferenceArray<>(FunctionKey.LENGTH);
+
+    public enum FunctionKey {
+        ArrayBufferGetContents;
+
+        static final int LENGTH = FunctionKey.values().length;
+    }
 
     public ContextData(JSContext context) {
+        this.context = context;
         this.externalObjectShape = JSExternal.makeInitialShape(context);
     }
 
@@ -91,5 +102,19 @@ public final class ContextData {
 
     public Map<String, FunctionNode> getFunctionNodeCache() {
         return functionNodeCache;
+    }
+
+    public JSFunctionData getOrCreateFunctionData(FunctionKey key, Function<JSContext, JSFunctionData> factory) {
+        int index = key.ordinal();
+        JSFunctionData functionData = accessFunctionData.get(index);
+        if (functionData != null) {
+            return functionData;
+        }
+        functionData = factory.apply(context);
+        if (accessFunctionData.compareAndSet(index, null, functionData)) {
+            return functionData;
+        } else {
+            return accessFunctionData.get(index);
+        }
     }
 }

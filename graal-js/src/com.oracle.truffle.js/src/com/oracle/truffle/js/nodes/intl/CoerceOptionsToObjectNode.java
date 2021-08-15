@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -48,16 +48,14 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
-public abstract class CreateOptionsObjectNode extends JavaScriptBaseNode {
-
-    @Child JSToObjectNode toObjectNode;
+public abstract class CoerceOptionsToObjectNode extends JavaScriptBaseNode {
     private final JSContext context;
 
     public JSContext getContext() {
         return context;
     }
 
-    public CreateOptionsObjectNode(JSContext context) {
+    public CoerceOptionsToObjectNode(JSContext context) {
         super();
         this.context = context;
     }
@@ -71,15 +69,9 @@ public abstract class CreateOptionsObjectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "!isUndefined(opts)")
-    public DynamicObject fromOtherThenUndefined(Object opts) {
-        return toDynamicObject(opts);
+    public DynamicObject fromOtherThanUndefined(Object opts,
+                    @Cached("createToObject(getContext())") JSToObjectNode toObjectNode) {
+        return (DynamicObject) toObjectNode.execute(opts);
     }
 
-    private DynamicObject toDynamicObject(Object o) {
-        if (toObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
-        }
-        return (DynamicObject) toObjectNode.execute(o);
-    }
 }

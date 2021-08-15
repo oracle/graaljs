@@ -45,6 +45,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleCustomSectionsNodeGen;
@@ -55,6 +56,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -111,6 +113,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class WebAssemblyModuleExportsNode extends JSBuiltinNode {
+        @Child InteropLibrary moduleExportsLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyModuleExportsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -118,10 +121,11 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object exportsOfModule(JSWebAssemblyModuleObject moduleObject) {
+            JSRealm realm = getRealm();
             try {
-                Object exportsFunction = getContext().getRealm().getWASMModuleExportsFunction();
-                Object wasmExports = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, moduleObject.getWASMModule());
-                return toJSExports(wasmExports);
+                Object exportsFunction = realm.getWASMModuleExports();
+                Object wasmExports = moduleExportsLib.execute(exportsFunction, moduleObject.getWASMModule());
+                return toJSExports(wasmExports, realm);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -132,7 +136,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeError("WebAssembly.Module.exports(): Argument 0 must be a WebAssembly.Module", this);
         }
 
-        private Object toJSExports(Object wasmExports) throws InteropException {
+        private Object toJSExports(Object wasmExports, JSRealm realm) throws InteropException {
             InteropLibrary interop = InteropLibrary.getUncached(wasmExports);
             int size = (int) interop.getArraySize(wasmExports);
             Object[] exports = new Object[size];
@@ -140,11 +144,11 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
                 Object wasmExport = interop.readArrayElement(wasmExports, i);
                 exports[i] = toJSExport(wasmExport);
             }
-            return JSArray.createConstantObjectArray(getContext(), exports);
+            return JSArray.createConstantObjectArray(getContext(), realm, exports);
         }
 
         private Object toJSExport(Object wasmExport) throws InteropException {
-            DynamicObject export = JSOrdinary.create(getContext());
+            DynamicObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmExport);
             for (String key : new String[]{"name", "kind"}) {
                 Object value = interop.readMember(wasmExport, key);
@@ -156,6 +160,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class WebAssemblyModuleImportsNode extends JSBuiltinNode {
+        @Child InteropLibrary moduleImportsLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyModuleImportsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -163,10 +168,11 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object importsOfModule(JSWebAssemblyModuleObject moduleObject) {
+            JSRealm realm = getRealm();
             try {
-                Object importsFunction = getContext().getRealm().getWASMModuleImportsFunction();
-                Object wasmImports = InteropLibrary.getUncached(importsFunction).execute(importsFunction, moduleObject.getWASMModule());
-                return toJSImports(wasmImports);
+                Object importsFunction = realm.getWASMModuleImports();
+                Object wasmImports = moduleImportsLib.execute(importsFunction, moduleObject.getWASMModule());
+                return toJSImports(wasmImports, realm);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -177,7 +183,7 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeError("WebAssembly.Module.imports(): Argument 0 must be a WebAssembly.Module", this);
         }
 
-        private Object toJSImports(Object wasmImports) throws InteropException {
+        private Object toJSImports(Object wasmImports, JSRealm realm) throws InteropException {
             InteropLibrary interop = InteropLibrary.getUncached(wasmImports);
             int size = (int) interop.getArraySize(wasmImports);
             Object[] imports = new Object[size];
@@ -185,11 +191,11 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
                 Object wasmImport = interop.readArrayElement(wasmImports, i);
                 imports[i] = toJSImport(wasmImport);
             }
-            return JSArray.createConstantObjectArray(getContext(), imports);
+            return JSArray.createConstantObjectArray(getContext(), realm, imports);
         }
 
         private Object toJSImport(Object wasmImport) throws InteropException {
-            DynamicObject export = JSOrdinary.create(getContext());
+            DynamicObject export = JSOrdinary.create(getContext(), getRealm());
             InteropLibrary interop = InteropLibrary.getUncached(wasmImport);
             for (String key : new String[]{"module", "name", "kind"}) {
                 Object value = interop.readMember(wasmImport, key);
@@ -202,10 +208,12 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class WebAssemblyModuleCustomSectionsNode extends JSBuiltinNode {
         @Child JSToStringNode toStringNode;
+        @Child InteropLibrary customSectionsLib;
 
         public WebAssemblyModuleCustomSectionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toStringNode = JSToStringNode.create();
+            customSectionsLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -214,34 +222,35 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createTypeError("WebAssembly.Module.customSections(): Argument 1 is required");
             }
             String name = toStringNode.executeString(sectionName);
+            JSRealm realm = getRealm();
             try {
-                Object customSectionsFunction = getContext().getRealm().getWASMModuleCustomSectionsFunction();
-                Object wasmCustomSections = InteropLibrary.getUncached(customSectionsFunction).execute(customSectionsFunction, moduleObject.getWASMModule(), name);
-                return toJSArrayOfArrayBuffers(wasmCustomSections);
+                Object customSectionsFunction = realm.getWASMCustomSections();
+                Object wasmCustomSections = customSectionsLib.execute(customSectionsFunction, moduleObject.getWASMModule(), name);
+                return toJSArrayOfArrayBuffers(wasmCustomSections, realm);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
         }
 
-        private Object toJSArrayOfArrayBuffers(Object wasmSections) throws InteropException {
+        private Object toJSArrayOfArrayBuffers(Object wasmSections, JSRealm realm) throws InteropException {
             InteropLibrary interop = InteropLibrary.getUncached(wasmSections);
             int size = (int) interop.getArraySize(wasmSections);
             Object[] sections = new Object[size];
             for (int i = 0; i < size; i++) {
                 Object wasmSection = interop.readArrayElement(wasmSections, i);
-                sections[i] = toArrayBuffer(wasmSection);
+                sections[i] = toArrayBuffer(wasmSection, realm);
             }
-            return JSArray.createConstantObjectArray(getContext(), sections);
+            return JSArray.createConstantObjectArray(getContext(), realm, sections);
         }
 
-        private Object toArrayBuffer(Object wasmSection) throws InteropException {
+        private Object toArrayBuffer(Object wasmSection, JSRealm realm) throws InteropException {
             InteropLibrary interop = InteropLibrary.getUncached(wasmSection);
             int size = (int) interop.getArraySize(wasmSection);
             byte[] data = new byte[size];
             for (int i = 0; i < size; i++) {
                 data[i] = (byte) interop.readArrayElement(wasmSection, i);
             }
-            return JSArrayBuffer.createArrayBuffer(getContext(), data);
+            return JSArrayBuffer.createArrayBuffer(getContext(), realm, data);
         }
 
         @Fallback

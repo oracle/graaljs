@@ -70,12 +70,11 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
     private JSArrayBuffer() {
     }
 
-    public static DynamicObject createArrayBuffer(JSContext context, int length) {
-        return createArrayBuffer(context, new byte[length]);
+    public static DynamicObject createArrayBuffer(JSContext context, JSRealm realm, int length) {
+        return createArrayBuffer(context, realm, new byte[length]);
     }
 
-    public static DynamicObject createArrayBuffer(JSContext context, byte[] byteArray) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject createArrayBuffer(JSContext context, JSRealm realm, byte[] byteArray) {
         JSObjectFactory factory = context.getArrayBufferFactory();
         DynamicObject obj = JSArrayBufferObject.createHeapArrayBuffer(factory.getShape(realm), byteArray);
         factory.initProto(obj, realm);
@@ -102,12 +101,11 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObject.getDirectByteBuffer(thisObj);
     }
 
-    public static DynamicObject createDirectArrayBuffer(JSContext context, int length) {
-        return createDirectArrayBuffer(context, DirectByteBufferHelper.allocateDirect(length));
+    public static DynamicObject createDirectArrayBuffer(JSContext context, JSRealm realm, int length) {
+        return createDirectArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
     }
 
-    public static DynamicObject createDirectArrayBuffer(JSContext context, ByteBuffer buffer) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject createDirectArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
         JSObjectFactory factory = context.getDirectArrayBufferFactory();
         DynamicObject obj = JSArrayBufferObject.createDirectArrayBuffer(factory.getShape(realm), buffer);
         factory.initProto(obj, realm);
@@ -120,9 +118,8 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObject.getInteropBuffer(thisObj);
     }
 
-    public static DynamicObject createInteropArrayBuffer(JSContext context, Object buffer) {
+    public static DynamicObject createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
         assert InteropLibrary.getUncached().hasBufferElements(buffer);
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getInteropArrayBufferFactory();
         DynamicObject obj = JSArrayBufferObject.createInteropArrayBuffer(factory.getShape(realm), buffer);
         factory.initProto(obj, realm);

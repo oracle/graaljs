@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.InitializeInstanceElementsNode;
@@ -53,6 +56,7 @@ import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -60,8 +64,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
-
-import java.util.Set;
 
 /**
  * ES6 14.5.14 Runtime Semantics: ClassDefinitionEvaluation.
@@ -82,6 +84,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private InitializeInstanceElementsNode staticFieldsNode;
     @Child private PropertySetNode setPrivateBrandNode;
     @Child private SetFunctionNameNode setFunctionName;
+    @Child private IsConstructorNode isConstructorNode;
+    private final BranchProfile errorBranch = BranchProfile.create();
 
     private final boolean hasName;
     private final int instanceFieldCount;
@@ -105,6 +109,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         this.setFieldsNode = instanceFieldCount != 0 ? PropertySetNode.createSetHidden(JSFunction.CLASS_FIELDS_ID, context) : null;
         this.setPrivateBrandNode = hasPrivateInstanceMethods ? PropertySetNode.createSetHidden(JSFunction.PRIVATE_BRAND_ID, context) : null;
         this.setFunctionName = hasName ? null : SetFunctionNameNode.create();
+        this.isConstructorNode = IsConstructorNode.create();
     }
 
     public static ClassDefinitionNode create(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
@@ -118,22 +123,25 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     }
 
     public DynamicObject executeWithClassName(VirtualFrame frame, Object className) {
-        JSRealm realm = context.getRealm();
+        JSRealm realm = getRealm();
         Object protoParent = realm.getObjectPrototype();
         Object constructorParent = realm.getFunctionPrototype();
         if (classHeritageNode != null) {
             Object superclass = classHeritageNode.execute(frame);
             if (superclass == Null.instance) {
                 protoParent = Null.instance;
-            } else if (!JSRuntime.isConstructor(superclass)) {
+            } else if (!isConstructorNode.executeBoolean(superclass)) {
                 // 6.f. if IsConstructor(superclass) is false, throw a TypeError.
+                errorBranch.enter();
                 throw Errors.createTypeError("not a constructor", this);
             } else if (JSRuntime.isGenerator(superclass)) {
                 // 6.g.i. if superclass.[[FunctionKind]] is "generator", throw a TypeError
+                errorBranch.enter();
                 throw Errors.createTypeError("class cannot extend a generator function", this);
             } else {
                 protoParent = getPrototypeNode.getValue(superclass);
                 if (protoParent != Null.instance && !JSRuntime.isObject(protoParent)) {
+                    errorBranch.enter();
                     throw Errors.createTypeError("protoParent is neither Object nor Null", this);
                 }
                 constructorParent = superclass;

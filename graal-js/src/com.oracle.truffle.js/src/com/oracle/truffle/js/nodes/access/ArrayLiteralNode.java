@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantByteArray;
@@ -277,15 +278,16 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         protected final DynamicObject executeAndSpecialize(Object[] values) {
             CompilerAsserts.neverPartOfCompilation();
             Object primitive = createPrimitiveArray(values, false);
+            JSRealm realm = getRealm();
             if (primitive instanceof int[]) {
                 state = INT_ARRAY;
-                return JSArray.createZeroBasedIntArray(context, (int[]) primitive);
+                return JSArray.createZeroBasedIntArray(context, realm, (int[]) primitive);
             } else if (primitive instanceof double[]) {
                 state = DOUBLE_ARRAY;
-                return JSArray.createZeroBasedDoubleArray(context, (double[]) primitive);
+                return JSArray.createZeroBasedDoubleArray(context, realm, (double[]) primitive);
             } else if (primitive instanceof Object[]) {
                 state = OBJECT_ARRAY;
-                return JSArray.createZeroBasedObjectArray(context, values);
+                return JSArray.createZeroBasedObjectArray(context, realm, values);
             } else {
                 throw Errors.shouldNotReachHere();
             }
@@ -323,7 +325,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     return executeIntArrayFallback(frame, primitiveArray, i, e.getResult());
                 }
             }
-            return JSArray.createZeroBasedIntArray(context, primitiveArray);
+            return JSArray.createZeroBasedIntArray(context, getRealm(), primitiveArray);
         }
 
         private DynamicObject executeIntArrayFallback(VirtualFrame frame, int[] primitiveArray, int failIdx, Object failValue) {
@@ -364,7 +366,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     return executeDoubleArrayFallback(frame, primitiveArray, i, e.getResult());
                 }
             }
-            return JSArray.createZeroBasedDoubleArray(context, primitiveArray);
+            return JSArray.createZeroBasedDoubleArray(context, getRealm(), primitiveArray);
         }
 
         private DynamicObject executeDoubleArrayFallback(VirtualFrame frame, double[] primitiveArray, int failIdx, Object failValue) {
@@ -381,7 +383,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
             for (int i = 0; i < getLength(); i++) {
                 primitiveArray[i] = getElement(i).execute(frame);
             }
-            return JSArray.createZeroBasedObjectArray(context, primitiveArray);
+            return JSArray.createZeroBasedObjectArray(context, getRealm(), primitiveArray);
         }
 
         private DynamicObject executeFallback(VirtualFrame frame, Object[] objectArray, int failingIndex, Object failingValue) {
@@ -473,7 +475,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 }
             }
             int usedLength = lastNonEmpty + 1 - arrayOffset;
-            return JSArray.createZeroBasedHolesObjectArray(context, primitiveArray, usedLength, arrayOffset, holeCount);
+            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), primitiveArray, usedLength, arrayOffset, holeCount);
         }
 
         @Override
@@ -497,7 +499,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @Override
         public DynamicObject execute(VirtualFrame frame) {
-            return JSArray.create(context, arrayType, array, length);
+            return JSArray.create(context, getRealm(), arrayType, array, length);
         }
 
         @Override
@@ -517,7 +519,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @Override
         public DynamicObject execute(VirtualFrame frame) {
-            return JSArray.createConstantEmptyArray(context, capacity);
+            return JSArray.createConstantEmptyArray(context, getRealm(), capacity);
         }
 
         @Override
@@ -534,7 +536,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
 
         @Override
         public DynamicObject execute(VirtualFrame frame) {
-            return JSArray.createConstantEmptyArray(context);
+            return JSArray.createConstantEmptyArray(context, getRealm());
         }
 
         @Override
@@ -581,7 +583,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 }
             }
             int usedLength = lastNonEmptyPlusOne - arrayOffset;
-            return JSArray.createZeroBasedHolesObjectArray(context, evaluatedElements.toArray(), usedLength, arrayOffset, holeCount);
+            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), evaluatedElements.toArray(), usedLength, arrayOffset, holeCount);
         }
 
         @Override

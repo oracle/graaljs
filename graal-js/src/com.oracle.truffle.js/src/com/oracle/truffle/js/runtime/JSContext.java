@@ -40,14 +40,18 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import com.oracle.js.parser.ir.Module;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -141,7 +145,7 @@ public class JSContext {
     private final Evaluator evaluator;
 
     private final JavaScriptLanguage language;
-    private TruffleLanguage.Env truffleLanguageEnv;
+    private TruffleLanguage.Env initialEnvironment;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -329,7 +333,6 @@ public class JSContext {
     private static final int REALM_INITIALIZING = 1;
     private static final int REALM_INITIALIZED = 2;
 
-    private final ContextReference<JSRealm> contextRef;
     @CompilationFinal private AllocationReporter allocationReporter;
 
     private final JSContextOptions contextOptions;
@@ -424,6 +427,10 @@ public class JSContext {
     private final PropertyProxy argumentsPropertyProxy;
     private final PropertyProxy callerPropertyProxy;
 
+    private final Set<String> supportedImportAssertions;
+
+    private static final String TYPE_IMPORT_ASSERTION = "type";
+
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
      * tree but in shared object factories for the purpose of adding properties to newly allocated
@@ -440,8 +447,7 @@ public class JSContext {
         }
 
         this.language = lang;
-        this.contextRef = getContextReference(lang);
-        this.truffleLanguageEnv = env;
+        this.initialEnvironment = env;
 
         this.sharedRootNode = new SharedRootNode();
 
@@ -585,14 +591,14 @@ public class JSContext {
         this.regexOptions = createRegexOptions(contextOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + ',' + regexOptions;
 
+        this.supportedImportAssertions = contextOptions.isImportAssertions() ? new HashSet<>() : Collections.emptySet();
+        if (contextOptions.isImportAssertions()) {
+            supportedImportAssertions.add(TYPE_IMPORT_ASSERTION);
+        }
+
         if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private static ContextReference<JSRealm> getContextReference(JavaScriptLanguage lang) {
-        return lang.getContextReference();
     }
 
     public final Evaluator getEvaluator() {
@@ -657,7 +663,6 @@ public class JSContext {
             singleRealmAssumption.invalidate("single realm assumption");
         }
 
-        truffleLanguageEnv = env;
         if (!isTop) {
             noChildRealmsAssumption.invalidate();
         }
@@ -777,9 +782,9 @@ public class JSContext {
     /**
      * Get the current Realm using {@link ContextReference}.
      */
-    public JSRealm getRealm() {
+    private JSRealm getRealm() {
         assert realmInit.get() == REALM_INITIALIZED : "getRealm() while initializing Realm";
-        JSRealm currentRealm = contextRef.get();
+        JSRealm currentRealm = JSRealm.get(null);
         assert currentRealm != null;
         return currentRealm;
     }
@@ -1097,8 +1102,12 @@ public class JSContext {
         return language;
     }
 
-    private TruffleLanguage.Env getEnv() {
-        return truffleLanguageEnv;
+    private TruffleLanguage.Env getInitialEnvironment() {
+        return initialEnvironment;
+    }
+
+    public void clearInitialEnvironment() {
+        this.initialEnvironment = null;
     }
 
     public CallTarget getEmptyFunctionCallTarget() {
@@ -1232,7 +1241,7 @@ public class JSContext {
         return result;
     }
 
-    public JSAgent getJSAgent() {
+    private JSAgent getJSAgent() {
         return getRealm().getAgent();
     }
 
@@ -1274,7 +1283,7 @@ public class JSContext {
     }
 
     public boolean isOptionIntl402() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
+        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
         return contextOptions.isIntl402();
     }
 
@@ -1283,7 +1292,7 @@ public class JSContext {
     }
 
     public boolean isOptionRegexpStaticResult() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
+        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
         return contextOptions.isRegexpStaticResult();
     }
 
@@ -1300,7 +1309,7 @@ public class JSContext {
     }
 
     public boolean isOptionV8CompatibilityMode() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
+        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
         return contextOptions.isV8CompatibilityMode();
     }
 
@@ -1323,7 +1332,7 @@ public class JSContext {
     }
 
     public boolean isOptionDirectByteBuffer() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
+        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
         return contextOptions.isDirectByteBuffer();
     }
 
@@ -1344,7 +1353,7 @@ public class JSContext {
     }
 
     public long getTimerResolution() {
-        assert !(getEnv() != null && getEnv().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
+        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
         return contextOptions.getTimerResolution();
     }
 
@@ -1511,9 +1520,9 @@ public class JSContext {
      * @return the callback result (a promise or {@code null}).
      */
     @TruffleBoundary
-    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, String specifier) {
+    public final DynamicObject hostImportModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
         if (importModuleDynamicallyCallback != null) {
-            return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, specifier);
+            return importModuleDynamicallyCallback.importModuleDynamically(realm, referrer, moduleRequest);
         } else {
             return null;
         }
@@ -1733,5 +1742,13 @@ public class JSContext {
 
     public boolean isWaitAsyncEnabled() {
         return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+    }
+
+    public final Set<String> getSupportedImportAssertions() {
+        return supportedImportAssertions;
+    }
+
+    public static String getTypeImportAssertion() {
+        return TYPE_IMPORT_ASSERTION;
     }
 }

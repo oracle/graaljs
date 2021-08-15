@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,12 +46,11 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -76,10 +75,10 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     }
 
     @TruffleBoundary
-    private static DynamicObject create(JSContext context, GraalJSAccess graalJSAccess) {
-        Shape shape = context.makeEmptyShapeWithNullPrototype(INSTANCE);
+    private static DynamicObject create(JSRealm realm, GraalJSAccess graalJSAccess) {
+        Shape shape = realm.getContext().makeEmptyShapeWithNullPrototype(INSTANCE);
         DynamicObject obj = new Instance(shape, graalJSAccess);
-        JSObjectUtil.putFunctionsFromContainer(context.getRealm(), obj, BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, BUILTINS);
         return obj;
     }
 
@@ -89,17 +88,15 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(GraalJSAccess graalJSAccess, JSContext context) {
-        JSRealm realm = context.getRealm();
-
+    public static Object createInitFunction(GraalJSAccess graalJSAccess, JSRealm realm) {
         // This JS function will be executed at node.js bootstrap time
         JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
             @Override
             public Object execute(VirtualFrame frame) {
-                return create(context, graalJSAccess);
+                return create(getRealm(), graalJSAccess);
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
         return JSFunction.create(realm, functionData);
     }
 

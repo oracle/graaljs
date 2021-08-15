@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
     @Child GetStringOptionNode getLanguageOption;
     @Child GetStringOptionNode getScriptOption;
     @Child GetStringOptionNode getRegionOption;
@@ -69,7 +69,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeLocaleNode(JSContext context) {
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getLanguageOption = GetStringOptionNode.create(context, IntlUtil.LANGUAGE, null, null);
         this.getScriptOption = GetStringOptionNode.create(context, IntlUtil.SCRIPT, null, null);
         this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.REGION, null, null);
@@ -90,7 +90,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     @Specialization
     public DynamicObject initializeLocaleUsingString(DynamicObject localeObject, String tagArg, Object optionsArg) {
         try {
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
             String tag = applyOptionsToTag(tagArg, options);
             String optCalendar = getCalendarOption.executeValue(options);
             if (optCalendar != null) {

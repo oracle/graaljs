@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,10 +59,11 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     private final JSContext context;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child CreateOptionsObjectNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
 
     @Child GetStringOptionNode getUsageOption;
     @Child GetStringOptionNode getLocaleMatcherOption;
+    @Child GetStringOptionNode getCollationOption;
     @Child GetBooleanOptionNode getNumericOption;
     @Child GetStringOptionNode getCaseFirstOption;
     @Child GetStringOptionNode getSensitivityOption;
@@ -72,9 +73,10 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
     protected InitializeCollatorNode(JSContext context) {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = CreateOptionsObjectNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getUsageOption = GetStringOptionNode.create(context, IntlUtil.USAGE, new String[]{IntlUtil.SORT, IntlUtil.SEARCH}, IntlUtil.SORT);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.COLLATION, null, null);
         this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.NUMERIC, null);
         this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
         this.getSensitivityOption = GetStringOptionNode.create(context, IntlUtil.SENSITIVITY, new String[]{IntlUtil.BASE, IntlUtil.ACCENT, IntlUtil.CASE, IntlUtil.VARIANT}, null);
@@ -94,15 +96,19 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         try {
             JSCollator.InternalState state = JSCollator.getInternalState(collatorObj);
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            DynamicObject options = createOptionsNode.execute(optionsArg);
+            DynamicObject options = coerceOptionsToObjectNode.execute(optionsArg);
             String usage = getUsageOption.executeValue(options);
             String optLocaleMatcher = getLocaleMatcherOption.executeValue(options);
+            String optco = getCollationOption.executeValue(options);
+            if (optco != null) {
+                IntlUtil.validateUnicodeLocaleIdentifierType(optco, errorBranch);
+            }
             Boolean optkn = getNumericOption.executeValue(options);
             String optkf = getCaseFirstOption.executeValue(options);
             String sensitivity = getSensitivityOption.executeValue(options);
             Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
-            JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optkn, optkf, sensitivity, ignorePunctuation);
+            JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optco, optkn, optkf, sensitivity, ignorePunctuation);
 
         } catch (MissingResourceException e) {
             errorBranch.enter();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,7 @@ import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.parser.env.Environment;
 import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 
 public final class JavaScriptTranslator extends GraalJSTranslator {
 
@@ -117,17 +116,11 @@ public final class JavaScriptTranslator extends GraalJSTranslator {
         return new JavaScriptTranslator(factory, context, source, prologLength, env, isParentStrict).translateScript(rootNode);
     }
 
-    public static JSModuleRecord translateModule(NodeFactory factory, JSContext context, Source source, JSModuleLoader moduleLoader) {
+    public static JSModuleData translateModule(NodeFactory factory, JSContext context, Source source) {
         FunctionNode parsed = GraalJSParserHelper.parseModule(context, source, context.getParserOptions().putStrict(true));
         JavaScriptTranslator translator = new JavaScriptTranslator(factory, context, source, 0, null, true);
         FunctionRootNode functionRoot = translator.translateModule(parsed);
-        JSModuleRecord moduleRecord = new JSModuleRecord(parsed.getModule(), context, moduleLoader, source);
-        moduleRecord.setFunctionData(functionRoot.getFunctionData());
-        moduleRecord.setFrameDescriptor(functionRoot.getFrameDescriptor());
-        if (functionRoot.getFunctionData().isAsync()) {
-            moduleRecord.setTopLevelAsync();
-        }
-        return moduleRecord;
+        return new JSModuleData(parsed.getModule(), source, functionRoot.getFunctionData(), functionRoot.getFrameDescriptor());
     }
 
     private FunctionRootNode translateModule(com.oracle.js.parser.ir.FunctionNode functionNode) {

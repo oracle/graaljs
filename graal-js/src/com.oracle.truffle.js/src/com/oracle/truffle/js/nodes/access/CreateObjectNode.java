@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -107,7 +107,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public DynamicObject execute(VirtualFrame frame) {
-            return JSOrdinary.create(context);
+            return JSOrdinary.create(context, getRealm());
         }
 
         @Override
@@ -179,7 +179,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isOrdinaryObject() || isPromiseObject()", "!isValidPrototype(prototype)"})
         final DynamicObject doNotJSObjectOrNull(@SuppressWarnings("unused") Object prototype) {
-            return JSOrdinary.create(context);
+            return JSOrdinary.create(context, getRealm());
         }
 
         final Shape getProtoChildShape(DynamicObject prototype) {
@@ -207,7 +207,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Override
         public DynamicObject execute(VirtualFrame frame) {
-            return JSDictionary.create(context);
+            return JSDictionary.create(context, getRealm());
         }
 
         @Override

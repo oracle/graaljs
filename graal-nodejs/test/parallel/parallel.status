@@ -169,7 +169,6 @@ test-vm-syntax-error-stderr: FAIL
 test-worker-cleanexit-with-js: SKIP
 test-worker-cleanexit-with-moduleload: SKIP
 test-worker-error-stack-getter-throws: FAIL
-test-worker-message-port-move: FAIL
 test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL

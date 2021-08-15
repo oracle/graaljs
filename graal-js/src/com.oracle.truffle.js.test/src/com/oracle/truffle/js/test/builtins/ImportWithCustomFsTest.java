@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,7 @@
  */
 package com.oracle.truffle.js.test.builtins;
 
-import com.oracle.truffle.js.test.JSTest;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotAccess;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.io.FileSystem;
-import org.junit.Assert;
-import org.junit.Test;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,7 +63,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotAccess;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.io.FileSystem;
+import org.junit.Assert;
+import org.junit.Test;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 public class ImportWithCustomFsTest {
 
@@ -155,6 +161,48 @@ public class ImportWithCustomFsTest {
         Assert.assertTrue(fs.paths.contains("foobar"));
     }
 
+    @Test
+    public void testMultiContextSingleSourceCachedImport() throws IOException {
+        try (Engine engine = Engine.newBuilder().allowExperimentalOptions(true).build()) {
+            String importedSourceText = "export default function() { return 42; }";
+            TestFS fs = new TestFS("imported.mjs", importedSourceText);
+            Source src = Source.newBuilder("js", "import f from 'imported.mjs'; f();", "main.mjs").mimeType("application/javascript+module").cached(true).build();
+
+            final int numIters = 3;
+            int[] sourceIdentityHashes = new int[numIters];
+            int[] parsedIdentityHashes = new int[numIters];
+            for (int i = 0; i < numIters; i++) {
+                // Clear stale entries from the cache
+                System.gc();
+
+                try (Context cx = JSTest.newContextBuilder().engine(engine).allowIO(true).fileSystem(fs).build()) {
+                    cx.eval(src);
+
+                    cx.enter();
+                    // Attempt to get the same Source as the one imported by the main module.
+                    TruffleLanguage.Env currentEnv = JavaScriptLanguage.getCurrentEnv();
+                    TruffleFile importedFile = currentEnv.getPublicTruffleFile("imported.mjs");
+                    com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder("js", importedFile).content(importedSourceText).mimeType(
+                                    "application/javascript+module").cached(true).build();
+                    sourceIdentityHashes[i] = System.identityHashCode(truffleSource);
+                    // Should yield the cached parsed call target!
+                    CallTarget ct = currentEnv.parsePublic(truffleSource);
+                    parsedIdentityHashes[i] = System.identityHashCode(ct);
+                    cx.leave();
+                }
+
+                if (i > 0) {
+                    if (sourceIdentityHashes[i] != sourceIdentityHashes[i - 1]) {
+                        Assert.fail("Source identity is not the same as in the previous context. Source is either not cached or not equal to the cached one.");
+                    }
+                    if (parsedIdentityHashes[i] != parsedIdentityHashes[i - 1]) {
+                        Assert.fail("Parsed call target should have the same identity in all contexts if properly cached.");
+                    }
+                }
+            }
+        }
+    }
+
     private static Value assertFsLoads(TestFS fs, File file) throws IOException {
         Context cx = JSTest.newContextBuilder().allowIO(true).fileSystem(fs).build();
         return cx.eval(Source.newBuilder(ID, file).build());
@@ -213,7 +261,7 @@ public class ImportWithCustomFsTest {
         TestFS(String expectedPath, String moduleBody) {
             this.expectedPath = expectedPath;
             this.moduleBody = moduleBody;
-            this.dummyPath = Paths.get("/dummy");
+            this.dummyPath = Paths.get("/", expectedPath);
             this.uriSpecifiers = new HashSet<>();
             this.stringSpecifiers = new HashSet<>();
         }
@@ -234,7 +282,7 @@ public class ImportWithCustomFsTest {
             if (expectedPath.equals(path)) {
                 return dummyPath;
             } else {
-                return Paths.get(path);
+                return Paths.get("/", path);
             }
         }
 

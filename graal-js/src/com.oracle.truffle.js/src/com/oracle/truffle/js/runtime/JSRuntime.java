@@ -61,6 +61,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
@@ -243,6 +244,13 @@ public final class JSRuntime {
             return JSOrdinary.TYPE_NAME;
         } else if (value instanceof TruffleObject) {
             assert !(value instanceof Symbol);
+            JSRealm realm = JSRealm.get(null);
+            if (realm.getContext().isOptionNashornCompatibilityMode()) {
+                TruffleLanguage.Env env = realm.getEnv();
+                if (env.isHostSymbol(value)) {
+                    return JSFunction.TYPE_NAME;
+                }
+            }
             TruffleObject object = (TruffleObject) value;
             InteropLibrary interop = InteropLibrary.getFactory().getUncached();
             if (interop.isBoolean(object)) {
@@ -345,7 +353,7 @@ public final class JSRuntime {
                 return Null.instance;
             } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
                 return JSRuntime.importValue(javaObject);
-            } else if (JavaScriptLanguage.getCurrentJSRealm().getContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
+            } else if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
                 return ((Number) javaObject).doubleValue();
             } else {
                 return JSRuntime.toJSNull(javaObject.toString());
@@ -1499,22 +1507,23 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static TruffleObject toObjectFromPrimitive(JSContext ctx, Object value, boolean useJavaWrapper) {
+        JSRealm realm = JSRealm.get(null);
         if (value instanceof Boolean) {
-            return JSBoolean.create(ctx, (Boolean) value);
+            return JSBoolean.create(ctx, realm, (Boolean) value);
         } else if (value instanceof String) {
-            return JSString.create(ctx, (String) value);
+            return JSString.create(ctx, realm, (String) value);
         } else if (value instanceof JSLazyString) {
-            return JSString.create(ctx, (JSLazyString) value);
+            return JSString.create(ctx, realm, (JSLazyString) value);
         } else if (value instanceof BigInt) {
-            return JSBigInt.create(ctx, (BigInt) value);
+            return JSBigInt.create(ctx, realm, (BigInt) value);
         } else if (isNumber(value)) {
-            return JSNumber.create(ctx, (Number) value);
+            return JSNumber.create(ctx, realm, (Number) value);
         } else if (value instanceof Symbol) {
-            return JSSymbol.create(ctx, (Symbol) value);
+            return JSSymbol.create(ctx, realm, (Symbol) value);
         } else {
             assert !isJSNative(value) && isJavaPrimitive(value) : value;
             if (useJavaWrapper) {
-                return (TruffleObject) ctx.getRealm().getEnv().asBoxedGuestValue(value);
+                return (TruffleObject) realm.getEnv().asBoxedGuestValue(value);
             } else {
                 return null;
             }
@@ -2204,7 +2213,7 @@ public final class JSRuntime {
         if (desc == null) {
             return Undefined.instance;
         }
-        DynamicObject obj = JSOrdinary.create(context);
+        DynamicObject obj = JSOrdinary.create(context, JSRealm.get(null));
         if (desc.hasValue()) {
             JSObject.set(obj, JSAttributes.VALUE, desc.getValue());
         }
@@ -2427,8 +2436,8 @@ public final class JSRuntime {
     /**
      * ES2016 7.3.16 CreateArrayFromList(elements).
      */
-    public static DynamicObject createArrayFromList(JSContext context, List<? extends Object> list) {
-        return JSArray.createConstant(context, Boundaries.listToArray(list));
+    public static DynamicObject createArrayFromList(JSContext context, JSRealm realm, List<? extends Object> list) {
+        return JSArray.createConstant(context, realm, Boundaries.listToArray(list));
     }
 
     /**
@@ -2699,11 +2708,6 @@ public final class JSRuntime {
         return value >= JSRuntime.MIN_SAFE_INTEGER_LONG && value <= JSRuntime.MAX_SAFE_INTEGER_LONG;
     }
 
-    public static JSRealm getFunctionRealm(Object obj, JSContext context) {
-        JSRealm currentRealm = context.getRealm();
-        return getFunctionRealm(obj, currentRealm);
-    }
-
     @TruffleBoundary
     public static JSRealm getFunctionRealm(Object obj, JSRealm currentRealm) {
         if (JSDynamicObject.isJSDynamicObject(obj)) {
@@ -2879,26 +2883,8 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object importValue(Object value) {
-        if (value == null) {
-            return Null.instance;
-        } else if (value instanceof Integer || value instanceof Double || value instanceof String || value instanceof Boolean || value instanceof TruffleObject) {
-            return value;
-        } else if (value instanceof Character) {
-            return String.valueOf(value);
-        } else if (value instanceof Long) {
-            long longValue = (long) value;
-            if (longIsRepresentableAsInt(longValue)) {
-                return (int) longValue;
-            } else {
-                return longValue;
-            }
-        } else if (value instanceof Byte || value instanceof Short) {
-            return ((Number) value).intValue();
-        } else if (value instanceof Float) {
-            return ((Number) value).doubleValue();
-        } else {
-            throw Errors.createTypeErrorUnsupportedInteropType(value);
-        }
+        assert value != null;
+        return ImportValueNode.getUncached().executeWithTarget(value);
     }
 
     public static boolean intIsRepresentableAsFloat(int value) {

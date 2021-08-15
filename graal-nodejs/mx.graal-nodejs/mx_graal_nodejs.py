@@ -46,7 +46,6 @@ _generated_config_files = [join(_suite.dir, f) for f in ('config.gypi', 'config.
 class GraalNodeJsTags:
     allTests = 'all'
     unitTests = 'unit'
-    jniProfilerTests = 'jniprofiler'
     windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
 
 def _graal_nodejs_post_gate_runner(args, tasks):
@@ -76,18 +75,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
     with Task('TestNpx', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
             npx(['cowsay', 'GraalVM rules!'])
-
-    with Task('JniProfilerTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.jniProfilerTests]) as t:
-        if t:
-            commonArgs = ['-ea', '-esa']
-            unitTestDir = join(mx.project('com.oracle.truffle.trufflenode.jniboundaryprofiler').dir, 'tests')
-            for dir_name in 'node_modules', 'build':
-                p = join(unitTestDir, dir_name)
-                if exists(p):
-                    mx.rmtree(p)
-            #GR-32271
-            #npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
-            #node(['-profile-native-boundary', 'test.js'] + commonArgs, cwd=unitTestDir)
 
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
@@ -374,6 +361,7 @@ def testnodeInstrument(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     _setEnvVar('NODE_JVM_CLASSPATH', instrument_cp)
     test = join(_suite.dir, 'test', 'graal', 'instrument', 'async-test.js')
     node(['--experimental-options', '--testing-agent', '-ea', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    node(['--experimental-options', '--broken-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
@@ -488,13 +476,6 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
 
 def parse_js_args(args):
     vmArgs, progArgs = mx_graal_js.parse_js_args(args)
-
-    profileJniArg = '-profile-native-boundary'
-    if profileJniArg in progArgs:
-        mx.log('Running with native profiling agent enabled. The argument is handled by mx and not passed as program argument')
-        progArgs.remove(profileJniArg)
-        vmArgs += ['-javaagent:{}'.format(mx.distribution('TRUFFLENODE_JNI_BOUNDARY_PROFILER').path)]
-
     return vmArgs, progArgs
 
 def _mxrun(args, cwd=_suite.dir, print_cmd=False, quiet_if_successful=False, env=None):

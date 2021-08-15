@@ -114,6 +114,8 @@ public class Test262Runnable extends TestRunnable {
                     "Int32Array",
                     "Int8Array",
                     "Intl.DateTimeFormat-datetimestyle",
+                    "Intl.DateTimeFormat-dayPeriod",
+                    "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.DisplayNames",
                     "Intl.ListFormat",
                     "Intl.Locale",
@@ -170,6 +172,7 @@ public class Test262Runnable extends TestRunnable {
                     "__getter__",
                     "__proto__",
                     "__setter__",
+                    "align-detached-buffer-semantics-with-web-reality",
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
@@ -190,6 +193,7 @@ public class Test262Runnable extends TestRunnable {
                     "destructuring-assignment",
                     "destructuring-binding",
                     "dynamic-import",
+                    "error-cause",
                     "export-star-as-namespace-from-module",
                     "for-in-order",
                     "for-of",
@@ -198,7 +202,9 @@ public class Test262Runnable extends TestRunnable {
                     "hashbang",
                     "host-gc-required",
                     "intl-normative-optional",
+                    "import-assertions",
                     "import.meta",
+                    "json-modules",
                     "json-superset",
                     "legacy-regexp",
                     "let",
@@ -224,16 +230,14 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "Intl.DateTimeFormat-dayPeriod",
                     "Intl.DateTimeFormat-formatRange",
-                    "Intl.DateTimeFormat-fractionalSecondDigits",
                     "Intl.Locale-info",
                     "IsHTMLDDA",
-                    "align-detached-buffer-semantics-with-web-reality",
+                    "Object.hasOwn",
+                    "Temporal",
                     "arbitrary-module-namespace-names",
                     "class-fields-private-in",
-                    "error-cause",
-                    "import-assertions",
+                    "resizable-arraybuffer",
                     "tail-call-optimization",
     }));
     private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
@@ -271,6 +275,15 @@ public class Test262Runnable extends TestRunnable {
         Map<String, String> extraOptions = new HashMap<>(4);
         if (flags.contains(CAN_BLOCK_IS_FALSE_FLAG)) {
             extraOptions.put(JSContextOptions.AGENT_CAN_BLOCK_NAME, "false");
+        }
+        if (features.contains("error-cause")) {
+            extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
+        }
+        if (features.contains("import-assertions")) {
+            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
+        }
+        if (features.contains("json-modules")) {
+            extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();

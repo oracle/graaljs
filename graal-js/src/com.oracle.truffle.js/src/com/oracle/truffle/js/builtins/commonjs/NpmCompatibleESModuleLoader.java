@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,26 @@
  */
 package com.oracle.truffle.js.builtins.commonjs;
 
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin.log;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MAIN_PROPERTY_NAME;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MODULE_VALUE;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_TYPE_PROPERTY_NAME;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getNodeModulesPaths;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadAsFile;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadIndex;
+import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadJsonObject;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
+
+import java.io.IOException;
+import java.net.URI;
+import java.nio.file.FileSystemNotFoundException;
+import java.util.List;
+
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -54,29 +74,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.DefaultESModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.io.IOException;
-import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
-import java.util.List;
-
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSRequireBuiltin.log;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MAIN_PROPERTY_NAME;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_MODULE_VALUE;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.PACKAGE_JSON_TYPE_PROPERTY_NAME;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.getNodeModulesPaths;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.isCoreModule;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.joinPaths;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadAsFile;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadIndex;
-import static com.oracle.truffle.js.builtins.commonjs.CommonJSResolution.loadJsonObject;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
 
@@ -95,26 +97,28 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
      * @see <a href="https://nodejs.org/api/esm.html#esm_resolver_algorithm">Resolver algorithm</a>
      *
      * @param referencingModule Referencing ES Module.
-     * @param specifier ES Modules specifier.
+     * @param moduleRequest ES Modules Request.
      * @return ES Module record for this module.
      */
     @TruffleBoundary
     @Override
-    public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, String specifier) {
+    public JSModuleRecord resolveImportedModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+        String specifier = moduleRequest.getSpecifier();
         log("IMPORT resolve ", specifier);
         if (isCoreModule(specifier)) {
-            return loadCoreModule(referencingModule, specifier);
+            return loadCoreModule(referencingModule, moduleRequest);
         }
         try {
             TruffleFile file = resolveURL(referencingModule, specifier);
-            return loadModuleFromUrl(specifier, file, file.getPath());
+            return loadModuleFromUrl(referencingModule, moduleRequest, file, file.getPath());
         } catch (IOException e) {
             log("IMPORT resolve ", specifier, " FAILED ", e.getMessage());
             throw Errors.createErrorFromException(e);
         }
     }
 
-    private JSModuleRecord loadCoreModule(ScriptOrModule referencingModule, String specifier) {
+    private JSModuleRecord loadCoreModule(ScriptOrModule referencingModule, ModuleRequest moduleRequest) {
+        String specifier = moduleRequest.getSpecifier();
         log("IMPORT resolve built-in ", specifier);
         JSModuleRecord existingModule = moduleMap.get(specifier);
         if (existingModule != null) {
@@ -129,7 +133,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 // Load from URI
                 TruffleFile file = resolveURL(referencingModule, moduleReplacementName);
                 try {
-                    return loadModuleFromUrl(specifier, file, file.getPath());
+                    return loadModuleFromUrl(referencingModule, moduleRequest, file, file.getPath());
                 } catch (IOException e) {
                     throw fail("Failed to load built-in ES module: " + specifier + ". " + e.getMessage());
                 }
@@ -163,7 +167,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             moduleBody.append("export default builtinModule;");
             src = Source.newBuilder(ID, moduleBody.toString(), specifier + "-internal.mjs").build();
         }
-        JSModuleRecord record = realm.getContext().getEvaluator().parseModule(realm.getContext(), src, this);
+        JSModuleData parsedModule = realm.getContext().getEvaluator().envParseModule(realm, src);
+        JSModuleRecord record = new JSModuleRecord(parsedModule, this);
         moduleMap.put(specifier, record);
         return record;
     }
@@ -264,7 +269,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             TruffleFile moduleFolder = joinPaths(env, modulePath, packageSpecifier);
             TruffleFile packageJson = joinPaths(env, moduleFolder, PACKAGE_JSON);
             if (CommonJSResolution.fileExists(packageJson)) {
-                DynamicObject jsonObj = loadJsonObject(packageJson, realm.getContext());
+                DynamicObject jsonObj = loadJsonObject(packageJson, realm);
                 if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                     Object main = JSObject.get(jsonObj, PACKAGE_JSON_MAIN_PROPERTY_NAME);
                     Object type = JSObject.get(jsonObj, PACKAGE_JSON_TYPE_PROPERTY_NAME);

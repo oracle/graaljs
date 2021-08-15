@@ -584,7 +584,7 @@ public abstract class Environment {
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped) {
         for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
-            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal())) {
+            if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isParam() && !symbol.isGlobal() && !symbol.isArguments())) {
                 addFrameSlotFromSymbol(symbol);
             }
         }
@@ -844,7 +844,7 @@ public abstract class Environment {
             }
 
             if (!required) {
-                return factory.createReadProperty(context, factory.createGlobalObject(context), name);
+                return factory.createReadProperty(context, factory.createGlobalObject(), name);
             }
 
             return factory.createReadGlobalProperty(context, name);
@@ -852,7 +852,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createWriteProperty(factory.createGlobalObject(context), name, rhs, context, isStrictMode(), isGlobal(), required);
+            return factory.createWriteProperty(factory.createGlobalObject(), name, rhs, context, isStrictMode(), isGlobal(), required);
         }
 
         @Override
@@ -873,7 +873,7 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createDeleteNode() {
             JavaScriptNode element = factory.createConstantString(name);
-            JavaScriptNode object = factory.createGlobalObject(context);
+            JavaScriptNode object = factory.createGlobalObject();
             return factory.createDeleteProperty(object, element, isStrictMode(), context);
         }
 

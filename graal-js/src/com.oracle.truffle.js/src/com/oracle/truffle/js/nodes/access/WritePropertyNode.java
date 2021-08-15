@@ -352,7 +352,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
 
     private void unresolvablePropertyInStrictMode(Object thisObj) {
         referenceErrorBranch.enter();
-        assert !cache.isGlobal() || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == cache.getContext().getRealm().getGlobalObject());
+        assert !cache.isGlobal() || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == getRealm().getGlobalObject());
         throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
     }
 

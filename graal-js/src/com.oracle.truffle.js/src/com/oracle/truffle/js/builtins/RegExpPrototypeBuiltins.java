@@ -234,7 +234,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String pattern;
             String flags;
 
-            if (getContext().getRealm() != JSRegExp.getRealm(thisRegExp)) {
+            if (getRealm() != JSRegExp.getRealm(thisRegExp)) {
                 throw Errors.createTypeError("RegExp.prototype.compile cannot be used on a RegExp from a different Realm.");
             }
             if (!JSRegExp.getLegacyFeaturesEnabled(thisRegExp)) {
@@ -342,7 +342,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 this.setInputNode = insert(PropertySetNode.create(JSRegExp.INPUT, false, getContext(), false));
             }
             Object[] matches = resultMaterializer.materializeFull(result, groupCount, inputStr);
-            DynamicObject array = JSArray.createConstant(getContext(), matches);
+            DynamicObject array = JSArray.createConstant(getContext(), getRealm(), matches);
             setIndexNode.setValueInt(array, resultAccessor.captureGroupStart(result, 0));
             setInputNode.setValue(array, inputStr);
             return array;
@@ -593,10 +593,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String str = toString1(input);
             if (limit == 0) {
                 prematureReturnBranch.enter();
-                return JSArray.createEmptyZeroLength(getContext());
+                return JSArray.createEmptyZeroLength(getContext(), getRealm());
             }
             DynamicObject constructor = getSpeciesConstructor(rx);
-            if (constructor == getContext().getRealm().getRegExpConstructor() && isPristine(rx)) {
+            if (constructor == getRealm().getRegExpConstructor() && isPristine(rx)) {
                 return splitInternal(rx, str, limit);
             }
             return splitAccordingToSpec(rx, str, limit, constructor);
@@ -609,7 +609,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private DynamicObject getSpeciesConstructor(DynamicObject rx) {
-            DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor();
+            DynamicObject regexpConstructor = getRealm().getRegExpConstructor();
             return getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
         }
 
@@ -617,7 +617,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             String flags = toString2(getFlags(rx));
             boolean unicodeMatching = flags.indexOf('u') >= 0;
             DynamicObject splitter = (DynamicObject) getArraySpeciesConstructorNode().construct(constructor, rx, ensureSticky(flags));
-            DynamicObject array = JSArray.createEmptyZeroLength(getContext());
+            DynamicObject array = JSArray.createEmptyZeroLength(getContext(), getRealm());
             long lim;
             if (limitProfile.profile(limit == Undefined.instance)) {
                 lim = JSRuntime.MAX_SAFE_INTEGER_LONG;
@@ -680,12 +680,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             boolean unicodeMatching = flagsAccessor.unicode(tRegexFlags);
             DynamicObject splitter;
             if (stickyFlagSet.profile(flagsAccessor.sticky(tRegexFlags))) {
-                DynamicObject regexpConstructor = getContext().getRealm().getRegExpConstructor();
+                DynamicObject regexpConstructor = getRealm().getRegExpConstructor();
                 splitter = (DynamicObject) getArraySpeciesConstructorNode().construct(regexpConstructor, rx, removeStickyFlag(tRegexFlags));
             } else {
                 splitter = rx;
             }
-            DynamicObject array = JSArray.createEmptyZeroLength(getContext());
+            DynamicObject array = JSArray.createEmptyZeroLength(getContext(), getRealm());
             int size = str.length();
             int arrayLength = 0;
             int prevMatchEnd = 0;
@@ -733,8 +733,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                 }
             } while (fromIndex < size);
-            if (getContext().isOptionRegexpStaticResult() && matchStart >= 0) {
-                getContext().getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, str, matchStart, lastRegexResult);
+            if (getContext().isOptionRegexpStaticResult() && matchStart >= 0 && matchStart < size) {
+                getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, str, matchStart, lastRegexResult);
             }
             if (matchStart != matchEnd || prevMatchEnd < size) {
                 write(array, arrayLength, Boundaries.substring(str, prevMatchEnd, size));
@@ -743,8 +743,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private String removeStickyFlag(Object tRegexFlags) {
-            char[] flags = new char[5];
+            char[] flags = new char[6];
             int len = 0;
+            if (flagsAccessor.hasIndices(tRegexFlags)) {
+                flags[len++] = 'd';
+            }
             if (flagsAccessor.global(tRegexFlags)) {
                 flags[len++] = 'g';
             }
@@ -1038,7 +1041,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 }
             }
             if (getContext().isOptionRegexpStaticResult() && matchStart >= 0) {
-                getContext().getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, s, matchStart, lastRegexResult);
+                getRealm().setStaticRegexResult(getContext(), tRegexCompiledRegex, s, matchStart, lastRegexResult);
             }
             if (global || sticky) {
                 setLastIndex(rx, sticky ? lastMatchEnd : 0);
@@ -1217,7 +1220,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     namedCaptures = toObject(namedCaptures);
                 }
                 ReplaceStringParser.process(replaceString, (int) toLength(getLength(result)), namedCaptures != Undefined.instance, dollarProfile,
-                                new ReplaceStringConsumer(accumulatedResult, s, replaceString, position, position + matchLength, result, (DynamicObject) namedCaptures), this);
+                                new ReplaceStringConsumer(accumulatedResult, s, replaceString, position, Math.min(position + matchLength, s.length()), result, (DynamicObject) namedCaptures), this);
                 return position + matchLength;
             }
             return nextSourcePosition;
@@ -1442,7 +1445,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             } else {
                 boolean fullUnicode = getFlag(rx, getUnicodeNode);
                 setLastIndex(rx, 0);
-                DynamicObject array = JSArray.createEmptyZeroLength(getContext());
+                DynamicObject array = JSArray.createEmptyZeroLength(getContext(), getRealm());
                 int n = 0;
                 DynamicObject result;
                 String matchStr;
@@ -1535,7 +1538,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached("create()") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached("createBinaryProfile()") ConditionProfile indexInIntRangeProf) {
             String string = toStringNodeForInput.executeString(stringObj);
-            DynamicObject regExpConstructor = getContext().getRealm().getRegExpConstructor();
+            DynamicObject regExpConstructor = getRealm().getRegExpConstructor();
             DynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
             String flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
@@ -1734,7 +1737,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         boolean isRegExpPrototype(DynamicObject obj) {
-            return obj == getContext().getRealm().getRegExpPrototype();
+            return obj == getRealm().getRegExpPrototype();
         }
 
         public static CompiledRegexFlagPropertyAccessor create(JSContext context, JSBuiltin builtin, String flagName, JavaScriptNode[] args) {
@@ -1768,7 +1771,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         boolean isRegExpPrototype(DynamicObject obj) {
-            return obj == getContext().getRealm().getRegExpPrototype();
+            return obj == getRealm().getRegExpPrototype();
         }
 
         static CompiledRegexPatternAccessor create(JSContext context, JSBuiltin builtin, JavaScriptNode[] args) {

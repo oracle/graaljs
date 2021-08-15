@@ -130,10 +130,6 @@
     },
     "comment" : "GR-22846"
   }, {
-    "filePath" : "built-ins/Date/UTC/fp-evaluation-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "built-ins/Function/internals/Call/class-ctor-realm.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-05-27"
@@ -1765,112 +1761,12 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/every/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/every/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/filter/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/filter/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/find/BigInt/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/find/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/findIndex/BigInt/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "new test failures 2021-02-09"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/findIndex/predicate-may-detach-buffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/forEach/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/forEach/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduce/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduce/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduceRight/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/reduceRight/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/some/BigInt/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/some/callbackfn-detachbuffer.js",
-    "status" : "FAIL",
-    "comment" : "GR-27663"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/BigInt/key-is-numericindex-desc-configurable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/key-is-numericindex-desc-configurable.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/key-is-numericindex.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "intl402/Collator/constructor-options-throwing-getters.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
-    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
-    "status" : "FAIL",
-    "comment" : "new failures after 2020-03 update"
-  }, {
-    "filePath" : "intl402/ListFormat/constructor/constructor/options-getoptionsobject.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-05-27"
-  }, {
-    "filePath" : "intl402/NumberFormat/dft-currency-mnfd-range-check-mxfd.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
   }, {
     "filePath" : "intl402/RelativeTimeFormat/prototype/format/pl-pl-style-long.js",
     "status" : "FAIL",
@@ -1964,6 +1860,10 @@
     "status" : "FAIL",
     "comment" : "GR-27664"
   }, {
+    "filePath" : "intl402/supportedLocalesOf-unicode-extensions-ignored.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-07-08"
+  }, {
     "filePath" : "language/eval-code/direct/arrow-fn-body-cntns-arguments-func-decl-arrow-func-declare-arguments-assign-incl-def-param-arrow-arguments.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1988,21 +1888,21 @@
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-ident-nested-arrow-parameter-position.js",
+    "filePath" : "language/expressions/assignment/target-member-computed-reference-null.js",
     "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "comment" : "new failures 2021-07-08"
   }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-nested-arrow-parameter-position.js",
+    "filePath" : "language/expressions/assignment/target-member-computed-reference-undefined.js",
     "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "comment" : "new failures 2021-07-08"
   }, {
-    "filePath" : "language/expressions/async-arrow-function/await-as-param-rest-nested-arrow-parameter-position.js",
+    "filePath" : "language/expressions/assignment/target-super-computed-reference-null.js",
     "status" : "FAIL",
-    "comment" : "test262 update 2018-07-12"
+    "comment" : "new failures 2021-07-08"
   }, {
-    "filePath" : "language/expressions/async-arrow-function/early-errors-arrow-formals-lineterminator.js",
+    "filePath" : "language/expressions/assignment/target-super-identifier-reference-null.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
+    "comment" : "new failures 2021-07-08"
   }, {
     "filePath" : "language/expressions/class/accessor-name-inst-computed-yield-expr.js",
     "status" : "FAIL",
@@ -2012,9 +1912,17 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
   }, {
+    "filePath" : "language/expressions/delete/super-property-null-base.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-07-08"
+  }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2018-10-29)"
+  }, {
+    "filePath" : "language/module-code/eval-gtbndng-indirect-faux-assertion.js",
+    "status" : "FAIL",
+    "comment" : "Tries to redefine the assert property on the globalThis object, which is not allowed in this context"
   }, {
     "filePath" : "language/module-code/top-level-await/dfs-invariant.js",
     "status" : "FAIL",

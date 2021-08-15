@@ -43,6 +43,7 @@ package com.oracle.js.parser;
 
 import static com.oracle.js.parser.TokenType.ARROW;
 import static com.oracle.js.parser.TokenType.AS;
+import static com.oracle.js.parser.TokenType.ASSERT;
 import static com.oracle.js.parser.TokenType.ASSIGN;
 import static com.oracle.js.parser.TokenType.ASSIGN_INIT;
 import static com.oracle.js.parser.TokenType.ASYNC;
@@ -148,6 +149,7 @@ import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.LiteralNode.ArrayLiteralNode;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.NameSpaceImportNode;
 import com.oracle.js.parser.ir.NamedExportsNode;
 import com.oracle.js.parser.ir.NamedImportsNode;
@@ -272,6 +274,14 @@ public class Parser extends AbstractParser {
     private RecompilableScriptFunctionData reparsedFunction;
 
     private boolean isModule;
+
+    /**
+     * Used to pass (async) arrow function flags from head to body.
+     *
+     * Must be immediately consumed, i.e. before parsing the next expression, in order to avoid any
+     * nesting issues.
+     */
+    private ParserContextFunctionNode coverArrowFunction;
 
     public static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
     public static final boolean PROFILE_PARSING_PRINT = Options.getBooleanProperty("parser.profiling.print", true);
@@ -531,10 +541,11 @@ public class Parser extends AbstractParser {
             final ParserContextBlockNode body = newBlock(function.createBodyScope());
             functionDeclarations = new ArrayList<>();
             try {
-                sourceElements(0);
+                sourceElements(generator, async, 0);
                 addFunctionDeclarations(function);
             } finally {
                 functionDeclarations = null;
+                function.finishBodyScope();
                 restoreBlock(body);
                 lc.pop(function);
             }
@@ -665,6 +676,8 @@ public class Parser extends AbstractParser {
         if (parentFunction == null) {
             flags |= FunctionNode.IS_PROGRAM;
             flags |= FunctionNode.IS_ANONYMOUS;
+        } else {
+            lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
         }
 
         final Scope parentScope = lc.getCurrentScope();
@@ -718,7 +731,7 @@ public class Parser extends AbstractParser {
      *
      * @return Block statements.
      */
-    private Block getBlock(final boolean needsBraces) {
+    private Block getBlock(boolean yield, boolean await, boolean needsBraces) {
         final long blockToken = token;
         final ParserContextBlockNode newBlock = newBlock();
         try {
@@ -727,7 +740,7 @@ public class Parser extends AbstractParser {
                 expect(LBRACE);
             }
             // Accumulate block statements.
-            statementList();
+            statementList(yield, await);
 
         } finally {
             restoreBlock(newBlock);
@@ -752,11 +765,11 @@ public class Parser extends AbstractParser {
     /**
      * Get the statements in a case clause.
      */
-    private List<Statement> caseStatementList() {
+    private List<Statement> caseStatementList(boolean yield, boolean await) {
         // case clauses share the same scope.
         final ParserContextBlockNode newBlock = newBlock(lc.getCurrentScope());
         try {
-            statementList();
+            statementList(yield, await);
         } finally {
             lc.pop(newBlock);
         }
@@ -768,22 +781,22 @@ public class Parser extends AbstractParser {
      *
      * @return Statements.
      */
-    private Block getStatement() {
-        return getStatement(false, false);
+    private Block getStatement(boolean yield, boolean await) {
+        return getStatement(yield, await, false, false);
     }
 
-    private Block getStatement(boolean labelledStatement, boolean mayBeFunctionDeclaration) {
-        return getStatement(labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
+    private Block getStatement(boolean yield, boolean await, boolean labelledStatement, boolean mayBeFunctionDeclaration) {
+        return getStatement(yield, await, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
     }
 
-    private Block getStatement(boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean maybeLabeledFunctionDeclaration) {
+    private Block getStatement(boolean yield, boolean await, boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean mayBeLabeledFunctionDeclaration) {
         if (type == LBRACE) {
-            return getBlock(true);
+            return getBlock(yield, await, true);
         }
         // Set up new block. Captures first token.
         final ParserContextBlockNode newBlock = newBlock();
         try {
-            statement(false, 0, true, labelledStatement, mayBeFunctionDeclaration, maybeLabeledFunctionDeclaration);
+            statement(yield, await, false, 0, true, labelledStatement, mayBeFunctionDeclaration, mayBeLabeledFunctionDeclaration);
         } finally {
             restoreBlock(newBlock);
         }
@@ -1054,7 +1067,7 @@ public class Parser extends AbstractParser {
         final ParserContextBlockNode body = newBlock(topScope);
         functionDeclarations = new ArrayList<>();
         try {
-            sourceElements(parseFlags);
+            sourceElements(false, false, parseFlags);
             addFunctionDeclarations(script);
         } finally {
             functionDeclarations = null;
@@ -1076,7 +1089,7 @@ public class Parser extends AbstractParser {
         }
         // If parsing with arguments, create an artificial local scope to emulate
         // function-like semantics:
-        Scope body = Scope.createFunctionBody(scope, 0);
+        Scope body = Scope.createFunctionBody(scope);
         // We have to also explicitly put parameters in the top scope, because
         // ParserContextFunctionNode will not do it automatically for script nodes.
         for (String argument : argumentNames) {
@@ -1136,15 +1149,9 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * Parse the elements of the script or function.
-     *
-     * <pre>
-     * SourceElements :
-     *      SourceElement
-     *      SourceElements SourceElement
-     * </pre>
+     * Parse the statements of the script, module, or function.
      */
-    private void sourceElements(final int parseFlags) {
+    private void sourceElements(boolean yield, boolean await, int parseFlags) {
         boolean checkDirective = true;
         int functionFlags = parseFlags;
         final boolean oldStrictMode = isStrictMode;
@@ -1160,7 +1167,7 @@ public class Parser extends AbstractParser {
 
                 try {
                     // Get the next element.
-                    statement(true, functionFlags, false, false, true);
+                    statement(yield, await, true, functionFlags, false, false, true);
                     functionFlags = 0;
 
                     // Check for string directive prologues like "use strict".
@@ -1301,12 +1308,12 @@ public class Parser extends AbstractParser {
      *     GeneratorDeclaration
      * </pre>
      */
-    private void statement() {
-        statement(false, 0, false, false, false);
+    private void statement(boolean yield, boolean await) {
+        statement(yield, await, false, 0, false, false, false);
     }
 
-    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration) {
-        statement(topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
+    private void statement(boolean yield, boolean await, boolean topLevel, int reparseFlags, boolean singleStatement, boolean labelledStatement, boolean mayBeFunctionDeclaration) {
+        statement(yield, await, topLevel, reparseFlags, singleStatement, labelledStatement, mayBeFunctionDeclaration, mayBeFunctionDeclaration);
     }
 
     /**
@@ -1315,50 +1322,50 @@ public class Parser extends AbstractParser {
      *            functions or ES6 methods.
      * @param singleStatement are we in a single statement context?
      */
-    private void statement(final boolean topLevel, final int reparseFlags, final boolean singleStatement, final boolean labelledStatement, final boolean mayBeFunctionDeclaration,
-                    final boolean maybeLabeledFunctionDeclaration) {
+    private void statement(boolean yield, boolean await,
+                    boolean topLevel, int reparseFlags, boolean singleStatement, boolean labelledStatement, boolean mayBeFunctionDeclaration, boolean mayBeLabeledFunctionDeclaration) {
         switch (type) {
             case LBRACE:
-                block();
+                block(yield, await);
                 return;
             case VAR:
-                variableStatement(type);
+                variableStatement(type, yield, await);
                 return;
             case SEMICOLON:
                 emptyStatement();
                 return;
             case IF:
-                ifStatement();
+                ifStatement(yield, await);
                 return;
             case FOR:
-                forStatement();
+                forStatement(yield, await);
                 return;
             case WHILE:
-                whileStatement();
+                whileStatement(yield, await);
                 return;
             case DO:
-                doStatement();
+                doStatement(yield, await);
                 return;
             case CONTINUE:
-                continueStatement();
+                continueStatement(yield, await);
                 return;
             case BREAK:
-                breakStatement();
+                breakStatement(yield, await);
                 return;
             case RETURN:
-                returnStatement();
+                returnStatement(yield, await);
                 return;
             case WITH:
-                withStatement();
+                withStatement(yield, await);
                 return;
             case SWITCH:
-                switchStatement();
+                switchStatement(yield, await);
                 return;
             case THROW:
-                throwStatement();
+                throwStatement(yield, await);
                 return;
             case TRY:
-                tryStatement();
+                tryStatement(yield, await);
                 return;
             case DEBUGGER:
                 debuggerStatement();
@@ -1380,7 +1387,7 @@ public class Parser extends AbstractParser {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "function declaration"), token);
                     }
                 }
-                functionExpression(true, topLevel || labelledStatement, singleStatement);
+                functionDeclaration(true, topLevel || labelledStatement, singleStatement, yield, await, false);
                 return;
             case LET:
                 if (useBlockScope()) {
@@ -1394,7 +1401,7 @@ public class Parser extends AbstractParser {
                                 throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "let declaration"), token);
                             } // else break and call expressionStatement()
                         } else {
-                            variableStatement(type);
+                            variableStatement(type, yield, await);
                             return;
                         }
                     }
@@ -1405,10 +1412,10 @@ public class Parser extends AbstractParser {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "const declaration"), token);
                     }
-                    variableStatement(type);
+                    variableStatement(type, yield, await);
                     return;
                 } else if (env.constAsVar) {
-                    variableStatement(TokenType.VAR);
+                    variableStatement(TokenType.VAR, yield, await);
                     return;
                 }
                 break;
@@ -1417,7 +1424,7 @@ public class Parser extends AbstractParser {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "class declaration"), token);
                     }
-                    classDeclaration(inGeneratorFunction(), inAsyncFunction(), false);
+                    classDeclaration(yield, await, false);
                     return;
                 }
                 break;
@@ -1426,7 +1433,7 @@ public class Parser extends AbstractParser {
                     if (singleStatement) {
                         throw error(AbstractParser.message(MESSAGE_EXPECTED_STMT, "async function declaration"), token);
                     }
-                    asyncFunctionExpression(true, topLevel || labelledStatement);
+                    asyncFunctionDeclaration(true, topLevel || labelledStatement, yield, await, false);
                     return;
                 }
                 break;
@@ -1435,8 +1442,8 @@ public class Parser extends AbstractParser {
         }
 
         if (isBindingIdentifier()) {
-            if (T(k + 1) == COLON && (type != YIELD || !inGeneratorFunction()) && (!isAwait() || !inAsyncFunction())) {
-                labelStatement(maybeLabeledFunctionDeclaration);
+            if (T(k + 1) == COLON && (type != YIELD || !yield) && (!isAwait() || !await)) {
+                labelStatement(yield, await, mayBeLabeledFunctionDeclaration);
                 return;
             }
             if (reparseFlags != 0 && reparseFunctionStatement(reparseFlags)) {
@@ -1444,7 +1451,7 @@ public class Parser extends AbstractParser {
             }
         }
 
-        expressionStatement();
+        expressionStatement(yield, await);
     }
 
     private boolean reparseFunctionStatement(final int reparseFlags) {
@@ -2011,8 +2018,8 @@ public class Parser extends AbstractParser {
      *      { StatementList? }
      * </pre>
      */
-    private void block() {
-        appendStatement(new BlockStatement(line, getBlock(true)));
+    private void block(boolean yield, boolean await) {
+        appendStatement(new BlockStatement(line, getBlock(yield, await, true)));
     }
 
     /**
@@ -2024,7 +2031,7 @@ public class Parser extends AbstractParser {
      *      StatementList Statement
      * </pre>
      */
-    private void statementList() {
+    private void statementList(boolean yield, boolean await) {
         // Accumulate statements until end of the statement list.
         loop: while (type != EOF) {
             switch (type) {
@@ -2038,7 +2045,7 @@ public class Parser extends AbstractParser {
             }
 
             // Get next statement.
-            statement();
+            statement(yield, await);
         }
     }
 
@@ -2070,14 +2077,23 @@ public class Parser extends AbstractParser {
         }
         // It is a Syntax Error if this production has an [Await] parameter or if the goal symbol
         // of the syntactic grammar is Module and StringValue of Identifier is "await".
-        if (await || isModule) {
-            if (ident.isTokenType(AWAIT)) {
+        // If we are inside CoverCallExpressionAndAsyncArrowHead, record the token for later
+        // error handling: "await" is not a valid identifier iff it occurs inside AsyncArrowHead.
+        boolean awaitOrModule = await || isModule;
+        if (ident.isTokenType(AWAIT)) {
+            if (awaitOrModule) {
                 throw error(expectMessage(IDENT, ident.getToken()), ident.getToken());
-            } else if (isEscapedIdent(ident) && AWAIT.getName().equals(ident.getName())) {
+            } else {
+                recordYieldOrAwait(ident);
+            }
+        } else if (isEscapedIdent(ident) && AWAIT.getName().equals(ident.getName())) {
+            if (awaitOrModule) {
                 throw error(AbstractParser.message(MESSAGE_ESCAPED_KEYWORD, ident.getName()), ident.getToken());
             } else {
-                assert !AWAIT.getName().equals(ident.getName());
+                recordYieldOrAwait(ident);
             }
+        } else {
+            assert !AWAIT.getName().equals(ident.getName());
         }
     }
 
@@ -2158,8 +2174,8 @@ public class Parser extends AbstractParser {
      *      = AssignmentExpression
      * </pre>
      */
-    private void variableStatement(final TokenType varType) {
-        variableDeclarationList(varType, true, -1);
+    private void variableStatement(final TokenType varType, boolean yield, boolean await) {
+        variableDeclarationList(varType, true, yield, await, -1);
     }
 
     private static final class ForVariableDeclarationListResult {
@@ -2203,10 +2219,12 @@ public class Parser extends AbstractParser {
     }
 
     /**
-     * @param isStatement {@code true} if a VariableStatement, {@code false} if a {@code for} loop
-     *            VariableDeclarationList
+     * Parse VariableDeclarationList[In, Yield, Await].
+     *
+     * @param isStatement Same as In flag; {@code true} if a VariableStatement, {@code false} if a
+     *            {@code for} loop VariableDeclarationList
      */
-    private ForVariableDeclarationListResult variableDeclarationList(final TokenType varType, final boolean isStatement, final int sourceOrder) {
+    private ForVariableDeclarationListResult variableDeclarationList(TokenType varType, boolean isStatement, boolean yield, boolean await, int sourceOrder) {
         // VAR tested in caller.
         int varStart = Token.descPosition(token);
         assert varType == VAR || varType == LET || varType == CONST;
@@ -2227,7 +2245,7 @@ public class Parser extends AbstractParser {
             final long varToken = Token.recast(token, varType);
 
             // Get name of var.
-            final Expression binding = bindingIdentifierOrPattern(VARIABLE_NAME_CONTEXT);
+            final Expression binding = bindingIdentifierOrPattern(yield, await, VARIABLE_NAME_CONTEXT);
             final boolean isDestructuring = !(binding instanceof IdentNode);
             if (isDestructuring) {
                 final int finalVarFlags = varFlags | VarNode.IS_DESTRUCTURING;
@@ -2261,7 +2279,7 @@ public class Parser extends AbstractParser {
                     pushDefaultName(binding);
                 }
                 try {
-                    init = assignmentExpression(isStatement);
+                    init = assignmentExpression(isStatement, yield, await);
                 } finally {
                     if (!isDestructuring) {
                         popDefaultName();
@@ -2332,7 +2350,8 @@ public class Parser extends AbstractParser {
             int symbolFlags = varNode.getSymbolFlags() |
                             (scope.isSwitchBlockScope() ? Symbol.IS_DECLARED_IN_SWITCH_BLOCK : 0) |
                             (varNode.isFunctionDeclaration() ? Symbol.IS_BLOCK_FUNCTION_DECLARATION : 0);
-            scope.putSymbol(new Symbol(name, symbolFlags));
+            Symbol existing = scope.putSymbol(new Symbol(name, symbolFlags));
+            assert existing == null || (existing.isBlockFunctionDeclaration() && varNode.isFunctionDeclaration()) : existing;
 
             if (varNode.isFunctionDeclaration() && isAnnexB()) {
                 // B.3.3 Block-Level Function Declaration hoisting
@@ -2426,8 +2445,8 @@ public class Parser extends AbstractParser {
         return identifier(yield, await, "IdentifierReference", false);
     }
 
-    private IdentNode labelIdentifier() {
-        return identifier(inGeneratorFunction(), inAsyncFunction(), "LabelIdentifier", false);
+    private IdentNode labelIdentifier(boolean yield, boolean await) {
+        return identifier(yield, await, "LabelIdentifier", false);
     }
 
     private boolean isBindingIdentifier() {
@@ -2454,10 +2473,6 @@ public class Parser extends AbstractParser {
         } else {
             return bindingPattern(yield, await);
         }
-    }
-
-    private Expression bindingIdentifierOrPattern(String contextString) {
-        return bindingIdentifierOrPattern(inGeneratorFunction(), inAsyncFunction(), contextString);
     }
 
     private abstract class VerifyDestructuringPatternNodeVisitor extends NodeVisitor<LexicalContext> {
@@ -2596,13 +2611,13 @@ public class Parser extends AbstractParser {
      *
      * Parse an expression used in a statement block.
      */
-    private void expressionStatement() {
+    private void expressionStatement(boolean yield, boolean await) {
         // Lookahead checked in caller.
         final int expressionLine = line;
         final long expressionToken = token;
 
         // Get expression and add as statement.
-        final Expression expression = expression();
+        final Expression expression = expression(yield, await);
 
         if (expression != null) {
             endOfLine();
@@ -2623,7 +2638,7 @@ public class Parser extends AbstractParser {
      *      if ( Expression ) Statement
      * </pre>
      */
-    private void ifStatement() {
+    private void ifStatement(boolean yield, boolean await) {
         // Capture IF token.
         final int ifLine = line;
         final long ifToken = token;
@@ -2631,14 +2646,14 @@ public class Parser extends AbstractParser {
         next();
 
         expect(LPAREN);
-        final Expression test = expression();
+        final Expression test = expression(yield, await);
         expect(RPAREN);
-        final Block pass = getStatement(false, true, false);
+        final Block pass = getStatement(yield, await, false, true, false);
 
         Block fail = null;
         if (type == ELSE) {
             next();
-            fail = getStatement(false, true, false);
+            fail = getStatement(yield, await, false, true, false);
         }
 
         appendStatement(new IfNode(ifLine, ifToken, fail != null ? fail.getFinish() : pass.getFinish(), test, pass, fail));
@@ -2647,7 +2662,7 @@ public class Parser extends AbstractParser {
     /**
      * Parse a {@code for} IterationStatement.
      */
-    private void forStatement() {
+    private void forStatement(boolean yield, boolean await) {
         final long forToken = token;
         final int forLine = line;
         // start position of this for statement. This is used
@@ -2684,7 +2699,7 @@ public class Parser extends AbstractParser {
                 flags |= ForNode.IS_FOR_EACH;
                 next();
             } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
-                if (!inAsyncFunction()) {
+                if (!await) {
                     throw error(AbstractParser.message("invalid.for.await.of"), token);
                 }
                 isForAwaitOf = true;
@@ -2698,7 +2713,7 @@ public class Parser extends AbstractParser {
                 case VAR:
                     // Var declaration captured in for outer block.
                     varType = type;
-                    varDeclList = variableDeclarationList(varType, false, forStart);
+                    varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                     break;
                 case SEMICOLON:
                     break;
@@ -2706,7 +2721,7 @@ public class Parser extends AbstractParser {
                     if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration() || type == CONST)) {
                         // LET/CONST declaration captured in container block created above.
                         varType = type;
-                        varDeclList = variableDeclarationList(varType, false, forStart);
+                        varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                         if (varType == LET) {
                             // Per-iteration scope not needed if BindingPattern is empty
                             if (!forNode.getStatements().isEmpty()) {
@@ -2718,13 +2733,13 @@ public class Parser extends AbstractParser {
                     if (env.constAsVar && type == CONST) {
                         // Var declaration captured in for outer block.
                         varType = TokenType.VAR;
-                        varDeclList = variableDeclarationList(varType, false, forStart);
+                        varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
                         break;
                     }
 
                     initStartsWithLet = (type == LET);
                     initStartsWithAsyncOf = (type == ASYNC && !isForAwaitOf && lookaheadIsOf());
-                    init = expression(false, inGeneratorFunction(), inAsyncFunction(), true);
+                    init = expression(false, yield, await, true);
                     break;
             }
 
@@ -2756,11 +2771,11 @@ public class Parser extends AbstractParser {
 
                     expect(SEMICOLON);
                     if (type != SEMICOLON) {
-                        test = joinPredecessorExpression();
+                        test = joinPredecessorExpression(yield, await);
                     }
                     expect(SEMICOLON);
                     if (type != RPAREN) {
-                        modify = joinPredecessorExpression();
+                        modify = joinPredecessorExpression(yield, await);
                     }
                     break;
 
@@ -2812,7 +2827,7 @@ public class Parser extends AbstractParser {
                     next();
 
                     // For-of only allows AssignmentExpression.
-                    modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true)) : joinPredecessorExpression();
+                    modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true, yield, await)) : joinPredecessorExpression(yield, await);
                     break;
 
                 default:
@@ -2823,7 +2838,7 @@ public class Parser extends AbstractParser {
             expect(RPAREN);
 
             // Set the for body.
-            body = getStatement();
+            body = getStatement(yield, await);
         } finally {
             lc.pop(forNode);
 
@@ -2915,7 +2930,7 @@ public class Parser extends AbstractParser {
     /**
      * Parse a {@code while} IterationStatement.
      */
-    private void whileStatement() {
+    private void whileStatement(boolean yield, boolean await) {
         // Capture WHILE token.
         final long whileToken = token;
         final int whileLine = line;
@@ -2930,9 +2945,9 @@ public class Parser extends AbstractParser {
 
         try {
             expect(LPAREN);
-            test = joinPredecessorExpression();
+            test = joinPredecessorExpression(yield, await);
             expect(RPAREN);
-            body = getStatement();
+            body = getStatement(yield, await);
         } finally {
             lc.pop(whileNode);
         }
@@ -2945,7 +2960,7 @@ public class Parser extends AbstractParser {
     /**
      * Parse a {@code do while} IterationStatement.
      */
-    private void doStatement() {
+    private void doStatement(boolean yield, boolean await) {
         // Capture DO token.
         final long doToken = token;
         int doLine = 0;
@@ -2960,12 +2975,12 @@ public class Parser extends AbstractParser {
 
         try {
             // Get DO body.
-            body = getStatement();
+            body = getStatement(yield, await);
 
             expect(WHILE);
             expect(LPAREN);
             doLine = line;
-            test = joinPredecessorExpression();
+            test = joinPredecessorExpression(yield, await);
             expect(RPAREN);
 
             if (type == SEMICOLON) {
@@ -2987,7 +3002,7 @@ public class Parser extends AbstractParser {
      *      continue [no LineTerminator here] LabelIdentifier ;
      * </pre>
      */
-    private void continueStatement() {
+    private void continueStatement(boolean yield, boolean await) {
         // Capture CONTINUE token.
         final int continueLine = line;
         final long continueToken = token;
@@ -3012,7 +3027,7 @@ public class Parser extends AbstractParser {
                 if (seenEOL) {
                     break;
                 }
-                final IdentNode ident = labelIdentifier();
+                final IdentNode ident = labelIdentifier(yield, await);
                 labelNode = lc.findLabel(ident.getName());
 
                 if (labelNode == null) {
@@ -3044,7 +3059,7 @@ public class Parser extends AbstractParser {
      *      break [no LineTerminator here] LabelIdentifier ;
      * </pre>
      */
-    private void breakStatement() {
+    private void breakStatement(boolean yield, boolean await) {
         // Capture BREAK token.
         final int breakLine = line;
         final long breakToken = token;
@@ -3069,7 +3084,7 @@ public class Parser extends AbstractParser {
                 if (seenEOL) {
                     break;
                 }
-                final IdentNode ident = labelIdentifier();
+                final IdentNode ident = labelIdentifier(yield, await);
                 labelNode = lc.findLabel(ident.getName());
 
                 if (labelNode == null) {
@@ -3102,7 +3117,7 @@ public class Parser extends AbstractParser {
      *      return [no LineTerminator here] Expression ;
      * </pre>
      */
-    private void returnStatement() {
+    private void returnStatement(boolean yield, boolean await) {
         // check for return outside function
         if (lc.getCurrentFunction().isScriptOrModule()) {
             throw error(AbstractParser.message("invalid.return"));
@@ -3132,7 +3147,7 @@ public class Parser extends AbstractParser {
                 if (seenEOL) {
                     break;
                 }
-                expression = expression();
+                expression = expression(yield, await);
                 break;
         }
 
@@ -3153,11 +3168,14 @@ public class Parser extends AbstractParser {
      * </pre>
      */
     private Expression yieldExpression(boolean in, boolean await) {
-        assert inGeneratorFunction() && isES6();
+        assert isES6();
         // Capture YIELD token.
         long yieldToken = token;
         // YIELD tested in caller.
         assert type == YIELD;
+
+        recordYieldOrAwait();
+
         nextOrEOL();
 
         Expression expression = null;
@@ -3199,14 +3217,17 @@ public class Parser extends AbstractParser {
     }
 
     private Expression awaitExpression(boolean yield) {
-        assert inAsyncFunction();
+        assert isAwait();
         // Capture await token.
         long awaitToken = token;
+
+        recordYieldOrAwait();
+
         nextOrEOL();
 
         Expression expression = unaryExpression(yield, true);
 
-        if (lc.getCurrentFunction().isModule()) {
+        if (isModule && lc.getCurrentFunction().isModule()) {
             // Top-level await module: mark the body of the module as async.
             lc.getCurrentFunction().setFlag(FunctionNode.IS_ASYNC);
         }
@@ -3218,6 +3239,39 @@ public class Parser extends AbstractParser {
         return new UnaryNode(Token.recast(token, VOID), LiteralNode.newInstance(token, finish, 0));
     }
 
+    private void recordYieldOrAwait() {
+        long yieldOrAwaitToken = token;
+        assert Token.descType(yieldOrAwaitToken) == YIELD || Token.descType(yieldOrAwaitToken) == AWAIT;
+        recordYieldOrAwait(yieldOrAwaitToken, false);
+    }
+
+    private void recordYieldOrAwait(IdentNode ident) {
+        recordYieldOrAwait(ident.getToken(), true);
+    }
+
+    /**
+     * It is an early SyntaxError if arrow parameter list contains yield or await. We cannot detect
+     * this immediately due to grammar ambiguity, so we only record the potential error to be thrown
+     * later once the ambiguity is resolved.
+     */
+    private void recordYieldOrAwait(long yieldOrAwaitToken, boolean ident) {
+        for (Iterator<ParserContextFunctionNode> iterator = lc.getFunctions(); iterator.hasNext();) {
+            ParserContextFunctionNode fn = iterator.next();
+            if (fn.isCoverArrowHead()) {
+                if (ident && !fn.isAsync()) {
+                    // await identifiers are only relevant for async arrow heads
+                    continue;
+                }
+                // Only record the first yield or await.
+                if (fn.getYieldOrAwaitInParameters() == 0L) {
+                    fn.setYieldOrAwaitInParameters(yieldOrAwaitToken);
+                }
+            } else {
+                break;
+            }
+        }
+    }
+
     /**
      * Parse with statement.
      *
@@ -3226,7 +3280,7 @@ public class Parser extends AbstractParser {
      *      with ( Expression ) Statement
      * </pre>
      */
-    private void withStatement() {
+    private void withStatement(boolean yield, boolean await) {
         // Capture WITH token.
         final int withLine = line;
         final long withToken = token;
@@ -3239,9 +3293,9 @@ public class Parser extends AbstractParser {
         }
 
         expect(LPAREN);
-        final Expression expression = expression();
+        final Expression expression = expression(yield, await);
         expect(RPAREN);
-        final Block body = getStatement();
+        final Block body = getStatement(yield, await);
 
         appendStatement(new WithNode(withLine, withToken, finish, expression, body));
     }
@@ -3268,7 +3322,7 @@ public class Parser extends AbstractParser {
      *      default : StatementList?
      * </pre>
      */
-    private void switchStatement() {
+    private void switchStatement(boolean yield, boolean await) {
         final int switchLine = line;
         final long switchToken = token;
 
@@ -3294,7 +3348,7 @@ public class Parser extends AbstractParser {
         try {
             expect(LPAREN);
             int expressionLine = line;
-            Expression expression = expression();
+            Expression expression = expression(yield, await);
             expect(RPAREN);
 
             expect(LBRACE);
@@ -3319,7 +3373,7 @@ public class Parser extends AbstractParser {
                 switch (type) {
                     case CASE:
                         next();
-                        caseExpression = expression();
+                        caseExpression = expression(yield, await);
                         break;
 
                     case DEFAULT:
@@ -3338,7 +3392,7 @@ public class Parser extends AbstractParser {
                 expect(COLON);
 
                 // Get CASE body.
-                List<Statement> statements = caseStatementList();
+                List<Statement> statements = caseStatementList(yield, await);
                 final CaseNode caseNode = new CaseNode(caseToken, finish, caseExpression, statements);
 
                 if (caseExpression == null) {
@@ -3378,11 +3432,11 @@ public class Parser extends AbstractParser {
      *      Identifier : Statement
      * </pre>
      */
-    private void labelStatement(final boolean mayBeFunctionDeclaration) {
+    private void labelStatement(boolean yield, boolean await, boolean mayBeFunctionDeclaration) {
         // Capture label token.
         final long labelToken = token;
         // Get label ident.
-        final IdentNode ident = labelIdentifier();
+        final IdentNode ident = labelIdentifier(yield, await);
 
         expect(COLON);
 
@@ -3394,7 +3448,7 @@ public class Parser extends AbstractParser {
         Block body = null;
         try {
             lc.push(labelNode);
-            body = getStatement(true, mayBeFunctionDeclaration);
+            body = getStatement(yield, await, true, mayBeFunctionDeclaration);
         } finally {
             lc.pop(labelNode);
         }
@@ -3412,7 +3466,7 @@ public class Parser extends AbstractParser {
      * }
      * </pre>
      */
-    private void throwStatement() {
+    private void throwStatement(boolean yield, boolean await) {
         // Capture THROW token.
         final int throwLine = line;
         final long throwToken = token;
@@ -3429,7 +3483,7 @@ public class Parser extends AbstractParser {
                 break;
 
             default:
-                expression = expression();
+                expression = expression(yield, await);
                 break;
         }
 
@@ -3459,7 +3513,7 @@ public class Parser extends AbstractParser {
      *      finally Block
      * </pre>
      */
-    private void tryStatement() {
+    private void tryStatement(boolean yield, boolean await) {
         // Capture TRY token.
         final int tryLine = line;
         final long tryToken = token;
@@ -3472,7 +3526,7 @@ public class Parser extends AbstractParser {
         // Create try.
 
         try {
-            final Block tryBody = getBlock(true);
+            final Block tryBody = getBlock(yield, await, true);
             final ArrayList<Block> catchBlocks = new ArrayList<>();
 
             while (type == CATCH) {
@@ -3481,13 +3535,13 @@ public class Parser extends AbstractParser {
                 next();
 
                 if (type == LBRACE && ES2019_OPTIONAL_CATCH_BINDING) {
-                    catchBlocks.add(catchBlock(catchToken, catchLine, null, null, null));
+                    catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, null, null, null));
                     break;
                 }
 
                 expect(LPAREN);
 
-                final Expression catchParameter = bindingIdentifierOrPattern(CATCH_PARAMETER_CONTEXT);
+                final Expression catchParameter = bindingIdentifierOrPattern(yield, await, CATCH_PARAMETER_CONTEXT);
                 final IdentNode exception;
                 final Expression pattern;
                 if (catchParameter instanceof IdentNode) {
@@ -3505,14 +3559,14 @@ public class Parser extends AbstractParser {
                 if (env.syntaxExtensions && type == IF) {
                     next();
                     // Get the exception condition.
-                    ifExpression = expression();
+                    ifExpression = expression(yield, await);
                 } else {
                     ifExpression = null;
                 }
 
                 expect(RPAREN);
 
-                catchBlocks.add(catchBlock(catchToken, catchLine, exception, pattern, ifExpression));
+                catchBlocks.add(catchBlock(yield, await, catchToken, catchLine, exception, pattern, ifExpression));
 
                 // If unconditional catch then should to be the end.
                 if (ifExpression == null) {
@@ -3525,7 +3579,7 @@ public class Parser extends AbstractParser {
 
             if (type == FINALLY) {
                 next();
-                finallyStatements = getBlock(true);
+                finallyStatements = getBlock(yield, await, true);
             }
 
             // Need at least one catch or a finally.
@@ -3544,8 +3598,8 @@ public class Parser extends AbstractParser {
         appendStatement(new BlockStatement(startLine, new Block(tryToken, finish, outer.getFlags() | Block.IS_SYNTHETIC, outer.getScope(), outer.getStatements())));
     }
 
-    private Block catchBlock(final long catchToken, final int catchLine, final IdentNode exception, final Expression pattern, final Expression ifExpression) {
-        final ParserContextBlockNode catchBlock = newBlock(Scope.createCatch(lc.getCurrentScope()));
+    private Block catchBlock(boolean yield, boolean await, long catchToken, int catchLine, IdentNode exception, Expression pattern, Expression ifExpression) {
+        final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
         try {
             if (exception != null) {
                 VarNode exceptionVar = new VarNode(catchLine, Token.recast(exception.getToken(), LET), exception.getFinish(), exception.setIsDeclaredHere(), null, VarNode.IS_LET);
@@ -3566,7 +3620,7 @@ public class Parser extends AbstractParser {
             }
 
             // Get CATCH body.
-            final Block catchBody = getBlock(true);
+            final Block catchBody = getBlock(yield, await, true);
             final CatchNode catchNode = new CatchNode(catchLine, catchToken, finish, exception, pattern, ifExpression, catchBody, false);
             appendStatement(catchNode);
         } finally {
@@ -3700,7 +3754,7 @@ public class Parser extends AbstractParser {
         // Skip beginning of edit string expression.
         expect(LBRACE);
         // Add the following expression to arguments.
-        final List<Expression> arguments = Collections.singletonList(expression());
+        final List<Expression> arguments = Collections.singletonList(expression(false, false));
         // Skip ending of edit string expression.
         expect(RBRACE);
 
@@ -4318,23 +4372,14 @@ public class Parser extends AbstractParser {
         Expression lhs = memberExpression(yield, await);
 
         if (type == LPAREN) {
-            boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC);
-            final List<Expression> arguments = argumentList(yield, await, async);
+            boolean async = ES8_ASYNC_FUNCTION && isES2017() && lhs.isTokenType(ASYNC) && lookbehindNoLineTerminatorAfterAsync();
+            final List<Expression> arguments = argumentList(yield, await, async, callToken, callLine);
 
             if (async) {
-                if (type == ARROW && checkNoLineTerminator()) {
+                if (type == ARROW && lookbehindNoLineTerminatorBeforeArrow()) {
                     // async () => ...
                     // async ( ArgumentsList ) => ...
-                    return new ExpressionList(callToken, callLine, optimizeList(arguments));
-                } else {
-                    // invocation of a function named 'async'
-                    for (Expression argument : arguments) {
-                        if (hasCoverInitializedName(argument)) {
-                            // would be thrown by assignmentExpression() if we knew that
-                            // we are parsing arguments (and not arrow parameter list)
-                            throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
-                        }
-                    }
+                    return new ExpressionList(callToken, callLine, arguments);
                 }
             }
 
@@ -4570,7 +4615,7 @@ public class Parser extends AbstractParser {
 
             case FUNCTION:
                 // Get function expression.
-                lhs = functionExpression(false, false);
+                lhs = functionExpression();
                 break;
 
             case CLASS:
@@ -4614,7 +4659,7 @@ public class Parser extends AbstractParser {
 
             case ASYNC:
                 if (isAsync() && lookaheadIsAsyncFunction()) {
-                    lhs = asyncFunctionExpression(false, false);
+                    lhs = asyncFunctionExpression();
                     break;
                 }
                 // fall through
@@ -4693,6 +4738,15 @@ public class Parser extends AbstractParser {
         return lhs;
     }
 
+    /**
+     * Parse import expression
+     *
+     * <pre>
+     * ImportCall:
+     *     import ( AssignmentExpression ,opt )
+     *     import ( AssignmentExpression, AssignmentExpression ,opt )
+     * </pre>
+     */
     private Expression importExpression(boolean yield, boolean await) {
         final long importToken = token;
         final int importLine = line;
@@ -4714,22 +4768,32 @@ public class Parser extends AbstractParser {
             }
         } else if (type == LPAREN) {
             next();
-            Expression argument = assignmentExpression(true, yield, await);
+            ArrayList<Expression> arguments = new ArrayList<>();
+            arguments.add(assignmentExpression(true, yield, await));
+            if (env.importAssertions && type == COMMARIGHT) {
+                next();
+                if (type != RPAREN) {
+                    arguments.add(assignmentExpression(true, yield, await));
+                    if (type == COMMARIGHT) {
+                        next();
+                    }
+                }
+            }
             expect(RPAREN);
 
             IdentNode importIdent = new IdentNode(importToken, Token.descPosition(importToken) + Token.descLength(importToken), IMPORT.getName());
-            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, Collections.singletonList(argument));
+            return CallNode.forImport(importLine, importToken, importStart, finish, importIdent, optimizeList(arguments));
         } else {
             throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, IMPORT.getName()), importToken);
         }
     }
 
     private ArrayList<Expression> argumentList(boolean yield, boolean await) {
-        return argumentList(yield, await, false);
+        return argumentList(yield, await, false, 0L, 0);
     }
 
     /**
-     * Parse function call arguments.
+     * Parse function call arguments. Also used to parse CoverCallExpressionAndAsyncArrowHead.
      *
      * <pre>
      * {@code
@@ -4747,42 +4811,76 @@ public class Parser extends AbstractParser {
      *
      * @return Argument list.
      */
-    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean inPatternPosition) {
-        // Prepare to accumulate list of arguments.
-        final ArrayList<Expression> nodeList = new ArrayList<>();
+    private ArrayList<Expression> argumentList(boolean yield, boolean await, boolean coverAsyncArrow, long startToken, int startLine) {
         // LPAREN tested in caller.
+        assert type == LPAREN;
         next();
 
+        final boolean inPatternPosition = coverAsyncArrow;
+        // Prepare to accumulate list of arguments.
+        final ArrayList<Expression> nodeList = new ArrayList<>();
         // Track commas.
         boolean first = true;
+        boolean hasCoverInitializedName = false;
 
-        while (type != RPAREN) {
-            // Comma prior to every argument except the first.
-            if (!first) {
-                expect(COMMARIGHT);
-                // Trailing comma.
-                if (ES8_TRAILING_COMMA && isES2017() && type == RPAREN) {
-                    break;
+        ParserContextFunctionNode cover = coverAsyncArrow ? createParserContextArrowFunctionNode(startToken, startLine, true, true) : null;
+        if (coverAsyncArrow) {
+            lc.push(cover);
+        }
+
+        try {
+            while (type != RPAREN) {
+                // Comma prior to every argument except the first.
+                if (!first) {
+                    expect(COMMARIGHT);
+                    // Trailing comma.
+                    if (ES8_TRAILING_COMMA && isES2017() && type == RPAREN) {
+                        break;
+                    }
+                } else {
+                    first = false;
                 }
-            } else {
-                first = false;
-            }
 
-            long spreadToken = 0;
-            if (ES6_SPREAD_ARGUMENT && type == ELLIPSIS && isES6()) {
-                spreadToken = token;
-                next();
-            }
+                long spreadToken = 0;
+                if (ES6_SPREAD_ARGUMENT && type == ELLIPSIS && isES6()) {
+                    spreadToken = token;
+                    next();
+                }
 
-            // Get argument expression.
-            Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
-            if (spreadToken != 0) {
-                expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
+                // Get argument expression.
+                Expression expression = assignmentExpression(true, yield, await, inPatternPosition);
+
+                hasCoverInitializedName = inPatternPosition && (hasCoverInitializedName || hasCoverInitializedName(expression));
+                assert inPatternPosition || !hasCoverInitializedName(expression);
+
+                if (spreadToken != 0) {
+                    expression = new UnaryNode(Token.recast(spreadToken, TokenType.SPREAD_ARGUMENT), expression);
+                }
+
+                nodeList.add(expression);
             }
-            nodeList.add(expression);
+        } finally {
+            if (coverAsyncArrow) {
+                lc.pop(cover);
+            }
         }
 
         expect(RPAREN);
+
+        if (coverAsyncArrow) {
+            if (type == ARROW && lookbehindNoLineTerminatorBeforeArrow()) {
+                commitArrowHead(cover);
+            } else {
+                // invocation of a function named 'async'
+                if (hasCoverInitializedName) {
+                    // would be thrown by assignmentExpression() if we knew that
+                    // we are parsing arguments (and not arrow parameter list)
+                    throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
+                }
+                revertArrowHead(cover);
+            }
+        }
+
         return nodeList;
     }
 
@@ -4813,45 +4911,63 @@ public class Parser extends AbstractParser {
         }
     }
 
-    /**
-     * <pre>
-     * AsyncFunctionExpression :
-     *     async [no LineTerminator here] function ( FormalParameters[Await] ) { AsyncFunctionBody }
-     *     async [no LineTerminator here] function BindingIdentifier[Await] ( FormalParameters[Await] ) { AsyncFunctionBody }
-     * </pre>
-     */
-    private Expression asyncFunctionExpression(final boolean isStatement, final boolean topLevel) {
+    private long expectAsyncFunction() {
         assert isAsync() && lookaheadIsAsyncFunction();
         long asyncToken = token;
         nextOrEOL();
-        return functionExpression(isStatement, topLevel, true, Token.recast(asyncToken, FUNCTION), false);
-    }
-
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel) {
-        return functionExpression(isStatement, topLevel, false, token, false);
-    }
-
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean expressionStatement) {
-        return functionExpression(isStatement, topLevel, false, token, expressionStatement);
+        return Token.recast(asyncToken, FUNCTION);
     }
 
     /**
-     * Parse function declaration.
+     * Parse async (generator) function declaration.
+     */
+    private Expression asyncFunctionDeclaration(final boolean isStatement, final boolean topLevel, boolean yield, boolean await, boolean isDefault) {
+        long functionToken = expectAsyncFunction();
+        return functionDeclarationOrExpression(functionToken, isStatement, topLevel, true, false, true, yield, await, isDefault);
+    }
+
+    /**
+     * Parse async (generator) function expression.
+     */
+    private Expression asyncFunctionExpression() {
+        long functionToken = expectAsyncFunction();
+        return functionDeclarationOrExpression(functionToken, false, false, true, false, false, false, true, true);
+    }
+
+    /**
+     * Parse (generator) function declaration.
+     */
+    private Expression functionDeclaration(final boolean isStatement, final boolean topLevel, final boolean expressionStatement, boolean yield, boolean await, boolean isDefault) {
+        return functionDeclarationOrExpression(token, isStatement, topLevel, false, expressionStatement, true, yield, await, isDefault);
+    }
+
+    /**
+     * Parse (generator) function expression.
+     */
+    private Expression functionExpression() {
+        return functionDeclarationOrExpression(token, false, false, false, false, false, false, false, true);
+    }
+
+    /**
+     * Parse (async) (generator) function declaration or expression.
      *
      * <pre>
-     * FunctionDeclaration :
+     * FunctionDeclaration[Yield, Await] :
      *      function Identifier ( FormalParameterList? ) { FunctionBody }
      *
      * FunctionExpression :
      *      function Identifier? ( FormalParameterList? ) { FunctionBody }
      * </pre>
      *
-     *
      * @param isStatement true if parsing in a statement context.
-     *
-     * @return Expression node.
+     * @param isDeclaration True if parsing a declaration, false if parsing an expression.
+     * @param isYield Yield if parsing a declaration, otherwise ignored.
+     * @param isAwait Await if parsing a declaration, otherwise ignored.
+     * @param isDefault Default if parsing a declaration, otherwise ignored.
+     * @return the function.
      */
-    private Expression functionExpression(final boolean isStatement, final boolean topLevel, final boolean async, final long functionToken, final boolean expressionStatement) {
+    private Expression functionDeclarationOrExpression(long functionToken, boolean isStatement, boolean topLevel, boolean async,
+                    boolean expressionStatement, boolean isDeclaration, boolean isYield, boolean isAwait, boolean isDefault) {
         final int functionLine = line;
         // FUNCTION is tested in caller.
         assert type == FUNCTION;
@@ -4869,10 +4985,10 @@ public class Parser extends AbstractParser {
         IdentNode name = null;
 
         if (isBindingIdentifier()) {
-            boolean yield = (!isStatement && generator) || (isStatement && inGeneratorFunction());
-            boolean await = (!isStatement && async) || (isStatement && inAsyncFunction());
+            boolean yield = (!isDeclaration && generator) || (isDeclaration && isYield);
+            boolean await = (!isDeclaration && async) || (isDeclaration && isAwait);
             name = bindingIdentifier(yield, await, "function name");
-        } else if (isStatement) {
+        } else if (isDeclaration && !isDefault) {
             // Nashorn extension: anonymous function statements.
             // Do not allow anonymous function statement if extensions
             // are not allowed. But if we are reparsing then anon function
@@ -5224,6 +5340,8 @@ public class Parser extends AbstractParser {
      * @return function node (body.)
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
+        final boolean yield = functionNode.isGenerator();
+        final boolean await = functionNode.isAsync() || (isTopLevelAwait() && isModule && functionNode.isModule());
         final long bodyToken = token;
         final int bodyFinish;
         final boolean parseBody;
@@ -5240,7 +5358,7 @@ public class Parser extends AbstractParser {
                 // print(square(3));
 
                 // just expression as function body
-                final Expression expr = assignmentExpression(true);
+                final Expression expr = assignmentExpression(true, yield, await);
                 long lastToken = previousToken;
                 functionNode.setLastToken(previousToken);
                 assert lc.getCurrentBlock().getScope().isFunctionBodyScope();
@@ -5266,7 +5384,7 @@ public class Parser extends AbstractParser {
                     final List<Statement> prevFunctionDecls = functionDeclarations;
                     functionDeclarations = new ArrayList<>();
                     try {
-                        sourceElements(0);
+                        sourceElements(yield, await, 0);
                         addFunctionDeclarations(functionNode);
                     } finally {
                         functionDeclarations = prevFunctionDecls;
@@ -5297,7 +5415,9 @@ public class Parser extends AbstractParser {
                 expect(RBRACE);
             }
         } finally {
+            functionNode.finishBodyScope();
             restoreBlock(body);
+            lc.propagateFunctionFlags();
         }
 
         // NOTE: we can only do alterations to the function node after restoreFunctionNode.
@@ -5645,13 +5765,12 @@ public class Parser extends AbstractParser {
      *
      * @return Expression node.
      */
-    private Expression expression() {
-        // Include commas in expression parsing.
-        return expression(true, inGeneratorFunction(), inAsyncFunction());
-    }
-
     private Expression expression(boolean in, boolean yield, boolean await) {
         return expression(in, yield, await, false);
+    }
+
+    private Expression expression(boolean yield, boolean await) {
+        return expression(true, yield, await);
     }
 
     private Expression expression(boolean in, boolean yield, boolean await, boolean inPatternPosition) {
@@ -5668,6 +5787,7 @@ public class Parser extends AbstractParser {
 
     private Expression parenthesizedExpressionAndArrowParameterList(boolean yield, boolean await) {
         long primaryToken = token;
+        int startLine = line;
         assert type == LPAREN;
         next();
 
@@ -5680,33 +5800,46 @@ public class Parser extends AbstractParser {
 
         Expression assignmentExpression = null;
         boolean hasCoverInitializedName = false;
+        boolean hasRestParameter = false;
         long commaToken = 0L;
-        while (true) {
-            if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
-                // (a, b, ...rest) is not a valid expression, but a valid arrow function parameter
-                // list. Since the rest parameter is always last, we know that the cover expression
-                // has to end here with a binding identifier/pattern followed by RPAREN and ARROW.
-                return arrowFunctionRestParameter(assignmentExpression, commaToken, yield, await);
-            } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES2017() && type == RPAREN && lookaheadIsArrow()) {
-                // Trailing comma at end of arrow function parameter list
-                break;
-            }
 
-            Expression rhs = assignmentExpression(true, yield, await, true);
-            hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
+        ParserContextFunctionNode cover = createParserContextArrowFunctionNode(primaryToken, startLine, false, true);
+        lc.push(cover);
+        try {
+            while (true) {
+                if (ES6_ARROW_FUNCTION && ES6_REST_PARAMETER && isES6() && type == ELLIPSIS) {
+                    // (a, b, ...rest) is not a valid expression, but a valid arrow function
+                    // parameter
+                    // list. Since the rest parameter is always last, we know that the cover
+                    // expression
+                    // has to end here with a binding identifier/pattern followed by RPAREN and
+                    // ARROW.
+                    assignmentExpression = arrowFunctionRestParameter(assignmentExpression, commaToken, yield, await);
+                    hasRestParameter = true;
+                    break;
+                } else if (ES6_ARROW_FUNCTION && ES8_TRAILING_COMMA && isES2017() && type == RPAREN && lookaheadIsArrow()) {
+                    // Trailing comma at end of arrow function parameter list
+                    break;
+                }
 
-            if (assignmentExpression == null) {
-                assignmentExpression = rhs;
-            } else {
-                assert Token.descType(commaToken) == COMMARIGHT;
-                assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
-            }
+                Expression rhs = assignmentExpression(true, yield, await, true);
+                hasCoverInitializedName = hasCoverInitializedName || hasCoverInitializedName(rhs);
 
-            if (type != COMMARIGHT) {
-                break;
+                if (assignmentExpression == null) {
+                    assignmentExpression = rhs;
+                } else {
+                    assert Token.descType(commaToken) == COMMARIGHT;
+                    assignmentExpression = new BinaryNode(commaToken, assignmentExpression, rhs);
+                }
+
+                if (type != COMMARIGHT) {
+                    break;
+                }
+                commaToken = token;
+                next();
             }
-            commaToken = token;
-            next();
+        } finally {
+            lc.pop(cover);
         }
 
         boolean arrowAhead = lookaheadIsArrow();
@@ -5714,14 +5847,38 @@ public class Parser extends AbstractParser {
             throw error(AbstractParser.message(MESSAGE_INVALID_PROPERTY_INITIALIZER));
         }
 
-        expect(RPAREN);
+        if (hasRestParameter) {
+            // Rest parameter must be last and followed by `)` [NoLineTerminator] `=>`.
+            expectDontAdvance(RPAREN);
+            nextOrEOL();
+            expectDontAdvance(ARROW);
+        } else {
+            expect(RPAREN);
+        }
 
-        if (!arrowAhead) {
+        if (arrowAhead) {
+            // arrow parameter list
+            commitArrowHead(cover);
+        } else {
             // parenthesized expression
             assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
-        } // else arrow parameter list
+            revertArrowHead(cover);
+        }
 
         return assignmentExpression;
+    }
+
+    private void commitArrowHead(ParserContextFunctionNode cover) {
+        assert coverArrowFunction == null;
+        if (cover.getYieldOrAwaitInParameters() != 0L) {
+            throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), cover.getYieldOrAwaitInParameters());
+        }
+        coverArrowFunction = cover;
+    }
+
+    private void revertArrowHead(ParserContextFunctionNode cover) {
+        // merge flags gathered during expression parsing into the current function's flags.
+        lc.setCurrentFunctionFlag(cover.getFlags() & FunctionNode.ARROW_HEAD_FLAGS);
     }
 
     private Expression arrowFunctionRestParameter(Expression paramListExpr, long commaToken, final boolean yield, final boolean await) {
@@ -5737,11 +5894,6 @@ public class Parser extends AbstractParser {
             restParam = new UnaryNode(Token.recast(ellipsisToken, SPREAD_ARGUMENT), pattern);
         }
 
-        // Rest parameter must be last and followed by `)` [NoLineTerminator] `=>`.
-        expectDontAdvance(RPAREN);
-        nextOrEOL();
-        expectDontAdvance(ARROW);
-
         if (paramListExpr == null) {
             return restParam;
         } else {
@@ -5754,8 +5906,8 @@ public class Parser extends AbstractParser {
         return expression(unaryExpression(yield, await), minPrecedence, in, yield, await);
     }
 
-    private JoinPredecessorExpression joinPredecessorExpression() {
-        return new JoinPredecessorExpression(expression());
+    private JoinPredecessorExpression joinPredecessorExpression(boolean yield, boolean await) {
+        return new JoinPredecessorExpression(expression(yield, await));
     }
 
     private Expression expression(Expression exprLhs, int minPrecedence, boolean in, boolean yield, boolean await) {
@@ -5808,10 +5960,6 @@ public class Parser extends AbstractParser {
         return lhs;
     }
 
-    private Expression assignmentExpression(boolean in) {
-        return assignmentExpression(in, inGeneratorFunction(), inAsyncFunction(), false);
-    }
-
     private Expression assignmentExpression(boolean in, boolean yield, boolean await) {
         return assignmentExpression(in, yield, await, false);
     }
@@ -5848,7 +5996,7 @@ public class Parser extends AbstractParser {
 
         if (ES6_ARROW_FUNCTION && type == ARROW && isES6()) {
             // Look behind to check there's no LineTerminator between IDENT/RPAREN and ARROW
-            if (checkNoLineTerminator()) {
+            if (lookbehindNoLineTerminatorBeforeArrow()) {
                 return arrowFunction(startToken, startLine, exprLhs, asyncArrow);
             }
         }
@@ -5893,17 +6041,21 @@ public class Parser extends AbstractParser {
      */
     private Expression arrowFunction(final long startToken, final int functionLine, final Expression paramListExpr, boolean async) {
         // caller needs to check that there's no LineTerminator between parameter list and arrow
-        assert type != ARROW || checkNoLineTerminator();
+        assert type != ARROW || lookbehindNoLineTerminatorBeforeArrow();
         expect(ARROW);
 
-        final long functionToken = Token.recast(startToken, ARROW);
-        final IdentNode name = null;
-        final ParserContextFunctionNode functionNode = createParserContextFunctionNode(name, functionToken, FunctionNode.IS_ARROW, functionLine);
+        final ParserContextFunctionNode functionNode;
+        if (coverArrowFunction == null) {
+            functionNode = createParserContextArrowFunctionNode(startToken, functionLine, async, false);
+        } else {
+            functionNode = coverArrowFunction;
+            functionNode.setCoverArrowHead(false);
+            coverArrowFunction = null;
+        }
+        assert functionNode.isArrow() && !functionNode.isCoverArrowHead();
+        assert functionNode.isAsync() == async;
         functionNode.setInternalName(ARROW_FUNCTION_NAME);
         functionNode.setFlag(FunctionNode.IS_ANONYMOUS);
-        if (async) {
-            functionNode.setFlag(FunctionNode.IS_ASYNC);
-        }
 
         lc.push(functionNode);
         try {
@@ -5920,14 +6072,13 @@ public class Parser extends AbstractParser {
             verifyParameterList(functionNode);
 
             if (parameterBlock != null) {
-                markEvalInArrowParameterList(parameterBlock);
                 functionBody = wrapParameterBlock(parameterBlock, functionBody);
             }
 
             final FunctionNode function = createFunctionNode(
                             functionNode,
-                            functionToken,
-                            name,
+                            functionNode.getFirstToken(),
+                            functionNode.getIdent(),
                             functionLine,
                             functionBody);
             return function;
@@ -5936,27 +6087,18 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private void markEvalInArrowParameterList(ParserContextBlockNode parameterBlock) {
-        Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        ParserContextFunctionNode current = iter.next();
-        ParserContextFunctionNode parent = iter.next();
-        int flagsToPropagate = parent.getFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_ARROW_EVAL);
-        if (flagsToPropagate != 0) {
-            // we might have flagged has-eval in the parent function during parsing the parameter
-            // list; if the parameter list contains eval; must tag arrow function as has-eval.
-            for (Statement st : parameterBlock.getStatements()) {
-                st.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
-                    @Override
-                    public boolean enterCallNode(CallNode callNode) {
-                        if (callNode.isEval()) {
-                            current.setFlag(flagsToPropagate);
-                        }
-                        return true;
-                    }
-                });
-            }
-            // TODO: function containing the arrow function should not be flagged has-eval
+    private ParserContextFunctionNode createParserContextArrowFunctionNode(long startToken, int startLine, boolean async, boolean cover) {
+        final long functionToken = Token.recast(startToken, ARROW);
+        final IdentNode name = null;
+        ParserContextFunctionNode function = createParserContextFunctionNode(name, functionToken, FunctionNode.IS_ARROW, startLine);
+        if (async) {
+            function.setFlag(FunctionNode.IS_ASYNC);
         }
+        if (cover) {
+            function.setCoverArrowHead(true);
+            assert coverArrowFunction == null;
+        }
+        return function;
     }
 
     private static Expression convertExpressionListToExpression(ExpressionList exprList) {
@@ -5974,22 +6116,6 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private void verifyContainsNeitherYieldNorAwaitExpression(Expression expression) {
-        expression.accept(new NodeVisitor<LexicalContext>(new LexicalContext()) {
-            @Override
-            public boolean enterUnaryNode(UnaryNode unaryNode) {
-                switch (unaryNode.tokenType()) {
-                    case AWAIT:
-                    case YIELD:
-                    case YIELD_STAR:
-                        throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), unaryNode.getToken());
-                    default:
-                        return super.enterUnaryNode(unaryNode);
-                }
-            }
-        });
-    }
-
     private void convertArrowFunctionParameterList(Expression paramList, ParserContextFunctionNode function) {
         Expression paramListExpr = paramList;
         if (paramListExpr instanceof ExpressionList) {
@@ -6000,7 +6126,6 @@ public class Parser extends AbstractParser {
             // empty parameter list, i.e. () =>
             return;
         }
-        verifyContainsNeitherYieldNorAwaitExpression(paramListExpr);
         final int functionLine = function.getLineNumber();
         if (paramListExpr instanceof IdentNode || paramListExpr.isTokenType(ASSIGN) || isDestructuringLhs(paramListExpr) || paramListExpr.isTokenType(SPREAD_ARGUMENT)) {
             convertArrowParameter(paramListExpr, 0, functionLine, function);
@@ -6032,9 +6157,10 @@ public class Parser extends AbstractParser {
         if (param instanceof IdentNode) {
             IdentNode ident = (IdentNode) param;
             verifyStrictIdent(ident, FUNCTION_PARAMETER_CONTEXT);
-            if (ident.isParenthesized() || currentFunction.isAsync() && AWAIT.getName().equals(ident.getName())) {
+            if (ident.isParenthesized()) {
                 throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
             }
+            assert !(currentFunction.isAsync() && AWAIT.getName().equals(ident.getName()));
             currentFunction.addParameter(ident);
             return;
         }
@@ -6043,16 +6169,7 @@ public class Parser extends AbstractParser {
             Expression lhs = ((BinaryNode) param).getLhs();
             long paramToken = lhs.getToken();
             Expression initializer = ((BinaryNode) param).getRhs();
-            if (initializer instanceof IdentNode) {
-                if (((IdentNode) initializer).getName().equals(AWAIT.getName())) {
-                    throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
-                }
-            }
-            if (lc.getCurrentNonArrowFunction().getFlag(FunctionNode.USES_THIS) != 0) {
-                // this may be used by the initializer (and enclosing function
-                // was marked as using 'this' from parenthesizedExpressionAndArrowParameterList())
-                currentFunction.setFlag(FunctionNode.USES_THIS);
-            }
+            assert !(initializer instanceof IdentNode && currentFunction.isAsync() && AWAIT.getName().equals(((IdentNode) initializer).getName()));
             if (lhs instanceof IdentNode && !lhs.isParenthesized()) {
                 // default parameter
                 IdentNode ident = (IdentNode) lhs;
@@ -6125,7 +6242,7 @@ public class Parser extends AbstractParser {
         return true;
     }
 
-    private boolean checkNoLineTerminator() {
+    private boolean lookbehindNoLineTerminatorBeforeArrow() {
         assert type == ARROW;
         if (last == RPAREN) {
             return true;
@@ -6147,6 +6264,11 @@ public class Parser extends AbstractParser {
             }
         }
         return false;
+    }
+
+    private boolean lookbehindNoLineTerminatorAfterAsync() {
+        assert type == LPAREN;
+        return last == ASYNC;
     }
 
     private boolean lookaheadIsArrow() {
@@ -6378,10 +6500,15 @@ public class Parser extends AbstractParser {
                     // fall through
                 default:
                     // StatementListItem
-                    statement(true, 0, false, false, false);
+                    boolean await = isTopLevelAwait();
+                    statement(false, await, true, 0, false, false, false);
                     break;
             }
         }
+    }
+
+    private boolean isTopLevelAwait() {
+        return isES2021() && ES2021_TOP_LEVEL_AWAIT;
     }
 
     private boolean isImportExpression() {
@@ -6410,6 +6537,10 @@ public class Parser extends AbstractParser {
         declareImportBinding(ident, true);
     }
 
+    private IdentNode importedBindingIdentifier() {
+        return bindingIdentifier(false, isTopLevelAwait(), IMPORTED_BINDING_CONTEXT);
+    }
+
     /**
      * Parse import declaration.
      *
@@ -6417,6 +6548,8 @@ public class Parser extends AbstractParser {
      * ImportDeclaration :
      *     import ImportClause FromClause ;
      *     import ModuleSpecifier ;
+     *     import ImportClause FromClause [no LineTerminator here] AssertClause ;
+     *     import ModuleSpecifier [no LineTerminator here] AssertClause ;
      * ImportClause :
      *     ImportedDefaultBinding
      *     NameSpaceImport
@@ -6440,7 +6573,11 @@ public class Parser extends AbstractParser {
             long specifierToken = token;
             next();
             LiteralNode<String> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            module.addModuleRequest(moduleSpecifier);
+            Map<String, String> assertions = Collections.emptyMap();
+            if (env.importAssertions && type == ASSERT && last != EOL) {
+                assertions = assertClause();
+            }
+            module.addModuleRequest(ModuleRequest.create(moduleSpecifier, assertions));
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
             // import ImportClause FromClause ;
@@ -6458,7 +6595,7 @@ public class Parser extends AbstractParser {
                 importEntries = convert(namedImportsNode);
             } else if (isBindingIdentifier()) {
                 // ImportedDefaultBinding
-                IdentNode importedDefaultBinding = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
+                IdentNode importedDefaultBinding = importedBindingIdentifier();
                 declareImportBinding(importedDefaultBinding);
                 ImportEntry defaultImport = ImportEntry.importDefault(importedDefaultBinding.getName());
 
@@ -6489,14 +6626,82 @@ public class Parser extends AbstractParser {
             }
 
             FromNode fromNode = fromClause();
+            Map<String, String> assertions = Collections.emptyMap();
+            if (env.importAssertions && type == ASSERT && last != EOL) {
+                assertions = assertClause();
+            }
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
             String moduleSpecifier = fromNode.getModuleSpecifier().getValue();
-            module.addModuleRequest(moduleSpecifier);
+            ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, assertions);
+            module.addModuleRequest(moduleRequest);
             for (int i = 0; i < importEntries.size(); i++) {
-                module.addImportEntry(importEntries.get(i).withFrom(moduleSpecifier));
+                module.addImportEntry(importEntries.get(i).withFrom(moduleRequest));
             }
         }
         endOfLine();
+    }
+
+    /**
+     * Parse assert clause.
+     *
+     * <pre>
+     *     assert { }
+     *     assert { AssertEntries ,opt }
+     * </pre>
+     */
+    private Map<String, String> assertClause() {
+        assert type == ASSERT;
+        next();
+        expect(LBRACE);
+        Map<String, String> assertions = assertEntries();
+        expect(RBRACE);
+        return assertions;
+    }
+
+    /**
+     * Parse assert entry.
+     *
+     * <pre>
+     * AssertEntries:
+     *     AssertionKey : StringLiteral
+     *     AssertionKey : StringLiteral , AssertEntries
+     * AssertKey:
+     *     IdentifierName
+     *     StringLiteral
+     * </pre>
+     */
+    private Map<String, String> assertEntries() {
+        Map<String, String> assertions = new HashMap<>();
+
+        while (type != RBRACE) {
+            final long errorToken = token;
+            String assertionKey;
+            if (type == STRING || type == ESCSTRING) {
+                assertionKey = (String) getValue();
+                next();
+            } else {
+                assertionKey = getIdentifierName().getName();
+            }
+            expect(COLON);
+            String value = null;
+            if (type == STRING || type == ESCSTRING) {
+                value = (String) getValue();
+                next();
+            } else {
+                expect(STRING);
+            }
+            if (assertions.containsKey(assertionKey)) {
+                throw error(AbstractParser.message("duplicate.import.assertion", assertionKey), errorToken);
+            } else {
+                assertions.put(assertionKey, value);
+            }
+            if (type == COMMARIGHT) {
+                next();
+            } else {
+                break;
+            }
+        }
+        return assertions;
     }
 
     /**
@@ -6514,7 +6719,7 @@ public class Parser extends AbstractParser {
 
         expect(AS);
 
-        IdentNode localNameSpace = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
+        IdentNode localNameSpace = importedBindingIdentifier();
         declareImportStarBinding(localNameSpace);
         return new NameSpaceImportNode(startToken, Token.descPosition(startToken), finish, localNameSpace);
     }
@@ -6546,7 +6751,7 @@ public class Parser extends AbstractParser {
             IdentNode importName = getIdentifierName();
             if (type == AS) {
                 next();
-                IdentNode localName = bindingIdentifier(false, false, IMPORTED_BINDING_CONTEXT);
+                IdentNode localName = importedBindingIdentifier();
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
                 declareImportBinding(localName);
             } else if (bindingIdentifier) {
@@ -6596,6 +6801,7 @@ public class Parser extends AbstractParser {
      * <pre>
      * ExportDeclaration :
      *     export ExportFromClause FromClause ;
+     *     export ExportFromClause FromClause [no LineTerminator here] AssertClause;
      *     export NamedExports ;
      *     export VariableStatement
      *     export Declaration
@@ -6606,7 +6812,10 @@ public class Parser extends AbstractParser {
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
+        Map<String, String> assertions = Collections.emptyMap();
         expect(EXPORT);
+        final boolean yield = false;
+        final boolean await = isTopLevelAwait();
         switch (type) {
             case MUL: {
                 next();
@@ -6616,9 +6825,12 @@ public class Parser extends AbstractParser {
                     exportName = getIdentifierName();
                 }
                 FromNode from = fromClause();
+                if (env.importAssertions && type == ASSERT && last != EOL) {
+                    assertions = assertClause();
+                }
                 String moduleRequest = from.getModuleSpecifier().getValue();
-                module.addModuleRequest(moduleRequest);
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from));
+                module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, assertions));
                 endOfLine();
                 break;
             }
@@ -6627,10 +6839,13 @@ public class Parser extends AbstractParser {
                 FromNode from = null;
                 if (type == FROM) {
                     from = fromClause();
+                    if (env.importAssertions && type == ASSERT && last != EOL) {
+                        assertions = assertClause();
+                    }
                     String moduleRequest = from.getModuleSpecifier().getValue();
-                    module.addModuleRequest(moduleRequest);
+                    module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, assertions));
                 endOfLine();
                 break;
             }
@@ -6643,20 +6858,20 @@ public class Parser extends AbstractParser {
                 boolean hoistableDeclaration = false;
                 switch (type) {
                     case FUNCTION:
-                        assignmentExpression = functionExpression(false, true);
+                        assignmentExpression = functionDeclaration(false, true, false, yield, await, true);
                         hoistableDeclaration = true;
                         break;
                     case CLASS:
-                        assignmentExpression = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, true);
+                        assignmentExpression = classDeclaration(yield, await, true);
                         ident = ((ClassNode) assignmentExpression).getIdent();
                         break;
                     default:
                         if (isAsync() && lookaheadIsAsyncFunction()) {
-                            assignmentExpression = asyncFunctionExpression(false, true);
+                            assignmentExpression = asyncFunctionDeclaration(false, true, yield, await, true);
                             hoistableDeclaration = true;
                             break;
                         }
-                        assignmentExpression = assignmentExpression(true, false, isES2021() && ES2021_TOP_LEVEL_AWAIT);
+                        assignmentExpression = assignmentExpression(true, yield, await);
                         endOfLine();
                         break;
                 }
@@ -6690,7 +6905,7 @@ public class Parser extends AbstractParser {
             case CONST: {
                 List<Statement> statements = lc.getCurrentBlock().getStatements();
                 int previousEnd = statements.size();
-                variableStatement(type);
+                variableStatement(type, yield, await);
                 for (Statement statement : statements.subList(previousEnd, statements.size())) {
                     if (statement instanceof VarNode) {
                         VarNode varNode = (VarNode) statement;
@@ -6700,18 +6915,18 @@ public class Parser extends AbstractParser {
                 break;
             }
             case CLASS: {
-                ClassNode classDeclaration = classDeclaration(false, isES2021() && ES2021_TOP_LEVEL_AWAIT, false);
+                ClassNode classDeclaration = classDeclaration(yield, await, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, classDeclaration.getIdent(), classDeclaration, false));
                 break;
             }
             case FUNCTION: {
-                FunctionNode functionDeclaration = (FunctionNode) functionExpression(true, true);
+                FunctionNode functionDeclaration = (FunctionNode) functionDeclaration(true, true, false, yield, await, false);
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration.getIdent(), functionDeclaration, false));
                 break;
             }
             default:
                 if (isAsync() && lookaheadIsAsyncFunction()) {
-                    FunctionNode functionDeclaration = (FunctionNode) asyncFunctionExpression(true, true);
+                    FunctionNode functionDeclaration = (FunctionNode) asyncFunctionDeclaration(true, true, yield, await, false);
                     module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, functionDeclaration.getIdent(), functionDeclaration, false));
                     break;
                 }
@@ -6786,37 +7001,7 @@ public class Parser extends AbstractParser {
     }
 
     private void markEval() {
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        boolean flaggedCurrentFn = false;
-        boolean flagArrowParentFn = false;
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            if (!flaggedCurrentFn) {
-                flaggedCurrentFn = true;
-
-                fn.setFlag(FunctionNode.HAS_EVAL);
-
-                // possible use of this/new.target in the eval, e.g.:
-                // function fun(){ return (() => eval("this"))(); };
-                // function fun(){ return eval("() => this")(); };
-                // (() => (() => eval("this"))())();
-                if (fn.isArrow()) {
-                    flagArrowParentFn = true;
-                }
-            } else {
-                fn.setFlag(FunctionNode.HAS_NESTED_EVAL);
-
-                // flag the first non-arrow and all arrow parents in between as HAS_ARROW_EVAL;
-                // this ensures that the `this` value is propagated to the eval.
-                if (flagArrowParentFn) {
-                    fn.setFlag(FunctionNode.HAS_ARROW_EVAL);
-                    if (!fn.isArrow()) {
-                        flagArrowParentFn = false;
-                    }
-                }
-            }
-            fn.setFlag(FunctionNode.HAS_SCOPE_BLOCK);
-        }
+        lc.setCurrentFunctionFlag(FunctionNode.HAS_EVAL | FunctionNode.HAS_SCOPE_BLOCK);
     }
 
     private void prependStatement(final Statement statement) {
@@ -6828,28 +7013,15 @@ public class Parser extends AbstractParser {
     }
 
     private void markSuperCall() {
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            if (!fn.isArrow()) {
-                if (!fn.isProgram()) {
-                    assert fn.isDerivedConstructor();
-                    fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
-                }
-                break;
-            }
+        ParserContextFunctionNode fn = lc.getCurrentNonArrowFunction();
+        if (!fn.isProgram()) {
+            assert fn.isDerivedConstructor();
+            fn.setFlag(FunctionNode.HAS_DIRECT_SUPER);
         }
     }
 
     private void markThis() {
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            fn.setFlag(FunctionNode.USES_THIS);
-            if (!fn.isArrow()) {
-                break;
-            }
-        }
+        lc.setCurrentFunctionFlag(FunctionNode.USES_THIS);
     }
 
     private void markNewTarget() {
@@ -6857,15 +7029,9 @@ public class Parser extends AbstractParser {
             // `new.target` in script or module (may be wrapped in an arrow function or eval).
             throw error(AbstractParser.message("new.target.in.function"), token);
         }
-        final Iterator<ParserContextFunctionNode> iter = lc.getFunctions();
-        while (iter.hasNext()) {
-            final ParserContextFunctionNode fn = iter.next();
-            if (!fn.isArrow()) {
-                if (!fn.isProgram()) {
-                    fn.setFlag(FunctionNode.USES_NEW_TARGET);
-                }
-                break;
-            }
+        ParserContextFunctionNode fn = lc.getCurrentNonArrowFunction();
+        if (!fn.isProgram()) {
+            fn.setFlag(FunctionNode.USES_NEW_TARGET);
         }
     }
 
@@ -6878,31 +7044,6 @@ public class Parser extends AbstractParser {
             return true;
         }
         return false;
-    }
-
-    private boolean inGeneratorFunction() {
-        if (!ES6_GENERATOR_FUNCTION) {
-            return false;
-        }
-        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-        return currentFunction != null && currentFunction.isGenerator();
-    }
-
-    private boolean inAsyncFunction() {
-        if (!ES8_ASYNC_FUNCTION) {
-            return false;
-        }
-        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
-        if (currentFunction == null) {
-            return false;
-        }
-        boolean isAsync = currentFunction.isAsync();
-        if (isAsync) {
-            return true;
-        } else if (ES2021_TOP_LEVEL_AWAIT && isES2021()) {
-            return isModule && currentFunction.isModule();
-        }
-        return isAsync;
     }
 
     private boolean isAwait() {
@@ -6977,7 +7118,7 @@ public class Parser extends AbstractParser {
             prepareLexer(0, source.getLength());
             scanFirstToken();
 
-            return expression();
+            return expression(false, false);
         } catch (final Exception e) {
             handleParseException(e);
 

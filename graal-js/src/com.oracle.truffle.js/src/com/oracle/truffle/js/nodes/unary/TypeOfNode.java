@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,7 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -174,10 +174,15 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSSymbol.TYPE_NAME;
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected String doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            TruffleLanguage.Env env = getRealm().getEnv();
+            if (env.isHostSymbol(operand)) {
+                return JSFunction.TYPE_NAME;
+            }
+        }
         if (interop.isBoolean(operand)) {
             return JSBoolean.TYPE_NAME;
         } else if (interop.isString(operand)) {

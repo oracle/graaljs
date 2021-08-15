@@ -47,8 +47,10 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -110,8 +112,7 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyTableObject create(JSContext context, Object wasmTable) {
-        JSRealm realm = context.getRealm();
+    public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, Object wasmTable) {
         JSObjectFactory factory = context.getWebAssemblyTableFactory();
         JSWebAssemblyTableObject object = new JSWebAssemblyTableObject(factory.getShape(realm), wasmTable);
         factory.initProto(object, realm);
@@ -121,18 +122,22 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
     private static DynamicObject createLengthGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyTableGetLength, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+                private final BranchProfile errorBranch = BranchProfile.create();
+                @Child InteropLibrary tableLengthLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
-                    if (isJSWebAssemblyTable(thiz)) {
-                        Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
-                        try {
-                            return InteropLibrary.getUncached(wasmTable).readMember(wasmTable, LENGTH);
-                        } catch (InteropException ex) {
-                            throw Errors.shouldNotReachHere(ex);
-                        }
-                    } else {
+                    if (!isJSWebAssemblyTable(thiz)) {
+                        errorBranch.enter();
                         throw Errors.createTypeError("WebAssembly.Table.length(): Receiver is not a WebAssembly.Table", this);
+                    }
+                    Object wasmTable = ((JSWebAssemblyTableObject) thiz).getWASMTable();
+                    try {
+                        Object lengthFn = realm.getWASMTableLength();
+                        return tableLengthLib.execute(lengthFn, wasmTable);
+                    } catch (InteropException ex) {
+                        throw Errors.shouldNotReachHere(ex);
                     }
                 }
             });

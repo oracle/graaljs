@@ -63,6 +63,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -100,6 +101,7 @@ public final class IntlUtil {
     public static final String CURRENCY_SIGN = "currencySign";
     public static final String DATE_STYLE = "dateStyle";
     public static final String DAY = "day";
+    public static final String DAY_PERIOD = "dayPeriod";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
     public static final String DISJUNCTION = "disjunction";
@@ -110,6 +112,7 @@ public final class IntlUtil {
     public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
     public static final String FORMAT_MATCHER = "formatMatcher";
+    public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
     public static final String FULL = "full";
     public static final String GRANULARITY = "granularity";
     public static final String GRAPHEME = "grapheme";
@@ -462,8 +465,14 @@ public final class IntlUtil {
                     builder.setUnicodeLocaleKeyword(key, type);
                 }
 
-                // Canonicalize transformed extension
-                String transformedExt = locale.getExtension('t');
+                // Validate and canonicalize the transformed extension.
+                // We cannot start with locale.getExtension('t') here. locale is
+                // canonicalized and ICU started (ICU-21406) to remove duplicate
+                // variants during canonicalization. Unfortunately, we have
+                // to detect the duplicates because ECMAScript specification
+                // refuses such locales as invalid explicitly =>
+                // we start with a non-canonicalized locale here.
+                String transformedExt = new ULocale(languageTag).getExtension('t');
                 if (transformedExt != null) {
                     builder.setExtension('t', normalizeTransformedExtension(transformedExt));
                 }
@@ -599,12 +608,12 @@ public final class IntlUtil {
         return IntlUtil.selectedLocale(ctx, locales).stripExtensions();
     }
 
-    public static DynamicObject makePart(JSContext context, String type, String value) {
-        return makePart(context, type, value, null);
+    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value) {
+        return makePart(context, realm, type, value, null);
     }
 
-    public static DynamicObject makePart(JSContext context, String type, String value, String unit) {
-        DynamicObject p = JSOrdinary.create(context);
+    public static DynamicObject makePart(JSContext context, JSRealm realm, String type, String value, String unit) {
+        DynamicObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, TYPE, type);
         JSObject.set(p, VALUE, value);
         if (unit != null) {

@@ -40,16 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.interop;
 
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -71,8 +68,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     @Specialization(guards = {"cachedName.equals(name)"}, limit = "1")
     Object doCached(DynamicObject receiver, @SuppressWarnings("unused") String name, Object[] arguments,
                     @Cached("name") String cachedName,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached("createGetProperty(cachedName, languageRef)") PropertyGetNode functionPropertyGetNode,
+                    @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -89,8 +85,7 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
 
     @Specialization(replaces = "doCached")
     Object doUncached(DynamicObject receiver, String name, Object[] arguments,
-                    @CachedLanguage @SuppressWarnings("unused") LanguageReference<JavaScriptLanguage> languageRef,
-                    @Cached(value = "create(languageRef.get().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
+                    @Cached(value = "create(getLanguage().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
                     @Shared("isCallable") @Cached IsCallableNode isCallableNode,
                     @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
@@ -111,8 +106,8 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
         }
     }
 
-    PropertyGetNode createGetProperty(String name, LanguageReference<JavaScriptLanguage> languageRef) {
-        return PropertyGetNode.create(name, false, languageRef.get().getJSContext());
+    PropertyGetNode createGetProperty(String name) {
+        return PropertyGetNode.create(name, false, getLanguage().getJSContext());
     }
 
     static ReadElementNode getUncachedRead() {

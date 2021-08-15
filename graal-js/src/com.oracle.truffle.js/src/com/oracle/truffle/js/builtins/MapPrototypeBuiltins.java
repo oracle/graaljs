@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -175,7 +176,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
-        protected static DynamicObject doForeignMap(Object thisObj,
+        protected DynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
                         @Cached BranchProfile growProfile) {
@@ -190,6 +191,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     } catch (StopIterationException e) {
                         break;
                     }
+                    TruffleSafepoint.poll(this);
                 }
                 for (Object key : keys.toArray()) {
                     try {
@@ -197,6 +199,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     } catch (UnknownKeyException e) {
                         continue;
                     }
+                    TruffleSafepoint.poll(this);
                 }
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "clear", null);
@@ -438,7 +441,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = "isJSMap(map)")
         protected DynamicObject doMap(VirtualFrame frame, DynamicObject map) {
-            DynamicObject iterator = createObjectNode.execute(frame, getContext().getRealm().getMapIteratorPrototype());
+            DynamicObject iterator = createObjectNode.execute(frame, getRealm().getMapIteratorPrototype());
             setIteratedObjectNode.setValue(iterator, map);
             setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
             setIterationKindNode.setValueInt(iterator, iterationKind);
@@ -463,7 +466,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", null);
             }
 
-            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory());
+            DynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
             setEnumerateIteratorNode.setValue(iteratorObj, iterator);
             return iteratorObj;
         }

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltinsFactory.WebAssemblyMemoryGrowNodeGen;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
@@ -50,7 +51,9 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
@@ -95,6 +98,8 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     public abstract static class WebAssemblyMemoryGrowNode extends JSBuiltinNode {
         @Child ToWebAssemblyIndexOrSizeNode toDeltaNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
+        @Child InteropLibrary memGrowLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
         public WebAssemblyMemoryGrowNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -104,19 +109,22 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected Object grow(Object thiz, Object delta) {
             if (!JSWebAssemblyMemory.isJSWebAssemblyMemory(thiz)) {
+                errorBranch.enter();
                 throw Errors.createTypeError("WebAssembly.Memory.grow(): Receiver is not a WebAssembly.Memory");
             }
             JSWebAssemblyMemoryObject memory = (JSWebAssemblyMemoryObject) thiz;
+            JSRealm realm = getRealm();
             int deltaInt = toDeltaNode.executeInt(delta);
             Object wasmMemory = memory.getWASMMemory();
             try {
-                Object growFn = InteropLibrary.getUncached(wasmMemory).readMember(wasmMemory, "grow");
-                Object result = InteropLibrary.getUncached(growFn).execute(growFn, deltaInt);
-                memory.resetBufferObject();
+                Object growFn = realm.getWASMMemGrow();
+                Object result = memGrowLib.execute(growFn, wasmMemory, deltaInt);
+                memory.resetBufferObject(getContext(), realm);
                 return result;
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {
+                errorBranch.enter();
                 if (TryCatchNode.shouldCatch(throwable)) {
                     throw Errors.createRangeError(throwable, this);
                 } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,42 +135,42 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected DynamicObject doBoolean(boolean value) {
-        return JSBoolean.create(context, value);
+        return JSBoolean.create(context, getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doJSLazyString(JSLazyString value) {
-        return JSString.create(getContext(), value);
+        return JSString.create(getContext(), getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doString(String value) {
-        return JSString.create(getContext(), value);
+        return JSString.create(getContext(), getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doInt(int value) {
-        return JSNumber.create(getContext(), value);
+        return JSNumber.create(getContext(), getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doDouble(double value) {
-        return JSNumber.create(getContext(), value);
+        return JSNumber.create(getContext(), getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doBigInt(BigInt value) {
-        return JSBigInt.create(getContext(), value);
+        return JSBigInt.create(getContext(), getRealm(), value);
     }
 
     @Specialization(guards = "isJavaNumber(value)")
     protected DynamicObject doNumber(Object value) {
-        return JSNumber.create(getContext(), (Number) value);
+        return JSNumber.create(getContext(), getRealm(), (Number) value);
     }
 
     @Specialization
     protected DynamicObject doSymbol(Symbol value) {
-        return JSSymbol.create(getContext(), value);
+        return JSSymbol.create(getContext(), getRealm(), value);
     }
 
     @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
@@ -208,7 +208,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
     protected Object doForeignObjectAllowed(Object obj,
                     @Cached("createToObject(context, checkForNullOrUndefined, fromWith, allowForeign)") JSToObjectNode toObjectNode,
                     @CachedLibrary("obj") InteropLibrary interop) {
-        if (isFromWith() && context.isOptionNashornCompatibilityMode() && context.getRealm().getEnv().isHostObject(obj)) {
+        if (isFromWith() && context.isOptionNashornCompatibilityMode() && getRealm().getEnv().isHostObject(obj)) {
             throwWithError();
         }
         Object unboxed = JSInteropUtil.toPrimitiveOrDefault(obj, null, interop, this);
@@ -233,7 +233,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
             // ... but make that an error within "with"
             throwWithError();
         }
-        return context.getRealm().getEnv().asBoxedGuestValue(object);
+        return getRealm().getEnv().asBoxedGuestValue(object);
     }
 
     @TruffleBoundary

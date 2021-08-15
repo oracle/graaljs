@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -760,8 +761,8 @@ public class NodeFactory {
         return JSPrepareThisNode.createPrepareThisBinding(context, child);
     }
 
-    public JavaScriptNode createGlobalObject(JSContext context) {
-        return GlobalObjectNode.create(context);
+    public JavaScriptNode createGlobalObject() {
+        return GlobalObjectNode.create();
     }
 
     public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount, int trailingArgumentCount) {
@@ -1070,8 +1071,8 @@ public class NodeFactory {
         return new AccessArgumentsArrayDirectlyNode(writeArguments, readArguments, leadingArgCount, trailingArgCount);
     }
 
-    public JavaScriptNode createCallApplyArguments(JSContext context, JSFunctionCallNode callNode) {
-        return CallApplyArgumentsNode.create(context, callNode);
+    public JavaScriptNode createCallApplyArguments(JSFunctionCallNode callNode) {
+        return CallApplyArgumentsNode.create(callNode);
     }
 
     public JavaScriptNode createGuardDisconnectedArgumentRead(int index, ReadElementNode readElementNode, JavaScriptNode argumentsArray, FrameSlot slot) {
@@ -1098,11 +1099,11 @@ public class NodeFactory {
         return ImportMetaNode.create(moduleNode);
     }
 
-    public JavaScriptNode createResolveStarImport(JSContext context, JavaScriptNode moduleNode, String moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
+    public JavaScriptNode createResolveStarImport(JSContext context, JavaScriptNode moduleNode, ModuleRequest moduleRequest, JSWriteFrameSlotNode writeLocalNode) {
         return ResolveStarImportNode.create(context, moduleNode, moduleRequest, writeLocalNode);
     }
 
-    public JavaScriptNode createResolveNamedImport(JSContext context, JavaScriptNode moduleNode, String moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
+    public JavaScriptNode createResolveNamedImport(JSContext context, JavaScriptNode moduleNode, ModuleRequest moduleRequest, String importName, JSWriteFrameSlotNode writeLocalNode) {
         return ResolveNamedImportNode.create(context, moduleNode, moduleRequest, importName, writeLocalNode);
     }
 
@@ -1112,6 +1113,10 @@ public class NodeFactory {
 
     public JavaScriptNode createImportCall(JSContext context, JavaScriptNode argument, JavaScriptNode activeScriptOrModule) {
         return ImportCallNode.create(context, argument, activeScriptOrModule);
+    }
+
+    public JavaScriptNode createImportCall(JSContext context, JavaScriptNode specifier, JavaScriptNode activeScriptOrModule, JavaScriptNode options) {
+        return ImportCallNode.createWithOptions(context, specifier, activeScriptOrModule, options);
     }
 
     public JavaScriptNode createRestObject(JSContext context, JavaScriptNode source, JavaScriptNode excludedNames) {

@@ -45,10 +45,10 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -132,9 +132,10 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
     @ExportMessage
     public final Object execute(Object[] args,
-                    @CachedLanguage JavaScriptLanguage language,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropExecuteNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(this, Undefined.instance, args);
@@ -151,9 +152,10 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
 
     @ExportMessage
     public final Object instantiate(Object[] args,
-                    @CachedLanguage JavaScriptLanguage language,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInstantiateNode callNode,
                     @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
         language.interopBoundaryEnter(realm);
         try {
             Object result = callNode.execute(this, args);

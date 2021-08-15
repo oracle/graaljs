@@ -49,11 +49,8 @@ import java.util.Set;
 import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -61,7 +58,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.intl.CollatorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.CollatorPrototypeBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -149,8 +145,8 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
     // localeMatcher unused as our lookup matcher and best fit matcher are the same at the moment
     @TruffleBoundary
-    public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, Boolean optkn, String optkf,
-                    String sensitivity, Boolean ignorePunctuation) {
+    public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, String optco, Boolean optkn,
+                    String optkf, String sensitivity, Boolean ignorePunctuation) {
         state.initializedCollator = true;
         state.usage = usage;
         Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
@@ -190,15 +186,16 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
             state.caseFirst = kf;
         }
 
-        // Set collator.[[Usage]] to usage.
+        String collation = (optco == null) ? selectedLocale.getUnicodeLocaleType("co") : optco;
+        if (!VALID_COLLATION_TYPES.contains(collation)) {
+            collation = null;
+        }
+
         // "search" maps to -u-co-search, "sort" means the default behavior
         boolean searchUsage = IntlUtil.SEARCH.equals(usage);
-        if (!searchUsage) {
-            String coType = selectedLocale.getUnicodeLocaleType("co");
-            if (VALID_COLLATION_TYPES.contains(coType)) {
-                builder.setUnicodeLocaleKeyword("co", coType);
-                state.collation = coType;
-            }
+        if (!searchUsage && collation != null) {
+            state.collation = collation;
+            builder.setUnicodeLocaleKeyword("co", collation);
         }
 
         if (sensitivity != null) {
@@ -250,9 +247,8 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         return INSTANCE.createConstructorAndPrototype(realm, CollatorFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getCollatorFactory();
         JSCollatorObject obj = new JSCollatorObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
@@ -289,23 +285,23 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
         private boolean numeric = false;
         private String caseFirst = IntlUtil.FALSE;
 
-        DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSOrdinary.create(context);
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.USAGE, usage, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.SENSITIVITY, sensitivity, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.COLLATION, collation, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.CASE_FIRST, caseFirst, JSAttributes.getDefault());
+        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            DynamicObject result = JSOrdinary.create(context, realm);
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.USAGE, usage, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.SENSITIVITY, sensitivity, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.IGNORE_PUNCTUATION, ignorePunctuation, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.COLLATION, collation, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.NUMERIC, numeric, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.CASE_FIRST, caseFirst, JSAttributes.getDefault());
             return result;
         }
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, DynamicObject collatorObj) {
+    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject collatorObj) {
         InternalState state = getInternalState(collatorObj);
-        return state.toResolvedOptionsObject(context);
+        return state.toResolvedOptionsObject(context, realm);
     }
 
     public static InternalState getInternalState(DynamicObject collatorObj) {
@@ -315,8 +311,6 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
 
     private static CallTarget createGetCompareCallTarget(JSContext context) {
         return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-
-            @CompilationFinal private ContextReference<JSRealm> realmRef;
             @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
             private final BranchProfile errorBranch = BranchProfile.create();
 
@@ -336,13 +330,8 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                     }
 
                     if (state.boundCompareFunction == null) {
-                        if (realmRef == null) {
-                            CompilerDirectives.transferToInterpreterAndInvalidate();
-                            realmRef = lookupContextReference(JavaScriptLanguage.class);
-                        }
-                        JSRealm realm = realmRef.get();
                         JSFunctionData compareFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.CollatorCompare, c -> createCompareFunctionData(c));
-                        DynamicObject compareFn = JSFunction.create(realm, compareFunctionData);
+                        DynamicObject compareFn = JSFunction.create(getRealm(), compareFunctionData);
                         setBoundObjectNode.setValue(compareFn, collatorObj);
                         state.boundCompareFunction = compareFn;
                     }

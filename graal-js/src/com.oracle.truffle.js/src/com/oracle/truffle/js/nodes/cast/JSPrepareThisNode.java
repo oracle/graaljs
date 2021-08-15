@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.GlobalObjectNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -85,7 +84,7 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     @Specialization(guards = "isNullOrUndefined(object)")
     protected DynamicObject doJSObject(@SuppressWarnings("unused") Object object) {
-        return GlobalObjectNode.getGlobalObject(context);
+        return getRealm().getGlobalObject();
     }
 
     @SuppressWarnings("unused")
@@ -102,49 +101,49 @@ public abstract class JSPrepareThisNode extends JSUnaryNode {
 
     @Specialization
     protected DynamicObject doBoolean(boolean value) {
-        return JSBoolean.create(context, value);
+        return JSBoolean.create(context, getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doJSLazyString(JSLazyString value) {
-        return JSString.create(context, value);
+        return JSString.create(context, getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doString(String value) {
-        return JSString.create(context, value);
+        return JSString.create(context, getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doInt(int value) {
-        return JSNumber.create(context, value);
+        return JSNumber.create(context, getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doDouble(double value) {
-        return JSNumber.create(context, value);
+        return JSNumber.create(context, getRealm(), value);
     }
 
     @Specialization
     protected DynamicObject doBigInt(BigInt value) {
-        return JSBigInt.create(context, value);
+        return JSBigInt.create(context, getRealm(), value);
     }
 
     @Specialization(guards = "isJavaNumber(value)")
     protected DynamicObject doNumber(Object value) {
-        return JSNumber.create(context, (Number) value);
+        return JSNumber.create(context, getRealm(), (Number) value);
     }
 
     @Specialization
     protected DynamicObject doSymbol(Symbol value) {
-        return JSSymbol.create(context, value);
+        return JSSymbol.create(context, getRealm(), value);
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     protected Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop) {
         if (interop.isNull(object)) {
-            return GlobalObjectNode.getGlobalObject(context);
+            return getRealm().getGlobalObject();
         }
         return object;
     }

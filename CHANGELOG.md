@@ -5,6 +5,10 @@ The main focus is on user-observable behavior of the engine.
 
 ## Version 21.3.0
 * Implemented the [Error Cause](https://github.com/tc39/proposal-error-cause) proposal. It is available behind the experimental option `--js.error-cause`.
+* Implemented the [Import Assertions](https://tc39.es/proposal-import-assertions) proposal. It is available behind the experimental option `--js.import-assertions`.
+* Added support for `collation` option of `Intl.Collator`.
+* Added support for `dayPeriod` and `fractionalSecondDigits` options of `Intl.DateTimeFormat`.
+* Changed foreign hash map access using `map[key]` syntax to convert the key to a string or symbol.
 
 ## Version 21.2.0
 * Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
@@ -14,6 +18,7 @@ The main focus is on user-observable behavior of the engine.
 * Updated RegExp Match Indices proposal with opt-in using the `d` flag. Available in ECMAScript 2022 (`--js.ecmascript-version=2022`). Deprecated `--js.regexp-match-indices` option.
 * Nashorn compatibility mode now defaults to compatiblity with ECMAScript version 5, unless another version is explicitly selected.
 * `Date.prototype` built-ins use ICU (not JDK) algorithms and data (like timezone data) by now (in order to reduce inconsistencies between `Date` and `Intl.DateTimeFormat`).
+* Updated ICU4J library to version 69.1.
 
 ## Version 21.1.0
 * Updated Node.js to version 14.16.1.

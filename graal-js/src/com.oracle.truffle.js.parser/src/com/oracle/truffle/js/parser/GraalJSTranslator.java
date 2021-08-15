@@ -78,6 +78,7 @@ import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.Module.ImportEntry;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
@@ -893,8 +894,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (!functionNode.isArrow() && functionNode.needsArguments()) {
             currentFunction.reserveArgumentsSlot();
 
-            if (JSConfig.OptimizeApplyArguments && functionNode.getNumOfParams() == 0 && !functionNode.hasEval() && functionNode.hasApplyArgumentsCall() &&
-                            checkDirectArgumentsAccess(functionNode, currentFunction)) {
+            if (JSConfig.OptimizeApplyArguments && functionNode.needsArguments() && functionNode.hasApplyArgumentsCall() &&
+                            !functionNode.isArrow() && !functionNode.hasEval() && !functionNode.hasArrowEval() && !currentFunction.isDirectEval() &&
+                            functionNode.getNumOfParams() == 0 &&
+                            checkDirectArgumentsAccess(functionNode)) {
                 currentFunction.setDirectArgumentsAccess(true);
             } else {
                 currentFunction.declareVar(Environment.ARGUMENTS_NAME);
@@ -1058,7 +1061,9 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         rootFunctionNode.accept(visitor);
     }
 
-    private static boolean checkDirectArgumentsAccess(FunctionNode functionNode, FunctionEnvironment currentFunction) {
+    private static boolean checkDirectArgumentsAccess(FunctionNode functionNode) {
+        assert functionNode.needsArguments() && functionNode.hasApplyArgumentsCall() && !functionNode.isArrow() && !functionNode.hasEval() && !functionNode.hasArrowEval();
+        assert functionNode.getNumOfParams() == 0 || functionNode.isStrict() || !functionNode.hasSimpleParameterList() : "must not have mapped parameters";
         class DirectArgumentsAccessVisitor extends com.oracle.js.parser.ir.visitor.NodeVisitor<LexicalContext> {
             boolean directArgumentsAccess = true;
 
@@ -1068,21 +1073,11 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             @Override
             public boolean enterIdentNode(IdentNode identNode) {
-                if (JSConfig.OptimizeApplyArguments) {
-                    if (identNode.isArguments() && !identNode.isPropertyName() && functionNode.needsArguments() && !currentFunction.isDirectEval() && !identNode.isApplyArguments()) {
-                        // function.apply(_, arguments);
-                        directArgumentsAccess = false;
-                    } else {
-                        checkParameterUse(identNode);
-                    }
-                }
-                return false;
-            }
-
-            private void checkParameterUse(IdentNode identNode) {
-                if (directArgumentsAccess && !currentFunction.isStrictMode() && currentFunction.isParameter(identNode.getName())) {
+                if (!identNode.isPropertyName() && !identNode.isApplyArguments() && identNode.getName().equals(Environment.ARGUMENTS_NAME)) {
+                    // `arguments` is used outside of `function.apply(_, arguments)`; bail out.
                     directArgumentsAccess = false;
                 }
+                return false;
             }
 
             @Override
@@ -1090,13 +1085,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 if (nestedFunctionNode == functionNode) {
                     return true;
                 }
-                if (JSConfig.OptimizeApplyArguments && (nestedFunctionNode.isArrow() || !currentFunction.isStrictMode())) {
+                if (nestedFunctionNode.isArrow()) {
                     // 1. arrow functions have lexical `arguments` binding;
                     // direct arguments access to outer frames currently not supported
-                    // 2. if not in strict mode, nested functions might access mapped parameters;
-                    // since we don't look inside them, bail out
                     directArgumentsAccess = false;
                 }
+                // 2. if not in strict mode, nested functions might access mapped parameters;
+                // not a problem: we already ensured that this function does not have any.
+
+                // We do not look inside nested functions.
                 return false;
             }
         }
@@ -1271,7 +1268,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
         // Assert: all named exports from module are resolvable.
         for (ImportEntry importEntry : functionNode.getModule().getImportEntries()) {
-            String moduleRequest = importEntry.getModuleRequest();
+            ModuleRequest moduleRequest = importEntry.getModuleRequest();
             String localName = importEntry.getLocalName();
             JSWriteFrameSlotNode writeLocalNode = (JSWriteFrameSlotNode) environment.findLocalVar(localName).createWriteNode(null);
             JavaScriptNode thisModule = getActiveModule();
@@ -1885,7 +1882,15 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private boolean needsPerIterationScope(ForNode forNode) {
         // for loop init block may contain closures, too; that's why we check the surrounding block.
-        return forNode.hasPerIterationScope() && hasClosures(lc.getCurrentBlock());
+        if (forNode.hasPerIterationScope()) {
+            FunctionNode function = lc.getCurrentFunction();
+            if (function.hasClosures() && hasClosures(lc.getCurrentBlock())) {
+                return true;
+            } else if (function.hasEval()) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean hasClosures(com.oracle.js.parser.ir.Node node) {
@@ -2258,7 +2263,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {
-        return factory.createCallApplyArguments(context, (JSFunctionCallNode) factory.createFunctionCall(context, function, args));
+        return factory.createCallApplyArguments((JSFunctionCallNode) factory.createFunctionCall(context, function, args));
     }
 
     private JavaScriptNode createCallDirectSuper(JavaScriptNode function, JavaScriptNode[] args) {
@@ -2266,7 +2271,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
-        assert args.length == 1;
+        assert args.length == 1 || (context.getContextOptions().isImportAssertions() && args.length == 2);
+        if (context.getContextOptions().isImportAssertions() && args.length == 2) {
+            return factory.createImportCall(context, args[0], getActiveScriptOrModule(), args[1]);
+        }
         return factory.createImportCall(context, args[0], getActiveScriptOrModule());
     }
 

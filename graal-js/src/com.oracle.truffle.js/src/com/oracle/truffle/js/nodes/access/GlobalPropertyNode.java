@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,11 +72,11 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     public static JSTargetableNode createPropertyNode(JSContext ctx, String propertyName) {
         if (ctx != null && ctx.isOptionNashornCompatibilityMode()) {
             if (propertyName.equals("__LINE__")) {
-                return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.LineNumberNode());
+                return new GlobalConstantNode(propertyName, new GlobalConstantNode.LineNumberNode());
             } else if (propertyName.equals("__FILE__")) {
-                return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.FileNameNode());
+                return new GlobalConstantNode(propertyName, new GlobalConstantNode.FileNameNode());
             } else if (propertyName.equals("__DIR__")) {
-                return new GlobalConstantNode(ctx, propertyName, new GlobalConstantNode.DirNameNode(ctx));
+                return new GlobalConstantNode(propertyName, new GlobalConstantNode.DirNameNode());
             }
         }
         return new GlobalPropertyNode(ctx, propertyName, null);
@@ -115,7 +115,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess() && globalObjectNode == null) {
-            GlobalObjectNode global = GlobalObjectNode.create(context);
+            GlobalObjectNode global = GlobalObjectNode.create();
             GlobalPropertyNode materialized = new GlobalPropertyNode(context, propertyName, global);
             if (this.cache != null && this.cache.isMethod()) {
                 materialized.getCache().setMethod();
@@ -137,7 +137,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
         if (globalObjectNode != null) {
             return globalObjectNode.execute(frame);
         }
-        return GlobalObjectNode.getGlobalObject(context);
+        return getRealm().getGlobalObject();
     }
 
     @Override
@@ -183,7 +183,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     private JavaScriptNode getGlobalObjectNode() {
         if (globalObjectNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.globalObjectNode = insert(GlobalObjectNode.create(context));
+            this.globalObjectNode = insert(GlobalObjectNode.create());
         }
         return globalObjectNode;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,63 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.jniboundaryprofiler;
+package com.oracle.truffle.js.runtime.objects;
 
-import java.lang.instrument.ClassFileTransformer;
-import java.lang.instrument.IllegalClassFormatException;
-import java.security.ProtectionDomain;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-public class ProfilingTransformer implements ClassFileTransformer {
+import com.oracle.js.parser.ir.Module;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
-    public byte[] transform(ClassLoader loader, String className, Class<?> classBeingRedefined,
-                    ProtectionDomain protectionDomain, byte[] classfileBuffer) throws IllegalClassFormatException {
-        byte[] instrumentedClass = classfileBuffer;
-        try {
-            // Instrument any call to a JSFunction object performed via NativeAccess
-            instrumentedClass = JSFunctionCallsInstrumenter.maybeInstrumentClass(className, classfileBuffer);
-            // Instrument any call to a Java method performed via GraalJSAccess
-            instrumentedClass = JavaCallsInstrumenter.maybeInstrumentClass(className, instrumentedClass);
-        } catch (Throwable t) {
-            t.printStackTrace();
-        }
-        return instrumentedClass;
+/**
+ * ES module data that can be shared across contexts.
+ */
+public final class JSModuleData extends ScriptOrModule {
+
+    /** Module parse node. */
+    private final Module module;
+
+    private final JSFunctionData functionData;
+    private final FrameDescriptor frameDescriptor;
+
+    /**
+     * Cache of imported module sources to keep alive sources referenced by this module in order to
+     * prevent premature code cache GC of this module's dependencies.
+     */
+    private final Map<String, Source> importSourceCache = new ConcurrentHashMap<>();
+
+    public JSModuleData(Module module, Source source, JSFunctionData functionData, FrameDescriptor frameDescriptor) {
+        super(functionData.getContext(), source);
+        this.module = module;
+        this.functionData = functionData;
+        this.frameDescriptor = frameDescriptor;
+    }
+
+    public Module getModule() {
+        return module;
+    }
+
+    public JSFunctionData getFunctionData() {
+        return functionData;
+    }
+
+    public FrameDescriptor getFrameDescriptor() {
+        return frameDescriptor;
+    }
+
+    public boolean isTopLevelAsync() {
+        return functionData.isAsync();
+    }
+
+    /**
+     * Keep a link from the referencing module to the imported module's Source, so that the latter
+     * is kept alive for the lifetime of the former.
+     */
+    public void rememberImportedModuleSource(String moduleSpecifier, Source moduleSource) {
+        // Note: the source might change, so we only remember the last source.
+        importSourceCache.put(moduleSpecifier, moduleSource);
     }
 
 }

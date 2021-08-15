@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,9 @@ package com.oracle.js.parser.ir;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
 import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
+import java.util.Collections;
+import java.util.Map;
+
 public class ExportNode extends Node {
 
     private final NamedExportsNode namedExports;
@@ -58,24 +61,26 @@ public class ExportNode extends Node {
 
     private final boolean isDefault;
 
-    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final FromNode from) {
-        this(token, start, finish, null, from, ident, null, null, false);
+    private final Map<String, String> assertions;
+
+    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final FromNode from, Map<String, String> assertions) {
+        this(token, start, finish, null, from, ident, null, null, false, assertions);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from) {
-        this(token, start, finish, exportClause, from, null, null, null, false);
+    public ExportNode(final long token, final int start, final int finish, final NamedExportsNode exportClause, final FromNode from, Map<String, String> assertions) {
+        this(token, start, finish, exportClause, from, null, null, null, false, assertions);
     }
 
     public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final Expression expression, final boolean isDefault) {
-        this(token, start, finish, null, null, ident, null, expression, isDefault);
+        this(token, start, finish, null, null, ident, null, expression, isDefault, Collections.emptyMap());
     }
 
     public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final VarNode var) {
-        this(token, start, finish, null, null, ident, var, null, false);
+        this(token, start, finish, null, null, ident, var, null, false, Collections.emptyMap());
     }
 
     private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
-                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault) {
+                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault, Map<String, String> assertions) {
         super(token, start, finish);
         this.namedExports = namedExports;
         this.from = from;
@@ -83,13 +88,14 @@ public class ExportNode extends Node {
         this.var = var;
         this.expression = expression;
         this.isDefault = isDefault;
+        this.assertions = assertions;
         assert (namedExports == null) || (exportIdent == null);
         assert !isDefault || (namedExports == null && from == null);
         assert (var == null && expression == null) || isDefault || (exportIdent != null && exportIdent == getIdent(var, expression));
     }
 
     private ExportNode(final ExportNode node, final NamedExportsNode namedExports,
-                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression) {
+                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, Map<String, String> assertions) {
         super(node);
         this.isDefault = node.isDefault;
 
@@ -98,6 +104,7 @@ public class ExportNode extends Node {
         this.exportIdent = exportIdent;
         this.var = var;
         this.expression = expression;
+        this.assertions = assertions;
     }
 
     public NamedExportsNode getNamedExports() {
@@ -124,12 +131,16 @@ public class ExportNode extends Node {
         return isDefault;
     }
 
+    public Map<String, String> getAssertions() {
+        return assertions;
+    }
+
     public ExportNode setExportClause(NamedExportsNode exportClause) {
         assert exportIdent == null;
         if (this.namedExports == exportClause) {
             return this;
         }
-        return new ExportNode(this, exportClause, from, exportIdent, var, expression);
+        return new ExportNode(this, exportClause, from, exportIdent, var, expression, assertions);
     }
 
     public ExportNode setFrom(FromNode from) {
@@ -137,7 +148,7 @@ public class ExportNode extends Node {
         if (this.from == from) {
             return this;
         }
-        return new ExportNode(this, namedExports, from, exportIdent, var, expression);
+        return new ExportNode(this, namedExports, from, exportIdent, var, expression, assertions);
     }
 
     @Override
@@ -150,7 +161,7 @@ public class ExportNode extends Node {
             IdentNode newIdent = (exportIdent == null || isDefault()) ? exportIdent : getIdent(newVar, newExpression);
             ExportNode newNode = (this.namedExports == newExportClause && this.from == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
                             ? this
-                            : new ExportNode(this, namedExports, from, exportIdent, var, expression);
+                            : new ExportNode(this, namedExports, from, exportIdent, var, expression, assertions);
             return visitor.leaveExportNode(newNode);
         }
 

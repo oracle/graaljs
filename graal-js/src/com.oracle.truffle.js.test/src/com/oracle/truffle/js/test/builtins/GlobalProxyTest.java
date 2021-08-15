@@ -72,8 +72,8 @@ public class GlobalProxyTest {
             helper.enterContext();
 
             JSContext context = helper.getJSContext();
-            JSRealm realm = context.getRealm();
-            DynamicObject proxyHandler = JSOrdinary.create(context);
+            JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+            DynamicObject proxyHandler = JSOrdinary.create(context, realm);
             JSObject.set(proxyHandler, "has", helper.runNoPolyglot("" +
                             "(function() {\n" +
                             "  let Reflect = globalThis.Reflect;\n" +
@@ -86,7 +86,7 @@ public class GlobalProxyTest {
                             "  };\n" +
                             "})()"));
             DynamicObject oldGlobal = realm.getGlobalObject();
-            DynamicObject newGlobal = JSProxy.create(context, oldGlobal, proxyHandler);
+            DynamicObject newGlobal = JSProxy.create(context, realm, oldGlobal, proxyHandler);
             realm.setGlobalObject(newGlobal);
 
             try {

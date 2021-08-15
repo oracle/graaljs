@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -158,7 +158,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
             String sourceText = JSRuntime.toString(obj);
             getContext().checkEvalAllowed();
             Source source = createSource(sourceText);
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             return loadNode.executeLoad(source, realm);
         }
 
@@ -186,7 +186,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @TruffleBoundary
         private JSRealm createChildRealm() {
-            return getContext().getRealm().createChildRealm();
+            return getRealm().createChildRealm();
         }
     }
 
@@ -202,7 +202,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         @Specialization
         protected Object start(Object obj) {
             String sourceText = JSRuntime.toString(obj);
-            return ((DebugJSAgent) getContext().getJSAgent()).startNewAgent(sourceText);
+            return ((DebugJSAgent) getRealm().getAgent()).startNewAgent(sourceText);
         }
     }
 
@@ -217,7 +217,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object broadcast(Object sab) {
-            ((DebugJSAgent) getContext().getJSAgent()).broadcast(sab);
+            ((DebugJSAgent) getRealm().getAgent()).broadcast(sab);
             return Undefined.instance;
         }
     }
@@ -233,7 +233,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object getReport() {
-            return ((DebugJSAgent) getContext().getJSAgent()).getReport();
+            return ((DebugJSAgent) getRealm().getAgent()).getReport();
         }
     }
 
@@ -248,7 +248,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object doSleep(int time) {
-            ((DebugJSAgent) getContext().getJSAgent()).sleep(time);
+            ((DebugJSAgent) getRealm().getAgent()).sleep(time);
             return Undefined.instance;
         }
 
@@ -269,7 +269,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object receiveBroadcast(Object lambda) {
-            ((DebugJSAgent) getContext().getJSAgent()).setDebugReceiveBroadcast(lambda);
+            ((DebugJSAgent) getRealm().getAgent()).setDebugReceiveBroadcast(lambda);
             return Undefined.instance;
         }
     }
@@ -287,7 +287,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         @Specialization
         protected Object report(Object value) {
             String message = toStringNode.executeString(value);
-            ((DebugJSAgent) getContext().getJSAgent()).report(message);
+            ((DebugJSAgent) getRealm().getAgent()).report(message);
             return Undefined.instance;
         }
     }
@@ -303,7 +303,7 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
 
         @Specialization
         protected Object leaving() {
-            ((DebugJSAgent) getContext().getJSAgent()).leaving();
+            ((DebugJSAgent) getRealm().getAgent()).leaving();
             return Undefined.instance;
         }
     }

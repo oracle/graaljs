@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,7 +99,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
         } else if (fulfilledProf.profile(promiseState == JSPromise.FULFILLED)) {
             Object value = getPromiseResult(promise);
             DynamicObject job = getPromiseReactionJob(fulfillReaction, value);
-            context.promiseEnqueueJob(context.getRealm(), job);
+            context.promiseEnqueueJob(getRealm(), job);
         } else {
             assert promiseState == JSPromise.REJECTED;
             Object reason = getPromiseResult(promise);
@@ -107,7 +107,7 @@ public class PerformPromiseThenNode extends JavaScriptBaseNode {
                 context.notifyPromiseRejectionTracker(promise, JSPromise.REJECTION_TRACKER_OPERATION_HANDLE, Undefined.instance);
             }
             DynamicObject job = getPromiseReactionJob(rejectReaction, reason);
-            context.promiseEnqueueJob(context.getRealm(), job);
+            context.promiseEnqueueJob(getRealm(), job);
         }
         setPromiseIsHandledNode.setValueBoolean(promise, true);
         if (resultCapability == null) {

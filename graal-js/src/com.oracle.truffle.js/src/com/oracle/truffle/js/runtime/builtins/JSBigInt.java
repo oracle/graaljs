@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.BigIntFunctionBuiltins;
 import com.oracle.truffle.js.builtins.BigIntPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -62,8 +63,8 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     private JSBigInt() {
     }
 
-    public static DynamicObject create(JSContext context, BigInt value) {
-        DynamicObject obj = JSBigIntObject.create(context.getRealm(), context.getBigIntFactory(), value);
+    public static DynamicObject create(JSContext context, JSRealm realm, BigInt value) {
+        DynamicObject obj = JSBigIntObject.create(realm, context.getBigIntFactory(), value);
         assert isJSBigInt(obj);
         return context.trackAllocation(obj);
     }
@@ -113,9 +114,9 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
-            return super.toDisplayStringImpl(obj, depth, allowSideEffects, context);
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
+            return super.toDisplayStringImpl(obj, depth, allowSideEffects);
         } else {
             BigInt primitiveValue = JSBigInt.valueOf(obj);
             return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,

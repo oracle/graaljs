@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.js.parser.ir.BinaryNode;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.UnaryNode;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -58,7 +59,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
@@ -179,11 +179,6 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else {
             return this;
         }
-    }
-
-    @SuppressWarnings("deprecation")
-    private JavaScriptLanguage getLanguage() {
-        return getRootNode().getLanguage(JavaScriptLanguage.class);
     }
 
     private Object[] parseMaterializationInfo() {
@@ -320,13 +315,24 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             } else if (type == Type.Number) {
                 return interop.isNumber(value);
             } else if (type == Type.Function) {
-                return interop.isExecutable(value) || interop.isInstantiable(value);
+                return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
             } else if (type == Type.Object) {
-                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value);
+                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value) &&
+                                !isHostSymbolInNashornCompatMode(value);
             } else {
                 return false;
             }
         }
+    }
+
+    private boolean isHostSymbolInNashornCompatMode(Object value) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            TruffleLanguage.Env env = getRealm().getEnv();
+            if (env.isHostSymbol(value)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean checkProxy(DynamicObject value, boolean isFunction) {

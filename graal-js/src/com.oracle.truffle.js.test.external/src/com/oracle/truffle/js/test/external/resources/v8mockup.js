@@ -5,7 +5,7 @@
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
  */
 /**
- * This script provides compatibility functions so we (GraalJS, but also
+ * This script provides compatibility functions so we (Graal.js, but also
  * Nashorn, ...) can execute the V8 test suite. Note that the functions have
  * been renamed from e.g. %DeoptimizeFunction to v8DeoptimizeFunction, as "%" is
  * no valid part of a function name.
@@ -56,8 +56,23 @@ var isOptimized = function() {
 var isTurboFanned = function() {
     return v8IgnoreResult;
 }
-// ---------------------- V8 Compiler ---------------------- //
 
+// ---------------------- d8 global object ---------------------- //
+
+var d8 = {
+    file: {
+        execute: function(path) {
+            load(path);
+            // Ensures that assertTraps() checks just the error type
+            // (WebAssembly.RuntimeError) and not the exact error message
+            if (path.endsWith('wasm-module-builder.js')) {
+                kTrapMsgs = [];
+            }
+        }
+    }
+};
+
+// ---------------------- other mockup functions ---------------- //
 
 function v8OptimizeFunctionOnNextCall() {
     return undefined;
@@ -956,7 +971,7 @@ function v8WasmTierUpModule() {
 }
 
 function v8IsBeingInterpreted() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8ArrayBufferMaxByteLength() {
@@ -982,31 +997,31 @@ function v8CompileBaseline() {
 }
 
 function v8IsDictPropertyConstTrackingEnabled() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8HasOwnConstDataProperty() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8RegexpIsUnmodified() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8PromiseSpeciesProtector() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8RegExpSpeciesProtector() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8TypedArraySpeciesProtector() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8ArrayIteratorProtector() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8ToString(a) {
@@ -1017,7 +1032,7 @@ function v8ScheduleGCInStackCheck(){
 }
 
 function v8DynamicCheckMapsEnabled() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
 }
 
 function v8TierupFunctionOnNextCall() {
@@ -1033,5 +1048,40 @@ function v8WasmTierDown() {
 }
 
 function v8RegexpTypeTag() {
-	return v8IgnoreResult;
+    return v8IgnoreResult;
+}
+
+function v8BaselineOsr() {
+}
+
+function v8GetAndResetRuntimeCallStats() {
+    return v8IgnoreResult;
+}
+
+function v8IsConcatSpreadableProtector() {
+    return v8IgnoreResult;
+}
+
+function v8InLargeObjectSpace() {
+    return v8IgnoreResult;
+}
+
+function v8Is64Bit() {
+    return v8IgnoreResult;
+}
+
+function v8IsAtomicsWaitAllowed() {
+    return v8IgnoreResult;
+}
+
+function v8ThrowStackOverflow() {
+    throw new RangeError("stack exceeded");
+}
+
+function v8VerifyType() {
+    return v8IgnoreResult;
+}
+
+function v8PretenureAllocationSite() {
+    return v8IgnoreResult;
 }

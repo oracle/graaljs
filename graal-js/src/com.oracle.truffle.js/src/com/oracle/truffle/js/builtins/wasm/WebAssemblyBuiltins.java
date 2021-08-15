@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -53,6 +52,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyCompileNodeGen;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltinsFactory.WebAssemblyInstantiateNodeGen;
@@ -68,6 +68,7 @@ import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -76,6 +77,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
@@ -137,6 +139,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         @Child NewPromiseCapabilityNode newPromiseCapability;
         @Child JSFunctionCallNode promiseResolutionCallNode;
         @Child TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public PromisifiedBuiltinNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -147,12 +150,13 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         protected abstract Object process(Object argument);
 
         protected DynamicObject promisify(Object argument) {
-            JSRealm realm = getContext().getRealm();
+            JSRealm realm = getRealm();
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
             try {
                 Object resolution = process(argument);
                 promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), resolution));
             } catch (Throwable ex) {
+                errorBranch.enter();
                 InteropLibrary interop = InteropLibrary.getUncached(ex);
                 if (interop.isException(ex)) {
                     try {
@@ -186,10 +190,12 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
     public abstract static class WebAssemblyCompileNode extends PromisifiedBuiltinNode {
 
         @Child ExportByteSourceNode exportByteSourceNode;
+        @Child InteropLibrary decodeModuleLib;
 
         public WebAssemblyCompileNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.exportByteSourceNode = ExportByteSourceNode.create(context, "WebAssembly.compile(): Argument 0 must be a buffer source", "WebAssembly.compile(): BufferSource argument is empty");
+            this.decodeModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -202,10 +208,11 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             try {
                 Object byteSource = exportByteSourceNode.execute(argument);
 
-                Object compile = getContext().getRealm().getWASMCompileFunction();
-                Object wasmModule = InteropLibrary.getUncached(compile).execute(compile, byteSource);
+                JSRealm realm = getRealm();
+                Object decode = realm.getWASMModuleDecode();
+                Object wasmModule = decodeModuleLib.execute(decode, byteSource);
 
-                return JSWebAssemblyModule.create(getContext(), wasmModule);
+                return JSWebAssemblyModule.create(getContext(), realm, wasmModule);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -218,6 +225,9 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         @Child ExportByteSourceNode exportByteSourceNode;
         @Child IsObjectNode isObjectNode;
         @Child PerformPromiseThenNode performPromiseThenNode;
+        @Child InteropLibrary decodeModuleLib;
+        @Child InteropLibrary instantiateModuleLib;
+        private final BranchProfile errorBranch = BranchProfile.create();
 
         public WebAssemblyInstantiateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -225,6 +235,8 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                             "WebAssembly.instantiate(): BufferSource argument is empty");
             this.isObjectNode = IsObjectNode.create();
             this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+            this.decodeModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.instantiateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization
@@ -241,20 +253,9 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             }
 
             JSContext context = getContext();
-            JSRealm realm = context.getRealm();
+            JSRealm realm = getRealm();
             PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
-            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblySourceInstantiation, (c) -> {
-                CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                    @Override
-                    public Object execute(VirtualFrame frame) {
-                        InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
-                        Object jsInstance = instantiateModule(context, info.getWasmModule(), info.getImportObject());
-                        return toJSInstantiatedSource(context, info.getWasmModule(), jsInstance);
-                    }
-                });
-                return JSFunctionData.createCallOnly(c, callTarget, 1, "");
-            });
-
+            JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblySourceInstantiation, (c) -> createSourceInstantiationImpl(c));
             performPromiseThenNode.execute(promise, JSFunction.create(realm, functionData), Undefined.instance, promiseCapability);
             return promiseCapability.getPromise();
         }
@@ -277,11 +278,12 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             Object wasmByteSource = exportByteSourceNode.execute(byteSourceOrModule);
 
             try {
-                Object compile = getContext().getRealm().getWASMCompileFunction();
+                Object decode = getRealm().getWASMModuleDecode();
                 try {
-                    Object wasmModule = InteropLibrary.getUncached(compile).execute(compile, wasmByteSource);
+                    Object wasmModule = decodeModuleLib.execute(decode, wasmByteSource);
                     return new InstantiatedSourceInfo(wasmModule, importObject);
                 } catch (AbstractTruffleException ex) {
+                    errorBranch.enter();
                     ExceptionType type = InteropLibrary.getUncached(ex).getExceptionType(ex);
                     if (type == ExceptionType.PARSE_ERROR) {
                         throw Errors.createCompileError(ex, this);
@@ -294,45 +296,62 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
             }
         }
 
-        static Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
-            Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, wasmModule, importObject);
-            Object instantiate = context.getRealm().getWASMInstantiateFunction();
+        protected Object instantiateModule(JSContext context, Object wasmModule, Object importObject) {
+            JSRealm realm = getRealm();
+            Object wasmImportObject = JSWebAssemblyInstance.transformImportObject(context, realm, wasmModule, importObject);
+            Object instantiate = realm.getWASMModuleInstantiate();
             Object wasmInstance;
             try {
-                wasmInstance = InteropLibrary.getUncached(instantiate).execute(instantiate, wasmModule, wasmImportObject);
+                wasmInstance = instantiateModuleLib.execute(instantiate, wasmModule, wasmImportObject);
             } catch (GraalJSException jsex) {
+                errorBranch.enter();
                 throw jsex;
             } catch (AbstractTruffleException ex) {
+                errorBranch.enter();
                 throw Errors.createLinkError(ex, null);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
 
-            return JSWebAssemblyInstance.create(context, wasmInstance, wasmModule);
+            return JSWebAssemblyInstance.create(context, realm, wasmInstance, wasmModule);
         }
 
-        static Object toJSInstantiatedSource(JSContext context, Object wasmModule, Object jsInstance) {
-            DynamicObject instantiatedSource = JSOrdinary.create(context);
-            JSObject.set(instantiatedSource, "module", JSWebAssemblyModule.create(context, wasmModule));
-            JSObject.set(instantiatedSource, "instance", jsInstance);
-            return instantiatedSource;
-        }
+        private JSFunctionData createSourceInstantiationImpl(JSContext context) {
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
+                    Object jsInstance = instantiateModule(context, info.getWasmModule(), info.getImportObject());
+                    return toJSInstantiatedSource(info.getWasmModule(), jsInstance);
+                }
 
+                Object toJSInstantiatedSource(Object wasmModule, Object jsInstance) {
+                    JSRealm realm = getRealm();
+                    DynamicObject instantiatedSource = JSOrdinary.create(context, realm);
+                    JSObject.set(instantiatedSource, "module", JSWebAssemblyModule.create(context, realm, wasmModule));
+                    JSObject.set(instantiatedSource, "instance", jsInstance);
+                    return instantiatedSource;
+                }
+            });
+            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        }
     }
 
     public abstract static class WebAssemblyValidateNode extends JSBuiltinNode {
 
         @Child ExportByteSourceNode exportByteSourceNode;
+        @Child InteropLibrary validateModuleLib;
 
         public WebAssemblyValidateNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.exportByteSourceNode = ExportByteSourceNode.create(context, "WebAssembly.validate(): Argument 0 must be a buffer source", null);
+            this.validateModuleLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         private Object validateImpl(Object byteSource) {
             try {
-                Object validate = getContext().getRealm().getWASMValidateFunction();
-                return InteropLibrary.getUncached(validate).execute(validate, byteSource);
+                Object validate = getRealm().getWASMModuleValidate();
+                return validateModuleLib.execute(validate, byteSource);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -140,7 +140,7 @@ public class MaterializedNodes {
 
     @Test
     public void materializeMulti() {
-        JSTargetableNode undef = GlobalConstantNode.createGlobalConstant(jsContext, "test", Undefined.instance);
+        JSTargetableNode undef = GlobalConstantNode.createGlobalConstant("test", Undefined.instance);
         JavaScriptNode[] args = new JavaScriptNode[]{};
         JSFunctionCallNode c = JSFunctionCallNode.createInvoke(undef, args, false, false);
         c.setSourceSection(Source.newBuilder(JavaScriptLanguage.ID, "", "").build().createUnavailableSection());

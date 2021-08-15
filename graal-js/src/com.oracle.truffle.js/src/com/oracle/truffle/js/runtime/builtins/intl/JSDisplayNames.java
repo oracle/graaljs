@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,9 +106,8 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         return INSTANCE.createConstructorAndPrototype(realm, DisplayNamesFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getDisplayNamesFactory();
         JSDisplayNamesObject obj = new JSDisplayNamesObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
@@ -123,12 +122,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         String fallback;
         LocaleDisplayNames displayNames;
 
-        DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSOrdinary.create(context);
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.FALLBACK, fallback, JSAttributes.getDefault());
+        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            DynamicObject result = JSOrdinary.create(context, realm);
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.FALLBACK, fallback, JSAttributes.getDefault());
             return result;
         }
     }
@@ -159,9 +158,9 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, DynamicObject displayNamesObject) {
+    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject displayNamesObject) {
         InternalState state = getInternalState(displayNamesObject);
-        return state.toResolvedOptionsObject(context);
+        return state.toResolvedOptionsObject(context, realm);
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -60,32 +61,32 @@ public abstract class CommonJSGlobalModuleGetterBuiltin extends GlobalBuiltins.J
 
     @Specialization
     protected Object getObject() {
-        return getOrCreateModuleObject(getContext());
+        return getOrCreateModuleObject(getContext(), getRealm());
     }
 
     @CompilerDirectives.TruffleBoundary
-    public static DynamicObject getOrCreateModuleObject(JSContext context) {
+    public static DynamicObject getOrCreateModuleObject(JSContext context, JSRealm realm) {
         String filePath = CommonJSResolution.getCurrentFileNameFromStack();
         if (filePath != null) {
-            TruffleFile truffleFile = context.getRealm().getEnv().getPublicTruffleFile(filePath);
+            TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(filePath);
             assert truffleFile.isRegularFile();
-            Map<TruffleFile, DynamicObject> requireCache = context.getRealm().getCommonJSRequireCache();
+            Map<TruffleFile, DynamicObject> requireCache = realm.getCommonJSRequireCache();
             DynamicObject cached = requireCache.get(truffleFile);
             if (cached != null) {
                 return cached;
             } else {
-                DynamicObject moduleObject = createModuleObject(context);
+                DynamicObject moduleObject = createModuleObject(context, realm);
                 requireCache.put(truffleFile, moduleObject);
                 return moduleObject;
             }
         } else {
-            return createModuleObject(context);
+            return createModuleObject(context, realm);
         }
     }
 
-    private static DynamicObject createModuleObject(JSContext context) {
-        DynamicObject moduleObject = JSOrdinary.create(context);
-        DynamicObject exportsObject = JSOrdinary.create(context);
+    private static DynamicObject createModuleObject(JSContext context, JSRealm realm) {
+        DynamicObject moduleObject = JSOrdinary.create(context, realm);
+        DynamicObject exportsObject = JSOrdinary.create(context, realm);
         JSObject.set(moduleObject, CommonJSRequireBuiltin.EXPORTS_PROPERTY_NAME, exportsObject);
         return moduleObject;
     }

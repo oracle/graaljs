@@ -93,7 +93,6 @@ import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -687,23 +686,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class ArrayBufferViewNonIntegerIndexGetNode extends LinkedPropertyGetNode {
-
-        public ArrayBufferViewNonIntegerIndexGetNode(ReceiverCheckNode receiverCheck) {
-            super(receiverCheck);
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            if (JSArrayBufferView.hasDetachedBuffer((DynamicObject) thisObj)) {
-                throw Errors.createTypeErrorDetachedBuffer();
-            } else {
-                return Undefined.instance;
-            }
-        }
-
-    }
-
     /**
      * For use when a property is undefined and __noSuchProperty__/__noSuchMethod__ had been set.
      */
@@ -838,7 +820,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             String thisStr = JSRuntime.toStringIsString(thisObj);
             if (root.getKey() instanceof String) {
-                Object boxedString = root.getContext().getRealm().getEnv().asBoxedGuestValue(thisStr);
+                Object boxedString = root.getRealm().getEnv().asBoxedGuestValue(thisStr);
                 try {
                     return interop.readMember(boxedString, (String) root.getKey());
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
@@ -1017,7 +999,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         // in nashorn-compat mode, `javaObj.xyz` can mean `javaObj.getXyz()` or `javaObj.isXyz()`.
         private Object tryGetters(Object thisObj, PropertyGetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = context.getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 Object result = tryInvokeGetter(thisObj, "get", root);
                 if (result != null) {
@@ -1405,7 +1387,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     kind = CONSTRUCTOR;
                 }
             }
-            JSRealm realm = JSFunction.getRealm(functionObj, context);
+            JSRealm realm = JSFunction.getRealm(functionObj, context, this);
             // Function kind guaranteed by shape check, see JSFunction
             DynamicObject prototype;
             if (kind == CONSTRUCTOR) {
@@ -1717,7 +1699,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         if (JSConfig.SubstrateVM) {
             return null;
         }
-        if (context.isOptionNashornCompatibilityMode() && context.getRealm().isJavaInteropEnabled()) {
+        if (context.isOptionNashornCompatibilityMode() && getRealm().isJavaInteropEnabled()) {
             if (JSRuntime.isString(thisObj) && isMethod()) {
                 return new JavaStringMethodGetNode(createPrimitiveReceiverCheck(thisObj, depth));
             }
@@ -1743,8 +1725,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return createJSProxyCache(receiverCheck);
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
                 return new UnspecializedPropertyGetNode(receiverCheck);
-            } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
-                return new ArrayBufferViewNonIntegerIndexGetNode(shapeCheck);
             } else {
                 return createUndefinedJSObjectPropertyNode(jsobject, depth);
             }

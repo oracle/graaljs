@@ -84,7 +84,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.Accessor;
@@ -1144,7 +1143,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         // in nashorn-compat mode, `javaObj.xyz = a` can mean `javaObj.setXyz(a)`.
         private boolean tryInvokeSetter(Object thisObj, Object value, PropertySetNode root) {
             assert context.isOptionNashornCompatibilityMode();
-            TruffleLanguage.Env env = context.getRealm().getEnv();
+            TruffleLanguage.Env env = getRealm().getEnv();
             if (env.isHostObject(thisObj)) {
                 String setterKey = root.getAccessorKey("set");
                 if (setterKey == null) {
@@ -1166,23 +1165,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             return false;
         }
-    }
-
-    public static final class ArrayBufferViewNonIntegerIndexSetNode extends LinkedPropertySetNode {
-
-        public ArrayBufferViewNonIntegerIndexSetNode(AbstractShapeCheckNode shapeCheck) {
-            super(shapeCheck);
-        }
-
-        @Override
-        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            if (JSArrayBufferView.hasDetachedBuffer((DynamicObject) thisObj)) {
-                throw Errors.createTypeErrorDetachedBuffer();
-            } else {
-                return false;
-            }
-        }
-
     }
 
     public static final class ArrayLengthPropertySetNode extends LinkedPropertySetNode {
@@ -1345,8 +1327,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
                 return new TypeErrorPropertySetNode(shapeCheck);
-            } else if (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) {
-                return new ArrayBufferViewNonIntegerIndexSetNode(shapeCheck);
             } else if (superProperty) {
                 // define the property on the receiver; currently not handled, rewrite to generic
                 return createGenericPropertyNode();

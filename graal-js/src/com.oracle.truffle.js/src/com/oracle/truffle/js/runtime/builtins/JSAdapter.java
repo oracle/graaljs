@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,8 +90,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return getClassName();
     }
 
-    public static DynamicObject create(JSContext context, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
-        JSRealm realm = context.getRealm();
+    public static DynamicObject create(JSContext context, JSRealm realm, DynamicObject adaptee, DynamicObject overrides, DynamicObject proto) {
         JSObjectFactory factory = context.getJSAdapterFactory();
         DynamicObject obj = new JSAdapterObject(factory.getShape(realm), adaptee, overrides);
         factory.initProto(obj, realm);
@@ -282,7 +281,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects, JSContext context) {
+    public String toDisplayStringImpl(DynamicObject object, int depth, boolean allowSideEffects) {
         return defaultToString(object);
     }
 

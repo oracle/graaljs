@@ -66,7 +66,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
                 return left;
             }
             int resultLength = left.length() + right.length();
-            if (resultLength > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+            if (resultLength > JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()) {
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             if (resultLength < JSConfig.MinLazyStringLength) {
@@ -93,7 +93,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         assert JSRuntime.isString(left) && JSRuntime.isString(right);
         assert length == left.length() + right.length();
         assert left.length() > 0 && right.length() > 0;
-        assert left.length() + right.length() <= JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit();
+        assert left.length() + right.length() <= JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit();
         assert length >= JSConfig.MinLazyStringLength;
         return true;
     }
@@ -145,7 +145,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         }
         if (JSConfig.LazyStrings) {
             JSLazyString result = new JSLazyString(left, new JSLazyIntWrapper(right));
-            if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+            if (result.length() > JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()) {
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             return result;
@@ -165,7 +165,7 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         }
         if (JSConfig.LazyStrings) {
             JSLazyString result = new JSLazyString(new JSLazyIntWrapper(left), right);
-            if (result.length() > JavaScriptLanguage.getCurrentJSRealm().getContext().getStringLengthLimit()) {
+            if (result.length() > JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()) {
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             return result;

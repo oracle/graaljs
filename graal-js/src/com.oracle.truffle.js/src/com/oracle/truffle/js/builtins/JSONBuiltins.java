@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,7 +147,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         protected Object parse(Object text, Object reviver,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             Object unfiltered = parseIntl(toString(text));
-            DynamicObject root = JSOrdinary.create(getContext());
+            DynamicObject root = JSOrdinary.create(getContext(), getRealm());
             JSObjectUtil.putDataProperty(getContext(), root, "", unfiltered, JSAttributes.getDefault());
             return walk((DynamicObject) reviver, root, "");
         }
@@ -160,7 +160,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @TruffleBoundary(transferToInterpreterOnException = false)
         private Object parseIntl(String jsonString) {
-            return new TruffleJSONParser(getContext()).parse(jsonString);
+            return new TruffleJSONParser(getContext()).parse(jsonString, getRealm());
         }
 
         @TruffleBoundary
@@ -291,7 +291,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         private Object stringifyIntl(Object value, Object spaceParam, DynamicObject replacerFnObj, List<String> replacerList) {
             final String gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? "" : getGap(spaceParam);
 
-            DynamicObject wrapper = JSOrdinary.create(getContext());
+            DynamicObject wrapper = JSOrdinary.create(getContext(), getRealm());
             if (createWrapperPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 createWrapperPropertyNode = insert(CreateDataPropertyNode.create(getContext(), ""));

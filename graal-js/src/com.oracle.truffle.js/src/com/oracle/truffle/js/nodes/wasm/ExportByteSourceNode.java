@@ -46,6 +46,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
@@ -117,14 +118,15 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
         if (emptyByteSouceMessage != null && length == 0) {
             throw Errors.createCompileError(emptyByteSouceMessage, this);
         }
+        JSRealm realm = getRealm();
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-            buffer = JSArrayBuffer.createArrayBuffer(context, 0);
+            buffer = JSArrayBuffer.createArrayBuffer(context, realm, 0);
         }
         // Wrap ArrayBuffer into Uint8Array - to allow reading its bytes on WASM side
         boolean interop = JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
         boolean direct = JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
         TypedArray arrayType = TypedArrayFactory.Uint8Array.createArrayType(direct, (offset != 0), interop);
-        return JSArrayBufferView.createArrayBufferView(context, buffer, arrayType, offset, length);
+        return JSArrayBufferView.createArrayBufferView(context, realm, buffer, arrayType, offset, length);
     }
 
 }

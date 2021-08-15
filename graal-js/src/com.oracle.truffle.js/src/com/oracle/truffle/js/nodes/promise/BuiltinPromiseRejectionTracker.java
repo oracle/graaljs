@@ -44,6 +44,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PromiseRejectionTracker;
 
@@ -102,7 +103,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
     public void promiseReactionJobsProcessed() {
         while (!asyncHandledRejections.isEmpty()) {
             PromiseChainInfoRecord info = asyncHandledRejections.removeFirst();
-            PrintWriter out = context.getRealm().getErrorWriter();
+            PrintWriter out = JSRealm.get(null).getErrorWriter();
             out.println("[GraalVM JavaScript Warning] Promise rejection was handled asynchronously: " + JSRuntime.safeToString(info.reason));
             out.flush();
         }
@@ -116,7 +117,7 @@ public class BuiltinPromiseRejectionTracker implements PromiseRejectionTracker {
             }
             info.warned = true;
             if (mode == JSContextOptions.UnhandledRejectionsTrackingMode.WARN) {
-                PrintWriter out = context.getRealm().getErrorWriter();
+                PrintWriter out = JSRealm.get(null).getErrorWriter();
                 out.println("[GraalVM JavaScript Warning] Unhandled promise rejection: " + JSRuntime.safeToString(info.reason));
                 out.flush();
             } else {

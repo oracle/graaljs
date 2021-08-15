@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,28 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime;
+package com.oracle.truffle.js.nodes.intl;
 
-import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
-public abstract class AbstractJavaScriptLanguage extends TruffleLanguage<JSRealm> {
+public abstract class GetOptionsObjectNode extends JavaScriptBaseNode {
+    private final JSContext context;
 
-    public static JSRealm getCurrentJSRealm() {
-        return getCurrentContext(JavaScriptLanguage.class);
+    public GetOptionsObjectNode(JSContext context) {
+        this.context = context;
     }
 
-    public static JavaScriptLanguage getCurrentLanguage() {
-        return getCurrentLanguage(JavaScriptLanguage.class);
+    public abstract Object execute(Object options);
+
+    @Specialization(guards = "isUndefined(options)")
+    public Object fromUndefined(@SuppressWarnings("unused") Object options) {
+        return JSOrdinary.createWithNullPrototype(context);
     }
 
-    public static TruffleLanguage.Env getCurrentEnv() {
-        return getCurrentContext(JavaScriptLanguage.class).getEnv();
+    @Specialization
+    public Object fromJSObject(JSObject options) {
+        return options;
     }
 
-    public abstract boolean isMultiContext();
-
-    public String getTruffleLanguageHome() {
-        return getLanguageHome();
+    @Specialization(guards = "!isUndefined(options)", replaces = "fromJSObject")
+    public Object fromOther(Object options,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached BranchProfile errorBranch) {
+        if (isObjectNode.executeBoolean(options)) {
+            return options;
+        } else {
+            errorBranch.enter();
+            throw Errors.createTypeErrorNotAnObject(options, this);
+        }
     }
+
 }

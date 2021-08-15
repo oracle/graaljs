@@ -47,6 +47,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -369,6 +370,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected Object set(DynamicObject targetObj, Object array, Object offset) {
             long targetOffsetLong = toInteger(offset);
             if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
+                needErrorBranch.enter();
                 throw Errors.createRangeError("out of bounds");
             }
             checkHasDetachedBuffer(targetObj);
@@ -399,6 +401,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             for (int i = 0, j = offset; i < sourceLen; i++, j++) {
                 targetArray.setElement(thisObj, j, sourceArray.getElement(array, i), false);
+                TruffleSafepoint.poll(this);
             }
         }
 
@@ -424,6 +427,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
                 checkHasDetachedBuffer(thisObj);
                 targetArray.setElement(thisObj, j, value, false);
+                TruffleSafepoint.poll(this);
             }
         }
 
@@ -477,20 +481,24 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 for (int i = 0; i < sourceLength; i++) {
                     int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, sourceByteIndex, i, interop);
                     ((TypedArray.TypedIntArray) targetType).setIntImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
+                    TruffleSafepoint.poll(this);
                 }
             } else if (sourceType instanceof TypedArray.TypedFloatArray && targetType instanceof TypedArray.TypedFloatArray) {
                 floatToFloatBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
                     double value = ((TypedArray.TypedFloatArray) sourceType).getDoubleImpl(sourceBuffer, sourceByteIndex, i, interop);
                     ((TypedArray.TypedFloatArray) targetType).setDoubleImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
+                    TruffleSafepoint.poll(this);
                 }
             } else if (sourceType instanceof TypedArray.TypedBigIntArray && targetType instanceof TypedArray.TypedBigIntArray) {
                 bigIntToBigIntBranch.enter();
                 for (int i = 0; i < sourceLength; i++) {
                     long value = ((TypedArray.TypedBigIntArray) sourceType).getLongImpl(sourceBuffer, sourceByteIndex, i, interop);
                     ((TypedArray.TypedBigIntArray) targetType).setLongImpl(targetBuffer, targetByteOffset, i + targetOffset, value, interop);
+                    TruffleSafepoint.poll(this);
                 }
             } else if ((sourceType instanceof TypedArray.TypedBigIntArray) != (targetType instanceof TypedArray.TypedBigIntArray)) {
+                needErrorBranch.enter();
                 throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
             } else {
                 objectToObjectBranch.enter();
@@ -498,6 +506,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 for (int i = 0; i < sourceLength; i++) {
                     Object value = sourceType.getBufferElement(sourceBuffer, sourceByteIndex + i * sourceElementSize, littleEndian, interop);
                     targetType.setBufferElement(targetBuffer, targetByteIndex + i * targetElementSize, littleEndian, value, interop);
+                    TruffleSafepoint.poll(this);
                 }
             }
         }
@@ -508,12 +517,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 InteropLibrary interop = getInterop();
                 clonedArrayBuffer = cloneInteropArrayBuffer(sourceBuffer, srcByteLength, srcByteOffset, interop);
             } else if (isDirectProf.profile(sourceArray.isDirect())) {
-                clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength);
+                clonedArrayBuffer = JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength);
                 ByteBuffer clonedBackingBuffer = JSArrayBuffer.getDirectByteBuffer(clonedArrayBuffer);
                 ByteBuffer sourceBackingBuffer = JSArrayBuffer.getDirectByteBuffer(sourceBuffer);
                 Boundaries.byteBufferPutSlice(clonedBackingBuffer, 0, sourceBackingBuffer, srcByteOffset, srcByteOffset + srcByteLength);
             } else {
-                clonedArrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
+                clonedArrayBuffer = JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
                 byte[] clonedBackingBuffer = JSArrayBuffer.getByteArray(clonedArrayBuffer);
                 byte[] sourceBackingBuffer = JSArrayBuffer.getByteArray(sourceBuffer);
                 System.arraycopy(sourceBackingBuffer, srcByteOffset, clonedBackingBuffer, 0, srcByteLength);
@@ -526,10 +535,13 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             boolean direct = getContext().isOptionDirectByteBuffer();
             TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
             TypedArray clonedType = TypedArrayFactory.Int8Array.createArrayType(direct, false);
-            DynamicObject clonedArrayBuffer = direct ? JSArrayBuffer.createDirectArrayBuffer(getContext(), srcByteLength) : JSArrayBuffer.createArrayBuffer(getContext(), srcByteLength);
+            DynamicObject clonedArrayBuffer = direct
+                            ? JSArrayBuffer.createDirectArrayBuffer(getContext(), getRealm(), srcByteLength)
+                            : JSArrayBuffer.createArrayBuffer(getContext(), getRealm(), srcByteLength);
             for (int i = 0; i < srcByteLength; i++) {
                 int value = ((TypedArray.TypedIntArray) sourceType).getIntImpl(sourceBuffer, srcByteOffset, i, interop);
                 ((TypedArray.TypedIntArray) clonedType).setIntImpl(clonedArrayBuffer, 0, i, value, interop);
+                TruffleSafepoint.poll(this);
             }
             return clonedArrayBuffer;
         }
@@ -602,6 +614,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 }
             };
         }
+
+        @Override
+        protected boolean shouldCheckHasProperty() {
+            return false;
+        }
+
     }
 
     public abstract static class JSArrayBufferViewReverseNode extends JSArrayOperation {
@@ -648,6 +666,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 } else {
                     lower = len - nextUpper - 1;
                 }
+                TruffleSafepoint.poll(this);
             }
             return thisObj;
         }
@@ -680,6 +699,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             checkHasDetachedBuffer(thisJSObj);
             for (long idx = lStart; idx < lEnd; idx++) {
                 write(thisJSObj, idx, convValue);
+                TruffleSafepoint.poll(this);
             }
             return thisJSObj;
         }

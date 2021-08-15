@@ -50,6 +50,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -60,11 +61,14 @@ import java.util.function.Supplier;
 import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.Module;
 import com.oracle.js.parser.ir.Module.ExportEntry;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -104,6 +108,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
@@ -191,7 +196,7 @@ public final class GraalJSEvaluator implements JSParser {
 
             @Override
             public Object execute(VirtualFrame frame) {
-                DynamicObject closure = JSFunction.create(context.getRealm(), functionData, frame.materialize());
+                DynamicObject closure = JSFunction.create(getRealm(), functionData, frame.materialize());
                 return callNode.call(JSArguments.createZeroArg(JSFrameUtil.getThisObj(frame), closure));
             }
         };
@@ -241,8 +246,7 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     @Override
     public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames) {
-        String mimeType = source.getMimeType();
-        if (MODULE_MIME_TYPE.equals(mimeType) || (mimeType == null && source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX))) {
+        if (isModuleSource(source)) {
             return fakeScriptForModule(context, source);
         }
         try {
@@ -252,36 +256,59 @@ public final class GraalJSEvaluator implements JSParser {
         }
     }
 
+    private static boolean isModuleSource(Source source) {
+        String mimeType = source.getMimeType();
+        return MODULE_MIME_TYPE.equals(mimeType) || (mimeType == null && source.getName().endsWith(MODULE_SOURCE_NAME_SUFFIX));
+    }
+
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
-        RootNode rootNode = new JavaScriptRootNode(context.getLanguage(), JSBuiltin.createSourceSection(), null) {
-            @Child private PerformPromiseThenNode performPromiseThenNode = PerformPromiseThenNode.create(context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-                return evalModule(realm);
-            }
-
-            @TruffleBoundary
-            private Object evalModule(JSRealm realm) {
-                JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source);
-                moduleInstantiation(realm, moduleRecord);
-                Object promise = moduleEvaluation(realm, moduleRecord);
-                if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
-                    DynamicObject onRejected = createTopLevelAwaitReject(context);
-                    DynamicObject onAccepted = createTopLevelAwaitResolve(context);
-                    performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
-                }
-                return promise;
-            }
-        };
+        JSModuleData parsedModule = parseModule(context, source);
+        RootNode rootNode = new ModuleScriptRoot(context, parsedModule, source);
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(rootNode), 0, "");
         return ScriptNode.fromFunctionData(context, functionData);
     }
 
-    private static DynamicObject createTopLevelAwaitReject(JSContext context) {
+    private final class ModuleScriptRoot extends JavaScriptRootNode {
+        private final JSContext context;
+        private final JSModuleData parsedModule;
+        private final Source source;
+        @Child private PerformPromiseThenNode performPromiseThenNode;
+
+        private ModuleScriptRoot(JSContext context, JSModuleData parsedModule, Source source) {
+            super(context.getLanguage(), JSBuiltin.createSourceSection(), null);
+            this.context = context;
+            this.parsedModule = parsedModule;
+            this.source = source;
+            this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
+            return evalModule(realm);
+        }
+
+        @TruffleBoundary
+        private Object evalModule(JSRealm realm) {
+            JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source, parsedModule);
+            moduleInstantiation(realm, moduleRecord);
+            Object promise = moduleEvaluation(realm, moduleRecord);
+            if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
+                DynamicObject onRejected = createTopLevelAwaitReject(context, realm);
+                DynamicObject onAccepted = createTopLevelAwaitResolve(context, realm);
+                performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
+            }
+            return promise;
+        }
+
+        JSModuleData getModuleData() {
+            return parsedModule;
+        }
+    }
+
+    private static DynamicObject createTopLevelAwaitReject(JSContext context, JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.TopLevelAwaitReject, (c) -> createTopLevelAwaitRejectImpl(c));
-        return JSFunction.create(context.getRealm(), functionData);
+        return JSFunction.create(realm, functionData);
     }
 
     private static JSFunctionData createTopLevelAwaitRejectImpl(JSContext context) {
@@ -298,9 +325,9 @@ public final class GraalJSEvaluator implements JSParser {
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
-    private static DynamicObject createTopLevelAwaitResolve(JSContext context) {
+    private static DynamicObject createTopLevelAwaitResolve(JSContext context, JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.TopLevelAwaitResolve, (c) -> createTopLevelAwaitResolveImpl(c));
-        return JSFunction.create(context.getRealm(), functionData);
+        return JSFunction.create(realm, functionData);
     }
 
     private static JSFunctionData createTopLevelAwaitResolveImpl(JSContext context) {
@@ -351,23 +378,91 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public JSModuleRecord parseModule(JSContext context, Source source, JSModuleLoader moduleLoader) {
+    public JSModuleData parseModule(JSContext context, Source source) {
         try {
-            return JavaScriptTranslator.translateModule(NodeFactory.getInstance(context), context, source, moduleLoader);
+            return JavaScriptTranslator.translateModule(NodeFactory.getInstance(context), context, source);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage(), e, null);
         }
+
     }
 
     @TruffleBoundary
     @Override
-    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, String specifier) {
-        JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : context.getRealm().getModuleLoader();
-        return moduleLoader.resolveImportedModule(referrer, specifier);
+    public JSModuleData envParseModule(JSRealm realm, Source source) {
+        assert isModuleSource(source) : source;
+        CallTarget parseResult = realm.getEnv().parsePublic(source);
+        CallTarget moduleScriptCallTarget = JavaScriptLanguage.getParsedProgramCallTarget(((RootCallTarget) parseResult).getRootNode());
+        ModuleScriptRoot moduleScriptRoot = (ModuleScriptRoot) ((RootCallTarget) moduleScriptCallTarget).getRootNode();
+        return moduleScriptRoot.getModuleData();
     }
 
-    private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, String specifier) {
-        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, specifier);
+    @TruffleBoundary
+    @Override
+    public JSModuleRecord parseJSONModule(JSRealm realm, Source source) {
+        assert isModuleSource(source) : source;
+        Object json = JSFunction.call(JSArguments.createOneArg(Undefined.instance, realm.getJsonParseFunctionObject(), source.getCharacters().toString()));
+        return createSyntheticJSONModule(realm, source, json);
+    }
+
+    private static JSModuleRecord createSyntheticJSONModule(JSRealm realm, Source source, Object hostDefined) {
+        final String exportName = "default";
+        FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
+        FrameSlot slot = frameDescriptor.addFrameSlot(exportName);
+        List<ExportEntry> localExportEntries = Collections.singletonList(ExportEntry.exportSpecifier(exportName));
+        Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
+        JavaScriptRootNode rootNode = new JavaScriptRootNode(realm.getContext().getLanguage(), source.createUnavailableSection(), frameDescriptor) {
+            private final FrameSlot defaultSlot = slot;
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+                if (module.getEnvironment() == null) {
+                    assert module.getStatus() == Status.Linking;
+                    module.setEnvironment(frame.materialize());
+                } else {
+                    assert module.getStatus() == Status.Evaluating;
+                    setSyntheticModuleExport(module);
+                }
+                return Undefined.instance;
+            }
+
+            private void setSyntheticModuleExport(JSModuleRecord module) {
+                module.getEnvironment().setObject(defaultSlot, module.getHostDefined());
+            }
+        };
+        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), callTarget, 0, "");
+        final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
+        return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
+    }
+
+    @TruffleBoundary
+    @Override
+    public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, ModuleRequest moduleRequest) {
+        filterSupportedImportAssertions(context, moduleRequest);
+        JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : JSRealm.get(null).getModuleLoader();
+        return moduleLoader.resolveImportedModule(referrer, moduleRequest);
+    }
+
+    private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, ModuleRequest moduleRequest) {
+        filterSupportedImportAssertions(referencingModule.getContext(), moduleRequest);
+        return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, moduleRequest);
+    }
+
+    private static void filterSupportedImportAssertions(final JSContext context, final ModuleRequest moduleRequest) {
+        if (moduleRequest.getAssertions().isEmpty()) {
+            return;
+        }
+        Map<String, String> supportedAssertions = new HashMap<>();
+        for (Map.Entry<String, String> assertion : moduleRequest.getAssertions().entrySet()) {
+            String key = assertion.getKey();
+            String value = assertion.getValue();
+            if (context.getSupportedImportAssertions().contains(key)) {
+                supportedAssertions.put(key, value);
+            }
+        }
+        moduleRequest.setAssertions(supportedAssertions);
     }
 
     Collection<String> getExportedNames(JSModuleRecord moduleRecord) {
@@ -381,7 +476,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         exportStarSet.add(moduleRecord);
         Collection<String> exportedNames = new HashSet<>();
-        Module module = (Module) moduleRecord.getModule();
+        Module module = moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getLocalExportEntries()) {
             // Assert: module provides the direct binding for this export.
             exportedNames.add(exportEntry.getExportName());
@@ -431,7 +526,7 @@ public final class GraalJSEvaluator implements JSParser {
             return ExportResolution.notFound();
         }
         resolveSet.add(resolved);
-        Module module = (Module) referencingModule.getModule();
+        Module module = referencingModule.getModule();
         for (ExportEntry exportEntry : module.getLocalExportEntries()) {
             if (exportEntry.getExportName().equals(exportName)) {
                 // Assert: module provides the direct binding for this export.
@@ -496,7 +591,7 @@ public final class GraalJSEvaluator implements JSParser {
         }
         Map<String, ExportResolution> sortedNames = new LinkedHashMap<>();
         unambiguousNames.stream().sorted(Comparator.comparing(Pair::getFirst)).forEachOrdered(p -> sortedNames.put(p.getFirst(), p.getSecond()));
-        DynamicObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), moduleRecord, sortedNames);
+        DynamicObject namespace = JSModuleNamespace.create(moduleRecord.getContext(), JSRealm.get(null), moduleRecord, sortedNames);
         moduleRecord.setNamespace(namespace);
         return namespace;
     }
@@ -534,8 +629,8 @@ public final class GraalJSEvaluator implements JSParser {
         index++;
         stack.push(moduleRecord);
 
-        Module module = (Module) moduleRecord.getModule();
-        for (String requestedModule : module.getRequestedModules()) {
+        Module module = moduleRecord.getModule();
+        for (ModuleRequest requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             index = innerModuleInstantiation(realm, requiredModule, stack, index);
             assert requiredModule.getStatus() == Status.Linking || requiredModule.getStatus() == Status.Linked ||
@@ -563,7 +658,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     private void moduleInitializeEnvironment(JSRealm realm, JSModuleRecord moduleRecord) {
         assert moduleRecord.getStatus() == Status.Linking;
-        Module module = (Module) moduleRecord.getModule();
+        Module module = moduleRecord.getModule();
         for (ExportEntry exportEntry : module.getIndirectExportEntries()) {
             ExportResolution resolution = resolveExport(moduleRecord, exportEntry.getExportName());
             if (resolution.isNull() || resolution.isAmbiguous()) {
@@ -681,8 +776,8 @@ public final class GraalJSEvaluator implements JSParser {
         index++;
         stack.push(moduleRecord);
 
-        Module module = (Module) moduleRecord.getModule();
-        for (String requestedModule : module.getRequestedModules()) {
+        Module module = moduleRecord.getModule();
+        for (ModuleRequest requestedModule : module.getRequestedModules()) {
             JSModuleRecord requiredModule = hostResolveImportedModule(moduleRecord, requestedModule);
             // Note: Instantiate must have completed successfully prior to invoking this method,
             // so every requested module is guaranteed to resolve successfully.
@@ -733,18 +828,18 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.isTopLevelAsync();
         module.setAsyncEvaluating(true);
         PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
-        DynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm.getContext(), module);
-        DynamicObject onRejected = createCallAsyncModuleRejected(realm.getContext(), module);
+        DynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
+        DynamicObject onRejected = createCallAsyncModuleRejected(realm, module);
         Object then = JSObject.get(capability.getPromise(), "then");
         JSFunction.call(JSArguments.create(capability.getPromise(), then, onFulfilled, onRejected));
         moduleExecution(realm, module, capability);
     }
 
     @TruffleBoundary
-    private static DynamicObject createCallAsyncModuleFulfilled(JSContext context, JSModuleRecord module) {
+    private static DynamicObject createCallAsyncModuleFulfilled(JSRealm realm, JSModuleRecord module) {
         // AsyncModuleExecutionFulfilled ( module )
-        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createCallAsyncModuleFulfilledImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionFulfilled, (c) -> createCallAsyncModuleFulfilledImpl(c));
+        DynamicObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
@@ -759,7 +854,7 @@ public final class GraalJSEvaluator implements JSParser {
             public Object execute(VirtualFrame frame) {
                 Object dynamicImportResolutionResult = argumentNode.execute(frame);
                 Object module = getModule.getValue(JSArguments.getFunctionObject(frame.getArguments()));
-                return asyncModuleExecutionFulfilled(context.getRealm(), (JSModuleRecord) module, dynamicImportResolutionResult);
+                return asyncModuleExecutionFulfilled(getRealm(), (JSModuleRecord) module, dynamicImportResolutionResult);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleFulfilledRoot());
@@ -767,10 +862,10 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static DynamicObject createCallAsyncModuleRejected(JSContext context, JSModuleRecord module) {
+    private static DynamicObject createCallAsyncModuleRejected(JSRealm realm, JSModuleRecord module) {
         // AsyncModuleExecutionRejected ( module )
-        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createCallAsyncModuleRejectedImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.AsyncModuleExecutionRejected, (c) -> createCallAsyncModuleRejectedImpl(c));
+        DynamicObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, STORE_MODULE_KEY, module);
         return function;
     }
@@ -788,7 +883,7 @@ public final class GraalJSEvaluator implements JSParser {
                 assert JSPromise.isJSPromise(resolvedPromise);
                 assert JSPromise.isRejected((DynamicObject) resolvedPromise);
                 Object reaction = getRejectionError.getValue(resolvedPromise);
-                return asyncModuleExecutionRejected(context.getRealm(), module, reaction);
+                return asyncModuleExecutionRejected(getRealm(), module, reaction);
             }
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleExecutionRejectedRoot());

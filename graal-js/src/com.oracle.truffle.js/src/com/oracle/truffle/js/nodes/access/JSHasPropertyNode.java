@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.TruffleLanguage.LanguageReference;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,7 +49,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.IntToLongTypeSystem;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -68,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -123,6 +121,11 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @Specialization
+    public boolean typedArray(JSTypedArrayObject object, long index) {
+        return !JSArrayBufferView.hasDetachedBuffer(object, getLanguage().getJSContext()) && index >= 0 && index < JSArrayBufferView.typedArrayGetLength(object);
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"cachedObjectType != null", "cachedObjectType.isInstance(object)", "cachedName.equals(propertyName)"}, limit = "1")
     public boolean objectStringCached(DynamicObject object, String propertyName,
@@ -152,7 +155,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
         return hasPropertyGeneric(object, propertyName);
     }
 
-    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSFastArray(object)"})
+    @Specialization(guards = {"isJSDynamicObject(object)", "!isJSFastArray(object)", "!isJSArrayBufferView(object)"})
     public boolean objectLong(DynamicObject object, long propertyIdx) {
         if (hasOwnProperty) {
             return JSObject.hasOwnProperty(object, propertyIdx, classProfile);
@@ -175,8 +178,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @CachedLibrary("object") InteropLibrary interop,
                     @Cached("create()") JSToStringNode toStringNode,
                     @Cached("create()") ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                    @Cached("create()") JSHasPropertyNode hasInPrototype,
-                    @CachedLanguage LanguageReference<JavaScriptLanguage> languageRef) {
+                    @Cached("create()") JSHasPropertyNode hasInPrototype) {
         if (isForeignValueOfTypeObject(object, interop)) {
             if (propertyName instanceof Number && interop.hasArrayElements(object)) {
                 long index = JSRuntime.longValue((Number) propertyName);
@@ -185,7 +187,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                 if (!(propertyName instanceof Symbol) && interop.isMemberExisting(object, toStringNode.executeString(propertyName))) {
                     return true;
                 }
-                if (languageRef.get().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+                if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
                     DynamicObject prototype = foreignObjectPrototypeNode.executeDynamicObject(object);
                     return hasInPrototype.executeBoolean(prototype, propertyName);
                 } else {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
     }
 
     public PromiseCapabilityRecord executeDefault() {
-        return execute(context.getRealm().getPromiseConstructor());
+        return execute(getRealm().getPromiseConstructor());
     }
 
     @TruffleBoundary
@@ -99,7 +99,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
         JSContext context = realm.getContext();
         assert JSFunction.isConstructor(constructor);
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
-        DynamicObject executor = getCapabilitiesExecutor(context, promiseCapability);
+        DynamicObject executor = getCapabilitiesExecutor(context, realm, promiseCapability);
         DynamicObject promise = (DynamicObject) JSFunction.construct(constructor, new Object[]{executor});
         assert JSFunction.isJSFunction(promiseCapability.getResolve()) && JSFunction.isJSFunction(promiseCapability.getReject());
         promiseCapability.setPromise(promise);
@@ -124,14 +124,14 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
 
     private DynamicObject getCapabilitiesExecutor(PromiseCapabilityRecord promiseCapability) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseGetCapabilitiesExecutor, (c) -> createGetCapabilitiesExecutorImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setPromiseCapability.setValue(function, promiseCapability);
         return function;
     }
 
-    private static DynamicObject getCapabilitiesExecutor(JSContext context, PromiseCapabilityRecord promiseCapability) {
+    private static DynamicObject getCapabilitiesExecutor(JSContext context, JSRealm realm, PromiseCapabilityRecord promiseCapability) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseGetCapabilitiesExecutor, (c) -> createGetCapabilitiesExecutorImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(function, PROMISE_CAPABILITY_KEY, promiseCapability);
         return function;
     }

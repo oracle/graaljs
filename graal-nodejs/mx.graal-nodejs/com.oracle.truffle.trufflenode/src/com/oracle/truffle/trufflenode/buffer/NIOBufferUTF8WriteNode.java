@@ -75,7 +75,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
     }
 
     private DynamicObject getNativeUtf8Write() {
-        return GraalJSAccess.getRealmEmbedderData(getContext().getRealm()).getNativeUtf8Write();
+        return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Write();
     }
 
     @Specialization(guards = "accept(target)")
@@ -144,7 +144,7 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
         if (rawBuffer == null) {
             interopBranch.enter();
             interopBuffer = true;
-            rawBuffer = GraalJSAccess.interopArrayBufferGetContents(arrayBuffer);
+            rawBuffer = interopArrayBufferGetContents(arrayBuffer);
         }
         int destLimit = Math.min(bufferLen, destOffset + bytes);
         ByteBuffer buffer = Boundaries.byteBufferSlice(rawBuffer, bufferOffset + destOffset, bufferOffset + destLimit);

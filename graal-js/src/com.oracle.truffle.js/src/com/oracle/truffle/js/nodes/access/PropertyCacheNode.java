@@ -933,15 +933,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * @see JSConfig#SkipPrototypeShapeCheck
      */
     protected static final class TraversePrototypeChainCheckNode extends AbstractShapeCheckNode {
-        private final JSContext context;
         private final PrototypeSupplier jsclass;
         @Children private final ShapeCheckNode[] shapeCheckNodes;
         @Children private final GetPrototypeNode[] getPrototypeNodes;
 
-        public TraversePrototypeChainCheckNode(Shape shape, DynamicObject thisObj, int depth, JSClass jsclass, JSContext context) {
+        public TraversePrototypeChainCheckNode(Shape shape, DynamicObject thisObj, int depth, JSClass jsclass) {
             super(shape);
             assert depth >= 1;
-            this.context = context;
             this.jsclass = (PrototypeSupplier) jsclass;
             this.shapeCheckNodes = new ShapeCheckNode[depth];
             this.getPrototypeNodes = new GetPrototypeNode[depth - 1];
@@ -961,7 +959,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
-            DynamicObject current = jsclass.getIntrinsicDefaultProto(context.getRealm());
+            DynamicObject current = jsclass.getIntrinsicDefaultProto(getRealm());
             boolean result = true;
             for (int i = 0; i < shapeCheckNodes.length; i++) {
                 result = shapeCheckNodes[i].accept(current);
@@ -979,7 +977,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public DynamicObject getStore(Object thisObj) {
-            DynamicObject proto = jsclass.getIntrinsicDefaultProto(context.getRealm());
+            DynamicObject proto = jsclass.getIntrinsicDefaultProto(getRealm());
             for (int i = 0; i < getPrototypeNodes.length; i++) {
                 proto = getPrototypeNodes[i].executeDynamicObject(proto);
             }
@@ -1296,7 +1294,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (incomingProperty != null && incomingProperty.equals(cachedProperty)) {
                 Location cachedLocation = cachedProperty.getLocation();
                 Location incomingLocation = incomingProperty.getLocation();
-                return incomingLocation.equals(cachedLocation);
+                // We need to compare locations by identity; locations that are equal are not
+                // necessarily interchangeable.
+                return incomingLocation == cachedLocation;
             }
         }
         return false;
@@ -1552,7 +1552,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
                 prototypeShapeCheck = new PrototypeChainCheckNode(wrapped.getShape(), wrapped, key, depth, context);
             } else {
-                prototypeShapeCheck = new TraversePrototypeChainCheckNode(wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped), context);
+                prototypeShapeCheck = new TraversePrototypeChainCheckNode(wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped));
             }
             return new PrimitiveReceiverCheckNode(thisObj.getClass(), prototypeShapeCheck);
         }

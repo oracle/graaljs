@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,9 +112,8 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm, ListFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static DynamicObject create(JSContext context) {
+    public static DynamicObject create(JSContext context, JSRealm realm) {
         InternalState state = new InternalState();
-        JSRealm realm = context.getRealm();
         JSObjectFactory factory = context.getListFormatFactory();
         JSListFormatObject obj = new JSListFormatObject(factory.getShape(realm), state);
         factory.initProto(obj, realm);
@@ -191,9 +190,9 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @TruffleBoundary
-    public static DynamicObject formatToParts(JSContext context, DynamicObject listFormatObj, List<String> list) {
+    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject listFormatObj, List<String> list) {
         if (list.size() == 0) {
-            return JSArray.createConstantEmptyArray(context);
+            return JSArray.createConstantEmptyArray(context, realm);
         }
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
         String pattern = listFormatter.getPatternForNumItems(list.size());
@@ -207,19 +206,19 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         for (String element : list) {
             int nextOffset = offsets[idx++];
             if (i < nextOffset) { // literal
-                resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, formatted.substring(i, nextOffset)));
+                resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.LITERAL, formatted.substring(i, nextOffset)));
                 i = nextOffset;
             }
             if (i == nextOffset) { // element
                 int elemLength = element.length();
-                resultParts.add(IntlUtil.makePart(context, IntlUtil.ELEMENT, formatted.substring(i, i + elemLength)));
+                resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.ELEMENT, formatted.substring(i, i + elemLength)));
                 i += elemLength;
             }
         }
         if (i < formatted.length()) {
-            resultParts.add(IntlUtil.makePart(context, IntlUtil.LITERAL, formatted.substring(i, formatted.length())));
+            resultParts.add(IntlUtil.makePart(context, realm, IntlUtil.LITERAL, formatted.substring(i, formatted.length())));
         }
-        return JSArray.createConstant(context, resultParts.toArray());
+        return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
     public static class InternalState {
@@ -231,11 +230,11 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         private String type = IntlUtil.CONJUNCTION;
         private String style = IntlUtil.LONG;
 
-        DynamicObject toResolvedOptionsObject(JSContext context) {
-            DynamicObject result = JSOrdinary.create(context);
-            JSObjectUtil.defineDataProperty(result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.TYPE, type, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(result, IntlUtil.STYLE, style, JSAttributes.getDefault());
+        DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            DynamicObject result = JSOrdinary.create(context, realm);
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.LOCALE, locale, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
+            JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             return result;
         }
 
@@ -263,9 +262,9 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @TruffleBoundary
-    public static DynamicObject resolvedOptions(JSContext context, DynamicObject listFormatObj) {
+    public static DynamicObject resolvedOptions(JSContext context, JSRealm realm, DynamicObject listFormatObj) {
         InternalState state = getInternalState(listFormatObj);
-        return state.toResolvedOptionsObject(context);
+        return state.toResolvedOptionsObject(context, realm);
     }
 
     public static InternalState getInternalState(DynamicObject obj) {

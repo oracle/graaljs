@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "98324cbc2f65523695d6dfc0805e1da63c3fef4b",
+           "version" : "3ecf62bb01af00121fad8f9b7b13ef5740e0695e",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
                 {"url" : "https://curio.ssw.jku.at/nexus/content/repositories/snapshots", "kind" : "binary"},
@@ -60,18 +60,18 @@ suite = {
 
     "ICU4J" : {
       "moduleName" : "com.ibm.icu",
-      "sha1" : "76893e6000401ace133a65262254be0ebe556d46",
-      "sourceSha1" : "fae7d45fe56f4ef2a35ef6bd30245052268ffda1",
+      "sha1" : "ff666ac55986650893aacb9e2e0003538e9799c0",
+      "sourceSha1" : "3e19ca5465fce86a094c24df0b6c9256e53c8885",
       "maven" : {
         "groupId" : "com.ibm.icu",
         "artifactId" : "icu4j",
-        "version" : "68.2",
+        "version" : "69.1",
       },
     },
 
     "TEST262" : {
-      "sha1" : "1138fecf614625ac3f14e9cd9011ce1a5dd5105a",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-d454b838.tar.bz2"],
+      "sha1" : "7338157511a3b43e1df28f7f2c9cf87cb8be4f33",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/test262-a6a895db.tar.bz2"],
     },
 
     "TESTNASHORN" : {
@@ -90,8 +90,8 @@ suite = {
     },
 
     "TESTV8" : {
-      "sha1" : "464716ee065d14bc9b4d0b295c07d18999be2d8a",
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20210215.tar.gz"],
+      "sha1" : "673bdf0bdbe943b99680873386ee1781e8c401df",
+      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testv8-20210709.tar.gz"],
     },
 
     "JACKSON_CORE" : {

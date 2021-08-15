@@ -42,11 +42,10 @@ package com.oracle.truffle.js.runtime.interop;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.CachedContext;
-import com.oracle.truffle.api.dsl.CachedLanguage;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -95,9 +94,10 @@ public final class JSIteratorWrapper implements TruffleObject {
 
     @ExportMessage
     boolean hasIteratorNextElement(
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) {
+        JavaScriptLanguage language = JavaScriptLanguage.get(self);
+        JSRealm realm = JSRealm.get(self);
         if (next == null) {
             next = next(language, realm, iteratorNextNode);
         }
@@ -106,10 +106,9 @@ public final class JSIteratorWrapper implements TruffleObject {
 
     @ExportMessage
     Object getIteratorNextElement(
-                    @CachedLanguage JavaScriptLanguage language,
-                    @CachedContext(JavaScriptLanguage.class) JSRealm realm,
+                    @CachedLibrary("this") InteropLibrary self,
                     @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws StopIterationException {
-        if (hasIteratorNextElement(language, realm, iteratorNextNode)) {
+        if (hasIteratorNextElement(self, iteratorNextNode)) {
             Object result = next;
             next = null;
             return result;

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -533,14 +534,23 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
-        long getBufferSize() {
-            return isDetached() ? 0 : getByteLength();
+        long getBufferSize(
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) {
+            if (isDetached()) {
+                errorBranch.enter();
+                return 0;
+            } else {
+                return getByteLength(interop);
+            }
         }
 
         @ExportMessage
         byte readBufferByte(long byteOffset,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
             }
             return interop.readBufferByte(interopBuffer, byteOffset);
@@ -548,8 +558,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         short readBufferShort(ByteOrder order, long byteOffset,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
             }
             return interop.readBufferShort(interopBuffer, order, byteOffset);
@@ -557,8 +569,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         int readBufferInt(ByteOrder order, long byteOffset,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
             }
             return interop.readBufferInt(interopBuffer, order, byteOffset);
@@ -566,8 +580,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         long readBufferLong(ByteOrder order, long byteOffset,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
             }
             return interop.readBufferLong(interopBuffer, order, byteOffset);
@@ -575,8 +591,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         float readBufferFloat(ByteOrder order, long byteOffset,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
             }
             return interop.readBufferFloat(interopBuffer, order, byteOffset);
@@ -584,8 +602,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         double readBufferDouble(ByteOrder order, long byteOffset,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
             }
             return interop.readBufferDouble(interopBuffer, order, byteOffset);
@@ -598,8 +618,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferByte(long byteOffset, byte value,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Byte.BYTES);
             }
             interop.writeBufferByte(interopBuffer, byteOffset, value);
@@ -607,8 +629,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferShort(ByteOrder order, long byteOffset, short value,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Short.BYTES);
             }
             interop.writeBufferShort(interopBuffer, order, byteOffset, value);
@@ -616,8 +640,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferInt(ByteOrder order, long byteOffset, int value,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Integer.BYTES);
             }
             interop.writeBufferInt(interopBuffer, order, byteOffset, value);
@@ -625,8 +651,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferLong(ByteOrder order, long byteOffset, long value,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Long.BYTES);
             }
             interop.writeBufferLong(interopBuffer, order, byteOffset, value);
@@ -634,8 +662,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferFloat(ByteOrder order, long byteOffset, float value,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Float.BYTES);
             }
             interop.writeBufferFloat(interopBuffer, order, byteOffset, value);
@@ -643,8 +673,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         @ExportMessage
         void writeBufferDouble(ByteOrder order, long byteOffset, double value,
+                        @Cached @Cached.Shared("errorBranch") BranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
             if (isDetached()) {
+                errorBranch.enter();
                 throw InvalidBufferOffsetException.create(byteOffset, Double.BYTES);
             }
             interop.writeBufferDouble(interopBuffer, order, byteOffset, value);

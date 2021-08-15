@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,6 @@ import com.oracle.truffle.trufflenode.info.FunctionTemplate;
  * @author Jan Stola
  */
 public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
-    private final JSContext context;
     private final GraalJSAccess graalAccess;
     private final Accessor accessor;
     private final FunctionTemplate signature;
@@ -72,7 +71,6 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
     @Child private PropertyGetNode holderPropertyGetNode;
 
     public ExecuteNativeAccessorNode(GraalJSAccess graalAccess, JSContext context, Accessor accessor, boolean getter) {
-        this.context = context;
         this.graalAccess = graalAccess;
         this.accessor = accessor;
         this.signature = accessor.getSignature();
@@ -86,7 +84,7 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
         if (signature != null) {
-            DynamicObject functionObject = signature.getFunctionObject(context.getRealm());
+            DynamicObject functionObject = signature.getFunctionObject(getRealm());
             if (functionObject != null) {
                 Object functionPrototype = prototypePropertyGetNode.getValue(functionObject);
                 Object instancePrototype = getPrototypeNode.executeJSObject(arguments[0]);

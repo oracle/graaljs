@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,13 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -65,6 +67,7 @@ import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCache
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -74,12 +77,9 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
 
 /*
  * ES6, 12.9.4: Runtime Semantics: InstanceofOperator(O, C).
@@ -119,16 +119,16 @@ public abstract class InstanceofNode extends JSBinaryNode {
                     @Cached("createGetMethodHasInstance()") GetMethodNode getMethodHasInstanceNode,
                     @Cached("create()") JSToBooleanNode toBooleanNode,
                     @Cached("createCall()") JSFunctionCallNode callHasInstanceNode,
+                    @Cached("create()") IsCallableNode isCallableNode,
                     @Cached("createBinaryProfile()") ConditionProfile hasInstanceProfile,
-                    @Cached("create()") BranchProfile errorBranch,
-                    @Cached("create()") BranchProfile proxyBranch) {
+                    @Cached("create()") BranchProfile errorBranch) {
         Object hasInstance = getMethodHasInstanceNode.executeWithTarget(target);
         if (hasInstanceProfile.profile(hasInstance != Undefined.instance)) {
             Object res = callHasInstanceNode.executeCall(JSArguments.createOneArg(target, hasInstance, obj));
             return toBooleanNode.executeBoolean(res);
         } else {
             // legacy instanceof
-            if (!isCallable(target, proxyBranch)) {
+            if (!isCallableNode.executeBoolean(target)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
             }
@@ -137,17 +137,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
                 ordinaryHasInstanceNode = insert(OrdinaryHasInstanceNode.create(context));
             }
             return ordinaryHasInstanceNode.executeBoolean(obj, target);
-        }
-    }
-
-    private static boolean isCallable(DynamicObject target, BranchProfile proxyBranch) {
-        if (JSFunction.isJSFunction(target)) {
-            return true;
-        } else if (JSProxy.isJSProxy(target)) {
-            proxyBranch.enter();
-            return JSRuntime.isCallableProxy(target);
-        } else {
-            return false;
         }
     }
 
@@ -208,12 +197,14 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @CompilationFinal private boolean lessThan4 = true;
         @Child private PropertyGetNode getPrototypeNode;
         @Child private IsBoundFunctionCacheNode boundFuncCacheNode;
+        @Child protected IsCallableNode isCallableNode;
 
         public abstract boolean executeBoolean(Object left, Object right);
 
         protected OrdinaryHasInstanceNode(JSContext context) {
             this.context = context;
             this.boundFuncCacheNode = IsBoundFunctionCacheNode.create(context);
+            this.isCallableNode = IsCallableNode.create();
         }
 
         public static OrdinaryHasInstanceNode create(JSContext context) {
@@ -234,7 +225,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallable(check)")
+        @Specialization(guards = "!isCallableNode.executeBoolean(check)")
         protected boolean doNotCallable(Object obj, Object check) {
             return false;
         }

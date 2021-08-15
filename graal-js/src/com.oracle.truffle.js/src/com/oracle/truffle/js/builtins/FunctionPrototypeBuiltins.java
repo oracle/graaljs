@@ -206,7 +206,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected DynamicObject bindFunction(DynamicObject thisFnObj, Object thisArg, Object[] args) {
             DynamicObject proto = getPrototypeNode.executeJSObject(thisFnObj);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, isAsyncProfile, setProtoProfile);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, isAsyncProfile, setProtoProfile, this);
 
             long length = 0;
             boolean mustSetLength = true;
@@ -260,7 +260,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
             assert JSFunction.isJSFunction(innerFunction);
 
-            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, isAsyncProfile, setProtoProfile);
+            DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, isAsyncProfile, setProtoProfile, this);
 
             long length = 0;
             boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);

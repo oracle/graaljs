@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,7 +123,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 iteratorRecord.setDone(true);
                 remainingElementsCount.value--;
                 if (remainingElementsCount.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, values.toArray());
+                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), values.toArray());
                     callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, resultCapability.getResolve(), valuesArray));
                 }
                 return resultCapability.getPromise();
@@ -140,7 +140,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
 
     protected DynamicObject createResolveElementFunction(int index, SimpleArrayList<Object> values, PromiseCapabilityRecord resultCapability, BoxedInt remainingElementsCount) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.PromiseAllResolveElement, (c) -> createResolveElementFunctionImpl(c));
-        DynamicObject function = JSFunction.create(context.getRealm(), functionData);
+        DynamicObject function = JSFunction.create(getRealm(), functionData);
         setArgs.setValue(function, new ResolveElementArgs(index, values, resultCapability, remainingElementsCount));
         return function;
     }
@@ -168,7 +168,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 args.values.set(args.index, value);
                 args.remainingElements.value--;
                 if (args.remainingElements.value == 0) {
-                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, args.values.toArray());
+                    DynamicObject valuesArray = JSArray.createConstantObjectArray(context, getRealm(), args.values.toArray());
                     return callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, args.capability.getResolve(), valuesArray));
                 }
                 return Undefined.instance;

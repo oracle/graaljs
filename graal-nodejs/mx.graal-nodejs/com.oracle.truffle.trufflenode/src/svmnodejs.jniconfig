@@ -5,6 +5,7 @@
       { "name": "sharedBuffer" }
     ],
     "methods": [
+      { "name": "arrayBufferByteLength" },
       { "name": "arrayBufferDetach" },
       { "name": "arrayBufferExternalize" },
       { "name": "arrayBufferGetContents" },

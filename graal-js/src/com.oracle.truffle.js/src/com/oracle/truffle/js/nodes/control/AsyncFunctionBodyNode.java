@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,7 +117,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             Completion resumptionValue = (Completion) args[2];
             writeAsyncResult.executeWrite(asyncFrame, resumptionValue);
 
-            final JSRealm currentRealm = context.getRealm();
+            final JSRealm currentRealm = getRealm();
             final JSRealm realm;
             final boolean enterContext;
             if (context.neverCreatedChildRealms()) {

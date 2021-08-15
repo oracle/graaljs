@@ -47,6 +47,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -92,7 +93,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
             return Undefined.instance;
         }
         int[] intArray = new int[]{beginIndex, resultAccessor.captureGroupEnd(regexResult, index)};
-        return JSArray.createConstantIntArray(context, intArray);
+        return JSArray.createConstantIntArray(context, JSRealm.get(null), intArray);
     }
 
     public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, long index, Object value) {
@@ -109,7 +110,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
 
     @Override
     public Object getElementInBounds(DynamicObject object, int index) {
-        return materializeGroup(JavaScriptLanguage.getCurrentJSRealm().getContext(), TRegexUtil.TRegexResultAccessor.getUncached(), object, index);
+        return materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexUtil.TRegexResultAccessor.getUncached(), object, index);
     }
 
     @Override
@@ -181,7 +182,7 @@ public final class LazyRegexResultIndicesArray extends AbstractConstantArray {
     protected static Object[] materializeFull(TRegexUtil.TRegexResultAccessor resultAccessor, DynamicObject object, int groupCount) {
         Object[] result = new Object[groupCount];
         for (int i = 0; i < groupCount; ++i) {
-            result[i] = materializeGroup(JavaScriptLanguage.getCurrentJSRealm().getContext(), resultAccessor, object, i);
+            result[i] = materializeGroup(JavaScriptLanguage.getCurrentLanguage().getJSContext(), resultAccessor, object, i);
         }
         return result;
     }

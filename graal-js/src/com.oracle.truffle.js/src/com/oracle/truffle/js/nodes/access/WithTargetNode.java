@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,7 @@ public final class WithTargetNode extends JavaScriptNode {
         if (withObjectHasProperty.hasProperty(target) && isPropertyScopable(target)) {
             // with object has a scopable property
             return target;
-        } else if (context.isOptionNashornCompatibilityMode() && hasNoSuchProperty(target, false) && !globalObjectHasProperty.hasProperty(GlobalObjectNode.getGlobalObject(context))) {
+        } else if (context.isOptionNashornCompatibilityMode() && hasNoSuchProperty(target, false) && !globalObjectHasProperty.hasProperty(getRealm().getGlobalObject())) {
             // Nashorn extension: with object has a __noSuchProperty__ or __noSuchMethod__
             // NB: this part is not 1:1 compatible with Nashorn w.r.t. chained scopes.
             return target;

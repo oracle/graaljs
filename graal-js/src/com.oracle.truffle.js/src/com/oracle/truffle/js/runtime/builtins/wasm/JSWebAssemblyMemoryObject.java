@@ -42,9 +42,10 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
@@ -65,10 +66,10 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
         return bufferObject;
     }
 
-    public void resetBufferObject() {
+    public void resetBufferObject(JSContext context, JSRealm realm) {
         DynamicObject oldBufferObject = bufferObject;
         JSArrayBuffer.detachArrayBuffer(oldBufferObject);
-        bufferObject = JSWebAssemblyMemory.createBufferObject(JSObject.getJSContext(oldBufferObject), wasmMemory);
+        bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
     }
 
 }

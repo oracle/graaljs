@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,7 +74,7 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
     public abstract DynamicObject execute(PropertyDescriptor desc, JSContext context);
 
     @Specialization
-    static DynamicObject toJSObject(PropertyDescriptor desc, JSContext context,
+    final DynamicObject toJSObject(PropertyDescriptor desc, JSContext context,
                     @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putValueNode,
                     @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putWritableNode,
                     @CachedLibrary(limit = "SHAPE_LIMIT") DynamicObjectLibrary putGetNode,
@@ -85,7 +85,7 @@ public abstract class FromPropertyDescriptorNode extends JavaScriptBaseNode {
             return Undefined.instance;
         }
 
-        DynamicObject obj = JSOrdinary.create(context);
+        DynamicObject obj = JSOrdinary.create(context, getRealm());
         if (desc.hasValue()) {
             putValueNode.put(obj, JSAttributes.VALUE, desc.getValue());
         }

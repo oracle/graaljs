@@ -56,6 +56,7 @@ import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltins;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -160,7 +161,9 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(DynamicObject store, Object receiver, long index, Node encapsulatingNode) {
-        checkDetachedView(store);
+        if (JSArrayBufferView.hasDetachedBuffer(store)) {
+            return Undefined.instance;
+        }
         return typedArrayGetArrayType(store).getElement(store, index);
     }
 
@@ -196,7 +199,9 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     private static Object integerIndexedElementGet(DynamicObject thisObj, Object numericIndex) {
         assert JSRuntime.isNumber(numericIndex);
-        checkDetachedView(thisObj);
+        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            return Undefined.instance;
+        }
         if (!JSRuntime.isInteger(numericIndex)) {
             return Undefined.instance;
         }
@@ -218,8 +223,9 @@ public final class JSArrayBufferView extends JSNonProxy {
             return ordinarySetIndex(thisObj, index, value, receiver, isStrict, encapsulatingNode);
         }
         Object numValue = convertValue(thisObj, value);
-        checkDetachedView(thisObj);
-        typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
+        if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
+        }
         return true;
     }
 
@@ -235,21 +241,21 @@ public final class JSArrayBufferView extends JSNonProxy {
             if (numericIndex != Undefined.instance) {
                 // IntegerIndexedElementSet
                 Object numValue = convertValue(thisObj, value);
-                checkDetachedView(thisObj);
+                if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+                    return true;
+                }
                 if (!JSRuntime.isInteger(numericIndex)) {
-                    return false;
+                    return true;
                 }
                 if (numericIndex instanceof Double && JSRuntime.isNegativeZero(((Double) numericIndex).doubleValue())) {
-                    return false;
+                    return true;
                 }
                 int length = JSArrayBufferView.typedArrayGetLength(thisObj);
                 long index = ((Number) numericIndex).longValue();
-                if (index < 0 || index >= length) {
-                    return false;
-                } else {
+                if (0 <= index && index < length) {
                     typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
-                    return true;
                 }
+                return true;
             }
         }
         return super.set(thisObj, key, value, receiver, isStrict, encapsulatingNode);
@@ -281,7 +287,9 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean hasOwnProperty(DynamicObject thisObj, long index) {
-        checkDetachedView(thisObj);
+        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            return false;
+        }
         return typedArrayGetArrayType(thisObj).hasElement(thisObj, index);
     }
 
@@ -299,8 +307,9 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     private static boolean hasNumericIndex(DynamicObject thisObj, Object numericIndex) {
-        DynamicObject buffer = JSArrayBufferView.getArrayBuffer(thisObj);
-        checkDetachedBuffer(buffer);
+        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            return false;
+        }
         if (!JSRuntime.isInteger(numericIndex)) {
             return false;
         }
@@ -311,29 +320,28 @@ public final class JSArrayBufferView extends JSNonProxy {
         return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
-    public static DynamicObject createArrayBufferView(JSContext context, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+    public static DynamicObject createArrayBufferView(JSContext context, JSRealm realm, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
         CompilerAsserts.partialEvaluationConstant(arrayType);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         JSObjectFactory objectFactory = context.getArrayBufferViewFactory(arrayType.getFactory());
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length);
+        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length);
     }
 
-    public static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
-        JSRealm realm = context.getRealm();
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, realm, objectFactory.getPrototype(realm));
+    public static DynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+                    DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, objectFactory.getPrototype(realm));
     }
 
-    public static DynamicObject createArrayBufferViewWithProto(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
-                    DynamicObject prototype) {
-        JSRealm realm = context.getRealm();
-        return createArrayBufferView(context, objectFactory, arrayBuffer, arrayType, offset, length, realm, prototype);
+    public static DynamicObject createArrayBufferViewWithProto(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+                    DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, DynamicObject prototype) {
+        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, prototype);
     }
 
-    private static DynamicObject createArrayBufferView(JSContext context, JSObjectFactory objectFactory, DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length,
-                    JSRealm realm, DynamicObject prototype) {
+    private static DynamicObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
+                    DynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, DynamicObject prototype) {
         assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
         assert offset != 0 == arrayType.hasOffset();
@@ -534,7 +542,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     private static boolean defineOwnPropertyIndex(DynamicObject thisObj, Object numericIndex, PropertyDescriptor desc) {
         // IsValidIntegerIndex
-        if (!JSRuntime.isInteger(numericIndex)) {
+        if (JSArrayBufferView.hasDetachedBuffer(thisObj) || !JSRuntime.isInteger(numericIndex)) {
             return false;
         }
         double dIndex = ((Number) numericIndex).doubleValue();
@@ -550,7 +558,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (desc.isAccessorDescriptor()) {
             return false;
         }
-        if (desc.hasConfigurable() && desc.getConfigurable()) {
+        if (desc.hasConfigurable() && !desc.getConfigurable()) {
             return false;
         }
         if (desc.hasEnumerable() && !desc.getEnumerable()) {
@@ -563,10 +571,10 @@ public final class JSArrayBufferView extends JSNonProxy {
             // IntegerIndexedElementSet
             Object value = desc.getValue();
             Object numValue = convertValue(thisObj, value);
-            checkDetachedView(thisObj);
-            assert index >= 0 && index < length;
-            JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, true);
-            return true;
+            if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+                assert index >= 0 && index < length;
+                JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, true);
+            }
         }
         return true;
     }
@@ -603,27 +611,15 @@ public final class JSArrayBufferView extends JSNonProxy {
                 if (value == Undefined.instance) {
                     return null;
                 }
-                return PropertyDescriptor.createData(value, true, true, false);
+                return PropertyDescriptor.createData(value, true, true, true);
             }
         }
         return ordinaryGetOwnProperty(thisObj, key);
     }
 
-    private static void checkDetachedBuffer(DynamicObject thisObj) {
-        if (JSArrayBuffer.isDetachedBuffer(thisObj)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-    }
-
-    private static void checkDetachedView(DynamicObject thisObj) {
-        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-    }
-
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects, JSContext context) {
-        if (context.isOptionNashornCompatibilityMode()) {
+    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
             return JSRuntime.objectToConsoleString(obj, typedArrayGetName(obj), depth, allowSideEffects);

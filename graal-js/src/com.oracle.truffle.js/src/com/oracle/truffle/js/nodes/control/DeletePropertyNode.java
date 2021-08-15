@@ -54,6 +54,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -252,9 +253,23 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return result;
     }
 
-    @Specialization(guards = {"isForeignObject(target)"})
+    @Specialization(guards = {"isForeignObject(target)", "!interop.hasArrayElements(target)"})
     protected boolean member(Object target, String name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            try {
+                interop.removeHashEntry(target, name);
+                return true;
+            } catch (UnknownKeyException e) {
+                // fall through: still need to try members
+            } catch (UnsupportedMessageException e) {
+                if (strict) {
+                    throw Errors.createTypeErrorInteropException(target, e, "delete", this);
+                }
+                return false;
+            }
+        }
+
         if (interop.isMemberExisting(target, name)) {
             try {
                 interop.removeMember(target, name);
@@ -269,16 +284,10 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return true;
     }
 
-    @Specialization(guards = {"isForeignObject(target)"})
+    @Specialization(guards = {"isForeignObject(target)", "interop.hasArrayElements(target)"})
     protected boolean arrayElementInt(Object target, int index,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         return arrayElementLong(target, index, interop);
-    }
-
-    @Specialization(guards = {"isForeignObject(target)", "isNumber(index)"}, replaces = "arrayElementInt")
-    protected boolean arrayElement(Object target, Number index,
-                    @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        return arrayElementLong(target, JSRuntime.longValue(index), interop);
     }
 
     private boolean arrayElementLong(Object target, long index, InteropLibrary interop) {
@@ -301,16 +310,48 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         }
     }
 
+    private boolean hashEntry(Object target, Object key, InteropLibrary interop) {
+        try {
+            interop.removeHashEntry(target, key);
+            return true;
+        } catch (UnknownKeyException e) {
+            return true;
+        } catch (UnsupportedMessageException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(target, e, "delete", this);
+            }
+            return false;
+        }
+    }
+
     @SuppressWarnings("unused")
-    @Specialization(guards = {"isForeignObject(target)", "!isString(key)", "!isNumber(key)"})
-    protected Object foreignObject(Object target, Object key,
+    @Specialization(guards = {"isForeignObject(target)"}, replaces = {"member", "arrayElementInt"})
+    protected boolean foreignObject(Object target, Object key,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode) {
-        Object index = toArrayIndexNode.execute(key);
-        if (index instanceof String) {
-            return member(target, (String) index, interop);
-        } else if (index instanceof Long) {
-            return arrayElementLong(target, (Long) index, interop);
+                    @Shared("toArrayIndex") @Cached("create()") ToArrayIndexNode toArrayIndexNode,
+                    @Shared("toPropertyKey") @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode) {
+        Object propertyKey;
+        if (interop.hasArrayElements(target)) {
+            Object indexOrPropertyKey = toArrayIndexNode.execute(key);
+            if (indexOrPropertyKey instanceof Long) {
+                return arrayElementLong(target, (long) indexOrPropertyKey, interop);
+            } else {
+                propertyKey = indexOrPropertyKey;
+                assert JSRuntime.isPropertyKey(propertyKey);
+            }
+        } else {
+            propertyKey = toPropertyKeyNode.execute(key);
+        }
+        if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            return hashEntry(target, propertyKey, interop);
+        }
+        if (interop.hasMembers(target)) {
+            if (propertyKey instanceof String) {
+                return member(target, (String) propertyKey, interop);
+            } else {
+                assert propertyKey instanceof Symbol;
+                return true;
+            }
         } else {
             return true;
         }

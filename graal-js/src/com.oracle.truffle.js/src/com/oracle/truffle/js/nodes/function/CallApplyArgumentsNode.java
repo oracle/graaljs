@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import static com.oracle.truffle.js.nodes.JSNodeUtil.getWrappedNode;
+
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -48,18 +52,11 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.arguments.AccessArgumentsArrayDirectlyNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
-import com.oracle.truffle.js.runtime.JSContext;
-
-import java.util.Set;
-
-import static com.oracle.truffle.js.nodes.JSNodeUtil.getWrappedNode;
 
 public class CallApplyArgumentsNode extends JavaScriptNode {
-    private final JSContext context;
     @Child private JSFunctionCallNode.InvokeNode callNode;
 
-    protected CallApplyArgumentsNode(JSContext context, JSFunctionCallNode callNode) {
-        this.context = context;
+    protected CallApplyArgumentsNode(JSFunctionCallNode callNode) {
         this.callNode = (JSFunctionCallNode.InvokeNode) callNode;
     }
 
@@ -68,7 +65,7 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
         Object target = callNode.executeTarget(frame);
         Object function = callNode.executeFunctionWithTarget(frame, target);
 
-        if (function != context.getRealm().getApplyFunctionObject()) {
+        if (function != getRealm().getApplyFunctionObject()) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             replaceWithOrdinaryCall();
         }
@@ -97,12 +94,12 @@ public class CallApplyArgumentsNode extends JavaScriptNode {
         });
     }
 
-    public static JavaScriptNode create(JSContext context, JSFunctionCallNode callNode) {
-        return new CallApplyArgumentsNode(context, callNode);
+    public static JavaScriptNode create(JSFunctionCallNode callNode) {
+        return new CallApplyArgumentsNode(callNode);
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context, cloneUninitialized(callNode, materializedTags));
+        return create(cloneUninitialized(callNode, materializedTags));
     }
 }
