@@ -181,6 +181,11 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         this.promiseJobsQueueEmptyAssumption = Truffle.getRuntime().createAssumption("PromiseJobsQueueEmpty");
     }
 
+    @Override
+    protected void finalizeContext(JSRealm realm) {
+        realm.closeInnerContexts();
+    }
+
     @TruffleBoundary
     @Override
     public CallTarget parse(ParsingRequest parsingRequest) {

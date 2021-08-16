@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -67,7 +68,6 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
-import org.junit.rules.ExpectedException;
 
 public class InnerContextTest {
     @Test
@@ -92,6 +92,7 @@ public class InnerContextTest {
                             return answer.call();
                         } finally {
                             innerContext.leave(this, prev);
+                            innerContext.close();
                         }
                     }
                 });
@@ -133,6 +134,7 @@ public class InnerContextTest {
                             return answer.call((byte) 1, (short) 2, 3, 4L, 0.1f, 1.5, ':', "test");
                         } finally {
                             innerContext.leave(this, prev);
+                            innerContext.close();
                         }
                     }
                 });
