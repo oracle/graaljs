@@ -930,11 +930,11 @@ public abstract class TestSuite {
         if (passedProportion == 0.0 && failedCount == 0) {
             return "?";
         }
-        DecimalFormat percentFormat = new DecimalFormat("#.#");
+        DecimalFormat percentFormat = new DecimalFormat("#.##");
         String passedPercentFormatted = percentFormat.format(passedProportion * 100);
         if (passedPercentFormatted.equals("100") && failedCount > 0) {
-            // rounding error; don't print "100%" when only 99.9% are passed
-            passedPercentFormatted = "99.9";
+            // rounding error; don't print "100%" when only 99.99% are passed
+            passedPercentFormatted = "99.99";
         }
         return passedPercentFormatted;
     }
