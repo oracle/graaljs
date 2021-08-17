@@ -97,6 +97,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
     public abstract Object getBlockScope(VirtualFrame frame);
 
+    public abstract void setBlockScope(VirtualFrame frame, Object state);
+
     @Override
     public boolean executeRepeating(VirtualFrame frame) {
         try {
@@ -201,6 +203,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
             return FrameUtil.getObjectSafe(frame, blockScopeSlot);
         }
 
+        @Override
         public void setBlockScope(VirtualFrame frame, Object state) {
             assert state instanceof MaterializedFrame;
             frame.setObject(blockScopeSlot, state);
