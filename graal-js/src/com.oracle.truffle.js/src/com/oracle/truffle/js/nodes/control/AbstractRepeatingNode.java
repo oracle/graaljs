@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RepeatingNode;
-import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanUnaryNode;
@@ -54,7 +53,6 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
 
     @Child protected JavaScriptNode conditionNode;
     @Child protected JavaScriptNode bodyNode;
-    private final LoopConditionProfile conditionProfile = LoopConditionProfile.createCountingProfile();
 
     AbstractRepeatingNode(JavaScriptNode condition, JavaScriptNode body) {
         this.conditionNode = JSToBooleanUnaryNode.create(condition);
@@ -62,10 +60,6 @@ abstract class AbstractRepeatingNode extends JavaScriptNode implements Repeating
     }
 
     protected final boolean executeCondition(VirtualFrame frame) {
-        return conditionProfile.profile(StatementNode.executeConditionAsBoolean(frame, conditionNode));
-    }
-
-    protected final boolean executeConditionNoProfile(VirtualFrame frame) {
         return StatementNode.executeConditionAsBoolean(frame, conditionNode);
     }
 

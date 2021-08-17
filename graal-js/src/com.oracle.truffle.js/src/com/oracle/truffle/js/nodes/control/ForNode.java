@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -252,12 +252,7 @@ public final class ForNode extends StatementNode implements ResumableNode {
             boolean condition = true;
             if (index <= 1) {
                 try {
-                    /*
-                     * Cannot profile here: branch probability injection would fail due to the
-                     * following control flow merge with the else branch where we do not execute;
-                     * i.e., condition in the if below actually becomes phi(condition, true).
-                     */
-                    condition = executeConditionNoProfile(iterationFrame);
+                    condition = executeCondition(iterationFrame);
                 } catch (YieldException e) {
                     setState(frame, new Pair<>(iterationFrame, 1));
                     throw e;
