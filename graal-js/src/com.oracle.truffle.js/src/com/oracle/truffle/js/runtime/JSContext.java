@@ -403,6 +403,7 @@ public class JSContext {
     private final JSObjectFactory listFormatFactory;
     private final JSObjectFactory relativeTimeFormatFactory;
     private final JSObjectFactory segmenterFactory;
+    private final JSObjectFactory segmentsFactory;
     private final JSObjectFactory segmentIteratorFactory;
     private final JSObjectFactory displayNamesFactory;
     private final JSObjectFactory localeFactory;
@@ -562,6 +563,7 @@ public class JSContext {
         this.listFormatFactory = builder.create(JSListFormat.INSTANCE);
         this.relativeTimeFormatFactory = builder.create(JSRelativeTimeFormat.INSTANCE);
         this.segmenterFactory = builder.create(JSSegmenter.INSTANCE);
+        this.segmentsFactory = builder.create(JSRealm::getSegmentsPrototype, JSSegmenter::makeInitialSegmentsShape);
         this.segmentIteratorFactory = builder.create(JSRealm::getSegmentIteratorPrototype, JSSegmenter::makeInitialSegmentIteratorShape);
         this.displayNamesFactory = builder.create(JSDisplayNames.INSTANCE);
         this.localeFactory = builder.create(JSLocale.INSTANCE);
@@ -972,6 +974,10 @@ public class JSContext {
 
     public final JSObjectFactory getSegmenterFactory() {
         return segmenterFactory;
+    }
+
+    public final JSObjectFactory getSegmentsFactory() {
+        return segmentsFactory;
     }
 
     public final JSObjectFactory getSegmentIteratorFactory() {

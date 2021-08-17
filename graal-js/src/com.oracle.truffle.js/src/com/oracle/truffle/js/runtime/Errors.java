@@ -197,6 +197,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorSegmentsExpected() {
+        return createTypeError("Segments object expected.");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorDisplayNamesExpected() {
         return createTypeError("DisplayNames object expected.");
     }

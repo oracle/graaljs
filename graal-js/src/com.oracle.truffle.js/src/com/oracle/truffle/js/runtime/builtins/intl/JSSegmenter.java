@@ -44,33 +44,24 @@ import java.util.Locale;
 
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.util.ULocale;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.intl.SegmentIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.intl.SegmenterFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltins;
+import com.oracle.truffle.js.builtins.intl.SegmentsPrototypeBuiltins;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.CompilableFunction;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSSegmenter extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
@@ -78,24 +69,22 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     public static final String CLASS_NAME = "Segmenter";
     public static final String PROTOTYPE_NAME = "Segmenter.prototype";
 
-    public static final String ITERATOR_CLASS_NAME = "Segment Iterator";
+    public static final String SEGMENTS_PROTOTYPE_NAME = "Segments.prototype";
+
+    public static final String ITERATOR_CLASS_NAME = "Segmenter String Iterator";
     public static final String ITERATOR_PROTOTYPE_NAME = "Segment Iterator.prototype";
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
 
     public static class IteratorState {
-        private String iteratedString;
-        private BreakIterator breakIterator;
-        private Granularity granularity;
-        private String breakType;
-        private int index;
+        private final String iteratedString;
+        private final BreakIterator breakIterator;
+        private final Granularity granularity;
 
-        public IteratorState(String iteratedObject, BreakIterator breakIterator, Granularity granularity, String breakType, int index) {
+        public IteratorState(String iteratedObject, BreakIterator breakIterator, Granularity granularity) {
             this.iteratedString = iteratedObject;
             this.breakIterator = breakIterator;
             this.granularity = granularity;
-            this.breakType = breakType;
-            this.index = index;
         }
 
         public String getIteratedString() {
@@ -106,36 +95,16 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
             return granularity;
         }
 
-        public String getBreakType() {
-            return breakType;
-        }
-
-        public int getIndex() {
-            return index;
-        }
-
         public BreakIterator getBreakIterator() {
             return breakIterator;
         }
 
-        public void setIteratedString(String iteratedString) {
-            this.iteratedString = iteratedString;
-        }
-
-        public void setBreakType(String breakType) {
-            this.breakType = breakType;
-        }
-
-        public void setIndex(int index) {
-            this.index = index;
-        }
     }
 
     interface IcuIteratorHelper {
 
         BreakIterator getIterator(ULocale locale);
 
-        String getBreakType(int icuStatus);
     }
 
     public enum Granularity implements IcuIteratorHelper {
@@ -146,11 +115,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getCharacterInstance(locale);
             }
-
-            @Override
-            public String getBreakType(int icuStatus) {
-                return null;
-            }
         },
         WORD(IntlUtil.WORD) {
             @Override
@@ -158,22 +122,12 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getWordInstance(locale);
             }
-
-            @Override
-            public String getBreakType(int icuStatus) {
-                return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.NONE : IntlUtil.WORD;
-            }
         },
         SENTENCE(IntlUtil.SENTENCE) {
             @Override
             @TruffleBoundary
             public BreakIterator getIterator(ULocale locale) {
                 return BreakIterator.getSentenceInstance(locale);
-            }
-
-            @Override
-            public String getBreakType(int icuStatus) {
-                return icuStatus == BreakIterator.WORD_NONE ? IntlUtil.SEP : IntlUtil.TERM;
             }
         };
 
@@ -237,11 +191,18 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     public static DynamicObject createSegmentIterator(JSContext context, JSRealm realm, DynamicObject segmenter, String value) {
         BreakIterator icuIterator = JSSegmenter.createBreakIterator(segmenter, value);
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
-        JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity, null, 0);
+        JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity);
         JSObjectFactory factory = context.getSegmentIteratorFactory();
         JSSegmenterIteratorObject segmentIterator = new JSSegmenterIteratorObject(factory.getShape(realm), iteratorState);
         factory.initProto(segmentIterator, realm);
         return context.trackAllocation(segmentIterator);
+    }
+
+    public static DynamicObject createSegments(JSContext context, JSRealm realm, JSSegmenterObject segmenter, String string) {
+        JSObjectFactory factory = context.getSegmentsFactory();
+        JSSegmentsObject segments = new JSSegmentsObject(factory.getShape(realm), segmenter, string);
+        factory.initProto(segments, realm);
+        return context.trackAllocation(segments);
     }
 
     @TruffleBoundary
@@ -289,10 +250,16 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @TruffleBoundary
-    public static BreakIterator createBreakIterator(DynamicObject segmenterObj, String text) {
+    public static BreakIterator createBreakIterator(DynamicObject segmenterObj) {
         InternalState state = getInternalState(segmenterObj);
         ULocale ulocale = ULocale.forLocale(state.javaLocale);
         BreakIterator icuIterator = state.granularity.getIterator(ulocale);
+        return icuIterator;
+    }
+
+    @TruffleBoundary
+    public static BreakIterator createBreakIterator(DynamicObject segmenterObj, String text) {
+        BreakIterator icuIterator = createBreakIterator(segmenterObj);
         icuIterator.setText(text);
         return icuIterator;
     }
@@ -318,6 +285,22 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return realm.getSegmenterPrototype();
     }
 
+    // Segments Object
+
+    public static Shape makeInitialSegmentsShape(JSContext ctx, DynamicObject prototype) {
+        return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
+    }
+
+    public static boolean isJSSegments(Object obj) {
+        return obj instanceof JSSegmentsObject;
+    }
+
+    public static DynamicObject createSegmentsPrototype(JSRealm realm) {
+        DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
+        JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentsPrototypeBuiltins.BUILTINS);
+        return prototype;
+    }
+
     // Iterator
 
     public static Shape makeInitialSegmentIteratorShape(JSContext ctx, DynamicObject prototype) {
@@ -328,40 +311,13 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return obj instanceof JSSegmenterIteratorObject;
     }
 
-    private static CallTarget createPropertyGetterCallTarget(JSContext context, CompilableFunction<JSSegmenter.IteratorState, Object> getter) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object obj = JSArguments.getThisObject(frame.getArguments());
-                if (isJSSegmenterIterator(obj)) {
-                    return getter.apply(((JSSegmenterIteratorObject) obj).getIteratorState());
-                }
-                throw Errors.createTypeErrorTypeXExpected(ITERATOR_CLASS_NAME);
-            }
-        });
-    }
-
     /**
      * Creates the %SegmentIteratorPrototype% object.
      */
-    public static DynamicObject createSegmentIteratorPrototype(JSContext context, JSRealm realm) {
+    public static DynamicObject createSegmentIteratorPrototype(JSRealm realm) {
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, realm.getIteratorPrototype());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, SegmentIteratorPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, ITERATOR_CLASS_NAME);
-        JSFunctionData breakTypeFd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SegmenterBreakType, (c) -> {
-            CallTarget ct = createPropertyGetterCallTarget(context, it -> it.getBreakType() != null ? it.getBreakType() : Undefined.instance);
-            return JSFunctionData.createCallOnly(c, ct, 0, "get " + IntlUtil.BREAK_TYPE);
-        });
-        DynamicObject breakTypeGetter = JSFunction.create(realm, breakTypeFd);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, IntlUtil.BREAK_TYPE, breakTypeGetter, Undefined.instance);
-        JSFunctionData positionFd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SegmenterPosition, (c) -> {
-            return JSFunctionData.createCallOnly(context, createPropertyGetterCallTarget(context, JSSegmenter.IteratorState::getIndex), 0, "get " + IntlUtil.INDEX);
-        });
-        DynamicObject positionGetter = JSFunction.create(realm, positionFd);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, IntlUtil.INDEX, positionGetter, Undefined.instance);
         return prototype;
     }
 }
