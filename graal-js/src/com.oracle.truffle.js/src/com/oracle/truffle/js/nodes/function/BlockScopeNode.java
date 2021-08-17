@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
@@ -152,7 +153,8 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         @Override
         public VirtualFrame appendScopeFrame(VirtualFrame frame) {
             Object parentScopeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
-            if (captureFunctionFrame && parentScopeFrame == Undefined.instance) {
+            if (captureFunctionFrame) {
+                assert parentScopeFrame == Undefined.instance;
                 parentScopeFrame = frame.materialize();
             }
             MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
@@ -165,6 +167,11 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
         public void exitScope(VirtualFrame frame) {
             MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
             Object parentScopeFrame = FrameUtil.getObjectSafe(blockScopeFrame, parentSlot);
+            if (captureFunctionFrame) {
+                assert ((Frame) parentScopeFrame).getFrameDescriptor() == frame.getFrameDescriptor();
+                // Avoid self reference
+                parentScopeFrame = Undefined.instance;
+            }
             frame.setObject(blockScopeSlot, parentScopeFrame);
             assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame);
         }
