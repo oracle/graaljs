@@ -63,7 +63,7 @@ public class EvalEnvironment extends Environment {
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(String name) {
+    protected FrameSlot findBlockFrameSlot(Object name) {
         throw new UnsupportedOperationException();
     }
 }

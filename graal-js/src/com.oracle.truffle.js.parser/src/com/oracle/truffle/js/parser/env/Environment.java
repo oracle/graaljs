@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
 
 public abstract class Environment {
@@ -89,8 +90,8 @@ public abstract class Environment {
         return function().declareLocalVar(name);
     }
 
-    public boolean hasLocalVar(String name) {
-        return getFunctionFrameDescriptor().getIdentifiers().contains(name);
+    public boolean hasLocalVar(Object name) {
+        return getFunctionFrameDescriptor().findFrameSlot(name) != null;
     }
 
     public VarRef findThisVar() {
@@ -158,7 +159,8 @@ public abstract class Environment {
         getBlockFrameDescriptor().findOrAddFrameSlot(FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER);
     }
 
-    public FrameSlot declareInternalSlot(String name) {
+    public FrameSlot declareInternalSlot(Object name) {
+        assert name instanceof String || name instanceof InternalSlotId : name;
         return getBlockFrameDescriptor().findOrAddFrameSlot(name);
     }
 
@@ -166,11 +168,11 @@ public abstract class Environment {
         return factory.createReadFrameSlot(frameSlot, factory.createScopeFrame(frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), getBlockScopeSlot(frameLevel, scopeLevel)), false);
     }
 
-    protected final VarRef findInternalSlot(String name) {
+    public final VarRef findInternalSlot(Object name) {
         return findInternalSlot(name, false);
     }
 
-    protected final VarRef findInternalSlot(String name, boolean allowDebug) {
+    protected final VarRef findInternalSlot(Object name, boolean allowDebug) {
         Environment current = this;
         int frameLevel = 0;
         int scopeLevel = 0;
@@ -184,9 +186,9 @@ public abstract class Environment {
                 scopeLevel = 0;
             } else if (current instanceof BlockEnvironment) {
                 scopeLevel++;
-            } else if (current instanceof DebugEnvironment) {
-                if (allowDebug && ((DebugEnvironment) current).hasMember(name)) {
-                    return new DebugVarRef(name, frameLevel);
+            } else if (current instanceof DebugEnvironment && name instanceof String) {
+                if (allowDebug && ((DebugEnvironment) current).hasMember((String) name)) {
+                    return new DebugVarRef((String) name, frameLevel);
                 }
             }
             current = current.getParent();
@@ -249,7 +251,7 @@ public abstract class Environment {
         do {
             if (current instanceof WithEnvironment) {
                 if (!skipWith) {
-                    wrapClosure = makeWithWrapClosure(wrapClosure, name, ((WithEnvironment) current).getWithVarName());
+                    wrapClosure = makeWithWrapClosure(wrapClosure, name, ((WithEnvironment) current).getWithVarIdentifier());
                     wrapFrameLevel = frameLevel;
                 }
                 // with environments don't introduce any variables, skip lookup
@@ -346,7 +348,7 @@ public abstract class Environment {
         });
     }
 
-    private WrapClosure makeWithWrapClosure(WrapClosure wrapClosure, String name, String withVarName) {
+    private WrapClosure makeWithWrapClosure(WrapClosure wrapClosure, String name, Object withVarName) {
         return WrapClosure.compose(wrapClosure, new WrapClosure() {
             @Override
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
@@ -441,7 +443,7 @@ public abstract class Environment {
         return wrappee;
     }
 
-    protected abstract FrameSlot findBlockFrameSlot(String name);
+    protected abstract FrameSlot findBlockFrameSlot(Object name);
 
     public FrameDescriptor getBlockFrameDescriptor() {
         throw new UnsupportedOperationException();
@@ -484,7 +486,7 @@ public abstract class Environment {
     }
 
     public VarRef findTempVar(FrameSlot var) {
-        return new VarRef((String) var.getIdentifier()) {
+        return new VarRef(var.getIdentifier()) {
             @Override
             public boolean isGlobal() {
                 return false;
@@ -518,7 +520,7 @@ public abstract class Environment {
     }
 
     private FrameSlot declareTempVar(String prefix) {
-        return declareLocalVar("<" + prefix + getFunctionFrameDescriptor().getSize() + ">");
+        return declareLocalVar(factory.createInternalSlotId(prefix, getFunctionFrameDescriptor().getSize()));
     }
 
     public FrameDescriptor getFunctionFrameDescriptor() {
@@ -622,9 +624,10 @@ public abstract class Environment {
     }
 
     public abstract static class VarRef {
-        protected final String name;
+        protected final Object name;
 
-        protected VarRef(String name) {
+        protected VarRef(Object name) {
+            assert name instanceof String || name instanceof InternalSlotId : name;
             this.name = name;
         }
 
@@ -649,7 +652,8 @@ public abstract class Environment {
         }
 
         public String getName() {
-            return name;
+            assert name instanceof String : name;
+            return (String) name;
         }
 
         public abstract JavaScriptNode createDeleteNode();
@@ -676,7 +680,7 @@ public abstract class Environment {
         protected final int frameLevel;
         protected final Environment current;
 
-        public AbstractFrameVarRef(int scopeLevel, int frameLevel, String name, Environment current) {
+        public AbstractFrameVarRef(int scopeLevel, int frameLevel, Object name, Environment current) {
             super(name);
             this.scopeLevel = scopeLevel;
             this.frameLevel = frameLevel;
@@ -728,11 +732,11 @@ public abstract class Environment {
         protected final FrameSlot frameSlot;
         private final boolean checkTDZ;
 
-        public FrameSlotVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current) {
+        public FrameSlotVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, Object name, Environment current) {
             this(frameSlot, scopeLevel, frameLevel, name, current, JSFrameUtil.needsTemporalDeadZoneCheck(frameSlot, frameLevel));
         }
 
-        public FrameSlotVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, String name, Environment current, boolean checkTDZ) {
+        public FrameSlotVarRef(FrameSlot frameSlot, int scopeLevel, int frameLevel, Object name, Environment current, boolean checkTDZ) {
             super(scopeLevel, frameLevel, name, current);
             this.frameSlot = frameSlot;
             this.checkTDZ = checkTDZ;
@@ -891,15 +895,15 @@ public abstract class Environment {
             }
 
             if (!required) {
-                return factory.createReadProperty(context, factory.createGlobalObject(), name);
+                return factory.createReadProperty(context, factory.createGlobalObject(), getName());
             }
 
-            return factory.createReadGlobalProperty(context, name);
+            return factory.createReadGlobalProperty(context, getName());
         }
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            return factory.createWriteProperty(factory.createGlobalObject(), name, rhs, context, isStrictMode(), isGlobal(), required);
+            return factory.createWriteProperty(factory.createGlobalObject(), getName(), rhs, context, isStrictMode(), isGlobal(), required);
         }
 
         @Override
@@ -919,7 +923,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createDeleteNode() {
-            JavaScriptNode element = factory.createConstantString(name);
+            JavaScriptNode element = factory.createConstantString(getName());
             JavaScriptNode object = factory.createGlobalObject();
             return factory.createDeleteProperty(object, element, isStrictMode(), context);
         }
@@ -927,7 +931,7 @@ public abstract class Environment {
         @Override
         public VarRef withRequired(@SuppressWarnings("hiding") boolean required) {
             if (this.required != required) {
-                return new GlobalVarRef(name, required);
+                return new GlobalVarRef(getName(), required);
             }
             return this;
         }
@@ -942,7 +946,7 @@ public abstract class Environment {
             this(name, isConst, true, false);
         }
 
-        private GlobalLexVarRef(String name, boolean isConst, boolean required, boolean checkTDZ) {
+        private GlobalLexVarRef(Object name, boolean isConst, boolean required, boolean checkTDZ) {
             super(name);
             assert !name.equals(Null.NAME) && !name.equals(Undefined.NAME);
             this.isConst = isConst;
@@ -953,16 +957,16 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createReadNode() {
             if (!required) {
-                JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, checkTDZ);
-                return factory.createReadProperty(context, globalScope, name);
+                JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, getName(), checkTDZ);
+                return factory.createReadProperty(context, globalScope, getName());
             }
-            return factory.createReadLexicalGlobal(name, checkTDZ, context);
+            return factory.createReadLexicalGlobal(getName(), checkTDZ, context);
         }
 
         @Override
         public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, name, checkTDZ);
-            return factory.createWriteProperty(globalScope, name, rhs, context, true, required, false);
+            JavaScriptNode globalScope = factory.createGlobalScopeTDZCheck(context, getName(), checkTDZ);
+            return factory.createWriteProperty(globalScope, getName(), rhs, context, true, required, false);
         }
 
         @Override
@@ -987,7 +991,7 @@ public abstract class Environment {
 
         @Override
         public JavaScriptNode createDeleteNode() {
-            JavaScriptNode element = factory.createConstantString(name);
+            JavaScriptNode element = factory.createConstantString(getName());
             JavaScriptNode object = factory.createGlobalScope(context);
             return factory.createDeleteProperty(object, element, isStrictMode(), context);
         }
@@ -1018,7 +1022,7 @@ public abstract class Environment {
         private final VarRef wrappee;
         private final WrapClosure wrapClosure;
 
-        public WrappedVarRef(String name, VarRef wrappee, WrapClosure wrapClosure) {
+        public WrappedVarRef(Object name, VarRef wrappee, WrapClosure wrapClosure) {
             super(name);
             this.wrappee = wrappee;
             this.wrapClosure = wrapClosure;
@@ -1093,7 +1097,7 @@ public abstract class Environment {
         @Override
         public JavaScriptNode createReadNode() {
             JavaScriptNode debugScope = factory.createDebugScope(context, factory.createAccessCallee(frameLevel - 1));
-            return factory.createDebugVarWrapper(name, factory.createConstantUndefined(), debugScope, factory.createReadProperty(context, null, name));
+            return factory.createDebugVarWrapper(getName(), factory.createConstantUndefined(), debugScope, factory.createReadProperty(context, null, getName()));
         }
 
         @Override

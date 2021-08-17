@@ -186,13 +186,8 @@ public class FunctionEnvironment extends Environment {
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(String name) {
+    protected FrameSlot findBlockFrameSlot(Object name) {
         return getFunctionFrameDescriptor().findFrameSlot(name);
-    }
-
-    @Override
-    public boolean hasLocalVar(String name) {
-        return getFunctionFrameDescriptor().getIdentifiers().contains(name);
     }
 
     private <T extends BreakTarget> T pushJumpTarget(T target) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,42 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.env;
-
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.runtime.JSContext;
+package com.oracle.truffle.js.runtime.util;
 
 /**
- * Read-only environment based on a frame descriptor used to give debugger code access to the
- * lexical environment it's to be evaluated in.
+ * Key for internal frame slots. Compared by identity.
  */
-public class DebugEnvironment extends Environment {
-    private final Object scope;
+public final class InternalSlotId {
 
-    public DebugEnvironment(Environment parent, NodeFactory factory, JSContext context, Object scope) {
-        super(parent, factory, context);
-        this.scope = scope;
-        assert InteropLibrary.getUncached().isScope(scope) : scope;
+    private final String description;
+    private final int ordinal;
+
+    public InternalSlotId(String description, int ordinal) {
+        this.description = description;
+        this.ordinal = ordinal;
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(Object name) {
-        return null;
+    public String toString() {
+        return ":" + description + ":" + ordinal;
     }
 
-    @Override
-    public FunctionEnvironment function() {
-        return null;
-    }
-
-    @Override
-    public boolean isStrictMode() {
-        return true;
-    }
-
-    public boolean hasMember(String name) {
-        return InteropLibrary.getUncached().isMemberReadable(scope, name);
-    }
 }

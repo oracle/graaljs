@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 public final class JSFrameUtil {
     public static final MaterializedFrame NULL_MATERIALIZED_FRAME = Truffle.getRuntime().createMaterializedFrame(JSArguments.createNullArguments());
@@ -149,6 +150,8 @@ public final class JSFrameUtil {
                 return true;
             }
             return false;
+        } else if (frameSlot.getIdentifier() instanceof InternalSlotId) {
+            return true;
         }
         return true;
     }

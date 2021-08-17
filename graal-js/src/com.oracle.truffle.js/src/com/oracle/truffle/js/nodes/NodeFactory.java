@@ -220,6 +220,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 @GenerateDecoder
 @GenerateProxy
@@ -1185,6 +1186,10 @@ public class NodeFactory {
 
     public JavaScriptNode createDebugVarWrapper(String varName, JavaScriptNode defaultDelegate, JavaScriptNode dynamicScope, JSTargetableNode scopeAccessNode) {
         return new DebugScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
+    }
+
+    public InternalSlotId createInternalSlotId(String description, int ordinal) {
+        return new InternalSlotId(description, ordinal);
     }
 
     // #####

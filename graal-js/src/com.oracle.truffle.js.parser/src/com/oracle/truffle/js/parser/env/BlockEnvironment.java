@@ -78,7 +78,7 @@ public class BlockEnvironment extends Environment {
     }
 
     @Override
-    public FrameSlot findBlockFrameSlot(String name) {
+    public FrameSlot findBlockFrameSlot(Object name) {
         return getBlockFrameDescriptor().findFrameSlot(name);
     }
 
