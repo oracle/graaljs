@@ -101,6 +101,11 @@ public class BlockEnvironment extends Environment {
         return parentSlots;
     }
 
+    @Override
+    public FrameSlot getCurrentBlockScopeSlot() {
+        return functionEnvironment.getBlockScopeSlot();
+    }
+
     public boolean isFunctionBlock() {
         return isFunctionBlock;
     }

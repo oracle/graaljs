@@ -78,8 +78,8 @@ import com.oracle.js.parser.ir.LexicalContextNode;
 import com.oracle.js.parser.ir.LexicalContextScope;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.Module;
-import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.Module.ImportEntry;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.js.parser.ir.ObjectNode;
 import com.oracle.js.parser.ir.ParameterNode;
 import com.oracle.js.parser.ir.PropertyNode;
@@ -349,7 +349,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             // function needs parent frame analysis has already been done
             boolean needsParentFrame = functionNode.usesAncestorScope();
-            blockScopeSlot = needsParentFrame && currentFunction() != null ? currentFunction().getBlockScopeSlot() : null;
+            blockScopeSlot = needsParentFrame && environment != null ? environment.getCurrentBlockScopeSlot() : null;
 
             functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
                             needsParentFrame, isGeneratorFunction, isAsyncFunction, isClassConstructor, strictFunctionProperties, needsNewTarget);
@@ -363,6 +363,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             });
             functionRoot = null;
         } else {
+            Environment prevEnv = environment;
             try (EnvironmentCloseable functionEnv = enterFunctionEnvironment(isStrict, isArrowFunction, isGeneratorFunction, isDerivedConstructor, isAsyncFunction, isGlobal, hasSyntheticArguments)) {
                 FunctionEnvironment currentFunction = currentFunction();
                 currentFunction.setFunctionName(functionName);
@@ -391,7 +392,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JavaScriptNode body = translateFunctionBody(functionNode, isGeneratorFunction, isAsyncFunction, declarations);
 
                 needsParentFrame = currentFunction.needsParentFrame();
-                blockScopeSlot = needsParentFrame && currentFunction.getParentFunction() != null ? currentFunction.getParentFunction().getBlockScopeSlot() : null;
+                blockScopeSlot = needsParentFrame && prevEnv != null ? prevEnv.getCurrentBlockScopeSlot() : null;
                 currentFunction.freeze();
 
                 functionData = factory.createFunctionData(context, functionNode.getLength(), functionName, isConstructor, isDerivedConstructor, isStrict, isBuiltin,
@@ -2344,7 +2345,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             func.setNeedsParentFrame(true);
         }
         return EvalNode.create(context, function, args, createThisNodeUnchecked(), new DirectEvalContext(lc.getCurrentScope(), environment, lc.getCurrentClass()),
-                        currentFunction().getBlockScopeSlot());
+                        environment.getCurrentBlockScopeSlot());
     }
 
     private JavaScriptNode createCallApplyArgumentsNode(JavaScriptNode function, JavaScriptNode[] args) {

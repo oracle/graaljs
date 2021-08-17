@@ -88,6 +88,11 @@ public class WithEnvironment extends Environment {
     }
 
     @Override
+    public FrameSlot getCurrentBlockScopeSlot() {
+        return getParent().getCurrentBlockScopeSlot();
+    }
+
+    @Override
     public boolean isDynamicScopeContext() {
         return true;
     }

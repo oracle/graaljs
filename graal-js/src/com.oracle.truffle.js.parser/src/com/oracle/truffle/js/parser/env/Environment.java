@@ -582,6 +582,10 @@ public abstract class Environment {
         return null;
     }
 
+    public FrameSlot getCurrentBlockScopeSlot() {
+        return null;
+    }
+
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols) {
         addFrameSlotsFromSymbols(symbols, false);
     }

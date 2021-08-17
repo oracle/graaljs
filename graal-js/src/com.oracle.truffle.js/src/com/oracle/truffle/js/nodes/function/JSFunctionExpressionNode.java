@@ -165,7 +165,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
             MaterializedFrame closureFrame;
             if (blockScopeSlot != null) {
                 Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
-                closureFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : frame.materialize();
+                closureFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : JSFrameUtil.NULL_MATERIALIZED_FRAME;
             } else {
                 closureFrame = frame.materialize();
             }
@@ -212,7 +212,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
             MaterializedFrame closureFrame;
             if (blockScopeSlot != null) {
                 Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
-                closureFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : frame.materialize();
+                closureFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : JSFrameUtil.NULL_MATERIALIZED_FRAME;
             } else {
                 closureFrame = frame.materialize();
             }

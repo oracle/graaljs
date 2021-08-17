@@ -146,7 +146,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             if (functionData.needsParentFrame()) {
                 if (blockScopeSlot != null) {
                     Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
-                    enclosingFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : frame.materialize();
+                    enclosingFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : JSFrameUtil.NULL_MATERIALIZED_FRAME;
                 } else {
                     enclosingFrame = frame.materialize();
                 }
