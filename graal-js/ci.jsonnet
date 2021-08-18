@@ -74,7 +74,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'tck'}}                + {name: 'js-gate-tck-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk8-linux-amd64'},
     graalJs + common.jdk8  + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk8-linux-amd64'},
-    graalJs + common.jdk16 + common.daily  + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-daily-native-image-smoke-test-jdk16-linux-amd64'},
+    graalJs + common.jdk17 + common.daily  + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-daily-native-image-smoke-test-jdk17-linux-amd64'},
 
     // jdk 8 - coverage
     graalJs + common.jdk8  + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
@@ -94,7 +94,7 @@ local common = import '../common.jsonnet';
     graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
 
     // jdk 16 - linux
-    graalJs + common.jdk16 + common.daily  + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-daily-default-jdk16-linux-amd64'},
+    graalJs + common.jdk17 + common.daily  + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-daily-default-jdk17-linux-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk8  + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk8-linux-amd64'},

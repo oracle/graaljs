@@ -60,7 +60,7 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + common.gate      + common.windows_jdk8   + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk8-windows-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows_jdk11  + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk11-windows-amd64'},
 //  disabled due to GR-26245
-//    graalNodeJs + common.jdk16 + common.gate      + common.windows_jdk16  + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk16-windows-amd64'},
+//    graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17  + common.gateTags             + {environment+: {TAGS: 'windows'}}                                         + {name: 'nodejs-gate-jdk17-windows-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-linux-amd64'},
     graalNodeJs + common.jdk8  + common.gate      + common.darwin         + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk8-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk11 + common.gate      + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-gate-substratevm-jdk11-linux-amd64'},
@@ -86,9 +86,9 @@ local common = import '../common.jsonnet';
     graalNodeJs + common.jdk8  + common.gate      + common.windows_jdk8                      + testNode + {environment+: {SUITE: 'sequential',    PART: '-r0,1', MAX_HEAP: '512M'}} + {name: 'nodejs-gate-sequential-jdk8-windows-amd64'},
 
     // daily
-    graalNodeJs + common.jdk16 + common.daily     + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-daily-jdk16-linux-amd64'},
-    graalNodeJs + common.jdk16 + common.daily     + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-daily-substratevm-jdk16-linux-amd64'},
-    graalNodeJs + common.jdk16 + common.daily     + common.windows_jdk16  + gateSubstrateVm                                                                                         + {name: 'nodejs-daily-substratevm-jdk16-windows-amd64'},
+    graalNodeJs + common.jdk17 + common.daily     + common.linux          + common.gateTags             + {environment+: {TAGS: 'all'}}                                             + {name: 'nodejs-daily-jdk17-linux-amd64'},
+    graalNodeJs + common.jdk17 + common.daily     + common.linux          + gateSubstrateVm                                                                                         + {name: 'nodejs-daily-substratevm-jdk17-linux-amd64'},
+    graalNodeJs + common.jdk17 + common.daily     + common.windows_jdk17  + gateSubstrateVm                                                                                         + {name: 'nodejs-daily-substratevm-jdk17-windows-amd64'},
 
     // post-merges
     graalNodeJs + common.jdk8  + common.postMerge + common.linux                             + testNode + {environment+: {SUITE: parallelHttp2,   PART: '-r0,1', MAX_HEAP: '8G'}}   + {name: 'nodejs-postmerge-parallel-http2-jdk8-linux-amd64'},
