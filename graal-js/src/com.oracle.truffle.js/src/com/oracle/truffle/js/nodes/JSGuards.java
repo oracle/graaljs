@@ -223,6 +223,14 @@ public final class JSGuards {
         return JSSegmenter.isJSSegmenter(value);
     }
 
+    public static boolean isJSSegments(Object value) {
+        return JSSegmenter.isJSSegments(value);
+    }
+
+    public static boolean isJSSegmentIterator(Object value) {
+        return JSSegmenter.isJSSegmentIterator(value);
+    }
+
     public static boolean isJSDisplayNames(Object value) {
         return JSDisplayNames.isJSDisplayNames(value);
     }

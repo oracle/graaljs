@@ -124,6 +124,8 @@ public final class IntlUtil {
     public static final String HOUR_CYCLE = "hourCycle";
     public static final String HOUR12 = "hour12";
     public static final String INDEX = "index";
+    public static final String INPUT = "input";
+    public static final String IS_WORD_LIKE = "isWordLike";
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
     public static final String LANGUAGE = "language";
     public static final String LITERAL = "literal";

@@ -46,7 +46,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.intl.SegmenterPrototypeBuiltinsFactory.JSSegmenterSegmentNodeGen;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -54,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
+import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
 
 public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<SegmenterPrototypeBuiltins.SegmenterPrototype> {
 
@@ -110,40 +110,22 @@ public final class SegmenterPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class JSSegmenterSegmentNode extends JSBuiltinNode {
 
-        @Child private CreateSegmentIteratorNode createSegmentIteratorNode;
-
         public JSSegmenterSegmentNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createSegmentIteratorNode = CreateSegmentIteratorNode.create(context);
         }
 
-        @Specialization(guards = "isJSSegmenter(segmenter)")
-        public Object doSegment(DynamicObject segmenter, Object value,
+        @Specialization
+        public Object doSegmenter(JSSegmenterObject segmenter, Object value,
                         @Cached("create()") JSToStringNode toStringNode) {
-            return createSegmentIteratorNode.execute(segmenter, toStringNode.executeString(value));
+            String string = toStringNode.executeString(value);
+            return JSSegmenter.createSegments(getContext(), getRealm(), segmenter, string);
         }
 
         @Specialization(guards = "!isJSSegmenter(bummer)")
         @SuppressWarnings("unused")
-        public void throwTypeError(Object bummer, Object value) {
+        public void doOther(Object bummer, Object value) {
             throw Errors.createTypeErrorSegmenterExpected();
         }
     }
 
-    public static class CreateSegmentIteratorNode extends JavaScriptBaseNode {
-        private final JSContext context;
-
-        protected CreateSegmentIteratorNode(JSContext context) {
-            this.context = context;
-        }
-
-        public static CreateSegmentIteratorNode create(JSContext context) {
-            return new CreateSegmentIteratorNode(context);
-        }
-
-        public DynamicObject execute(DynamicObject segmenter, String value) {
-            assert JSSegmenter.isJSSegmenter(segmenter);
-            return JSSegmenter.createSegmentIterator(context, getRealm(), segmenter, value);
-        }
-    }
 }

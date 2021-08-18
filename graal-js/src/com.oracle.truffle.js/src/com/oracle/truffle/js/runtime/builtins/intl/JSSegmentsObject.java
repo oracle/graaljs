@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,30 +40,30 @@
  */
 package com.oracle.truffle.js.runtime.builtins.intl;
 
-import java.util.Objects;
-
-import com.ibm.icu.text.BreakIterator;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public final class JSSegmenterObject extends JSNonProxyObject {
-    private final JSSegmenter.InternalState internalState;
-    // Iterator used by Segments objects of this Segmenter
-    private BreakIterator breakIterator;
+/**
+ * Segments object.
+ */
+public final class JSSegmentsObject extends JSNonProxyObject {
+    // [[SegmentsSegmenter]] internal slot
+    private final JSSegmenterObject segmentsSegmenter;
+    // [[SegmentsString]] internal slot
+    private final String segmentsString;
 
-    protected JSSegmenterObject(Shape shape, JSSegmenter.InternalState internalState) {
+    protected JSSegmentsObject(Shape shape, JSSegmenterObject segmentsSegmenter, String segmentsString) {
         super(shape);
-        this.internalState = Objects.requireNonNull(internalState);
+        this.segmentsSegmenter = segmentsSegmenter;
+        this.segmentsString = segmentsString;
     }
 
-    public JSSegmenter.InternalState getInternalState() {
-        return internalState;
+    public JSSegmenterObject getSegmentsSegmenter() {
+        return segmentsSegmenter;
     }
 
-    public BreakIterator getBreakIterator() {
-        if (breakIterator == null) {
-            breakIterator = JSSegmenter.createBreakIterator(this);
-        }
-        return breakIterator;
+    public String getSegmentsString() {
+        return segmentsString;
     }
+
 }

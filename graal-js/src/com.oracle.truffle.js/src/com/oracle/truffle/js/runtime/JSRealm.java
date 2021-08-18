@@ -303,6 +303,7 @@ public class JSRealm {
     private final DynamicObject arrayIteratorPrototype;
     private final DynamicObject setIteratorPrototype;
     private final DynamicObject mapIteratorPrototype;
+    private final DynamicObject segmentsPrototype;
     private final DynamicObject segmentIteratorPrototype;
     private final DynamicObject stringIteratorPrototype;
     private final DynamicObject regExpStringIteratorPrototype;
@@ -624,7 +625,8 @@ public class JSRealm {
         ctor = JSSegmenter.createConstructor(this);
         this.segmenterConstructor = ctor.getFunctionObject();
         this.segmenterPrototype = ctor.getPrototype();
-        this.segmentIteratorPrototype = JSSegmenter.createSegmentIteratorPrototype(context, this);
+        this.segmentsPrototype = JSSegmenter.createSegmentsPrototype(this);
+        this.segmentIteratorPrototype = JSSegmenter.createSegmentIteratorPrototype(this);
         ctor = JSDisplayNames.createConstructor(this);
         this.displayNamesConstructor = ctor.getFunctionObject();
         this.displayNamesPrototype = ctor.getPrototype();
@@ -1305,6 +1307,10 @@ public class JSRealm {
 
     public DynamicObject getRegExpStringIteratorPrototype() {
         return regExpStringIteratorPrototype;
+    }
+
+    public DynamicObject getSegmentsPrototype() {
+        return segmentsPrototype;
     }
 
     public DynamicObject getSegmentIteratorPrototype() {

@@ -194,42 +194,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "intl/segmenter/grapheme-containing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/grapheme-nested-next.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/grapheme-next-after-containing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/segment-grapheme.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/segment-iterator-ownPropertyDescriptor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/segment-sentence.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/segment-word.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/segment.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/segmenter/word-containing.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/allocation-site-info.js",
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
