@@ -471,6 +471,8 @@ public class JSRealm {
      */
     private final SimpleArrayList<Object> joinStack = new SimpleArrayList<>();
 
+    private List<TruffleContext> innerContextsToClose;
+
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
@@ -2101,6 +2103,9 @@ public class JSRealm {
                     }
                     topLevelRealm.addToRealmList(childRealm);
                 }
+                JSRealm parent = childRealm.parentRealm;
+                assert parent != null;
+                parent.addInnerContext(nestedContext);
 
                 return childRealm;
             } finally {
@@ -2639,6 +2644,27 @@ public class JSRealm {
             ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
         }
         return format;
+    }
+
+    public synchronized void addInnerContext(TruffleContext nestedContext) {
+        if (innerContextsToClose == null) {
+            innerContextsToClose = new ArrayList<>();
+        }
+        innerContextsToClose.add(nestedContext);
+    }
+
+    public void closeInnerContexts() {
+        List<TruffleContext> contextsToClose = null;
+        synchronized (this) {
+            if (innerContextsToClose != null) {
+                contextsToClose = new ArrayList<>(innerContextsToClose);
+            }
+        }
+        if (contextsToClose != null) {
+            for (TruffleContext innerContext : contextsToClose) {
+                innerContext.close();
+            }
+        }
     }
 
 }
