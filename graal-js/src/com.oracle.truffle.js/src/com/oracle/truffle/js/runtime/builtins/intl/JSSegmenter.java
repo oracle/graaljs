@@ -193,7 +193,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         Granularity granularity = JSSegmenter.getGranularity(segmenter);
         JSSegmenter.IteratorState iteratorState = new JSSegmenter.IteratorState(value, icuIterator, granularity);
         JSObjectFactory factory = context.getSegmentIteratorFactory();
-        JSSegmenterIteratorObject segmentIterator = new JSSegmenterIteratorObject(factory.getShape(realm), iteratorState);
+        JSSegmentIteratorObject segmentIterator = new JSSegmentIteratorObject(factory.getShape(realm), iteratorState);
         factory.initProto(segmentIterator, realm);
         return context.trackAllocation(segmentIterator);
     }
@@ -301,14 +301,14 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
         return prototype;
     }
 
-    // Iterator
+    // Segment Iterator
 
     public static Shape makeInitialSegmentIteratorShape(JSContext ctx, DynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.BARE_INSTANCE, ctx);
     }
 
-    public static boolean isJSSegmenterIterator(Object obj) {
-        return obj instanceof JSSegmenterIteratorObject;
+    public static boolean isJSSegmentIterator(Object obj) {
+        return obj instanceof JSSegmentIteratorObject;
     }
 
     /**

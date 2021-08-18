@@ -228,7 +228,7 @@ public final class JSGuards {
     }
 
     public static boolean isJSSegmentIterator(Object value) {
-        return JSSegmenter.isJSSegmenterIterator(value);
+        return JSSegmenter.isJSSegmentIterator(value);
     }
 
     public static boolean isJSDisplayNames(Object value) {
