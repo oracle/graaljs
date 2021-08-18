@@ -160,8 +160,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         try {
             Object exportsFunction = realm.getWASMModuleExports();
             Object exportsInfo = InteropLibrary.getUncached(exportsFunction).execute(exportsFunction, wasmModule);
-            Object wasmExports = InteropLibrary.getUncached(wasmInstance).readMember(wasmInstance, "exports");
-            InteropLibrary wasmExportsInterop = InteropLibrary.getUncached(wasmExports);
+            Object instanceExport = realm.getWASMInstanceExport();
             InteropLibrary exportsInterop = InteropLibrary.getUncached(exportsInfo);
             long size = exportsInterop.getArraySize(exportsInfo);
 
@@ -170,7 +169,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 InteropLibrary exportInterop = InteropLibrary.getUncached(exportInfo);
                 String name = asString(exportInterop.readMember(exportInfo, "name"));
                 String externtype = asString(exportInterop.readMember(exportInfo, "kind"));
-                Object externval = wasmExportsInterop.readMember(wasmExports, name);
+                Object externval = InteropLibrary.getUncached().execute(instanceExport, wasmInstance, name);
                 Object value;
 
                 if ("function".equals(externtype)) {
