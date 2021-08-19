@@ -48,6 +48,7 @@ import java.util.Locale;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.ibm.icu.text.DecimalFormat;
 import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.NumberFormat;
 import com.ibm.icu.text.RelativeDateTimeFormatter;
@@ -228,7 +229,14 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
 
     private static RelativeDateTimeFormatter createFormatter(Locale locale, String style) {
         ULocale ulocale = ULocale.forLocale(locale);
-        return RelativeDateTimeFormatter.getInstance(ulocale, null,
+
+        // ICU-21086: Ensure that locale-specific minimumGroupingDigits are respected
+        NumberFormat numberFormat = NumberFormat.getNumberInstance(ulocale);
+        if (numberFormat instanceof DecimalFormat) {
+            ((DecimalFormat) numberFormat).setMinimumGroupingDigits(DecimalFormat.MINIMUM_GROUPING_DIGITS_AUTO);
+        }
+
+        return RelativeDateTimeFormatter.getInstance(ulocale, numberFormat,
                         RelativeDateTimeFormatter.Style.valueOf(style.toUpperCase()), DisplayContext.CAPITALIZATION_NONE);
     }
 
