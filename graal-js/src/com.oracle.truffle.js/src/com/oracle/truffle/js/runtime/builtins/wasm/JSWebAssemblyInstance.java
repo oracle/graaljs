@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -196,6 +198,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
     @CompilerDirectives.TruffleBoundary
     public static Object exportFunction(JSContext context, JSRealm realm, Object export, String typeInfo) {
+        Map<Object, DynamicObject> cache = realm.getWebAssemblyExportedFunctionCache();
+        DynamicObject result = cache.get(export);
+        if (result != null) {
+            return result;
+        }
+
         int idxOpen = typeInfo.indexOf('(');
         int idxClose = typeInfo.indexOf(')');
         String name = typeInfo.substring(0, idxOpen);
@@ -265,8 +273,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         });
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        DynamicObject result = JSFunction.create(realm, functionData);
+        result = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
+        cache.put(export, result);
         return result;
     }
 
@@ -299,8 +308,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (!JSRuntime.isCallable(value)) {
                         throw Errors.createLinkError("Imported value is not callable");
                     }
-                    String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
-                    wasmValue = createHostFunction(context, realm, value, typeInfo);
+                    if (JSWebAssembly.isExportedFunction(value)) {
+                        wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
+                    } else {
+                        String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
+                        wasmValue = createHostFunction(context, realm, value, typeInfo);
+                    }
                 } else if ("global".equals(externType)) {
                     if (JSRuntime.isNumber(value)) {
                         String valueType = asString(descriptorInterop.readMember(descriptor, "type"));

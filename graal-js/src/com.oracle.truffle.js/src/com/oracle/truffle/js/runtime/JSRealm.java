@@ -162,10 +162,13 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
 import com.oracle.truffle.js.runtime.interop.DynamicScopeWrapper;
 import com.oracle.truffle.js.runtime.interop.TopScopeObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
@@ -399,6 +402,11 @@ public class JSRealm {
     private final DynamicObject webAssemblyModulePrototype;
     private final DynamicObject webAssemblyTableConstructor;
     private final DynamicObject webAssemblyTablePrototype;
+
+    private final Map<Object, JSWebAssemblyMemoryObject> webAssemblyMemoryCache;
+    private final Map<Object, JSWebAssemblyTableObject> webAssemblyTableCache;
+    private final Map<Object, DynamicObject> webAssemblyExportedFunctionCache;
+    private final Map<Object, JSWebAssemblyGlobalObject> webAssemblyGlobalCache;
 
     /** Foreign object prototypes. */
     private final DynamicObject foreignIterablePrototype;
@@ -776,6 +784,11 @@ public class JSRealm {
             ctor = JSWebAssemblyGlobal.createConstructor(this);
             this.webAssemblyGlobalConstructor = ctor.getFunctionObject();
             this.webAssemblyGlobalPrototype = ctor.getPrototype();
+
+            this.webAssemblyMemoryCache = new HashMap<>();
+            this.webAssemblyTableCache = new HashMap<>();
+            this.webAssemblyExportedFunctionCache = new HashMap<>();
+            this.webAssemblyGlobalCache = new HashMap<>();
         } else {
             this.wasmTableAlloc = null;
             this.wasmTableGrow = null;
@@ -807,6 +820,11 @@ public class JSRealm {
             this.webAssemblyModulePrototype = null;
             this.webAssemblyTableConstructor = null;
             this.webAssemblyTablePrototype = null;
+
+            this.webAssemblyMemoryCache = null;
+            this.webAssemblyTableCache = null;
+            this.webAssemblyExportedFunctionCache = null;
+            this.webAssemblyGlobalCache = null;
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
@@ -2562,6 +2580,22 @@ public class JSRealm {
 
     public DynamicObject getForeignIterablePrototype() {
         return foreignIterablePrototype;
+    }
+
+    public Map<Object, JSWebAssemblyMemoryObject> getWebAssemblyMemoryCache() {
+        return webAssemblyMemoryCache;
+    }
+
+    public Map<Object, JSWebAssemblyTableObject> getWebAssemblyTableCache() {
+        return webAssemblyTableCache;
+    }
+
+    public Map<Object, DynamicObject> getWebAssemblyExportedFunctionCache() {
+        return webAssemblyExportedFunctionCache;
+    }
+
+    public Map<Object, JSWebAssemblyGlobalObject> getWebAssemblyGlobalCache() {
+        return webAssemblyGlobalCache;
     }
 
     public DateFormat getJSDateFormat(double time) {

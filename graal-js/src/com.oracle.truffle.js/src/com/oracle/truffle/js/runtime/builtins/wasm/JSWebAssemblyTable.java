@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -49,6 +51,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyTablePrototypeBuiltins;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -113,9 +116,15 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
     }
 
     public static JSWebAssemblyTableObject create(JSContext context, JSRealm realm, Object wasmTable) {
+        Map<Object, JSWebAssemblyTableObject> cache = realm.getWebAssemblyTableCache();
+        JSWebAssemblyTableObject object = Boundaries.mapGet(cache, wasmTable);
+        if (object != null) {
+            return object;
+        }
         JSObjectFactory factory = context.getWebAssemblyTableFactory();
-        JSWebAssemblyTableObject object = new JSWebAssemblyTableObject(factory.getShape(realm), wasmTable);
+        object = new JSWebAssemblyTableObject(factory.getShape(realm), wasmTable);
         factory.initProto(object, realm);
+        Boundaries.mapPut(cache, wasmTable, object);
         return context.trackAllocation(object);
     }
 

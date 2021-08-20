@@ -1943,7 +1943,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1207263.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1215808.js",
@@ -2223,7 +2223,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-7364.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-736584.js",
@@ -2273,7 +2273,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-752423.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-7565.js",
@@ -3195,13 +3195,13 @@
     "filePath" : "mjsunit/wasm/export-identity.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/export-mutable-global.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/export-table.js",
@@ -3352,13 +3352,13 @@
     "filePath" : "mjsunit/wasm/import-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/import-mutable-global.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/import-table.js",
@@ -3376,7 +3376,7 @@
     "filePath" : "mjsunit/wasm/indirect-sig-mismatch.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/indirect-tables.js",
@@ -3645,7 +3645,7 @@
     "filePath" : "mjsunit/wasm/table-get.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/table-grow.js",
