@@ -308,8 +308,12 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (!JSRuntime.isCallable(value)) {
                         throw Errors.createLinkError("Imported value is not callable");
                     }
-                    String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
-                    wasmValue = createHostFunction(context, realm, value, typeInfo);
+                    if (JSWebAssembly.isExportedFunction(value)) {
+                        wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
+                    } else {
+                        String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
+                        wasmValue = createHostFunction(context, realm, value, typeInfo);
+                    }
                 } else if ("global".equals(externType)) {
                     if (JSRuntime.isNumber(value)) {
                         String valueType = asString(descriptorInterop.readMember(descriptor, "type"));
