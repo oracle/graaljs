@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class DefineMethodNode extends JavaScriptBaseNode {
 
@@ -146,7 +145,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             if (functionData.needsParentFrame()) {
                 if (blockScopeSlot != null) {
                     Object blockScope = FrameUtil.getObjectSafe(frame, blockScopeSlot);
-                    enclosingFrame = blockScope != Undefined.instance ? JSFrameUtil.castMaterializedFrame(blockScope) : JSFrameUtil.NULL_MATERIALIZED_FRAME;
+                    enclosingFrame = JSFrameUtil.castMaterializedFrame(blockScope);
                 } else {
                     enclosingFrame = frame.materialize();
                 }

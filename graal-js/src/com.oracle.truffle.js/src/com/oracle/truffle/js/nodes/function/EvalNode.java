@@ -240,7 +240,7 @@ public abstract class EvalNode extends JavaScriptNode {
             MaterializedFrame blockScopeFrame;
             if (blockScopeSlot != null) {
                 Object maybeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
-                blockScopeFrame = maybeFrame != Undefined.instance ? JSFrameUtil.castMaterializedFrame(maybeFrame) : frame.materialize();
+                blockScopeFrame = JSFrameUtil.castMaterializedFrame(maybeFrame);
             } else {
                 blockScopeFrame = frame.materialize();
             }
