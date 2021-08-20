@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -47,6 +49,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -111,10 +114,16 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory) {
+        Map<Object, JSWebAssemblyMemoryObject> cache = realm.getWebAssemblyMemoryCache();
+        JSWebAssemblyMemoryObject object = Boundaries.mapGet(cache, wasmMemory);
+        if (object != null) {
+            return object;
+        }
         DynamicObject bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
-        JSWebAssemblyMemoryObject object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory, bufferObject);
+        object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory, bufferObject);
         factory.initProto(object, realm);
+        Boundaries.mapPut(cache, wasmMemory, object);
         return context.trackAllocation(object);
     }
 
