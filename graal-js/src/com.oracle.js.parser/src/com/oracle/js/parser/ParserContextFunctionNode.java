@@ -590,6 +590,7 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
                 parent.setFlag(FunctionNode.USES_THIS);
             }
         }
+        parent.setFlag(FunctionNode.HAS_CLOSURES);
     }
 
     private static int calculateLength(final List<IdentNode> parameters) {

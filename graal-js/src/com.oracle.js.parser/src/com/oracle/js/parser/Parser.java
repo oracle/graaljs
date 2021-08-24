@@ -676,8 +676,6 @@ public class Parser extends AbstractParser {
         if (parentFunction == null) {
             flags |= FunctionNode.IS_PROGRAM;
             flags |= FunctionNode.IS_ANONYMOUS;
-        } else {
-            lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
         }
 
         final Scope parentScope = lc.getCurrentScope();
@@ -1864,6 +1862,9 @@ public class Parser extends AbstractParser {
             function.setInternalName(CONSTRUCTOR_NAME);
         }
 
+        // currently required for all functions, including synthetic ones.
+        lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
+
         PropertyNode constructor = new PropertyNode(classToken, ctorFinish, new IdentNode(identToken, ctorFinish, CONSTRUCTOR_NAME),
                         createFunctionNode(function, classToken, className, classLineNumber, body),
                         null, null, false, false, false, false);
@@ -1975,6 +1976,9 @@ public class Parser extends AbstractParser {
                 initializer = new UnaryNode(Token.recast(initializer.getToken(), TokenType.NAMEDEVALUATION), initializer);
             }
         }
+
+        // currently required for all functions, including synthetic ones.
+        lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
 
         final List<Statement> statements = Collections.singletonList(new ReturnNode(lineNumber, fieldToken, finish, initializer));
         Block bodyBlock = new Block(fieldToken, finish, Block.IS_BODY | Block.IS_SYNTHETIC, body.getScope(), statements);
