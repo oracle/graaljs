@@ -443,6 +443,111 @@ public class TestScope {
     }
 
     @Test
+    public void testGenerator() {
+        Source function = Source.newBuilder("js", "" +
+                        "const n = 10;\n" +
+                        "\n" +
+                        "function* factorial(n) {\n" +
+                        "  let f = 1;\n" +
+                        "  for (let i = 1; i <= n; i++) {\n" +
+                        "    f *= (x => x)(i);\n" + // L6
+                        "    yield f;\n" +
+                        "  }\n" +
+                        "  return f;\n" +
+                        "}\n" +
+                        "\n" +
+                        "var fac;\n" +
+                        "for (let i of factorial(n)) {\n" + // L13
+                        "  fac = i;\n" +
+                        "}", "generator.js").buildLiteral();
+        try (DebuggerSession session = tester.startSession()) {
+            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(function)).lineIs(13).oneShot().build());
+            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(function)).lineIs(6).build());
+            tester.startEval(function);
+
+            // Before invocation of factorial():
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":program", 13, "factorial(n)", new String[]{}, new String[]{});
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "undefined"});
+                event.prepareContinue();
+            });
+            // In factorial(), for:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "1"}, new String[]{"n", "10", "f", "1"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "undefined"});
+                event.prepareContinue();
+            });
+            // In factorial(), for, closure:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":=>", 6, "x", new String[]{"x", "1"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "1"}, new String[]{"n", "10", "f", "1"});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "undefined"});
+                event.prepareContinue();
+            });
+            // In factorial(), for:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "2"}, new String[]{"n", "10", "f", "1"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "1"});
+                event.prepareContinue();
+            });
+            // In factorial(), for, closure:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":=>", 6, "x", new String[]{"x", "2"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "2"}, new String[]{"n", "10", "f", "1"});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "1"});
+                event.prepareContinue();
+            });
+            // In factorial(), for:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "3"}, new String[]{"n", "10", "f", "2"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "2"});
+                event.prepareContinue();
+            });
+            // In factorial(), for, closure:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":=>", 6, "x", new String[]{"x", "3"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "3"}, new String[]{"n", "10", "f", "2"});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "2"});
+                event.prepareContinue();
+            });
+        }
+        assertEquals("3628800", tester.expectDone());
+    }
+
+    @Test
     public void testWriteVars() {
         Source function = Source.newBuilder("js", "function main(a1, a2) {\n" +
                         "  var v1 = a1 + a2;\n" +
