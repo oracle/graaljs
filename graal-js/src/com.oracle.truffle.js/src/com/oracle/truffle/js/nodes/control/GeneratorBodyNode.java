@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
@@ -85,8 +86,10 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Child private JSReadFrameSlotNode readYieldResult;
         private final BranchProfile errorBranch = BranchProfile.create();
         private final ConditionProfile returnOrExceptionProfile = ConditionProfile.createBinaryProfile();
+        private final String functionName;
 
-        GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection) {
+        GeneratorRootNode(JSContext context, JavaScriptNode functionBody, JSWriteFrameSlotNode writeYieldValueNode, JSReadFrameSlotNode readYieldResultNode, SourceSection functionSourceSection,
+                        String functionName) {
             super(context.getLanguage(), functionSourceSection, null);
             this.createIterResultObject = CreateIterResultObjectNode.create(context);
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
@@ -96,6 +99,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             Objects.requireNonNull(readYieldResultNode);
             this.writeYieldValue = writeYieldValueNode;
             this.readYieldResult = readYieldResultNode;
+            this.functionName = functionName;
         }
 
         @Override
@@ -166,6 +170,14 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         public boolean isResumption() {
             return true;
         }
+
+        @Override
+        public String getName() {
+            if (functionName != null && !functionName.isEmpty()) {
+                return functionName;
+            }
+            return ":generator";
+        }
     }
 
     @Child private SpecializedNewObjectNode createGeneratorObject;
@@ -200,7 +212,8 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         CompilerAsserts.neverPartOfCompilation();
         atomic(() -> {
             if (generatorCallTarget == null) {
-                GeneratorRootNode generatorRootNode = new GeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, getRootNode().getSourceSection());
+                RootNode rootNode = getRootNode();
+                GeneratorRootNode generatorRootNode = new GeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, rootNode.getSourceSection(), rootNode.getName());
                 this.generatorCallTarget = Truffle.getRuntime().createCallTarget(generatorRootNode);
                 // these children have been transferred to the generator root node and are now
                 // disowned
