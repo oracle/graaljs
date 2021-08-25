@@ -40,7 +40,7 @@ local common = import '../common.jsonnet';
       ['mvn', '-Dgraalvm.version=GATE', 'package'],
       ['mvn', '-Dgraalvm.version=GATE', 'exec:exec'],
     ],
-    timelimit: '10:00',
+    timelimit: '15:00',
   },
 
   local webassemblyTest = {
