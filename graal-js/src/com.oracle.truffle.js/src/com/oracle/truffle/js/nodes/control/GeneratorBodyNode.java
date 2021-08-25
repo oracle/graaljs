@@ -63,6 +63,7 @@ import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -94,7 +95,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             this.createIterResultObject = CreateIterResultObjectNode.create(context);
             this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-            this.functionBody = functionBody;
+            this.functionBody = new FunctionBodyNode(functionBody);
             Objects.requireNonNull(writeYieldValueNode);
             Objects.requireNonNull(readYieldResultNode);
             this.writeYieldValue = writeYieldValueNode;

@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
@@ -100,7 +101,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
                         String functionName) {
             super(context.getLanguage(), functionSourceSection, null);
             this.context = context;
-            this.functionBody = body;
+            this.functionBody = new FunctionBodyNode(body);
             this.readAsyncContext = readAsyncContext;
             this.writeAsyncResult = asyncResult;
             this.callResolveNode = JSFunctionCallNode.createCall();
