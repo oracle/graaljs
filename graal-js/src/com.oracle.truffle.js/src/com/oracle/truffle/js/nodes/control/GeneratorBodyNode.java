@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+import java.util.Objects;
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -61,6 +64,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -69,10 +73,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.GeneratorState;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Set;
-
-import java.util.Objects;
 
 public final class GeneratorBodyNode extends JavaScriptNode {
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of generator functions in JavaScript.")
@@ -101,10 +101,10 @@ public final class GeneratorBodyNode extends JavaScriptNode {
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
-            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(arguments[0]);
-            DynamicObject generatorObject = (DynamicObject) arguments[1];
-            Object value = arguments[2];
-            Completion.Type completionType = (Completion.Type) arguments[3];
+            VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
+            DynamicObject generatorObject = (DynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            Completion.Type completionType = JSArguments.getResumeCompletionType(arguments);
+            Object value = JSArguments.getResumeCompletionValue(arguments);
             GeneratorState generatorState = generatorValidate(generatorObject);
 
             if (completionType == Completion.Type.Normal) {

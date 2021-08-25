@@ -191,7 +191,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
         protected Object performResumeNext(DynamicObject generator, Completion completion) {
             CallTarget generatorTarget = (CallTarget) getGeneratorTarget.getValue(generator);
             Object generatorContext = getGeneratorContext.getValue(generator);
-            callNode.execute(generatorTarget, new Object[]{generatorContext, generator, completion});
+            callNode.execute(generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, completion));
             return Undefined.instance;
         }
     }

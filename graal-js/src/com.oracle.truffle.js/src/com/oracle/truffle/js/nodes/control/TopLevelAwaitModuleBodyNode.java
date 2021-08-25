@@ -96,9 +96,10 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            VirtualFrame asyncFrame = JSFrameUtil.castMaterializedFrame(frame.getArguments()[0]);
-            PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) frame.getArguments()[1];
-            Completion resumptionValue = (Completion) frame.getArguments()[2];
+            Object[] arguments = frame.getArguments();
+            VirtualFrame asyncFrame = JSArguments.getResumeExecutionContext(arguments);
+            PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            Completion resumptionValue = JSArguments.getResumeCompletion(arguments);
             writeAsyncResult.executeWrite(asyncFrame, resumptionValue);
 
             JSModuleRecord moduleRecord = (JSModuleRecord) JSArguments.getUserArgument(asyncFrame.getArguments(), 0);
@@ -188,8 +189,8 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         if (promiseCapability != null) {
             writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, moduleFrame));
         }
-        Completion unusedInitialResult = null;
-        asyncCallNode.call(moduleFrame, promiseCapability, unusedInitialResult);
+        Object unusedInitialResult = null;
+        asyncCallNode.call(JSArguments.createResumeArguments(moduleFrame, promiseCapability, Completion.Type.Normal, unusedInitialResult));
         if (promiseCapability == null) {
             // no capability provided: we are initializing the module.
             return Undefined.instance;

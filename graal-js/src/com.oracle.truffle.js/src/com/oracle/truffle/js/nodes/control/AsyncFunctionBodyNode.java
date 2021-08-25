@@ -86,8 +86,6 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async functions in JavaScript.")
     public static final class AsyncFunctionRootNode extends JavaScriptRootNode implements AsyncRootNode {
 
-        private static final int ASYNC_FRAME_ARG_INDEX = 0;
-
         private final JSContext context;
         private final String functionName;
         @Child private JavaScriptNode functionBody;
@@ -111,10 +109,10 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
         @Override
         public Object execute(VirtualFrame frame) {
-            Object[] args = frame.getArguments();
-            VirtualFrame asyncFrame = JSFrameUtil.castMaterializedFrame(args[ASYNC_FRAME_ARG_INDEX]);
-            PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) args[1];
-            Completion resumptionValue = (Completion) args[2];
+            Object[] arguments = frame.getArguments();
+            VirtualFrame asyncFrame = JSArguments.getResumeExecutionContext(arguments);
+            PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            Completion resumptionValue = JSArguments.getResumeCompletion(arguments);
             writeAsyncResult.executeWrite(asyncFrame, resumptionValue);
 
             final JSRealm currentRealm = getRealm();
@@ -209,9 +207,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             }
 
             VirtualFrame asyncFrame;
-            Object frameArg = frame.getArguments()[ASYNC_FRAME_ARG_INDEX];
-            if (frameArg instanceof MaterializedFrame) {
-                asyncFrame = (MaterializedFrame) frameArg;
+            if (frame.getFrameDescriptor() == getFrameDescriptor()) {
+                asyncFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
             } else {
                 asyncFrame = (VirtualFrame) ScopeFrameNode.getNonBlockScopeParentFrame(frame);
             }
@@ -293,8 +290,8 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
     private void asyncFunctionStart(VirtualFrame frame, PromiseCapabilityRecord promiseCapability) {
         MaterializedFrame materializedFrame = frame.materialize();
         writeAsyncContext.executeWrite(frame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, materializedFrame));
-        Completion unusedInitialResult = null;
-        asyncCallNode.call(materializedFrame, promiseCapability, unusedInitialResult);
+        Object unusedInitialResult = null;
+        asyncCallNode.call(JSArguments.createResumeArguments(materializedFrame, promiseCapability, Completion.Type.Normal, unusedInitialResult));
     }
 
     @Override

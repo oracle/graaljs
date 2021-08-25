@@ -69,6 +69,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.SpecializedNewObjectNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -85,8 +86,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async generator functions in JavaScript.")
     private static final class AsyncGeneratorRootNode extends JavaScriptRootNode implements AsyncRootNode {
-
-        private static final int ASYNC_FRAME_ARG_INDEX = 0;
 
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
@@ -118,9 +117,9 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         @Override
         public Object execute(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
-            VirtualFrame generatorFrame = JSFrameUtil.castMaterializedFrame(arguments[ASYNC_FRAME_ARG_INDEX]);
-            DynamicObject generatorObject = (DynamicObject) arguments[1];
-            Completion completion = (Completion) arguments[2];
+            VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
+            DynamicObject generatorObject = (DynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
+            Completion completion = JSArguments.getResumeCompletion(arguments);
 
             final JSRealm currentRealm = getRealm();
             final JSRealm realm;
@@ -244,9 +243,8 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
             }
 
             VirtualFrame asyncFrame;
-            Object frameArg = frame.getArguments()[ASYNC_FRAME_ARG_INDEX];
-            if (frameArg instanceof MaterializedFrame) {
-                asyncFrame = (MaterializedFrame) frameArg;
+            if (frame.getFrameDescriptor() == getFrameDescriptor()) {
+                asyncFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
             } else {
                 asyncFrame = (VirtualFrame) ScopeFrameNode.getNonBlockScopeParentFrame(frame);
             }
