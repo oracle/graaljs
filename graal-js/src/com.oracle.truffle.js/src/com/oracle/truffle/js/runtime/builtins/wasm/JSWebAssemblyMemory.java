@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,7 +53,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -65,6 +62,8 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+
+import java.util.Map;
 
 public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
     public static final int MAX_MEMORY_SIZE = 32767;
@@ -119,9 +118,9 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         if (object != null) {
             return object;
         }
-        DynamicObject bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
+        realm.getWebAssemblyMemoryGrowCallback().attachToMemory(wasmMemory);
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
-        object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory, bufferObject);
+        object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory);
         factory.initProto(object, realm);
         Boundaries.mapPut(cache, wasmMemory, object);
         return context.trackAllocation(object);
@@ -137,7 +136,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
                     if (isJSWebAssemblyMemory(thiz)) {
-                        return ((JSWebAssemblyMemoryObject) thiz).getBufferObject();
+                        return ((JSWebAssemblyMemoryObject) thiz).getBufferObject(context, realm);
                     } else {
                         errorBranch.enter();
                         throw Errors.createTypeError("WebAssembly.Memory.buffer: Receiver is not a WebAssembly.Memory", this);
@@ -149,5 +148,4 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
 
         return JSFunction.create(realm, getterData);
     }
-
 }

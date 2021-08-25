@@ -3302,7 +3302,7 @@
     "filePath" : "mjsunit/wasm/grow-memory-detaching.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-in-branch.js",

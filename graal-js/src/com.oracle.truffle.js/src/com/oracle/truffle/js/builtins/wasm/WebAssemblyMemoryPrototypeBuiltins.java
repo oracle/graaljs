@@ -118,9 +118,7 @@ public class WebAssemblyMemoryPrototypeBuiltins extends JSBuiltinsContainer.Swit
             Object wasmMemory = memory.getWASMMemory();
             try {
                 Object growFn = realm.getWASMMemGrow();
-                Object result = memGrowLib.execute(growFn, wasmMemory, deltaInt);
-                memory.resetBufferObject(getContext(), realm);
-                return result;
+                return memGrowLib.execute(growFn, wasmMemory, deltaInt);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             } catch (Throwable throwable) {

@@ -165,6 +165,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryGrowCallback;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
@@ -407,6 +408,8 @@ public class JSRealm {
     private final Map<Object, JSWebAssemblyTableObject> webAssemblyTableCache;
     private final Map<Object, DynamicObject> webAssemblyExportedFunctionCache;
     private final Map<Object, JSWebAssemblyGlobalObject> webAssemblyGlobalCache;
+
+    private final JSWebAssemblyMemoryGrowCallback webAssemblyMemoryGrowCallback;
 
     /** Foreign object prototypes. */
     private final DynamicObject foreignIterablePrototype;
@@ -737,6 +740,7 @@ public class JSRealm {
         }
 
         if (context.getContextOptions().isWebAssembly()) {
+            Object wasmMemSetGrowCallback;
             if (!isWasmAvailable()) {
                 throw new IllegalStateException("WebAssembly API enabled but wasm language cannot be accessed!");
             }
@@ -764,6 +768,7 @@ public class JSRealm {
                 wasmModuleImports = wasmInterop.readMember(wasmObject, "module_imports");
                 wasmCustomSections = wasmInterop.readMember(wasmObject, "custom_sections");
                 wasmInstanceExport = wasmInterop.readMember(wasmObject, "instance_export");
+                wasmMemSetGrowCallback = wasmInterop.readMember(wasmObject, "mem_set_grow_callback");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -789,6 +794,8 @@ public class JSRealm {
             this.webAssemblyTableCache = new HashMap<>();
             this.webAssemblyExportedFunctionCache = new HashMap<>();
             this.webAssemblyGlobalCache = new HashMap<>();
+
+            this.webAssemblyMemoryGrowCallback = new JSWebAssemblyMemoryGrowCallback(this, wasmMemSetGrowCallback);
         } else {
             this.wasmTableAlloc = null;
             this.wasmTableGrow = null;
@@ -825,6 +832,8 @@ public class JSRealm {
             this.webAssemblyTableCache = null;
             this.webAssemblyExportedFunctionCache = null;
             this.webAssemblyGlobalCache = null;
+
+            this.webAssemblyMemoryGrowCallback = null;
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
@@ -2596,6 +2605,10 @@ public class JSRealm {
 
     public Map<Object, JSWebAssemblyGlobalObject> getWebAssemblyGlobalCache() {
         return webAssemblyGlobalCache;
+    }
+
+    public JSWebAssemblyMemoryGrowCallback getWebAssemblyMemoryGrowCallback() {
+        return webAssemblyMemoryGrowCallback;
     }
 
     public DateFormat getJSDateFormat(double time) {
