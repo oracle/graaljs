@@ -376,40 +376,70 @@ public class TestScope {
 
     @Test
     public void testFunctionCallFromBlock() {
-        Source function = Source.newBuilder("js", "var n = 10;\n" +
+        Source function = Source.newBuilder("js", "" +
+                        "const n = 10;\n" +
                         "\n" +
                         "function factorial(n) {\n" +
-                        "  f = 1;\n" +
+                        "  let f = 1;\n" +
                         "  for (let i = 2; i <= n; i++) {\n" +
-                        "    f *= i;\n" +
+                        "    f *= (x => x)(i);\n" + // L6
                         "  }\n" +
                         "  return f;\n" +
                         "}\n" +
                         "\n" +
+                        "var fac;\n" +
                         "for (let i = 0; i <= n; i++) {\n" +
-                        "  factorial(i);\n" +
+                        "  fac = factorial(i);\n" + // L13
                         "}", "function.js").buildLiteral();
         try (DebuggerSession session = tester.startSession()) {
-            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(function)).lineIs(12).build());
+            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(function)).lineIs(13).oneShot().build());
+            session.install(Breakpoint.newBuilder(DebuggerTester.getSourceImpl(function)).lineIs(6).oneShot().build());
             tester.startEval(function);
 
             // Before invocation of factorial(i):
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkScope(event, ":program", 12, "factorial(i)", new String[]{"i", "0"}, new String[]{});
+                checkScope(event, ":program", 13, "fac = factorial(i)", new String[]{"i", "0"}, new String[]{});
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "undefined"});
                 event.prepareStepInto(1);
             });
             // In factorial(i):
             tester.expectSuspended((SuspendedEvent event) -> {
-                checkScope(event, "factorial", 4, "f = 1", new String[]{"n", "0"});
+                checkScope(event, "factorial", 4, "let f = 1", new String[]{"n", "0"});
                 // Look into the invoke frame:
                 Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
                 assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
-                DebugStackFrame frame = framesIterator.next();
-                checkScopes(frame.getScope(), new String[]{"i", "0"}, new String[]{});
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "0"}, new String[]{});
+                event.prepareContinue();
+            });
+            // In factorial(i), for:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "2"}, new String[]{"n", "2", "f", "1"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "2"}, new String[]{});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "1"});
+                event.prepareStepInto(1);
+            });
+            // In factorial(i), for, closure:
+            tester.expectSuspended((SuspendedEvent event) -> {
+                checkScope(event, ":=>", 6, "x", new String[]{"x", "2"});
+
+                Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
+                assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
+                DebugStackFrame callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "2"}, new String[]{"n", "2", "f", "1"});
+                callerFrame = framesIterator.next();
+                checkScopes(callerFrame.getScope(), new String[]{"i", "2"}, new String[]{});
+
+                checkGlobalScope(event, new String[]{"n", "10"}, new String[]{"fac", "1"});
                 event.prepareContinue();
             });
         }
-        tester.expectDone();
+        assertEquals("3628800", tester.expectDone());
     }
 
     @Test
