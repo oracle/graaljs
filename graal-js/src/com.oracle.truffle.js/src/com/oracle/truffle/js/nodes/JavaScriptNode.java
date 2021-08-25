@@ -64,7 +64,9 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.interop.ScopeVariables;
 
@@ -406,11 +408,13 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     final Object getScope(Frame frame, boolean nodeEnter,
                     @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node block) throws UnsupportedMessageException {
         if (hasScope(frame)) {
-            Frame scopeFrame;
+            Frame scopeFrame = frame;
+            RootNode rootNode = getRootNode();
+            if (rootNode instanceof JavaScriptRootNode && ((JavaScriptRootNode) rootNode).isResumption() && frame.getFrameDescriptor() == rootNode.getFrameDescriptor()) {
+                scopeFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
+            }
             if (block instanceof BlockScopeNode) {
-                scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) frame);
-            } else {
-                scopeFrame = frame;
+                scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) scopeFrame);
             }
             return new ScopeVariables(scopeFrame, nodeEnter, block, frame);
         } else {
