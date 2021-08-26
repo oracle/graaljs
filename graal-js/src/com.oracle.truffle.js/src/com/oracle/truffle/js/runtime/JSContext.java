@@ -1342,6 +1342,10 @@ public class JSContext {
         return contextOptions.isDebugBuiltin();
     }
 
+    public boolean isOptionMleBuiltin() {
+        return contextOptions.isMleBuiltin();
+    }
+
     public boolean isOptionDirectByteBuffer() {
         assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
         return contextOptions.isDirectByteBuffer();

@@ -549,6 +549,12 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ESM_EVAL_RETURNS_EXPORTS = new OptionKey<>(false);
     @CompilationFinal private boolean esmEvalReturnsExports;
 
+    public static final String MLE_BUILTIN_NAME = JS_OPTION_PREFIX + "mle-builtin";
+    @Option(name = MLE_BUILTIN_NAME, category = OptionCategory.INTERNAL, help = "Provide a non-API MLE builtin. Behaviour will likely change. Don't depend on this in production code.") //
+    public static final OptionKey<Boolean> MLE_BUILTIN = new OptionKey<>(false);
+    public static final String MLE_PROPERTY_NAME = "MLE";
+    @CompilationFinal private boolean mleBuiltin;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -645,6 +651,7 @@ public final class JSContextOptions {
         this.jsonModules = readBooleanOption(JSON_MODULES);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
+        this.mleBuiltin = readBooleanOption(MLE_BUILTIN);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -753,6 +760,10 @@ public final class JSContextOptions {
 
     public boolean isDebugBuiltin() {
         return debug;
+    }
+
+    public boolean isMleBuiltin() {
+        return mleBuiltin;
     }
 
     public boolean isDirectByteBuffer() {
@@ -1097,6 +1108,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.jsonModules ? 1 : 0);
         hash = 53 * hash + (this.wasmBigInt ? 1 : 0);
         hash = 53 * hash + (this.esmEvalReturnsExports ? 1 : 0);
+        hash = 53 * hash + (this.mleBuiltin ? 1 : 0);
         return hash;
     }
 
@@ -1272,6 +1284,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.esmEvalReturnsExports != other.esmEvalReturnsExports) {
+            return false;
+        }
+        if (this.mleBuiltin != other.mleBuiltin) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
