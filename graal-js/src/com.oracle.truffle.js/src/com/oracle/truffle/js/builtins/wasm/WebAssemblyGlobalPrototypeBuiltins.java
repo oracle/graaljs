@@ -108,10 +108,12 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (!JSWebAssemblyGlobal.isJSWebAssemblyGlobal(thiz)) {
                 throw Errors.createTypeError("WebAssembly.Global.valueOf(): Receiver is not a WebAssembly.Global");
             }
-            Object wasmGlobal = ((JSWebAssemblyGlobalObject) thiz).getWASMGlobal();
+            JSWebAssemblyGlobalObject object = (JSWebAssemblyGlobalObject) thiz;
+            Object wasmGlobal = object.getWASMGlobal();
+            String valueType = object.getValueType();
             try {
                 Object globalRead = getRealm().getWASMGlobalRead();
-                return toJSValueNode.convert(globalReadLib.execute(globalRead, wasmGlobal));
+                return toJSValueNode.convert(globalReadLib.execute(globalRead, wasmGlobal), valueType);
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }

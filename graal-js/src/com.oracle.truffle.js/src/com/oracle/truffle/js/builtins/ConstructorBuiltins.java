@@ -229,6 +229,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -2759,7 +2760,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.toBooleanNode = JSToBooleanNode.create();
             this.getValueNode = PropertyGetNode.create("value", context);
             this.getMutableNode = PropertyGetNode.create("mutable", context);
-            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
             this.globalAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
@@ -2770,14 +2771,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             }
             boolean mutable = toBooleanNode.executeBoolean(getMutableNode.getValue(descriptor));
             String valueType = toStringNode.executeString(getValueNode.getValue(descriptor));
-            if (!"i32".equals(valueType) && !"i64".equals(valueType) && !"f32".equals(valueType) && !"f64".equals(valueType)) {
-                throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be 'i32', 'i64', 'f32', or 'f64'", this);
+            if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
+                throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64)", this);
             }
             Object webAssemblyValue;
             if (value == Undefined.instance) {
                 webAssemblyValue = 0;
             } else {
-                if ("i64".equals(valueType)) {
+                if (!getContext().getContextOptions().isWasmBigInt() && JSWebAssemblyValueTypes.isI64(valueType)) {
                     throw Errors.createTypeError("WebAssembly.Global(): Can't set the value of i64 WebAssembly.Global", this);
                 }
                 webAssemblyValue = toWebAssemblyValueNode.execute(value, valueType);

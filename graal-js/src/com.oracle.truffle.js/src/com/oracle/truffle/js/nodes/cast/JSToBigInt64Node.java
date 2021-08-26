@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,59 +38,33 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.wasm;
 
+package com.oracle.truffle.js.nodes.cast;
+
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBigInt64Node;
-import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
 
-/**
- * Implementation of ToWebAssemblyValue() operation. See
- * https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue
- */
-public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
-    private final JSContext context;
+public abstract class JSToBigInt64Node extends JavaScriptBaseNode {
 
-    @Child JSToInt32Node toInt32Node;
-    @Child JSToNumberNode toNumberNode;
-    @Child JSToBigInt64Node toBigInt64Node;
+    public abstract Object execute(Object value);
 
-    protected ToWebAssemblyValueNode(JSContext context) {
-        this.context = context;
-        this.toNumberNode = JSToNumberNode.create();
-        this.toInt32Node = JSToInt32Node.create();
-        this.toBigInt64Node = JSToBigInt64Node.create();
+    public static JSToBigInt64Node create() {
+        return JSToBigInt64NodeGen.create();
     }
-
-    public static ToWebAssemblyValueNode create(JSContext context) {
-        return ToWebAssemblyValueNodeGen.create(context);
-    }
-
-    public abstract Object execute(Object value, String type);
 
     @Specialization
-    protected Object convert(Object value, String type) {
-        assert context.getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-        if (JSWebAssemblyValueTypes.isI64(type)) {
-            return toBigInt64Node.execute(value);
-        }
-        if (JSWebAssemblyValueTypes.isI32(type)) {
-            return toInt32Node.executeInt(value);
-        } else {
-            Number numberValue = toNumberNode.executeNumber(value);
-            double doubleValue = JSRuntime.toDouble(numberValue);
-            if (JSWebAssemblyValueTypes.isF32(type)) {
-                return (float) doubleValue;
-            } else {
-                assert JSWebAssemblyValueTypes.isF64(type);
-                return doubleValue;
-            }
-        }
+    protected static long doInteger(int value) {
+        return value;
     }
 
+    @Specialization
+    protected static long doLong(long value) {
+        return value;
+    }
+
+    @Specialization
+    protected static long doObject(Object value, @Cached JSToBigIntNode toBigIntNode) {
+        return toBigIntNode.executeBigInteger(value).longValue();
+    }
 }

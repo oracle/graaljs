@@ -143,10 +143,12 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                 public Object execute(VirtualFrame frame) {
                     Object thiz = JSFrameUtil.getThisObj(frame);
                     if (isJSWebAssemblyGlobal(thiz)) {
-                        Object wasmGlobal = ((JSWebAssemblyGlobalObject) thiz).getWASMGlobal();
+                        JSWebAssemblyGlobalObject object = (JSWebAssemblyGlobalObject) thiz;
+                        Object wasmGlobal = object.getWASMGlobal();
+                        String valueType = object.getValueType();
                         Object globalRead = realm.getWASMGlobalRead();
                         try {
-                            return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
+                            return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal), valueType);
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         }
@@ -165,7 +167,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     private static DynamicObject createValueSetterFunction(JSRealm realm) {
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+                @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(c);
                 @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
                 private final BranchProfile errorBranch = BranchProfile.create();
 
