@@ -141,8 +141,12 @@ public final class ScopeVariables implements TruffleObject {
     boolean hasScopeParent() {
         if (blockOrRoot instanceof BlockScopeNode) {
             Node parentNode = JavaScriptNode.findBlockScopeNode(blockOrRoot.getParent());
-            if (parentNode != null && (frame == null || getParentFrame(((BlockScopeNode) blockOrRoot).isFunctionBlock()) != null)) {
-                return true;
+            if (parentNode != null) {
+                if (frame == null) {
+                    return true;
+                } else if (getParentFrame(((BlockScopeNode) blockOrRoot).isFunctionBlock()) != null) {
+                    return true;
+                }
             }
         } else {
             assert blockOrRoot instanceof RootNode;
@@ -375,7 +379,11 @@ public final class ScopeVariables implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     SourceSection getSourceLocation() throws UnsupportedMessageException {
-        SourceSection sourceLocation = blockOrRoot.getEncapsulatingSourceSection();
+        Node sourceSectionProvider = blockOrRoot;
+        if (sourceSectionProvider instanceof BlockScopeNode && ((BlockScopeNode) sourceSectionProvider).isFunctionBlock()) {
+            sourceSectionProvider = sourceSectionProvider.getRootNode();
+        }
+        SourceSection sourceLocation = sourceSectionProvider.getEncapsulatingSourceSection();
         if (sourceLocation == null) {
             throw UnsupportedMessageException.create();
         }
@@ -386,11 +394,18 @@ public final class ScopeVariables implements TruffleObject {
     @ExportMessage
     @TruffleBoundary
     Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
-        if (blockOrRoot instanceof RootNode) {
-            String name = ((RootNode) blockOrRoot).getName();
-            return (name == null) ? "" : name;
+        RootNode root;
+        if (blockOrRoot instanceof BlockScopeNode) {
+            if (((BlockScopeNode) blockOrRoot).isFunctionBlock()) {
+                root = blockOrRoot.getRootNode();
+            } else {
+                return "block";
+            }
+        } else {
+            root = (RootNode) blockOrRoot;
         }
-        return "block";
+        String name = root.getName();
+        return (name == null) ? "" : name;
     }
 
     static class ResolvedSlot {
