@@ -1343,7 +1343,7 @@ public class JSContext {
     }
 
     public boolean isOptionMleBuiltin() {
-        return contextOptions.isMleBuiltin();
+        return contextOptions.isMLEMode();
     }
 
     public boolean isOptionDirectByteBuffer() {

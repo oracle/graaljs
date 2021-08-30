@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -51,15 +51,15 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class MleBuiltins extends JSBuiltinsContainer.SwitchEnum<MleBuiltins.MLE> {
+public class MLEBuiltins extends JSBuiltinsContainer.SwitchEnum<MLEBuiltins.MLE> {
 
-    public static final JSBuiltinsContainer BUILTINS = new MleBuiltins();
+    public static final JSBuiltinsContainer BUILTINS = new MLEBuiltins();
 
-    protected MleBuiltins() {
-        super(JSRealm.MLE_CLASS_NAME, MleBuiltins.MLE.class);
+    protected MLEBuiltins() {
+        super(JSRealm.MLE_CLASS_NAME, MLEBuiltins.MLE.class);
     }
 
-    public enum MLE implements BuiltinEnum<MleBuiltins.MLE> {
+    public enum MLE implements BuiltinEnum<MLEBuiltins.MLE> {
         registerESMLookup(1);
 
         private final int length;
@@ -77,23 +77,24 @@ public class MleBuiltins extends JSBuiltinsContainer.SwitchEnum<MleBuiltins.MLE>
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, MLE builtinEnum) {
         if (builtinEnum == MLE.registerESMLookup) {
-            return MleBuiltinsFactory.MleRegisterEsmLookupNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            return MLEBuiltinsFactory.MLERegisterEsmLookupNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
 
-    public abstract static class MleRegisterEsmLookupNode extends JSBuiltinNode {
+    public abstract static class MLERegisterEsmLookupNode extends JSBuiltinNode {
 
-        protected MleRegisterEsmLookupNode(JSContext context, JSBuiltin builtin) {
+        protected MLERegisterEsmLookupNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
+        @TruffleBoundary
         protected Object registerHook(Object callback) {
             if (!JSRuntime.isCallableForeign(callback)) {
                 throw Errors.createError("Must provide callable foreign object!");
             }
-            getRealm().registerCustomEsmPathMappingCallback((TruffleObject) callback);
+            getRealm().registerCustomEsmPathMappingCallback(callback);
             return Undefined.instance;
         }
     }

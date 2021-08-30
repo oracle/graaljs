@@ -43,6 +43,7 @@ package com.oracle.truffle.js.test.interop;
 import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.builtins.ReadOnlySeekableByteArrayChannel;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
@@ -65,70 +66,99 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
-public class MleBuiltinTest {
+public class MLEBuiltinTest {
 
     public static class TestEsmLookup implements ProxyExecutable {
 
-        private final String mappedUrl;
-        private final String expectedSymbol;
-        private final String expectedReferrer;
+        private final Map<String, String> testMapping;
 
-        TestEsmLookup(String expectedSymbol, String expectedReferrer, String mappedUrl) {
-            this.mappedUrl = mappedUrl;
-            this.expectedSymbol = expectedSymbol;
-            this.expectedReferrer = expectedReferrer;
+        TestEsmLookup(Map<String, String> mapping) {
+            this.testMapping = mapping;
         }
 
         @Override
         public Object execute(Value[] args) {
             String referrer = args[0].asString();
             String symbol = args[1].asString();
-            if (expectedSymbol.equals(symbol)) {
-                if (expectedReferrer != null && expectedReferrer.equals(referrer)) {
-                    return mappedUrl;
-                } else if (expectedReferrer == null && referrer == null) {
-                    return mappedUrl;
+
+            for (String tuple : testMapping.keySet()) {
+                String[] expected = tuple.split(":");
+                String expectedSymbol = expected.length == 1 ? tuple : expected[0];
+                String expectedReferrer = expected.length == 1 ? null : expected[1];
+                if (expectedSymbol.equals(symbol)) {
+                    String mappedUrl = testMapping.get(tuple);
+                    if (expectedReferrer != null && expectedReferrer.equals(referrer)) {
+                        return mappedUrl;
+                    } else if (expectedReferrer == null && referrer == null) {
+                        return mappedUrl;
+                    }
                 }
             }
-            // No mapping: return null
+            // No mapping: returning null will cause an exception.
             return null;
         }
     }
 
     @Test
     public void testNoReferencer() throws IOException {
-        TestEsmLookup importCallback = new TestEsmLookup("foo", null, "/foo/bar");
+        Map<String, String> testMappings = new HashMap<>();
+        testMappings.put("foo", "/foo/bar");
+        TestEsmLookup importCallback = new TestEsmLookup(testMappings);
         Map<String, String> virtualModules = new HashMap<>();
         virtualModules.put("/foo/bar", "export function fun() { return '42'; };");
         Source src = Source.newBuilder("js", "import {fun} from 'foo';" +
                         "fun();",
                         "test.mjs").build();
-        testCustomEsmPathMapping(importCallback, virtualModules, src, "42");
+        try (Context cx = getTestContext(importCallback, virtualModules)) {
+            assertEquals("42", cx.eval(src).asString());
+        }
     }
 
     @Test
     public void testWithReferencer() throws IOException {
-        TestEsmLookup importCallback = new TestEsmLookup("foo", "/some/ref.mjs", "/foo/bar");
+        Map<String, String> testMappings = new HashMap<>();
+        testMappings.put("foo:/some/ref.mjs", "/foo/bar");
+        testMappings.put("/some/ref.mjs", "/some/ref.mjs");
+        TestEsmLookup importCallback = new TestEsmLookup(testMappings);
         Map<String, String> virtualModules = new HashMap<>();
         virtualModules.put("/foo/bar", "export function fun() { return '42'; };");
         virtualModules.put("/some/ref.mjs", "import {fun} from 'foo'; export function fun2() { return fun() + '42'; };");
         Source src = Source.newBuilder("js", "import {fun2} from '/some/ref.mjs';" +
                         "fun2();",
                         "src.mjs").build();
-        testCustomEsmPathMapping(importCallback, virtualModules, src, "4242");
+        try (Context cx = getTestContext(importCallback, virtualModules)) {
+            assertEquals("4242", cx.eval(src).asString());
+        }
     }
 
-    private static void testCustomEsmPathMapping(TestEsmLookup importCallback, Map<String, String> virtualModules, Source test, String expectedResult) {
+    @Test
+    public void testUnknownSymbol() throws IOException {
+        TestEsmLookup importCallback = new TestEsmLookup(new HashMap<>());
+        Map<String, String> virtualModules = new HashMap<>();
+        Source src = Source.newBuilder("js", "import {foo} from 'wrong';", "src.mjs").build();
+        Context cx = getTestContext(importCallback, virtualModules);
+        boolean failed = false;
+        try {
+            cx.eval(src);
+        } catch (PolyglotException e) {
+            failed = true;
+            assertEquals("Error: Custom ESM mapping not found for specifier: wrong", e.getMessage());
+        } finally {
+            cx.close();
+        }
+        assertTrue(failed);
+        cx.close();
+    }
+
+    private static Context getTestContext(TestEsmLookup importCallback, Map<String, String> virtualModules) {
         FileSystem testFs = new TestFileSystem(virtualModules);
-        Context ctx = JSTest.newContextBuilder().option("js.mle-builtin", "true").option("engine.WarnInterpreterOnly", "false").fileSystem(testFs).allowAllAccess(true).build();
-
-        ctx.getBindings("js").putMember("lambda", importCallback);
-        ctx.eval("js", "MLE.registerESMLookup(lambda);");
-        ctx.getBindings("js").removeMember("lambda");
-
-        assertEquals(expectedResult, ctx.eval(test).asString());
-        ctx.close();
+        Context context = JSTest.newContextBuilder().option("js.mle-mode", "true").option("engine.WarnInterpreterOnly", "false").fileSystem(testFs).allowAllAccess(true).build();
+        context.getBindings("js").putMember("lambda", importCallback);
+        context.eval("js", "MLE.registerESMLookup(lambda);");
+        context.getBindings("js").removeMember("lambda");
+        return context;
     }
 
     public static class TestFileSystem implements FileSystem {
@@ -159,9 +189,6 @@ public class MleBuiltinTest {
 
         @Override
         public void checkAccess(Path path, Set<? extends AccessMode> modes, LinkOption... linkOptions) throws IOException {
-            if (!path.equals(expectedPath)) {
-                throw new AssertionError();
-            }
         }
 
         @Override
@@ -190,7 +217,7 @@ public class MleBuiltinTest {
 
         @Override
         public Path toAbsolutePath(Path path) {
-            throw new AssertionError();
+            return path.toAbsolutePath();
         }
 
         @Override
@@ -198,7 +225,7 @@ public class MleBuiltinTest {
             if (path.equals(expectedPath)) {
                 return expectedPath;
             } else {
-                throw new AssertionError();
+                return path;
             }
         }
 

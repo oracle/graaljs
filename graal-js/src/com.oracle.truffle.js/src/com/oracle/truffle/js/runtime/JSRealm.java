@@ -57,8 +57,8 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.interop.TruffleObject;
-import com.oracle.truffle.js.builtins.MleBuiltins;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.js.builtins.MLEBuiltins;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
@@ -487,7 +487,7 @@ public class JSRealm {
     /**
      * Private MLE-only custom Path resolution callback for ESM.
      */
-    private TruffleObject customEsmPathMappingCallback;
+    private Object customEsmPathMappingCallback;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1981,7 +1981,7 @@ public class JSRealm {
     private DynamicObject createMleObject() {
         DynamicObject obj = JSOrdinary.createInit(this);
         JSObjectUtil.putToStringTag(obj, MLE_CLASS_NAME);
-        JSObjectUtil.putFunctionsFromContainer(this, obj, MleBuiltins.BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, MLEBuiltins.BUILTINS);
         return obj;
     }
 
@@ -2461,7 +2461,7 @@ public class JSRealm {
     private static final String REALM_SHARED_NAME = "shared";
     private static final PropertyProxy REALM_SHARED_PROXY = new RealmSharedPropertyProxy();
 
-    public void registerCustomEsmPathMappingCallback(TruffleObject callback) {
+    public void registerCustomEsmPathMappingCallback(Object callback) {
         assert context.isOptionMleBuiltin();
         assert JSRuntime.isCallableForeign(callback);
         this.customEsmPathMappingCallback = callback;
@@ -2471,8 +2471,15 @@ public class JSRealm {
         if (getContext().isOptionMleBuiltin() && customEsmPathMappingCallback != null) {
             Object[] args = new Object[]{refPath, specifier};
             Object custom = JSInteropUtil.call(customEsmPathMappingCallback, args);
-            if (custom instanceof String) {
-                return (String) custom;
+            InteropLibrary interopLibrary = InteropLibrary.getUncached();
+            if (interopLibrary.isString(custom)) {
+                try {
+                    return interopLibrary.asString(custom);
+                } catch (UnsupportedMessageException e) {
+                    throw Errors.shouldNotReachHere(e);
+                }
+            } else {
+                throw Errors.createError("Custom ESM mapping not found for specifier: " + specifier);
             }
         }
         return null;
