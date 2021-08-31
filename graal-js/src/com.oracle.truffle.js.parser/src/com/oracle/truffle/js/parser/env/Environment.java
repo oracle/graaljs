@@ -44,9 +44,11 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 
+import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -589,13 +591,15 @@ public abstract class Environment {
     }
 
     public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols) {
-        addFrameSlotsFromSymbols(symbols, false);
+        addFrameSlotsFromSymbols(symbols, false, null);
     }
 
-    public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped) {
+    public void addFrameSlotsFromSymbols(Iterable<com.oracle.js.parser.ir.Symbol> symbols, boolean onlyBlockScoped, Predicate<Symbol> filter) {
         for (com.oracle.js.parser.ir.Symbol symbol : symbols) {
             if (symbol.isBlockScoped() || (!onlyBlockScoped && symbol.isVar() && !symbol.isGlobal())) {
-                addFrameSlotFromSymbol(symbol);
+                if (filter == null || filter.test(symbol)) {
+                    addFrameSlotFromSymbol(symbol);
+                }
             }
         }
     }
