@@ -9,6 +9,7 @@ The main focus is on user-observable behavior of the engine.
 * Added support for `collation` option of `Intl.Collator`.
 * Added support for `dayPeriod` and `fractionalSecondDigits` options of `Intl.DateTimeFormat`.
 * Changed foreign hash map access using `map[key]` syntax to convert the key to a string or symbol.
+* Implemented `Object.hasOwn` ([Accessible Object.hasOwnProperty](https://github.com/tc39/proposal-accessible-object-hasownproperty) proposal). It is available in ECMAScript 2022 (`--js.ecmascript-version=2022`).
 
 ## Version 21.2.0
 * Graal.js now prints a warning when runtime compilation is not supported. This warning can be disabled using the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
