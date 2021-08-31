@@ -374,6 +374,14 @@ public class TestScope {
         }
     }
 
+    private static void checkFunctionScopeName(DebugStackFrame topStackFrame, String expectedFunctionName) {
+        DebugScope functionTopScope = topStackFrame.getScope();
+        while (functionTopScope.getParent() != null) {
+            functionTopScope = functionTopScope.getParent();
+        }
+        Assert.assertEquals(expectedFunctionName, functionTopScope.getName());
+    }
+
     @Test
     public void testFunctionCallFromBlock() {
         Source function = Source.newBuilder("js", "" +
@@ -405,6 +413,7 @@ public class TestScope {
             // In factorial(i):
             tester.expectSuspended((SuspendedEvent event) -> {
                 checkScope(event, "factorial", 4, "let f = 1", new String[]{"n", "0"});
+                checkFunctionScopeName(event.getTopStackFrame(), "factorial");
                 // Look into the invoke frame:
                 Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
                 assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
@@ -415,6 +424,7 @@ public class TestScope {
             // In factorial(i), for:
             tester.expectSuspended((SuspendedEvent event) -> {
                 checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "2"}, new String[]{"n", "2", "f", "1"});
+                checkFunctionScopeName(event.getTopStackFrame(), "factorial");
 
                 Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
                 assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
@@ -474,6 +484,7 @@ public class TestScope {
             // In factorial(), for:
             tester.expectSuspended((SuspendedEvent event) -> {
                 checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "1"}, new String[]{"n", "10", "f", "1"});
+                checkFunctionScopeName(event.getTopStackFrame(), "factorial");
 
                 Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
                 assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
@@ -498,6 +509,7 @@ public class TestScope {
             // In factorial(), for:
             tester.expectSuspended((SuspendedEvent event) -> {
                 checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "2"}, new String[]{"n", "10", "f", "1"});
+                checkFunctionScopeName(event.getTopStackFrame(), "factorial");
 
                 Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
                 assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
@@ -522,6 +534,7 @@ public class TestScope {
             // In factorial(), for:
             tester.expectSuspended((SuspendedEvent event) -> {
                 checkScope(event, "factorial", 6, "f *= (x => x)(i)", new String[]{"i", "3"}, new String[]{"n", "10", "f", "2"});
+                checkFunctionScopeName(event.getTopStackFrame(), "factorial");
 
                 Iterator<DebugStackFrame> framesIterator = event.getStackFrames().iterator();
                 assertEquals(event.getTopStackFrame(), framesIterator.next()); // skip the top one
