@@ -261,7 +261,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (returnType.isEmpty()) {
                         return Undefined.instance;
                     } else {
-                        return toJSValueNode.execute(wasmResult, returnType);
+                        return toJSValueNode.execute(wasmResult);
                     }
                 } catch (InteropException ex) {
                     throw Errors.shouldNotReachHere(ex);
@@ -398,7 +398,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         int argCount = argTypes.length() / 3;
         boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
         boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
-        String[] paramTypes = argTypes.length() != 0 ? argTypes.split(" ") : new String[0];
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
@@ -417,7 +416,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 int userArgumentCount = JSArguments.getUserArgumentCount(frameArguments);
                 Object[] jsArgs = new Object[userArgumentCount];
                 for (int i = 0; i < userArgumentCount; i++) {
-                    jsArgs[i] = toJSValueNode.execute(JSArguments.getUserArgument(frameArguments, i), paramTypes[i]);
+                    jsArgs[i] = toJSValueNode.execute(JSArguments.getUserArgument(frameArguments, i));
                 }
 
                 Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));

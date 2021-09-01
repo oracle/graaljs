@@ -145,10 +145,9 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                     if (isJSWebAssemblyGlobal(thiz)) {
                         JSWebAssemblyGlobalObject object = (JSWebAssemblyGlobalObject) thiz;
                         Object wasmGlobal = object.getWASMGlobal();
-                        String valueType = object.getValueType();
                         Object globalRead = realm.getWASMGlobalRead();
                         try {
-                            return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal), valueType);
+                            return toJSValueNode.execute(globalReadLib.execute(globalRead, wasmGlobal));
                         } catch (InteropException ex) {
                             throw Errors.shouldNotReachHere(ex);
                         }
