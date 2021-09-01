@@ -3028,11 +3028,15 @@
   }, {
     "filePath" : "mjsunit/wasm/bigint-i64-to-imported-js-func.js",
     "status" : "SKIP",
-    "comment" : "--experimental-wasm-bigint"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/bigint.js",
     "status" : "SKIP",
-    "comment" : "--experimental-wasm-bigint"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/bounds-check-64bit.js",
     "status" : "SKIP",
@@ -3280,7 +3284,7 @@
     "filePath" : "mjsunit/wasm/globals.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/graceful_shutdown.js",

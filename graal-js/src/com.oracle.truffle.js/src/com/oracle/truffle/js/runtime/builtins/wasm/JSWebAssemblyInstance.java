@@ -209,26 +209,23 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         String name = typeInfo.substring(0, idxOpen);
         String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
         String returnType = typeInfo.substring(idxClose + 1);
-        int argCount = argTypes.length() / 3;
-        boolean returnTypeIsI64 = "i64".equals(returnType);
-        boolean anyArgTypeIsI64 = argTypes.indexOf("i64") != -1;
+        String[] paramTypes = argTypes.length() != 0 ? argTypes.split(" ") : new String[0];
+        int argCount = paramTypes.length;
+        boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
+        boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            @CompilationFinal(dimensions = 1) String[] argTypesArray = splitArgTypes(argTypes);
+            @CompilationFinal(dimensions = 1) String[] argTypesArray = paramTypes;
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if (returnTypeIsI64) {
+                if (!context.getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
                     errorBranch.enter();
-                    throw Errors.createTypeError("Return type is i64");
-                }
-                if (anyArgTypeIsI64) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("Argument type is i64");
+                    throw Errors.createTypeError("wasm function signature contains illegal type");
                 }
 
                 Object[] frameArguments = frame.getArguments();
@@ -264,7 +261,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (returnType.isEmpty()) {
                         return Undefined.instance;
                     } else {
-                        return toJSValueNode.execute(wasmResult);
+                        return toJSValueNode.execute(wasmResult, returnType);
                     }
                 } catch (InteropException ex) {
                     throw Errors.shouldNotReachHere(ex);
@@ -315,12 +312,21 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         wasmValue = createHostFunction(context, realm, value, typeInfo);
                     }
                 } else if ("global".equals(externType)) {
-                    if (JSRuntime.isNumber(value)) {
+                    boolean isNumber = JSRuntime.isNumber(value);
+                    boolean isBigInt = JSRuntime.isBigInt(value);
+                    if (isNumber || context.getContextOptions().isWasmBigInt() && isBigInt) {
                         String valueType = asString(descriptorInterop.readMember(descriptor, "type"));
-                        if ("i64".equals(valueType)) {
+                        boolean isI64 = JSWebAssemblyValueTypes.isI64(valueType);
+                        if (!context.getContextOptions().isWasmBigInt() && isI64) {
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
                         }
-                        Object webAssemblyValue = toWebAssemblyValue(value, valueType);
+                        if (isI64 && isNumber) {
+                            throw Errors.createLinkError("Value of valtype i64 must be BigInt");
+                        }
+                        if (!isI64 && isBigInt) {
+                            throw Errors.createLinkError("BigInt can only be stored in valtype i64");
+                        }
+                        Object webAssemblyValue = toWebAssemblyValue(context, value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
@@ -362,16 +368,19 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         }
     }
 
-    private static Object toWebAssemblyValue(Object value, String type) {
-        assert !"i64".equals(type);
-        if ("i32".equals(type)) {
+    private static Object toWebAssemblyValue(JSContext context, Object value, String type) {
+        assert context.getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
+        if (JSWebAssemblyValueTypes.isI64(type)) {
+            return JSRuntime.toBigInt(value).longValue();
+        }
+        if (JSWebAssemblyValueTypes.isI32(type)) {
             return JSRuntime.toInt32(value);
         } else {
             double doubleValue = JSRuntime.toDouble(value);
-            if ("f32".equals(type)) {
+            if (JSWebAssemblyValueTypes.isF32(type)) {
                 return (float) doubleValue;
             } else {
-                assert "f64".equals(type);
+                assert JSWebAssemblyValueTypes.isF64(type);
                 return doubleValue;
             }
         }
@@ -387,31 +396,28 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
         String returnType = typeInfo.substring(idxClose + 1);
         int argCount = argTypes.length() / 3;
-        boolean returnTypeIsI64 = "i64".equals(returnType);
-        boolean anyArgTypeIsI64 = argTypes.indexOf("i64") != -1;
+        boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
+        boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
+        String[] paramTypes = argTypes.length() != 0 ? argTypes.split(" ") : new String[0];
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
+            @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
             @Node.Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             @Node.Child JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
             private final BranchProfile errorBranch = BranchProfile.create();
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if (returnTypeIsI64) {
+                if (!context.getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
                     errorBranch.enter();
-                    throw Errors.createTypeError("Return type is i64");
-                }
-                if (anyArgTypeIsI64) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("Argument type is i64");
+                    throw Errors.createTypeError("wasm function signature contains illegal type");
                 }
 
                 Object[] frameArguments = frame.getArguments();
                 int userArgumentCount = JSArguments.getUserArgumentCount(frameArguments);
                 Object[] jsArgs = new Object[userArgumentCount];
                 for (int i = 0; i < userArgumentCount; i++) {
-                    jsArgs[i] = toJSValueNode.execute(JSArguments.getUserArgument(frameArguments, i));
+                    jsArgs[i] = toJSValueNode.execute(JSArguments.getUserArgument(frameArguments, i), paramTypes[i]);
                 }
 
                 Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));
@@ -426,15 +432,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
         return JSFunction.create(realm, functionData);
-    }
-
-    static String[] splitArgTypes(String argTypes) {
-        int argCount = argTypes.length() / 3;
-        String[] argTypesArray = new String[argCount];
-        for (int i = 0; i < argCount; i++) {
-            argTypesArray[i] = argTypes.substring(3 * i, 3 * (i + 1));
-        }
-        return argTypesArray;
     }
 
     private static String asString(Object string) throws UnsupportedMessageException {

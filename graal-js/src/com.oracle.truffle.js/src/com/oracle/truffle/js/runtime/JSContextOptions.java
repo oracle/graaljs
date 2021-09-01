@@ -539,6 +539,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> JSON_MODULES = new OptionKey<>(false);
     @CompilationFinal private boolean jsonModules;
 
+    public static final String WASM_BIG_INT_NAME = JS_OPTION_PREFIX + "wasm-bigint";
+    @Option(name = WASM_BIG_INT_NAME, category = OptionCategory.USER, help = "Enable wasm i64 to javascript BigInt support") //
+    public static final OptionKey<Boolean> WASM_BIG_INT = new OptionKey<>(true);
+    @CompilationFinal private boolean wasmBigInt;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -633,6 +638,7 @@ public final class JSContextOptions {
         this.errorCause = readBooleanOption(ERROR_CAUSE);
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
         this.jsonModules = readBooleanOption(JSON_MODULES);
+        this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -1019,6 +1025,10 @@ public final class JSContextOptions {
         return jsonModules;
     }
 
+    public boolean isWasmBigInt() {
+        return wasmBigInt;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1075,6 +1085,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.errorCause ? 1 : 0);
         hash = 53 * hash + (this.importAssertions ? 1 : 0);
         hash = 53 * hash + (this.jsonModules ? 1 : 0);
+        hash = 53 * hash + (this.wasmBigInt ? 1 : 0);
         return hash;
     }
 
@@ -1244,6 +1255,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.jsonModules != other.jsonModules) {
+            return false;
+        }
+        if (this.wasmBigInt != other.wasmBigInt) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

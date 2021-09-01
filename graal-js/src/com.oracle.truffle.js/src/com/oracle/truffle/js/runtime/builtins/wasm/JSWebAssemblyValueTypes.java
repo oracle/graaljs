@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,45 +38,36 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
+package com.oracle.truffle.js.runtime.builtins.wasm;
 
 /**
- * Implementation of ToJSValue() operation. See https://www.w3.org/TR/wasm-js-api/#tojsvalue
+ * Represents the value types used in WebAssembly and provides some methods to check their string
+ * representations.
  */
-public abstract class ToJSValueNode extends JavaScriptBaseNode {
+public final class JSWebAssemblyValueTypes {
+    public static final String I32 = "i32";
+    public static final String I64 = "i64";
+    public static final String F32 = "f32";
+    public static final String F64 = "f64";
 
-    protected ToJSValueNode() {
+    public static boolean isI32(String type) {
+        return type.equals(I32);
     }
 
-    public static ToJSValueNode create() {
-        return ToJSValueNodeGen.create();
+    public static boolean isI64(String type) {
+        return type.equals(I64);
     }
 
-    public abstract Object execute(Object value, String valueType);
+    public static boolean isF32(String type) {
+        return type.equals(F32);
+    }
 
-    @Specialization
-    public Object convert(Object value, String valueType) {
-        if (JSWebAssemblyValueTypes.isI64(valueType)) {
-            if (value instanceof Integer) {
-                return BigInt.valueOf(((Integer) value).longValue());
-            }
-            return BigInt.valueOf((long) value);
-        }
-        if (JSWebAssemblyValueTypes.isI32(valueType) || JSWebAssemblyValueTypes.isF64(valueType)) {
-            return value;
-        }
-        if (JSWebAssemblyValueTypes.isF32(valueType)) {
-            if (value instanceof Float) {
-                return ((Float) value).doubleValue();
-            }
-            return value;
-        }
-        throw CompilerDirectives.shouldNotReachHere();
+    public static boolean isF64(String type) {
+        return type.equals(F64);
+    }
+
+    public static boolean isValueType(String type) {
+        return isI32(type) || isI64(type) || isF32(type) || isF64(type);
     }
 }
