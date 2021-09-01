@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 21.3.0
+* Updated Node.js to version 14.17.6.
 * Implemented the [Error Cause](https://github.com/tc39/proposal-error-cause) proposal. It is available behind the experimental option `--js.error-cause`.
 * Implemented the [Import Assertions](https://tc39.es/proposal-import-assertions) proposal. It is available behind the experimental option `--js.import-assertions`.
 * Added support for `collation` option of `Intl.Collator`.

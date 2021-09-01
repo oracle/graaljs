@@ -931,7 +931,7 @@ THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-Node.js 14.17.4
+Node.js 14.17.6
 
 Node.js is licensed for use as follows:
 
