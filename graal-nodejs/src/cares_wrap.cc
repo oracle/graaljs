@@ -39,17 +39,13 @@
 # include <netdb.h>
 #endif  // __POSIX__
 
-#if defined(__ANDROID__) || \
-    defined(__MINGW32__) || \
-    defined(__OpenBSD__) || \
-    defined(_MSC_VER)
+# include <ares_nameser.h>
 
-# include <nameser.h>
-#else
-# include <arpa/nameser.h>
+// OpenBSD does not define these
+#ifndef AI_ALL
+# define AI_ALL 0
 #endif
-
-#if defined(__OpenBSD__)
+#ifndef AI_V4MAPPED
 # define AI_V4MAPPED 0
 #endif
 

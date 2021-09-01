@@ -71,8 +71,8 @@ local common = import '../common.jsonnet';
     // jdk 8 - windows
     graalJs + common.jdk8  + common.gate   + common.windows_vs2010 + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk8-windows-amd64'},
 
-    // jdk 8 - sparc
-    graalJs + common.jdk8  + common.gate   + common.sparc          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk8-solaris-sparcv9'},
+    // jdk 8 - sparc unsupported
+    // graalJs + common.jdk8  + common.gate   + common.sparc          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk8-solaris-sparcv9'},
 
     // jdk 11 - linux
     graalJs + common.jdk11 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk11-linux-amd64'},
