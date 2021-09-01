@@ -124,6 +124,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.Segmenter",
                     "Map",
                     "Object.fromEntries",
+                    "Object.hasOwn",
                     "Object.is",
                     "Promise",
                     "Promise.allSettled",
@@ -233,7 +234,6 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DateTimeFormat-formatRange",
                     "Intl.Locale-info",
                     "IsHTMLDDA",
-                    "Object.hasOwn",
                     "Temporal",
                     "arbitrary-module-namespace-names",
                     "class-fields-private-in",
@@ -242,9 +242,10 @@ public class Test262Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.at",
+                    "Atomics.waitAsync",
+                    "Object.hasOwn",
                     "String.prototype.at",
                     "TypedArray.prototype.at",
-                    "Atomics.waitAsync",
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
