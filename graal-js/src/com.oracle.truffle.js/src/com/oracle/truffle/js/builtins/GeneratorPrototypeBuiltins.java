@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -123,7 +124,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
             Object generatorTarget = getGeneratorTarget.getValue(generator);
             if (generatorTarget != Undefined.instance) {
                 Object generatorContext = getGeneratorContext.getValue(generator);
-                return callNode.execute((CallTarget) generatorTarget, new Object[]{generatorContext, generator, value, resumeType});
+                return callNode.execute((CallTarget) generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, resumeType, value));
             } else {
                 errorBranch.enter();
                 throw Errors.createTypeErrorGeneratorObjectExpected();

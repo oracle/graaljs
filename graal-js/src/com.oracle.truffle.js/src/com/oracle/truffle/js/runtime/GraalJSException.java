@@ -54,7 +54,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -341,13 +340,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                         } else if (JSRuntime.isJSFunctionRootNode(rootNode)) {
                             arguments = element.getFrame().getArguments();
                         } else if (((JavaScriptRootNode) rootNode).isResumption()) {
-                            // first argument is the context frame
-                            if (element.getFrame().getArguments()[0] instanceof Frame) {
-                                Frame frame = (Frame) element.getFrame().getArguments()[0];
-                                arguments = frame.getArguments();
-                            } else {
-                                arguments = element.getFrame().getArguments();
-                            }
+                            arguments = element.getFrame().getArguments();
                         } else if (rootNode instanceof PromiseAllMarkerRootNode) {
                             arguments = element.getFrame().getArguments();
                             if (JSArguments.getUserArgumentCount(arguments) > 0) {

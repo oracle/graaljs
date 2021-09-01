@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.control;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.Completion;
 
 public class AwaitResumeNode extends JavaScriptBaseNode {
@@ -65,6 +66,6 @@ public class AwaitResumeNode extends JavaScriptBaseNode {
         } else {
             resumptionValue = Completion.forNormal(result);
         }
-        return executeResumeNode.execute(asyncTarget, new Object[]{asyncContext, generator, resumptionValue});
+        return executeResumeNode.execute(asyncTarget, JSArguments.createResumeArguments(asyncContext, generator, resumptionValue));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.js.runtime;
 
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.Completion.Type;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSArguments {
@@ -51,6 +53,11 @@ public final class JSArguments {
     private static final int THIS_OBJECT_INDEX = 0;
     private static final int FUNCTION_OBJECT_INDEX = 1;
     private static final int NEW_TARGET_INDEX = RUNTIME_ARGUMENT_COUNT;
+
+    private static final int RESUME_EXECUTION_CONTEXT = RUNTIME_ARGUMENT_COUNT;
+    private static final int RESUME_GENERATOR_OR_PROMISE = RUNTIME_ARGUMENT_COUNT + 1;
+    private static final int RESUME_COMPLETION_TYPE = RUNTIME_ARGUMENT_COUNT + 2;
+    private static final int RESUME_COMPLETION_VALUE = RUNTIME_ARGUMENT_COUNT + 3;
 
     private JSArguments() {
         // should not be constructed
@@ -149,5 +156,35 @@ public final class JSArguments {
 
     public static Object getNewTarget(Object[] arguments) {
         return arguments[NEW_TARGET_INDEX];
+    }
+
+    public static Object[] createResumeArguments(Object executionContext, Object generatorOrPromiseCapability, Completion.Type completionType, Object completionValue) {
+        MaterializedFrame contextFrame = JSFrameUtil.castMaterializedFrame(executionContext);
+        Object[] arguments = contextFrame.getArguments();
+        return new Object[]{arguments[0], arguments[1], contextFrame, generatorOrPromiseCapability, completionType, completionValue};
+    }
+
+    public static Object[] createResumeArguments(Object executionContext, Object generator, Completion completion) {
+        return createResumeArguments(executionContext, generator, completion.getType(), completion.getValue());
+    }
+
+    public static MaterializedFrame getResumeExecutionContext(Object[] arguments) {
+        return JSFrameUtil.castMaterializedFrame(arguments[RESUME_EXECUTION_CONTEXT]);
+    }
+
+    public static Object getResumeGeneratorOrPromiseCapability(Object[] arguments) {
+        return arguments[RESUME_GENERATOR_OR_PROMISE];
+    }
+
+    public static Completion.Type getResumeCompletionType(Object[] arguments) {
+        return (Type) arguments[RESUME_COMPLETION_TYPE];
+    }
+
+    public static Object getResumeCompletionValue(Object[] arguments) {
+        return arguments[RESUME_COMPLETION_VALUE];
+    }
+
+    public static Completion getResumeCompletion(Object[] arguments) {
+        return Completion.create(getResumeCompletionType(arguments), getResumeCompletionValue(arguments));
     }
 }

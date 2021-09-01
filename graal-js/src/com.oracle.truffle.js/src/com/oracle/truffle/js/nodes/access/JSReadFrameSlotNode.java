@@ -68,19 +68,19 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
         super(slot);
     }
 
+    public static JSReadFrameSlotNode create(FrameSlot slot, boolean hasTemporalDeadZone) {
+        return create(slot, ScopeFrameNode.createCurrent(), hasTemporalDeadZone);
+    }
+
     public static JSReadFrameSlotNode create(FrameSlot slot, ScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
+        if (!hasTemporalDeadZone && levelFrameNode == ScopeFrameNode.createCurrent()) {
+            return JSReadCurrentFrameSlotNodeGen.create(slot);
+        }
         if (hasTemporalDeadZone) {
             return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, levelFrameNode);
         } else {
             return JSReadScopeFrameSlotNodeGen.create(slot, levelFrameNode);
         }
-    }
-
-    public static JSReadFrameSlotNode create(FrameSlot slot, int frameLevel, int scopeLevel, FrameSlot[] parentSlots, boolean hasTemporalDeadZone) {
-        if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
-            return JSReadCurrentFrameSlotNodeGen.create(slot);
-        }
-        return create(slot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), hasTemporalDeadZone);
     }
 
     public static JSReadFrameSlotNode create(FrameSlot slot) {

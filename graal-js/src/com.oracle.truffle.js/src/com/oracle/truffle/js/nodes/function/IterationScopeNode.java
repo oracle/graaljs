@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameUtil;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -50,13 +51,14 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 import java.util.Set;
 
 public abstract class IterationScopeNode extends JavaScriptNode {
 
-    public static IterationScopeNode create(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes) {
-        return new FrameIterationScopeNode(frameDescriptor, reads, writes);
+    public static IterationScopeNode create(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes, FrameSlot blockScopeSlot) {
+        return new FrameIterationScopeNode(frameDescriptor, reads, writes, blockScopeSlot);
     }
 
     @Override
@@ -64,32 +66,45 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
     public abstract void executeCopy(VirtualFrame toFrame, VirtualFrame fromFrame);
 
+    public abstract void exitScope(VirtualFrame frame, VirtualFrame prevFrame);
+
     public static final class FrameIterationScopeNode extends IterationScopeNode {
         private final FrameDescriptor frameDescriptor;
         @Children private final JSReadFrameSlotNode[] reads;
         @Children private final JSWriteFrameSlotNode[] writes;
+        private final FrameSlot blockScopeSlot;
 
-        public FrameIterationScopeNode(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes) {
+        public FrameIterationScopeNode(FrameDescriptor frameDescriptor, JSReadFrameSlotNode[] reads, JSWriteFrameSlotNode[] writes, FrameSlot blockScopeSlot) {
             this.frameDescriptor = frameDescriptor;
             this.reads = reads;
             this.writes = writes;
+            this.blockScopeSlot = blockScopeSlot;
             assert reads.length == writes.length;
         }
 
         @Override
         public VirtualFrame execute(VirtualFrame frame) {
-            VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor);
-            writes[0].executeWithFrame(nextFrame, reads[0].execute(frame)); // copy parent slot
-            copySlots(nextFrame, frame);
-            return nextFrame;
+            VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
+            VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
+            writes[0].executeWithFrame(nextFrame, reads[0].execute(prevFrame)); // copy parent slot
+            copySlots(nextFrame, prevFrame);
+            frame.setObject(blockScopeSlot, nextFrame);
+            return prevFrame;
         }
 
         @Override
-        public void executeCopy(VirtualFrame nextFrame, VirtualFrame frame) {
+        public void executeCopy(VirtualFrame frame, VirtualFrame prevFrame) {
+            VirtualFrame nextFrame = JSFrameUtil.castMaterializedFrame(FrameUtil.getObjectSafe(frame, blockScopeSlot));
             // no need to copy effectively final parent frame slot
-            assert FrameUtil.getObjectSafe(nextFrame, nextFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) == FrameUtil.getObjectSafe(frame,
-                            frame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
-            copySlots(nextFrame, frame);
+            assert FrameUtil.getObjectSafe(nextFrame, nextFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER)) == FrameUtil.getObjectSafe(prevFrame,
+                            prevFrame.getFrameDescriptor().findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
+            copySlots(prevFrame, nextFrame);
+            exitScope(frame, prevFrame);
+        }
+
+        @Override
+        public void exitScope(VirtualFrame frame, VirtualFrame prevFrame) {
+            frame.setObject(blockScopeSlot, prevFrame);
         }
 
         @ExplodeLoop
@@ -105,7 +120,7 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new FrameIterationScopeNode(frameDescriptor, cloneUninitialized(reads, materializedTags), cloneUninitialized(writes, materializedTags));
+            return new FrameIterationScopeNode(frameDescriptor, cloneUninitialized(reads, materializedTags), cloneUninitialized(writes, materializedTags), blockScopeSlot);
         }
     }
 }

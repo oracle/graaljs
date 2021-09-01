@@ -41,11 +41,7 @@
 package com.oracle.truffle.js.parser.env;
 
 import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -54,17 +50,16 @@ import com.oracle.truffle.js.runtime.JSContext;
  * lexical environment it's to be evaluated in.
  */
 public class DebugEnvironment extends Environment {
-    private final Node locationNode;
-    private final MaterializedFrame lexicalContextFrame;
+    private final Object scope;
 
-    public DebugEnvironment(Environment parent, NodeFactory factory, JSContext context, Node locationNode, MaterializedFrame lexicalContextFrame) {
+    public DebugEnvironment(Environment parent, NodeFactory factory, JSContext context, Object scope) {
         super(parent, factory, context);
-        this.locationNode = locationNode;
-        this.lexicalContextFrame = lexicalContextFrame;
+        this.scope = scope;
+        assert InteropLibrary.getUncached().isScope(scope) : scope;
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(String name) {
+    protected FrameSlot findBlockFrameSlot(Object name) {
         return null;
     }
 
@@ -79,11 +74,6 @@ public class DebugEnvironment extends Environment {
     }
 
     public boolean hasMember(String name) {
-        try {
-            Object scope = NodeLibrary.getUncached().getScope(locationNode, lexicalContextFrame, true);
-            return InteropLibrary.getUncached().isMemberReadable(scope, name);
-        } catch (UnsupportedMessageException e) {
-            return false;
-        }
+        return InteropLibrary.getUncached().isMemberReadable(scope, name);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 public final class JSFrameUtil {
     public static final MaterializedFrame NULL_MATERIALIZED_FRAME = Truffle.getRuntime().createMaterializedFrame(JSArguments.createNullArguments());
@@ -64,7 +65,9 @@ public final class JSFrameUtil {
     private static final int IS_IMPORT_BINDING = Symbol.IS_IMPORT_BINDING;
     private static final int IS_PRIVATE_NAME_STATIC = Symbol.IS_PRIVATE_NAME_STATIC;
     private static final int IS_PRIVATE_METHOD_OR_ACCESSOR = Symbol.IS_PRIVATE_NAME_METHOD | Symbol.IS_PRIVATE_NAME_ACCESSOR;
-    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR;
+    private static final int IS_PARAM = Symbol.IS_PARAM;
+    private static final int IS_ARGUMENTS = Symbol.IS_ARGUMENTS;
+    public static final int SYMBOL_FLAG_MASK = HAS_TDZ | IS_HOISTABLE_DECLARATION | IS_IMPORT_BINDING | IS_PRIVATE_NAME_STATIC | IS_PRIVATE_METHOD_OR_ACCESSOR | IS_PARAM | IS_ARGUMENTS;
 
     private JSFrameUtil() {
         // this utility class should not be instantiated
@@ -118,6 +121,14 @@ public final class JSFrameUtil {
         return (getFlags(frameSlot) & IS_PRIVATE_NAME_STATIC) != 0;
     }
 
+    public static boolean isParam(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_PARAM) != 0;
+    }
+
+    public static boolean isArguments(FrameSlot frameSlot) {
+        return (getFlags(frameSlot) & IS_ARGUMENTS) != 0;
+    }
+
     public static MaterializedFrame getParentFrame(Frame frame) {
         return JSArguments.getEnclosingFrame(frame.getArguments());
     }
@@ -139,6 +150,8 @@ public final class JSFrameUtil {
                 return true;
             }
             return false;
+        } else if (frameSlot.getIdentifier() instanceof InternalSlotId) {
+            return true;
         }
         return true;
     }

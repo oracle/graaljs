@@ -99,16 +99,18 @@ public abstract class JSWriteFrameSlotNode extends FrameSlotNode.WithDescriptor 
 
     public abstract Object executeWithFrame(Frame frame, Object value);
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, int frameLevel, int scopeLevel, FrameDescriptor frameDescriptor, FrameSlot[] parentSlots, JavaScriptNode rhs,
-                    boolean hasTemporalDeadZone) {
-        if (frameLevel == 0 && scopeLevel == 0 && !hasTemporalDeadZone) {
+    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, FrameDescriptor frameDescriptor, JavaScriptNode rhs, boolean hasTemporalDeadZone) {
+        if (!hasTemporalDeadZone) {
             return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs, frameDescriptor);
         }
-        return create(frameSlot, ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots), rhs, frameDescriptor, hasTemporalDeadZone);
+        return create(frameSlot, ScopeFrameNode.createCurrent(), rhs, frameDescriptor, hasTemporalDeadZone);
     }
 
-    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs, FrameDescriptor frameDescriptor, boolean hasTemporalDeadZone) {
-        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, levelFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, levelFrameNode, rhs) : rhs, frameDescriptor);
+    public static JSWriteFrameSlotNode create(FrameSlot frameSlot, ScopeFrameNode scopeFrameNode, JavaScriptNode rhs, FrameDescriptor frameDescriptor, boolean hasTemporalDeadZone) {
+        if (!hasTemporalDeadZone && scopeFrameNode == ScopeFrameNode.createCurrent()) {
+            return JSWriteCurrentFrameSlotNodeGen.create(frameSlot, rhs, frameDescriptor);
+        }
+        return JSWriteScopeFrameSlotNodeGen.create(frameSlot, scopeFrameNode, hasTemporalDeadZone ? TemporalDeadZoneCheckNode.create(frameSlot, scopeFrameNode, rhs) : rhs, frameDescriptor);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,9 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.interop.ScopeVariables;
 
@@ -406,7 +408,15 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     final Object getScope(Frame frame, boolean nodeEnter,
                     @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node block) throws UnsupportedMessageException {
         if (hasScope(frame)) {
-            return new ScopeVariables(frame, nodeEnter, block);
+            Frame scopeFrame = frame;
+            RootNode rootNode = getRootNode();
+            if (rootNode instanceof JavaScriptRootNode && ((JavaScriptRootNode) rootNode).isResumption() && frame.getFrameDescriptor() == rootNode.getFrameDescriptor()) {
+                scopeFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
+            }
+            if (block instanceof BlockScopeNode) {
+                scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) scopeFrame);
+            }
+            return new ScopeVariables(scopeFrame, nodeEnter, block, frame);
         } else {
             throw UnsupportedMessageException.create();
         }

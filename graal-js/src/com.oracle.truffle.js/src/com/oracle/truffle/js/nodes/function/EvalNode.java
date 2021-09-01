@@ -47,6 +47,9 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameUtil;
+import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -67,6 +70,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -79,8 +83,8 @@ public abstract class EvalNode extends JavaScriptNode {
     @Child protected AbstractFunctionArgumentsNode arguments;
     @Child protected DirectEvalNode directEvalNode;
 
-    protected EvalNode(JSContext context, JavaScriptNode function, JavaScriptNode[] args, JavaScriptNode thisObject, Object env) {
-        this(context, function, JSFunctionArgumentsNode.create(context, args), DirectEvalNode.create(context, thisObject, env));
+    protected EvalNode(JSContext context, JavaScriptNode function, JavaScriptNode[] args, JavaScriptNode thisObject, Object env, FrameSlot blockScopeSlot) {
+        this(context, function, JSFunctionArgumentsNode.create(context, args), DirectEvalNode.create(context, thisObject, env, blockScopeSlot));
     }
 
     protected EvalNode(JSContext context, JavaScriptNode functionNode, AbstractFunctionArgumentsNode arguments, DirectEvalNode directEvalNode) {
@@ -121,8 +125,8 @@ public abstract class EvalNode extends JavaScriptNode {
         return function != getRealm().getEvalFunctionObject();
     }
 
-    public static EvalNode create(JSContext context, JavaScriptNode functionNode, JavaScriptNode[] args, JavaScriptNode thisObject, Object env) {
-        return EvalNodeGen.create(context, functionNode, args, thisObject, env);
+    public static EvalNode create(JSContext context, JavaScriptNode functionNode, JavaScriptNode[] args, JavaScriptNode thisObject, Object env, FrameSlot blockScopeSlot) {
+        return EvalNodeGen.create(context, functionNode, args, thisObject, env, blockScopeSlot);
     }
 
     @TruffleBoundary
@@ -166,17 +170,19 @@ public abstract class EvalNode extends JavaScriptNode {
         private final Object currEnv;
         @Child private JavaScriptNode thisNode;
         @Child private IndirectCallNode callNode;
+        private final FrameSlot blockScopeSlot;
 
-        protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currEnv) {
+        protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currEnv, FrameSlot blockScopeSlot) {
             assert currEnv != null;
             this.context = context;
             this.currEnv = currEnv;
             this.thisNode = thisNode;
             this.callNode = IndirectCallNode.create();
+            this.blockScopeSlot = blockScopeSlot;
         }
 
-        protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currEnv) {
-            return EvalNodeGen.DirectEvalNodeGen.create(context, thisNode, currEnv);
+        protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currEnv, FrameSlot blockScopeSlot) {
+            return EvalNodeGen.DirectEvalNodeGen.create(context, thisNode, currEnv, blockScopeSlot);
         }
 
         public abstract Object executeWithSource(VirtualFrame frame, Object source);
@@ -231,7 +237,14 @@ public abstract class EvalNode extends JavaScriptNode {
             JSRealm realm = getRealm();
             Object evalThis = thisNode.execute(frame);
             ScriptNode script = context.getEvaluator().parseDirectEval(context, getParent(), source, currEnv);
-            return script.runEval(callNode, realm, evalThis, frame.materialize());
+            MaterializedFrame blockScopeFrame;
+            if (blockScopeSlot != null) {
+                Object maybeFrame = FrameUtil.getObjectSafe(frame, blockScopeSlot);
+                blockScopeFrame = JSFrameUtil.castMaterializedFrame(maybeFrame);
+            } else {
+                blockScopeFrame = frame.materialize();
+            }
+            return script.runEval(callNode, realm, evalThis, blockScopeFrame);
         }
 
         @Specialization(guards = {"isForeignObject(sourceCode)"}, limit = "3")
@@ -261,7 +274,7 @@ public abstract class EvalNode extends JavaScriptNode {
         }
 
         protected DirectEvalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return create(context, cloneUninitialized(thisNode, materializedTags), currEnv);
+            return create(context, cloneUninitialized(thisNode, materializedTags), currEnv, blockScopeSlot);
         }
 
     }

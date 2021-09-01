@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
 
+import org.graalvm.collections.EconomicMap;
+
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -54,6 +56,7 @@ import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public class FunctionEnvironment extends Environment {
     private static final String RETURN_SLOT_IDENTIFIER = "<return>";
@@ -65,19 +68,15 @@ public class FunctionEnvironment extends Environment {
     static final String ASYNC_CONTEXT_SLOT_IDENTIFIER = "<asynccontext>";
     static final String ASYNC_RESULT_SLOT_IDENTIFIER = "<asyncresult>";
     private static final String YIELD_RESULT_SLOT_IDENTIFIER = "<yieldresult>";
-    static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
+    public static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
 
     private final FunctionEnvironment parent;
     private final FrameDescriptor frameDescriptor;
-    private final List<FrameSlot> parameters;
+    private EconomicMap<FrameSlot, Integer> parameters;
     private final boolean isStrictMode;
 
-    private FrameSlot argumentsSlot;
     private FrameSlot returnSlot;
-    private FrameSlot thisSlot;
-    private FrameSlot superSlot;
-    private FrameSlot newTargetSlot;
-    private FrameSlot dynamicScopeSlot;
+    private FrameSlot blockScopeSlot;
 
     private String functionName = "";
     private String internalFunctionName = "";
@@ -106,6 +105,7 @@ public class FunctionEnvironment extends Environment {
     private boolean hasRestParameter;
     private boolean simpleParameterList = true;
     private boolean isDynamicallyScoped;
+    private boolean needsNewTarget;
     private final boolean inDirectEval;
 
     public FunctionEnvironment(Environment parent, NodeFactory factory, JSContext context,
@@ -124,7 +124,6 @@ public class FunctionEnvironment extends Environment {
         this.parent = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFrameDescriptor();
-        this.parameters = new ArrayList<>();
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
 
@@ -135,25 +134,8 @@ public class FunctionEnvironment extends Environment {
 
     @Override
     public FrameSlot declareLocalVar(Object name) {
+        assert !isFrozen() : name;
         return getFunctionFrameDescriptor().findOrAddFrameSlot(name, FrameSlotKind.Illegal);
-    }
-
-    @Override
-    public FrameSlot declareVar(Object name) {
-        if (isCallerContextEval()) {
-            return getParentFunction().declareVar(name);
-        }
-        if (frozen && getFunctionFrameDescriptor().findFrameSlot(name) == null) {
-            throw errorFrozenEnv();
-        }
-        return declareLocalVar(name);
-    }
-
-    public FrameSlot reserveArgumentsSlot() {
-        if (argumentsSlot == null) {
-            argumentsSlot = declareVar(ARGUMENTS_SLOT_IDENTIFIER);
-        }
-        return argumentsSlot;
     }
 
     public FrameSlot getReturnSlot() {
@@ -161,18 +143,6 @@ public class FunctionEnvironment extends Environment {
             returnSlot = declareLocalVar(RETURN_SLOT_IDENTIFIER);
         }
         return returnSlot;
-    }
-
-    public void reserveThisSlot() {
-        if (thisSlot == null) {
-            thisSlot = declareVar(THIS_SLOT_IDENTIFIER);
-        }
-    }
-
-    public void reserveNewTargetSlot() {
-        if (newTargetSlot == null) {
-            newTargetSlot = declareVar(NEW_TARGET_SLOT_IDENTIFIER);
-        }
     }
 
     public FrameSlot getAsyncResultSlot() {
@@ -187,15 +157,15 @@ public class FunctionEnvironment extends Environment {
         return declareLocalVar(YIELD_RESULT_SLOT_IDENTIFIER);
     }
 
-    public FrameSlot getThisSlot() {
-        return thisSlot;
+    public FrameSlot getOrCreateBlockScopeSlot() {
+        if (blockScopeSlot == null) {
+            blockScopeSlot = declareLocalVar(ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
+        }
+        return blockScopeSlot;
     }
 
-    public FrameSlot reserveDynamicScopeSlot() {
-        if (dynamicScopeSlot == null) {
-            dynamicScopeSlot = declareLocalVar(DYNAMIC_SCOPE_IDENTIFIER);
-        }
-        return dynamicScopeSlot;
+    public FrameSlot getBlockScopeSlot() {
+        return blockScopeSlot;
     }
 
     public boolean isEval() {
@@ -211,13 +181,13 @@ public class FunctionEnvironment extends Environment {
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(String name) {
-        return getFunctionFrameDescriptor().findFrameSlot(name);
+    public FrameDescriptor getBlockFrameDescriptor() {
+        return getFunctionFrameDescriptor();
     }
 
     @Override
-    public boolean hasLocalVar(String name) {
-        return getFunctionFrameDescriptor().getIdentifiers().contains(name);
+    protected FrameSlot findBlockFrameSlot(Object name) {
+        return getFunctionFrameDescriptor().findFrameSlot(name);
     }
 
     private <T extends BreakTarget> T pushJumpTarget(T target) {
@@ -313,38 +283,16 @@ public class FunctionEnvironment extends Environment {
         return directArgumentsAccess;
     }
 
-    public final int getParameterCount() {
-        return parameters.size();
-    }
-
-    public final List<FrameSlot> getParameters() {
-        return parameters;
-    }
-
-    public final void declareParameter(String name) {
-        parameters.add(declareLocalVar(name));
-    }
-
-    protected final boolean isParam(FrameSlot slot) {
-        return parameters.contains(slot);
-    }
-
-    protected final int getParameterIndex(FrameSlot slot) {
-        for (int i = parameters.size() - 1; i >= 0; --i) {
-            if (parameters.get(i) == slot) {
-                return i;
-            }
+    public void addMappedParameter(FrameSlot slot, int index) {
+        assert slot != null && JSFrameUtil.isParam(slot) : slot;
+        if (parameters == null) {
+            parameters = EconomicMap.create();
         }
-        return -1;
+        parameters.put(slot, index);
     }
 
-    public final boolean isParameter(String name) {
-        for (int i = 0; i < parameters.size(); i++) {
-            if (name.equals(parameters.get(i).getIdentifier())) {
-                return true;
-            }
-        }
-        return false;
+    protected final int getMappedParameterIndex(FrameSlot slot) {
+        return parameters.get(slot, -1);
     }
 
     public final String getFunctionName() {
@@ -401,12 +349,8 @@ public class FunctionEnvironment extends Environment {
         return isFrozen() && (getParentFunction() == null || getParentFunction().isDeepFrozen());
     }
 
-    public final boolean hasArgumentsSlot() {
-        return argumentsSlot != null;
-    }
-
-    protected final FrameSlot getArgumentsSlot() {
-        return argumentsSlot;
+    public final boolean hasMappedParameters() {
+        return parameters != null;
     }
 
     @Override
@@ -542,18 +486,8 @@ public class FunctionEnvironment extends Environment {
         return inDirectEval;
     }
 
-    public void reserveSuperSlot() {
-        if (superSlot == null) {
-            superSlot = declareVar(SUPER_SLOT_IDENTIFIER);
-        }
-    }
-
-    public FrameSlot getSuperSlot() {
-        return superSlot;
-    }
-
-    public FrameSlot getNewTargetSlot() {
-        return newTargetSlot;
+    public void setNeedsNewTarget(boolean needsNewTarget) {
+        this.needsNewTarget = needsNewTarget;
     }
 
     public void setRestParameter(boolean restParameter) {
@@ -573,7 +507,7 @@ public class FunctionEnvironment extends Environment {
     }
 
     public int getLeadingArgumentCount() {
-        return getNewTargetSlot() != null ? 1 : 0;
+        return needsNewTarget ? 1 : 0;
     }
 
     public int getTrailingArgumentCount() {

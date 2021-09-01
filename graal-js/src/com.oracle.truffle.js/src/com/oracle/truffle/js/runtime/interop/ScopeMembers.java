@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,11 +77,13 @@ final class ScopeMembers implements TruffleObject {
     private final Frame frame;
     /** FrameBlockScopeNode or RootNode. */
     private final Node blockOrRoot;
+    private final Frame functionFrame;
     private Object[] members;
 
-    ScopeMembers(Frame frame, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot) {
+    ScopeMembers(Frame frame, /* FrameBlockScopeNode or RootNode */ Node blockOrRoot, Frame functionFrame) {
         this.frame = frame;
         this.blockOrRoot = blockOrRoot;
+        this.functionFrame = functionFrame;
     }
 
     @SuppressWarnings("static-method")
@@ -139,12 +141,18 @@ final class ScopeMembers implements TruffleObject {
         } else {
             Node descNode = blockOrRoot;
             Frame outerFrame = frame;
+            Frame currentFunctionFrame = functionFrame;
             for (;;) { // frameLevel
                 Frame outerScope = outerFrame;
+                boolean seenThis = false;
                 for (;;) { // scopeLevel
                     FrameDescriptor frameDescriptor = outerScope.getFrameDescriptor();
                     for (FrameSlot slot : frameDescriptor.getSlots()) {
                         if (JSFrameUtil.isInternal(slot)) {
+                            if (JSFrameUtil.isThisSlot(slot)) {
+                                membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
+                                seenThis = true;
+                            }
                             continue;
                         }
                         if (isUnsetFrameSlot(outerScope, slot)) {
@@ -153,29 +161,40 @@ final class ScopeMembers implements TruffleObject {
                         membersList.add(new Key(slot.getIdentifier().toString(), descNode, slot));
                     }
 
+                    // insert direct eval scope variables
+                    FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
+                    if (evalScopeSlot != null) {
+                        DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
+                        DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
+                        for (Object key : objLib.getKeyArray(evalScope)) {
+                            membersList.add(new Key(key.toString(), descNode, null));
+                        }
+                    }
+
                     FrameSlot parentSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER);
                     if (parentSlot == null) {
-                        membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
-
-                        // insert direct eval scope variables
-                        FrameSlot evalScopeSlot = frameDescriptor.findFrameSlot(ScopeFrameNode.EVAL_SCOPE_IDENTIFIER);
-                        if (evalScopeSlot != null) {
-                            DynamicObject evalScope = (DynamicObject) FrameUtil.getObjectSafe(outerScope, evalScopeSlot);
-                            DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
-                            for (Object key : objLib.getKeyArray(evalScope)) {
-                                membersList.add(new Key(key.toString(), descNode, null));
-                            }
-                        }
                         break;
                     }
-                    outerScope = (Frame) FrameUtil.getObjectSafe(outerScope, parentSlot);
 
+                    Object parent = FrameUtil.getObjectSafe(outerScope, parentSlot);
+                    if (parent instanceof Frame) {
+                        outerScope = (Frame) parent;
+                    } else if (currentFunctionFrame != null && currentFunctionFrame != outerScope) {
+                        outerScope = currentFunctionFrame;
+                    } else {
+                        break;
+                    }
                     if (descNode != null) {
                         descNode = JavaScriptNode.findBlockScopeNode(descNode.getParent());
                     }
                 }
 
+                if (!seenThis) {
+                    membersList.add(new Key(ScopeVariables.RECEIVER_MEMBER, descNode, null));
+                }
+
                 outerFrame = JSArguments.getEnclosingFrame(outerFrame.getArguments());
+                currentFunctionFrame = null;
                 if (outerFrame == JSFrameUtil.NULL_MATERIALIZED_FRAME) {
                     break;
                 }

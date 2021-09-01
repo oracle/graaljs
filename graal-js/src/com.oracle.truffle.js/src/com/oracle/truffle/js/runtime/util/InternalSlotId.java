@@ -38,58 +38,24 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.runtime.util;
 
-import java.util.Set;
+/**
+ * Key for internal frame slots. Compared by identity.
+ */
+public final class InternalSlotId {
 
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.interop.NodeLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.ReadNode;
-import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+    private final String description;
+    private final int ordinal;
 
-@ImportStatic({JSConfig.class})
-public abstract class DebugScopeNode extends JavaScriptNode implements ReadNode {
-    protected DebugScopeNode() {
-    }
-
-    public static DebugScopeNode create() {
-        return DebugScopeNodeGen.create();
-    }
-
-    @ExplodeLoop
-    @Specialization
-    protected final Object getScope(VirtualFrame frame,
-                    @CachedLibrary(limit = "InteropLibraryLimit") NodeLibrary nodeLibrary) {
-        Node instrumentableParent = getParent();
-        while (true) {
-            if (instrumentableParent instanceof JavaScriptNode) {
-                if (((JavaScriptNode) instrumentableParent).isInstrumentable()) {
-                    break;
-                } else {
-                    instrumentableParent = instrumentableParent.getParent();
-                }
-            } else {
-                return Undefined.instance;
-            }
-        }
-        try {
-            return nodeLibrary.getScope(instrumentableParent, frame, true);
-        } catch (UnsupportedMessageException e) {
-            return Undefined.instance;
-        }
+    public InternalSlotId(String description, int ordinal) {
+        this.description = description;
+        this.ordinal = ordinal;
     }
 
     @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create();
+    public String toString() {
+        return ":" + description + ":" + ordinal;
     }
+
 }
