@@ -166,7 +166,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     private static DynamicObject createValueSetterFunction(JSRealm realm) {
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(c);
+                @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
                 @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
                 private final BranchProfile errorBranch = BranchProfile.create();
 

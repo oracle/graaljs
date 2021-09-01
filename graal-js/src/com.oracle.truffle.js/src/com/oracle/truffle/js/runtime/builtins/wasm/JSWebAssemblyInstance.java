@@ -215,7 +215,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
+            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -326,7 +326,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         if (!isI64 && isBigInt) {
                             throw Errors.createLinkError("BigInt can only be stored in valtype i64");
                         }
-                        Object webAssemblyValue = toWebAssemblyValue(context, value, valueType);
+                        Object webAssemblyValue = ToWebAssemblyValueNode.getUncached().execute(value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
@@ -368,24 +368,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         }
     }
 
-    private static Object toWebAssemblyValue(JSContext context, Object value, String type) {
-        assert context.getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-        if (JSWebAssemblyValueTypes.isI64(type)) {
-            return JSRuntime.toBigInt(value).longValue();
-        }
-        if (JSWebAssemblyValueTypes.isI32(type)) {
-            return JSRuntime.toInt32(value);
-        } else {
-            double doubleValue = JSRuntime.toDouble(value);
-            if (JSWebAssemblyValueTypes.isF32(type)) {
-                return (float) doubleValue;
-            } else {
-                assert JSWebAssemblyValueTypes.isF64(type);
-                return doubleValue;
-            }
-        }
-    }
-
     @CompilerDirectives.TruffleBoundary
     private static Object createHostFunction(JSContext context, JSRealm realm, Object fn, String typeInfo) {
         assert JSRuntime.isCallable(fn);
@@ -400,7 +382,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
+            @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Node.Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             @Node.Child JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
             private final BranchProfile errorBranch = BranchProfile.create();

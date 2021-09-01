@@ -2760,7 +2760,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.toBooleanNode = JSToBooleanNode.create();
             this.getValueNode = PropertyGetNode.create("value", context);
             this.getMutableNode = PropertyGetNode.create("mutable", context);
-            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
+            this.toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             this.globalAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 

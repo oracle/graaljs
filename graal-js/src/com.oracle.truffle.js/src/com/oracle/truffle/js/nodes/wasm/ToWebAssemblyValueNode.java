@@ -45,7 +45,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigInt64Node;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
 
@@ -54,28 +53,29 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
  * https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue
  */
 public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
-    private final JSContext context;
-
     @Child JSToInt32Node toInt32Node;
     @Child JSToNumberNode toNumberNode;
     @Child JSToBigInt64Node toBigInt64Node;
 
-    protected ToWebAssemblyValueNode(JSContext context) {
-        this.context = context;
+    protected ToWebAssemblyValueNode() {
         this.toNumberNode = JSToNumberNode.create();
         this.toInt32Node = JSToInt32Node.create();
         this.toBigInt64Node = JSToBigInt64Node.create();
     }
 
-    public static ToWebAssemblyValueNode create(JSContext context) {
-        return ToWebAssemblyValueNodeGen.create(context);
+    public static ToWebAssemblyValueNode create() {
+        return ToWebAssemblyValueNodeGen.create();
+    }
+
+    public static ToWebAssemblyValueNode getUncached() {
+        return ToWebAssemblyValueNode.Uncached.INSTANCE;
     }
 
     public abstract Object execute(Object value, String type);
 
     @Specialization
     protected Object convert(Object value, String type) {
-        assert context.getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
+        assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
         if (JSWebAssemblyValueTypes.isI64(type)) {
             return toBigInt64Node.execute(value);
         }
@@ -91,6 +91,33 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
                 return doubleValue;
             }
         }
+    }
+
+    static class Uncached extends ToWebAssemblyValueNode {
+        static final Uncached INSTANCE = new Uncached();
+
+        Uncached() {
+        }
+
+        @Override
+        public Object execute(Object value, String type) {
+            assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
+            if (JSWebAssemblyValueTypes.isI64(type)) {
+                return JSRuntime.toBigInt(value).longValue();
+            }
+            if (JSWebAssemblyValueTypes.isI32(type)) {
+                return JSRuntime.toInt32(value);
+            } else {
+                double doubleValue = JSRuntime.toDouble(value);
+                if (JSWebAssemblyValueTypes.isF32(type)) {
+                    return (float) doubleValue;
+                } else {
+                    assert JSWebAssemblyValueTypes.isF64(type);
+                    return doubleValue;
+                }
+            }
+        }
+
     }
 
 }

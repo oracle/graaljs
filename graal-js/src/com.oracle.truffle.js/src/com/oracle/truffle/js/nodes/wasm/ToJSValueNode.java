@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -47,6 +48,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 /**
  * Implementation of ToJSValue() operation. See https://www.w3.org/TR/wasm-js-api/#tojsvalue
  */
+@GenerateUncached
 public abstract class ToJSValueNode extends JavaScriptBaseNode {
 
     protected ToJSValueNode() {
