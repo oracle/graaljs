@@ -376,6 +376,25 @@ fs.access('file/that/does/not/exist', (err) => {
 });
 ```
 
+## `util.getSystemErrorMap()`
+<!-- YAML
+added: v14.17.0
+-->
+
+* Returns: {Map}
+
+Returns a Map of all system error codes available from the Node.js API.
+The mapping between error codes and error names is platform-dependent.
+See [Common System Errors][] for the names of common errors.
+
+```js
+fs.access('file/that/does/not/exist', (err) => {
+  const errorMap = util.getSystemErrorMap();
+  const name = errorMap.get(err.errno);
+  console.error(name);  // ENOENT
+});
+```
+
 ## `util.inherits(constructor, superConstructor)`
 <!-- YAML
 added: v0.3.0
@@ -384,6 +403,8 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/3455
     description: The `constructor` parameter can refer to an ES6 class now.
 -->
+
+> Stability: 3 - Legacy: Use ES2015 class syntax and `extends` keyword instead.
 
 * `constructor` {Function}
 * `superConstructor` {Function}

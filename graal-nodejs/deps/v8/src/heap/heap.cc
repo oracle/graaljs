@@ -3347,6 +3347,10 @@ void Heap::MakeHeapIterable() {
   mark_compact_collector()->EnsureSweepingCompleted();
 }
 
+void Heap::EnsureSweepingCompleted() {
+  mark_compact_collector()->EnsureSweepingCompleted();
+}
+
 namespace {
 
 double ComputeMutatorUtilizationImpl(double mutator_speed, double gc_speed) {
@@ -4961,6 +4965,14 @@ bool Heap::AllocationLimitOvershotByLargeMargin() {
           (max_global_memory_size_ - global_allocation_limit_) / 2);
 
   return v8_overshoot >= v8_margin || global_overshoot >= global_margin;
+}
+
+// static
+int Heap::MaxRegularHeapObjectSize(AllocationType allocation) {
+  if (allocation == AllocationType::kCode) {
+    return MemoryChunkLayout::MaxRegularCodeObjectSize();
+  }
+  return kMaxRegularHeapObjectSize;
 }
 
 bool Heap::ShouldOptimizeForLoadTime() {

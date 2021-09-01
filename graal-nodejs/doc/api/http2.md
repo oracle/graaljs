@@ -2,6 +2,9 @@
 <!-- YAML
 added: v8.4.0
 changes:
+  - version: v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/36070
+    description: It is possible to abort a request with an AbortSignal.
   - version: v10.10.0
     pr-url: https://github.com/nodejs/node/pull/22466
     description: HTTP/2 is now Stable. Previously, it had been Experimental.
@@ -819,6 +822,8 @@ added: v8.4.0
     and `256` (inclusive).
   * `waitForTrailers` {boolean} When `true`, the `Http2Stream` will emit the
     `'wantTrailers'` event after the final `DATA` frame has been sent.
+  * `signal` {AbortSignal} An AbortSignal that may be used to abort an ongoing
+    request.
 
 * Returns: {ClientHttp2Stream}
 
@@ -854,6 +859,10 @@ When `options.waitForTrailers` is set, the `Http2Stream` will not automatically
 close when the final `DATA` frame is transmitted. User code must call either
 `http2stream.sendTrailers()` or `http2stream.close()` to close the
 `Http2Stream`.
+
+When `options.signal` is set with an `AbortSignal` and then `abort` on the
+corresponding `AbortController` is called, the request will emit an `'error'`
+event with an `AbortError` error.
 
 The `:method` and `:path` pseudo-headers are not specified within `headers`,
 they respectively default to:
@@ -1435,7 +1444,7 @@ added: v8.4.0
 changes:
   - version: v14.5.0
     pr-url: https://github.com/nodejs/node/pull/33160
-    description: Allow explicity setting date headers.
+    description: Allow explicitly setting date headers.
 -->
 
 * `headers` {HTTP/2 Headers Object}
@@ -1482,7 +1491,7 @@ added: v8.4.0
 changes:
   - version: v14.5.0
     pr-url: https://github.com/nodejs/node/pull/33160
-    description: Allow explicity setting date headers.
+    description: Allow explicitly setting date headers.
   - version: v12.12.0
     pr-url: https://github.com/nodejs/node/pull/29876
     description: The `fd` option may now be a `FileHandle`.
@@ -1583,7 +1592,7 @@ added: v8.4.0
 changes:
   - version: v14.5.0
     pr-url: https://github.com/nodejs/node/pull/33160
-    description: Allow explicity setting date headers.
+    description: Allow explicitly setting date headers.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/18936
     description: Any readable file, not necessarily a
@@ -1627,10 +1636,17 @@ server.on('stream', (stream) => {
   }
 
   function onError(err) {
-    if (err.code === 'ENOENT') {
-      stream.respond({ ':status': 404 });
-    } else {
-      stream.respond({ ':status': 500 });
+    // stream.respond() can throw if the stream has been destroyed by
+    // the other side.
+    try {
+      if (err.code === 'ENOENT') {
+        stream.respond({ ':status': 404 });
+      } else {
+        stream.respond({ ':status': 500 });
+      }
+    } catch (err) {
+      // Perform actual error handling.
+      console.log(err);
     }
     stream.end();
   }
@@ -1727,7 +1743,7 @@ the request body.
 When this event is emitted and handled, the [`'request'`][] event will
 not be emitted.
 
-### Event: `'connection'`
+#### Event: `'connection'`
 <!-- YAML
 added: v8.4.0
 -->
@@ -1773,8 +1789,16 @@ an `Http2Session` object associated with the `Http2Server`.
 added: v8.4.0
 -->
 
+* `stream` {Http2Stream} A reference to the stream
+* `headers` {HTTP/2 Headers Object} An object describing the headers
+* `flags` {number} The associated numeric flags
+* `rawHeaders` {Array} An array containing the raw header names followed by
+  their respective values.
+
 The `'stream'` event is emitted when a `'stream'` event has been emitted by
 an `Http2Session` associated with the server.
+
+See also [`Http2Session`'s `'stream'` event][].
 
 ```js
 const http2 = require('http2');
@@ -1869,6 +1893,19 @@ A value of `0` will disable the timeout behavior on incoming connections.
 The socket timeout logic is set up on connection, so changing this
 value only affects new connections to the server, not any existing connections.
 
+#### `server.updateSettings([settings])`
+<!-- YAML
+added: v14.17.0
+-->
+
+* `settings` {HTTP/2 Settings Object}
+
+Used to update the server with the provided settings.
+
+Throws `ERR_HTTP2_INVALID_SETTING_VALUE` for invalid `settings` values.
+
+Throws `ERR_INVALID_ARG_TYPE` for invalid `settings` argument.
+
 ### Class: `Http2SecureServer`
 <!-- YAML
 added: v8.4.0
@@ -1902,7 +1939,7 @@ the request body.
 When this event is emitted and handled, the [`'request'`][] event will
 not be emitted.
 
-### Event: `'connection'`
+#### Event: `'connection'`
 <!-- YAML
 added: v8.4.0
 -->
@@ -1948,8 +1985,16 @@ an `Http2Session` object associated with the `Http2SecureServer`.
 added: v8.4.0
 -->
 
+* `stream` {Http2Stream} A reference to the stream
+* `headers` {HTTP/2 Headers Object} An object describing the headers
+* `flags` {number} The associated numeric flags
+* `rawHeaders` {Array} An array containing the raw header names followed by
+  their respective values.
+
 The `'stream'` event is emitted when a `'stream'` event has been emitted by
 an `Http2Session` associated with the server.
+
+See also [`Http2Session`'s `'stream'` event][].
 
 ```js
 const http2 = require('http2');
@@ -2049,6 +2094,19 @@ A value of `0` will disable the timeout behavior on incoming connections.
 
 The socket timeout logic is set up on connection, so changing this
 value only affects new connections to the server, not any existing connections.
+
+#### `server.updateSettings([settings])`
+<!-- YAML
+added: v14.17.0
+-->
+
+* `settings` {HTTP/2 Settings Object}
+
+Used to update the server with the provided settings.
+
+Throws `ERR_HTTP2_INVALID_SETTING_VALUE` for invalid `settings` values.
+
+Throws `ERR_INVALID_ARG_TYPE` for invalid `settings` argument.
 
 ### `http2.createServer(options[, onRequestHandler])`
 <!-- YAML
@@ -2508,7 +2566,7 @@ console.log(packed.toString('base64'));
 added: v8.4.0
 -->
 
-* `buf` {Buffer|Uint8Array} The packed settings.
+* `buf` {Buffer|TypedArray} The packed settings.
 * Returns: {HTTP/2 Settings Object}
 
 Returns a [HTTP/2 Settings Object][] containing the deserialized settings from
@@ -3199,6 +3257,25 @@ deprecated: v13.0.0
 
 See [`response.socket`][].
 
+#### `response.createPushResponse(headers, callback)`
+<!-- YAML
+added: v8.4.0
+-->
+
+* `headers` {HTTP/2 Headers Object} An object describing the headers
+* `callback` {Function} Called once `http2stream.pushStream()` is finished,
+  or either when the attempt to create the pushed `Http2Stream` has failed or
+  has been rejected, or the state of `Http2ServerRequest` is closed prior to
+  calling the `http2stream.pushStream()` method
+  * `err` {Error}
+  * `res` {http2.Http2ServerResponse} The newly-created `Http2ServerResponse`
+    object
+
+Call [`http2stream.pushStream()`][] with the given headers, and wrap the
+given [`Http2Stream`][] on a newly created `Http2ServerResponse` as the callback
+parameter if successful. When `Http2ServerRequest` is closed, the callback is
+called with an error `ERR_HTTP2_INVALID_STREAM`.
+
 #### `response.end([data[, encoding]][, callback])`
 <!-- YAML
 added: v8.4.0
@@ -3563,7 +3640,8 @@ will be emitted.
 const body = 'hello world';
 response.writeHead(200, {
   'Content-Length': Buffer.byteLength(body),
-  'Content-Type': 'text/plain; charset=utf-8' });
+  'Content-Type': 'text/plain; charset=utf-8',
+});
 ```
 
 `Content-Length` is given in bytes not characters. The
@@ -3595,24 +3673,6 @@ const server = http2.createServer((req, res) => {
 
 Attempting to set a header field name or value that contains invalid characters
 will result in a [`TypeError`][] being thrown.
-
-#### `response.createPushResponse(headers, callback)`
-<!-- YAML
-added: v8.4.0
--->
-
-* `headers` {HTTP/2 Headers Object} An object describing the headers
-* `callback` {Function} Called once `http2stream.pushStream()` is finished,
-  or either when the attempt to create the pushed `Http2Stream` has failed or
-  has been rejected, or the state of `Http2ServerRequest` is closed prior to
-  calling the `http2stream.pushStream()` method
-  * `err` {Error}
-  * `stream` {ServerHttp2Stream} The newly-created `ServerHttp2Stream` object
-
-Call [`http2stream.pushStream()`][] with the given headers, and wrap the
-given [`Http2Stream`][] on a newly created `Http2ServerResponse` as the callback
-parameter if successful. When `Http2ServerRequest` is closed, the callback is
-called with an error `ERR_HTTP2_INVALID_STREAM`.
 
 ## Collecting HTTP/2 performance metrics
 
@@ -3696,6 +3756,7 @@ following additional properties:
 [`Http2ServerRequest`]: #http2_class_http2_http2serverrequest
 [`Http2ServerResponse`]: #http2_class_http2_http2serverresponse
 [`Http2Session` and Sockets]: #http2_http2session_and_sockets
+[`Http2Session`'s `'stream'` event]: #http2_event_stream
 [`Http2Stream`]: #http2_class_http2stream
 [`ServerHttp2Stream`]: #http2_class_serverhttp2stream
 [`TypeError`]: errors.md#errors_class_typeerror

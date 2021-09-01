@@ -43,6 +43,7 @@
 'use strict';
 
 const {
+  ArrayPrototypeForEach,
   Error,
   MathMax,
   NumberIsNaN,
@@ -58,6 +59,7 @@ const {
   Promise,
   PromiseRace,
   RegExp,
+  RegExpPrototypeTest,
   Set,
   StringPrototypeCharAt,
   StringPrototypeIncludes,
@@ -66,6 +68,7 @@ const {
   SyntaxError,
   SyntaxErrorPrototype,
   WeakSet,
+  globalThis,
 } = primordials;
 
 const {
@@ -267,6 +270,7 @@ function REPLServer(prompt,
     configurable: true
   });
 
+  this.allowBlockingCompletions = !!options.allowBlockingCompletions;
   this.useColors = !!options.useColors;
   this._domain = options.domain || domain.create();
   this.useGlobal = !!useGlobal;
@@ -612,7 +616,7 @@ function REPLServer(prompt,
         errStack = self.writer(e);
 
         // Remove one line error braces to keep the old style in place.
-        if (errStack[errStack.length - 1] === ']') {
+        if (errStack[0] === '[' && errStack[errStack.length - 1] === ']') {
           errStack = errStack.slice(1, -1);
         }
       }
@@ -863,8 +867,11 @@ function REPLServer(prompt,
         self.output.write(self.writer(ret) + '\n');
       }
 
-      // Display prompt again
-      self.displayPrompt();
+      // Display prompt again (unless we already did by emitting the 'error'
+      // event on the domain instance).
+      if (!e) {
+        self.displayPrompt();
+      }
     }
   });
 
@@ -983,7 +990,7 @@ REPLServer.prototype.close = function close() {
 REPLServer.prototype.createContext = function() {
   let context;
   if (this.useGlobal) {
-    context = global;
+    context = globalThis;
   } else {
     sendInspectorCommand((session) => {
       session.post('Runtime.enable');
@@ -995,13 +1002,13 @@ REPLServer.prototype.createContext = function() {
     }, () => {
       context = vm.createContext();
     });
-    for (const name of ObjectGetOwnPropertyNames(global)) {
+    ArrayPrototypeForEach(ObjectGetOwnPropertyNames(globalThis), (name) => {
       // Only set properties that do not already exist as a global builtin.
       if (!globalBuiltins.has(name)) {
         ObjectDefineProperty(context, name,
-                             ObjectGetOwnPropertyDescriptor(global, name));
+                             ObjectGetOwnPropertyDescriptor(globalThis, name));
       }
-    }
+    });
     context.global = context;
     const _console = new Console(this.output);
     ObjectDefineProperty(context, 'console', {
@@ -1190,7 +1197,8 @@ function complete(line, callback) {
     if (completeOn.length) {
       filter = completeOn;
     }
-  } else if (requireRE.test(line)) {
+  } else if (RegExpPrototypeTest(requireRE, line) &&
+             this.allowBlockingCompletions) {
     // require('...<Tab>')
     const extensions = ObjectKeys(this.context.require.extensions);
     const indexes = extensions.map((extension) => `index${extension}`);
@@ -1248,7 +1256,8 @@ function complete(line, callback) {
     if (!subdir) {
       completionGroups.push(_builtinLibs);
     }
-  } else if (fsAutoCompleteRE.test(line)) {
+  } else if (RegExpPrototypeTest(fsAutoCompleteRE, line) &&
+             this.allowBlockingCompletions) {
     [completionGroups, completeOn] = completeFSFunctions(line);
   // Handle variable member lookup.
   // We support simple chained expressions like the following (no function

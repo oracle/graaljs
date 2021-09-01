@@ -4,6 +4,11 @@
 
 type SourceTextModuleInfo extends FixedArray;
 
+bitfield struct SourceTextModuleFlags extends uint31 {
+  async: bool: 1 bit;
+  async_evaluating_ordinal: uint32: 30 bit;
+}
+
 @generateCppClass
 extern class SourceTextModule extends Module {
   // The code representing this module, or an abstraction thereof.
@@ -29,6 +34,11 @@ extern class SourceTextModule extends Module {
   // a JSObject afterwards.
   import_meta: TheHole|JSObject;
 
+  // The first visited module of a cycle. For modules not in a cycle, this is
+  // the module itself. It's the hole before the module state transitions to
+  // kEvaluated.
+  cycle_root: SourceTextModule|TheHole;
+
   async_parent_modules: ArrayList;
   top_level_capability: JSPromise|Undefined;
 
@@ -39,7 +49,7 @@ extern class SourceTextModule extends Module {
   // The number of currently evaluating async dependencies of this module.
   pending_async_dependencies: Smi;
 
-  flags: Smi;
+  flags: SmiTagged<SourceTextModuleFlags>;
 }
 
 @generateCppClass

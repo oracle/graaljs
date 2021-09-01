@@ -4,7 +4,12 @@
 // message port.
 
 const {
+  ArrayPrototypeConcat,
+  ArrayPrototypeForEach,
+  ArrayPrototypeSplice,
   ObjectDefineProperty,
+  PromisePrototypeCatch,
+  globalThis: { Atomics },
 } = primordials;
 
 const {
@@ -13,6 +18,7 @@ const {
   setupInspectorHooks,
   setupWarningHandler,
   setupDebugEnv,
+  initializeAbortController,
   initializeDeprecations,
   initializeWASI,
   initializeCJSLoader,
@@ -121,17 +127,14 @@ port.on('message', (message) => {
     if (manifestSrc) {
       require('internal/process/policy').setup(manifestSrc, manifestURL);
     }
+    initializeAbortController();
     initializeDeprecations();
     initializeWASI();
     initializeCJSLoader();
     initializeESMLoader();
 
-    const CJSLoader = require('internal/modules/cjs/loader');
-    assert(!CJSLoader.hasLoadedAnyUserCJSModule);
-    loadPreloadModules();
-    initializeFrozenIntrinsics();
     if (argv !== undefined) {
-      process.argv = process.argv.concat(argv);
+      process.argv = ArrayPrototypeConcat(process.argv, argv);
     }
     publicWorker.parentPort = publicPort;
     publicWorker.workerData = workerData;
@@ -152,6 +155,11 @@ port.on('message', (message) => {
     };
     workerIo.sharedCwdCounter = cwdCounter;
 
+    const CJSLoader = require('internal/modules/cjs/loader');
+    assert(!CJSLoader.hasLoadedAnyUserCJSModule);
+    loadPreloadModules();
+    initializeFrozenIntrinsics();
+
     if (!hasStdin)
       process.stdin.push(null);
 
@@ -168,24 +176,25 @@ port.on('message', (message) => {
         enumerable: true,
         value: filename,
       });
-      process.argv.splice(1, 0, name);
+      ArrayPrototypeSplice(process.argv, 1, 0, name);
       evalScript(name, filename);
     } else if (doEval === 'module') {
       const { evalModule } = require('internal/process/execution');
-      evalModule(filename).catch((e) => {
+      PromisePrototypeCatch(evalModule(filename), (e) => {
         workerOnGlobalUncaughtException(e, true);
       });
     } else {
       // script filename
       // runMain here might be monkey-patched by users in --require.
       // XXX: the monkey-patchability here should probably be deprecated.
-      process.argv.splice(1, 0, filename);
+      ArrayPrototypeSplice(process.argv, 1, 0, filename);
       CJSLoader.Module.runMain(filename);
     }
   } else if (message.type === STDIO_PAYLOAD) {
     const { stream, chunks } = message;
-    for (const { chunk, encoding } of chunks)
+    ArrayPrototypeForEach(chunks, ({ chunk, encoding }) => {
       process[stream].push(chunk, encoding);
+    });
   } else {
     assert(
       message.type === STDIO_WANTS_MORE_DATA,
@@ -199,15 +208,27 @@ port.on('message', (message) => {
 function workerOnGlobalUncaughtException(error, fromPromise) {
   debug(`[${threadId}] gets uncaught exception`);
   let handled = false;
+  let handlerThrew = false;
   try {
     handled = onGlobalUncaughtException(error, fromPromise);
   } catch (e) {
     error = e;
+    handlerThrew = true;
   }
   debug(`[${threadId}] uncaught exception handled = ${handled}`);
 
   if (handled) {
     return true;
+  }
+
+  if (!process._exiting) {
+    try {
+      process._exiting = true;
+      process.exitCode = 1;
+      if (!handlerThrew) {
+        process.emit('exit', process.exitCode);
+      }
+    } catch {}
   }
 
   let serialized;

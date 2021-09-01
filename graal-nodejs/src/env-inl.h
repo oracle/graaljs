@@ -387,7 +387,7 @@ inline T* Environment::GetBindingData(v8::Local<v8::Context> context) {
       context->GetAlignedPointerFromEmbedderData(
           ContextEmbedderIndex::kBindingListIndex));
   DCHECK_NOT_NULL(map);
-  auto it = map->find(T::binding_data_name);
+  auto it = map->find(T::type_name);
   if (UNLIKELY(it == map->end())) return nullptr;
   T* result = static_cast<T*>(it->second.get());
   DCHECK_NOT_NULL(result);
@@ -406,7 +406,7 @@ inline T* Environment::AddBindingData(
       context->GetAlignedPointerFromEmbedderData(
           ContextEmbedderIndex::kBindingListIndex));
   DCHECK_NOT_NULL(map);
-  auto result = map->emplace(T::binding_data_name, item);
+  auto result = map->emplace(T::type_name, item);
   CHECK(result.second);
   DCHECK_EQ(GetBindingData<T>(context), item.get());
   return item.get();
@@ -837,6 +837,14 @@ void Environment::set_filehandle_close_warning(bool on) {
   emit_filehandle_warning_ = on;
 }
 
+void Environment::set_source_maps_enabled(bool on) {
+  source_maps_enabled_ = on;
+}
+
+bool Environment::source_maps_enabled() const {
+  return source_maps_enabled_;
+}
+
 inline uint64_t Environment::thread_id() const {
   return thread_id_;
 }
@@ -882,6 +890,11 @@ inline std::list<node_module>* Environment::extra_linked_bindings() {
 inline node_module* Environment::extra_linked_bindings_head() {
   return extra_linked_bindings_.size() > 0 ?
       &extra_linked_bindings_.front() : nullptr;
+}
+
+inline node_module* Environment::extra_linked_bindings_tail() {
+  return extra_linked_bindings_.size() > 0 ?
+      &extra_linked_bindings_.back() : nullptr;
 }
 
 inline const Mutex& Environment::extra_linked_bindings_mutex() const {
@@ -1033,7 +1046,7 @@ inline void Environment::SetInstanceMethod(v8::Local<v8::FunctionTemplate> that,
   t->SetClassName(name_string);
 }
 
-void Environment::AddCleanupHook(void (*fn)(void*), void* arg) {
+void Environment::AddCleanupHook(CleanupCallback fn, void* arg) {
   auto insertion_info = cleanup_hooks_.emplace(CleanupHookCallback {
     fn, arg, cleanup_hook_counter_++
   });
@@ -1041,7 +1054,7 @@ void Environment::AddCleanupHook(void (*fn)(void*), void* arg) {
   CHECK_EQ(insertion_info.second, true);
 }
 
-void Environment::RemoveCleanupHook(void (*fn)(void*), void* arg) {
+void Environment::RemoveCleanupHook(CleanupCallback fn, void* arg) {
   CleanupHookCallback search { fn, arg, 0 };
   cleanup_hooks_.erase(search);
 }

@@ -2,6 +2,7 @@
 
 const {
   MathMin,
+  SafeStringIterator,
   Set,
   Symbol,
 } = primordials;
@@ -144,7 +145,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
   let escaped = null;
 
   function getPreviewPos() {
-    const displayPos = repl._getDisplayPos(`${repl._prompt}${repl.line}`);
+    const displayPos = repl._getDisplayPos(`${repl.getPrompt()}${repl.line}`);
     const cursorPos = repl.line.length !== repl.cursor ?
       repl.getCursorPos() :
       displayPos;
@@ -177,7 +178,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
         rows = pos.displayPos.rows - pos.cursorPos.rows;
         moveCursor(repl.output, 0, rows);
       }
-      const totalLine = `${repl._prompt}${repl.line}${completionPreview}`;
+      const totalLine = `${repl.getPrompt()}${repl.line}${completionPreview}`;
       const newPos = repl._getDisplayPos(totalLine);
       // Minimize work for the terminal. It is enough to clear the right part of
       // the current line in case the preview is visible on a single line.
@@ -263,7 +264,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
       }
       repl.output.write(result);
       cursorTo(repl.output, cursorPos.cols);
-      const totalLine = `${repl._prompt}${repl.line}${suffix}`;
+      const totalLine = `${repl.getPrompt()}${repl.line}${suffix}`;
       const newPos = repl._getDisplayPos(totalLine);
       const rows = newPos.rows - cursorPos.rows - (newPos.cols === 0 ? 1 : 0);
       moveCursor(repl.output, 0, -rows);
@@ -401,7 +402,7 @@ function setupPreview(repl, contextSymbol, bufferSymbol, active) {
           getStringWidth(inspected) > maxColumns) {
         maxColumns -= 4 + (repl.useColors ? 0 : 3);
         let res = '';
-        for (const char of inspected) {
+        for (const char of new SafeStringIterator(inspected)) {
           maxColumns -= getStringWidth(char);
           if (maxColumns < 0)
             break;
@@ -611,7 +612,7 @@ function setupReverseSearch(repl) {
     let rows = 0;
     if (lastMatch !== -1) {
       const line = repl.history[lastMatch].slice(0, lastCursor);
-      rows = repl._getDisplayPos(`${repl._prompt}${line}`).rows;
+      rows = repl._getDisplayPos(`${repl.getPrompt()}${line}`).rows;
       cursorTo(repl.output, promptPos.cols);
     } else if (isInReverseSearch && repl.line !== '') {
       rows = repl.getCursorPos().rows;
@@ -631,7 +632,7 @@ function setupReverseSearch(repl) {
 
     // To know exactly how many rows we have to move the cursor back we need the
     // cursor rows, the output rows and the input rows.
-    const prompt = repl._prompt;
+    const prompt = repl.getPrompt();
     const cursorLine = `${prompt}${outputLine.slice(0, cursor)}`;
     const cursorPos = repl._getDisplayPos(cursorLine);
     const outputPos = repl._getDisplayPos(`${prompt}${outputLine}`);
@@ -682,7 +683,7 @@ function setupReverseSearch(repl) {
     if (!isInReverseSearch) {
       if (key.ctrl && checkAndSetDirectionKey(key.name)) {
         historyIndex = repl.historyIndex;
-        promptPos = repl._getDisplayPos(`${repl._prompt}`);
+        promptPos = repl._getDisplayPos(`${repl.getPrompt()}`);
         print(repl.line, `${labels[dir]}_`);
         isInReverseSearch = true;
       }

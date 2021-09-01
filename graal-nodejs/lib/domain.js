@@ -124,12 +124,15 @@ process.setUncaughtExceptionCaptureCallback = function(fn) {
 
 
 let sendMakeCallbackDeprecation = false;
-function emitMakeCallbackDeprecation() {
+function emitMakeCallbackDeprecation({ target, method }) {
   if (!sendMakeCallbackDeprecation) {
     process.emitWarning(
       'Using a domain property in MakeCallback is deprecated. Use the ' +
       'async_context variant of MakeCallback or the AsyncResource class ' +
-      'instead.', 'DeprecationWarning', 'DEP0097');
+      'instead. ' +
+      `(Triggered by calling ${method?.name || '<anonymous>'} ` +
+      `on ${target?.constructor?.name}.)`,
+      'DeprecationWarning', 'DEP0097');
     sendMakeCallbackDeprecation = true;
   }
 }
@@ -137,7 +140,7 @@ function emitMakeCallbackDeprecation() {
 function topLevelDomainCallback(cb, ...args) {
   const domain = this.domain;
   if (exports.active && domain)
-    emitMakeCallbackDeprecation();
+    emitMakeCallbackDeprecation({ target: this, method: cb });
 
   if (domain)
     domain.enter();
@@ -316,7 +319,7 @@ Domain.prototype.exit = function() {
   // Exit all domains until this one.
   ArrayPrototypeSplice(stack, index);
 
-  exports.active = stack[stack.length - 1];
+  exports.active = stack.length === 0 ? undefined : stack[stack.length - 1];
   process.domain = exports.active;
   updateExceptionCapture();
 };
@@ -333,7 +336,7 @@ Domain.prototype.add = function(ee) {
     ee.domain.remove(ee);
 
   // Check for circular Domain->Domain links.
-  // This causes bad insanity!
+  // They cause big issues.
   //
   // For example:
   // var d = domain.create();
@@ -453,7 +456,7 @@ EventEmitter.init = function() {
 };
 
 const eventEmit = EventEmitter.prototype.emit;
-EventEmitter.prototype.emit = function(...args) {
+EventEmitter.prototype.emit = function emit(...args) {
   const domain = this.domain;
 
   const type = args[0];

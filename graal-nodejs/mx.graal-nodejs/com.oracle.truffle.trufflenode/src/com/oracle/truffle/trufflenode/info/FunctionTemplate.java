@@ -63,6 +63,7 @@ public final class FunctionTemplate {
     private final int length;
     private FunctionTemplate parent;
     private String className = "";
+    private boolean readOnlyPrototype;
     private DynamicObject functionObj;
     private final boolean singleFunctionTemplate;
 
@@ -144,6 +145,14 @@ public final class FunctionTemplate {
 
     public void setParent(FunctionTemplate parent) {
         this.parent = parent;
+    }
+
+    public void markPrototypeReadOnly() {
+        this.readOnlyPrototype = true;
+    }
+
+    public boolean hasReadOnlyPrototype() {
+        return readOnlyPrototype;
     }
 
 }

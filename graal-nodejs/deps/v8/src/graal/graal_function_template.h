@@ -60,6 +60,7 @@ public:
     bool HasInstance(v8::Local<v8::Value> object);
     void SetCallHandler(v8::FunctionCallback callback, v8::Local<v8::Value> data);
     void Inherit(v8::Local<v8::FunctionTemplate> parent);
+    void ReadOnlyPrototype();
 protected:
     inline GraalFunctionTemplate(GraalIsolate* isolate, jobject java_template, int id);
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;

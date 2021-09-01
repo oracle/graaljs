@@ -2,8 +2,6 @@
 
 const {
   ArrayIsArray,
-  Map,
-  MapPrototypeSet,
   ObjectCreate,
   ObjectEntries,
   ObjectFreeze,
@@ -12,6 +10,8 @@ const {
   RegExpPrototypeTest,
   SafeMap,
   SafeSet,
+  StringPrototypeEndsWith,
+  StringPrototypeReplace,
   Symbol,
   uncurryThis,
 } = primordials;
@@ -41,8 +41,10 @@ const shouldAbortOnUncaughtException =
   getOptionValue('--abort-on-uncaught-exception');
 const { abort, exit, _rawDebug } = process;
 
+const kTerminate = () => null;
+
 // From https://url.spec.whatwg.org/#special-scheme
-const SPECIAL_SCHEMES = new SafeSet([
+const kSpecialSchemes = new SafeSet([
   'file:',
   'ftp:',
   'http:',
@@ -76,7 +78,7 @@ function REACTION_LOG(error) {
 
 class Manifest {
   /**
-   * @type {Map<string, DependencyMapper>}
+   * @type {Map<string | null | undefined, DependencyMapper>}
    *
    * Used to compare a resource to the content body at the resource.
    * `true` is used to signify that all integrities are allowed, otherwise,
@@ -139,6 +141,8 @@ class Manifest {
    */
   constructor(obj, manifestURL) {
     const scopes = this.#scopeDependencies;
+    scopes.set(null, kTerminate);
+    scopes.set(undefined, kTerminate);
     const integrities = this.#resourceIntegrities;
     const dependencies = this.#resourceDependencies;
     let reaction = REACTION_THROW;
@@ -205,18 +209,20 @@ class Manifest {
       return (toSpecifier, conditions) => {
         if (toSpecifier in dependencyMap !== true) {
           if (cascade === true) {
-            let scopeHREF;
+            /** @type {string | null} */
+            let scopeHREF = resourceHREF;
             if (typeof parentDeps === 'undefined') {
               do {
-                scopeHREF = this.#findScopeHREF(resourceHREF);
+                scopeHREF = this.#findScopeHREF(scopeHREF);
+                if (scopeHREF === resourceHREF) {
+                  scopeHREF = null;
+                }
+                if (scopes.has(scopeHREF)) {
+                  break;
+                }
               } while (
-                scopeHREF !== null &&
-                scopes.has(scopeHREF) !== true
+                scopeHREF !== null
               );
-            }
-            if (scopeHREF === null) {
-              parentDeps = () => null;
-            } else {
               parentDeps = scopes.get(scopeHREF);
             }
             return parentDeps(toSpecifier);
@@ -328,14 +334,15 @@ class Manifest {
      * @returns {string}
      */
     const protocolOrResolve = (resourceHREF) => {
-      if (resourceHREF.endsWith(':')) {
+      if (StringPrototypeEndsWith(resourceHREF, ':')) {
         // URL parse will trim these anyway, save the compute
-        resourceHREF = resourceHREF.replace(
+        resourceHREF = StringPrototypeReplace(
+          resourceHREF,
           // eslint-disable-next-line
           /^[\x00-\x1F\x20]|\x09\x0A\x0D|[\x00-\x1F\x20]$/g,
           ''
         );
-        if (/^[a-zA-Z][a-zA-Z+\-.]*:$/.test(resourceHREF)) {
+        if (RegExpPrototypeTest(/^[a-zA-Z][a-zA-Z+\-.]*:$/, resourceHREF)) {
           return resourceHREF;
         }
       }
@@ -416,9 +423,9 @@ class Manifest {
       protocol = currentURL.protocol;
     }
     // Only a few schemes are hierarchical
-    if (SPECIAL_SCHEMES.has(currentURL.protocol)) {
+    if (kSpecialSchemes.has(currentURL.protocol)) {
       // Make first '..' act like '.'
-      if (currentURL.pathname.slice(-1) !== '/') {
+      if (!StringPrototypeEndsWith(currentURL.pathname, '/')) {
         currentURL.pathname += '/';
       }
       let lastHREF;
@@ -470,7 +477,7 @@ class Manifest {
   assertIntegrity(url, content) {
     const href = `${url}`;
     debug('Checking integrity of %s', href);
-    const realIntegrities = new Map();
+    const realIntegrities = new SafeMap();
     const integrities = this.#resourceIntegrities;
     function processEntry(href) {
       let integrityEntries = integrities.get(href);
@@ -499,8 +506,7 @@ class Manifest {
             timingSafeEqual(digest, expected)) {
             return true;
           }
-          MapPrototypeSet(
-            realIntegrities,
+          realIntegrities.set(
             algorithm,
             BufferToString(digest, 'base64')
           );

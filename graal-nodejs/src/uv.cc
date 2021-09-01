@@ -22,7 +22,7 @@
 #include "uv.h"
 #include "env-inl.h"
 #include "node.h"
-#include "node_process.h"
+#include "node_process-inl.h"
 
 namespace node {
 
@@ -81,6 +81,8 @@ void GetErrMap(const FunctionCallbackInfo<Value>& args) {
   Isolate* isolate = env->isolate();
   Local<Context> context = env->context();
 
+  // This can't return a SafeMap, because the uv binding can be referenced
+  // by user code by using `process.binding('uv').getErrorMap()`:
   Local<Map> err_map = Map::New(isolate);
 
   size_t errors_len = arraysize(per_process::uv_errors_map);

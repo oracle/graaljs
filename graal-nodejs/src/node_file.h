@@ -27,7 +27,7 @@ class BindingData : public BaseObject {
   std::vector<BaseObjectPtr<FileHandleReadWrap>>
       file_handle_read_wrap_freelist;
 
-  static constexpr FastStringKey binding_data_name { "fs" };
+  static constexpr FastStringKey type_name { "fs" };
 
   void MemoryInfo(MemoryTracker* tracker) const override;
   SET_SELF_SIZE(BindingData)
@@ -109,7 +109,7 @@ class FSReqBase : public ReqWrap<uv_fs_t> {
 
   void MemoryInfo(MemoryTracker* tracker) const override;
 
-  BindingData* binding_data() { return binding_data_.get(); }
+  BindingData* binding_data();
 
  private:
   std::unique_ptr<FSContinuationData> continuation_data_;

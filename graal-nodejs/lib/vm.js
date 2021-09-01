@@ -23,6 +23,7 @@
 
 const {
   ArrayPrototypeForEach,
+  ArrayPrototypeUnshift,
   Symbol,
   PromiseReject,
   ReflectApply,
@@ -130,17 +131,17 @@ class Script extends ContextifyScript {
     if (breakOnSigint && process.listenerCount('SIGINT') > 0) {
       return sigintHandlersWrap(super.runInThisContext, this, args);
     }
-    return super.runInThisContext(...args);
+    return ReflectApply(super.runInThisContext, this, args);
   }
 
   runInContext(contextifiedObject, options) {
     validateContext(contextifiedObject);
     const { breakOnSigint, args } = getRunInContextArgs(options);
+    ArrayPrototypeUnshift(args, contextifiedObject);
     if (breakOnSigint && process.listenerCount('SIGINT') > 0) {
-      return sigintHandlersWrap(super.runInContext, this,
-                                [contextifiedObject, ...args]);
+      return sigintHandlersWrap(super.runInContext, this, args);
     }
-    return super.runInContext(contextifiedObject, ...args);
+    return ReflectApply(super.runInContext, this, args);
   }
 
   runInNewContext(contextObject, options) {
@@ -210,9 +211,8 @@ function getContextOptions(options) {
 }
 
 function isContext(object) {
-  if (typeof object !== 'object' || object === null) {
-    throw new ERR_INVALID_ARG_TYPE('object', 'Object', object);
-  }
+  validateObject(object, 'object', { allowArray: true });
+
   return _isContext(object);
 }
 
@@ -274,9 +274,9 @@ function sigintHandlersWrap(fn, thisArg, argsArray) {
   } finally {
     // Add using the public methods so that the `newListener` handler of
     // process can re-attach the listeners.
-    for (const listener of sigintListeners) {
+    ArrayPrototypeForEach(sigintListeners, (listener) => {
       process.addListener('SIGINT', listener);
-    }
+    });
   }
 }
 

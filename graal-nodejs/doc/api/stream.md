@@ -65,8 +65,7 @@ object mode is not safe.
 <!--type=misc-->
 
 Both [`Writable`][] and [`Readable`][] streams will store data in an internal
-buffer that can be retrieved using `writable.writableBuffer` or
-`readable.readableBuffer`, respectively.
+buffer.
 
 The amount of data potentially buffered depends on the `highWaterMark` option
 passed into the stream's constructor. For normal streams, the `highWaterMark`
@@ -109,6 +108,11 @@ consumption of data received *from* the socket and whose `Writable` side allows
 writing data *to* the socket. Because data may be written to the socket at a
 faster or slower rate than data is received, each side should
 operate (and buffer) independently of the other.
+
+The mechanics of the internal buffering are an internal implementation detail
+and may be changed at any time. However, for certain advanced implementations,
+the internal buffers can be retrieved using `writable.writableBuffer` or
+`readable.readableBuffer`. Use of these undocumented properties is discouraged.
 
 ## API for stream consumers
 
@@ -569,6 +573,15 @@ added: v9.4.0
 This property contains the number of bytes (or objects) in the queue
 ready to be written. The value provides introspection data regarding
 the status of the `highWaterMark`.
+
+##### `writable.writableNeedDrain`
+<!-- YAML
+added: v14.17.0
+-->
+
+* {boolean}
+
+Is `true` if the stream's buffer has been full and stream will emit `'drain'`.
 
 ##### `writable.writableObjectMode`
 <!-- YAML
@@ -2009,8 +2022,14 @@ user programs.
 
 #### `writable._writev(chunks, callback)`
 
-* `chunks` {Object[]} The chunks to be written. Each chunk has following
-  format: `{ chunk: ..., encoding: ... }`.
+* `chunks` {Object[]} The data to be written. The value is an array of {Object}
+  that each represent a discrete chunk of data to write. The properties of
+  these objects are:
+  * `chunk` {Buffer|string} A buffer instance or string containing the data to
+    be written. The `chunk` will be a string if the `Writable` was created with
+    the `decodeStrings` option set to `false` and a string was passed to `write()`.
+  * `encoding` {string} The character encoding of the `chunk`. If `chunk` is
+    a `Buffer`, the `encoding` will be `'buffer'`.
 * `callback` {Function} A callback function (optionally with an error
   argument) to be invoked when processing is complete for the supplied chunks.
 
@@ -2235,10 +2254,12 @@ All `Readable` stream implementations must provide an implementation of the
 
 When [`readable._read()`][] is called, if data is available from the resource,
 the implementation should begin pushing that data into the read queue using the
-[`this.push(dataChunk)`][stream-push] method. `_read()` should continue reading
-from the resource and pushing data until `readable.push()` returns `false`. Only
-when `_read()` is called again after it has stopped should it resume pushing
-additional data onto the queue.
+[`this.push(dataChunk)`][stream-push] method. `_read()` will be called again
+after each call to [`this.push(dataChunk)`][stream-push] once the stream is
+ready to accept more data. `_read()` may continue reading from the resource and
+pushing data until `readable.push()` returns `false`. Only when `_read()` is
+called again after it has stopped should it resume pushing additional data into
+the queue.
 
 Once the [`readable._read()`][] method has been called, it will not be called
 again until more data is pushed through the [`readable.push()`][stream-push]

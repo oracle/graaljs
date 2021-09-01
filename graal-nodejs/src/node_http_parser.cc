@@ -88,7 +88,7 @@ class BindingData : public BaseObject {
   BindingData(Environment* env, Local<Object> obj)
       : BaseObject(env, obj) {}
 
-  static constexpr FastStringKey binding_data_name { "http_parser" };
+  static constexpr FastStringKey type_name { "http_parser" };
 
   std::vector<char> parser_buffer;
   bool parser_buffer_in_use = false;
@@ -101,7 +101,7 @@ class BindingData : public BaseObject {
 };
 
 // TODO(addaleax): Remove once we're on C++17.
-constexpr FastStringKey BindingData::binding_data_name;
+constexpr FastStringKey BindingData::type_name;
 
 // helper class for the Parser
 struct StringPtr {
@@ -879,6 +879,15 @@ class Parser : public AsyncWrap, public StreamListener {
     llhttp_set_error_reason(&parser_, "Paused in callback");
     return HPE_PAUSED;
   }
+
+
+  bool IsNotIndicativeOfMemoryLeakAtExit() const override {
+    // HTTP parsers are able to emit events without any GC root referring
+    // to them, because they receive events directly from the underlying
+    // libuv resource.
+    return true;
+  }
+
 
   llhttp_t parser_;
   StringPtr fields_[kMaxHeaderFieldsCount];  // header fields

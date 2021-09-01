@@ -168,4 +168,47 @@ describe('Serialization', function () {
             message: /could not be cloned/
         });
     });
+    it('should handle deserialization failures', function () {
+        assert.throws(function() {
+            new v8.Deserializer(new v8.Serializer().releaseBuffer()).readHeader();
+        }, {
+            name: 'Error',
+            message: 'Unable to deserialize cloned data due to invalid or unsupported version.'
+        });
+
+        assert.throws(function() {
+            new v8.Deserializer(new v8.Serializer().releaseBuffer()).readValue();
+        }, {
+            name: 'Error',
+            message: 'Unable to deserialize cloned data.'
+        });
+
+        assert.throws(function() {
+            new v8.Deserializer(new v8.Serializer().releaseBuffer()).readUint32();
+        }, {
+            name: 'Error',
+            message: 'ReadUint32() failed'
+        });
+
+        assert.throws(function() {
+            new v8.Deserializer(new v8.Serializer().releaseBuffer()).readUint64();
+        }, {
+            name: 'Error',
+            message: 'ReadUint64() failed'
+        });
+
+        assert.throws(function() {
+            new v8.Deserializer(new v8.Serializer().releaseBuffer()).readDouble();
+        }, {
+            name: 'Error',
+            message: 'ReadDouble() failed'
+        });
+
+        assert.throws(function() {
+            new v8.Deserializer(new v8.Serializer().releaseBuffer()).readRawBytes(1);
+        }, {
+            name: 'Error',
+            message: 'ReadRawBytes() failed'
+        });
+    })
 });

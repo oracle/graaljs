@@ -22,7 +22,12 @@
 'use strict';
 // Flags: --max_old_space_size=32
 
-require('../common');
+const common = require('../common');
+
+if (process.config.variables.asan) {
+  common.skip('ASAN messes with memory measurements');
+}
+
 const assert = require('assert');
 const vm = require('vm');
 
@@ -36,7 +41,7 @@ const interval = setInterval(function() {
 
   const rss = process.memoryUsage().rss;
   assert.ok(rss < 64 * 1024 * 1024,
-            `memory usage: ${Math.round(rss / (1024 * 1024))}Mb`);
+            `memory usage: ${rss} (${Math.round(rss / (1024 * 1024))} MB)`);
 
   // Stop after 5 seconds.
   if (Date.now() - start > 5 * 1000) {

@@ -1,28 +1,20 @@
 'use strict';
 
-/* eslint-disable no-restricted-globals */
+/* eslint-disable node-core/prefer-primordials */
 
 // This file subclasses and stores the JS builtins that come from the VM
 // so that Node.js's builtin modules do not need to later look these up from
 // the global proxy, which can be mutated by users.
 
-// TODO(joyeecheung): we can restrict access to these globals in builtin
-// modules through the JS linter, for example: ban access such as `Object`
-// (which falls back to a lookup in the global proxy) in favor of
-// `primordials.Object` where `primordials` is a lexical variable passed
-// by the native module compiler.
+// Use of primordials have sometimes a dramatic impact on performance, please
+// benchmark all changes made in performance-sensitive areas of the codebase.
+// See: https://github.com/nodejs/node/pull/38248
 
-const ReflectApply = Reflect.apply;
-
-// This function is borrowed from the function with the same name on V8 Extras'
-// `utils` object. V8 implements Reflect.apply very efficiently in conjunction
-// with the spread syntax, such that no additional special case is needed for
-// function calls w/o arguments.
-// Refs: https://github.com/v8/v8/blob/d6ead37d265d7215cf9c5f768f279e21bd170212/src/js/prologue.js#L152-L156
-function uncurryThis(func) {
-  return (thisArg, ...args) => ReflectApply(func, thisArg, args);
-}
-
+// `uncurryThis` is equivalent to `func => Function.prototype.call.bind(func)`.
+// It is using `bind.bind(call)` to avoid using `Function.prototype.bind`
+// and `Function.prototype.call` after it may have been mutated by users.
+const { bind, call } = Function.prototype;
+const uncurryThis = bind.bind(call);
 primordials.uncurryThis = uncurryThis;
 
 function copyProps(src, dest) {
@@ -36,82 +28,176 @@ function copyProps(src, dest) {
   }
 }
 
+function getNewKey(key) {
+  return typeof key === 'symbol' ?
+    `Symbol${key.description[7].toUpperCase()}${key.description.slice(8)}` :
+    `${key[0].toUpperCase()}${key.slice(1)}`;
+}
+
+function copyAccessor(dest, prefix, key, { enumerable, get, set }) {
+  Reflect.defineProperty(dest, `${prefix}Get${key}`, {
+    value: uncurryThis(get),
+    enumerable
+  });
+  if (set !== undefined) {
+    Reflect.defineProperty(dest, `${prefix}Set${key}`, {
+      value: uncurryThis(set),
+      enumerable
+    });
+  }
+}
+
 function copyPropsRenamed(src, dest, prefix) {
   for (const key of Reflect.ownKeys(src)) {
-    if (typeof key === 'string') {
-      Reflect.defineProperty(
-        dest,
-        `${prefix}${key[0].toUpperCase()}${key.slice(1)}`,
-        Reflect.getOwnPropertyDescriptor(src, key));
+    const newKey = getNewKey(key);
+    const desc = Reflect.getOwnPropertyDescriptor(src, key);
+    if ('get' in desc) {
+      copyAccessor(dest, prefix, newKey, desc);
+    } else {
+      Reflect.defineProperty(dest, `${prefix}${newKey}`, desc);
     }
   }
 }
 
 function copyPropsRenamedBound(src, dest, prefix) {
   for (const key of Reflect.ownKeys(src)) {
-    if (typeof key === 'string') {
-      const desc = Reflect.getOwnPropertyDescriptor(src, key);
+    const newKey = getNewKey(key);
+    const desc = Reflect.getOwnPropertyDescriptor(src, key);
+    if ('get' in desc) {
+      copyAccessor(dest, prefix, newKey, desc);
+    } else {
       if (typeof desc.value === 'function') {
         desc.value = desc.value.bind(src);
       }
-      Reflect.defineProperty(
-        dest,
-        `${prefix}${key[0].toUpperCase()}${key.slice(1)}`,
-        desc
-      );
+      Reflect.defineProperty(dest, `${prefix}${newKey}`, desc);
     }
   }
 }
 
 function copyPrototype(src, dest, prefix) {
   for (const key of Reflect.ownKeys(src)) {
-    if (typeof key === 'string') {
-      const desc = Reflect.getOwnPropertyDescriptor(src, key);
+    const newKey = getNewKey(key);
+    const desc = Reflect.getOwnPropertyDescriptor(src, key);
+    if ('get' in desc) {
+      copyAccessor(dest, prefix, newKey, desc);
+    } else {
       if (typeof desc.value === 'function') {
         desc.value = uncurryThis(desc.value);
       }
-      Reflect.defineProperty(
-        dest,
-        `${prefix}${key[0].toUpperCase()}${key.slice(1)}`,
-        desc);
+      Reflect.defineProperty(dest, `${prefix}${newKey}`, desc);
     }
   }
 }
 
+const createSafeIterator = (factory, next) => {
+  class SafeIterator {
+    constructor(iterable) {
+      this._iterator = factory(iterable);
+    }
+    next() {
+      return next(this._iterator);
+    }
+    [Symbol.iterator]() {
+      return this;
+    }
+  }
+  Object.setPrototypeOf(SafeIterator.prototype, null);
+  Object.freeze(SafeIterator.prototype);
+  Object.freeze(SafeIterator);
+  return SafeIterator;
+};
+
 function makeSafe(unsafe, safe) {
-  copyProps(unsafe.prototype, safe.prototype);
+  if (Symbol.iterator in unsafe.prototype) {
+    const dummy = new unsafe();
+    let next; // We can reuse the same `next` method.
+
+    for (const key of Reflect.ownKeys(unsafe.prototype)) {
+      if (!Reflect.getOwnPropertyDescriptor(safe.prototype, key)) {
+        const desc = Reflect.getOwnPropertyDescriptor(unsafe.prototype, key);
+        if (
+          typeof desc.value === 'function' &&
+          desc.value.length === 0 &&
+          Symbol.iterator in (desc.value.call(dummy) ?? {})
+        ) {
+          const createIterator = uncurryThis(desc.value);
+          if (next == null) next = uncurryThis(createIterator(dummy).next);
+          const SafeIterator = createSafeIterator(createIterator, next);
+          desc.value = function() {
+            return new SafeIterator(this);
+          };
+        }
+        Reflect.defineProperty(safe.prototype, key, desc);
+      }
+    }
+  } else {
+    copyProps(unsafe.prototype, safe.prototype);
+  }
   copyProps(unsafe, safe);
+
   Object.setPrototypeOf(safe.prototype, null);
   Object.freeze(safe.prototype);
   Object.freeze(safe);
   return safe;
 }
+primordials.makeSafe = makeSafe;
 
 // Subclass the constructors because we need to use their prototype
 // methods later.
+// Defining the `constructor` is necessary here to avoid the default
+// constructor which uses the user-mutable `%ArrayIteratorPrototype%.next`.
 primordials.SafeMap = makeSafe(
   Map,
-  class SafeMap extends Map {}
+  class SafeMap extends Map {
+    constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
+  }
 );
 primordials.SafeWeakMap = makeSafe(
   WeakMap,
-  class SafeWeakMap extends WeakMap {}
+  class SafeWeakMap extends WeakMap {
+    constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
+  }
 );
 primordials.SafeSet = makeSafe(
   Set,
-  class SafeSet extends Set {}
+  class SafeSet extends Set {
+    constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
+  }
 );
-primordials.SafePromise = makeSafe(
-  Promise,
-  class SafePromise extends Promise {}
+primordials.SafeWeakSet = makeSafe(
+  WeakSet,
+  class SafeWeakSet extends WeakSet {
+    constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
+  }
 );
+
+// Create copies of configurable value properties of the global object
+[
+  'Proxy',
+  'globalThis',
+].forEach((name) => {
+  // eslint-disable-next-line no-restricted-globals
+  primordials[name] = globalThis[name];
+});
+
+// Create copies of URI handling functions
+[
+  decodeURI,
+  decodeURIComponent,
+  encodeURI,
+  encodeURIComponent,
+].forEach((fn) => {
+  primordials[fn.name] = fn;
+});
 
 // Create copies of the namespace objects
 [
   'JSON',
   'Math',
-  'Reflect'
+  'Proxy',
+  'Reflect',
 ].forEach((name) => {
+  // eslint-disable-next-line no-restricted-globals
   copyPropsRenamed(global[name], primordials, name);
 });
 
@@ -123,6 +209,7 @@ primordials.SafePromise = makeSafe(
   'BigInt64Array',
   'BigUint64Array',
   'Boolean',
+  'DataView',
   'Date',
   'Error',
   'EvalError',
@@ -151,6 +238,7 @@ primordials.SafePromise = makeSafe(
   'WeakMap',
   'WeakSet',
 ].forEach((name) => {
+  // eslint-disable-next-line no-restricted-globals
   const original = global[name];
   primordials[name] = original;
   copyPropsRenamed(original, primordials, name);
@@ -163,11 +251,40 @@ primordials.SafePromise = makeSafe(
 [
   'Promise',
 ].forEach((name) => {
+  // eslint-disable-next-line no-restricted-globals
   const original = global[name];
   primordials[name] = original;
   copyPropsRenamedBound(original, primordials, name);
   copyPrototype(original.prototype, primordials, `${name}Prototype`);
 });
+
+// Create copies of abstract intrinsic objects that are not directly exposed
+// on the global object.
+// Refs: https://tc39.es/ecma262/#sec-%typedarray%-intrinsic-object
+[
+  { name: 'TypedArray', original: Reflect.getPrototypeOf(Uint8Array) },
+  { name: 'ArrayIterator', original: {
+    prototype: Reflect.getPrototypeOf(Array.prototype[Symbol.iterator]()),
+  } },
+  { name: 'StringIterator', original: {
+    prototype: Reflect.getPrototypeOf(String.prototype[Symbol.iterator]()),
+  } },
+].forEach(({ name, original }) => {
+  primordials[name] = original;
+  // The static %TypedArray% methods require a valid `this`, but can't be bound,
+  // as they need a subclass constructor as the receiver:
+  copyPrototype(original, primordials, name);
+  copyPrototype(original.prototype, primordials, `${name}Prototype`);
+});
+
+primordials.SafeArrayIterator = createSafeIterator(
+  primordials.ArrayPrototypeSymbolIterator,
+  primordials.ArrayIteratorPrototypeNext
+);
+primordials.SafeStringIterator = createSafeIterator(
+  primordials.StringPrototypeSymbolIterator,
+  primordials.StringIteratorPrototypeNext
+);
 
 Object.setPrototypeOf(primordials, null);
 Object.freeze(primordials);

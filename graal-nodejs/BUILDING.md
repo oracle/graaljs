@@ -8,7 +8,7 @@ If you can reproduce a test failure, search for it in the
 [Node.js issue tracker](https://github.com/nodejs/node/issues) or
 file a new issue.
 
-## Table of Contents
+## Table of contents
 
 * [Supported platforms](#supported-platforms)
   * [Input](#input)
@@ -30,6 +30,7 @@ file a new issue.
     * [Building the documentation](#building-the-documentation)
     * [Building a debug build](#building-a-debug-build)
     * [Building an ASAN build](#building-an-asan-build)
+    * [Speeding up frequent rebuilds when developing](#speeding-up-frequent-rebuilds-when-developing)
     * [Troubleshooting Unix and macOS builds](#troubleshooting-unix-and-macos-builds)
   * [Windows](#windows)
     * [Prerequisites](#prerequisites)
@@ -216,10 +217,9 @@ Supported platforms and toolchains change with each major version of Node.js.
 This document is only valid for the current major version of Node.js.
 Consult previous versions of this document for older versions of Node.js:
 
-* [Node.js 13](https://github.com/nodejs/node/blob/v13.x/BUILDING.md)
+* [Node.js 14](https://github.com/nodejs/node/blob/v14.x/BUILDING.md)
 * [Node.js 12](https://github.com/nodejs/node/blob/v12.x/BUILDING.md)
 * [Node.js 10](https://github.com/nodejs/node/blob/v10.x/BUILDING.md)
-* [Node.js 8](https://github.com/nodejs/node/blob/v8.x/BUILDING.md)
 
 ## Building Node.js on supported platforms
 
@@ -238,7 +238,7 @@ test with Python 3.
 * GNU Make 3.81 or newer
 * Python (see note above)
   * Python 2.7
-  * Python 3.5, 3.6, 3.7, and 3.8
+  * Python 3.5, 3.6, 3.7, or 3.8
 
 Installation via Linux package manager can be achieved with:
 
@@ -250,14 +250,12 @@ Installation via Linux package manager can be achieved with:
 
 FreeBSD and OpenBSD users may also need to install `libexecinfo`.
 
-Python 3 users may also need to install `python3-distutils`.
-
 #### macOS prerequisites
 
 * Xcode Command Line Tools >= 10 for macOS
 * Python (see note above)
   * Python 2.7
-  * Python 3.5, 3.6, 3.7, and 3.8
+  * Python 3.5, 3.6, 3.7, or 3.8
 
 macOS users can install the `Xcode Command Line Tools` by running
 `xcode-select --install`. Alternatively, if you already have the full Xcode
@@ -276,11 +274,6 @@ To build Node.js:
 $ ./configure
 $ make -j4
 ```
-
-If you run into a `No module named 'distutils.spawn'` error when executing
-`./configure`, please try `python3 -m pip install --upgrade setuptools` or
-`sudo apt install python3-distutils -y`.
-For more information, see <https://github.com/nodejs/node/issues/30189>.
 
 The `-j4` option will cause `make` to run 4 simultaneous compilation jobs which
 may reduce build time. For more information, see the
@@ -308,7 +301,7 @@ To install this version of Node.js into a system directory:
 [sudo] make install
 ```
 
-#### Running Tests
+#### Running tests
 
 To verify the build:
 
@@ -378,7 +371,7 @@ You can use
 [node-code-ide-configs](https://github.com/nodejs/node-code-ide-configs)
 to run/debug tests, if your IDE configs are present.
 
-#### Running Coverage
+#### Running coverage
 
 It's good practice to ensure any code you add or change is covered by tests.
 You can do so by running the test suite with coverage enabled:
@@ -389,28 +382,32 @@ $ make coverage
 ```
 
 A detailed coverage report will be written to `coverage/index.html` for
-JavaScript coverage and to `coverage/cxxcoverage.html` for C++ coverage
-(if you only want to run the JavaScript tests then you do not need to run
-the first command `./configure --coverage`).
+JavaScript coverage and to `coverage/cxxcoverage.html` for C++ coverage.
 
-_Generating a test coverage report can take several minutes._
-
-To collect coverage for a subset of tests you can set the `CI_JS_SUITES` and
-`CI_NATIVE_SUITES` variables (to run specific suites, e.g., `child-process`, in
-isolation, unset the opposing `_SUITES` variable):
+If you only want to run the JavaScript tests then you do not need to run
+the first command (`./configure --coverage`). Run `make coverage-run-js`,
+to execute JavaScript tests independently of the C++ test suite:
 
 ```text
-$ CI_JS_SUITES=child-process CI_NATIVE_SUITES= make coverage
+$ make coverage-run-js
 ```
 
-The above command executes tests for the `child-process` subsystem and
-outputs the resulting coverage report.
-
-Alternatively, you can run `make coverage-run-js`, to execute JavaScript tests
-independently of the C++ test suite:
+If you are updating tests and want to collect coverage for a single test file
+(e.g. `test/parallel/test-stream2-transform.js`):
 
 ```text
-$ CI_JS_SUITES=fs CI_NATIVE_SUITES= make coverage-run-js
+$ make coverage-clean
+$ NODE_V8_COVERAGE=coverage/tmp python tools/test.py test/parallel/test-stream2-transform.js
+$ make coverage-report-js
+```
+
+You can collect coverage for the entire suite of tests for a given subsystem
+by providing the name of a subsystem:
+
+```text
+$ make coverage-clean
+$ NODE_V8_COVERAGE=coverage/tmp python tools/test.py -J --mode=release child-process
+$ make coverage-report-js
 ```
 
 The `make coverage` command downloads some tools to the project root directory.
@@ -522,6 +519,29 @@ $  ./configure --debug --enable-asan && make -j4
 $ make test-only
 ```
 
+#### Speeding up frequent rebuilds when developing
+
+If you plan to frequently rebuild Node.js, especially if using several branches,
+installing `ccache` can help to greatly reduce build times. Set up with:
+```console
+$ sudo apt install ccache   # for Debian/Ubuntu, included in most Linux distros
+$ ccache -o cache_dir=<tmp_dir>
+$ ccache -o max_size=5.0G
+$ export CC="ccache gcc"    # add to your .profile
+$ export CXX="ccache g++"   # add to your .profile
+```
+This will allow for near-instantaneous rebuilds even when switching branches.
+
+When modifying only the JS layer in `lib`, it is possible to externally load it
+without modifying the executable:
+```console
+$ ./configure --node-builtin-modules-path $(pwd)
+```
+The resulting binary won't include any JS files and will try to load them from
+the specified directory. The JS debugger of Visual Studio Code supports this
+configuration since the November 2020 version and allows for setting
+breakpoints.
+
 #### Troubleshooting Unix and macOS builds
 
 Stale builds can sometimes result in `file not found` errors while building.
@@ -586,7 +606,7 @@ packages:
 
 To install Node.js prerequisites using
 [Boxstarter WebLauncher](https://boxstarter.org/WebLauncher), open
-<https://boxstarter.org/package/nr/url?https://raw.githubusercontent.com/nodejs/node/master/tools/bootstrap/windows_boxstarter>
+<https://boxstarter.org/package/nr/url?https://raw.githubusercontent.com/nodejs/node/HEAD/tools/bootstrap/windows_boxstarter>
 with Internet Explorer or Edge browser on the target machine.
 
 Alternatively, you can use PowerShell. Run those commands from an elevated
@@ -596,7 +616,7 @@ PowerShell terminal:
 Set-ExecutionPolicy Unrestricted -Force
 iex ((New-Object System.Net.WebClient).DownloadString('https://boxstarter.org/bootstrapper.ps1'))
 get-boxstarter -Force
-Install-BoxstarterPackage https://raw.githubusercontent.com/nodejs/node/master/tools/bootstrap/windows_boxstarter -DisableReboots
+Install-BoxstarterPackage https://raw.githubusercontent.com/nodejs/node/HEAD/tools/bootstrap/windows_boxstarter -DisableReboots
 ```
 
 The entire installation using Boxstarter will take up approximately 10 GB of
@@ -641,7 +661,7 @@ $ make
 
 ## `Intl` (ECMA-402) support
 
-[Intl](https://github.com/nodejs/node/blob/master/doc/api/intl.md) support is
+[Intl](https://github.com/nodejs/node/blob/HEAD/doc/api/intl.md) support is
 enabled by default.
 
 ### Build with full ICU support (all locales supported by ICU)
@@ -785,4 +805,4 @@ When Node.js is built (with an intention to distribute) with an ABI
 incompatible with the official Node.js builds (e.g. using a ABI incompatible
 version of a dependency), please reserve and use a custom `NODE_MODULE_VERSION`
 by opening a pull request against the registry available at
-<https://github.com/nodejs/node/blob/master/doc/abi_version_registry.json>.
+<https://github.com/nodejs/node/blob/HEAD/doc/abi_version_registry.json>.

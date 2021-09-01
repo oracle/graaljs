@@ -248,8 +248,47 @@ The [`setImmediate()`][], [`setInterval()`][], and [`setTimeout()`][] methods
 each return objects that represent the scheduled timers. These can be used to
 cancel the timer and prevent it from triggering.
 
-It is not possible to cancel timers that were created using the promisified
-variants of [`setImmediate()`][], [`setTimeout()`][].
+For the promisified variants of [`setImmediate()`][] and [`setTimeout()`][],
+an [`AbortController`][] may be used to cancel the timer. When canceled, the
+returned Promises will be rejected with an `'AbortError'`.
+
+For `setImmediate()`:
+
+```js
+const util = require('util');
+const setImmediatePromise = util.promisify(setImmediate);
+
+const ac = new AbortController();
+const signal = ac.signal;
+
+setImmediatePromise('foobar', { signal })
+  .then(console.log)
+  .catch((err) => {
+    if (err.name === 'AbortError')
+      console.log('The immediate was aborted');
+  });
+
+ac.abort();
+```
+
+For `setTimeout()`:
+
+```js
+const util = require('util');
+const setTimeoutPromise = util.promisify(setTimeout);
+
+const ac = new AbortController();
+const signal = ac.signal;
+
+setTimeoutPromise(1000, 'foobar', { signal })
+  .then(console.log)
+  .catch((err) => {
+    if (err.name === 'AbortError')
+      console.log('The timeout was aborted');
+  });
+
+ac.abort();
+```
 
 ### `clearImmediate(immediate)`
 <!-- YAML
@@ -266,7 +305,8 @@ Cancels an `Immediate` object created by [`setImmediate()`][].
 added: v0.0.1
 -->
 
-* `timeout` {Timeout} A `Timeout` object as returned by [`setInterval()`][].
+* `timeout` {Timeout|string|number} A `Timeout` object as returned by [`setInterval()`][]
+  or the [primitive][] of the `Timeout` object as a string or a number.
 
 Cancels a `Timeout` object created by [`setInterval()`][].
 
@@ -275,11 +315,13 @@ Cancels a `Timeout` object created by [`setInterval()`][].
 added: v0.0.1
 -->
 
-* `timeout` {Timeout} A `Timeout` object as returned by [`setTimeout()`][].
+* `timeout` {Timeout|string|number} A `Timeout` object as returned by [`setTimeout()`][]
+  or the [primitive][] of the `Timeout` object as a string or a number.
 
 Cancels a `Timeout` object created by [`setTimeout()`][].
 
 [Event Loop]: https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#setimmediate-vs-settimeout
+[`AbortController`]: globals.md#globals_class_abortcontroller
 [`TypeError`]: errors.md#errors_class_typeerror
 [`clearImmediate()`]: timers.md#timers_clearimmediate_immediate
 [`clearInterval()`]: timers.md#timers_clearinterval_timeout
@@ -289,3 +331,4 @@ Cancels a `Timeout` object created by [`setTimeout()`][].
 [`setTimeout()`]: timers.md#timers_settimeout_callback_delay_args
 [`util.promisify()`]: util.md#util_util_promisify_original
 [`worker_threads`]: worker_threads.md
+[primitive]: timers.md#timers_timeout_symbol_toprimitive

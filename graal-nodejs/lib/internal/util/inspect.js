@@ -3,24 +3,18 @@
 const {
   Array,
   ArrayIsArray,
-  BigInt64Array,
+  ArrayPrototypeFilter,
   BigIntPrototypeValueOf,
-  BigUint64Array,
   BooleanPrototypeValueOf,
   DatePrototypeGetTime,
   DatePrototypeToISOString,
   DatePrototypeToString,
   ErrorPrototypeToString,
-  Float32Array,
-  Float64Array,
   FunctionPrototypeCall,
   FunctionPrototypeToString,
-  Int8Array,
-  Int16Array,
-  Int32Array,
   JSONStringify,
   Map,
-  MapPrototype,
+  MapPrototypeGetSize,
   MapPrototypeEntries,
   MathFloor,
   MathMax,
@@ -48,9 +42,12 @@ const {
   ObjectSetPrototypeOf,
   ReflectApply,
   RegExp,
+  RegExpPrototypeExec,
   RegExpPrototypeToString,
+  SafeSet,
+  SafeStringIterator,
   Set,
-  SetPrototype,
+  SetPrototypeGetSize,
   SetPrototypeValues,
   String,
   StringPrototypeValueOf,
@@ -58,11 +55,10 @@ const {
   SymbolPrototypeValueOf,
   SymbolIterator,
   SymbolToStringTag,
-  Uint16Array,
-  Uint32Array,
+  TypedArrayPrototypeGetLength,
+  TypedArrayPrototypeGetSymbolToStringTag,
   Uint8Array,
-  Uint8ArrayPrototype,
-  Uint8ClampedArray,
+  globalThis,
   uncurryThis,
 } = primordials;
 
@@ -120,35 +116,19 @@ const {
   isNumberObject,
   isBooleanObject,
   isBigIntObject,
-  isUint8Array,
-  isUint8ClampedArray,
-  isUint16Array,
-  isUint32Array,
-  isInt8Array,
-  isInt16Array,
-  isInt32Array,
-  isFloat32Array,
-  isFloat64Array,
-  isBigInt64Array,
-  isBigUint64Array
 } = require('internal/util/types');
 
 const assert = require('internal/assert');
 
 const { NativeModule } = require('internal/bootstrap/loaders');
 
-const setSizeGetter = uncurryThis(
-  ObjectGetOwnPropertyDescriptor(SetPrototype, 'size').get);
-const mapSizeGetter = uncurryThis(
-  ObjectGetOwnPropertyDescriptor(MapPrototype, 'size').get);
-const typedArraySizeGetter = uncurryThis(
-  ObjectGetOwnPropertyDescriptor(
-    ObjectGetPrototypeOf(Uint8ArrayPrototype), 'length').get);
-
 let hexSlice;
 
-const builtInObjects = new Set(
-  ObjectGetOwnPropertyNames(global).filter((e) => /^[A-Z][a-zA-Z0-9]+$/.test(e))
+const builtInObjects = new SafeSet(
+  ArrayPrototypeFilter(
+    ObjectGetOwnPropertyNames(globalThis),
+    (e) => RegExpPrototypeExec(/^[A-Z][a-zA-Z0-9]+$/, e) !== null
+  )
 );
 
 // https://tc39.es/ecma262/#sec-IsHTMLDDA-internal-slot
@@ -218,7 +198,7 @@ const meta = [
 ];
 
 // Regex used for ansi escape code splitting
-// Adopted from https://github.com/chalk/ansi-regex/blob/master/index.js
+// Adopted from https://github.com/chalk/ansi-regex/blob/HEAD/index.js
 // License: MIT, authors: @sindresorhus, Qix-, arjunmehta and LitoMore
 // Matches all ansi escape code sequences in a string
 const ansiPattern = '[\\u001B\\u009B][[\\]()#;?]*' +
@@ -362,7 +342,7 @@ inspect.colors = ObjectAssign(ObjectCreate(null), {
   italic: [3, 23],
   underline: [4, 24],
   blink: [5, 25],
-  // Swap forground and background colors
+  // Swap foreground and background colors
   inverse: [7, 27], // Alias: swapcolors, swapColors
   hidden: [8, 28], // Alias: conceal
   strikethrough: [9, 29], // Alias: strikeThrough, crossedout, crossedOut
@@ -720,26 +700,6 @@ function formatProxy(ctx, proxy, recurseTimes) {
     ctx, res, '', ['Proxy [', ']'], kArrayExtrasType, recurseTimes);
 }
 
-function findTypedConstructor(value) {
-  for (const [check, clazz] of [
-    [isUint8Array, Uint8Array],
-    [isUint8ClampedArray, Uint8ClampedArray],
-    [isUint16Array, Uint16Array],
-    [isUint32Array, Uint32Array],
-    [isInt8Array, Int8Array],
-    [isInt16Array, Int16Array],
-    [isInt32Array, Int32Array],
-    [isFloat32Array, Float32Array],
-    [isFloat64Array, Float64Array],
-    [isBigInt64Array, BigInt64Array],
-    [isBigUint64Array, BigUint64Array]
-  ]) {
-    if (check(value)) {
-      return clazz;
-    }
-  }
-}
-
 // Note: using `formatValue` directly requires the indentation level to be
 // corrected by setting `ctx.indentationLvL += diff` and then to decrease the
 // value afterwards again.
@@ -863,7 +823,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       extrasType = kArrayExtrasType;
       formatter = formatArray;
     } else if (isSet(value)) {
-      const size = setSizeGetter(value);
+      const size = SetPrototypeGetSize(value);
       const prefix = getPrefix(constructor, tag, 'Set', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
@@ -873,7 +833,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
         return `${prefix}{}`;
       braces = [`${prefix}{`, '}'];
     } else if (isMap(value)) {
-      const size = mapSizeGetter(value);
+      const size = MapPrototypeGetSize(value);
       const prefix = getPrefix(constructor, tag, 'Map', `(${size})`);
       keys = getKeys(value, ctx.showHidden);
       formatter = constructor !== null ?
@@ -887,12 +847,11 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       let bound = value;
       let fallback = '';
       if (constructor === null) {
-        const constr = findTypedConstructor(value);
-        fallback = constr.name;
+        fallback = TypedArrayPrototypeGetSymbolToStringTag(value);
         // Reconstruct the array information.
-        bound = new constr(value);
+        bound = new primordials[fallback](value);
       }
-      const size = typedArraySizeGetter(value);
+      const size = TypedArrayPrototypeGetLength(value);
       const prefix = getPrefix(constructor, tag, fallback, `(${size})`);
       braces = [`${prefix}[`, ']'];
       if (value.length === 0 && keys.length === 0 && !ctx.showHidden)
@@ -1386,7 +1345,8 @@ function handleMaxCallStackSize(ctx, err, constructorName, indentationLvl) {
       'special'
     );
   }
-  throw err;
+  /* c8 ignore next */
+  assert.fail(err.stack);
 }
 
 function formatNumber(fn, value) {
@@ -1437,9 +1397,7 @@ function formatNamespaceObject(keys, ctx, value, recurseTimes) {
       output[i] = formatProperty(ctx, value, recurseTimes, keys[i],
                                  kObjectType);
     } catch (err) {
-      if (!(isNativeError(err) && err.name === 'ReferenceError')) {
-        throw err;
-      }
+      assert(isNativeError(err) && err.name === 'ReferenceError');
       // Use the existing functionality. This makes sure the indentation and
       // line breaks are always correct. Otherwise it is very difficult to keep
       // this aligned, even though this is a hacky way of dealing with this.
@@ -1738,6 +1696,8 @@ function formatProperty(ctx, value, recurseTimes, key, type, desc,
   if (typeof key === 'symbol') {
     const tmp = key.toString().replace(strEscapeSequencesReplacer, escapeFn);
     name = `[${ctx.stylize(tmp, 'symbol')}]`;
+  } else if (key === '__proto__') {
+    name = "['__proto__']";
   } else if (desc.enumerable === false) {
     name = `[${key.replace(strEscapeSequencesReplacer, escapeFn)}]`;
   } else if (keyStrRegExp.test(key)) {
@@ -1776,7 +1736,7 @@ function reduceToSingleString(
   ctx, output, base, braces, extrasType, recurseTimes, value) {
   if (ctx.compact !== true) {
     if (typeof ctx.compact === 'number' && ctx.compact >= 1) {
-      // Memorize the original output length. In case the the output is grouped,
+      // Memorize the original output length. In case the output is grouped,
       // prevent lining up the entries on a single line.
       const entries = output.length;
       // Group array elements together if the array contains at least six
@@ -2054,7 +2014,7 @@ if (internalBinding('config').hasIntl) {
     if (removeControlChars)
       str = stripVTControlCharacters(str);
     str = str.normalize('NFC');
-    for (const char of str) {
+    for (const char of new SafeStringIterator(str)) {
       const code = char.codePointAt(0);
       if (isFullWidthCodePoint(code)) {
         width += 2;

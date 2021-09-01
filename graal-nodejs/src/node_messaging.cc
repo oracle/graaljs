@@ -6,7 +6,7 @@
 #include "node_contextify.h"
 #include "node_buffer.h"
 #include "node_errors.h"
-#include "node_process.h"
+#include "node_process-inl.h"
 #include "util-inl.h"
 
 using node::contextify::ContextifyContext;
@@ -736,7 +736,7 @@ void MessagePort::OnMessage() {
       // interruption that were already present when the OnMessage() call was
       // first triggered, but at least 1000 messages because otherwise the
       // overhead of repeatedly triggering the uv_async_t instance becomes
-      // noticable, at least on Windows.
+      // noticeable, at least on Windows.
       // (That might require more investigation by somebody more familiar with
       // Windows.)
       TriggerAsync();
@@ -824,11 +824,11 @@ BaseObjectPtr<BaseObject> MessagePortData::Deserialize(
 }
 
 Maybe<bool> MessagePort::PostMessage(Environment* env,
+                                     Local<Context> context,
                                      Local<Value> message_v,
                                      const TransferList& transfer_v) {
   Isolate* isolate = env->isolate();
   Local<Object> obj = object(isolate);
-  Local<Context> context = obj->CreationContext();
 
   Message msg;
 
@@ -972,7 +972,7 @@ void MessagePort::PostMessage(const FunctionCallbackInfo<Value>& args) {
   }
 
   port->message_was_enqueued_ = false;
-  port->PostMessage(env, args[0], transfer_list);
+  port->PostMessage(env, context, args[0], transfer_list);
 
   if (port->message_was_enqueued_)
     args.GetReturnValue().Set(true);
@@ -1054,7 +1054,11 @@ void MessagePort::MoveToContext(const FunctionCallbackInfo<Value>& args) {
         "The \"port\" argument must be a MessagePort instance");
   }
   MessagePort* port = Unwrap<MessagePort>(args[0].As<Object>());
-  CHECK_NOT_NULL(port);
+  if (port == nullptr || port->IsHandleClosing()) {
+    Isolate* isolate = env->isolate();
+    THROW_ERR_CLOSED_MESSAGE_PORT(isolate);
+    return;
+  }
 
   Local<Value> context_arg = args[1];
   ContextifyContext* context_wrapper;

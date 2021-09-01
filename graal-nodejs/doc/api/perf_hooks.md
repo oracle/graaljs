@@ -72,8 +72,11 @@ added:
 The `eventLoopUtilization()` method returns an object that contains the
 cumulative duration of time the event loop has been both idle and active as a
 high resolution milliseconds timer. The `utilization` value is the calculated
-Event Loop Utilization (ELU). If bootstrapping has not yet finished, the
-properties have the value of `0`.
+Event Loop Utilization (ELU).
+
+If bootstrapping has not yet finished on the main thread the properties have
+the value of `0`. The ELU is immediately available on [Worker threads][] since
+bootstrap happens within the event loop.
 
 Both `utilization1` and `utilization2` are optional parameters.
 
@@ -254,7 +257,7 @@ The type of the performance entry. It may be one of:
 * `'http2'` (Node.js only)
 * `'http'` (Node.js only)
 
-### performanceEntry.flags
+### `performanceEntry.flags`
 <!-- YAML
 added:
  - v13.9.0
@@ -314,10 +317,12 @@ added: v8.5.0
 The high resolution millisecond timestamp marking the starting time of the
 Performance Entry.
 
-## Class: `PerformanceNodeTiming extends PerformanceEntry`
+## Class: `PerformanceNodeTiming`
 <!-- YAML
 added: v8.5.0
 -->
+
+* Extends: {PerformanceEntry}
 
 _This property is an extension by Node.js. It is not available in Web browsers._
 
@@ -516,6 +521,38 @@ added: v8.5.0
 Returns a list of `PerformanceEntry` objects in chronological order
 with respect to `performanceEntry.startTime`.
 
+```js
+const {
+  performance,
+  PerformanceObserver
+} = require('perf_hooks');
+
+const obs = new PerformanceObserver((perfObserverList, observer) => {
+  console.log(perfObserverList.getEntries());
+  /**
+   * [
+   *   PerformanceEntry {
+   *     name: 'test',
+   *     entryType: 'mark',
+   *     startTime: 81.465639,
+   *     duration: 0
+   *   },
+   *   PerformanceEntry {
+   *     name: 'meow',
+   *     entryType: 'mark',
+   *     startTime: 81.860064,
+   *     duration: 0
+   *   }
+   * ]
+   */
+  observer.disconnect();
+});
+obs.observe({ entryTypes: ['mark'], buffered: true });
+
+performance.mark('test');
+performance.mark('meow');
+```
+
 ### `performanceObserverEntryList.getEntriesByName(name[, type])`
 <!-- YAML
 added: v8.5.0
@@ -530,6 +567,46 @@ with respect to `performanceEntry.startTime` whose `performanceEntry.name` is
 equal to `name`, and optionally, whose `performanceEntry.entryType` is equal to
 `type`.
 
+```js
+const {
+  performance,
+  PerformanceObserver
+} = require('perf_hooks');
+
+const obs = new PerformanceObserver((perfObserverList, observer) => {
+  console.log(perfObserverList.getEntriesByName('meow'));
+  /**
+   * [
+   *   PerformanceEntry {
+   *     name: 'meow',
+   *     entryType: 'mark',
+   *     startTime: 98.545991,
+   *     duration: 0
+   *   }
+   * ]
+   */
+  console.log(perfObserverList.getEntriesByName('nope')); // []
+
+  console.log(perfObserverList.getEntriesByName('test', 'mark'));
+  /**
+   * [
+   *   PerformanceEntry {
+   *     name: 'test',
+   *     entryType: 'mark',
+   *     startTime: 63.518931,
+   *     duration: 0
+   *   }
+   * ]
+   */
+  console.log(perfObserverList.getEntriesByName('test', 'measure')); // []
+  observer.disconnect();
+});
+obs.observe({ entryTypes: ['mark', 'measure'], buffered: true });
+
+performance.mark('test');
+performance.mark('meow');
+```
+
 ### `performanceObserverEntryList.getEntriesByType(type)`
 <!-- YAML
 added: v8.5.0
@@ -541,6 +618,38 @@ added: v8.5.0
 Returns a list of `PerformanceEntry` objects in chronological order
 with respect to `performanceEntry.startTime` whose `performanceEntry.entryType`
 is equal to `type`.
+
+```js
+const {
+  performance,
+  PerformanceObserver
+} = require('perf_hooks');
+
+const obs = new PerformanceObserver((perfObserverList, observer) => {
+  console.log(perfObserverList.getEntriesByType('mark'));
+  /**
+   * [
+   *   PerformanceEntry {
+   *     name: 'test',
+   *     entryType: 'mark',
+   *     startTime: 55.897834,
+   *     duration: 0
+   *   },
+   *   PerformanceEntry {
+   *     name: 'meow',
+   *     entryType: 'mark',
+   *     startTime: 56.350146,
+   *     duration: 0
+   *   }
+   * ]
+   */
+  observer.disconnect();
+});
+obs.observe({ entryTypes: ['mark'], buffered: true });
+
+performance.mark('test');
+performance.mark('meow');
+```
 
 ## `perf_hooks.monitorEventLoopDelay([options])`
 <!-- YAML
@@ -649,7 +758,7 @@ The minimum recorded event loop delay.
 added: v11.10.0
 -->
 
-* `percentile` {number} A percentile value between 1 and 100.
+* `percentile` {number} A percentile value in the range (0, 100].
 * Returns: {number}
 
 Returns the value at the given percentile.
@@ -762,6 +871,7 @@ require('some-module');
 [Performance Timeline]: https://w3c.github.io/performance-timeline/
 [User Timing]: https://www.w3.org/TR/user-timing/
 [Web Performance APIs]: https://w3c.github.io/perf-timing-primer/
+[Worker threads]: worker_threads.md#worker_threads_worker_threads
 [`'exit'`]: process.md#process_event_exit
 [`child_process.spawnSync()`]: child_process.md#child_process_child_process_spawnsync_command_args_options
 [`process.hrtime()`]: process.md#process_process_hrtime_time

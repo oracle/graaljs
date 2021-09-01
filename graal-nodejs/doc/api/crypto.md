@@ -282,6 +282,19 @@ Once the `cipher.final()` method has been called, the `Cipher` object can no
 longer be used to encrypt data. Attempts to call `cipher.final()` more than
 once will result in an error being thrown.
 
+### `cipher.getAuthTag()`
+<!-- YAML
+added: v1.0.0
+-->
+
+* Returns: {Buffer} When using an authenticated encryption mode (`GCM`, `CCM`
+  and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a
+  [`Buffer`][] containing the _authentication tag_ that has been computed from
+  the given data.
+
+The `cipher.getAuthTag()` method should only be called after encryption has
+been completed using the [`cipher.final()`][] method.
+
 ### `cipher.setAAD(buffer[, options])`
 <!-- YAML
 added: v1.0.0
@@ -301,19 +314,6 @@ The `options` argument is optional for `GCM` and `OCB`. When using `CCM`, the
 of the plaintext in bytes. See [CCM mode][].
 
 The `cipher.setAAD()` method must be called before [`cipher.update()`][].
-
-### `cipher.getAuthTag()`
-<!-- YAML
-added: v1.0.0
--->
-
-* Returns: {Buffer} When using an authenticated encryption mode (`GCM`, `CCM`
-  and `OCB` are currently supported), the `cipher.getAuthTag()` method returns a
-  [`Buffer`][] containing the _authentication tag_ that has been computed from
-  the given data.
-
-The `cipher.getAuthTag()` method should only be called after encryption has
-been completed using the [`cipher.final()`][] method.
 
 ### `cipher.setAutoPadding([autoPadding])`
 <!-- YAML
@@ -735,8 +735,10 @@ module):
 added: v0.7.5
 -->
 
-The `DiffieHellmanGroup` class takes a well-known modp group as its argument but
-otherwise works the same as `DiffieHellman`.
+The `DiffieHellmanGroup` class takes a well-known modp group as its argument.
+It works the same as `DiffieHellman`, except that it does not allow changing
+its keys after creation. In other words, it does not implement `setPublicKey()`
+or `setPrivateKey()` methods.
 
 ```js
 const name = 'modp1';
@@ -1559,7 +1561,7 @@ If `object` is not a [`KeyObject`][], this function behaves as if
 object, the following additional properties can be passed:
 
 * `dsaEncoding` {string} For DSA and ECDSA, this option specifies the
-  format of the generated signature. It can be one of the following:
+  format of the signature. It can be one of the following:
   * `'der'` (default): DER-encoded ASN.1 signature structure encoding `(r, s)`.
   * `'ieee-p1363'`: Signature format `r || s` as proposed in IEEE-P1363.
 * `padding` {integer} Optional padding value for RSA, one of the following:
@@ -2841,6 +2843,21 @@ const n = crypto.randomInt(1, 7);
 console.log(`The dice rolled: ${n}`);
 ```
 
+### `crypto.randomUUID([options])`
+<!-- YAML
+added: v14.17.0
+-->
+
+* `options` {Object}
+  * `disableEntropyCache` {boolean} By default, to improve performance,
+    Node.js generates and caches enough random data to generate up to
+    128 random UUIDs. To generate a UUID without using the cache, set
+    `disableEntropyCache` to `true`. **Defaults**: `false`.
+* Returns: {string}
+
+Generates a random [RFC 4122][] Version 4 UUID. The UUID is generated using a
+cryptographic pseudorandom number generator.
+
 ### `crypto.scrypt(password, salt, keylen[, options], callback)`
 <!-- YAML
 added: v10.5.0
@@ -3054,7 +3071,11 @@ comparing HMAC digests or secret values like authentication cookies or
 [capability urls](https://www.w3.org/TR/capability-urls/).
 
 `a` and `b` must both be `Buffer`s, `TypedArray`s, or `DataView`s, and they
-must have the same length.
+must have the same byte length.
+
+If at least one of `a` and `b` is a `TypedArray` with more than one byte per
+entry, such as `Uint16Array`, the result will be computed using the platform
+byte order.
 
 Use of `crypto.timingSafeEqual` does not guarantee that the *surrounding* code
 is timing-safe. Care should be taken to ensure that the surrounding code does
@@ -3086,7 +3107,7 @@ passed to [`crypto.createPublicKey()`][]. If it is an object, the following
 additional properties can be passed:
 
 * `dsaEncoding` {string} For DSA and ECDSA, this option specifies the
-  format of the generated signature. It can be one of the following:
+  format of the signature. It can be one of the following:
   * `'der'` (default): DER-encoded ASN.1 signature structure encoding `(r, s)`.
   * `'ieee-p1363'`: Signature format `r || s` as proposed in IEEE-P1363.
 * `padding` {integer} Optional padding value for RSA, one of the following:
@@ -3582,6 +3603,7 @@ See the [list of SSL OP Flags][] for details.
 [RFC 3526]: https://www.rfc-editor.org/rfc/rfc3526.txt
 [RFC 3610]: https://www.rfc-editor.org/rfc/rfc3610.txt
 [RFC 4055]: https://www.rfc-editor.org/rfc/rfc4055.txt
+[RFC 4122]: https://www.rfc-editor.org/rfc/rfc4122.txt
 [RFC 5208]: https://www.rfc-editor.org/rfc/rfc5208.txt
 [`Buffer`]: buffer.md
 [`EVP_BytesToKey`]: https://www.openssl.org/docs/man1.1.0/crypto/EVP_BytesToKey.html

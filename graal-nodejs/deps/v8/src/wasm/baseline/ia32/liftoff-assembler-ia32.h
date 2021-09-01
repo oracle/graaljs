@@ -130,7 +130,7 @@ inline Register GetTmpByteRegister(LiftoffAssembler* assm, Register candidate) {
   if (candidate.is_byte_register()) return candidate;
   // {GetUnusedRegister()} may insert move instructions to spill registers to
   // the stack. This is OK because {mov} does not change the status flags.
-  return assm->GetUnusedRegister(liftoff::kByteRegs).gp();
+  return assm->GetUnusedRegister(liftoff::kByteRegs, {}).gp();
 }
 
 inline void MoveStackValue(LiftoffAssembler* assm, const Operand& src,
@@ -532,7 +532,126 @@ void LiftoffAssembler::AtomicCompareExchange(
     Register dst_addr, Register offset_reg, uint32_t offset_imm,
     LiftoffRegister expected, LiftoffRegister new_value, LiftoffRegister result,
     StoreType type) {
-  bailout(kAtomics, "AtomicCompareExchange");
+  // We expect that the offset has already been added to {dst_addr}, and no
+  // {offset_reg} is provided. This is to save registers.
+  DCHECK_EQ(offset_reg, no_reg);
+
+  DCHECK_EQ(result, expected);
+
+  if (type.value() != StoreType::kI64Store) {
+    bool is_64_bit_op = type.value_type() == kWasmI64;
+
+    Register value_reg = is_64_bit_op ? new_value.low_gp() : new_value.gp();
+    Register expected_reg = is_64_bit_op ? expected.low_gp() : expected.gp();
+    Register result_reg = expected_reg;
+
+    // The cmpxchg instruction uses eax to store the old value of the
+    // compare-exchange primitive. Therefore we have to spill the register and
+    // move any use to another register.
+    ClearRegister(eax, {&dst_addr, &value_reg},
+                  LiftoffRegList::ForRegs(dst_addr, value_reg, expected_reg));
+    if (expected_reg != eax) {
+      mov(eax, expected_reg);
+      expected_reg = eax;
+    }
+
+    bool is_byte_store = type.size() == 1;
+    LiftoffRegList pinned =
+        LiftoffRegList::ForRegs(dst_addr, value_reg, expected_reg);
+
+    // Ensure that {value_reg} is a valid register.
+    if (is_byte_store && !liftoff::kByteRegs.has(value_reg)) {
+      Register safe_value_reg =
+          pinned.set(GetUnusedRegister(liftoff::kByteRegs, pinned)).gp();
+      mov(safe_value_reg, value_reg);
+      value_reg = safe_value_reg;
+      pinned.clear(LiftoffRegister(value_reg));
+    }
+
+
+    Operand dst_op = Operand(dst_addr, offset_imm);
+
+    lock();
+    switch (type.value()) {
+      case StoreType::kI32Store8:
+      case StoreType::kI64Store8: {
+        cmpxchg_b(dst_op, value_reg);
+        movzx_b(result_reg, eax);
+        break;
+      }
+      case StoreType::kI32Store16:
+      case StoreType::kI64Store16: {
+        cmpxchg_w(dst_op, value_reg);
+        movzx_w(result_reg, eax);
+        break;
+      }
+      case StoreType::kI32Store:
+      case StoreType::kI64Store32: {
+        cmpxchg(dst_op, value_reg);
+        if (result_reg != eax) {
+          mov(result_reg, eax);
+        }
+        break;
+      }
+      default:
+        UNREACHABLE();
+    }
+    if (is_64_bit_op) {
+      xor_(result.high_gp(), result.high_gp());
+    }
+    return;
+  }
+
+  // The following code handles kExprI64AtomicCompareExchange.
+
+  // We need {ebx} here, which is the root register. The root register it
+  // needs special treatment. As we use {ebx} directly in the code below, we
+  // have to make sure here that the root register is actually {ebx}.
+  static_assert(kRootRegister == ebx,
+                "The following code assumes that kRootRegister == ebx");
+  push(kRootRegister);
+
+  // The compare-exchange instruction uses registers as follows:
+  // old-value = EDX:EAX; new-value = ECX:EBX.
+  Register expected_hi = edx;
+  Register expected_lo = eax;
+  Register new_hi = ecx;
+  Register new_lo = ebx;
+  // The address needs a separate registers that does not alias with the
+  // ones above.
+  Register address = esi;
+
+  // Spill all these registers if they are still holding other values.
+  liftoff::SpillRegisters(this, expected_hi, expected_lo, new_hi, address);
+
+  // We have to set new_lo specially, because it's the root register. We do it
+  // before setting all other registers so that the original value does not get
+  // overwritten.
+  mov(new_lo, new_value.low_gp());
+
+  // Move all other values into the right register.
+  {
+    LiftoffAssembler::ParallelRegisterMoveTuple reg_moves[]{
+        {LiftoffRegister(address), LiftoffRegister(dst_addr), kWasmI32},
+        {LiftoffRegister::ForPair(expected_lo, expected_hi), expected, kWasmI64},
+        {LiftoffRegister(new_hi), new_value.high(), kWasmI32}};
+    ParallelRegisterMove(ArrayVector(reg_moves));
+  };
+
+  Operand dst_op = Operand(address, offset_imm);
+
+  lock();
+  cmpxchg8b(dst_op);
+
+  // Restore the root register, and we are done.
+  pop(kRootRegister);
+
+  // Move the result into the correct registers.
+  {
+    LiftoffAssembler::ParallelRegisterMoveTuple reg_moves[]{
+        {result, LiftoffRegister::ForPair(expected_lo, expected_hi), kWasmI64}};
+    ParallelRegisterMove(ArrayVector(reg_moves));
+  }
 }
 
 void LiftoffAssembler::AtomicFence() { mfence(); }
@@ -978,31 +1097,19 @@ template <void (Assembler::*op)(Register, const Immediate&),
           void (Assembler::*op_with_carry)(Register, int32_t)>
 inline void OpWithCarryI(LiftoffAssembler* assm, LiftoffRegister dst,
                          LiftoffRegister lhs, int32_t imm) {
-  // First, compute the low half of the result, potentially into a temporary dst
-  // register if {dst.low_gp()} equals any register we need to
-  // keep alive for computing the upper half.
-  LiftoffRegList keep_alive = LiftoffRegList::ForRegs(lhs.high_gp());
-  Register dst_low = keep_alive.has(dst.low_gp())
-                         ? assm->GetUnusedRegister(kGpReg, keep_alive).gp()
-                         : dst.low_gp();
+  // The compiler allocated registers such that either {dst == lhs} or there is
+  // no overlap between the two.
+  DCHECK_NE(dst.low_gp(), lhs.high_gp());
 
-  if (dst_low != lhs.low_gp()) assm->mov(dst_low, lhs.low_gp());
-  (assm->*op)(dst_low, Immediate(imm));
+  // First, compute the low half of the result.
+  if (dst.low_gp() != lhs.low_gp()) assm->mov(dst.low_gp(), lhs.low_gp());
+  (assm->*op)(dst.low_gp(), Immediate(imm));
 
-  // Now compute the upper half, while keeping alive the previous result.
-  keep_alive = LiftoffRegList::ForRegs(dst_low);
-  Register dst_high = keep_alive.has(dst.high_gp())
-                          ? assm->GetUnusedRegister(kGpReg, keep_alive).gp()
-                          : dst.high_gp();
-
-  if (dst_high != lhs.high_gp()) assm->mov(dst_high, lhs.high_gp());
+  // Now compute the upper half.
+  if (dst.high_gp() != lhs.high_gp()) assm->mov(dst.high_gp(), lhs.high_gp());
   // Top half of the immediate sign extended, either 0 or -1.
   int32_t sign_extend = imm < 0 ? -1 : 0;
-  (assm->*op_with_carry)(dst_high, sign_extend);
-
-  // If necessary, move result into the right registers.
-  LiftoffRegister tmp_result = LiftoffRegister::ForPair(dst_low, dst_high);
-  if (tmp_result != dst) assm->Move(dst, tmp_result, kWasmI64);
+  (assm->*op_with_carry)(dst.high_gp(), sign_extend);
 }
 }  // namespace liftoff
 
@@ -1349,7 +1456,7 @@ inline void EmitFloatMinOrMax(LiftoffAssembler* assm, DoubleRegister dst,
 
   // We need one tmp register to extract the sign bit. Get it right at the
   // beginning, such that the spilling code is not accidentially jumped over.
-  Register tmp = assm->GetUnusedRegister(kGpReg).gp();
+  Register tmp = assm->GetUnusedRegister(kGpReg, {}).gp();
 
 #define dop(name, ...)            \
   do {                            \
@@ -1412,9 +1519,9 @@ void LiftoffAssembler::emit_f32_max(DoubleRegister dst, DoubleRegister lhs,
 void LiftoffAssembler::emit_f32_copysign(DoubleRegister dst, DoubleRegister lhs,
                                          DoubleRegister rhs) {
   static constexpr int kF32SignBit = 1 << 31;
-  Register scratch = GetUnusedRegister(kGpReg).gp();
-  Register scratch2 =
-      GetUnusedRegister(kGpReg, LiftoffRegList::ForRegs(scratch)).gp();
+  LiftoffRegList pinned;
+  Register scratch = pinned.set(GetUnusedRegister(kGpReg, pinned)).gp();
+  Register scratch2 = GetUnusedRegister(kGpReg, pinned).gp();
   Movd(scratch, lhs);                      // move {lhs} into {scratch}.
   and_(scratch, Immediate(~kF32SignBit));  // clear sign bit in {scratch}.
   Movd(scratch2, rhs);                     // move {rhs} into {scratch2}.
@@ -1541,9 +1648,9 @@ void LiftoffAssembler::emit_f64_copysign(DoubleRegister dst, DoubleRegister lhs,
   static constexpr int kF32SignBit = 1 << 31;
   // On ia32, we cannot hold the whole f64 value in a gp register, so we just
   // operate on the upper half (UH).
-  Register scratch = GetUnusedRegister(kGpReg).gp();
-  Register scratch2 =
-      GetUnusedRegister(kGpReg, LiftoffRegList::ForRegs(scratch)).gp();
+  LiftoffRegList pinned;
+  Register scratch = pinned.set(GetUnusedRegister(kGpReg, pinned)).gp();
+  Register scratch2 = GetUnusedRegister(kGpReg, pinned).gp();
 
   Pextrd(scratch, lhs, 1);                 // move UH of {lhs} into {scratch}.
   and_(scratch, Immediate(~kF32SignBit));  // clear sign bit in {scratch}.
@@ -2381,7 +2488,7 @@ void LiftoffAssembler::emit_i8x16_shl(LiftoffRegister dst, LiftoffRegister lhs,
 void LiftoffAssembler::emit_i8x16_shli(LiftoffRegister dst, LiftoffRegister lhs,
                                        int32_t rhs) {
   static constexpr RegClass tmp_rc = reg_class_for(ValueType::kI32);
-  LiftoffRegister tmp = GetUnusedRegister(tmp_rc);
+  LiftoffRegister tmp = GetUnusedRegister(tmp_rc, {});
   byte shift = static_cast<byte>(rhs & 0x7);
   if (CpuFeatures::IsSupported(AVX)) {
     CpuFeatureScope scope(this, AVX);
@@ -3270,7 +3377,7 @@ void LiftoffAssembler::StackCheck(Label* ool_code, Register limit_address) {
 }
 
 void LiftoffAssembler::CallTrapCallbackForTesting() {
-  PrepareCallCFunction(0, GetUnusedRegister(kGpReg).gp());
+  PrepareCallCFunction(0, GetUnusedRegister(kGpReg, {}).gp());
   CallCFunction(ExternalReference::wasm_call_trap_callback_for_testing(), 0);
 }
 

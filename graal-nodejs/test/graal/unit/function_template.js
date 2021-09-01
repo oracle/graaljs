@@ -70,6 +70,38 @@ describe('FunctionTemplate', function () {
             assert.strictEqual(func.call(thiz), thiz);
         });
     });
+    describe('ReadOnlyPrototype', function () {
+        it('ReadOnlyPrototype makes the prototype non-writable', function () {
+            var functionWithDefaults = module.FunctionTemplate_GetFunction();
+            var defualtDesc = Object.getOwnPropertyDescriptor(functionWithDefaults, 'prototype');
+            assert.strictEqual(defualtDesc.writable, true);
+            assert.strictEqual(defualtDesc.enumerable, false);
+            assert.strictEqual(defualtDesc.configurable, false);
+
+            var functionWithReadOnlyPrototype = module.FunctionTemplate_GetFunctionWithReadOnlyPrototype();
+            var readOnlyDesc = Object.getOwnPropertyDescriptor(functionWithReadOnlyPrototype, 'prototype');
+            assert.strictEqual(readOnlyDesc.writable, false);
+            assert.strictEqual(defualtDesc.enumerable, false);
+            assert.strictEqual(defualtDesc.configurable, false);
+        });
+    });
+    describe('SetLength', function () {
+        it('SetLength should set the value of "length" property', function () {
+            var functionWithDefaults = module.FunctionTemplate_GetFunction();
+            var defualtDesc = Object.getOwnPropertyDescriptor(functionWithDefaults, 'length');
+            assert.strictEqual(defualtDesc.value, 0);
+            assert.strictEqual(defualtDesc.writable, false);
+            assert.strictEqual(defualtDesc.enumerable, false);
+            assert.strictEqual(defualtDesc.configurable, true);
+
+            var functionWithLength = module.FunctionTemplate_GetFunctionWithLength(42);
+            var descWithLength = Object.getOwnPropertyDescriptor(functionWithLength, 'length');
+            assert.strictEqual(descWithLength.value, 42);
+            assert.strictEqual(descWithLength.writable, false);
+            assert.strictEqual(descWithLength.enumerable, false);
+            assert.strictEqual(descWithLength.configurable, true);
+        });
+    });
     describe('InstanceTemplate', function () {
         it('simple check on InstanceTemplate', function () {
             assert.strictEqual(module.FunctionTemplate_CheckInstanceTemplate(), true);

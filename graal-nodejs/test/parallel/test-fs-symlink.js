@@ -85,6 +85,6 @@ const errObj = {
 assert.throws(() => fs.symlink('', '', '🍏', common.mustNotCall()), errObj);
 assert.throws(() => fs.symlinkSync('', '', '🍏'), errObj);
 
-process.on('exit', function() {
+process.on('exit', () => {
   assert.notStrictEqual(linkTime, fileTime);
 });

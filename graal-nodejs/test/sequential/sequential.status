@@ -25,6 +25,9 @@ test-gc-http-client: SKIP
 test-heapdump: SKIP
 test-heapdump-flag: SKIP
 
+# Custom MicrotaskQueue is not supported
+test-vm-timeout-escape-promise-module-2: FAIL
+
 # Profiling is not supported
 test-worker-prof: FAIL
 
@@ -44,8 +47,6 @@ test-child-process-pass-fd: SKIP
 ### Graal-specific end ###
 
 [$system==win32]
-# https://github.com/nodejs/node/issues/22327
-test-http2-large-file: PASS, FLAKY
 # https://github.com/nodejs/node/issues/26401
 test-worker-prof: PASS, FLAKY
 
@@ -67,6 +68,6 @@ test-buffer-creation-regression: SKIP
 # https://github.com/nodejs/node/pull/30819
 test-perf-hooks: SKIP
 
-[$arch==arm]
+[$arch==arm || $arch==arm64]
 # https://github.com/nodejs/node/issues/26401#issuecomment-613095719
 test-worker-prof: PASS, FLAKY

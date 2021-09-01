@@ -6,6 +6,10 @@
 added: v8.5.0
 changes:
   - version:
+    - v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/35781
+    description: Stabilize modules implementation.
+  - version:
     - v14.13.0
     pr-url: https://github.com/nodejs/node/pull/35249
     description: Support for detection of CommonJS named exports.
@@ -29,7 +33,7 @@ changes:
       `"type"` field.
 -->
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 ## Introduction
 
@@ -61,14 +65,8 @@ console.log(addTwo(4));
 ```
 
 Node.js fully supports ECMAScript modules as they are currently specified and
-provides limited interoperability between them and the existing module format,
+provides interoperability between them and its original module format,
 [CommonJS][].
-
-Node.js contains support for ES Modules based upon the
-[Node.js EP for ES Modules][] and the [ECMAScript-modules implementation][].
-
-Expect major changes in the implementation including interoperability support,
-specifier resolution, and default behavior.
 
 <!-- Anchors to make sure old links find a target -->
 <i id="esm_package_json_type_field"></i>
@@ -273,11 +271,19 @@ const buffer = readFileSync(new URL('./data.proto', import.meta.url));
 ```
 
 ### `import.meta.resolve(specifier[, parent])`
+<!--
+added:
+  - v13.9.0
+  - v12.16.2
+-->
 
 > Stability: 1 - Experimental
 
+This feature is only available with the `--experimental-import-meta-resolve`
+command flag enabled.
+
 * `specifier` {string} The module specifier to resolve relative to `parent`.
-* `parent` {string|URL} The absolute parent module URL to resolve from. If none
+* `parent` {string} The absolute parent module URL to resolve from. If none
   is specified, the value of `import.meta.url` is used as the default.
 * Returns: {Promise}
 
@@ -318,7 +324,7 @@ compatibility.
 The CommonJS module `require` always treats the files it references as CommonJS.
 
 Using `require` to load an ES module is not supported because ES modules have
-asynchronous execution. Instead, use use [`import()`][] to load an ES module
+asynchronous execution. Instead, use [`import()`][] to load an ES module
 from a CommonJS module.
 
 ### CommonJS Namespaces
@@ -367,7 +373,7 @@ analysis process.
 
 For example, consider a CommonJS module written:
 
-```js
+```cjs
 // cjs.cjs
 exports.name = 'exported';
 ```
@@ -433,13 +439,13 @@ import { readFile } from 'fs/promises';
 const json = JSON.parse(await readFile(new URL('./dat.json', import.meta.url)));
 ```
 
-Alterantively `module.createRequire()` can be used.
+Alternatively `module.createRequire()` can be used.
 
 #### No Native Module Loading
 
 Native modules are not currently supported with ES module imports.
 
-The can instead be loaded with [`module.createRequire()`][] or
+They can instead be loaded with [`module.createRequire()`][] or
 [`process.dlopen`][].
 
 #### No `require.resolve`
@@ -1014,6 +1020,8 @@ The resolver can throw the following errors:
   subpath in the package for the given module.
 * _Package Import Not Defined_: Package imports do not define the specifier.
 * _Module Not Found_: The package or module requested does not exist.
+* _Unsupported Directory Import_: The resolved path corresponds to a directory,
+  which is not a supported target for module imports.
 
 ### Resolver Algorithm Specification
 
@@ -1300,9 +1308,7 @@ success!
 [Core modules]: modules.md#modules_core_modules
 [Dynamic `import()`]: https://wiki.developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import#Dynamic_Imports
 [ECMAScript Top-Level `await` proposal]: https://github.com/tc39/proposal-top-level-await/
-[ECMAScript-modules implementation]: https://github.com/nodejs/modules/blob/master/doc/plan-for-new-modules-implementation.md
 [ES Module Integration Proposal for Web Assembly]: https://github.com/webassembly/esm-integration
-[Node.js EP for ES Modules]: https://github.com/nodejs/node-eps/blob/master/002-es-modules.md
 [Node.js Module Resolution Algorithm]: #esm_resolver_algorithm_specification
 [Terminology]: #esm_terminology
 [URL]: https://url.spec.whatwg.org/
@@ -1326,7 +1332,7 @@ success!
 [`transformSource` hook]: #esm_transformsource_source_context_defaulttransformsource
 [`string`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String
 [`util.TextDecoder`]: util.md#util_class_util_textdecoder
-[cjs-module-lexer]: https://github.com/guybedford/cjs-module-lexer/tree/1.0.0
+[cjs-module-lexer]: https://github.com/guybedford/cjs-module-lexer/tree/1.2.1
 [custom https loader]: #esm_https_loader
 [special scheme]: https://url.spec.whatwg.org/#special-scheme
 [the official standard format]: https://tc39.github.io/ecma262/#sec-modules

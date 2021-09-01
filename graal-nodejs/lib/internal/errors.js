@@ -11,31 +11,51 @@
 // message may change, the code should not.
 
 const {
+  ArrayFrom,
   ArrayIsArray,
+  ArrayPrototypeIncludes,
+  ArrayPrototypeIndexOf,
+  ArrayPrototypeJoin,
+  ArrayPrototypeMap,
+  ArrayPrototypePop,
+  ArrayPrototypePush,
+  ArrayPrototypeSlice,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
   Error,
   ErrorCaptureStackTrace,
   ErrorPrototypeToString,
   JSONStringify,
-  Map,
+  MapPrototypeGet,
   MathAbs,
   MathMax,
+  Number,
   NumberIsInteger,
   ObjectDefineProperty,
   ObjectKeys,
   RangeError,
+  ReflectApply,
+  RegExpPrototypeTest,
+  SafeMap,
+  SafeWeakMap,
   String,
+  StringPrototypeEndsWith,
+  StringPrototypeIncludes,
+  StringPrototypeMatch,
+  StringPrototypeSlice,
+  StringPrototypeSplit,
   StringPrototypeStartsWith,
+  StringPrototypeToLowerCase,
   Symbol,
   SymbolFor,
   SyntaxError,
   TypeError,
   URIError,
-  WeakMap,
 } = primordials;
 
 const isWindows = process.platform === 'win32';
 
-const messages = new Map();
+const messages = new SafeMap();
 const codes = {};
 
 const classRegExp = /^([A-Z][a-z0-9]*)+$/;
@@ -54,7 +74,7 @@ const kTypes = [
 ];
 
 const MainContextError = Error;
-const overrideStackTrace = new WeakMap();
+const overrideStackTrace = new SafeWeakMap();
 const kNoOverride = Symbol('kNoOverride');
 const prepareStackTrace = (globalThis, error, trace) => {
   // API for node internals to override error stack formatting
@@ -78,7 +98,7 @@ const prepareStackTrace = (globalThis, error, trace) => {
   if (trace.length === 0) {
     return errorString;
   }
-  return `${errorString}\n    at ${trace.join('\n    at ')}`;
+  return `${errorString}\n    at ${ArrayPrototypeJoin(trace, '\n    at ')}`;
 };
 
 const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
@@ -309,7 +329,7 @@ function addCodeToName(err, name, code) {
   err.name = `${name} [${code}]`;
   // Access the stack to generate the error message including the error code
   // from the name.
-  err.stack;
+  err.stack; // eslint-disable-line no-unused-expressions
   // Reset the name to the actual name.
   if (name === 'SystemError') {
     ObjectDefineProperty(err, 'name', {
@@ -354,10 +374,11 @@ function getMessage(key, args, self) {
       `Code: ${key}; The provided arguments length (${args.length}) does not ` +
         `match the required ones (${msg.length}).`
     );
-    return msg.apply(self, args);
+    return ReflectApply(msg, self, args);
   }
 
-  const expectedLength = (msg.match(/%[dfijoOs]/g) || []).length;
+  const expectedLength =
+    (StringPrototypeMatch(msg, /%[dfijoOs]/g) || []).length;
   assert(
     expectedLength === args.length,
     `Code: ${key}; The provided arguments length (${args.length}) does not ` +
@@ -366,8 +387,8 @@ function getMessage(key, args, self) {
   if (args.length === 0)
     return msg;
 
-  args.unshift(msg);
-  return lazyInternalUtilInspect().format.apply(null, args);
+  ArrayPrototypeUnshift(args, msg);
+  return ReflectApply(lazyInternalUtilInspect().format, null, args);
 }
 
 let uvBinding;
@@ -386,7 +407,7 @@ function uvErrmapGet(name) {
   if (!uvBinding.errmap) {
     uvBinding.errmap = uvBinding.getErrorMap();
   }
-  return uvBinding.errmap.get(name);
+  return MapPrototypeGet(uvBinding.errmap, name);
 }
 
 
@@ -414,7 +435,7 @@ function uvException(ctx) {
     message += ` -> '${dest}'`;
   }
 
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -465,7 +486,7 @@ function uvExceptionWithHostPort(err, syscall, address, port) {
     details = ` ${address}`;
   }
 
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -539,7 +560,7 @@ function exceptionWithHostPort(err, syscall, address, port, additional) {
     details += ` - Local (${additional})`;
   }
 
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -584,7 +605,7 @@ function dnsException(code, syscall, hostname) {
     }
   }
   const message = `${syscall} ${code}${hostname ? ` ${hostname}` : ''}`;
-  // Reducing the limit improves the performance significantly. We do not loose
+  // Reducing the limit improves the performance significantly. We do not lose
   // the stack frames due to the `captureStackTrace()` function that is called
   // later.
   const tmpLimit = Error.stackTraceLimit;
@@ -640,9 +661,9 @@ function addNumericalSeparator(val) {
   let i = val.length;
   const start = val[0] === '-' ? 1 : 0;
   for (; i >= start + 4; i -= 3) {
-    res = `_${val.slice(i - 3, i)}${res}`;
+    res = `_${StringPrototypeSlice(val, i - 3, i)}${res}`;
   }
-  return `${val.slice(0, i)}${res}`;
+  return `${StringPrototypeSlice(val, 0, i)}${res}`;
 }
 
 // Used to enhance the stack that will be picked up by the inspector
@@ -677,7 +698,8 @@ const fatalExceptionStackEnhancers = {
     // ANSI escape sequences is not reliable.
     if (process.platform === 'win32') {
       const info = internalBinding('os').getOSInformation();
-      const ver = info[2].split('.').map((a) => +a);
+      const ver = ArrayPrototypeMap(StringPrototypeSplit(info[2], '.'),
+                                    Number);
       if (ver[0] !== 10 || ver[2] < 14393) {
         useColors = false;
       }
@@ -704,6 +726,16 @@ const fatalExceptionStackEnhancers = {
   }
 };
 
+// Node uses an AbortError that isn't exactly the same as the DOMException
+// to make usage of the error in userland and readable-stream easier.
+// It is a regular error with `.code` and `.name`.
+class AbortError extends Error {
+  constructor() {
+    super('The operation was aborted');
+    this.code = 'ABORT_ERR';
+    this.name = 'AbortError';
+  }
+}
 module.exports = {
   addCodeToName, // Exported for NghttpError
   codes,
@@ -718,6 +750,7 @@ module.exports = {
   uvException,
   uvExceptionWithHostPort,
   SystemError,
+  AbortError,
   // This is exported only to facilitate testing.
   E,
   kNoOverride,
@@ -798,6 +831,8 @@ E('ERR_CRYPTO_SCRYPT_INVALID_PARAMETER', 'Invalid scrypt parameter', Error);
 E('ERR_CRYPTO_SCRYPT_NOT_SUPPORTED', 'Scrypt algorithm not supported', Error);
 // Switch to TypeError. The current implementation does not seem right.
 E('ERR_CRYPTO_SIGN_KEY_REQUIRED', 'No key provided to sign', Error);
+E('ERR_DEBUGGER_ERROR', '%s', Error);
+E('ERR_DEBUGGER_STARTUP_ERROR', '%s', Error);
 E('ERR_DIR_CLOSED', 'Directory handle was closed', Error);
 E('ERR_DIR_CONCURRENT_OPERATION',
   'Cannot do synchronous work on directory handle with concurrent ' +
@@ -970,11 +1005,11 @@ E('ERR_INVALID_ARG_TYPE',
     }
 
     let msg = 'The ';
-    if (name.endsWith(' argument')) {
+    if (StringPrototypeEndsWith(name, ' argument')) {
       // For cases like 'first argument'
       msg += `${name} `;
     } else {
-      const type = name.includes('.') ? 'property' : 'argument';
+      const type = StringPrototypeIncludes(name, '.') ? 'property' : 'argument';
       msg += `"${name}" ${type} `;
     }
     msg += 'must be ';
@@ -986,31 +1021,31 @@ E('ERR_INVALID_ARG_TYPE',
     for (const value of expected) {
       assert(typeof value === 'string',
              'All expected entries have to be of type string');
-      if (kTypes.includes(value)) {
-        types.push(value.toLowerCase());
-      } else if (classRegExp.test(value)) {
-        instances.push(value);
+      if (ArrayPrototypeIncludes(kTypes, value)) {
+        ArrayPrototypePush(types, StringPrototypeToLowerCase(value));
+      } else if (RegExpPrototypeTest(classRegExp, value)) {
+        ArrayPrototypePush(instances, value);
       } else {
         assert(value !== 'object',
                'The value "object" should be written as "Object"');
-        other.push(value);
+        ArrayPrototypePush(other, value);
       }
     }
 
     // Special handle `object` in case other instances are allowed to outline
     // the differences between each other.
     if (instances.length > 0) {
-      const pos = types.indexOf('object');
+      const pos = ArrayPrototypeIndexOf(types, 'object');
       if (pos !== -1) {
-        types.splice(pos, 1);
-        instances.push('Object');
+        ArrayPrototypeSplice(types, pos, 1);
+        ArrayPrototypePush(instances, 'Object');
       }
     }
 
     if (types.length > 0) {
       if (types.length > 2) {
-        const last = types.pop();
-        msg += `one of type ${types.join(', ')}, or ${last}`;
+        const last = ArrayPrototypePop(types);
+        msg += `one of type ${ArrayPrototypeJoin(types, ', ')}, or ${last}`;
       } else if (types.length === 2) {
         msg += `one of type ${types[0]} or ${types[1]}`;
       } else {
@@ -1022,8 +1057,9 @@ E('ERR_INVALID_ARG_TYPE',
 
     if (instances.length > 0) {
       if (instances.length > 2) {
-        const last = instances.pop();
-        msg += `an instance of ${instances.join(', ')}, or ${last}`;
+        const last = ArrayPrototypePop(instances);
+        msg +=
+          `an instance of ${ArrayPrototypeJoin(instances, ', ')}, or ${last}`;
       } else {
         msg += `an instance of ${instances[0]}`;
         if (instances.length === 2) {
@@ -1036,12 +1072,12 @@ E('ERR_INVALID_ARG_TYPE',
 
     if (other.length > 0) {
       if (other.length > 2) {
-        const last = other.pop();
-        msg += `one of ${other.join(', ')}, or ${last}`;
+        const last = ArrayPrototypePop(other);
+        msg += `one of ${ArrayPrototypeJoin(other, ', ')}, or ${last}`;
       } else if (other.length === 2) {
         msg += `one of ${other[0]} or ${other[1]}`;
       } else {
-        if (other[0].toLowerCase() !== other[0])
+        if (StringPrototypeToLowerCase(other[0]) !== other[0])
           msg += 'an ';
         msg += `${other[0]}`;
       }
@@ -1063,7 +1099,7 @@ E('ERR_INVALID_ARG_TYPE',
       let inspected = lazyInternalUtilInspect()
         .inspect(actual, { colors: false });
       if (inspected.length > 25)
-        inspected = `${inspected.slice(0, 25)}...`;
+        inspected = `${StringPrototypeSlice(inspected, 0, 25)}...`;
       msg += `. Received type ${typeof actual} (${inspected})`;
     }
     return msg;
@@ -1071,7 +1107,7 @@ E('ERR_INVALID_ARG_TYPE',
 E('ERR_INVALID_ARG_VALUE', (name, value, reason = 'is invalid') => {
   let inspected = lazyInternalUtilInspect().inspect(value);
   if (inspected.length > 128) {
-    inspected = `${inspected.slice(0, 128)}...`;
+    inspected = `${StringPrototypeSlice(inspected, 0, 128)}...`;
   }
   return `The argument '${name}' ${reason}. Received ${inspected}`;
 }, TypeError, RangeError);
@@ -1197,9 +1233,10 @@ E('ERR_MANIFEST_ASSERT_INTEGRITY',
       moduleURL
     }" does not match the expected integrity.`;
     if (realIntegrities.size) {
-      const sri = [...realIntegrities.entries()].map(([alg, dgs]) => {
-        return `${alg}-${dgs}`;
-      }).join(' ');
+      const sri = ArrayPrototypeJoin(
+        ArrayFrom(realIntegrities.entries(), ([alg, dgs]) => `${alg}-${dgs}`),
+        ' '
+      );
       msg += ` Integrities found are: ${sri}`;
     } else {
       msg += ' The resource was not found in the policy.';
@@ -1226,7 +1263,13 @@ E('ERR_MISSING_ARGS',
     assert(args.length > 0, 'At least one arg needs to be specified');
     let msg = 'The ';
     const len = args.length;
-    args = args.map((a) => `"${a}"`);
+    const wrap = (a) => `"${a}"`;
+    args = ArrayPrototypeMap(
+      args,
+      (a) => (ArrayIsArray(a) ?
+        ArrayPrototypeJoin(ArrayPrototypeMap(a, wrap), ' or ') :
+        wrap(a))
+    );
     switch (len) {
       case 1:
         msg += `${args[0]} argument`;
@@ -1235,7 +1278,7 @@ E('ERR_MISSING_ARGS',
         msg += `${args[0]} and ${args[1]} arguments`;
         break;
       default:
-        msg += args.slice(0, len - 1).join(', ');
+        msg += ArrayPrototypeJoin(ArrayPrototypeSlice(args, 0, len - 1), ', ');
         msg += `, and ${args[len - 1]} arguments`;
         break;
     }
@@ -1259,6 +1302,7 @@ E('ERR_NO_CRYPTO',
   'Node.js is not compiled with OpenSSL crypto support', Error);
 E('ERR_NO_ICU',
   '%s is not supported on Node.js compiled without ICU', TypeError);
+E('ERR_OPERATION_FAILED', 'Operation failed: %s', Error);
 E('ERR_OUT_OF_RANGE',
   (str, range, input, replaceDefaultBoolean = false) => {
     assert(range, 'Missing "range" argument');
@@ -1358,11 +1402,11 @@ E('ERR_TLS_CERT_ALTNAME_INVALID', function(reason, host, cert) {
 }, Error);
 E('ERR_TLS_DH_PARAM_SIZE', 'DH parameter size %s is less than 2048', Error);
 E('ERR_TLS_HANDSHAKE_TIMEOUT', 'TLS handshake timeout', Error);
-E('ERR_TLS_INVALID_CONTEXT', '%s must be a SecureContext', TypeError),
-E('ERR_TLS_INVALID_STATE', 'TLS socket connection must be securely established',
-  Error),
+E('ERR_TLS_INVALID_CONTEXT', '%s must be a SecureContext', TypeError);
 E('ERR_TLS_INVALID_PROTOCOL_VERSION',
   '%j is not a valid %s TLS protocol version', TypeError);
+E('ERR_TLS_INVALID_STATE', 'TLS socket connection must be securely established',
+  Error);
 E('ERR_TLS_PROTOCOL_VERSION_CONFLICT',
   'TLS protocol version %j conflicts with secureProtocol %j', TypeError);
 E('ERR_TLS_RENEGOTIATION_DISABLED',
@@ -1437,7 +1481,7 @@ E('ERR_VM_MODULE_STATUS', 'Module status %s', Error);
 E('ERR_WASI_ALREADY_STARTED', 'WASI instance has already started', Error);
 E('ERR_WORKER_INIT_FAILED', 'Worker initialization failure: %s', Error);
 E('ERR_WORKER_INVALID_EXEC_ARGV', (errors, msg = 'invalid execArgv flags') =>
-  `Initiated Worker with ${msg}: ${errors.join(', ')}`,
+  `Initiated Worker with ${msg}: ${ArrayPrototypeJoin(errors, ', ')}`,
   Error);
 E('ERR_WORKER_NOT_RUNNING', 'Worker instance not running', Error);
 E('ERR_WORKER_OUT_OF_MEMORY',
@@ -1445,10 +1489,10 @@ E('ERR_WORKER_OUT_OF_MEMORY',
 E('ERR_WORKER_PATH', (filename) =>
   'The worker script or module filename must be an absolute path or a ' +
   'relative path starting with \'./\' or \'../\'.' +
-  (filename.startsWith('file://') ?
+  (StringPrototypeStartsWith(filename, 'file://') ?
     ' Wrap file:// URLs with `new URL`.' : ''
   ) +
-  (filename.startsWith('data:text/javascript') ?
+  (StringPrototypeStartsWith(filename, 'data:text/javascript') ?
     ' Wrap data: URLs with `new URL`.' : ''
   ) +
   ` Received "${filename}"`,

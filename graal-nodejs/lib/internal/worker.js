@@ -1,25 +1,30 @@
 'use strict';
 
-/* global SharedArrayBuffer */
-
 const {
   ArrayIsArray,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
   Float64Array,
+  FunctionPrototypeBind,
   JSONStringify,
   MathMax,
   ObjectCreate,
   ObjectEntries,
   Promise,
   PromiseResolve,
+  RegExpPrototypeTest,
   String,
   Symbol,
   SymbolFor,
+  TypedArrayPrototypeFill,
   Uint32Array,
+  globalThis: { Atomics, SharedArrayBuffer },
 } = primordials;
 
 const EventEmitter = require('events');
 const assert = require('internal/assert');
 const path = require('path');
+const { timeOrigin } = internalBinding('performance');
 
 const errorCodes = require('internal/errors').codes;
 const {
@@ -70,6 +75,8 @@ const kOnMessage = Symbol('kOnMessage');
 const kOnCouldNotSerializeErr = Symbol('kOnCouldNotSerializeErr');
 const kOnErrorMessage = Symbol('kOnErrorMessage');
 const kParentSideStdio = Symbol('kParentSideStdio');
+const kLoopStartTime = Symbol('kLoopStartTime');
+const kIsOnline = Symbol('kIsOnline');
 
 const SHARE_ENV = SymbolFor('nodejs.worker_threads.SHARE_ENV');
 let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
@@ -101,7 +108,7 @@ class Worker extends EventEmitter {
       if (!ArrayIsArray(options.argv)) {
         throw new ERR_INVALID_ARG_TYPE('options.argv', 'Array', options.argv);
       }
-      argv = options.argv.map(String);
+      argv = ArrayPrototypeMap(options.argv, String);
     }
 
     let url, doEval;
@@ -130,7 +137,8 @@ class Worker extends EventEmitter {
           ['string', 'URL'],
           filename
         );
-      } else if (path.isAbsolute(filename) || /^\.\.?[\\/]/.test(filename)) {
+      } else if (path.isAbsolute(filename) ||
+                 RegExpPrototypeTest(/^\.\.?[\\/]/, filename)) {
         filename = path.resolve(filename);
         url = pathToFileURL(filename);
       } else {
@@ -200,7 +208,7 @@ class Worker extends EventEmitter {
     const transferList = [port2];
     // If transferList is provided.
     if (options.transferList)
-      transferList.push(...options.transferList);
+      ArrayPrototypePush(transferList, ...options.transferList);
 
     this[kPublicPort] = port1;
     for (const event of ['message', 'messageerror']) {
@@ -223,6 +231,12 @@ class Worker extends EventEmitter {
         null,
       hasStdin: !!options.stdin
     }, transferList);
+    // Use this to cache the Worker's loopStart value once available.
+    this[kLoopStartTime] = -1;
+    this[kIsOnline] = false;
+    this.performance = {
+      eventLoopUtilization: FunctionPrototypeBind(eventLoopUtilization, this),
+    };
     // Actually start the new thread now that everything is in place.
     this[kHandle].startThread();
   }
@@ -254,6 +268,7 @@ class Worker extends EventEmitter {
   [kOnMessage](message) {
     switch (message.type) {
       case messageTypes.UP_AND_RUNNING:
+        this[kIsOnline] = true;
         return this.emit('online');
       case messageTypes.COULD_NOT_SERIALIZE_ERROR:
         return this[kOnCouldNotSerializeErr]();
@@ -392,7 +407,7 @@ function pipeWithoutWarning(source, dest) {
 const resourceLimitsArray = new Float64Array(kTotalResourceLimitCount);
 function parseResourceLimits(obj) {
   const ret = resourceLimitsArray;
-  ret.fill(-1);
+  TypedArrayPrototypeFill(ret, -1);
   if (typeof obj !== 'object' || obj === null) return ret;
 
   if (typeof obj.maxOldGenerationSizeMb === 'number')
@@ -413,6 +428,52 @@ function makeResourceLimits(float64arr) {
     codeRangeSizeMb: float64arr[kCodeRangeSizeMb],
     stackSizeMb: float64arr[kStackSizeMb]
   };
+}
+
+function eventLoopUtilization(util1, util2) {
+  // TODO(trevnorris): Works to solve the thread-safe read/write issue of
+  // loopTime, but has the drawback that it can't be set until the event loop
+  // has had a chance to turn. So it will be impossible to read the ELU of
+  // a worker thread immediately after it's been created.
+  if (!this[kIsOnline] || !this[kHandle]) {
+    return { idle: 0, active: 0, utilization: 0 };
+  }
+
+  // Cache loopStart, since it's only written to once.
+  if (this[kLoopStartTime] === -1) {
+    this[kLoopStartTime] = this[kHandle].loopStartTime();
+    if (this[kLoopStartTime] === -1)
+      return { idle: 0, active: 0, utilization: 0 };
+  }
+
+  if (util2) {
+    const idle = util1.idle - util2.idle;
+    const active = util1.active - util2.active;
+    return { idle, active, utilization: active / (idle + active) };
+  }
+
+  const idle = this[kHandle].loopIdleTime();
+
+  // Using performance.now() here is fine since it's always the time from
+  // the beginning of the process, and is why it needs to be offset by the
+  // loopStart time (which is also calculated from the beginning of the
+  // process).
+  const active = now() - this[kLoopStartTime] - idle;
+
+  if (!util1) {
+    return { idle, active, utilization: active / (idle + active) };
+  }
+
+  const idle_delta = idle - util1.idle;
+  const active_delta = active - util1.active;
+  const utilization = active_delta / (idle_delta + active_delta);
+  return { idle: idle_delta, active: active_delta, utilization };
+}
+
+// Duplicate code from performance.now() so don't need to require perf_hooks.
+function now() {
+  const hr = process.hrtime();
+  return (hr[0] * 1000 + hr[1] / 1e6) - timeOrigin;
 }
 
 module.exports = {

@@ -340,7 +340,7 @@ class LiftoffAssembler : public TurboAssembler {
   // possible.
   LiftoffRegister GetUnusedRegister(
       RegClass rc, std::initializer_list<LiftoffRegister> try_first,
-      LiftoffRegList pinned = {}) {
+      LiftoffRegList pinned) {
     for (LiftoffRegister reg : try_first) {
       DCHECK_EQ(reg.reg_class(), rc);
       if (cache_state_.is_free(reg)) return reg;
@@ -349,20 +349,11 @@ class LiftoffAssembler : public TurboAssembler {
   }
 
   // Get an unused register for class {rc}, potentially spilling to free one.
-  LiftoffRegister GetUnusedRegister(RegClass rc, LiftoffRegList pinned = {}) {
+  LiftoffRegister GetUnusedRegister(RegClass rc, LiftoffRegList pinned) {
     if (kNeedI64RegPair && rc == kGpRegPair) {
       LiftoffRegList candidates = kGpCacheRegList;
       Register low = pinned.set(GetUnusedRegister(candidates, pinned)).gp();
       Register high = GetUnusedRegister(candidates, pinned).gp();
-      if (low.code() > high.code()) {
-        // Establish the invariant that the register of the low word always has
-        // a lower code than the register of the high word. This guarantees that
-        // if a register pair of an input is reused for the result, the low
-        // word and high word registers are not swapped, i.e. the low word
-        // register of the result is not the high word register of the input,
-        // and vice versa.
-        std::swap(low, high);
-      }
       return LiftoffRegister::ForPair(low, high);
     } else if (kNeedS128RegPair && rc == kFpRegPair) {
       // kFpRegPair specific logic here because we need adjacent registers, not

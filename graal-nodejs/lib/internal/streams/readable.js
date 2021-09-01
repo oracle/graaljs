@@ -22,7 +22,6 @@
 'use strict';
 
 const {
-  ArrayIsArray,
   NumberIsInteger,
   NumberIsNaN,
   NumberParseInt,
@@ -38,7 +37,7 @@ module.exports = Readable;
 Readable.ReadableState = ReadableState;
 
 const EE = require('events');
-const Stream = require('internal/streams/legacy');
+const { Stream, prependListener } = require('internal/streams/legacy');
 const { Buffer } = require('buffer');
 
 let debug = require('internal/util/debuglog').debuglog('stream', (fn) => {
@@ -68,24 +67,6 @@ ObjectSetPrototypeOf(Readable, Stream);
 function nop() {}
 
 const { errorOrDestroy } = destroyImpl;
-
-function prependListener(emitter, event, fn) {
-  // Sadly this is not cacheable as some libraries bundle their own
-  // event emitter implementation with them.
-  if (typeof emitter.prependListener === 'function')
-    return emitter.prependListener(event, fn);
-
-  // This is a hack to make sure that our error handler is attached before any
-  // userland ones.  NEVER DO THIS. This is here only because this code needs
-  // to continue to work with older versions of Node.js that do not include
-  // the prependListener() method. The goal is to eventually remove this hack.
-  if (!emitter._events || !emitter._events[event])
-    emitter.on(event, fn);
-  else if (ArrayIsArray(emitter._events[event]))
-    emitter._events[event].unshift(fn);
-  else
-    emitter._events[event] = [fn, emitter._events[event]];
-}
 
 function ReadableState(options, stream, isDuplex) {
   // Duplex streams are both readable and writable, but share
@@ -616,7 +597,7 @@ function maybeReadMore_(stream, state) {
   // conditions prevent the data from being read:
   // - The stream has ended (state.ended).
   // - There is already a pending 'read' operation (state.reading). This is a
-  //   case where the the stream has called the implementation defined _read()
+  //   case where the stream has called the implementation defined _read()
   //   method, but they are processing the call asynchronously and have _not_
   //   called push() with new data. In this case we skip performing more
   //   read()s. The execution ends in this method again after the _read() ends
@@ -713,35 +694,39 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
       ondrain();
   }
 
+  function pause() {
+    // If the user unpiped during `dest.write()`, it is possible
+    // to get stuck in a permanently paused state if that write
+    // also returned false.
+    // => Check whether `dest` is still a piping destination.
+    if (!cleanedUp) {
+      if (state.pipes.length === 1 && state.pipes[0] === dest) {
+        debug('false write response, pause', 0);
+        state.awaitDrainWriters = dest;
+        state.multiAwaitDrain = false;
+      } else if (state.pipes.length > 1 && state.pipes.includes(dest)) {
+        debug('false write response, pause', state.awaitDrainWriters.size);
+        state.awaitDrainWriters.add(dest);
+      }
+      src.pause();
+    }
+    if (!ondrain) {
+      // When the dest drains, it reduces the awaitDrain counter
+      // on the source.  This would be more elegant with a .once()
+      // handler in flow(), but adding and removing repeatedly is
+      // too slow.
+      ondrain = pipeOnDrain(src, dest);
+      dest.on('drain', ondrain);
+    }
+  }
+
   src.on('data', ondata);
   function ondata(chunk) {
     debug('ondata');
     const ret = dest.write(chunk);
     debug('dest.write', ret);
     if (ret === false) {
-      // If the user unpiped during `dest.write()`, it is possible
-      // to get stuck in a permanently paused state if that write
-      // also returned false.
-      // => Check whether `dest` is still a piping destination.
-      if (!cleanedUp) {
-        if (state.pipes.length === 1 && state.pipes[0] === dest) {
-          debug('false write response, pause', 0);
-          state.awaitDrainWriters = dest;
-          state.multiAwaitDrain = false;
-        } else if (state.pipes.length > 1 && state.pipes.includes(dest)) {
-          debug('false write response, pause', state.awaitDrainWriters.size);
-          state.awaitDrainWriters.add(dest);
-        }
-        src.pause();
-      }
-      if (!ondrain) {
-        // When the dest drains, it reduces the awaitDrain counter
-        // on the source.  This would be more elegant with a .once()
-        // handler in flow(), but adding and removing repeatedly is
-        // too slow.
-        ondrain = pipeOnDrain(src, dest);
-        dest.on('drain', ondrain);
-      }
+      pause();
     }
   }
 
@@ -787,7 +772,12 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   dest.emit('pipe', src);
 
   // Start the flow if it hasn't been started already.
-  if (!state.flowing) {
+
+  if (dest.writableNeedDrain === true) {
+    if (state.flowing) {
+      pause();
+    }
+  } else if (!state.flowing) {
     debug('pipe resume');
     src.resume();
   }
@@ -833,8 +823,8 @@ Readable.prototype.unpipe = function(dest) {
     state.pipes = [];
     this.pause();
 
-    for (const dest of dests)
-      dest.emit('unpipe', this, { hasUnpiped: false });
+    for (let i = 0; i < dests.length; i++)
+      dests[i].emit('unpipe', this, { hasUnpiped: false });
     return this;
   }
 

@@ -292,6 +292,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   AVX_OP2_WITH_TYPE(Movaps, movaps, XMMRegister, XMMRegister)
   AVX_OP2_WITH_TYPE(Movapd, movapd, XMMRegister, XMMRegister)
   AVX_OP2_WITH_TYPE(Movapd, movapd, XMMRegister, const Operand&)
+  AVX_OP2_WITH_TYPE(Movupd, movupd, XMMRegister, const Operand&)
   AVX_OP2_WITH_TYPE(Pmovmskb, pmovmskb, Register, XMMRegister)
   AVX_OP2_WITH_TYPE(Movmskps, movmskps, Register, XMMRegister)
 
@@ -566,7 +567,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
 
   void CallRecordWriteStub(Register object, Register address,
                            RememberedSetAction remembered_set_action,
-                           SaveFPRegsMode fp_mode, Handle<Code> code_target,
+                           SaveFPRegsMode fp_mode, int builtin_index,
                            Address wasm_target);
 };
 

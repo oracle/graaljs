@@ -24,7 +24,7 @@ Node.js specific, and a newer API that implements the same
 [WHATWG URL Standard][] used by web browsers.
 
 A comparison between the WHATWG and Legacy APIs is provided below. Above the URL
-`'http://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'`, properties
+`'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'`, properties
 of an object returned by the legacy `url.parse()` are shown. Below it are
 properties of a WHATWG `URL` object.
 
@@ -65,6 +65,31 @@ Parsing the URL string using the Legacy API:
 const url = require('url');
 const myURL =
   url.parse('https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash');
+```
+
+### Constructing a URL from component parts and getting the constructed string
+
+It is possible to construct a WHATWG URL from component parts using either the
+property setters or a template literal string:
+
+```js
+const myURL = new URL('https://example.org');
+myURL.pathname = '/a/b/c';
+myURL.search = '?d=e';
+myURL.hash = '#fgh';
+```
+
+```js
+const pathname = '/a/b/c';
+const search = '?d=e';
+const hash = '#fgh';
+const myURL = new URL(`https://example.org${pathname}${search}${hash}`);
+```
+
+To get the constructed URL string, use the `href` property accessor:
+
+```js
+console.log(myURL.href);
 ```
 
 ## The WHATWG URL API
@@ -888,6 +913,9 @@ invalid domain, the empty string is returned.
 
 It performs the inverse operation to [`url.domainToUnicode()`][].
 
+This feature is only available if the `node` executable was compiled with
+[ICU][] enabled. If not, the domain names are passed through unchanged.
+
 ```js
 const url = require('url');
 console.log(url.domainToASCII('español.com'));
@@ -913,6 +941,9 @@ domain, the empty string is returned.
 
 It performs the inverse operation to [`url.domainToASCII()`][].
 
+This feature is only available if the `node` executable was compiled with
+[ICU][] enabled. If not, the domain names are passed through unchanged.
+
 ```js
 const url = require('url');
 console.log(url.domainToUnicode('xn--espaol-zwa.com'));
@@ -934,18 +965,37 @@ added: v10.12.0
 This function ensures the correct decodings of percent-encoded characters as
 well as ensuring a cross-platform valid absolute path string.
 
-```js
-new URL('file:///C:/path/').pathname;    // Incorrect: /C:/path/
-fileURLToPath('file:///C:/path/');       // Correct:   C:\path\ (Windows)
+```mjs
+import { fileURLToPath } from 'url';
 
-new URL('file://nas/foo.txt').pathname;  // Incorrect: /foo.txt
-fileURLToPath('file://nas/foo.txt');     // Correct:   \\nas\foo.txt (Windows)
+const __filename = fileURLToPath(import.meta.url);
 
-new URL('file:///你好.txt').pathname;    // Incorrect: /%E4%BD%A0%E5%A5%BD.txt
-fileURLToPath('file:///你好.txt');       // Correct:   /你好.txt (POSIX)
+new URL('file:///C:/path/').pathname;      // Incorrect: /C:/path/
+fileURLToPath('file:///C:/path/');         // Correct:   C:\path\ (Windows)
 
-new URL('file:///hello world').pathname; // Incorrect: /hello%20world
-fileURLToPath('file:///hello world');    // Correct:   /hello world (POSIX)
+new URL('file://nas/foo.txt').pathname;    // Incorrect: /foo.txt
+fileURLToPath('file://nas/foo.txt');       // Correct:   \\nas\foo.txt (Windows)
+
+new URL('file:///你好.txt').pathname;      // Incorrect: /%E4%BD%A0%E5%A5%BD.txt
+fileURLToPath('file:///你好.txt');         // Correct:   /你好.txt (POSIX)
+
+new URL('file:///hello world').pathname;   // Incorrect: /hello%20world
+fileURLToPath('file:///hello world');      // Correct:   /hello world (POSIX)
+```
+
+```cjs
+const { fileURLToPath } = require('url');
+new URL('file:///C:/path/').pathname;      // Incorrect: /C:/path/
+fileURLToPath('file:///C:/path/');         // Correct:   C:\path\ (Windows)
+
+new URL('file://nas/foo.txt').pathname;    // Incorrect: /foo.txt
+fileURLToPath('file://nas/foo.txt');       // Correct:   \\nas\foo.txt (Windows)
+
+new URL('file:///你好.txt').pathname;      // Incorrect: /%E4%BD%A0%E5%A5%BD.txt
+fileURLToPath('file:///你好.txt');         // Correct:   /你好.txt (POSIX)
+
+new URL('file:///hello world').pathname;   // Incorrect: /hello%20world
+fileURLToPath('file:///hello world');      // Correct:   /hello world (POSIX)
 ```
 
 ### `url.format(URL[, options])`
@@ -974,7 +1024,22 @@ string serializations of the URL. These are not, however, customizable in
 any way. The `url.format(URL[, options])` method allows for basic customization
 of the output.
 
-```js
+```mjs
+import url from 'url';
+const myURL = new URL('https://a:b@測試?abc#foo');
+
+console.log(myURL.href);
+// Prints https://a:b@xn--g6w251d/?abc#foo
+
+console.log(myURL.toString());
+// Prints https://a:b@xn--g6w251d/?abc#foo
+
+console.log(url.format(myURL, { fragment: false, unicode: true, auth: false }));
+// Prints 'https://測試/?abc'
+```
+
+```cjs
+const url = require('url');
 const myURL = new URL('https://a:b@測試?abc#foo');
 
 console.log(myURL.href);
@@ -998,33 +1063,55 @@ added: v10.12.0
 This function ensures that `path` is resolved absolutely, and that the URL
 control characters are correctly encoded when converting into a File URL.
 
-```js
-new URL(__filename);                // Incorrect: throws (POSIX)
-new URL(__filename);                // Incorrect: C:\... (Windows)
-pathToFileURL(__filename);          // Correct:   file:///... (POSIX)
-pathToFileURL(__filename);          // Correct:   file:///C:/... (Windows)
+```mjs
+import { pathToFileURL } from 'url';
 
-new URL('/foo#1', 'file:');         // Incorrect: file:///foo#1
-pathToFileURL('/foo#1');            // Correct:   file:///foo%231 (POSIX)
+new URL('/foo#1', 'file:');           // Incorrect: file:///foo#1
+pathToFileURL('/foo#1');              // Correct:   file:///foo%231 (POSIX)
 
-new URL('/some/path%.c', 'file:'); // Incorrect: file:///some/path%.c
-pathToFileURL('/some/path%.c');    // Correct:   file:///some/path%25.c (POSIX)
+new URL('/some/path%.c', 'file:');    // Incorrect: file:///some/path%.c
+pathToFileURL('/some/path%.c');       // Correct:   file:///some/path%25.c (POSIX)
+```
+
+```cjs
+const { pathToFileURL } = require('url');
+new URL(__filename);                  // Incorrect: throws (POSIX)
+new URL(__filename);                  // Incorrect: C:\... (Windows)
+pathToFileURL(__filename);            // Correct:   file:///... (POSIX)
+pathToFileURL(__filename);            // Correct:   file:///C:/... (Windows)
+
+new URL('/foo#1', 'file:');           // Incorrect: file:///foo#1
+pathToFileURL('/foo#1');              // Correct:   file:///foo%231 (POSIX)
+
+new URL('/some/path%.c', 'file:');    // Incorrect: file:///some/path%.c
+pathToFileURL('/some/path%.c');       // Correct:   file:///some/path%25.c (POSIX)
 ```
 
 ## Legacy URL API
 <!-- YAML
-deprecated: v11.0.0
+changes:
+  - version: v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/37784
+    description: Deprecation revoked. Status changed to "Legacy".
+  - version: v11.0.0
+    pr-url: https://github.com/nodejs/node/pull/22715
+    description: This API is deprecated.
 -->
+
+> Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
 ### Legacy `urlObject`
 <!-- YAML
 changes:
+  - version: v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/37784
+    description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/22715
     description: The Legacy URL API is deprecated. Use the WHATWG URL API.
 -->
 
-> Stability: 0 - Deprecated: Use the WHATWG URL API instead.
+> Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
 The legacy `urlObject` (`require('url').Url`) is created and returned by the
 `url.parse()` function.
@@ -1130,6 +1217,9 @@ forward-slash characters (`/`) are required following the colon in the
 <!-- YAML
 added: v0.1.25
 changes:
+  - version: v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/37784
+    description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/22715
     description: The Legacy URL API is deprecated. Use the WHATWG URL API.
@@ -1141,7 +1231,7 @@ changes:
                  times.
 -->
 
-> Stability: 0 - Deprecated: Use the WHATWG URL API instead.
+> Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
 * `urlObject` {Object|string} A URL object (as returned by `url.parse()` or
   constructed otherwise). If a string, it is converted to an object by passing
@@ -1151,6 +1241,7 @@ The `url.format()` method returns a formatted URL string derived from
 `urlObject`.
 
 ```js
+const url = require('url');
 url.format({
   protocol: 'https',
   hostname: 'example.com',
@@ -1223,6 +1314,9 @@ The formatting process operates as follows:
 <!-- YAML
 added: v0.1.25
 changes:
+  - version: v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/37784
+    description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.14.0
     pr-url: https://github.com/nodejs/node/pull/26941
     description: The `pathname` property on the returned URL object is now `/`
@@ -1237,7 +1331,7 @@ changes:
                  when no query string is present.
 -->
 
-> Stability: 0 - Deprecated: Use the WHATWG URL API instead.
+> Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
 * `urlString` {string} The URL string to parse.
 * `parseQueryString` {boolean} If `true`, the `query` property will always
@@ -1267,6 +1361,9 @@ incorrect handling of usernames and passwords have been identified.
 <!-- YAML
 added: v0.1.25
 changes:
+  - version: v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/37784
+    description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
     pr-url: https://github.com/nodejs/node/pull/22715
     description: The Legacy URL API is deprecated. Use the WHATWG URL API.
@@ -1285,7 +1382,7 @@ changes:
                  contains a hostname.
 -->
 
-> Stability: 0 - Deprecated: Use the WHATWG URL API instead.
+> Stability: 3 - Legacy: Use the WHATWG URL API instead.
 
 * `from` {string} The Base URL being resolved against.
 * `to` {string} The HREF URL being resolved.
@@ -1298,6 +1395,24 @@ const url = require('url');
 url.resolve('/one/two/three', 'four');         // '/one/two/four'
 url.resolve('http://example.com/', '/one');    // 'http://example.com/one'
 url.resolve('http://example.com/one', '/two'); // 'http://example.com/two'
+```
+
+You can achieve the same result using the WHATWG URL API:
+
+```js
+function resolve(from, to) {
+  const resolvedUrl = new URL(to, new URL(from, 'resolve://'));
+  if (resolvedUrl.protocol === 'resolve:') {
+    // `from` is a relative URL.
+    const { pathname, search, hash } = resolvedUrl;
+    return pathname + search + hash;
+  }
+  return resolvedUrl.toString();
+}
+
+resolve('/one/two/three', 'four');         // '/one/two/four'
+resolve('http://example.com/', '/one');    // 'http://example.com/one'
+resolve('http://example.com/one', '/two'); // 'http://example.com/two'
 ```
 
 <a id="whatwg-percent-encoding"></a>

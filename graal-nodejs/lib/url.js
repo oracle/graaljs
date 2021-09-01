@@ -26,6 +26,8 @@ const {
   ObjectCreate,
   ObjectKeys,
   SafeSet,
+  StringPrototypeCharCodeAt,
+  decodeURIComponent,
 } = primordials;
 
 const { toASCII } = require('internal/idna');
@@ -154,6 +156,14 @@ function urlParse(url, parseQueryString, slashesDenoteHost) {
   const urlObject = new Url();
   urlObject.parse(url, parseQueryString, slashesDenoteHost);
   return urlObject;
+}
+
+function isIpv6Hostname(hostname) {
+  return (
+    StringPrototypeCharCodeAt(hostname, 0) === CHAR_LEFT_SQUARE_BRACKET &&
+    StringPrototypeCharCodeAt(hostname, hostname.length - 1) ===
+    CHAR_RIGHT_SQUARE_BRACKET
+  );
 }
 
 Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
@@ -364,8 +374,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
 
     // If hostname begins with [ and ends with ]
     // assume that it's an IPv6 address.
-    const ipv6Hostname = hostname.charCodeAt(0) === CHAR_LEFT_SQUARE_BRACKET &&
-      hostname.charCodeAt(hostname.length - 1) === CHAR_RIGHT_SQUARE_BRACKET;
+    const ipv6Hostname = isIpv6Hostname(hostname);
 
     // validate a little.
     if (!ipv6Hostname) {
@@ -590,7 +599,7 @@ Url.prototype.format = function format() {
     host = auth + this.host;
   } else if (this.hostname) {
     host = auth + (
-      this.hostname.includes(':') ?
+      this.hostname.includes(':') && !isIpv6Hostname(this.hostname) ?
         '[' + this.hostname + ']' :
         this.hostname
     );

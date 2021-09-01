@@ -282,6 +282,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "experimental Source Map V3 support",
             &EnvironmentOptions::enable_source_maps,
             kAllowedInEnvironment);
+  AddOption("--experimental-abortcontroller",
+            "experimental AbortController support",
+            &EnvironmentOptions::experimental_abortcontroller,
+            kAllowedInEnvironment);
   AddOption("--experimental-json-modules",
             "experimental JSON interop support for the ES Module loader",
             &EnvironmentOptions::experimental_json_modules,
@@ -473,9 +477,16 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::trace_warnings,
             kAllowedInEnvironment);
   AddOption("--unhandled-rejections",
-            "define unhandled rejections behavior. Options are 'strict' (raise "
-            "an error), 'warn' (enforce warnings) or 'none' (silence warnings)",
+            "define unhandled rejections behavior. Options are 'strict' "
+            "(always raise an error), 'throw' (raise an error unless "
+            "'unhandledRejection' hook is set), 'warn' (log a warning), 'none' "
+            "(silence warnings), 'warn-with-error-code' (log a warning and set "
+            "exit code 1 unless 'unhandledRejection' hook is set).",
             &EnvironmentOptions::unhandled_rejections,
+            kAllowedInEnvironment);
+  AddOption("--verify-base-objects",
+            "", /* undocumented, only for debugging */
+            &EnvironmentOptions::verify_base_objects,
             kAllowedInEnvironment);
 
   AddOption("--check",
@@ -694,7 +705,7 @@ PerProcessOptionsParser::PerProcessOptionsParser(
   AddOption("--icu-data-dir",
             "set ICU data load path to dir (overrides NODE_ICU_DATA)"
 #ifndef NODE_HAVE_SMALL_ICU
-            " (note: linked-in ICU data is present)\n"
+            " (note: linked-in ICU data is present)"
 #endif
             ,
             &PerProcessOptions::icu_data_dir,
@@ -875,6 +886,12 @@ void GetOptions(const FunctionCallbackInfo<Value>& args) {
   });
 
   Local<Map> options = Map::New(isolate);
+  if (options
+          ->SetPrototype(context, env->primordials_safe_map_prototype_object())
+          .IsNothing()) {
+    return;
+  }
+
   for (const auto& item : _ppop_instance.options_) {
     Local<Value> value;
     const auto& option_info = item.second;
@@ -962,6 +979,12 @@ void GetOptions(const FunctionCallbackInfo<Value>& args) {
 
   Local<Value> aliases;
   if (!ToV8Value(context, _ppop_instance.aliases_).ToLocal(&aliases)) return;
+
+  if (aliases.As<Object>()
+          ->SetPrototype(context, env->primordials_safe_map_prototype_object())
+          .IsNothing()) {
+    return;
+  }
 
   Local<Object> ret = Object::New(isolate);
   if (ret->Set(context, env->options_string(), options).IsNothing() ||

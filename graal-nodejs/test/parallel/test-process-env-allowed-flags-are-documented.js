@@ -1,4 +1,3 @@
-// Flags: --js.ecmascript-version=2020
 'use strict';
 
 const common = require('../common');
@@ -42,12 +41,13 @@ for (const line of [...nodeOptionsLines, ...v8OptionsLines]) {
 
 // Filter out options that are conditionally present.
 const conditionalOpts = [
-  { include: common.hasCrypto,
+  {
+    include: common.hasCrypto,
     filter: (opt) => {
       return ['--openssl-config', '--tls-cipher-list', '--use-bundled-ca',
               '--use-openssl-ca' ].includes(opt);
-    } },
-  {
+    }
+  }, {
     // We are using openssl_is_fips from the configuration because it could be
     // the case that OpenSSL is FIPS compatible but fips has not been enabled
     // (starting node with --enable-fips). If we use common.hasFipsCrypto
@@ -55,9 +55,11 @@ const conditionalOpts = [
     // want to check options which will be available regardless of whether fips
     // is enabled at runtime or not.
     include: process.config.variables.openssl_is_fips,
-    filter: (opt) => opt.includes('-fips') },
-  { include: common.hasIntl,
-    filter: (opt) => opt === '--icu-data-dir' },
+    filter: (opt) => opt.includes('-fips')
+  }, {
+    include: common.hasIntl,
+    filter: (opt) => opt === '--icu-data-dir'
+  },
 ];
 documented.forEach((opt) => {
   conditionalOpts.forEach(({ include, filter }) => {
@@ -87,6 +89,7 @@ assert(undocumented.delete('--experimental-report'));
 assert(undocumented.delete('--experimental-worker'));
 assert(undocumented.delete('--no-node-snapshot'));
 assert(undocumented.delete('--loader'));
+assert(undocumented.delete('--verify-base-objects'));
 
 assert.strictEqual(undocumented.size, 0,
                    'The following options are not documented as allowed in ' +

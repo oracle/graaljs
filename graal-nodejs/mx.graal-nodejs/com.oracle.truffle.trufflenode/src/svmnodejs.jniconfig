@@ -78,6 +78,7 @@
       { "name": "functionTemplateInstanceTemplate" },
       { "name": "functionTemplateNew" },
       { "name": "functionTemplatePrototypeTemplate" },
+      { "name": "functionTemplateReadOnlyPrototype" },
       { "name": "functionTemplateSetCallHandler" },
       { "name": "functionTemplateSetClassName" },
       { "name": "int16ArrayNew" },

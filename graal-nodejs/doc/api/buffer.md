@@ -96,7 +96,7 @@ The character encodings currently supported by Node.js are the following:
 Converting a `Buffer` into a string using one of the above is referred to as
 decoding, and converting a string into a `Buffer` is referred to as encoding.
 
-Node.js also supports the following two binary-to-text encodings. For
+Node.js also supports the following binary-to-text encodings. For
 binary-to-text encodings, the naming convention is reversed: Converting a
 `Buffer` into a string is typically referred to as encoding, and converting a
 string into a `Buffer` as decoding.
@@ -164,12 +164,12 @@ however, subtle incompatibilities between the `Buffer` API and the
 
 In particular:
 
-* While [`TypedArray#slice()`][] creates a copy of part of the `TypedArray`,
-  [`Buffer#slice()`][`buf.slice()`] creates a view over the existing `Buffer`
+* While [`TypedArray.prototype.slice()`][] creates a copy of part of the `TypedArray`,
+  [`Buffer.prototype.slice()`][`buf.slice()`] creates a view over the existing `Buffer`
   without copying. This behavior can be surprising, and only exists for legacy
-  compatibility. [`TypedArray#subarray()`][] can be used to achieve the behavior
-  of [`Buffer#slice()`][`buf.slice()`] on both `Buffer`s and other
-  `TypedArray`s.
+  compatibility. [`TypedArray.prototype.subarray()`][] can be used to achieve
+  the behavior of [`Buffer.prototype.slice()`][`buf.slice()`] on both `Buffer`s
+  and other `TypedArray`s.
 * [`buf.toString()`][] is incompatible with its `TypedArray` equivalent.
 * A number of methods, e.g. [`buf.indexOf()`][], support additional arguments.
 
@@ -193,7 +193,7 @@ console.log(uint32array);
 
 ```js
 const buf = Buffer.from('hello', 'utf16le');
-const uint16arr = new Uint16Array(
+const uint16array = new Uint16Array(
   buf.buffer,
   buf.byteOffset,
   buf.length / Uint16Array.BYTES_PER_ELEMENT);
@@ -599,7 +599,7 @@ added: v5.10.0
 This creates a view of the [`ArrayBuffer`][] without copying the underlying
 memory. For example, when passed a reference to the `.buffer` property of a
 [`TypedArray`][] instance, the newly created `Buffer` will share the same
-allocated memory as the [`TypedArray`][].
+allocated memory as the [`TypedArray`][]'s underlying `ArrayBuffer`.
 
 ```js
 const arr = new Uint16Array(2);
@@ -634,6 +634,21 @@ console.log(buf.length);
 A `TypeError` will be thrown if `arrayBuffer` is not an [`ArrayBuffer`][] or a
 [`SharedArrayBuffer`][] or another type appropriate for `Buffer.from()`
 variants.
+
+It is important to remember that a backing `ArrayBuffer` can cover a range
+of memory that extends beyond the bounds of a `TypedArray` view. A new
+`Buffer` created using the `buffer` property of a `TypedArray` may extend
+beyond the range of the `TypedArray`:
+
+```js
+const arrA = Uint8Array.from([0x63, 0x64, 0x65, 0x66]); // 4 elements
+const arrB = new Uint8Array(arrA.buffer, 1, 2); // 2 elements
+console.log(arrA.buffer === arrB.buffer); // true
+
+const buf = Buffer.from(arrB.buffer);
+console.log(buf);
+// Prints: <Buffer 63 64 65 66>
+```
 
 ### Static method: `Buffer.from(buffer)`
 <!-- YAML
@@ -729,6 +744,14 @@ added: v0.1.101
 * Returns: {boolean}
 
 Returns `true` if `obj` is a `Buffer`, `false` otherwise.
+
+```js
+Buffer.isBuffer(Buffer.alloc(10)); // true
+Buffer.isBuffer(Buffer.from('foo')); // true
+Buffer.isBuffer('a string'); // false
+Buffer.isBuffer([]); // false
+Buffer.isBuffer(new Uint8Array(1024)); // false
+```
 
 ### Static method: `Buffer.isEncoding(encoding)`
 <!-- YAML
@@ -924,9 +947,9 @@ added: v0.1.90
 Copies data from a region of `buf` to a region in `target`, even if the `target`
 memory region overlaps with `buf`.
 
-[`TypedArray#set()`][] performs the same operation, and is available for all
-TypedArrays, including Node.js `Buffer`s, although it takes different
-function arguments.
+[`TypedArray.prototype.set()`][] performs the same operation, and is available
+for all TypedArrays, including Node.js `Buffer`s, although it takes
+different function arguments.
 
 ```js
 // Create two `Buffer` instances.
@@ -1187,7 +1210,7 @@ an integer between 0 and 255.
 
 If `byteOffset` is not a number, it will be coerced to a number. If the result
 of coercion is `NaN` or `0`, then the entire buffer will be searched. This
-behavior matches [`String#indexOf()`][].
+behavior matches [`String.prototype.indexOf()`][].
 
 ```js
 const b = Buffer.from('abcdef');
@@ -1287,7 +1310,7 @@ an integer between 0 and 255.
 
 If `byteOffset` is not a number, it will be coerced to a number. Any arguments
 that coerce to `NaN`, like `{}` or `undefined`, will search the whole buffer.
-This behavior matches [`String#lastIndexOf()`][].
+This behavior matches [`String.prototype.lastIndexOf()`][].
 
 ```js
 const b = Buffer.from('abcdef');
@@ -1393,6 +1416,8 @@ changes:
 Reads an unsigned, big-endian 64-bit integer from `buf` at the specified
 `offset`.
 
+This function is also available under the `readBigUint64BE` alias.
+
 ```js
 const buf = Buffer.from([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff]);
 
@@ -1419,6 +1444,8 @@ changes:
 
 Reads an unsigned, little-endian 64-bit integer from `buf` at the specified
 `offset`.
+
+This function is also available under the `readBigUint64LE` alias.
 
 ```js
 const buf = Buffer.from([0x00, 0x00, 0x00, 0x00, 0xff, 0xff, 0xff, 0xff]);
@@ -1735,6 +1762,8 @@ changes:
 
 Reads an unsigned 8-bit integer from `buf` at the specified `offset`.
 
+This function is also available under the `readUint8` alias.
+
 ```js
 const buf = Buffer.from([1, -2]);
 
@@ -1766,6 +1795,8 @@ changes:
 Reads an unsigned, big-endian 16-bit integer from `buf` at the specified
 `offset`.
 
+This function is also available under the `readUint16BE` alias.
+
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56]);
 
@@ -1794,6 +1825,8 @@ changes:
 
 Reads an unsigned, little-endian 16-bit integer from `buf` at the specified
 `offset`.
+
+This function is also available under the `readUint16LE` alias.
 
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56]);
@@ -1826,6 +1859,8 @@ changes:
 Reads an unsigned, big-endian 32-bit integer from `buf` at the specified
 `offset`.
 
+This function is also available under the `readUint32BE` alias.
+
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56, 0x78]);
 
@@ -1852,6 +1887,8 @@ changes:
 
 Reads an unsigned, little-endian 32-bit integer from `buf` at the specified
 `offset`.
+
+This function is also available under the `readUint32LE` alias.
 
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56, 0x78]);
@@ -1885,6 +1922,8 @@ Reads `byteLength` number of bytes from `buf` at the specified `offset`
 and interprets the result as an unsigned big-endian integer supporting
 up to 48 bits of accuracy.
 
+This function is also available under the `readUintBE` alias.
+
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56, 0x78, 0x90, 0xab]);
 
@@ -1917,6 +1956,8 @@ Reads `byteLength` number of bytes from `buf` at the specified `offset`
 and interprets the result as an unsigned, little-endian integer supporting
 up to 48 bits of accuracy.
 
+This function is also available under the `readUintLE` alias.
+
 ```js
 const buf = Buffer.from([0x12, 0x34, 0x56, 0x78, 0x90, 0xab]);
 
@@ -1940,7 +1981,7 @@ offset and cropped by the `start` and `end` indices.
 Specifying `end` greater than [`buf.length`][] will return the same result as
 that of `end` equal to [`buf.length`][].
 
-This method is inherited from [`TypedArray#subarray()`][].
+This method is inherited from [`TypedArray.prototype.subarray()`][].
 
 Modifying the new `Buffer` slice will modify the memory in the original `Buffer`
 because the allocated memory of the two objects overlap.
@@ -2330,6 +2371,8 @@ changes:
 
 Writes `value` to `buf` at the specified `offset` as big-endian.
 
+This function is also available under the `writeBigUint64BE` alias.
+
 ```js
 const buf = Buffer.allocUnsafe(8);
 
@@ -2365,6 +2408,8 @@ buf.writeBigUInt64LE(0xdecafafecacefaden, 0);
 console.log(buf);
 // Prints: <Buffer de fa ce ca fe fa ca de>
 ```
+
+This function is also available under the `writeBigUint64LE` alias.
 
 ### `buf.writeDoubleBE(value[, offset])`
 <!-- YAML
@@ -2447,7 +2492,6 @@ buf.writeFloatBE(0xcafebabe, 0);
 
 console.log(buf);
 // Prints: <Buffer 4f 4a fe bb>
-
 ```
 
 ### `buf.writeFloatLE(value[, offset])`
@@ -2656,7 +2700,6 @@ buf.writeIntBE(0x1234567890ab, 0, 6);
 
 console.log(buf);
 // Prints: <Buffer 12 34 56 78 90 ab>
-
 ```
 
 ### `buf.writeIntLE(value, offset, byteLength)`
@@ -2711,6 +2754,8 @@ Writes `value` to `buf` at the specified `offset`. `value` must be a
 valid unsigned 8-bit integer. Behavior is undefined when `value` is anything
 other than an unsigned 8-bit integer.
 
+This function is also available under the `writeUint8` alias.
+
 ```js
 const buf = Buffer.allocUnsafe(4);
 
@@ -2744,6 +2789,8 @@ changes:
 Writes `value` to `buf` at the specified `offset` as big-endian. The `value`
 must be a valid unsigned 16-bit integer. Behavior is undefined when `value`
 is anything other than an unsigned 16-bit integer.
+
+This function is also available under the `writeUint16BE` alias.
 
 ```js
 const buf = Buffer.allocUnsafe(4);
@@ -2779,6 +2826,8 @@ Writes `value` to `buf` at the specified `offset` as little-endian. The `value`
 must be a valid unsigned 16-bit integer. Behavior is undefined when `value` is
 anything other than an unsigned 16-bit integer.
 
+This function is also available under the `writeUint16LE` alias.
+
 ```js
 const buf = Buffer.allocUnsafe(4);
 
@@ -2811,6 +2860,8 @@ Writes `value` to `buf` at the specified `offset` as big-endian. The `value`
 must be a valid unsigned 32-bit integer. Behavior is undefined when `value`
 is anything other than an unsigned 32-bit integer.
 
+This function is also available under the `writeUint32BE` alias.
+
 ```js
 const buf = Buffer.allocUnsafe(4);
 
@@ -2841,6 +2892,8 @@ changes:
 Writes `value` to `buf` at the specified `offset` as little-endian. The `value`
 must be a valid unsigned 32-bit integer. Behavior is undefined when `value` is
 anything other than an unsigned 32-bit integer.
+
+This function is also available under the `writeUint32LE` alias.
 
 ```js
 const buf = Buffer.allocUnsafe(4);
@@ -2875,6 +2928,8 @@ Writes `byteLength` bytes of `value` to `buf` at the specified `offset`
 as big-endian. Supports up to 48 bits of accuracy. Behavior is undefined
 when `value` is anything other than an unsigned integer.
 
+This function is also available under the `writeUintBE` alias.
+
 ```js
 const buf = Buffer.allocUnsafe(6);
 
@@ -2907,6 +2962,8 @@ changes:
 Writes `byteLength` bytes of `value` to `buf` at the specified `offset`
 as little-endian. Supports up to 48 bits of accuracy. Behavior is undefined
 when `value` is anything other than an unsigned integer.
+
+This function is also available under the `writeUintLE` alias.
 
 ```js
 const buf = Buffer.allocUnsafe(6);
@@ -3053,6 +3110,44 @@ While, the `Buffer` object is available as a global, there are additional
 `Buffer`-related APIs that are available only via the `buffer` module
 accessed using `require('buffer')`.
 
+### `buffer.atob(data)`
+<!-- YAML
+added: v14.17.0
+-->
+
+* `data` {any} The Base64-encoded input string.
+
+Decodes a string of Base64-encoded data into bytes, and encodes those bytes
+into a string using Latin-1 (ISO-8859-1).
+
+The `data` may be any JavaScript-value that can be coerced into a string.
+
+**This function is only provided for compatibility with legacy web platform APIs
+and should never be used in new code, because they use strings to represent
+binary data and predate the introduction of typed arrays in JavaScript.
+For code running using Node.js APIs, converting between base64-encoded strings
+and binary data should be performed using `Buffer.from(str, 'base64')` and
+`buf.toString('base64')`.**
+
+### `buffer.btoa(data)`
+<!-- YAML
+added: v14.17.0
+-->
+
+* `data` {any} An ASCII (Latin1) string.
+
+Decodes a string into bytes using Latin-1 (ISO-8859), and encodes those bytes
+into a string using Base64.
+
+The `data` may be any JavaScript-value that can be coerced into a string.
+
+**This function is only provided for compatibility with legacy web platform APIs
+and should never be used in new code, because they use strings to represent
+binary data and predate the introduction of typed arrays in JavaScript.
+For code running using Node.js APIs, converting between base64-encoded strings
+and binary data should be performed using `Buffer.from(str, 'base64')` and
+`buf.toString('base64')`.**
+
 ### `buffer.INSPECT_MAX_BYTES`
 <!-- YAML
 added: v0.5.4
@@ -3072,6 +3167,15 @@ added: v3.0.0
 * {integer} The largest size allowed for a single `Buffer` instance.
 
 An alias for [`buffer.constants.MAX_LENGTH`][].
+
+### `buffer.kStringMaxLength`
+<!-- YAML
+added: v3.0.0
+-->
+
+* {integer} The largest length allowed for a single `string` instance.
+
+An alias for [`buffer.constants.MAX_STRING_LENGTH`][].
 
 ### `buffer.transcode(source, fromEnc, toEnc)`
 <!-- YAML
@@ -3140,12 +3244,20 @@ added: v8.2.0
 #### `buffer.constants.MAX_LENGTH`
 <!-- YAML
 added: v8.2.0
+changes:
+  - version: v14.0.0
+    pr-url: https://github.com/nodejs/node/pull/32116
+    description: Value is changed from 2<sup>31</sup> - 1 to
+      2<sup>32</sup> - 1 on 64-bit architectures.
 -->
 
 * {integer} The largest size allowed for a single `Buffer` instance.
 
 On 32-bit architectures, this value currently is 2<sup>30</sup> - 1 (~1GB).
-On 64-bit architectures, this value currently is 2<sup>31</sup> - 1 (~2GB).
+
+On 64-bit architectures, this value currently is 2<sup>32</sup> - 1 (~4GB).
+
+It reflects [`v8::TypedArray::kMaxLength`][] under the hood.
 
 This value is also available as [`buffer.kMaxLength`][].
 
@@ -3291,13 +3403,13 @@ introducing security vulnerabilities into an application.
 [`ERR_OUT_OF_RANGE`]: errors.md#ERR_OUT_OF_RANGE
 [`JSON.stringify()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
 [`SharedArrayBuffer`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer
-[`String#indexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf
-[`String#lastIndexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf
+[`String.prototype.indexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/indexOf
+[`String.prototype.lastIndexOf()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/lastIndexOf
 [`String.prototype.length`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/length
-[`TypedArray#set()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/set
-[`TypedArray#slice()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/slice
-[`TypedArray#subarray()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/subarray
 [`TypedArray.from()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/from
+[`TypedArray.prototype.set()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/set
+[`TypedArray.prototype.slice()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/slice
+[`TypedArray.prototype.subarray()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray/subarray
 [`TypedArray`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/TypedArray
 [`Uint8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Uint8Array
 [`buf.buffer`]: #buffer_buf_buffer
@@ -3314,6 +3426,7 @@ introducing security vulnerabilities into an application.
 [`buffer.constants.MAX_STRING_LENGTH`]: #buffer_buffer_constants_max_string_length
 [`buffer.kMaxLength`]: #buffer_buffer_kmaxlength
 [`util.inspect()`]: util.md#util_util_inspect_object_options
+[`v8::TypedArray::kMaxLength`]: https://v8.github.io/api/head/classv8_1_1TypedArray.html#a54a48f4373da0850663c4393d843b9b0
 [binary strings]: https://developer.mozilla.org/en-US/docs/Web/API/DOMString/Binary
 [endianness]: https://en.wikipedia.org/wiki/Endianness
 [iterator]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Iteration_protocols

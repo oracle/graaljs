@@ -23,7 +23,11 @@
 
 const {
   ArrayBuffer,
+  ArrayPrototypeForEach,
+  ArrayPrototypeMap,
+  ArrayPrototypePush,
   Error,
+  FunctionPrototypeBind,
   MathMax,
   NumberIsFinite,
   NumberIsNaN,
@@ -33,7 +37,10 @@ const {
   ObjectGetPrototypeOf,
   ObjectKeys,
   ObjectSetPrototypeOf,
+  ReflectApply,
+  StringPrototypeStartsWith,
   Symbol,
+  TypedArrayPrototypeFill,
   Uint32Array,
 } = primordials;
 
@@ -79,7 +86,7 @@ const {
   BROTLI_DECODE, BROTLI_ENCODE,
   // Brotli operations (~flush levels)
   BROTLI_OPERATION_PROCESS, BROTLI_OPERATION_FLUSH,
-  BROTLI_OPERATION_FINISH
+  BROTLI_OPERATION_FINISH, BROTLI_OPERATION_EMIT_METADATA,
 } = constants;
 
 // Translation table for return codes.
@@ -123,7 +130,7 @@ function zlibBufferOnData(chunk) {
   if (!this.buffers)
     this.buffers = [chunk];
   else
-    this.buffers.push(chunk);
+    ArrayPrototypePush(this.buffers, chunk);
   this.nread += chunk.length;
   if (this.nread > this._maxOutputLength) {
     this.close();
@@ -229,6 +236,13 @@ const checkRangesOrGetDefault = hideStackFrames(
   }
 );
 
+const FLUSH_BOUND = [
+  [ Z_NO_FLUSH, Z_BLOCK ],
+  [ BROTLI_OPERATION_PROCESS, BROTLI_OPERATION_EMIT_METADATA ],
+];
+const FLUSH_BOUND_IDX_NORMAL = 0;
+const FLUSH_BOUND_IDX_BROTLI = 1;
+
 // The base class for all Zlib-style streams.
 function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   let chunkSize = Z_DEFAULT_CHUNK;
@@ -237,6 +251,13 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
   // passed in by us.
   assert(typeof mode === 'number');
   assert(mode >= DEFLATE && mode <= BROTLI_ENCODE);
+
+  let flushBoundIdx;
+  if (mode !== BROTLI_ENCODE && mode !== BROTLI_DECODE) {
+    flushBoundIdx = FLUSH_BOUND_IDX_NORMAL;
+  } else {
+    flushBoundIdx = FLUSH_BOUND_IDX_BROTLI;
+  }
 
   if (opts) {
     chunkSize = opts.chunkSize;
@@ -249,11 +270,12 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
 
     flush = checkRangesOrGetDefault(
       opts.flush, 'options.flush',
-      Z_NO_FLUSH, Z_BLOCK, flush);
+      FLUSH_BOUND[flushBoundIdx][0], FLUSH_BOUND[flushBoundIdx][1], flush);
 
     finishFlush = checkRangesOrGetDefault(
       opts.finishFlush, 'options.finishFlush',
-      Z_NO_FLUSH, Z_BLOCK, finishFlush);
+      FLUSH_BOUND[flushBoundIdx][0], FLUSH_BOUND[flushBoundIdx][1],
+      finishFlush);
 
     maxOutputLength = checkRangesOrGetDefault(
       opts.maxOutputLength, 'options.maxOutputLength',
@@ -267,7 +289,7 @@ function ZlibBase(opts, mode, handle, { flush, finishFlush, fullFlush }) {
     }
   }
 
-  Transform.call(this, { autoDestroy: true, ...opts });
+  ReflectApply(Transform, this, [{ autoDestroy: true, ...opts }]);
   this[kError] = null;
   this.bytesWritten = 0;
   this._handle = handle;
@@ -452,7 +474,7 @@ function processChunkSync(self, chunk, flushFlag) {
       if (!buffers)
         buffers = [out];
       else
-        buffers.push(out);
+        ArrayPrototypePush(buffers, out);
       nread += out.byteLength;
 
       if (nread > self._maxOutputLength) {
@@ -665,7 +687,7 @@ function Zlib(opts, mode) {
               processCallback,
               dictionary);
 
-  ZlibBase.call(this, opts, mode, handle, zlibDefaultOpts);
+  ReflectApply(ZlibBase, this, [opts, mode, handle, zlibDefaultOpts]);
 
   this._level = level;
   this._strategy = strategy;
@@ -693,7 +715,8 @@ Zlib.prototype.params = function params(level, strategy, callback) {
 
   if (this._level !== level || this._strategy !== strategy) {
     this.flush(Z_SYNC_FLUSH,
-               paramsAfterFlushCallback.bind(this, level, strategy, callback));
+               FunctionPrototypeBind(paramsAfterFlushCallback, this,
+                                     level, strategy, callback));
   } else {
     process.nextTick(callback);
   }
@@ -704,7 +727,7 @@ Zlib.prototype.params = function params(level, strategy, callback) {
 function Deflate(opts) {
   if (!(this instanceof Deflate))
     return new Deflate(opts);
-  Zlib.call(this, opts, DEFLATE);
+  ReflectApply(Zlib, this, [opts, DEFLATE]);
 }
 ObjectSetPrototypeOf(Deflate.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Deflate, Zlib);
@@ -712,7 +735,7 @@ ObjectSetPrototypeOf(Deflate, Zlib);
 function Inflate(opts) {
   if (!(this instanceof Inflate))
     return new Inflate(opts);
-  Zlib.call(this, opts, INFLATE);
+  ReflectApply(Zlib, this, [opts, INFLATE]);
 }
 ObjectSetPrototypeOf(Inflate.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Inflate, Zlib);
@@ -720,7 +743,7 @@ ObjectSetPrototypeOf(Inflate, Zlib);
 function Gzip(opts) {
   if (!(this instanceof Gzip))
     return new Gzip(opts);
-  Zlib.call(this, opts, GZIP);
+  ReflectApply(Zlib, this, [opts, GZIP]);
 }
 ObjectSetPrototypeOf(Gzip.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Gzip, Zlib);
@@ -728,7 +751,7 @@ ObjectSetPrototypeOf(Gzip, Zlib);
 function Gunzip(opts) {
   if (!(this instanceof Gunzip))
     return new Gunzip(opts);
-  Zlib.call(this, opts, GUNZIP);
+  ReflectApply(Zlib, this, [opts, GUNZIP]);
 }
 ObjectSetPrototypeOf(Gunzip.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Gunzip, Zlib);
@@ -737,7 +760,7 @@ function DeflateRaw(opts) {
   if (opts && opts.windowBits === 8) opts.windowBits = 9;
   if (!(this instanceof DeflateRaw))
     return new DeflateRaw(opts);
-  Zlib.call(this, opts, DEFLATERAW);
+  ReflectApply(Zlib, this, [opts, DEFLATERAW]);
 }
 ObjectSetPrototypeOf(DeflateRaw.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(DeflateRaw, Zlib);
@@ -745,7 +768,7 @@ ObjectSetPrototypeOf(DeflateRaw, Zlib);
 function InflateRaw(opts) {
   if (!(this instanceof InflateRaw))
     return new InflateRaw(opts);
-  Zlib.call(this, opts, INFLATERAW);
+  ReflectApply(Zlib, this, [opts, INFLATERAW]);
 }
 ObjectSetPrototypeOf(InflateRaw.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(InflateRaw, Zlib);
@@ -753,7 +776,7 @@ ObjectSetPrototypeOf(InflateRaw, Zlib);
 function Unzip(opts) {
   if (!(this instanceof Unzip))
     return new Unzip(opts);
-  Zlib.call(this, opts, UNZIP);
+  ReflectApply(Zlib, this, [opts, UNZIP]);
 }
 ObjectSetPrototypeOf(Unzip.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Unzip, Zlib);
@@ -773,9 +796,12 @@ function createConvenienceMethod(ctor, sync) {
   };
 }
 
-const kMaxBrotliParam = MathMax(...ObjectKeys(constants).map((key) => {
-  return key.startsWith('BROTLI_PARAM_') ? constants[key] : 0;
-}));
+const kMaxBrotliParam = MathMax(...ArrayPrototypeMap(
+  ObjectKeys(constants),
+  (key) => (StringPrototypeStartsWith(key, 'BROTLI_PARAM_') ?
+    constants[key] :
+    0)
+));
 
 const brotliInitParamsArray = new Uint32Array(kMaxBrotliParam + 1);
 
@@ -787,9 +813,9 @@ const brotliDefaultOpts = {
 function Brotli(opts, mode) {
   assert(mode === BROTLI_DECODE || mode === BROTLI_ENCODE);
 
-  brotliInitParamsArray.fill(-1);
-  if (opts && opts.params) {
-    for (const origKey of ObjectKeys(opts.params)) {
+  TypedArrayPrototypeFill(brotliInitParamsArray, -1);
+  if (opts?.params) {
+    ArrayPrototypeForEach(ObjectKeys(opts.params), (origKey) => {
       const key = +origKey;
       if (NumberIsNaN(key) || key < 0 || key > kMaxBrotliParam ||
           (brotliInitParamsArray[key] | 0) !== -1) {
@@ -802,7 +828,7 @@ function Brotli(opts, mode) {
                                        'number', opts.params[origKey]);
       }
       brotliInitParamsArray[key] = value;
-    }
+    });
   }
 
   const handle = mode === BROTLI_DECODE ?
@@ -818,7 +844,7 @@ function Brotli(opts, mode) {
     throw new ERR_ZLIB_INITIALIZATION_FAILED();
   }
 
-  ZlibBase.call(this, opts, mode, handle, brotliDefaultOpts);
+  ReflectApply(ZlibBase, this, [opts, mode, handle, brotliDefaultOpts]);
 }
 ObjectSetPrototypeOf(Brotli.prototype, Zlib.prototype);
 ObjectSetPrototypeOf(Brotli, Zlib);
@@ -826,7 +852,7 @@ ObjectSetPrototypeOf(Brotli, Zlib);
 function BrotliCompress(opts) {
   if (!(this instanceof BrotliCompress))
     return new BrotliCompress(opts);
-  Brotli.call(this, opts, BROTLI_ENCODE);
+  ReflectApply(Brotli, this, [opts, BROTLI_ENCODE]);
 }
 ObjectSetPrototypeOf(BrotliCompress.prototype, Brotli.prototype);
 ObjectSetPrototypeOf(BrotliCompress, Brotli);
@@ -834,7 +860,7 @@ ObjectSetPrototypeOf(BrotliCompress, Brotli);
 function BrotliDecompress(opts) {
   if (!(this instanceof BrotliDecompress))
     return new BrotliDecompress(opts);
-  Brotli.call(this, opts, BROTLI_DECODE);
+  ReflectApply(Brotli, this, [opts, BROTLI_DECODE]);
 }
 ObjectSetPrototypeOf(BrotliDecompress.prototype, Brotli.prototype);
 ObjectSetPrototypeOf(BrotliDecompress, Brotli);
@@ -915,7 +941,7 @@ ObjectDefineProperties(module.exports, {
 // These should be considered deprecated
 // expose all the zlib constants
 for (const bkey of ObjectKeys(constants)) {
-  if (bkey.startsWith('BROTLI')) continue;
+  if (StringPrototypeStartsWith(bkey, 'BROTLI')) continue;
   ObjectDefineProperty(module.exports, bkey, {
     enumerable: false, value: constants[bkey], writable: false
   });

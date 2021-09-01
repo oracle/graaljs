@@ -14,7 +14,12 @@ import shutil
 import bz2
 import io
 
-from distutils.spawn import find_executable as which
+# Fallback to find_executable from distutils.spawn is a stopgap for
+# supporting V8 builds, which do not yet support Python 3.
+try:
+  from shutil import which
+except ImportError:
+  from distutils.spawn import find_executable as which
 from distutils.version import StrictVersion
 
 # If not run from node/, cd to node/.
@@ -160,7 +165,7 @@ parser.add_option("--enable-lto",
     action="store_true",
     dest="enable_lto",
     help="Enable compiling with lto of a binary. This feature is only available "
-         "on linux with gcc and g++ 5.4.1 or newer.")
+         "with gcc 5.4.1+ or clang 3.9.1+.")
 
 parser.add_option("--link-module",
     action="append",
@@ -882,10 +887,11 @@ def get_gas_version(cc):
 
 # Note: Apple clang self-reports as clang 4.2.0 and gcc 4.2.1.  It passes
 # the version check more by accident than anything else but a more rigorous
-# check involves checking the build number against a whitelist.  I'm not
+# check involves checking the build number against an allowlist.  I'm not
 # quite prepared to go that far yet.
 def check_compiler(o):
   if sys.platform == 'win32':
+    o['variables']['llvm_version'] = '0.0'
     if not options.openssl_no_asm and options.dest_cpu in ('x86', 'x64'):
       nasm_version = get_nasm_version('nasm')
       o['variables']['nasm_version'] = nasm_version
@@ -1067,12 +1073,19 @@ def configure_mips(o, target_arch):
   host_byteorder = 'little' if target_arch in ('mipsel', 'mips64el') else 'big'
   o['variables']['v8_host_byteorder'] = host_byteorder
 
+def clang_version_ge(version_checked):
+  for compiler in [(CC, 'c'), (CXX, 'c++')]:
+    ok, is_clang, clang_version, gcc_version = \
+      try_check_compiler(compiler[0], compiler[1])
+    if is_clang and clang_version >= version_checked:
+      return True
+  return False
 
 def gcc_version_ge(version_checked):
   for compiler in [(CC, 'c'), (CXX, 'c++')]:
-    ok, is_clang, clang_version, compiler_version = \
+    ok, is_clang, clang_version, gcc_version = \
       try_check_compiler(compiler[0], compiler[1])
-    if is_clang or compiler_version < version_checked:
+    if is_clang or gcc_version < version_checked:
       return False
   return True
 
@@ -1155,18 +1168,19 @@ def configure_node(o):
   o['variables']['enable_pgo_generate'] = b(options.enable_pgo_generate)
   o['variables']['enable_pgo_use']      = b(options.enable_pgo_use)
 
-  if flavor != 'linux' and (options.enable_lto):
+  if flavor == 'win' and (options.enable_lto):
     raise Exception(
-      'The lto option is supported only on linux.')
+      'Use Link Time Code Generation instead.')
 
-  if flavor == 'linux':
-    if options.enable_lto:
-      version_checked = (5, 4, 1)
-      if not gcc_version_ge(version_checked):
-        version_checked_str = ".".join(map(str, version_checked))
-        raise Exception(
-          'The option --enable-lto is supported for gcc and gxx %s'
-          ' or newer only.' % (version_checked_str))
+  if options.enable_lto:
+    gcc_version_checked = (5, 4, 1)
+    clang_version_checked = (3, 9, 1)
+    if not gcc_version_ge(gcc_version_checked) and not clang_version_ge(clang_version_checked):
+      gcc_version_checked_str = ".".join(map(str, gcc_version_checked))
+      clang_version_checked_str = ".".join(map(str, clang_version_checked))
+      raise Exception(
+        'The option --enable-lto is supported for gcc %s+'
+        'or clang %s+ only.' % (gcc_version_checked_str, clang_version_checked_str))
 
   o['variables']['enable_lto'] = b(options.enable_lto)
 
@@ -1295,8 +1309,7 @@ def configure_library(lib, output, pkgname=None):
   output['variables']['node_' + shared_lib] = b(getattr(options, shared_lib))
 
   if getattr(options, shared_lib):
-    (pkg_libs, pkg_cflags, pkg_libpath, pkg_modversion) = (
-        pkg_config(pkgname or lib))
+    (pkg_libs, pkg_cflags, pkg_libpath, _) = pkg_config(pkgname or lib)
 
     if options.__dict__[shared_lib + '_includes']:
       output['include_dirs'] += [options.__dict__[shared_lib + '_includes']]
@@ -1506,8 +1519,6 @@ def configure_intl(o):
     'variables': {}
   }
   icu_config_name = 'icu_config.gypi'
-  def write_config(data, name):
-    return
 
   # write an empty file to start with
   write(icu_config_name, do_not_edit +

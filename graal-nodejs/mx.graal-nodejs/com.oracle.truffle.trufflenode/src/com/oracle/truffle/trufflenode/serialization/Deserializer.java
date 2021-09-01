@@ -54,8 +54,10 @@ import java.util.Map;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.TypedArray;
@@ -109,17 +111,23 @@ public class Deserializer {
     }
 
     public void readHeader() {
-        if (buffer.get() == Serializer.VERSION) {
+        if (buffer.remaining() >= 2 && buffer.get() == Serializer.VERSION) {
             version = buffer.get();
-            if (version > Serializer.LATEST_VERSION) {
-                throw Errors.createError("Unable to deserialize cloned data due to invalid or unsupported version.");
-            }
+        }
+        if (version == 0 || version > Serializer.LATEST_VERSION) {
+            throw Errors.createError("Unable to deserialize cloned data due to invalid or unsupported version.");
         }
     }
 
     public Object readValue(JSRealm realm) {
-        SerializationTag tag = readTag();
-        return readValue(realm, tag);
+        try {
+            SerializationTag tag = readTag();
+            return readValue(realm, tag);
+        } catch (GraalJSException jsex) {
+            throw jsex;
+        } catch (Exception ex) {
+            throw Errors.createError("Unable to deserialize cloned data.");
+        }
     }
 
     private Object readValue(JSRealm realm, SerializationTag tag) {
@@ -225,7 +233,11 @@ public class Deserializer {
         int shift = 0;
         byte b;
         do {
-            b = buffer.get();
+            if (buffer.hasRemaining()) {
+                b = buffer.get();
+            } else {
+                throw underflowError();
+            }
             value |= (b & 0x7fL) << shift;
             shift += 7;
         } while ((b & 0x80) != 0);
@@ -233,7 +245,11 @@ public class Deserializer {
     }
 
     public double readDouble() {
-        return buffer.getDouble();
+        if (buffer.remaining() < 8) {
+            throw underflowError();
+        } else {
+            return buffer.getDouble();
+        }
     }
 
     private String readString() {
@@ -553,6 +569,9 @@ public class Deserializer {
     }
 
     public int readBytes(int length) {
+        if (buffer.remaining() < length) {
+            throw underflowError();
+        }
         int position = buffer.position();
         asBaseBuffer(buffer).position(position + length);
         return position;
@@ -565,6 +584,10 @@ public class Deserializer {
 
     public int getWireFormatVersion() {
         return version;
+    }
+
+    private static JSException underflowError() {
+        return Errors.createError("underflow");
     }
 
 }

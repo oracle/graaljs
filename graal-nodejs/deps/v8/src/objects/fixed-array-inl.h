@@ -212,7 +212,7 @@ int BinarySearch(T* array, Name name, int valid_entries,
   DCHECK(search_mode == ALL_ENTRIES || out_insertion_index == nullptr);
   int low = 0;
   int high = array->number_of_entries() - 1;
-  uint32_t hash = name.hash_field();
+  uint32_t hash = name.hash();
   int limit = high;
 
   DCHECK(low <= high);
@@ -220,7 +220,7 @@ int BinarySearch(T* array, Name name, int valid_entries,
   while (low != high) {
     int mid = low + (high - low) / 2;
     Name mid_name = array->GetSortedKey(mid);
-    uint32_t mid_hash = mid_name.hash_field();
+    uint32_t mid_hash = mid_name.hash();
 
     if (mid_hash >= hash) {
       high = mid;
@@ -232,7 +232,7 @@ int BinarySearch(T* array, Name name, int valid_entries,
   for (; low <= limit; ++low) {
     int sort_index = array->GetSortedKeyIndex(low);
     Name entry = array->GetKey(InternalIndex(sort_index));
-    uint32_t current_hash = entry.hash_field();
+    uint32_t current_hash = entry.hash();
     if (current_hash != hash) {
       if (search_mode == ALL_ENTRIES && out_insertion_index != nullptr) {
         *out_insertion_index = sort_index + (current_hash > hash ? 0 : 1);
@@ -259,12 +259,12 @@ template <SearchMode search_mode, typename T>
 int LinearSearch(T* array, Name name, int valid_entries,
                  int* out_insertion_index) {
   if (search_mode == ALL_ENTRIES && out_insertion_index != nullptr) {
-    uint32_t hash = name.hash_field();
+    uint32_t hash = name.hash();
     int len = array->number_of_entries();
     for (int number = 0; number < len; number++) {
       int sorted_index = array->GetSortedKeyIndex(number);
       Name entry = array->GetKey(InternalIndex(sorted_index));
-      uint32_t current_hash = entry.hash_field();
+      uint32_t current_hash = entry.hash();
       if (current_hash > hash) {
         *out_insertion_index = sorted_index;
         return T::kNotFound;
@@ -284,8 +284,9 @@ int LinearSearch(T* array, Name name, int valid_entries,
 }
 
 template <SearchMode search_mode, typename T>
-int Search(T* array, Name name, int valid_entries, int* out_insertion_index) {
-  SLOW_DCHECK(array->IsSortedNoDuplicates());
+int Search(T* array, Name name, int valid_entries, int* out_insertion_index,
+           bool concurrent_search) {
+  SLOW_DCHECK_IMPLIES(!concurrent_search, array->IsSortedNoDuplicates());
 
   if (valid_entries == 0) {
     if (search_mode == ALL_ENTRIES && out_insertion_index != nullptr) {
@@ -294,14 +295,14 @@ int Search(T* array, Name name, int valid_entries, int* out_insertion_index) {
     return T::kNotFound;
   }
 
-  // Fast case: do linear search for small arrays.
+  // Do linear search for small arrays, and for searches in the background
+  // thread.
   const int kMaxElementsForLinearSearch = 8;
-  if (valid_entries <= kMaxElementsForLinearSearch) {
+  if (valid_entries <= kMaxElementsForLinearSearch || concurrent_search) {
     return LinearSearch<search_mode>(array, name, valid_entries,
                                      out_insertion_index);
   }
 
-  // Slow case: perform binary search.
   return BinarySearch<search_mode>(array, name, valid_entries,
                                    out_insertion_index);
 }
@@ -309,7 +310,7 @@ int Search(T* array, Name name, int valid_entries, int* out_insertion_index) {
 double FixedDoubleArray::get_scalar(int index) {
   DCHECK(map() != GetReadOnlyRoots().fixed_cow_array_map() &&
          map() != GetReadOnlyRoots().fixed_array_map());
-  DCHECK(index >= 0 && index < this->length());
+  DCHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
   DCHECK(!is_the_hole(index));
   return ReadField<double>(kHeaderSize + index * kDoubleSize);
 }
@@ -317,7 +318,7 @@ double FixedDoubleArray::get_scalar(int index) {
 uint64_t FixedDoubleArray::get_representation(int index) {
   DCHECK(map() != GetReadOnlyRoots().fixed_cow_array_map() &&
          map() != GetReadOnlyRoots().fixed_array_map());
-  DCHECK(index >= 0 && index < this->length());
+  DCHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
   int offset = kHeaderSize + index * kDoubleSize;
   // Bug(v8:8875): Doubles may be unaligned.
   return base::ReadUnalignedValue<uint64_t>(field_address(offset));
@@ -335,6 +336,7 @@ Handle<Object> FixedDoubleArray::get(FixedDoubleArray array, int index,
 void FixedDoubleArray::set(int index, double value) {
   DCHECK(map() != GetReadOnlyRoots().fixed_cow_array_map() &&
          map() != GetReadOnlyRoots().fixed_array_map());
+  DCHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
   int offset = kHeaderSize + index * kDoubleSize;
   if (std::isnan(value)) {
     WriteField<double>(offset, std::numeric_limits<double>::quiet_NaN());
@@ -351,6 +353,7 @@ void FixedDoubleArray::set_the_hole(Isolate* isolate, int index) {
 void FixedDoubleArray::set_the_hole(int index) {
   DCHECK(map() != GetReadOnlyRoots().fixed_cow_array_map() &&
          map() != GetReadOnlyRoots().fixed_array_map());
+  DCHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
   int offset = kHeaderSize + index * kDoubleSize;
   base::WriteUnalignedValue<uint64_t>(field_address(offset), kHoleNanInt64);
 }

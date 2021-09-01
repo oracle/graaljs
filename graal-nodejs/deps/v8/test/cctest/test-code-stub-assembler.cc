@@ -42,20 +42,9 @@ template <class T>
 using TVariable = TypedCodeAssemblerVariable<T>;
 using PromiseResolvingFunctions = TorqueStructPromiseResolvingFunctions;
 
-Handle<String> MakeString(const char* str) {
-  Isolate* isolate = CcTest::i_isolate();
-  Factory* factory = isolate->factory();
-  return factory->InternalizeUtf8String(str);
-}
-
-Handle<String> MakeName(const char* str, int suffix) {
-  EmbeddedVector<char, 128> buffer;
-  SNPrintF(buffer, "%s%d", str, suffix);
-  return MakeString(buffer.begin());
-}
-
-int sum10(int a0, int a1, int a2, int a3, int a4, int a5, int a6, int a7,
-          int a8, int a9) {
+intptr_t sum10(intptr_t a0, intptr_t a1, intptr_t a2, intptr_t a3, intptr_t a4,
+               intptr_t a5, intptr_t a6, intptr_t a7, intptr_t a8,
+               intptr_t a9) {
   return a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9;
 }
 
@@ -1090,7 +1079,7 @@ TEST(TransitionLookup) {
       name = factory->NewSymbol();
     } else {
       int random_key = rand_gen.NextInt(Smi::kMaxValue);
-      name = MakeName("p", random_key);
+      name = CcTest::MakeName("p", random_key);
     }
     keys[i] = name;
 
@@ -3645,8 +3634,8 @@ TEST(TestCallBuiltinInlineTrampoline) {
   options.use_pc_relative_calls_and_jumps = false;
   options.isolate_independent_code = false;
   FunctionTester ft(asm_tester.GenerateCode(options), kNumParams);
-  MaybeHandle<Object> result = ft.Call(MakeString("abcdef"));
-  CHECK(String::Equals(isolate, MakeString("abcdefabcdef"),
+  MaybeHandle<Object> result = ft.Call(CcTest::MakeString("abcdef"));
+  CHECK(String::Equals(isolate, CcTest::MakeString("abcdefabcdef"),
                        Handle<String>::cast(result.ToHandleChecked())));
 }
 
@@ -3671,8 +3660,8 @@ DISABLED_TEST(TestCallBuiltinIndirectLoad) {
   options.use_pc_relative_calls_and_jumps = false;
   options.isolate_independent_code = true;
   FunctionTester ft(asm_tester.GenerateCode(options), kNumParams);
-  MaybeHandle<Object> result = ft.Call(MakeString("abcdef"));
-  CHECK(String::Equals(isolate, MakeString("abcdefabcdef"),
+  MaybeHandle<Object> result = ft.Call(CcTest::MakeString("abcdef"));
+  CHECK(String::Equals(isolate, CcTest::MakeString("abcdefabcdef"),
                        Handle<String>::cast(result.ToHandleChecked())));
 }
 

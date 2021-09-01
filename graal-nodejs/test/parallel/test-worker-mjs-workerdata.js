@@ -1,4 +1,3 @@
-// Flags: --js.ecmascript-version=2020
 'use strict';
 const common = require('../common');
 const fixtures = require('../common/fixtures');

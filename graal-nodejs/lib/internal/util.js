@@ -44,6 +44,13 @@ const experimentalWarnings = new Set();
 
 const colorRegExp = /\u001b\[\d\d?m/g; // eslint-disable-line no-control-regex
 
+let uvBinding;
+
+function lazyUv() {
+  uvBinding = uvBinding ?? internalBinding('uv');
+  return uvBinding;
+}
+
 function removeColors(str) {
   return str.replace(colorRegExp, '');
 }
@@ -271,6 +278,10 @@ function getSystemErrorName(err) {
   return entry ? entry[0] : `Unknown system error ${err}`;
 }
 
+function getSystemErrorMap() {
+  return lazyUv().getErrorMap();
+}
+
 const kCustomPromisifiedSymbol = SymbolFor('nodejs.util.promisify.custom');
 const kCustomPromisifyArgsSymbol = Symbol('customPromisifyArgs');
 
@@ -323,7 +334,7 @@ function promisify(original) {
 
 promisify.custom = kCustomPromisifiedSymbol;
 
-// The build-in Array#join is slower in v8 6.0
+// The built-in Array#join is slower in v8 6.0
 function join(output, separator) {
   let str = '';
   if (output.length !== 0) {
@@ -414,6 +425,7 @@ module.exports = {
   emitExperimentalWarning,
   filterDuplicateStrings,
   getConstructorOf,
+  getSystemErrorMap,
   getSystemErrorName,
   isError,
   isInsideNodeModules,

@@ -460,6 +460,29 @@ The `*-deprecation` command-line flags only affect warnings that use the name
 See the [`process.emitWarning()`][process_emit_warning] method for issuing
 custom or application-specific warnings.
 
+#### Node.js warning names
+
+There are no strict guidelines for warning types (as identified by the `name`
+property) emitted by Node.js. New types of warnings can be added at any time.
+A few of the warning types that are most common include:
+
+* `'DeprecationWarning'` - Indicates use of a deprecated Node.js API or feature.
+  Such warnings must include a `'code'` property identifying the
+  [deprecation code][].
+* `'ExperimentalWarning'` - Indicates use of an experimental Node.js API or
+  feature. Such features must be used with caution as they may change at any
+  time and are not subject to the same strict semantic-versioning and long-term
+  support policies as supported features.
+* `'MaxListenersExceededWarning'` - Indicates that too many listeners for a
+  given event have been registered on either an `EventEmitter` or `EventTarget`.
+  This is often an indication of a memory leak.
+* `'TimeoutOverflowWarning'` - Indicates that a numeric value that cannot fit
+  within a 32-bit signed integer has been provided to either the `setTimeout()`
+  or `setInterval()` functions.
+* `'UnsupportedWarning'` - Indicates use of an unsupported option or feature
+  that will be ignored rather than treated as an error. One example is use of
+  the HTTP response status message when using the HTTP/2 compatibility API.
+
 ### Signal events
 
 <!--type=event-->
@@ -1382,6 +1405,8 @@ Indicates whether a callback has been set using
 added: v0.7.6
 -->
 
+> Stability: 3 - Legacy. Use [`process.hrtime.bigint()`][] instead.
+
 * `time` {integer[]} The result of a previous call to `process.hrtime()`
 * Returns: {integer[]}
 
@@ -1676,6 +1701,70 @@ function definitelyAsync(arg, cb) {
 }
 ```
 
+### When to use `queueMicrotask()` vs. `process.nextTick()`
+
+The [`queueMicrotask()`][] API is an alternative to `process.nextTick()` that
+also defers execution of a function using the same microtask queue used to
+execute the then, catch, and finally handlers of resolved promises. Within
+Node.js, every time the "next tick queue" is drained, the microtask queue
+is drained immediately after.
+
+```js
+Promise.resolve().then(() => console.log(2));
+queueMicrotask(() => console.log(3));
+process.nextTick(() => console.log(1));
+// Output:
+// 1
+// 2
+// 3
+```
+
+For *most* userland use cases, the `queueMicrotask()` API provides a portable
+and reliable mechanism for deferring execution that works across multiple
+JavaScript platform environments and should be favored over `process.nextTick()`.
+In simple scenarios, `queueMicrotask()` can be a drop-in replacement for
+`process.nextTick()`.
+
+```js
+console.log('start');
+queueMicrotask(() => {
+  console.log('microtask callback');
+});
+console.log('scheduled');
+// Output:
+// start
+// scheduled
+// microtask callback
+```
+
+One note-worthy difference between the two APIs is that `process.nextTick()`
+allows specifying additional values that will be passed as arguments to the
+deferred function when it is called. Achieving the same result with
+`queueMicrotask()` requires using either a closure or a bound function:
+
+```js
+function deferred(a, b) {
+  console.log('microtask', a + b);
+}
+
+console.log('start');
+queueMicrotask(deferred.bind(undefined, 1, 2));
+console.log('scheduled');
+// Output:
+// start
+// scheduled
+// microtask 3
+```
+
+There are minor differences in the way errors raised from within the next tick
+queue and microtask queue are handled. Errors thrown within a queued microtask
+callback should be handled within the queued callback when possible. If they are
+not, the `process.on('uncaughtException')` event handler can be used to capture
+and handle the errors.
+
+When in doubt, unless the specific capabilities of `process.nextTick()` are
+needed, use `queueMicrotask()`.
+
 ## `process.noDeprecation`
 <!-- YAML
 added: v0.8.0
@@ -1778,12 +1867,11 @@ tarball.
 * `lts` {string} a string label identifying the [LTS][] label for this release.
   This property only exists for LTS releases and is `undefined` for all other
   release types, including _Current_ releases.
-  Valid values include the LTS Release Codenames (including those
-  that are no longer supported). A non-exhaustive example of
-  these codenames includes:
+  Valid values include the LTS Release code names (including those
+  that are no longer supported).
   * `'Dubnium'` for the 10.x LTS line beginning with 10.13.0.
   * `'Erbium'` for the 12.x LTS line beginning with 12.13.0.
-  For other LTS Release Codenames, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/master/doc/changelogs/CHANGELOG_ARCHIVE.md)
+  For other LTS Release code names, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/HEAD/doc/changelogs/CHANGELOG_ARCHIVE.md)
 
 <!-- eslint-skip -->
 ```js
@@ -1890,7 +1978,7 @@ console.log(data.header.nodejsVersion);
 
 // Similar to process.report.writeReport()
 const fs = require('fs');
-fs.writeFileSync(util.inspect(data), 'my-report.log', 'utf8');
+fs.writeFileSync('my-report.log', util.inspect(data), 'utf8');
 ```
 
 Additional documentation is available in the [report documentation][].
@@ -1898,9 +1986,12 @@ Additional documentation is available in the [report documentation][].
 ### `process.report.reportOnFatalError`
 <!-- YAML
 added: v11.12.0
+changes:
+  - version:
+     - v14.17.0
+    pr-url: https://github.com/nodejs/node/pull/35654
+    description: This API is no longer experimental.
 -->
-
-> Stability: 1 - Experimental
 
 * {boolean}
 
@@ -2605,7 +2696,7 @@ cases:
   code will be `128` + `6`, or `134`.
 
 [Advanced serialization for `child_process`]: child_process.md#child_process_advanced_serialization
-[Android building]: https://github.com/nodejs/node/blob/master/BUILDING.md#androidandroid-based-devices-eg-firefox-os
+[Android building]: https://github.com/nodejs/node/blob/HEAD/BUILDING.md#androidandroid-based-devices-eg-firefox-os
 [Child Process]: child_process.md
 [Cluster]: cluster.md
 [Duplex]: stream.md#stream_duplex_and_transform_streams
@@ -2646,12 +2737,14 @@ cases:
 [`process.kill()`]: #process_process_kill_pid_signal
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#process_process_setuncaughtexceptioncapturecallback_fn
 [`promise.catch()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
+[`queueMicrotask()`]: globals.md#globals_queuemicrotask_callback
 [`readable.read()`]: stream.md#stream_readable_read_size
 [`require()`]: globals.md#globals_require
 [`require.main`]: modules.md#modules_accessing_the_main_module
 [`subprocess.kill()`]: child_process.md#child_process_subprocess_kill_signal
 [`v8.setFlagsFromString()`]: v8.md#v8_v8_setflagsfromstring_flags
 [debugger]: debugger.md
+[deprecation code]: deprecations.md
 [note on process I/O]: process.md#process_a_note_on_process_i_o
 [process.cpuUsage]: #process_process_cpuusage_previousvalue
 [process_emit_warning]: #process_process_emitwarning_warning_type_code_ctor

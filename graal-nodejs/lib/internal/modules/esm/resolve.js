@@ -34,7 +34,7 @@ const { getOptionValue } = require('internal/options');
 const policy = getOptionValue('--experimental-policy') ?
   require('internal/process/policy') :
   null;
-const { sep, relative } = require('path');
+const { sep, relative, resolve } = require('path');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 const typeFlag = getOptionValue('--input-type');
@@ -74,13 +74,8 @@ function getConditionsSet(conditions) {
 const realpathCache = new SafeMap();
 const packageJSONCache = new SafeMap();  /* string -> PackageConfig */
 
-function tryStatSync(path) {
-  try {
-    return statSync(path);
-  } catch {
-    return new Stats();
-  }
-}
+const tryStatSync =
+  (path) => statSync(path, { throwIfNoEntry: false }) ?? new Stats();
 
 function getPackageConfig(path, specifier, base) {
   const existing = packageJSONCache.get(path);
@@ -165,16 +160,18 @@ function getPackageScopeConfig(resolved) {
   return packageConfig;
 }
 
-/*
+/**
  * Legacy CommonJS main resolution:
  * 1. let M = pkg_url + (json main field)
  * 2. TRY(M, M.js, M.json, M.node)
  * 3. TRY(M/index.js, M/index.json, M/index.node)
  * 4. TRY(pkg_url/index.js, pkg_url/index.json, pkg_url/index.node)
  * 5. NOT_FOUND
+ * @param {string | URL} url
+ * @returns {boolean}
  */
 function fileExists(url) {
-  return tryStatSync(fileURLToPath(url)).isFile();
+  return statSync(url, { throwIfNoEntry: false })?.isFile() ?? false;
 }
 
 function legacyMainResolve(packageJSONUrl, packageConfig, base) {
@@ -241,7 +238,19 @@ function resolveExtensions(search) {
   return undefined;
 }
 
-function resolveIndex(search) {
+function resolveDirectoryEntry(search) {
+  const dirPath = fileURLToPath(search);
+  const pkgJsonPath = resolve(dirPath, 'package.json');
+  if (fileExists(pkgJsonPath)) {
+    const pkgJson = packageJsonReader.read(pkgJsonPath);
+    if (pkgJson.containsKeys) {
+      const { main } = JSONParse(pkgJson.string);
+      if (main != null) {
+        const mainUrl = pathToFileURL(resolve(dirPath, main));
+        return resolveExtensionsWithTryExactName(mainUrl);
+      }
+    }
+  }
   return resolveExtensions(new URL('index', search));
 }
 
@@ -257,10 +266,10 @@ function finalizeResolution(resolved, base) {
     let file = resolveExtensionsWithTryExactName(resolved);
     if (file !== undefined) return file;
     if (!StringPrototypeEndsWith(path, '/')) {
-      file = resolveIndex(new URL(`${resolved}/`));
+      file = resolveDirectoryEntry(new URL(`${resolved}/`));
       if (file !== undefined) return file;
     } else {
-      return resolveIndex(resolved) || resolved;
+      return resolveDirectoryEntry(resolved) || resolved;
     }
     throw new ERR_MODULE_NOT_FOUND(
       resolved.pathname, fileURLToPath(base), 'module');
@@ -850,6 +859,7 @@ module.exports = {
   DEFAULT_CONDITIONS,
   defaultResolve,
   encodedSepRegEx,
+  getPackageScopeConfig,
   getPackageType,
   packageExportsResolve,
   packageImportsResolve

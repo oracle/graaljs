@@ -3,6 +3,16 @@
 The project uses these technical values to establish priorities and guide
 collaboration.
 
+These are the shared values as of this writing and will
+evolve. We hope they are useful to people new
+to the project in order to better understand which contributions
+will be aligned with the current direction and as thinking
+points when trading off between conflicting goals.
+
+The factors influencing every discussion/decision are
+different and priority 1 does not always trump priority 2
+and so on.
+
 ## Values and priority level
 
 * Priority 1 - Developer experience
@@ -33,7 +43,7 @@ Some key elements of this include:
 * Stable releases on a predictable schedule
 * A strong safety net, including testing how changes
   in Node.js affect popular packages
-* Careful consideration of what goes into long term support (LTS) releases
+* Careful consideration of what goes into Long Term Support (LTS) releases
 
 ### 3 - Operational qualities
 We value keeping Node.js safe, performant, and lightweight.
@@ -55,7 +65,7 @@ Some key elements of this include:
 * Low-friction policies and processes
 * Good CI and tooling to make maintainers productive
 
-### 5 - Up to date Technology and APIs
+### 5 - Up to date technology and APIs
 We value providing developers with modern APIs and technologies
 following existing standards whenever possible.
 Some key elements of this include:

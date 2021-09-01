@@ -60,8 +60,8 @@ function checkInt(value, min, max, buf, offset, byteLength) {
       if (min === 0 || min === 0n) {
         range = `>= 0${n} and < 2${n} ** ${(byteLength + 1) * 8}${n}`;
       } else {
-        range = `>= -(2${n} ** ${(byteLength + 1) * 8 - 1}${n}) and < 2 ** ` +
-                `${(byteLength + 1) * 8 - 1}${n}`;
+        range = `>= -(2${n} ** ${(byteLength + 1) * 8 - 1}${n}) and ` +
+                `< 2${n} ** ${(byteLength + 1) * 8 - 1}${n}`;
       }
     } else {
       range = `>= ${min}${n} and <= ${max}${n}`;
@@ -948,21 +948,28 @@ function writeFloatBackwards(val, offset = 0) {
   return offset;
 }
 
-class FastBuffer extends Uint8Array {}
+class FastBuffer extends Uint8Array {
+  // Using an explicit constructor here is necessary to avoid relying on
+  // `Array.prototype[Symbol.iterator]`, which can be mutated by users.
+  // eslint-disable-next-line no-useless-constructor
+  constructor(bufferOrLength, byteOffset, length) {
+    super(bufferOrLength, byteOffset, length);
+  }
+}
 
 function addBufferPrototypeMethods(proto) {
-  proto.readBigUInt64LE = readBigUInt64LE,
-  proto.readBigUInt64BE = readBigUInt64BE,
-  proto.readBigUint64LE = readBigUInt64LE,
-  proto.readBigUint64BE = readBigUInt64BE,
-  proto.readBigInt64LE = readBigInt64LE,
-  proto.readBigInt64BE = readBigInt64BE,
-  proto.writeBigUInt64LE = writeBigUInt64LE,
-  proto.writeBigUInt64BE = writeBigUInt64BE,
-  proto.writeBigUint64LE = writeBigUInt64LE,
-  proto.writeBigUint64BE = writeBigUInt64BE,
-  proto.writeBigInt64LE = writeBigInt64LE,
-  proto.writeBigInt64BE = writeBigInt64BE,
+  proto.readBigUInt64LE = readBigUInt64LE;
+  proto.readBigUInt64BE = readBigUInt64BE;
+  proto.readBigUint64LE = readBigUInt64LE;
+  proto.readBigUint64BE = readBigUInt64BE;
+  proto.readBigInt64LE = readBigInt64LE;
+  proto.readBigInt64BE = readBigInt64BE;
+  proto.writeBigUInt64LE = writeBigUInt64LE;
+  proto.writeBigUInt64BE = writeBigUInt64BE;
+  proto.writeBigUint64LE = writeBigUInt64LE;
+  proto.writeBigUint64BE = writeBigUInt64BE;
+  proto.writeBigInt64LE = writeBigInt64LE;
+  proto.writeBigInt64BE = writeBigInt64BE;
 
   proto.readUIntLE = readUIntLE;
   proto.readUInt32LE = readUInt32LE;
@@ -1043,4 +1050,6 @@ module.exports = {
   FastBuffer,
   addBufferPrototypeMethods,
   markAsUntransferable,
+  readUInt16BE,
+  readUInt32BE,
 };

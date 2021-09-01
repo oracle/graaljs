@@ -5,8 +5,6 @@ prefix parallel
 # sample-test                        : PASS,FLAKY
 
 [true] # This section applies to all platforms
-# https://github.com/nodejs/node/issues/35881
-test-http2-respond-file-error-pipe-offset: PASS,FLAKY
 
 ### Graal.js-specific ###
 
@@ -27,6 +25,10 @@ test-cli-eval: FAIL
 test-cli-syntax-piped-bad: FAIL
 test-repl-pretty-custom-stack: FAIL
 test-repl-pretty-stack: FAIL
+# Cannot convert undefined or null to object versus String.prototype.match called on null or undefined
+test-errors-systemerror: FAIL
+# Invalid array buffer length versus Array buffer allocation failed
+test-fs-write-buffer-large: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
@@ -54,6 +56,9 @@ test-v8-flags: FAIL
 test-heapdump-async-hooks-init-promise: SKIP
 test-http2-ping-settings-heapdump: SKIP
 test-v8-getheapsnapshot-twice: SKIP
+
+# https://example.com does not work in CI
+test-https-agent-unref-socket: SKIP
 
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
@@ -96,7 +101,6 @@ test-worker-message-port-wasm-threads: FAIL
 # Custom MicrotaskQueue is not supported
 test-vm-timeout-escape-promise: FAIL
 test-vm-timeout-escape-promise-module: FAIL
-test-vm-timeout-escape-promise-module-2: FAIL
 test-vm-timeout-escape-promise-2: FAIL
 
 # Contains an unused invalid regular expression
@@ -189,24 +193,10 @@ test-tls-passphrase: FAIL
 ### Graal-specific end ###
 
 [$system==win32]
-# https://github.com/nodejs/node/issues/20750
-test-http2-client-upload: PASS,FLAKY
-# https://github.com/nodejs/node/issues/20750
-test-http2-client-upload-reject: PASS,FLAKY
-# https://github.com/nodejs/node/issues/30847
-test-http2-compat-client-upload-reject: PASS,FLAKY
-# https://github.com/nodejs/node/issues/30845
-test-http2-multistream-destroy-on-read-tls: PASS,FLAKY
-# https://github.com/nodejs/node/issues/20750
-test-http2-pipe: PASS,FLAKY
-# https://github.com/nodejs/node/issues/20750
-test-stream-pipeline-http2: PASS,FLAKY
 # https://github.com/nodejs/node/issues/24497
 test-timers-immediate-queue: PASS,FLAKY
 # https://github.com/nodejs/node/issues/23277
 test-worker-memory: PASS,FLAKY
-# https://github.com/nodejs/node/issues/30846
-test-worker-message-port-transfer-terminate: PASS,FLAKY
 
 [$system==linux]
 
@@ -217,8 +207,6 @@ test-error-reporting: FAIL
 test-http2-respond-file-fd-invalid: FAIL
 
 [$arch==arm || $arch==arm64]
-# https://github.com/nodejs/node/issues/26610
-test-async-hooks-http-parser-destroy: PASS,FLAKY
 # https://github.com/nodejs/node/pull/31178
 test-crypto-dh-stateless: SKIP
 test-crypto-keygen: SKIP
@@ -257,3 +245,7 @@ test-net-write-after-end-nt: SKIP
 test-tls-env-extra-ca: SKIP
 # https://github.com/nodejs/node/pull/34209
 test-dgram-error-message-address: SKIP
+# https://github.com/nodejs/node/issues/36929
+test-crypto-secure-heap: SKIP
+# https://github.com/nodejs/node/issues/36925
+test-fs-read-type: SKIP

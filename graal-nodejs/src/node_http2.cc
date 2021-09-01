@@ -1277,7 +1277,11 @@ int Http2Session::HandleDataFrame(const nghttp2_frame* frame) {
       frame->hd.flags & NGHTTP2_FLAG_END_STREAM) {
     stream->EmitRead(UV_EOF);
   } else if (frame->hd.length == 0) {
-    return 1;  // Consider 0-length frame without END_STREAM an error.
+    if (invalid_frame_count_++ > js_fields_->max_invalid_frames) {
+      Debug(this, "rejecting empty-frame-without-END_STREAM flood\n");
+      // Consider a flood of 0-length frames without END_STREAM an error.
+      return 1;
+    }
   }
   return 0;
 }
@@ -2114,6 +2118,25 @@ int Http2Stream::SubmitPriority(const Http2Priority& priority,
 void Http2Stream::SubmitRstStream(const uint32_t code) {
   CHECK(!this->is_destroyed());
   code_ = code;
+
+  auto is_stream_cancel = [](const uint32_t code) {
+    return code == NGHTTP2_CANCEL;
+  };
+
+  // If RST_STREAM frame is received with error code NGHTTP2_CANCEL,
+  // add it to the pending list and don't force purge the data. It is
+  // to avoids the double free error due to unwanted behavior of nghttp2.
+
+  // Add stream to the pending list only if it is received with scope
+  // below in the stack. The pending list may not get processed
+  // if RST_STREAM received is not in scope and added to the list
+  // causing endpoint to hang.
+  if (session_->is_in_scope() && is_stream_cancel(code)) {
+      session_->AddPendingRstStream(id_);
+      return;
+  }
+
+
   // If possible, force a purge of any currently pending data here to make sure
   // it is sent before closing the stream. If it returns non-zero then we need
   // to wait until the current write finishes and try again to avoid nghttp2
@@ -2975,7 +2998,7 @@ void Http2State::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 // TODO(addaleax): Remove once we're on C++17.
-constexpr FastStringKey Http2State::binding_data_name;
+constexpr FastStringKey Http2State::type_name;
 
 // Set up the process.binding('http2') binding.
 void Initialize(Local<Object> target,
@@ -3097,7 +3120,7 @@ void Initialize(Local<Object> target,
 
   Local<Object> constants = Object::New(isolate);
 
-  // This does alocate one more slot than needed but it's not used.
+  // This does allocate one more slot than needed but it's not used.
 #define V(name) FIXED_ONE_BYTE_STRING(isolate, #name),
   Local<Value> error_code_names[] = {
     HTTP2_ERROR_CODES(V)

@@ -15,26 +15,114 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Based upon:
-// https://github.com/google/caja/blob/master/src/com/google/caja/ses/startSES.js
-// https://github.com/google/caja/blob/master/src/com/google/caja/ses/repairES5.js
+// https://github.com/google/caja/blob/HEAD/src/com/google/caja/ses/startSES.js
+// https://github.com/google/caja/blob/HEAD/src/com/google/caja/ses/repairES5.js
 // https://github.com/tc39/proposal-ses/blob/e5271cc42a257a05dcae2fd94713ed2f46c08620/shim/src/freeze.js
 
-/* global WebAssembly, SharedArrayBuffer, console */
-/* eslint-disable no-restricted-globals */
+/* global console */
 'use strict';
 
+const {
+  Array,
+  ArrayBuffer,
+  ArrayBufferPrototype,
+  ArrayPrototype,
+  ArrayPrototypeForEach,
+  ArrayPrototypePush,
+  BigInt,
+  BigInt64Array,
+  BigInt64ArrayPrototype,
+  BigIntPrototype,
+  BigUint64Array,
+  BigUint64ArrayPrototype,
+  Boolean,
+  BooleanPrototype,
+  DataView,
+  DataViewPrototype,
+  Date,
+  DatePrototype,
+  Error,
+  ErrorPrototype,
+  EvalError,
+  EvalErrorPrototype,
+  Float32Array,
+  Float32ArrayPrototype,
+  Float64Array,
+  Float64ArrayPrototype,
+  Function,
+  FunctionPrototype,
+  Int16Array,
+  Int16ArrayPrototype,
+  Int32Array,
+  Int32ArrayPrototype,
+  Int8Array,
+  Int8ArrayPrototype,
+  Map,
+  MapPrototype,
+  Number,
+  NumberPrototype,
+  Object,
+  ObjectDefineProperty,
+  ObjectFreeze,
+  ObjectGetOwnPropertyDescriptor,
+  ObjectGetOwnPropertyDescriptors,
+  ObjectGetOwnPropertyNames,
+  ObjectGetOwnPropertySymbols,
+  ObjectGetPrototypeOf,
+  ObjectPrototype,
+  ObjectPrototypeHasOwnProperty,
+  Promise,
+  PromisePrototype,
+  Proxy,
+  RangeError,
+  RangeErrorPrototype,
+  ReferenceError,
+  ReferenceErrorPrototype,
+  ReflectOwnKeys,
+  RegExp,
+  RegExpPrototype,
+  SafeSet,
+  Set,
+  SetPrototype,
+  String,
+  StringPrototype,
+  Symbol,
+  SymbolIterator,
+  SyntaxError,
+  SyntaxErrorPrototype,
+  TypeError,
+  TypeErrorPrototype,
+  TypedArray,
+  TypedArrayPrototype,
+  Uint16Array,
+  Uint16ArrayPrototype,
+  Uint32Array,
+  Uint32ArrayPrototype,
+  Uint8Array,
+  Uint8ArrayPrototype,
+  Uint8ClampedArray,
+  Uint8ClampedArrayPrototype,
+  URIError,
+  URIErrorPrototype,
+  WeakMap,
+  WeakMapPrototype,
+  WeakSet,
+  WeakSetPrototype,
+  decodeURI,
+  decodeURIComponent,
+  encodeURI,
+  encodeURIComponent,
+  globalThis,
+} = primordials;
+
+const {
+  Atomics,
+  Intl,
+  SharedArrayBuffer,
+  WebAssembly
+} = globalThis;
+
 module.exports = function() {
-  const {
-    defineProperty,
-    freeze,
-    getOwnPropertyDescriptor,
-    getOwnPropertyDescriptors,
-    getOwnPropertyNames,
-    getOwnPropertySymbols,
-    getPrototypeOf,
-  } = Object;
-  const objectHasOwnProperty = Object.prototype.hasOwnProperty;
-  const { ownKeys } = Reflect;
   const {
     clearImmediate,
     clearInterval,
@@ -47,108 +135,112 @@ module.exports = function() {
   const intrinsicPrototypes = [
     // Anonymous Intrinsics
     // IteratorPrototype
-    getPrototypeOf(
-      getPrototypeOf(new Array()[Symbol.iterator]())
+    ObjectGetPrototypeOf(
+      ObjectGetPrototypeOf(new Array()[SymbolIterator]())
     ),
     // ArrayIteratorPrototype
-    getPrototypeOf(new Array()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new Array()[SymbolIterator]()),
     // StringIteratorPrototype
-    getPrototypeOf(new String()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new String()[SymbolIterator]()),
     // MapIteratorPrototype
-    getPrototypeOf(new Map()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new Map()[SymbolIterator]()),
     // SetIteratorPrototype
-    getPrototypeOf(new Set()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new Set()[SymbolIterator]()),
     // GeneratorFunction
-    getPrototypeOf(function* () {}),
+    ObjectGetPrototypeOf(function* () {}),
     // AsyncFunction
-    getPrototypeOf(async function() {}),
+    ObjectGetPrototypeOf(async function() {}),
     // AsyncGeneratorFunction
-    getPrototypeOf(async function* () {}),
+    ObjectGetPrototypeOf(async function* () {}),
     // TypedArray
-    getPrototypeOf(Uint8Array),
+    TypedArrayPrototype,
 
     // 19 Fundamental Objects
-    Object.prototype, // 19.1
-    Function.prototype, // 19.2
-    Boolean.prototype, // 19.3
+    ObjectPrototype, // 19.1
+    FunctionPrototype, // 19.2
+    BooleanPrototype, // 19.3
 
-    Error.prototype, // 19.5
-    EvalError.prototype,
-    RangeError.prototype,
-    ReferenceError.prototype,
-    SyntaxError.prototype,
-    TypeError.prototype,
-    URIError.prototype,
+    ErrorPrototype, // 19.5
+    EvalErrorPrototype,
+    RangeErrorPrototype,
+    ReferenceErrorPrototype,
+    SyntaxErrorPrototype,
+    TypeErrorPrototype,
+    URIErrorPrototype,
 
     // 20 Numbers and Dates
-    Number.prototype, // 20.1
-    Date.prototype, // 20.3
+    NumberPrototype, // 20.1
+    DatePrototype, // 20.3
 
     // 21 Text Processing
-    String.prototype, // 21.1
-    RegExp.prototype, // 21.2
+    StringPrototype, // 21.1
+    RegExpPrototype, // 21.2
 
     // 22 Indexed Collections
-    Array.prototype, // 22.1
+    ArrayPrototype, // 22.1
 
-    Int8Array.prototype,
-    Uint8Array.prototype,
-    Uint8ClampedArray.prototype,
-    Int16Array.prototype,
-    Uint16Array.prototype,
-    Int32Array.prototype,
-    Uint32Array.prototype,
-    Float32Array.prototype,
-    Float64Array.prototype,
-    BigInt64Array.prototype,
-    BigUint64Array.prototype,
+    Int8ArrayPrototype,
+    Uint8ArrayPrototype,
+    Uint8ClampedArrayPrototype,
+    Int16ArrayPrototype,
+    Uint16ArrayPrototype,
+    Int32ArrayPrototype,
+    Uint32ArrayPrototype,
+    Float32ArrayPrototype,
+    Float64ArrayPrototype,
+    BigInt64ArrayPrototype,
+    BigUint64ArrayPrototype,
 
     // 23 Keyed Collections
-    Map.prototype, // 23.1
-    Set.prototype, // 23.2
-    WeakMap.prototype, // 23.3
-    WeakSet.prototype, // 23.4
+    MapPrototype, // 23.1
+    SetPrototype, // 23.2
+    WeakMapPrototype, // 23.3
+    WeakSetPrototype, // 23.4
 
     // 24 Structured Data
-    ArrayBuffer.prototype, // 24.1
-    DataView.prototype, // 24.3
-    Promise.prototype, // 25.4
+    ArrayBufferPrototype, // 24.1
+    DataViewPrototype, // 24.3
+    PromisePrototype, // 25.4
 
     // Other APIs / Web Compatibility
     console.Console.prototype,
-    BigInt.prototype,
+    BigIntPrototype,
     SharedArrayBuffer.prototype
   ];
   const intrinsics = [
     // Anonymous Intrinsics
     // ThrowTypeError
-    getOwnPropertyDescriptor(Function.prototype, 'caller').get,
+    ObjectGetOwnPropertyDescriptor(FunctionPrototype, 'caller').get,
     // IteratorPrototype
-    getPrototypeOf(
-      getPrototypeOf(new Array()[Symbol.iterator]())
+    ObjectGetPrototypeOf(
+      ObjectGetPrototypeOf(new Array()[SymbolIterator]())
     ),
     // ArrayIteratorPrototype
-    getPrototypeOf(new Array()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new Array()[SymbolIterator]()),
     // StringIteratorPrototype
-    getPrototypeOf(new String()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new String()[SymbolIterator]()),
     // MapIteratorPrototype
-    getPrototypeOf(new Map()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new Map()[SymbolIterator]()),
     // SetIteratorPrototype
-    getPrototypeOf(new Set()[Symbol.iterator]()),
+    ObjectGetPrototypeOf(new Set()[SymbolIterator]()),
     // GeneratorFunction
-    getPrototypeOf(function* () {}),
+    ObjectGetPrototypeOf(function* () {}),
     // AsyncFunction
-    getPrototypeOf(async function() {}),
+    ObjectGetPrototypeOf(async function() {}),
     // AsyncGeneratorFunction
-    getPrototypeOf(async function* () {}),
+    ObjectGetPrototypeOf(async function* () {}),
     // TypedArray
-    getPrototypeOf(Uint8Array),
+    TypedArray,
 
     // 18 The Global Object
     eval,
+    // eslint-disable-next-line node-core/prefer-primordials
     isFinite,
+    // eslint-disable-next-line node-core/prefer-primordials
     isNaN,
+    // eslint-disable-next-line node-core/prefer-primordials
     parseFloat,
+    // eslint-disable-next-line node-core/prefer-primordials
     parseInt,
     decodeURI,
     decodeURIComponent,
@@ -171,6 +263,7 @@ module.exports = function() {
 
     // 20 Numbers and Dates
     Number, // 20.1
+    // eslint-disable-next-line node-core/prefer-primordials
     Math, // 20.2
     Date, // 20.3
 
@@ -202,10 +295,12 @@ module.exports = function() {
     // 24 Structured Data
     ArrayBuffer, // 24.1
     DataView, // 24.3
+    // eslint-disable-next-line node-core/prefer-primordials
     JSON, // 24.5
     Promise, // 25.4
 
     // 26 Reflection
+    // eslint-disable-next-line node-core/prefer-primordials
     Reflect, // 26.1
     Proxy, // 26.2
 
@@ -238,19 +333,21 @@ module.exports = function() {
   }
 
   if (typeof Intl !== 'undefined') {
-    intrinsicPrototypes.push(Intl.Collator.prototype);
-    intrinsicPrototypes.push(Intl.DateTimeFormat.prototype);
-    intrinsicPrototypes.push(Intl.ListFormat.prototype);
-    intrinsicPrototypes.push(Intl.NumberFormat.prototype);
-    intrinsicPrototypes.push(Intl.PluralRules.prototype);
-    intrinsicPrototypes.push(Intl.RelativeTimeFormat.prototype);
-    intrinsics.push(Intl);
+    ArrayPrototypePush(intrinsicPrototypes,
+                       Intl.Collator.prototype,
+                       Intl.DateTimeFormat.prototype,
+                       Intl.ListFormat.prototype,
+                       Intl.NumberFormat.prototype,
+                       Intl.PluralRules.prototype,
+                       Intl.RelativeTimeFormat.prototype,
+    );
+    ArrayPrototypePush(intrinsics, Intl);
   }
 
-  intrinsicPrototypes.forEach(enableDerivedOverrides);
+  ArrayPrototypeForEach(intrinsicPrototypes, enableDerivedOverrides);
 
   const frozenSet = new WeakSet();
-  intrinsics.forEach(deepFreeze);
+  ArrayPrototypeForEach(intrinsics, deepFreeze);
 
   // Objects that are deeply frozen.
   function deepFreeze(root) {
@@ -263,7 +360,7 @@ module.exports = function() {
      */
     function innerDeepFreeze(node) {
       // Objects that we have frozen in this round.
-      const freezingSet = new Set();
+      const freezingSet = new SafeSet();
 
       // If val is something we should be freezing but aren't yet,
       // add it to freezingSet.
@@ -292,16 +389,16 @@ module.exports = function() {
         // Object are verified before being enqueued,
         // therefore this is a valid candidate.
         // Throws if this fails (strict mode).
-        freeze(obj);
+        ObjectFreeze(obj);
 
         // We rely upon certain commitments of Object.freeze and proxies here
 
         // Get stable/immutable outbound links before a Proxy has a chance to do
         // something sneaky.
-        const proto = getPrototypeOf(obj);
-        const descs = getOwnPropertyDescriptors(obj);
+        const proto = ObjectGetPrototypeOf(obj);
+        const descs = ObjectGetOwnPropertyDescriptors(obj);
         enqueue(proto);
-        ownKeys(descs).forEach((name) => {
+        ArrayPrototypeForEach(ReflectOwnKeys(descs), (name) => {
           // TODO: Uncurried form
           // TODO: getOwnPropertyDescriptors is guaranteed to return well-formed
           // descriptors, but they still inherit from Object.prototype. If
@@ -381,10 +478,10 @@ module.exports = function() {
             `Cannot assign to read only property '${prop}' of object '${obj}'`
           );
         }
-        if (objectHasOwnProperty.call(this, prop)) {
+        if (ObjectPrototypeHasOwnProperty(this, prop)) {
           this[prop] = newValue;
         } else {
-          defineProperty(this, prop, {
+          ObjectDefineProperty(this, prop, {
             value: newValue,
             writable: true,
             enumerable: true,
@@ -393,7 +490,7 @@ module.exports = function() {
         }
       }
 
-      defineProperty(obj, prop, {
+      ObjectDefineProperty(obj, prop, {
         get: getter,
         set: setter,
         enumerable: desc.enumerable,
@@ -406,14 +503,14 @@ module.exports = function() {
     if (!obj) {
       return;
     }
-    const descs = getOwnPropertyDescriptors(obj);
+    const descs = ObjectGetOwnPropertyDescriptors(obj);
     if (!descs) {
       return;
     }
-    getOwnPropertyNames(obj).forEach((prop) => {
+    ArrayPrototypeForEach(ObjectGetOwnPropertyNames(obj), (prop) => {
       return enableDerivedOverride(obj, prop, descs[prop]);
     });
-    getOwnPropertySymbols(obj).forEach((prop) => {
+    ArrayPrototypeForEach(ObjectGetOwnPropertySymbols(obj), (prop) => {
       return enableDerivedOverride(obj, prop, descs[prop]);
     });
   }

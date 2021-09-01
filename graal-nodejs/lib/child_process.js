@@ -43,17 +43,28 @@ let debug = require('internal/util/debuglog').debuglog(
     debug = fn;
   }
 );
+const { AbortController } = require('internal/abort_controller');
 const { Buffer } = require('buffer');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
+
+const {
+  AbortError,
+  codes: errorCodes,
+} = require('internal/errors');
 const {
   ERR_INVALID_ARG_VALUE,
   ERR_CHILD_PROCESS_IPC_REQUIRED,
   ERR_CHILD_PROCESS_STDIO_MAXBUFFER,
   ERR_INVALID_ARG_TYPE,
-  ERR_OUT_OF_RANGE
-} = require('internal/errors').codes;
+  ERR_OUT_OF_RANGE,
+} = errorCodes;
 const { clearTimeout, setTimeout } = require('timers');
-const { validateString, isInt32 } = require('internal/validators');
+const {
+  validateString,
+  isInt32,
+  validateAbortSignal,
+  validateBoolean,
+} = require('internal/validators');
 const child_process = require('internal/child_process');
 const {
   getValidStdio,
@@ -64,6 +75,28 @@ const {
 
 const MAX_BUFFER = 1024 * 1024;
 
+/**
+ * Spawns a new Node.js process + fork.
+ * @param {string} modulePath
+ * @param {string[]} [args]
+ * @param {{
+ *   cwd?: string;
+ *   detached?: boolean;
+ *   env?: Object;
+ *   execPath?: string;
+ *   execArgv?: string[];
+ *   gid?: number;
+ *   serialization?: string;
+ *   signal?: AbortSignal;
+ *   killSignal?: string | number;
+ *   silent?: boolean;
+ *   stdio?: Array | string;
+ *   uid?: number;
+ *   windowsVerbatimArguments?: boolean;
+ *   timeout?: number;
+ *   }} [options]
+ * @returns {ChildProcess}
+ */
 function fork(modulePath /* , args, options */) {
   validateString(modulePath, 'modulePath');
 
@@ -76,8 +109,7 @@ function fork(modulePath /* , args, options */) {
     args = arguments[pos++];
   }
 
-  if (pos < arguments.length &&
-      (arguments[pos] === undefined || arguments[pos] === null)) {
+  if (pos < arguments.length && arguments[pos] == null) {
     pos++;
   }
 
@@ -118,7 +150,7 @@ function fork(modulePath /* , args, options */) {
   options.execPath = options.execPath || process.execPath;
   options.shell = false;
 
-  return spawn(options.execPath, args, options);
+  return spawnWithSignal(options.execPath, args, options);
 }
 
 function _forkChild(fd, serializationMode) {
@@ -152,7 +184,29 @@ function normalizeExecArgs(command, options, callback) {
   };
 }
 
-
+/**
+ * Spawns a shell executing the given command.
+ * @param {string} command
+ * @param {{
+ *   cmd?: string;
+ *   env?: Object;
+ *   encoding?: string;
+ *   shell?: string;
+ *   signal?: AbortSignal;
+ *   timeout?: number;
+ *   maxBuffer?: number;
+ *   killSignal?: string | number;
+ *   uid?: number;
+ *   gid?: number;
+ *   windowsHide?: boolean;
+ *   }} [options]
+ * @param {(
+ *   error?: Error,
+ *   stdout?: string | Buffer,
+ *   stderr?: string | Buffer
+ *   ) => any} [callback]
+ * @returns {ChildProcess}
+ */
 function exec(command, options, callback) {
   const opts = normalizeExecArgs(command, options, callback);
   return module.exports.execFile(opts.file,
@@ -188,6 +242,31 @@ ObjectDefineProperty(exec, promisify.custom, {
   value: customPromiseExecFunction(exec)
 });
 
+/**
+ * Spawns the specified file as a shell.
+ * @param {string} file
+ * @param {string[]} [args]
+ * @param {{
+ *   cwd?: string;
+ *   env?: Object;
+ *   encoding?: string;
+ *   timeout?: number;
+ *   maxBuffer?: number;
+ *   killSignal?: string | number;
+ *   uid?: number;
+ *   gid?: number;
+ *   windowsHide?: boolean;
+ *   windowsVerbatimArguments?: boolean;
+ *   shell?: boolean | string;
+ *   signal?: AbortSignal;
+ *   }} [options]
+ * @param {(
+ *   error?: Error,
+ *   stdout?: string | Buffer,
+ *   stderr?: string | Buffer
+ *   ) => any} [callback]
+ * @returns {ChildProcess}
+ */
 function execFile(file /* , args, options, callback */) {
   let args = [];
   let callback;
@@ -231,6 +310,9 @@ function execFile(file /* , args, options, callback */) {
 
   // Validate maxBuffer, if present.
   validateMaxBuffer(options.maxBuffer);
+
+  // Validate signal, if present
+  validateAbortSignal(options.signal, 'options.signal');
 
   options.killSignal = sanitizeKillSignal(options.killSignal);
 
@@ -343,11 +425,27 @@ function execFile(file /* , args, options, callback */) {
     }
   }
 
+  function abortHandler() {
+    if (!ex)
+      ex = new AbortError();
+    process.nextTick(() => kill());
+  }
+
   if (options.timeout > 0) {
     timeoutId = setTimeout(function delayedKill() {
       kill();
       timeoutId = null;
     }, options.timeout);
+  }
+  if (options.signal) {
+    if (options.signal.aborted) {
+      process.nextTick(abortHandler);
+    } else {
+      const childController = new AbortController();
+      options.signal.addEventListener('abort', abortHandler,
+                                      { signal: childController.signal });
+      child.once('close', () => childController.abort());
+    }
   }
 
   if (child.stdout) {
@@ -436,10 +534,8 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   // Validate detached, if present.
-  if (options.detached != null &&
-      typeof options.detached !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE('options.detached',
-                                   'boolean', options.detached);
+  if (options.detached != null) {
+    validateBoolean(options.detached, 'options.detached');
   }
 
   // Validate the uid, if present.
@@ -467,19 +563,15 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   // Validate windowsHide, if present.
-  if (options.windowsHide != null &&
-      typeof options.windowsHide !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE('options.windowsHide',
-                                   'boolean', options.windowsHide);
+  if (options.windowsHide != null) {
+    validateBoolean(options.windowsHide, 'options.windowsHide');
   }
 
   // Validate windowsVerbatimArguments, if present.
   let { windowsVerbatimArguments } = options;
-  if (windowsVerbatimArguments != null &&
-      typeof windowsVerbatimArguments !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE('options.windowsVerbatimArguments',
-                                   'boolean',
-                                   windowsVerbatimArguments);
+  if (windowsVerbatimArguments != null) {
+    validateBoolean(windowsVerbatimArguments,
+                    'options.windowsVerbatimArguments');
   }
 
   if (options.shell) {
@@ -555,6 +647,28 @@ function normalizeSpawnArguments(file, args, options) {
 }
 
 
+/**
+ * Spawns a new process using the given `file`.
+ * @param {string} file
+ * @param {string[]} [args]
+ * @param {{
+ *   cwd?: string;
+ *   env?: Object;
+ *   argv0?: string;
+ *   stdio?: Array | string;
+ *   detached?: boolean;
+ *   uid?: number;
+ *   gid?: number;
+ *   serialization?: string;
+ *   shell?: boolean | string;
+ *   windowsVerbatimArguments?: boolean;
+ *   windowsHide?: boolean;
+ *   signal?: AbortSignal;
+ *   timeout?: number;
+ *   killSignal?: string | number;
+ *   }} [options]
+ * @returns {ChildProcess}
+ */
 function spawn(file, args, options) {
   const child = new ChildProcess();
 
@@ -565,6 +679,36 @@ function spawn(file, args, options) {
   return child;
 }
 
+/**
+ * Spawns a new process synchronously using the given `file`.
+ * @param {string} file
+ * @param {string[]} [args]
+ * @param {{
+ *   cwd?: string;
+ *   input?: string | Buffer | TypedArray | DataView;
+ *   argv0?: string;
+ *   stdio?: string | Array;
+ *   env?: Object;
+ *   uid?: number;
+ *   gid?: number;
+ *   timeout?: number;
+ *   killSignal?: string | number;
+ *   maxBuffer?: number;
+ *   encoding?: string;
+ *   shell?: boolean | string;
+ *   windowsVerbatimArguments?: boolean;
+ *   windowsHide?: boolean;
+ *   }} [options]
+ * @returns {{
+ *   pid: number;
+ *   output: Array;
+ *   stdout: Buffer | string;
+ *   stderr: Buffer | string;
+ *   status: number | null;
+ *   signal: string | null;
+ *   error: Error;
+ *   }}
+ */
 function spawnSync(file, args, options) {
   options = {
     maxBuffer: MAX_BUFFER,
@@ -631,7 +775,26 @@ function checkExecSyncError(ret, args, cmd) {
   return err;
 }
 
-
+/**
+ * Spawns a file as a shell synchronously.
+ * @param {string} command
+ * @param {string[]} [args]
+ * @param {{
+ *   cwd?: string;
+ *   input?: string | Buffer | TypedArray | DataView;
+ *   stdio?: string | Array;
+ *   env?: Object;
+ *   uid?: number;
+ *   gid?: number;
+ *   timeout?: number;
+ *   killSignal?: string | number;
+ *   maxBuffer?: number;
+ *   encoding?: string;
+ *   windowsHide?: boolean;
+ *   shell?: boolean | string;
+ *   }} [options]
+ * @returns {Buffer | string}
+ */
 function execFileSync(command, args, options) {
   options = normalizeSpawnArguments(command, args, options);
 
@@ -649,7 +812,25 @@ function execFileSync(command, args, options) {
   return ret.stdout;
 }
 
-
+/**
+ * Spawns a shell executing the given `command` synchronously.
+ * @param {string} command
+ * @param {{
+ *   cwd?: string;
+ *   input?: string | Buffer | TypedArray | DataView;
+ *   stdio?: string | Array;
+ *   env?: Object;
+ *   shell?: string;
+ *   uid?: number;
+ *   gid?: number;
+ *   timeout?: number;
+ *   killSignal?: string | number;
+ *   maxBuffer?: number;
+ *   encoding?: string;
+ *   windowsHide?: boolean;
+ *   }} [options]
+ * @returns {Buffer | string}
+ */
 function execSync(command, options) {
   const opts = normalizeExecArgs(command, options, null);
   const inheritStderr = !opts.options.stdio;
@@ -694,6 +875,30 @@ function sanitizeKillSignal(killSignal) {
   }
 }
 
+// This level of indirection is here because the other child_process methods
+// call spawn internally but should use different cancellation logic.
+function spawnWithSignal(file, args, options) {
+  const child = spawn(file, args, options);
+
+  if (options && options.signal) {
+    // Validate signal, if present
+    validateAbortSignal(options.signal, 'options.signal');
+    function kill() {
+      if (child._handle) {
+        child.kill('SIGTERM');
+        child.emit('error', new AbortError());
+      }
+    }
+    if (options.signal.aborted) {
+      process.nextTick(kill);
+    } else {
+      options.signal.addEventListener('abort', kill);
+      const remove = () => options.signal.removeEventListener('abort', kill);
+      child.once('close', remove);
+    }
+  }
+  return child;
+}
 module.exports = {
   _forkChild,
   ChildProcess,
@@ -702,6 +907,6 @@ module.exports = {
   execFileSync,
   execSync,
   fork,
-  spawn,
+  spawn: spawnWithSignal,
   spawnSync
 };

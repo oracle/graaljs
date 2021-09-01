@@ -22,8 +22,16 @@
 'use strict';
 
 const {
+  ArrayPrototypeIndexOf,
+  ArrayPrototypePush,
+  ArrayPrototypeShift,
+  ArrayPrototypeSplice,
+  ArrayPrototypeUnshift,
+  FunctionPrototypeCall,
+  JSONStringify,
   ObjectAssign,
   ObjectSetPrototypeOf,
+  ReflectConstruct,
 } = primordials;
 
 require('internal/util').assertCrypto();
@@ -63,7 +71,7 @@ function Server(opts, requestListener) {
   this[kIncomingMessage] = opts.IncomingMessage || IncomingMessage;
   this[kServerResponse] = opts.ServerResponse || ServerResponse;
 
-  tls.Server.call(this, opts, _connectionListener);
+  FunctionPrototypeCall(tls.Server, this, opts, _connectionListener);
 
   this.httpAllowHalfOpen = false;
 
@@ -87,6 +95,17 @@ ObjectSetPrototypeOf(Server, tls.Server);
 
 Server.prototype.setTimeout = HttpServer.prototype.setTimeout;
 
+/**
+ * Creates a new `https.Server` instance.
+ * @param {{
+ *   IncomingMessage?: IncomingMessage;
+ *   ServerResponse?: ServerResponse;
+ *   insecureHTTPParser?: boolean;
+ *   maxHeaderSize?: number;
+ *   }} [opts]
+ * @param {Function} [requestListener]
+ * @returns {Server}
+ */
 function createServer(opts, requestListener) {
   return new Server(opts, requestListener);
 }
@@ -144,12 +163,26 @@ function createConnection(port, host, options) {
   return socket;
 }
 
-
+/**
+ * Creates a new `HttpAgent` instance.
+ * @param {{
+ *   keepAlive?: boolean;
+ *   keepAliveMsecs?: number;
+ *   maxSockets?: number;
+ *   maxTotalSockets?: number;
+ *   maxFreeSockets?: number;
+ *   scheduling?: string;
+ *   timeout?: number;
+ *   maxCachedSessions?: number;
+ *   servername?: string;
+ *   }} [options]
+ * @returns {Agent}
+ */
 function Agent(options) {
   if (!(this instanceof Agent))
     return new Agent(options);
 
-  HttpAgent.call(this, options);
+  FunctionPrototypeCall(HttpAgent, this, options);
   this.defaultPort = 443;
   this.protocol = 'https:';
   this.maxCachedSessions = this.options.maxCachedSessions;
@@ -165,8 +198,18 @@ ObjectSetPrototypeOf(Agent.prototype, HttpAgent.prototype);
 ObjectSetPrototypeOf(Agent, HttpAgent);
 Agent.prototype.createConnection = createConnection;
 
+/**
+ * Gets a unique name for a set of options.
+ * @param {{
+ *   host: string;
+ *   port: number;
+ *   localAddress: string;
+ *   family: number;
+ *   }} [options]
+ * @returns {string}
+ */
 Agent.prototype.getName = function getName(options) {
-  let name = HttpAgent.prototype.getName.call(this, options);
+  let name = FunctionPrototypeCall(HttpAgent.prototype.getName, this, options);
 
   name += ':';
   if (options.ca)
@@ -236,6 +279,18 @@ Agent.prototype.getName = function getName(options) {
   if (options.sessionIdContext)
     name += options.sessionIdContext;
 
+  name += ':';
+  if (options.sigalgs)
+    name += JSONStringify(options.sigalgs);
+
+  name += ':';
+  if (options.privateKeyIdentifier)
+    name += options.privateKeyIdentifier;
+
+  name += ':';
+  if (options.privateKeyEngine)
+    name += options.privateKeyEngine;
+
   return name;
 };
 
@@ -256,32 +311,38 @@ Agent.prototype._cacheSession = function _cacheSession(key, session) {
 
   // Put new entry
   if (this._sessionCache.list.length >= this.maxCachedSessions) {
-    const oldKey = this._sessionCache.list.shift();
+    const oldKey = ArrayPrototypeShift(this._sessionCache.list);
     debug('evicting %j', oldKey);
     delete this._sessionCache.map[oldKey];
   }
 
-  this._sessionCache.list.push(key);
+  ArrayPrototypePush(this._sessionCache.list, key);
   this._sessionCache.map[key] = session;
 };
 
 Agent.prototype._evictSession = function _evictSession(key) {
-  const index = this._sessionCache.list.indexOf(key);
+  const index = ArrayPrototypeIndexOf(this._sessionCache.list, key);
   if (index === -1)
     return;
 
-  this._sessionCache.list.splice(index, 1);
+  ArrayPrototypeSplice(this._sessionCache.list, index, 1);
   delete this._sessionCache.map[key];
 };
 
 const globalAgent = new Agent();
 
 let urlWarningEmitted = false;
+
+/**
+ * Makes a request to a secure web server.
+ * @param {...any} args
+ * @returns {ClientRequest}
+ */
 function request(...args) {
   let options = {};
 
   if (typeof args[0] === 'string') {
-    const urlStr = args.shift();
+    const urlStr = ArrayPrototypeShift(args);
     try {
       options = urlToOptions(new URL(urlStr));
     } catch (err) {
@@ -300,19 +361,49 @@ function request(...args) {
   } else if (args[0] && args[0][searchParamsSymbol] &&
              args[0][searchParamsSymbol][searchParamsSymbol]) {
     // url.URL instance
-    options = urlToOptions(args.shift());
+    options = urlToOptions(ArrayPrototypeShift(args));
   }
 
   if (args[0] && typeof args[0] !== 'function') {
-    ObjectAssign(options, args.shift());
+    ObjectAssign(options, ArrayPrototypeShift(args));
   }
 
   options._defaultAgent = module.exports.globalAgent;
-  args.unshift(options);
+  ArrayPrototypeUnshift(args, options);
 
-  return new ClientRequest(...args);
+  return ReflectConstruct(ClientRequest, args);
 }
 
+/**
+ * Makes a GET request to a secure web server.
+ * @param {string | URL} input
+ * @param {{
+ *   agent?: Agent | boolean;
+ *   auth?: string;
+ *   createConnection?: Function;
+ *   defaultPort?: number;
+ *   family?: number;
+ *   headers?: Object;
+ *   hints?: number;
+ *   host?: string;
+ *   hostname?: string;
+ *   insecureHTTPParser?: boolean;
+ *   localAddress?: string;
+ *   localPort?: number;
+ *   lookup?: Function;
+ *   maxHeaderSize?: number;
+ *   method?: string;
+ *   path?: string;
+ *   port?: number;
+ *   protocol?: string;
+ *   setHost?: boolean;
+ *   socketPath?: string;
+ *   timeout?: number;
+ *   signal?: AbortSignal;
+ *   } | string | URL} [options]
+ * @param {Function} [cb]
+ * @returns {ClientRequest}
+ */
 function get(input, options, cb) {
   const req = request(input, options, cb);
   req.end();

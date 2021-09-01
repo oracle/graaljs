@@ -612,6 +612,18 @@ A human-readable string describing the reason for the error.
 <a id="nodejs-error-codes"></a>
 ## Node.js error codes
 
+<a id="ABORT_ERR"></a>
+### `ABORT_ERR`
+<!-- YAML
+added: v14.17.0
+-->
+Used when an operation has been aborted (typically using an `AbortController`).
+
+APIs _not_ using `AbortSignal`s typically do not raise an error with this code.
+
+This code does not use the regular `ERR_*` convention Node.js errors use in
+order to be compatible with the web platform's `AbortError`.
+
 <a id="ERR_AMBIGUOUS_ARGUMENT"></a>
 ### `ERR_AMBIGUOUS_ARGUMENT`
 
@@ -701,6 +713,22 @@ Used when a child process is being forked without specifying an IPC channel.
 
 Used when the main process is trying to read data from the child process's
 STDERR/STDOUT, and the data's length is longer than the `maxBuffer` option.
+
+<a id="ERR_CLOSED_MESSAGE_PORT"></a>
+### `ERR_CLOSED_MESSAGE_PORT`
+<!--
+added: v14.17.1
+changes:
+  - version: 11.12.0
+    pr-url: https://github.com/nodejs/node/pull/26487
+    description: The error message was removed.
+  - version: v14.17.1
+    pr-url: https://github.com/nodejs/node/pull/38510
+    description: The error message was reintroduced.
+-->
+
+There was an attempt to use a `MessagePort` instance in a closed
+state, usually after `.close()` has been called.
 
 <a id="ERR_CONSOLE_WRITABLE_STREAM"></a>
 ### `ERR_CONSOLE_WRITABLE_STREAM`
@@ -847,6 +875,22 @@ An unknown cipher was specified.
 
 An unknown Diffie-Hellman group name was given. See
 [`crypto.getDiffieHellman()`][] for a list of valid group names.
+
+<a id="ERR_DEBUGGER_ERROR"></a>
+### `ERR_DEBUGGER_ERROR`
+<!-- YAML
+added: v14.17.4
+-->
+
+An error occurred with the [debugger][].
+
+<a id="ERR_DEBUGGER_STARTUP_ERROR"></a>
+### `ERR_DEBUGGER_STARTUP_ERROR`
+<!-- YAML
+added: v14.17.4
+-->
+
+The [debugger][] timed out waiting for the required host/port to be free.
 
 <a id="ERR_DIR_CLOSED"></a>
 ### `ERR_DIR_CLOSED`
@@ -1419,8 +1463,8 @@ which is not supported.
 <a id="ERR_INVALID_REPL_INPUT"></a>
 ### `ERR_INVALID_REPL_INPUT`
 
-The input may not be used in the [`REPL`][]. All prohibited inputs are
-documented in the [`REPL`][]'s documentation.
+The input may not be used in the [`REPL`][]. The conditions under which this
+error is used are described in the [`REPL`][] documentation.
 
 <a id="ERR_INVALID_RETURN_PROPERTY"></a>
 ### `ERR_INVALID_RETURN_PROPERTY`
@@ -1642,7 +1686,7 @@ would be possible by calling a callback more than once.
 <a id="ERR_NAPI_CONS_FUNCTION"></a>
 ### `ERR_NAPI_CONS_FUNCTION`
 
-While using `N-API`, a constructor passed was not a function.
+While using `Node-API`, a constructor passed was not a function.
 
 <a id="ERR_NAPI_INVALID_DATAVIEW_ARGS"></a>
 ### `ERR_NAPI_INVALID_DATAVIEW_ARGS`
@@ -1703,6 +1747,12 @@ compiled with ICU support.
 ### `ERR_NON_CONTEXT_AWARE_DISABLED`
 
 A non-context-aware native addon was loaded in a process that disallows them.
+
+<a id="ERR_OPERATION_FAILED"></a>
+### `ERR_OPERATION_FAILED`
+
+An operation failed. This is typically used to signal the general failure of an
+asynchronous operation.
 
 <a id="ERR_OUT_OF_RANGE"></a>
 ### `ERR_OUT_OF_RANGE`
@@ -2132,6 +2182,11 @@ than the parent module. Linked modules must share the same context.
 
 The linker function returned a module for which linking has failed.
 
+<a id="ERR_VM_MODULE_LINK_FAILURE"></a>
+### `ERR_VM_MODULE_LINK_FAILURE`
+
+The module was unable to be linked due to a failure.
+
 <a id="ERR_VM_MODULE_NOT_MODULE"></a>
 ### `ERR_VM_MODULE_NOT_MODULE`
 
@@ -2255,16 +2310,6 @@ removed: v12.5.0
 The value passed to `postMessage()` contained an object that is not supported
 for transferring.
 
-<a id="ERR_CLOSED_MESSAGE_PORT"></a>
-### `ERR_CLOSED_MESSAGE_PORT`
-<!-- YAML
-added: v10.5.0
-removed: v11.12.0
--->
-
-There was an attempt to use a `MessagePort` instance in a closed
-state, usually after `.close()` has been called.
-
 <a id="ERR_CRYPTO_HASH_DIGEST_NO_UTF16"></a>
 ### `ERR_CRYPTO_HASH_DIGEST_NO_UTF16`
 <!-- YAML
@@ -2355,7 +2400,7 @@ added: v9.0.0
 removed: v10.0.0
 -->
 
-Used by the `N-API` when `Constructor.prototype` is not an object.
+Used by the `Node-API` when `Constructor.prototype` is not an object.
 
 <a id="ERR_NO_LONGER_SUPPORTED"></a>
 ### `ERR_NO_LONGER_SUPPORTED`
@@ -2570,6 +2615,7 @@ closed.
 [`util.getSystemErrorName(error.errno)`]: util.md#util_util_getsystemerrorname_err
 [`zlib`]: zlib.md
 [crypto digest algorithm]: crypto.md#crypto_crypto_gethashes
+[debugger]: debugger.md
 [define a custom subpath]: packages.md#packages_subpath_exports
 [domains]: domain.md
 [event emitter-based]: events.md#events_class_eventemitter

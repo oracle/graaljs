@@ -769,6 +769,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::function_template_has_instance, "functionTemplateHasInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::function_template_set_call_handler, "functionTemplateSetCallHandler", "(Ljava/lang/Object;JLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::function_template_inherit, "functionTemplateInherit", "(Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::function_template_read_only_prototype, "functionTemplateReadOnlyPrototype", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::script_compile, "scriptCompile", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_run, "scriptRun", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::script_get_unbound_script, "scriptGetUnboundScript", "(Ljava/lang/Object;)Ljava/lang/Object;")

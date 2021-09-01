@@ -12,7 +12,11 @@ const {
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
   Promise,
+  Proxy,
+  ReflectApply,
+  ReflectGet,
   ReflectGetPrototypeOf,
+  ReflectSet,
   Set,
   Symbol,
   Uint32Array,
@@ -31,6 +35,7 @@ const assert = require('assert');
 const EventEmitter = require('events');
 const fs = require('fs');
 const http = require('http');
+const { readUInt16BE, readUInt32BE } = require('internal/buffer');
 const net = require('net');
 const { Duplex } = require('stream');
 const tls = require('tls');
@@ -94,18 +99,22 @@ const {
     ERR_OUT_OF_RANGE,
     ERR_SOCKET_CLOSED
   },
-  hideStackFrames
+  hideStackFrames,
+  AbortError
 } = require('internal/errors');
-const { validateNumber,
-        validateString,
-        validateUint32,
-        isUint32,
+const {
+  isUint32,
+  validateNumber,
+  validateString,
+  validateUint32,
+  validateAbortSignal,
 } = require('internal/validators');
 const fsPromisesInternal = require('internal/fs/promises');
 const { utcDate } = require('internal/http');
-const { onServerStream,
-        Http2ServerRequest,
-        Http2ServerResponse,
+const {
+  Http2ServerRequest,
+  Http2ServerResponse,
+  onServerStream,
 } = require('internal/http2/compat');
 
 const {
@@ -927,6 +936,36 @@ const validateSettings = hideStackFrames((settings) => {
   }
 });
 
+// Wrap a typed array in a proxy, and allow selectively copying the entries
+// that have explicitly been set to another typed array.
+function trackAssignmentsTypedArray(typedArray) {
+  const typedArrayLength = typedArray.length;
+  const modifiedEntries = new Uint8Array(typedArrayLength);
+
+  function copyAssigned(target) {
+    for (let i = 0; i < typedArrayLength; i++) {
+      if (modifiedEntries[i]) {
+        target[i] = typedArray[i];
+      }
+    }
+  }
+
+  return new Proxy(typedArray, {
+    get(obj, prop, receiver) {
+      if (prop === 'copyAssigned') {
+        return copyAssigned;
+      }
+      return ReflectGet(obj, prop, receiver);
+    },
+    set(obj, prop, value) {
+      if (`${+prop}` === prop) {
+        modifiedEntries[prop] = 1;
+      }
+      return ReflectSet(obj, prop, value);
+    }
+  });
+}
+
 // Creates the internal binding.Http2Session handle for an Http2Session
 // instance. This occurs only after the socket connection has been
 // established. Note: the binding.Http2Session will take over ownership
@@ -957,10 +996,13 @@ function setupHandle(socket, type, options) {
   handle.consume(socket._handle);
 
   this[kHandle] = handle;
-  if (this[kNativeFields])
-    handle.fields.set(this[kNativeFields]);
-  else
-    this[kNativeFields] = handle.fields;
+  if (this[kNativeFields]) {
+    // If some options have already been set before the handle existed, copy
+    // those (and only those) that have manually been set over.
+    this[kNativeFields].copyAssigned(handle.fields);
+  }
+
+  this[kNativeFields] = handle.fields;
 
   if (socket.encrypted) {
     this[kAlpnProtocol] = socket.alpnProtocol;
@@ -1012,7 +1054,8 @@ function cleanupSession(session) {
   session[kProxySocket] = undefined;
   session[kSocket] = undefined;
   session[kHandle] = undefined;
-  session[kNativeFields] = new Uint8Array(kSessionUint8FieldCount);
+  session[kNativeFields] = trackAssignmentsTypedArray(
+    new Uint8Array(kSessionUint8FieldCount));
   if (handle)
     handle.ondone = null;
   if (socket) {
@@ -1178,8 +1221,10 @@ class Http2Session extends EventEmitter {
       setupFn();
     }
 
-    if (!this[kNativeFields])
-      this[kNativeFields] = new Uint8Array(kSessionUint8FieldCount);
+    if (!this[kNativeFields]) {
+      this[kNativeFields] = trackAssignmentsTypedArray(
+        new Uint8Array(kSessionUint8FieldCount));
+    }
     this.on('newListener', sessionListenerAdded);
     this.on('removeListener', sessionListenerRemoved);
 
@@ -1246,7 +1291,7 @@ class Http2Session extends EventEmitter {
   }
 
   // If ping is called while we are still connecting, or after close() has
-  // been called, the ping callback will be invoked immediately will a ping
+  // been called, the ping callback will be invoked immediately with a ping
   // cancelled error and a duration of 0.0.
   ping(payload, callback) {
     if (this.destroyed)
@@ -1376,7 +1421,7 @@ class Http2Session extends EventEmitter {
     settingsFn();
   }
 
-  // Sumits a GOAWAY frame to be sent to the remote peer. Note that this
+  // Submits a GOAWAY frame to be sent to the remote peer. Note that this
   // is only a notification, and does not affect the usable state of the
   // session with the notable exception that new incoming streams will
   // be rejected automatically.
@@ -1665,6 +1710,20 @@ class ClientHttp2Session extends Http2Session {
 
     if (options.waitForTrailers)
       stream[kState].flags |= STREAM_FLAGS_HAS_TRAILERS;
+
+    const { signal } = options;
+    if (signal) {
+      validateAbortSignal(signal, 'options.signal');
+      const aborter = () => stream.destroy(new AbortError());
+      if (signal.aborted) {
+        aborter();
+      } else {
+        signal.addEventListener('abort', aborter);
+        stream.once('close', () => {
+          signal.removeEventListener('abort', aborter);
+        });
+      }
+    }
 
     const onConnect = requestOnConnect.bind(stream, headersList, options);
     if (this.connecting) {
@@ -2994,6 +3053,12 @@ class Http2SecureServer extends TLSServer {
     }
     return this;
   }
+
+  updateSettings(settings) {
+    assertIsObject(settings, 'settings');
+    validateSettings(settings);
+    this[kOptions].settings = { ...this[kOptions].settings, ...settings };
+  }
 }
 
 class Http2Server extends NETServer {
@@ -3015,6 +3080,12 @@ class Http2Server extends NETServer {
       this.on('timeout', callback);
     }
     return this;
+  }
+
+  updateSettings(settings) {
+    assertIsObject(settings, 'settings');
+    validateSettings(settings);
+    this[kOptions].settings = { ...this[kOptions].settings, ...settings };
   }
 }
 
@@ -3178,18 +3249,18 @@ function getPackedSettings(settings) {
 }
 
 function getUnpackedSettings(buf, options = {}) {
-  if (!isArrayBufferView(buf)) {
+  if (!isArrayBufferView(buf) || buf.length === undefined) {
     throw new ERR_INVALID_ARG_TYPE('buf',
-                                   ['Buffer', 'TypedArray', 'DataView'], buf);
+                                   ['Buffer', 'TypedArray'], buf);
   }
   if (buf.length % 6 !== 0)
     throw new ERR_HTTP2_INVALID_PACKED_SETTINGS_LENGTH();
   const settings = {};
   let offset = 0;
   while (offset < buf.length) {
-    const id = buf.readUInt16BE(offset);
+    const id = ReflectApply(readUInt16BE, buf, [offset]);
     offset += 2;
-    const value = buf.readUInt32BE(offset);
+    const value = ReflectApply(readUInt32BE, buf, [offset]);
     switch (id) {
       case NGHTTP2_SETTINGS_HEADER_TABLE_SIZE:
         settings.headerTableSize = value;

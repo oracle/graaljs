@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - master
+      - main
       - v[0-9]+.x-staging
       - v[0-9]+.x
 
@@ -18,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Environment Information
@@ -42,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Environment Information
@@ -56,7 +57,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Use Node.js ${{ env.NODE_VERSION }}
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2
         with:
           node-version: ${{ env.NODE_VERSION }}
       - name: Environment Information
@@ -77,6 +78,13 @@ jobs:
         run: |
           make lint-py-build || true
           NODE=$(command -v node) make lint-py
+  lint-sh:
+    runs-on: ubuntu-20.04
+    steps:
+      - uses: actions/checkout@v2
+      - run: shellcheck -V
+      - name: Lint Shell scripts
+        run: tools/lint-sh.js .
 
   lint-codeowners:
     runs-on: ubuntu-latest
@@ -85,3 +93,12 @@ jobs:
       - uses: mszostok/codeowners-validator@v0.4.0
         with:
           checks: "files,duppatterns"
+  lint-pr-url:
+    if: ${{ github.event.pull_request }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 2
+      # GH Actions squashes all PR commits, HEAD^ refers to the base branch.
+      - run: git diff HEAD^ HEAD -G"pr-url:" -- "*.md" | ./tools/lint-pr-url.mjs ${{ github.event.pull_request.html_url }}

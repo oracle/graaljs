@@ -250,6 +250,7 @@ enum GraalAccessMethod {
     function_template_has_instance,
     function_template_set_call_handler,
     function_template_inherit,
+    function_template_read_only_prototype,
     script_compile,
     script_run,
     script_get_unbound_script,

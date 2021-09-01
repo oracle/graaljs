@@ -9,7 +9,7 @@
 #include "node_errors.h"
 #include "node_internals.h"
 #include "node_options-inl.h"
-#include "node_process.h"
+#include "node_process-inl.h"
 #include "node_v8_platform-inl.h"
 #include "node_worker.h"
 #include "req_wrap-inl.h"
@@ -92,12 +92,13 @@ void IsolateData::DeserializeProperties(const std::vector<size_t>* indexes) {
 #define VS(PropertyName, StringValue) V(String, PropertyName)
 #define V(TypeName, PropertyName)                                              \
   do {                                                                         \
-    MaybeLocal<TypeName> field =                                               \
+    MaybeLocal<TypeName> maybe_field =                                         \
         isolate_->GetDataFromSnapshotOnce<TypeName>((*indexes)[i++]);          \
-    if (field.IsEmpty()) {                                                     \
+    Local<TypeName> field;                                                     \
+    if (!maybe_field.ToLocal(&field)) {                                        \
       fprintf(stderr, "Failed to deserialize " #PropertyName "\n");            \
     }                                                                          \
-    PropertyName##_.Set(isolate_, field.ToLocalChecked());                     \
+    PropertyName##_.Set(isolate_, field);                                      \
   } while (0);
   PER_ISOLATE_PRIVATE_SYMBOL_PROPERTIES(VP)
   PER_ISOLATE_SYMBOL_PROPERTIES(VY)
@@ -108,12 +109,13 @@ void IsolateData::DeserializeProperties(const std::vector<size_t>* indexes) {
 #undef VP
 
   for (size_t j = 0; j < AsyncWrap::PROVIDERS_LENGTH; j++) {
-    MaybeLocal<String> field =
+    MaybeLocal<String> maybe_field =
         isolate_->GetDataFromSnapshotOnce<String>((*indexes)[i++]);
-    if (field.IsEmpty()) {
+    Local<String> field;
+    if (!maybe_field.ToLocal(&field)) {
       fprintf(stderr, "Failed to deserialize AsyncWrap provider %zu\n", j);
     }
-    async_wrap_providers_[j].Set(isolate_, field.ToLocalChecked());
+    async_wrap_providers_[j].Set(isolate_, field);
   }
 }
 
@@ -205,10 +207,7 @@ void IsolateData::MemoryInfo(MemoryTracker* tracker) const {
 #define V(PropertyName, StringValue)                                           \
   tracker->TrackField(#PropertyName, PropertyName());
   PER_ISOLATE_SYMBOL_PROPERTIES(V)
-#undef V
 
-#define V(PropertyName, StringValue)                                           \
-  tracker->TrackField(#PropertyName, PropertyName());
   PER_ISOLATE_STRING_PROPERTIES(V)
 #undef V
 
@@ -273,6 +272,29 @@ void Environment::CreateProperties() {
       per_context_bindings->Get(ctx, primordials_string()).ToLocalChecked();
   CHECK(primordials->IsObject());
   set_primordials(primordials.As<Object>());
+
+  Local<String> prototype_string =
+      FIXED_ONE_BYTE_STRING(isolate(), "prototype");
+
+#define V(EnvPropertyName, PrimordialsPropertyName)                            \
+  {                                                                            \
+    Local<Value> ctor =                                                        \
+        primordials.As<Object>()                                               \
+            ->Get(ctx,                                                         \
+                  FIXED_ONE_BYTE_STRING(isolate(), PrimordialsPropertyName))   \
+            .ToLocalChecked();                                                 \
+    CHECK(ctor->IsObject());                                                   \
+    Local<Value> prototype =                                                   \
+        ctor.As<Object>()->Get(ctx, prototype_string).ToLocalChecked();        \
+    CHECK(prototype->IsObject());                                              \
+    set_##EnvPropertyName(prototype.As<Object>());                             \
+  }
+
+  V(primordials_safe_map_prototype_object, "SafeMap");
+  V(primordials_safe_set_prototype_object, "SafeSet");
+  V(primordials_safe_weak_map_prototype_object, "SafeWeakMap");
+  V(primordials_safe_weak_set_prototype_object, "SafeWeakSet");
+#undef V
 
   Local<Object> process_object =
       node::CreateProcessObject(this).FromMaybe(Local<Object>());
@@ -344,9 +366,10 @@ Environment::Environment(IsolateData* isolate_data,
   // easier to modify them after Environment creation. The defaults are
   // part of the per-Isolate option set, for which in turn the defaults are
   // part of the per-process option set.
-  options_.reset(new EnvironmentOptions(*isolate_data->options()->per_env));
-  inspector_host_port_.reset(
-      new ExclusiveAccess<HostPort>(options_->debug_options().host_port));
+  options_ = std::make_shared<EnvironmentOptions>(
+      *isolate_data->options()->per_env);
+  inspector_host_port_ = std::make_shared<ExclusiveAccess<HostPort>>(
+      options_->debug_options().host_port);
 
   if (!(flags_ & EnvironmentFlags::kOwnsProcessState)) {
     set_abort_on_uncaught_exception(false);
@@ -495,14 +518,25 @@ void Environment::InitializeLibuv() {
 
   uv_check_start(immediate_check_handle(), CheckImmediate);
 
+  // Inform V8's CPU profiler when we're idle.  The profiler is sampling-based
+  // but not all samples are created equal; mark the wall clock time spent in
+  // epoll_wait() and friends so profiling tools can filter it out.  The samples
+  // still end up in v8.log but with state=IDLE rather than state=EXTERNAL.
+  uv_prepare_init(event_loop(), &idle_prepare_handle_);
+  uv_check_init(event_loop(), &idle_check_handle_);
+
   uv_async_init(
       event_loop(),
       &task_queues_async_,
       [](uv_async_t* async) {
         Environment* env = ContainerOf(
             &Environment::task_queues_async_, async);
+        HandleScope handle_scope(env->isolate());
+        Context::Scope context_scope(env->context());
         env->RunAndClearNativeImmediates();
       });
+  uv_unref(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
+  uv_unref(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
   uv_unref(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 
   {
@@ -519,6 +553,8 @@ void Environment::InitializeLibuv() {
   // the one environment per process setup, but will be called in
   // FreeEnvironment.
   RegisterHandleCleanups();
+
+  StartProfilerIdleNotifier();
 }
 
 void Environment::ExitEnv() {
@@ -546,6 +582,8 @@ void Environment::RegisterHandleCleanups() {
   register_handle(reinterpret_cast<uv_handle_t*>(timer_handle()));
   register_handle(reinterpret_cast<uv_handle_t*>(immediate_check_handle()));
   register_handle(reinterpret_cast<uv_handle_t*>(immediate_idle_handle()));
+  register_handle(reinterpret_cast<uv_handle_t*>(&idle_prepare_handle_));
+  register_handle(reinterpret_cast<uv_handle_t*>(&idle_check_handle_));
   register_handle(reinterpret_cast<uv_handle_t*>(&task_queues_async_));
 }
 
@@ -575,6 +613,17 @@ void Environment::CleanupHandles() {
          !handle_wrap_queue_.IsEmpty()) {
     uv_run(event_loop(), UV_RUN_ONCE);
   }
+}
+
+void Environment::StartProfilerIdleNotifier() {
+  uv_prepare_start(&idle_prepare_handle_, [](uv_prepare_t* handle) {
+    Environment* env = ContainerOf(&Environment::idle_prepare_handle_, handle);
+    env->isolate()->SetIdle(true);
+  });
+  uv_check_start(&idle_check_handle_, [](uv_check_t* handle) {
+    Environment* env = ContainerOf(&Environment::idle_check_handle_, handle);
+    env->isolate()->SetIdle(false);
+  });
 }
 
 void Environment::PrintSyncTrace() const {
@@ -1017,6 +1066,36 @@ void Environment::RemoveUnmanagedFd(int fd) {
   }
 }
 
+void Environment::VerifyNoStrongBaseObjects() {
+  // When a process exits cleanly, i.e. because the event loop ends up without
+  // things to wait for, the Node.js objects that are left on the heap should
+  // be:
+  //
+  //   1. weak, i.e. ready for garbage collection once no longer referenced, or
+  //   2. detached, i.e. scheduled for destruction once no longer referenced, or
+  //   3. an unrefed libuv handle, i.e. does not keep the event loop alive, or
+  //   4. an inactive libuv handle (essentially the same here)
+  //
+  // There are a few exceptions to this rule, but generally, if there are
+  // C++-backed Node.js objects on the heap that do not fall into the above
+  // categories, we may be looking at a potential memory leak. Most likely,
+  // the cause is a missing MakeWeak() call on the corresponding object.
+  //
+  // In order to avoid this kind of problem, we check the list of BaseObjects
+  // for these criteria. Currently, we only do so when explicitly instructed to
+  // or when in debug mode (where --verify-base-objects is always-on).
+
+  if (!options()->verify_base_objects) return;
+
+  ForEachBaseObject([](BaseObject* obj) {
+    if (obj->IsNotIndicativeOfMemoryLeakAtExit()) return;
+    fprintf(stderr, "Found bad BaseObject during clean exit: %s\n",
+            obj->MemoryInfoName().c_str());
+    fflush(stderr);
+    ABORT();
+  });
+}
+
 void Environment::BuildEmbedderGraph(Isolate* isolate,
                                      EmbedderGraph* graph,
                                      void* data) {
@@ -1107,6 +1186,10 @@ Local<FunctionTemplate> BaseObject::GetConstructorTemplate(Environment* env) {
     env->set_base_object_ctor_template(tmpl);
   }
   return tmpl;
+}
+
+bool BaseObject::IsNotIndicativeOfMemoryLeakAtExit() const {
+  return IsWeakOrDetached();
 }
 
 }  // namespace node

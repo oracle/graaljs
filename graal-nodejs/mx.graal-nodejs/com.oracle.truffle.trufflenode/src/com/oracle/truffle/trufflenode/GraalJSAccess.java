@@ -1734,6 +1734,12 @@ public final class GraalJSAccess {
                     JSObject.setPrototype(proto, parentProto);
                 }
             }
+
+            if (template.hasReadOnlyPrototype()) {
+                PropertyDescriptor desc = PropertyDescriptor.createEmpty();
+                desc.setWritable(false);
+                JSObject.defineOwnProperty(obj, JSObject.PROTOTYPE, desc);
+            }
         }
 
         return template.getFunctionObject(jsRealm);
@@ -1777,6 +1783,11 @@ public final class GraalJSAccess {
             }
         }
         return false;
+    }
+
+    public void functionTemplateReadOnlyPrototype(Object templateObj) {
+        FunctionTemplate template = (FunctionTemplate) templateObj;
+        template.markPrototypeReadOnly();
     }
 
     public Object objectTemplateNew() {
@@ -1923,10 +1934,8 @@ public final class GraalJSAccess {
                     if (!template.hasPropertyHandler()) {
                         JSObjectUtil.putHiddenProperty(obj, name, processedValue);
                     } // else set on the proxy/handler
-                } else if (JSObject.hasOwnProperty(obj, name)) {
-                    JSObject.set(obj, name, processedValue);
                 } else {
-                    JSObjectUtil.putDataProperty(context, obj, name, processedValue, attributes);
+                    JSObject.defineOwnProperty(obj, name, PropertyDescriptor.createData(processedValue, attributes));
                 }
             }
         }

@@ -213,6 +213,8 @@ constexpr size_t kFsStatsBufferLength =
   V(dh_string, "DH")                                                           \
   V(dns_a_string, "A")                                                         \
   V(dns_aaaa_string, "AAAA")                                                   \
+  V(dns_caa_string, "CAA")                                                     \
+  V(dns_critical_string, "critical")                                           \
   V(dns_cname_string, "CNAME")                                                 \
   V(dns_mx_string, "MX")                                                       \
   V(dns_naptr_string, "NAPTR")                                                 \
@@ -476,6 +478,10 @@ constexpr size_t kFsStatsBufferLength =
   V(prepare_stack_trace_callback, v8::Function)                                \
   V(process_object, v8::Object)                                                \
   V(primordials, v8::Object)                                                   \
+  V(primordials_safe_map_prototype_object, v8::Object)                         \
+  V(primordials_safe_set_prototype_object, v8::Object)                         \
+  V(primordials_safe_weak_map_prototype_object, v8::Object)                    \
+  V(primordials_safe_weak_set_prototype_object, v8::Object)                    \
   V(promise_hook_handler, v8::Function)                                        \
   V(promise_reject_callback, v8::Function)                                     \
   V(script_data_constructor_function, v8::Function)                            \
@@ -787,7 +793,9 @@ class ShouldNotAbortOnUncaughtScope {
 
 class CleanupHookCallback {
  public:
-  CleanupHookCallback(void (*fn)(void*),
+  typedef void (*Callback)(void*);
+
+  CleanupHookCallback(Callback fn,
                       void* arg,
                       uint64_t insertion_order_counter)
       : fn_(fn), arg_(arg), insertion_order_counter_(insertion_order_counter) {}
@@ -807,7 +815,7 @@ class CleanupHookCallback {
 
  private:
   friend class Environment;
-  void (*fn_)(void*);
+  Callback fn_;
   void* arg_;
 
   // We keep track of the insertion order for these objects, so that we can
@@ -829,6 +837,7 @@ class Environment : public MemoryRetainer {
   void MemoryInfo(MemoryTracker* tracker) const override;
 
   void CreateProperties();
+  void VerifyNoStrongBaseObjects();
   // Should be called before InitializeInspector()
   void InitializeDiagnostics();
 #if HAVE_INSPECTOR
@@ -914,6 +923,8 @@ class Environment : public MemoryRetainer {
 
   inline void AssignToContext(v8::Local<v8::Context> context,
                               const ContextInfo& info);
+
+  void StartProfilerIdleNotifier();
 
   inline v8::Isolate* isolate() const;
   inline uv_loop_t* event_loop() const;
@@ -1032,10 +1043,14 @@ class Environment : public MemoryRetainer {
   inline void set_stopping(bool value);
   inline std::list<node_module>* extra_linked_bindings();
   inline node_module* extra_linked_bindings_head();
+  inline node_module* extra_linked_bindings_tail();
   inline const Mutex& extra_linked_bindings_mutex() const;
 
   inline bool filehandle_close_warning() const;
   inline void set_filehandle_close_warning(bool on);
+
+  inline void set_source_maps_enabled(bool on);
+  inline bool source_maps_enabled() const;
 
   inline void ThrowError(const char* errmsg);
   inline void ThrowTypeError(const char* errmsg);
@@ -1166,8 +1181,9 @@ class Environment : public MemoryRetainer {
   void ScheduleTimer(int64_t duration);
   void ToggleTimerRef(bool ref);
 
-  inline void AddCleanupHook(void (*fn)(void*), void* arg);
-  inline void RemoveCleanupHook(void (*fn)(void*), void* arg);
+  using CleanupCallback = CleanupHookCallback::Callback;
+  inline void AddCleanupHook(CleanupCallback cb, void* arg);
+  inline void RemoveCleanupHook(CleanupCallback cb, void* arg);
   void RunCleanup();
 
   static void BuildEmbedderGraph(v8::Isolate* isolate,
@@ -1244,6 +1260,8 @@ class Environment : public MemoryRetainer {
   uv_timer_t timer_handle_;
   uv_check_t immediate_check_handle_;
   uv_idle_t immediate_idle_handle_;
+  uv_prepare_t idle_prepare_handle_;
+  uv_check_t idle_check_handle_;
   uv_async_t task_queues_async_;
   int64_t task_queues_async_refs_ = 0;
 
@@ -1257,6 +1275,8 @@ class Environment : public MemoryRetainer {
   bool emit_env_nonstring_warning_ = true;
   bool emit_err_name_warning_ = true;
   bool emit_filehandle_warning_ = true;
+  bool source_maps_enabled_ = false;
+
   size_t async_callback_scope_depth_ = 0;
   std::vector<double> destroy_async_id_list_;
 

@@ -4,10 +4,11 @@
 // https://encoding.spec.whatwg.org
 
 const {
-  Map,
   ObjectCreate,
   ObjectDefineProperties,
   ObjectGetOwnPropertyDescriptors,
+  SafeMap,
+  StringPrototypeSlice,
   Symbol,
   SymbolToStringTag,
   Uint32Array,
@@ -63,6 +64,7 @@ function validateDecoder(obj) {
 }
 
 function validateArgument(prop, expected, propName, expectedName) {
+  // eslint-disable-next-line valid-typeof
   if (typeof prop !== expected)
     throw new ERR_INVALID_ARG_TYPE(propName, expectedName, prop);
 }
@@ -73,7 +75,7 @@ const CONVERTER_FLAGS_IGNORE_BOM = 0x4;
 
 const empty = new Uint8Array(0);
 
-const encodings = new Map([
+const encodings = new SafeMap([
   ['unicode-1-1-utf-8', 'utf-8'],
   ['utf8', 'utf-8'],
   ['utf-8', 'utf-8'],
@@ -308,7 +310,7 @@ function trimAsciiWhitespace(label) {
     label[e - 1] === '\u0020')) {
     e--;
   }
-  return label.slice(s, e);
+  return StringPrototypeSlice(label, s, e);
 }
 
 function getEncodingFromLabel(label) {
@@ -362,10 +364,8 @@ ObjectDefineProperties(
     'encode': { enumerable: true },
     'encodeInto': { enumerable: true },
     'encoding': { enumerable: true },
-    [SymbolToStringTag]: {
-      configurable: true,
-      value: 'TextEncoder'
-    } });
+    [SymbolToStringTag]: { configurable: true, value: 'TextEncoder' },
+  });
 
 const TextDecoder =
   internalBinding('config').hasIntl ?
@@ -503,7 +503,7 @@ function makeTextDecoderJS() {
         // If the very first result in the stream is a BOM, and we are not
         // explicitly told to ignore it, then we discard it.
         if (result[0] === '\ufeff') {
-          result = result.slice(1);
+          result = StringPrototypeSlice(result, 1);
         }
         this[kBOMSeen] = true;
       }
