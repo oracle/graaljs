@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThat;
@@ -49,8 +50,11 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.lang.reflect.Proxy;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.IntBinaryOperator;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
@@ -58,6 +62,7 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.test.JSTest;
 
 public class JavaScriptHostInteropTest {
@@ -243,6 +248,56 @@ public class JavaScriptHostInteropTest {
             assertTrue(identical.execute(proxy1, proxy1).asBoolean());
             assertFalse(equals.execute(proxy1, proxy2).asBoolean());
             assertFalse(identical.execute(proxy1, proxy2).asBoolean());
+        }
+    }
+
+    public static class AmbiguousFunctionalInterfaces {
+        public Object sort(List<Object> array, Comparator<Object> comparator) {
+            array.sort(comparator);
+            return array;
+        }
+
+        public Object sort(List<Integer> array, IntBinaryOperator comparator) {
+            array.sort((a, b) -> comparator.applyAsInt(a, b));
+            return array;
+        }
+
+        public Object consumeArray(@SuppressWarnings("unused") List<Object> array) {
+            return "List";
+        }
+
+        public Object consumeArray(@SuppressWarnings("unused") Object[] array) {
+            return "Object[]";
+        }
+    }
+
+    @Test
+    public void explicitMethodOverloadTest() {
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).build()) {
+            Object api = new AmbiguousFunctionalInterfaces();
+            context.getBindings(JavaScriptLanguage.ID).putMember("api", api);
+
+            context.eval(ID, "var array = [3,13,3,7];");
+
+            // TypeError: Multiple applicable overloads found
+            assertThrows(() -> context.eval(ID, "api.sort(array, (a, b) => a - b);"),
+                            e -> assertTrue(e.getMessage(), e.getMessage().startsWith("TypeError")));
+
+            Value result;
+            result = context.eval(ID, "api['sort(java.util.List,java.util.Comparator)'](array, (a, b) => a - b);");
+            assertArrayEquals(new int[]{3, 3, 7, 13}, result.as(int[].class));
+
+            result = context.eval(ID, "api['sort(java.util.List,java.util.function.IntBinaryOperator)'](array, (a, b) => b - a);");
+            assertArrayEquals(new int[]{13, 7, 3, 3}, result.as(int[].class));
+
+            result = context.eval(ID, "api.consumeArray(array);");
+            assertEquals("List", result.asString());
+
+            result = context.eval(ID, "api['consumeArray(java.util.List)'](array);");
+            assertEquals("List", result.asString());
+
+            result = context.eval(ID, "api['consumeArray(java.lang.Object[])'](array);");
+            assertEquals("Object[]", result.asString());
         }
     }
 }
