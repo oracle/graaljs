@@ -44,6 +44,7 @@ import java.util.Locale;
 
 import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.LocaleDisplayNames;
+import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -146,7 +147,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         state.fallback = optFallback;
         DisplayContext fallbackCtx = fallbackDisplayContext(optFallback);
         DisplayContext styleCtx = styleDisplayContext(optStyle);
-        state.displayNames = LocaleDisplayNames.getInstance(strippedLocale, styleCtx, fallbackCtx);
+        state.displayNames = LocaleDisplayNames.getInstance(convertOldISOCodes(strippedLocale), styleCtx, fallbackCtx);
     }
 
     private static DisplayContext fallbackDisplayContext(String optFallback) {
@@ -155,6 +156,32 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
 
     private static DisplayContext styleDisplayContext(String optStyle) {
         return IntlUtil.LONG.equals(optStyle) ? DisplayContext.LENGTH_FULL : DisplayContext.LENGTH_SHORT;
+    }
+
+    /**
+     * Converts any legacy language codes found in j.u.Locale to the new standard language codes.
+     * Using the legacy language codes can lead to MissingResourceExceptions in ICU when attempting
+     * to load display name data. This should no longer be necessary after ICU-21742 is fixed.
+     *
+     * <p>
+     * <a href="https://unicode-org.atlassian.net/browse/ICU-21742">ICU-21742</a>
+     * </p>
+     */
+    private static ULocale convertOldISOCodes(Locale locale) {
+        ULocale.Builder builder = new ULocale.Builder();
+        builder.setLocale(ULocale.forLocale(locale));
+        switch (locale.getLanguage()) {
+            case "iw":
+                builder.setLanguage("he");
+                break;
+            case "ji":
+                builder.setLanguage("yi");
+                break;
+            case "in":
+                builder.setLanguage("id");
+                break;
+        }
+        return builder.build();
     }
 
     @TruffleBoundary
