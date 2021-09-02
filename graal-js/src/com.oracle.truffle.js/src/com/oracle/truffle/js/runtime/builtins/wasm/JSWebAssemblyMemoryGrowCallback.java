@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,38 +40,55 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
-    private final Object wasmMemory;
-    private DynamicObject bufferObject;
+import java.util.Map;
 
-    protected JSWebAssemblyMemoryObject(Shape shape, Object wasmMemory) {
-        super(shape);
-        this.wasmMemory = wasmMemory;
+/**
+ * Represents a callback that is invoked when the memory grow function is called inside WebAssembly.
+ * This allows the JavaScript Memory representation to be reset properly.
+ */
+@ExportLibrary(InteropLibrary.class)
+public final class JSWebAssemblyMemoryGrowCallback implements TruffleObject {
+    private final JSRealm realm;
+    private final Object memSetGrowCallbackFunction;
+
+    public JSWebAssemblyMemoryGrowCallback(JSRealm realm, Object memSetGrowCallbackFunction) {
+        this.realm = realm;
+        this.memSetGrowCallbackFunction = memSetGrowCallbackFunction;
     }
 
-    public Object getWASMMemory() {
-        return wasmMemory;
-    }
-
-    public DynamicObject getBufferObject(JSContext context, JSRealm realm) {
-        if (bufferObject == null) {
-            bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
+    public void attachToMemory(Object wasmMemory) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        try {
+            lib.execute(memSetGrowCallbackFunction, wasmMemory, this);
+        } catch (InteropException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
-        return bufferObject;
     }
 
-    public void resetBufferObject() {
-        if (bufferObject != null) {
-            JSArrayBuffer.detachArrayBuffer(bufferObject);
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    boolean isExecutable() {
+        return true;
+    }
+
+    @ExportMessage
+    Object execute(Object[] arguments) {
+        assert arguments.length == 1;
+        Map<Object, JSWebAssemblyMemoryObject> cache = realm.getWebAssemblyMemoryCache();
+        JSWebAssemblyMemoryObject object = Boundaries.mapGet(cache, arguments[0]);
+        if (object != null) {
+            object.resetBufferObject();
         }
-        bufferObject = null;
+        return Undefined.instance;
     }
-
 }
