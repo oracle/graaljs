@@ -46,11 +46,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.Map;
 
 /**
  * Represents a callback that is invoked when the memory grow function is called inside WebAssembly.
@@ -84,10 +81,9 @@ public final class JSWebAssemblyMemoryGrowCallback implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         assert arguments.length == 1;
-        Map<Object, JSWebAssemblyMemoryObject> cache = realm.getWebAssemblyMemoryCache();
-        JSWebAssemblyMemoryObject object = Boundaries.mapGet(cache, arguments[0]);
-        if (object != null) {
-            object.resetBufferObject();
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, arguments[0]);
+        if (embedderData instanceof JSWebAssemblyMemoryObject) {
+            ((JSWebAssemblyMemoryObject) embedderData).resetBufferObject();
         }
         return Undefined.instance;
     }

@@ -162,14 +162,11 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenter;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryGrowCallback;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTableObject;
 import com.oracle.truffle.js.runtime.interop.DynamicScopeWrapper;
 import com.oracle.truffle.js.runtime.interop.TopScopeObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
@@ -391,6 +388,8 @@ public class JSRealm {
     private final Object wasmModuleImports;
     private final Object wasmCustomSections;
     private final Object wasmInstanceExport;
+    private final Object wasmEmbedderDataGet;
+    private final Object wasmEmbedderDataSet;
 
     private final DynamicObject webAssemblyObject;
     private final DynamicObject webAssemblyGlobalConstructor;
@@ -403,11 +402,6 @@ public class JSRealm {
     private final DynamicObject webAssemblyModulePrototype;
     private final DynamicObject webAssemblyTableConstructor;
     private final DynamicObject webAssemblyTablePrototype;
-
-    private final Map<Object, JSWebAssemblyMemoryObject> webAssemblyMemoryCache;
-    private final Map<Object, JSWebAssemblyTableObject> webAssemblyTableCache;
-    private final Map<Object, DynamicObject> webAssemblyExportedFunctionCache;
-    private final Map<Object, JSWebAssemblyGlobalObject> webAssemblyGlobalCache;
 
     private final JSWebAssemblyMemoryGrowCallback webAssemblyMemoryGrowCallback;
 
@@ -769,6 +763,8 @@ public class JSRealm {
                 wasmCustomSections = wasmInterop.readMember(wasmObject, "custom_sections");
                 wasmInstanceExport = wasmInterop.readMember(wasmObject, "instance_export");
                 wasmMemSetGrowCallback = wasmInterop.readMember(wasmObject, "mem_set_grow_callback");
+                wasmEmbedderDataGet = wasmInterop.readMember(wasmObject, "embedder_data_get");
+                wasmEmbedderDataSet = wasmInterop.readMember(wasmObject, "embedder_data_set");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -790,11 +786,6 @@ public class JSRealm {
             this.webAssemblyGlobalConstructor = ctor.getFunctionObject();
             this.webAssemblyGlobalPrototype = ctor.getPrototype();
 
-            this.webAssemblyMemoryCache = new HashMap<>();
-            this.webAssemblyTableCache = new HashMap<>();
-            this.webAssemblyExportedFunctionCache = new HashMap<>();
-            this.webAssemblyGlobalCache = new HashMap<>();
-
             this.webAssemblyMemoryGrowCallback = new JSWebAssemblyMemoryGrowCallback(this, wasmMemSetGrowCallback);
         } else {
             this.wasmTableAlloc = null;
@@ -815,6 +806,8 @@ public class JSRealm {
             this.wasmModuleImports = null;
             this.wasmCustomSections = null;
             this.wasmInstanceExport = null;
+            this.wasmEmbedderDataGet = null;
+            this.wasmEmbedderDataSet = null;
 
             this.webAssemblyObject = null;
             this.webAssemblyGlobalConstructor = null;
@@ -827,11 +820,6 @@ public class JSRealm {
             this.webAssemblyModulePrototype = null;
             this.webAssemblyTableConstructor = null;
             this.webAssemblyTablePrototype = null;
-
-            this.webAssemblyMemoryCache = null;
-            this.webAssemblyTableCache = null;
-            this.webAssemblyExportedFunctionCache = null;
-            this.webAssemblyGlobalCache = null;
 
             this.webAssemblyMemoryGrowCallback = null;
         }
@@ -2567,6 +2555,14 @@ public class JSRealm {
         return wasmInstanceExport;
     }
 
+    public Object getWASMEmbedderDataGet() {
+        return wasmEmbedderDataGet;
+    }
+
+    public Object getWASMEmbedderDataSet() {
+        return wasmEmbedderDataSet;
+    }
+
     public DynamicObject getWebAssemblyModulePrototype() {
         return webAssemblyModulePrototype;
     }
@@ -2589,22 +2585,6 @@ public class JSRealm {
 
     public DynamicObject getForeignIterablePrototype() {
         return foreignIterablePrototype;
-    }
-
-    public Map<Object, JSWebAssemblyMemoryObject> getWebAssemblyMemoryCache() {
-        return webAssemblyMemoryCache;
-    }
-
-    public Map<Object, JSWebAssemblyTableObject> getWebAssemblyTableCache() {
-        return webAssemblyTableCache;
-    }
-
-    public Map<Object, DynamicObject> getWebAssemblyExportedFunctionCache() {
-        return webAssemblyExportedFunctionCache;
-    }
-
-    public Map<Object, JSWebAssemblyGlobalObject> getWebAssemblyGlobalCache() {
-        return webAssemblyGlobalCache;
     }
 
     public JSWebAssemblyMemoryGrowCallback getWebAssemblyMemoryGrowCallback() {

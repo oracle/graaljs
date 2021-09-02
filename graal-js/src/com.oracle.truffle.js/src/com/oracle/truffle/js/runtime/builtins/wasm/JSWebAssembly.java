@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyBuiltins;
@@ -71,6 +74,24 @@ public final class JSWebAssembly {
     public static Object getExportedFunction(DynamicObject function) {
         assert isExportedFunction(function);
         return JSObjectUtil.getHiddenProperty(function, JSWebAssembly.FUNCTION_ADDRESS);
+    }
+
+    public static Object getEmbedderData(JSRealm realm, Object wasmEntity) {
+        Object embedderDataGetter = realm.getWASMEmbedderDataGet();
+        try {
+            return InteropLibrary.getUncached(embedderDataGetter).execute(embedderDataGetter, wasmEntity);
+        } catch (InteropException iex) {
+            throw CompilerDirectives.shouldNotReachHere(iex);
+        }
+    }
+
+    public static void setEmbedderData(JSRealm realm, Object wasmEntity, Object data) {
+        Object embedderDataSetter = realm.getWASMEmbedderDataSet();
+        try {
+            InteropLibrary.getUncached(embedderDataSetter).execute(embedderDataSetter, wasmEntity, data);
+        } catch (InteropException iex) {
+            throw CompilerDirectives.shouldNotReachHere(iex);
+        }
     }
 
 }
