@@ -366,3 +366,60 @@ More detailed example usages are available in the GraalVM JavaScript [unit tests
 ## Multithreading
 
 GraalVM JavaScript supports multithreading when used in combination with Java. More details about the GraalVM JavaScript multithreading model can be found in the [Multithreading](Multithreading.md) documentation.
+
+## Extending Java classes
+
+In JVM mode (`--jvm`), GraalVM JavaScript provides support for extending Java classes and interfaces using the `Java.extend` function.
+Note that host access has to be enabled in the [polyglot context](#polyglot-context) for this feature to be available.
+
+### Java.extend
+`Java.extend(types...)` returns a generated adapter Java class object that extends the specified Java class and/or interfaces.
+Example:
+
+```js
+var Ext = Java.extend(Java.type("some.AbstractClass"),
+                      Java.type("some.Interface1"),
+                      Java.type("some.Interface2"));
+var impl = new Ext({
+  superclassMethod: function() {/*...*/},
+  interface1Method: function() {/*...*/},
+  interface2Method: function() {/*...*/},
+  toString() {return "MyClass";}
+});
+impl.superclassMethod();
+```
+
+Super methods may be called via `Java.super(adapterInstance)`.
+Combined example:
+
+```js
+var sw = new (Java.type("java.io.StringWriter"));
+var FilterWriterAdapter = Java.extend(Java.type("java.io.FilterWriter"));
+var fw = new FilterWriterAdapter(sw, {
+    write: function(s, off, len) {
+        s = s.toUpperCase();
+        if (off === undefined) {
+            fw_super.write(s, 0, s.length)
+        } else {
+            fw_super.write(s, off, len)
+        }
+    }
+});
+var fw_super = Java.super(fw);
+fw.write("abcdefg");
+fw.write("h".charAt(0));
+fw.write("**ijk**", 2, 3);
+fw.write("***lmno**", 3, 4);
+print(sw); // ABCDEFGHIJKLMNO
+```
+
+Note that in `nashorn-compat` mode, you can also extend interfaces and abstract classes using new operator on a type object of an interface or abstract class:
+
+```js
+// --experimental-options --js.nashorn-compat
+var JFunction = Java.type('java.util.function.Function');
+ var sqFn = new JFunction({
+   apply: function(x) { return x * x; }
+});
+sqFn.apply(6); // 36
+```
