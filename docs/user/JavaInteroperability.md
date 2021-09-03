@@ -156,9 +156,9 @@ javaObject.foo(Math.pow(2,32)); // will call foo(long);
 ```
 
 To override this behavior, an explicit method overload can be selected using the `javaObject['methodName(paramTypes)']` syntax.
-Parameter types need to be comma separated without spaces and Object types need to be fully qualified (e.g. `'get(java.lang.String,java.lang.String[])'`).
+Parameter types need to be comma-separated without spaces, and Object types need to be fully qualified (e.g., `'get(java.lang.String,java.lang.String[])'`).
 Note that this is different from Nashorn which allows extra spaces and simple names.
-In the example above, one might want to always call e.g. `foo(long)`, even when `foo(short)` can be reached with lossless conversion (`foo(1)`):
+In the example above, one might always want to call, e.g., `foo(long)`, even when `foo(short)` can be reached with lossless conversion (`foo(1)`):
 
 ```js
 javaObject['foo(int)'](1);
@@ -169,7 +169,7 @@ javaObject['foo(double)'](1);
 Note that the argument values still have to fit into the parameter types.
 You can override this behavior using custom [target type mappings](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-).
 
-Explicit method selection can also be useful when the method overloads are ambiguous and cannot be automatically resolved as well as when you want to override the default choice:
+An explicit method selection can also be useful when the method overloads are ambiguous and cannot be automatically resolved as well as when you want to override the default choice:
 
 ```java
 //Java
@@ -369,12 +369,12 @@ GraalVM JavaScript supports multithreading when used in combination with Java. M
 
 ## Extending Java classes
 
-In JVM mode (`--jvm`), GraalVM JavaScript provides support for extending Java classes and interfaces using the `Java.extend` function.
+In the JVM mode (`--jvm`), GraalVM JavaScript provides support for extending Java classes and interfaces using the `Java.extend` function.
 Note that host access has to be enabled in the [polyglot context](#polyglot-context) for this feature to be available.
 
 ### Java.extend
 `Java.extend(types...)` returns a generated adapter Java class object that extends the specified Java class and/or interfaces.
-Example:
+For example:
 
 ```js
 var Ext = Java.extend(Java.type("some.AbstractClass"),
@@ -389,8 +389,8 @@ var impl = new Ext({
 impl.superclassMethod();
 ```
 
-Super methods may be called via `Java.super(adapterInstance)`.
-Combined example:
+Super methods can be called via `Java.super(adapterInstance)`.
+See a combined example:
 
 ```js
 var sw = new (Java.type("java.io.StringWriter"));
@@ -413,7 +413,7 @@ fw.write("***lmno**", 3, 4);
 print(sw); // ABCDEFGHIJKLMNO
 ```
 
-Note that in `nashorn-compat` mode, you can also extend interfaces and abstract classes using new operator on a type object of an interface or abstract class:
+Note that in the `nashorn-compat` mode, you can also extend interfaces and abstract classes using a new operator on a type object of an interface or an abstract class:
 
 ```js
 // --experimental-options --js.nashorn-compat
