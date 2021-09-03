@@ -43,6 +43,7 @@ package com.oracle.js.parser;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import com.oracle.js.parser.ir.Block;
 import com.oracle.js.parser.ir.Scope;
 import com.oracle.js.parser.ir.Statement;
 
@@ -153,16 +154,7 @@ class ParserContext {
      */
     public ParserContextBreakableNode getBreakable(final String labelName) {
         if (labelName != null) {
-            final ParserContextLabelNode foundLabel = findLabel(labelName);
-            if (foundLabel != null) {
-                // iterate to the nearest breakable to the foundLabel
-                ParserContextBreakableNode breakable = null;
-                for (final NodeIterator<ParserContextBreakableNode> iter = new NodeIterator<>(ParserContextBreakableNode.class, foundLabel); iter.hasNext();) {
-                    breakable = iter.next();
-                }
-                return breakable;
-            }
-            return null;
+            return findLabelledItem(labelName, ParserContextBreakableNode.class);
         } else {
             return getBreakable();
         }
@@ -171,7 +163,7 @@ class ParserContext {
     /**
      * Returns the loop node of the current loop, or null if not inside a loop
      *
-     * @return loop noder
+     * @return nearest loop node
      */
     public ParserContextLoopNode getCurrentLoop() {
         final Iterator<ParserContextLoopNode> iter = new NodeIterator<>(ParserContextLoopNode.class, getCurrentFunction());
@@ -191,16 +183,7 @@ class ParserContext {
      */
     public ParserContextLoopNode getContinueTo(final String labelName) {
         if (labelName != null) {
-            final ParserContextLabelNode foundLabel = findLabel(labelName);
-            if (foundLabel != null) {
-                // iterate to the nearest loop to the foundLabel
-                ParserContextLoopNode loop = null;
-                for (final NodeIterator<ParserContextLoopNode> iter = new NodeIterator<>(ParserContextLoopNode.class, foundLabel); iter.hasNext();) {
-                    loop = iter.next();
-                }
-                return loop;
-            }
-            return null;
+            return findLabelledItem(labelName, ParserContextLoopNode.class);
         }
         return getContinueTo();
     }
@@ -216,6 +199,33 @@ class ParserContext {
             final ParserContextLabelNode next = iter.next();
             if (next.getLabelName().equals(name)) {
                 return next;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Find the nearest breakable/loop with this label.
+     *
+     * @param labelName label name to search for
+     * @param breakableType {@link ParserContextBreakableNode} or {@link ParserContextLoopNode}
+     * @return nearest breakable/loop
+     */
+    private <T extends ParserContextBreakableNode> T findLabelledItem(final String labelName, Class<T> breakableType) {
+        T prev = null;
+        for (final Iterator<ParserContextNode> iter = new NodeIterator<>(ParserContextNode.class, getCurrentFunction()); iter.hasNext();) {
+            final ParserContextNode next = iter.next();
+            if (next instanceof ParserContextLabelNode) {
+                ParserContextLabelNode labelStatement = (ParserContextLabelNode) next;
+                if (labelStatement.getLabelName().equals(labelName)) {
+                    return prev;
+                }
+            } else if (breakableType == ParserContextLoopNode.class && next instanceof ParserContextBlockNode && next.getFlag(Block.IS_SYNTHETIC) == 0) {
+                // label is not associated with an iteration statement, e.g.:
+                // label: { for(;;) { continue label; } }
+                prev = null;
+            } else if (breakableType.isInstance(next)) {
+                prev = breakableType.cast(next);
             }
         }
         return null;
