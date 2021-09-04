@@ -660,7 +660,8 @@ public class JSContext {
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
-        boolean isTop = JSRealm.CREATING_CHILD_REALM.get() != Boolean.TRUE;
+        JSRealm parentRealm = JSRealm.PARENT_OF_NEW_REALM.get();
+        boolean isTop = (parentRealm == null);
         if (realmInit.get() != REALM_UNINITIALIZED || !realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING)) {
             singleRealmAssumption.invalidate("single realm assumption");
         }
@@ -681,6 +682,8 @@ public class JSContext {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
+        } else {
+            newRealm.setParent(parentRealm);
         }
 
         realmInit.set(REALM_INITIALIZED);

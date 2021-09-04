@@ -467,7 +467,7 @@ public class JSRealm {
      */
     Object v8RealmShared = Undefined.instance;
 
-    static final ThreadLocal<Boolean> CREATING_CHILD_REALM = new ThreadLocal<>();
+    static final ThreadLocal<JSRealm> PARENT_OF_NEW_REALM = new ThreadLocal<>();
 
     /**
      * Used to the pass call site source location for caller sensitive built-in functions.
@@ -2122,23 +2122,14 @@ public class JSRealm {
 
     @TruffleBoundary
     public JSRealm createChildRealm() {
-        assert CREATING_CHILD_REALM.get() != Boolean.TRUE;
-        CREATING_CHILD_REALM.set(Boolean.TRUE);
+        assert PARENT_OF_NEW_REALM.get() == null;
+        PARENT_OF_NEW_REALM.set(this);
         try {
             TruffleContext nestedContext = getEnv().newContextBuilder().build();
             Object prev = nestedContext.enter(null);
             try {
                 JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
-                childRealm.agent = this.agent;
-                childRealm.parentRealm = this;
 
-                if (getContext().getContextOptions().isV8RealmBuiltin()) {
-                    JSRealm topLevelRealm = this;
-                    while (topLevelRealm.parentRealm != null) {
-                        topLevelRealm = topLevelRealm.parentRealm;
-                    }
-                    topLevelRealm.addToRealmList(childRealm);
-                }
                 JSRealm parent = childRealm.parentRealm;
                 assert parent != null;
                 parent.addInnerContext(nestedContext);
@@ -2148,7 +2139,7 @@ public class JSRealm {
                 nestedContext.leave(null, prev);
             }
         } finally {
-            CREATING_CHILD_REALM.set(Boolean.FALSE);
+            PARENT_OF_NEW_REALM.set(null);
         }
     }
 
@@ -2402,6 +2393,20 @@ public class JSRealm {
 
     public JSRealm getParent() {
         return parentRealm;
+    }
+
+    void setParent(JSRealm parentRealm) {
+        assert (this.parentRealm == null);
+        this.agent = parentRealm.agent;
+        this.parentRealm = parentRealm;
+
+        if (getContext().getContextOptions().isV8RealmBuiltin()) {
+            JSRealm topLevelRealm = parentRealm;
+            while (topLevelRealm.parentRealm != null) {
+                topLevelRealm = topLevelRealm.parentRealm;
+            }
+            topLevelRealm.addToRealmList(this);
+        }
     }
 
     public JavaScriptBaseNode getCallNode() {
