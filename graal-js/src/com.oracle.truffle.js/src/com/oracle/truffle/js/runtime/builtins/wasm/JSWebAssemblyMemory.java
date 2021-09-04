@@ -47,7 +47,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyMemoryPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -62,8 +61,6 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-
-import java.util.Map;
 
 public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
     public static final int MAX_MEMORY_SIZE = 32767;
@@ -113,16 +110,15 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory) {
-        Map<Object, JSWebAssemblyMemoryObject> cache = realm.getWebAssemblyMemoryCache();
-        JSWebAssemblyMemoryObject object = Boundaries.mapGet(cache, wasmMemory);
-        if (object != null) {
-            return object;
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
+        if (embedderData instanceof JSWebAssemblyMemoryObject) {
+            return (JSWebAssemblyMemoryObject) embedderData;
         }
         realm.getWebAssemblyMemoryGrowCallback().attachToMemory(wasmMemory);
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
-        object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory);
+        JSWebAssemblyMemoryObject object = new JSWebAssemblyMemoryObject(factory.getShape(realm), wasmMemory);
         factory.initProto(object, realm);
-        Boundaries.mapPut(cache, wasmMemory, object);
+        JSWebAssembly.setEmbedderData(realm, wasmMemory, object);
         return context.trackAllocation(object);
     }
 

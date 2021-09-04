@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -54,7 +52,6 @@ import com.oracle.truffle.js.builtins.wasm.WebAssemblyGlobalPrototypeBuiltins;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -120,15 +117,14 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSWebAssemblyGlobalObject create(JSContext context, JSRealm realm, Object wasmGlobal, String valueType) {
-        Map<Object, JSWebAssemblyGlobalObject> cache = realm.getWebAssemblyGlobalCache();
-        JSWebAssemblyGlobalObject object = Boundaries.mapGet(cache, wasmGlobal);
-        if (object != null) {
-            return object;
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmGlobal);
+        if (embedderData instanceof JSWebAssemblyGlobalObject) {
+            return (JSWebAssemblyGlobalObject) embedderData;
         }
         JSObjectFactory factory = context.getWebAssemblyGlobalFactory();
-        object = new JSWebAssemblyGlobalObject(factory.getShape(realm), wasmGlobal, valueType);
+        JSWebAssemblyGlobalObject object = new JSWebAssemblyGlobalObject(factory.getShape(realm), wasmGlobal, valueType);
         factory.initProto(object, realm);
-        Boundaries.mapPut(cache, wasmGlobal, object);
+        JSWebAssembly.setEmbedderData(realm, wasmGlobal, object);
         return context.trackAllocation(object);
     }
 

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -72,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
@@ -198,10 +197,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
     @CompilerDirectives.TruffleBoundary
     public static Object exportFunction(JSContext context, JSRealm realm, Object export, String typeInfo) {
-        Map<Object, DynamicObject> cache = realm.getWebAssemblyExportedFunctionCache();
-        DynamicObject result = cache.get(export);
-        if (result != null) {
-            return result;
+        Object embedderData = JSWebAssembly.getEmbedderData(realm, export);
+        if (embedderData instanceof JSFunctionObject) {
+            return embedderData;
         }
 
         int idxOpen = typeInfo.indexOf('(');
@@ -270,9 +268,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         });
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        result = JSFunction.create(realm, functionData);
+        DynamicObject result = JSFunction.create(realm, functionData);
         JSObjectUtil.putHiddenProperty(result, JSWebAssembly.FUNCTION_ADDRESS, export);
-        cache.put(export, result);
+        JSWebAssembly.setEmbedderData(realm, export, result);
         return result;
     }
 
