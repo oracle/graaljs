@@ -118,7 +118,8 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("throwDataCloneError", "(JLjava/lang/String;)V", &GraalThrowDataCloneError),
     CALLBACK("getSharedArrayBufferId", "(JLjava/lang/Object;)I", &GraalGetSharedArrayBufferId),
     CALLBACK("getSharedArrayBufferFromId", "(JI)Ljava/lang/Object;", &GraalGetSharedArrayBufferFromId),
-    CALLBACK("syntheticModuleEvaluationSteps", "(JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalSyntheticModuleEvaluationSteps)
+    CALLBACK("syntheticModuleEvaluationSteps", "(JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalSyntheticModuleEvaluationSteps),
+    CALLBACK("newDirectByteBuffer", "(JJ)Ljava/lang/Object;", &GraalNewDirectByteBuffer)
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -846,4 +847,8 @@ jobject GraalSyntheticModuleEvaluationSteps(JNIEnv* env, jclass nativeAccess, jl
         GraalValue* graal_value = reinterpret_cast<GraalValue*> (*v8_value);
         return env->NewLocalRef(graal_value->GetJavaObject());
     }
+}
+
+jobject GraalNewDirectByteBuffer(JNIEnv* env, jclass nativeAccess, jlong address, jlong capacity) {
+    return env->NewDirectByteBuffer((void*)address, capacity);
 }

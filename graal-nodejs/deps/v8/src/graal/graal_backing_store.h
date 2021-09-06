@@ -48,20 +48,24 @@
 
 class GraalBackingStore : public v8::internal::BackingStoreBase {
     public:
-        inline GraalBackingStore(jobject java_store) : java_store_(java_store) {}
+        inline GraalBackingStore(jobject java_store, void* data, size_t byte_length) : java_store_(java_store), data_(data), byte_length_(byte_length) {}
+        inline GraalBackingStore() : java_store_(nullptr), data_(nullptr), byte_length_(0) {}
+
         inline jobject GetJavaStore() const {
             return java_store_;
         }
         inline size_t ByteLength() const {
-            return (java_store_ == nullptr) ? 0 : CurrentIsolate()->GetJNIEnv()->GetDirectBufferCapacity(java_store_);
+            return byte_length_;
         }
         inline void* Data() const {
-            return (java_store_ == nullptr) ? nullptr : CurrentIsolate()->GetJNIEnv()->GetDirectBufferAddress(java_store_);
+            return data_;
         }
     private:
         // global JNI reference to a direct ByteBuffer
         // or nullptr (= backing store for a detached ArrayBuffer)
         jobject java_store_;
+        void* data_;
+        size_t byte_length_;
 };
 
 #endif /* GRAAL_BACKING_STORE_H_ */

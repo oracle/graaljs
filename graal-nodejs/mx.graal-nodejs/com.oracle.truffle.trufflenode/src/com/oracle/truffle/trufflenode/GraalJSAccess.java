@@ -1272,6 +1272,17 @@ public final class GraalJSAccess {
     private Object interopArrayBufferGetContents(Object arrayBuffer) {
         assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
         Object interopBuffer = JSArrayBufferObject.getInteropBuffer(arrayBuffer);
+        if (unsafeWasmMemory) {
+            InteropLibrary interop = InteropLibrary.getUncached(interopBuffer);
+            if (interop.isPointer(interopBuffer)) {
+                try {
+                    return NativeAccess.newDirectByteBuffer(interop.asPointer(interopBuffer), interop.getBufferSize(interopBuffer));
+                } catch (UnsupportedMessageException e) {
+                    throw Errors.shouldNotReachHere(e);
+                }
+            }
+        }
+
         RealmData realmEmbedderData = getRealmEmbedderData(mainJSRealm);
         DynamicObject function = realmEmbedderData.getArrayBufferGetContentsFunction();
         if (function == null) {

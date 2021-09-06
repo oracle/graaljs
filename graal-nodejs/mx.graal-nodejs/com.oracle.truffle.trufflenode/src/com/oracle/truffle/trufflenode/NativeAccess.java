@@ -164,4 +164,6 @@ public final class NativeAccess {
 
     public static native Object syntheticModuleEvaluationSteps(long callback, Object context, Object module);
 
+    public static native Object newDirectByteBuffer(long address, long capacity);
+
 }

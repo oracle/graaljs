@@ -57,4 +57,8 @@ inline GraalArrayBuffer* GraalArrayBuffer::Allocate(GraalIsolate* isolate, jobje
     return new(placement) GraalArrayBuffer(isolate, java_array_buffer, direct);
 }
 
+inline bool GraalArrayBuffer::IsDirect() const {
+    return direct_;
+}
+
 #endif /* GRAAL_ARRAY_BUFFER_INL_H_ */
