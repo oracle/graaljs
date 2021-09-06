@@ -408,15 +408,25 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
     final Object getScope(Frame frame, boolean nodeEnter,
                     @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node block) throws UnsupportedMessageException {
         if (hasScope(frame)) {
-            Frame scopeFrame = frame;
-            RootNode rootNode = getRootNode();
-            if (rootNode instanceof JavaScriptRootNode && ((JavaScriptRootNode) rootNode).isResumption() && frame.getFrameDescriptor() == rootNode.getFrameDescriptor()) {
-                scopeFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
+            Frame functionFrame;
+            Frame scopeFrame;
+            if (frame != null) {
+                RootNode rootNode = getRootNode();
+                if (rootNode instanceof JavaScriptRootNode && ((JavaScriptRootNode) rootNode).isResumption() && frame.getFrameDescriptor() == rootNode.getFrameDescriptor()) {
+                    functionFrame = JSArguments.getResumeExecutionContext(frame.getArguments());
+                } else {
+                    functionFrame = frame.materialize();
+                }
+                if (block instanceof BlockScopeNode) {
+                    scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) functionFrame);
+                } else {
+                    scopeFrame = functionFrame;
+                }
+            } else {
+                functionFrame = null;
+                scopeFrame = null;
             }
-            if (block instanceof BlockScopeNode) {
-                scopeFrame = (Frame) ((BlockScopeNode) block).getBlockScope((VirtualFrame) scopeFrame);
-            }
-            return new ScopeVariables(scopeFrame, nodeEnter, block, frame);
+            return new ScopeVariables(scopeFrame, nodeEnter, block, functionFrame);
         } else {
             throw UnsupportedMessageException.create();
         }
