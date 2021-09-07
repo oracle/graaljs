@@ -307,7 +307,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
                     } else {
                         String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
-                        wasmValue = createHostFunction(context, value, typeInfo);
+                        wasmValue = createHostFunction(value, typeInfo);
                     }
                 } else if ("global".equals(externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
@@ -367,8 +367,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     @CompilerDirectives.TruffleBoundary
-    private static Object createHostFunction(JSContext context, Object fn, String typeInfo) {
-        return new WebAssemblyHostFunction(context, fn, typeInfo);
+    private static Object createHostFunction(Object fn, String typeInfo) {
+        return new WebAssemblyHostFunction(fn, typeInfo);
     }
 
     private static String asString(Object string) throws UnsupportedMessageException {

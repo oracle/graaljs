@@ -43,15 +43,16 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -60,16 +61,14 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 @ExportLibrary(InteropLibrary.class)
 public class WebAssemblyHostFunction implements TruffleObject {
-    private final JSContext context;
     private final Object fn;
     private final String returnType;
     private final boolean returnTypeIsI64;
     private final boolean anyArgTypeIsI64;
 
-    public WebAssemblyHostFunction(JSContext context, Object fn, String typeInfo) {
+    public WebAssemblyHostFunction(Object fn, String typeInfo) {
         assert JSRuntime.isCallable(fn);
 
-        this.context = context;
         this.fn = fn;
 
         int idxOpen = typeInfo.indexOf('(');
@@ -91,8 +90,9 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached ToWebAssemblyValueNode toWebAssemblyValueNode,
                     @Cached ToJSValueNode toJSValueNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Cached BranchProfile errorBranch) {
-        if (!context.getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
+                    @Cached BranchProfile errorBranch,
+                    @CachedLibrary("this") InteropLibrary self) {
+        if (!JavaScriptLanguage.get(self).getJSContext().getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
             errorBranch.enter();
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }
