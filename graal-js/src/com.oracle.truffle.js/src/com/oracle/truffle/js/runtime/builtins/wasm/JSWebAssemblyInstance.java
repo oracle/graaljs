@@ -50,11 +50,9 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -210,10 +208,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         String[] paramTypes = argTypes.length() != 0 ? argTypes.split(" ") : new String[0];
         int argCount = paramTypes.length;
         boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
-        boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
+        boolean anyArgTypeIsI64 = argTypes.contains(JSWebAssemblyValueTypes.I64);
 
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
+            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -259,7 +257,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     if (returnType.isEmpty()) {
                         return Undefined.instance;
                     } else {
-                        return toJSValueNode.execute(wasmResult, returnType);
+                        return toJSValueNode.execute(wasmResult);
                     }
                 } catch (InteropException ex) {
                     throw Errors.shouldNotReachHere(ex);
@@ -307,7 +305,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         wasmValue = JSWebAssembly.getExportedFunction((DynamicObject) value);
                     } else {
                         String typeInfo = asString(descriptorInterop.readMember(descriptor, "type"));
-                        wasmValue = createHostFunction(context, realm, value, typeInfo);
+                        wasmValue = createHostFunction(value, typeInfo);
                     }
                 } else if ("global".equals(externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
@@ -324,7 +322,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         if (!isI64 && isBigInt) {
                             throw Errors.createLinkError("BigInt can only be stored in valtype i64");
                         }
-                        Object webAssemblyValue = toWebAssemblyValue(context, value, valueType);
+                        Object webAssemblyValue = ToWebAssemblyValueNode.getUncached().execute(value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
@@ -366,70 +364,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         }
     }
 
-    private static Object toWebAssemblyValue(JSContext context, Object value, String type) {
-        assert context.getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-        if (JSWebAssemblyValueTypes.isI64(type)) {
-            return JSRuntime.toBigInt(value).longValue();
-        }
-        if (JSWebAssemblyValueTypes.isI32(type)) {
-            return JSRuntime.toInt32(value);
-        } else {
-            double doubleValue = JSRuntime.toDouble(value);
-            if (JSWebAssemblyValueTypes.isF32(type)) {
-                return (float) doubleValue;
-            } else {
-                assert JSWebAssemblyValueTypes.isF64(type);
-                return doubleValue;
-            }
-        }
-    }
-
     @CompilerDirectives.TruffleBoundary
-    private static Object createHostFunction(JSContext context, JSRealm realm, Object fn, String typeInfo) {
-        assert JSRuntime.isCallable(fn);
-
-        int idxOpen = typeInfo.indexOf('(');
-        int idxClose = typeInfo.indexOf(')');
-        String name = typeInfo.substring(0, idxOpen);
-        String argTypes = typeInfo.substring(idxOpen + 1, idxClose);
-        String returnType = typeInfo.substring(idxClose + 1);
-        int argCount = argTypes.length() / 3;
-        boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
-        boolean anyArgTypeIsI64 = argTypes.indexOf(JSWebAssemblyValueTypes.I64) != -1;
-        String[] paramTypes = argTypes.length() != 0 ? argTypes.split(" ") : new String[0];
-
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Node.Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create(context);
-            @Node.Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
-            @Node.Child JSFunctionCallNode callNode = JSFunctionCallNode.createCall();
-            private final BranchProfile errorBranch = BranchProfile.create();
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                if (!context.getContextOptions().isWasmBigInt() && (returnTypeIsI64 || anyArgTypeIsI64)) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError("wasm function signature contains illegal type");
-                }
-
-                Object[] frameArguments = frame.getArguments();
-                int userArgumentCount = JSArguments.getUserArgumentCount(frameArguments);
-                Object[] jsArgs = new Object[userArgumentCount];
-                for (int i = 0; i < userArgumentCount; i++) {
-                    jsArgs[i] = toJSValueNode.execute(JSArguments.getUserArgument(frameArguments, i), paramTypes[i]);
-                }
-
-                Object result = callNode.executeCall(JSArguments.create(Undefined.instance, fn, jsArgs));
-
-                if (returnType.isEmpty()) {
-                    return Undefined.instance;
-                } else {
-                    return toWebAssemblyValueNode.execute(result, returnType);
-                }
-            }
-        });
-
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
-        return JSFunction.create(realm, functionData);
+    private static Object createHostFunction(Object fn, String typeInfo) {
+        return new WebAssemblyHostFunction(fn, typeInfo);
     }
 
     private static String asString(Object string) throws UnsupportedMessageException {

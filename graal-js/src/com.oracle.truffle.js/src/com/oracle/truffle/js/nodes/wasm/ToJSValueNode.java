@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
 
 /**
  * Implementation of ToJSValue() operation. See https://www.w3.org/TR/wasm-js-api/#tojsvalue
  */
+@GenerateUncached
 public abstract class ToJSValueNode extends JavaScriptBaseNode {
 
     protected ToJSValueNode() {
@@ -58,25 +58,16 @@ public abstract class ToJSValueNode extends JavaScriptBaseNode {
         return ToJSValueNodeGen.create();
     }
 
-    public abstract Object execute(Object value, String valueType);
+    public abstract Object execute(Object value);
 
     @Specialization
-    public Object convert(Object value, String valueType) {
-        if (JSWebAssemblyValueTypes.isI64(valueType)) {
-            if (value instanceof Integer) {
-                return BigInt.valueOf(((Integer) value).longValue());
-            }
-            return BigInt.valueOf((long) value);
+    public Object convert(Object value) {
+        if (value instanceof Float) {
+            return (double) (float) value; // f32
+        } else if (value instanceof Long) {
+            return BigInt.valueOf((long) value); // i64
+        } else {
+            return value; // i32 or f64
         }
-        if (JSWebAssemblyValueTypes.isI32(valueType) || JSWebAssemblyValueTypes.isF64(valueType)) {
-            return value;
-        }
-        if (JSWebAssemblyValueTypes.isF32(valueType)) {
-            if (value instanceof Float) {
-                return ((Float) value).doubleValue();
-            }
-            return value;
-        }
-        throw CompilerDirectives.shouldNotReachHere();
     }
 }
