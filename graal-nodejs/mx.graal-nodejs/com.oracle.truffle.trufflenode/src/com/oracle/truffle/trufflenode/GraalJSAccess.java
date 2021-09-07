@@ -319,6 +319,7 @@ public final class GraalJSAccess {
     private final Map<Source, Object> hostDefinedOptionsMap = new WeakHashMap<>();
 
     private final boolean exposeGC;
+    private final boolean unsafeWasmMemory;
 
     /**
      * @see Options.OptionsParser#preprocessArguments
@@ -340,6 +341,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
 
             exposeGC = options.isGCExposed();
+            unsafeWasmMemory = options.isUnsafeWasmMemory();
             evaluator = contextBuilder.build();
             mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         } catch (IllegalArgumentException iaex) {
