@@ -49,6 +49,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -70,6 +72,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -85,6 +88,8 @@ import java.util.Set;
  * Represents the import call expression syntax: {@code import(specifier)}.
  */
 public class ImportCallNode extends JavaScriptNode {
+
+    private static final HiddenKey CURRENT_MODULE_RECORD = new HiddenKey("%currentModuleRecord");
     private static final String ASSERTIONS = "assert";
 
     @Child private JavaScriptNode argRefNode;
@@ -303,7 +308,7 @@ public class ImportCallNode extends JavaScriptNode {
      * the steps of both HostImportModuleDynamically and FinishDynamicImport.
      */
     private DynamicObject createImportModuleDynamicallyHandler() {
-        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.ImportModuleDynamically, (c) -> createImportModuleDynamicallyHandlerImpl(c));
+        JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ImportModuleDynamically, (c) -> createImportModuleDynamicallyHandlerImpl(c));
         return JSFunction.create(getRealm(), functionData);
     }
 
@@ -353,9 +358,11 @@ public class ImportCallNode extends JavaScriptNode {
                     JSRealm realm = getRealm();
                     if (moduleRecord.isTopLevelAsync()) {
                         context.getEvaluator().moduleInstantiation(realm, moduleRecord);
-                        Object moduleLoadedStartPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                        assert JSPromise.isJSPromise(moduleLoadedStartPromise);
-                        promiseThenNode.execute((DynamicObject) moduleLoadedStartPromise, moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), moduleLoadedCapability);
+                        Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                        assert JSPromise.isJSPromise(innerPromise);
+                        DynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);
+                        DynamicObject reject = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, true);
+                        promiseThenNode.execute((DynamicObject) innerPromise, resolve, reject, moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
                         if (moduleRecord.isAsyncEvaluating()) {
@@ -385,6 +392,36 @@ public class ImportCallNode extends JavaScriptNode {
                     exceptions = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
                 }
                 return TryCatchNode.shouldCatch(exception, exceptions);
+            }
+
+            private DynamicObject createFinishDynamicImportCapabilityCallback(JSContext cx, JSRealm realm, JSModuleRecord moduleRecord, boolean onReject) {
+                BuiltinFunctionKey cacheKey = onReject ? BuiltinFunctionKey.FinishImportModuleDynamicallyReject : BuiltinFunctionKey.FinishImportModuleDynamicallyResolve;
+                JSFunctionData functionData = cx.getOrCreateBuiltinFunctionData(cacheKey, (c) -> createFinishDynamicImportNormalImpl(c, onReject));
+                DynamicObject resolveFunction = JSFunction.create(realm, functionData);
+                JSObjectUtil.putHiddenProperty(resolveFunction, CURRENT_MODULE_RECORD, moduleRecord);
+                return resolveFunction;
+            }
+
+            private JSFunctionData createFinishDynamicImportNormalImpl(JSContext cx, boolean onReject) {
+                class FinishDynamicImportNormalRootNode extends JavaScriptRootNode {
+
+                    @Override
+                    public Object execute(VirtualFrame frame) {
+                        // ECMA 16.2.1.9 FinishDynamicImport(): reject/resolve `innerPromise`.
+                        // Promise reaction will be handled by the promise registered via `then`.
+                        DynamicObject thisFunction = (DynamicObject) JSArguments.getFunctionObject(frame.getArguments());
+                        JSModuleRecord moduleRecord = (JSModuleRecord) JSObjectUtil.getHiddenProperty(thisFunction, CURRENT_MODULE_RECORD);
+                        assert moduleRecord != null;
+                        if (onReject) {
+                            assert moduleRecord.getEvaluationError() != null;
+                            throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
+                        } else {
+                            return cx.getEvaluator().getModuleNamespace(moduleRecord);
+                        }
+                    }
+                }
+                CallTarget callTarget = Truffle.getRuntime().createCallTarget(new FinishDynamicImportNormalRootNode());
+                return JSFunctionData.createCallOnly(cx, callTarget, 0, "");
             }
         }
 
