@@ -133,6 +133,9 @@ javaObject.doubleArg(1.1); //match, OK
 javaObject.intArg(1.1);    //lossy conversion, TypeError!
 ```
 
+Note how the argument values have to fit into the parameter types.
+You can override this behavior using custom [target type mappings](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-).
+
 ### Selection of Method
 Java allows overloading of methods by argument types.
 When calling from JavaScript to Java, the method with the narrowest available type that the actual argument can be converted to without loss is selected:
@@ -146,15 +149,53 @@ void foo(long arg);
 ```
 ```js
 //JavaScript
-javaObject.foo(1);              //will call foo(short arg);
-javaObject.foo(Math.pow(2,16)); //will call foo(int arg);
-javaObject.foo(1.1);            //will call foo(double arg);
-javaObject.foo(Math.pow(2,32)); //will call foo(long arg);
+javaObject.foo(1);              // will call foo(short);
+javaObject.foo(Math.pow(2,16)); // will call foo(int);
+javaObject.foo(1.1);            // will call foo(double);
+javaObject.foo(Math.pow(2,32)); // will call foo(long);
 ```
 
-Note that currently there is no way of overriding this behavior from GraalVM JavaScript.
-In the example above, one might want to always call `foo(int arg)`, even when `foo(short arg)` can be reached with lossless conversion (`foo(1)`).
-Future versions of GraalVM JavaScript might lift that restriction by providing an explicit way to select the method to be called.
+To override this behavior, an explicit method overload can be selected using the `javaObject['methodName(paramTypes)']` syntax.
+Parameter types need to be comma-separated without spaces, and Object types need to be fully qualified (e.g., `'get(java.lang.String,java.lang.String[])'`).
+Note that this is different from Nashorn which allows extra spaces and simple names.
+In the example above, one might always want to call, e.g., `foo(long)`, even when `foo(short)` can be reached with lossless conversion (`foo(1)`):
+
+```js
+javaObject['foo(int)'](1);
+javaObject['foo(long)'](1);
+javaObject['foo(double)'](1);
+```
+
+Note that the argument values still have to fit into the parameter types.
+You can override this behavior using custom [target type mappings](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-).
+
+An explicit method selection can also be useful when the method overloads are ambiguous and cannot be automatically resolved as well as when you want to override the default choice:
+
+```java
+//Java
+void sort(List<Object> array, Comparator<Object> callback);
+void sort(List<Integer> array, IntBinaryOperator callback);
+void consumeArray(List<Object> array);
+void consumeArray(Object[] array);
+```
+```js
+//JavaScript
+var array = [3, 13, 3, 7];
+var compare = (x, y) => (x < y) ? -1 : ((x == y) ? 0 : 1);
+
+// throws TypeError: Multiple applicable overloads found
+javaObject.sort(array, compare);
+// explicitly select sort(List, Comparator)
+javaObject['sort(java.util.List,java.util.Comparator)'](array, compare);
+
+// will call consumeArray(List)
+javaObject.consumeArray(array);
+// explicitly select consumeArray(Object[])
+javaObject['consumeArray(java.lang.Object[])'](array);
+```
+
+Note that there is currently no way to explicitly select constructor overloads.
+Future versions of GraalVM JavaScript might lift that restriction.
 
 ### Package Access
 GraalVM JavaScript provides a `Packages` global property:
@@ -325,3 +366,60 @@ More detailed example usages are available in the GraalVM JavaScript [unit tests
 ## Multithreading
 
 GraalVM JavaScript supports multithreading when used in combination with Java. More details about the GraalVM JavaScript multithreading model can be found in the [Multithreading](Multithreading.md) documentation.
+
+## Extending Java classes
+
+In the JVM mode (`--jvm`), GraalVM JavaScript provides support for extending Java classes and interfaces using the `Java.extend` function.
+Note that host access has to be enabled in the [polyglot context](#polyglot-context) for this feature to be available.
+
+### Java.extend
+`Java.extend(types...)` returns a generated adapter Java class object that extends the specified Java class and/or interfaces.
+For example:
+
+```js
+var Ext = Java.extend(Java.type("some.AbstractClass"),
+                      Java.type("some.Interface1"),
+                      Java.type("some.Interface2"));
+var impl = new Ext({
+  superclassMethod: function() {/*...*/},
+  interface1Method: function() {/*...*/},
+  interface2Method: function() {/*...*/},
+  toString() {return "MyClass";}
+});
+impl.superclassMethod();
+```
+
+Super methods can be called via `Java.super(adapterInstance)`.
+See a combined example:
+
+```js
+var sw = new (Java.type("java.io.StringWriter"));
+var FilterWriterAdapter = Java.extend(Java.type("java.io.FilterWriter"));
+var fw = new FilterWriterAdapter(sw, {
+    write: function(s, off, len) {
+        s = s.toUpperCase();
+        if (off === undefined) {
+            fw_super.write(s, 0, s.length)
+        } else {
+            fw_super.write(s, off, len)
+        }
+    }
+});
+var fw_super = Java.super(fw);
+fw.write("abcdefg");
+fw.write("h".charAt(0));
+fw.write("**ijk**", 2, 3);
+fw.write("***lmno**", 3, 4);
+print(sw); // ABCDEFGHIJKLMNO
+```
+
+Note that in the `nashorn-compat` mode, you can also extend interfaces and abstract classes using a new operator on a type object of an interface or an abstract class:
+
+```js
+// --experimental-options --js.nashorn-compat
+var JFunction = Java.type('java.util.function.Function');
+ var sqFn = new JFunction({
+   apply: function(x) { return x * x; }
+});
+sqFn.apply(6); // 36
+```
