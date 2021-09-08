@@ -190,6 +190,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         private final ConditionProfile mustSetLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile setNameProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile hasFunctionLengthProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile hasIntegerFunctionLengthProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile isAsyncProfile = ConditionProfile.createBinaryProfile();
         private final ConditionProfile setProtoProfile = ConditionProfile.createBinaryProfile();
 
@@ -208,17 +209,27 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto, isAsyncProfile, setProtoProfile, this);
 
-            long length = 0;
+            Number length = 0;
             boolean mustSetLength = true;
             if (hasFunctionLengthProfile.profile(hasFunctionLengthNode.hasProperty(thisFnObj))) {
-                long targetLen = getFunctionLength(thisFnObj);
-                length = Math.max(0, targetLen - args.length);
-                if (targetLen == JSFunction.getLength(thisFnObj)) {
-                    mustSetLength = false;
+                Object targetLen = getFunctionLengthNode.getValue(thisFnObj);
+                if (hasIntegerFunctionLengthProfile.profile(targetLen instanceof Integer)) {
+                    int targetLenAsInt = (Integer) targetLen;
+                    if (targetLenAsInt == JSFunction.getLength(thisFnObj)) {
+                        mustSetLength = false;
+                    } else {
+                        // inner Math.max() avoids potential underflow during the subtraction
+                        length = Math.max(0, Math.max(0, targetLenAsInt) - args.length);
+                    }
+                } else if (JSRuntime.isNumber(targetLen)) {
+                    double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                    if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                        length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - args.length));
+                    } // else length = 0
                 }
             }
             if (mustSetLengthProfile.profile(mustSetLength)) {
-                JSFunction.setFunctionLength(boundFunction, JSRuntime.longToIntOrDouble(length));
+                JSFunction.setFunctionLength(boundFunction, length);
             }
 
             Object targetName = getFunctionNameNode.getValue(thisFnObj);
@@ -230,16 +241,6 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             return boundFunction;
-        }
-
-        private long getFunctionLength(DynamicObject thisFnObj) {
-            Object len = getFunctionLengthNode.getValue(thisFnObj);
-            if (len instanceof Integer) {
-                return ((Integer) len).longValue();
-            } else if (JSRuntime.isNumber(len)) {
-                return JSRuntime.toInteger((Number) len);
-            }
-            return 0L;
         }
 
         @TruffleBoundary
@@ -262,16 +263,18 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             DynamicObject boundFunction = JSFunction.boundFunctionCreate(getContext(), (DynamicObject) innerFunction, thisArg, args, proto, isAsyncProfile, setProtoProfile, this);
 
-            long length = 0;
+            Number length = 0;
             boolean targetHasLength = JSObject.hasOwnProperty(thisObj, JSFunction.LENGTH);
             if (targetHasLength) {
                 Object targetLen = JSObject.get(thisObj, JSFunction.LENGTH);
                 if (JSRuntime.isNumber(targetLen)) {
-                    long targetLenInt = JSRuntime.toInteger(targetLen);
-                    length = Math.max(0, targetLenInt - args.length);
+                    double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
+                    if (targetLenAsInt != Double.NEGATIVE_INFINITY) {
+                        length = JSRuntime.doubleToNarrowestNumber(Math.max(0, targetLenAsInt - args.length));
+                    } // else length = 0
                 }
             }
-            JSFunction.setFunctionLength(boundFunction, JSRuntime.longToIntOrDouble(length));
+            JSFunction.setFunctionLength(boundFunction, length);
 
             Object targetName = JSObject.get(thisObj, JSFunction.NAME);
             if (!JSRuntime.isString(targetName)) {
@@ -286,6 +289,15 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = {"!isJSFunction(thisObj)", "!isJSProxy(thisObj)"})
         protected DynamicObject bindError(Object thisObj, Object thisArg, Object[] arg) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
+        }
+
+        private static double toIntegerOrInfinity(Number number) {
+            if (number instanceof Double) {
+                double doubleValue = (Double) number;
+                return Double.isNaN(doubleValue) ? 0 : JSRuntime.truncateDouble(doubleValue);
+            } else {
+                return JSRuntime.doubleValue(number);
+            }
         }
 
     }
