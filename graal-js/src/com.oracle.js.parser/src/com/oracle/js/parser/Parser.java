@@ -793,12 +793,13 @@ public class Parser extends AbstractParser {
         }
         // Set up new block. Captures first token.
         final ParserContextBlockNode newBlock = newBlock();
+        newBlock.setFlag(Block.IS_SYNTHETIC);
         try {
             statement(yield, await, false, 0, true, labelledStatement, mayBeFunctionDeclaration, mayBeLabeledFunctionDeclaration);
         } finally {
             restoreBlock(newBlock);
         }
-        return new Block(newBlock.getToken(), finish, newBlock.getFlags() | Block.IS_SYNTHETIC, newBlock.getScope(), newBlock.getStatements());
+        return new Block(newBlock.getToken(), finish, newBlock.getFlags(), newBlock.getScope(), newBlock.getStatements());
     }
 
     /**
@@ -2674,7 +2675,13 @@ public class Parser extends AbstractParser {
         // part of this 'for' statement (if any).
         final int forStart = Token.descPosition(forToken);
         // When ES6 for-let is enabled we create a container block to capture the LET.
-        final ParserContextBlockNode outer = useBlockScope() ? newBlock() : null;
+        ParserContextBlockNode outer;
+        if (useBlockScope()) {
+            outer = newBlock();
+            outer.setFlag(Block.IS_SYNTHETIC);
+        } else {
+            outer = null;
+        }
 
         // Create FOR node, capturing FOR token.
         final ParserContextLoopNode forNode = new ParserContextLoopNode();
@@ -3331,10 +3338,17 @@ public class Parser extends AbstractParser {
         final long switchToken = token;
 
         // Block around the switch statement with a variable capturing the switch expression value.
-        final ParserContextBlockNode outerBlock = useBlockScope() ? newBlock() : null;
+        final ParserContextBlockNode outerBlock;
+        if (useBlockScope()) {
+            outerBlock = newBlock();
+            outerBlock.setFlag(Block.IS_SYNTHETIC);
+        } else {
+            outerBlock = null;
+        }
 
         // Block to capture variables declared inside the switch statement.
         final ParserContextBlockNode switchBlock = newBlock(Scope.createSwitchBlock(lc.getCurrentScope()));
+        switchBlock.setFlag(Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK);
 
         // SWITCH tested in caller.
         next();
@@ -3416,13 +3430,13 @@ public class Parser extends AbstractParser {
 
             if (switchStatement != null) {
                 appendStatement(new BlockStatement(switchLine,
-                                new Block(switchToken, switchStatement.getFinish(), switchBlock.getFlags() | Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK, switchBlock.getScope(), switchStatement)));
+                                new Block(switchToken, switchStatement.getFinish(), switchBlock.getFlags(), switchBlock.getScope(), switchStatement)));
             }
             if (outerBlock != null) {
                 restoreBlock(outerBlock);
                 if (switchStatement != null) {
                     appendStatement(new BlockStatement(switchLine,
-                                    new Block(switchToken, switchStatement.getFinish(), outerBlock.getFlags() | Block.IS_SYNTHETIC, outerBlock.getScope(), outerBlock.getStatements())));
+                                    new Block(switchToken, switchStatement.getFinish(), outerBlock.getFlags(), outerBlock.getScope(), outerBlock.getStatements())));
                 }
             }
         }

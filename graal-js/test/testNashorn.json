@@ -654,6 +654,10 @@
     },
     "comment" : "Fails on JDK 15 due to Nashorn removal."
   }, {
+    "filePath" : "basic/parser/continueStat.js",
+    "status" : "FAIL",
+    "comment" : "Continue target is not an iteration statement."
+  }, {
     "filePath" : "basic/samfunc.js",
     "status" : "SKIP",
     "comment" : "multi-threaded test"
