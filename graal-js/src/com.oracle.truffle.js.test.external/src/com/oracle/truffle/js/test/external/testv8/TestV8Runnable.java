@@ -83,6 +83,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
     private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+                    "--experimental-d8-web-snapshot-api",
                     "--experimental-wasm-bulk-memory",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
@@ -98,9 +99,10 @@ public class TestV8Runnable extends TestRunnable {
                     "--wasm-staging"
     }));
     private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+                    "--harmony-atomics-waitasync",
+                    "--harmony-object-has-own",
                     "--harmony-regexp-match-indices",
-                    "--harmony-top-level-await",
-                    "--harmony-atomics-waitasync"
+                    "--harmony-top-level-await"
     }));
 
     private static final String FLAGS_PREFIX = "// Flags: ";

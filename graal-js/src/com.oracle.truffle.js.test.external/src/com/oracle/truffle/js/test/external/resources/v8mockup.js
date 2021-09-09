@@ -56,6 +56,9 @@ var isOptimized = function() {
 var isTurboFanned = function() {
     return v8IgnoreResult;
 }
+var isBaseline = function () { //used by mjsunit/baseline/* tests
+    return v8IgnoreResult;
+}
 
 // ---------------------- d8 global object ---------------------- //
 
