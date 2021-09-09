@@ -125,7 +125,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
                 // Use the original message when it doesn't seem useless
                 throw Errors.createErrorFromException(fsex);
             }
-        } catch (IOException | SecurityException e) {
+        } catch (IOException | UnsupportedOperationException | SecurityException e) {
             throw Errors.createErrorFromException(e);
         }
     }

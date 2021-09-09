@@ -56,7 +56,6 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_S
 
 import java.io.IOException;
 import java.net.URI;
-import java.nio.file.FileSystemNotFoundException;
 import java.util.List;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
@@ -185,7 +184,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         if (maybeUri != null) {
             try {
                 resolvedUrl = env.getPublicTruffleFile(maybeUri);
-            } catch (FileSystemNotFoundException e) {
+            } catch (UnsupportedOperationException e) {
                 throw failMessage("Only file:// urls are supported: " + e.getMessage());
             }
             // 3. Otherwise, if specifier starts with "/", then

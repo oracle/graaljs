@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -607,7 +607,7 @@ public class CommonJSRequireTest {
     @Test
     public void unsupportedUrl() throws IOException {
         final String src = "import('https://unpkg.com/@esm/ms').then(x => {throw 'unexpected'}).catch(console.log);";
-        final String out = "TypeError: Only file:// urls are supported: FileSystem for: https scheme is not supported.\n";
+        final String out = "TypeError: Only file:// urls are supported: java.lang.IllegalArgumentException: URI scheme is not \"file\"\n";
         runAndExpectOutput(src, out);
     }
 
