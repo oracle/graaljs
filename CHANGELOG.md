@@ -12,6 +12,7 @@ The main focus is on user-observable behavior of the engine.
 * Added support for `dayPeriod` and `fractionalSecondDigits` options of `Intl.DateTimeFormat`.
 * Changed foreign hash map access using `map[key]` syntax to convert the key to a string or symbol.
 * Implemented `Object.hasOwn` ([Accessible Object.hasOwnProperty](https://github.com/tc39/proposal-accessible-object-hasownproperty) proposal). It is available in ECMAScript 2022 (`--js.ecmascript-version=2022`).
+* Implemented [class static initialization blocks](https://github.com/tc39/proposal-class-static-block) proposal. It is available in ECMAScript 2022 (`--js.ecmascript-version=2022`).
 * Added experimental Polyglot `Context` option `--js.esm-eval-returns-exports`. When enabled, `eval()` of an ES module will return a Polyglot `Value` containing the ES module exported namespace object. The option is disabled by default.
 
 ## Version 21.2.0
