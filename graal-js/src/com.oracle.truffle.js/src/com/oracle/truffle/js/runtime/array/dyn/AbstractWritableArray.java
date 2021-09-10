@@ -811,15 +811,28 @@ public abstract class AbstractWritableArray extends DynamicArray {
 
     @Override
     public ScriptArray shiftRangeImpl(DynamicObject object, long from) {
-        int usedLength = getUsedLength(object);
-        if (from < usedLength) {
-            int arrayOffset = (int) (getArrayOffset(object) + from);
-            int indexOffset = (int) (getIndexOffset(object) - from);
-            setArrayProperties(object, (int) (usedLength - from), (int) (lengthInt(object) - from), indexOffset, arrayOffset);
-            return this;
-        } else {
-            return removeRangeImpl(object, 0, from);
+        if (!isHolesType()) {
+            long indexOffset = getIndexOffset(object);
+            int arrayOffset = getArrayOffset(object);
+            long first = indexOffset + arrayOffset;
+            if (first >= from) {
+                // Can just decrease index offset
+                setIndexOffset(object, indexOffset - from);
+                return this;
+            } // else internal array is affected
+
+            long internalArrayShift = from - first;
+            int usedLength = getUsedLength(object);
+            if (internalArrayShift < usedLength) {
+                long newLength = length(object) - from;
+                int newUsedLength = (int) (usedLength - internalArrayShift);
+                long newIndexOffset = indexOffset - from;
+                int newArrayOffset = (int) (arrayOffset + internalArrayShift);
+                setArrayProperties(object, newLength, newUsedLength, newIndexOffset, newArrayOffset);
+                return this;
+            }
         }
+        return removeRangeImpl(object, 0, from);
     }
 
     protected interface SetSupportedProfileAccess extends ProfileAccess {
