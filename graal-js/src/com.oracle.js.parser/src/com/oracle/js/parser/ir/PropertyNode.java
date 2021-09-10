@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,7 +133,7 @@ public final class PropertyNode extends Node {
         if (visitor.enterPropertyNode(this)) {
             //@formatter:off
             return visitor.leavePropertyNode(
-                setKey((Expression) key.accept(visitor)).
+                setKey(key == null ? null : (Expression) key.accept(visitor)).
                 setValue(value == null ? null : (Expression) value.accept(visitor)).
                 setGetter(getter == null ? null : (FunctionNode) getter.accept(visitor)).
                 setSetter(setter == null ? null : (FunctionNode) setter.accept(visitor)));
@@ -314,5 +314,9 @@ public final class PropertyNode extends Node {
 
     public boolean isAccessor() {
         return getter != null || setter != null;
+    }
+
+    public boolean isClassStaticBlock() {
+        return isStatic() && getKey() == null;
     }
 }

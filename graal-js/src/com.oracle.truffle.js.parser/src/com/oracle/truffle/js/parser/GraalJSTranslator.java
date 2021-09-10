@@ -3013,7 +3013,10 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
                 JSWriteFrameSlotNode writePrivateNode = (JSWriteFrameSlotNode) privateVar.createWriteNode(null);
                 return factory.createPrivateMethodMember(property.isStatic(), value, writePrivateNode);
             }
+        } else if (isClass && property.isClassStaticBlock()) {
+            return factory.createStaticBlockMember(value);
         } else {
+            assert property.getKey() != null;
             return factory.createDataMember(property.getKeyName(), property.isStatic(), enumerable, value, property.isClassField());
         }
     }
@@ -3387,7 +3390,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
             JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
                             members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className,
-                            classNode.getInstanceFieldCount(), classNode.getStaticFieldCount(), classNode.hasPrivateInstanceMethods(), currentFunction().getBlockScopeSlot());
+                            classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), currentFunction().getBlockScopeSlot());
 
             if (classNode.hasPrivateMethods()) {
                 // internal constructor binding used for private brand checks.

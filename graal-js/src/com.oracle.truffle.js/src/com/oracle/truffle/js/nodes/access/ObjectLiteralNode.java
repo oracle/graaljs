@@ -220,7 +220,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isField) {
             super(isStatic, attributes, isField, false);
-            assert JSRuntime.isPropertyKey(name);
+            assert JSRuntime.isPropertyKey(name) || (name == null && isStatic && isField) : name;
             this.name = name;
         }
 
@@ -663,6 +663,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     public static ObjectLiteralMemberNode newSpreadObjectMember(boolean isStatic, JavaScriptNode valueNode) {
         return new ObjectLiteralSpreadMemberNode(isStatic, JSAttributes.getDefault(), valueNode);
+    }
+
+    public static ObjectLiteralMemberNode newStaticBlockMember(JavaScriptNode valueNode) {
+        return new ObjectLiteralDataMemberNode(null, true, JSAttributes.getDefaultNotEnumerable(), valueNode, true);
     }
 
     @Children private final ObjectLiteralMemberNode[] members;

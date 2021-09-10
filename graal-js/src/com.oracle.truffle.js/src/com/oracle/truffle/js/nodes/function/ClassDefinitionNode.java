@@ -82,7 +82,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     @Child private CreateObjectNode.CreateObjectWithPrototypeNode createPrototypeNode;
     @Child private DefineMethodNode defineConstructorMethodNode;
     @Child private PropertySetNode setFieldsNode;
-    @Child private InitializeInstanceElementsNode staticFieldsNode;
+    @Child private InitializeInstanceElementsNode staticElementsNode;
     @Child private PropertySetNode setPrivateBrandNode;
     @Child private SetFunctionNameNode setFunctionName;
     @Child private IsConstructorNode isConstructorNode;
@@ -90,17 +90,17 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
 
     private final boolean hasName;
     private final int instanceFieldCount;
-    private final int staticFieldCount;
+    private final int staticElementCount;
 
     protected ClassDefinitionNode(JSContext context, JSFunctionExpressionNode constructorFunctionNode, JavaScriptNode classHeritageNode, ObjectLiteralMemberNode[] memberNodes,
-                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, FrameSlot blockScopeSlot) {
+                    JSWriteFrameSlotNode writeClassBindingNode, boolean hasName, int instanceFieldCount, int staticElementCount, boolean hasPrivateInstanceMethods, FrameSlot blockScopeSlot) {
         this.context = context;
         this.constructorFunctionNode = constructorFunctionNode;
         this.classHeritageNode = classHeritageNode;
         this.memberNodes = memberNodes;
         this.hasName = hasName;
         this.instanceFieldCount = instanceFieldCount;
-        this.staticFieldCount = staticFieldCount;
+        this.staticElementCount = staticElementCount;
 
         this.writeClassBindingNode = writeClassBindingNode;
         this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
@@ -172,9 +172,9 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         setConstructorNode.executeVoid(proto, constructor);
 
         Object[][] instanceFields = instanceFieldCount == 0 ? null : new Object[instanceFieldCount][];
-        Object[][] staticFields = staticFieldCount == 0 ? null : new Object[staticFieldCount][];
+        Object[][] staticElements = staticElementCount == 0 ? null : new Object[staticElementCount][];
 
-        initializeMembers(frame, proto, constructor, instanceFields, staticFields);
+        initializeMembers(frame, proto, constructor, instanceFields, staticElements);
 
         if (writeClassBindingNode != null) {
             writeClassBindingNode.executeWrite(frame, constructor);
@@ -190,23 +190,23 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
             setPrivateBrandNode.setValue(constructor, privateBrand);
         }
 
-        if (staticFieldCount != 0) {
-            InitializeInstanceElementsNode defineStaticFields = this.staticFieldsNode;
-            if (defineStaticFields == null) {
+        if (staticElementCount != 0) {
+            InitializeInstanceElementsNode initializeStaticElements = this.staticElementsNode;
+            if (initializeStaticElements == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                this.staticFieldsNode = defineStaticFields = insert(InitializeInstanceElementsNode.create(context));
+                this.staticElementsNode = initializeStaticElements = insert(InitializeInstanceElementsNode.create(context));
             }
-            defineStaticFields.executeStaticFields(constructor, staticFields);
+            initializeStaticElements.executeStaticElements(constructor, staticElements);
         }
 
         return constructor;
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticFields) {
+    private void initializeMembers(VirtualFrame frame, DynamicObject proto, DynamicObject constructor, Object[][] instanceFields, Object[][] staticElements) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
         int instanceFieldIndex = 0;
-        int staticFieldIndex = 0;
+        int staticElementIndex = 0;
         for (ObjectLiteralMemberNode memberNode : memberNodes) {
             DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             memberNode.executeVoid(frame, homeObject, context);
@@ -214,8 +214,8 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 Object key = memberNode.evaluateKey(frame);
                 Object value = memberNode.evaluateValue(frame, homeObject);
                 Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
-                if (memberNode.isStatic() && staticFields != null) {
-                    staticFields[staticFieldIndex++] = field;
+                if (memberNode.isStatic()) {
+                    staticElements[staticElementIndex++] = field;
                 } else if (instanceFields != null) {
                     instanceFields[instanceFieldIndex++] = field;
                 } else {
@@ -223,7 +223,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
                 }
             }
         }
-        assert instanceFieldIndex == instanceFieldCount && staticFieldIndex == staticFieldCount;
+        assert instanceFieldIndex == instanceFieldCount && staticElementIndex == staticElementCount;
     }
 
     @Override
@@ -245,7 +245,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(context, (JSFunctionExpressionNode) cloneUninitialized(constructorFunctionNode, materializedTags), cloneUninitialized(classHeritageNode, materializedTags),
                         ObjectLiteralMemberNode.cloneUninitialized(memberNodes, materializedTags),
-                        cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticFieldCount, setPrivateBrandNode != null,
+                        cloneUninitialized(writeClassBindingNode, materializedTags), hasName, instanceFieldCount, staticElementCount, setPrivateBrandNode != null,
                         defineConstructorMethodNode.getBlockScopeSlot());
     }
 }
