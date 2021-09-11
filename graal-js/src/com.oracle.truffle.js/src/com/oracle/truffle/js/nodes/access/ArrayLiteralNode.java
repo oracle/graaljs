@@ -461,6 +461,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         public DynamicObject execute(VirtualFrame frame) {
             Object[] primitiveArray = new Object[elements.length];
             int holeCount = 0;
+            int holesBeforeLastNonEmpty = 0;
             int arrayOffset = 0;
             int lastNonEmpty = -1;
             for (int i = 0; i < elements.length; i++) {
@@ -472,10 +473,12 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                 } else {
                     primitiveArray[i] = elements[i].execute(frame);
                     lastNonEmpty = i;
+                    holesBeforeLastNonEmpty = holeCount;
                 }
             }
             int usedLength = lastNonEmpty + 1 - arrayOffset;
-            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), primitiveArray, usedLength, arrayOffset, holeCount);
+            int holesInUsedLength = holesBeforeLastNonEmpty - arrayOffset;
+            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), primitiveArray, usedLength, arrayOffset, holesInUsedLength);
         }
 
         @Override
@@ -559,6 +562,7 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
         public DynamicObject execute(VirtualFrame frame) {
             SimpleArrayList<Object> evaluatedElements = new SimpleArrayList<>(elements.length + JSConfig.SpreadArgumentPlaceholderCount);
             int holeCount = 0;
+            int holesBeforeLastNonEmpty = 0;
             int arrayOffset = 0;
             int lastNonEmptyPlusOne = 0;
             for (int i = 0; i < elements.length; i++) {
@@ -576,14 +580,17 @@ public abstract class ArrayLiteralNode extends JavaScriptNode {
                     int count = ((SpreadArrayNode) node).executeToList(frame, evaluatedElements, growProfile);
                     if (count != 0) {
                         lastNonEmptyPlusOne = evaluatedElements.size();
+                        holesBeforeLastNonEmpty = holeCount;
                     }
                 } else {
                     evaluatedElements.add(elements[i].execute(frame), growProfile);
                     lastNonEmptyPlusOne = evaluatedElements.size();
+                    holesBeforeLastNonEmpty = holeCount;
                 }
             }
             int usedLength = lastNonEmptyPlusOne - arrayOffset;
-            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), evaluatedElements.toArray(), usedLength, arrayOffset, holeCount);
+            int holesInUsedLength = holesBeforeLastNonEmpty - arrayOffset;
+            return JSArray.createZeroBasedHolesObjectArray(context, getRealm(), evaluatedElements.toArray(), usedLength, arrayOffset, holesInUsedLength);
         }
 
         @Override
