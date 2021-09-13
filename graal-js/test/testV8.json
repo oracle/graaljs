@@ -252,10 +252,6 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "mjsunit/baseline/test-osr.js",
-    "status" : "FAIL",
-    "comment" : "testing V8 internals (OSR)"
-  }, {
     "filePath" : "mjsunit/baseline/verify-bytecode-offsets.js",
     "status" : "FAIL",
     "comment" : "test for fuzzer"
@@ -333,10 +329,6 @@
     "filePath" : "mjsunit/compiler/bigint-add-no-deopt-loop.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "mjsunit/compiler/deopt-pretenure.js",
-    "status" : "FAIL",
-    "comment" : "v8GetOptimizationStatus returns wrong value"
   }, {
     "filePath" : "mjsunit/compiler/fast-api-calls.js",
     "status" : "FAIL",
@@ -584,10 +576,6 @@
   }, {
     "filePath" : "mjsunit/es6/sloppy-restrictive-block-function.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/super-ic-opt-dynamic-map-checks.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/es6/super.js",
     "status" : "FAIL"
@@ -1129,13 +1117,6 @@
     "filePath" : "mjsunit/regress/regress-2596.js",
     "status" : "SKIP",
     "comment" : "fails due to byte order (LE required)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-2618.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2017-09-06)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-2989.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-336820.js",
     "runInIsolation" : true,
