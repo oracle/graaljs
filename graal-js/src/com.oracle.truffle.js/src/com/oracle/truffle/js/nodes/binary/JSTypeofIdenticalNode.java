@@ -80,10 +80,10 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -283,7 +283,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         } else if (type == Type.Object) {
             if (JSProxy.isJSProxy(value)) {
                 proxyBranch.enter();
-                return checkProxy(value, false);
+                return checkProxy((JSProxyObject) value, false);
             } else {
                 return !JSFunction.isJSFunction(value) && value != Undefined.instance;
             }
@@ -294,7 +294,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
                 return true;
             } else if (JSProxy.isJSProxy(value)) {
                 proxyBranch.enter();
-                return checkProxy(value, true);
+                return checkProxy((JSProxyObject) value, true);
             } else {
                 return false;
             }
@@ -335,24 +335,13 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         return false;
     }
 
-    private static boolean checkProxy(DynamicObject value, boolean isFunction) {
-        // Find a non-proxy target (and the associated proxy)
-        DynamicObject proxy;
-        Object target = value;
-        do {
-            proxy = (DynamicObject) target;
-            target = JSProxy.getTarget(proxy);
-        } while (JSProxy.isJSProxy(target));
-
-        if (target == Null.instance) { // revoked proxy
-            return isFunction == JSRuntime.isRevokedCallableProxy(proxy);
+    private static boolean checkProxy(JSProxyObject value, boolean isFunction) {
+        Object target = JSProxy.getTargetNonProxy(value);
+        if (isFunction) {
+            return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
         } else {
-            if (isFunction) {
-                return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
-            } else {
-                return (JSDynamicObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
-                                (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
-            }
+            return (JSDynamicObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
+                            (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
         }
     }
 

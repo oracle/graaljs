@@ -40,9 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -54,6 +57,7 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropInstantiateNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
@@ -84,6 +88,11 @@ public final class JSProxyObject extends JSClassObject {
     public void revoke() {
         this.proxyHandler = Null.instance;
         this.proxyTarget = Null.instance;
+    }
+
+    public void revoke(boolean isCallable, boolean isConstructor) {
+        this.proxyHandler = Null.instance;
+        this.proxyTarget = RevokedTarget.lookup(isCallable, isConstructor);
     }
 
     public static DynamicObject create(JSRealm realm, JSObjectFactory factory, Object target, DynamicObject handler) {
@@ -143,5 +152,73 @@ public final class JSProxyObject extends JSClassObject {
     @ExportMessage
     public Object getMetaObject() {
         return JSMetaType.JS_PROXY;
+    }
+
+    @ExportLibrary(InteropLibrary.class)
+    public static final class RevokedTarget implements TruffleObject {
+        private final boolean isCallable;
+        private final boolean isConstructor;
+
+        RevokedTarget(boolean isCallable, boolean isConstructor) {
+            this.isCallable = isCallable;
+            this.isConstructor = isConstructor;
+        }
+
+        @ExportMessage
+        public boolean isExecutable() {
+            return isCallable;
+        }
+
+        @ExportMessage
+        public Object execute(@SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
+            if (isExecutable()) {
+                throw Errors.createTypeErrorProxyRevoked();
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @ExportMessage
+        public boolean isInstantiable() {
+            return isConstructor;
+        }
+
+        @ExportMessage
+        public Object instantiate(@SuppressWarnings("unused") Object[] args) throws UnsupportedMessageException {
+            if (isInstantiable()) {
+                throw Errors.createTypeErrorProxyRevoked();
+            } else {
+                throw UnsupportedMessageException.create();
+            }
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public String toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+            return Null.NAME;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public boolean hasLanguage() {
+            return true;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        public Class<? extends TruffleLanguage<?>> getLanguage() {
+            return JavaScriptLanguage.class;
+        }
+
+        static Object lookup(boolean callable, boolean constructor) {
+            return REVOKED_TARGET[(callable ? 1 : 0) + (constructor ? 2 : 0)];
+        }
+
+        @CompilationFinal(dimensions = 1) static final Object[] REVOKED_TARGET = {
+                        Null.instance,
+                        new RevokedTarget(true, false),
+                        new RevokedTarget(false, true),
+                        new RevokedTarget(true, true),
+        };
     }
 }

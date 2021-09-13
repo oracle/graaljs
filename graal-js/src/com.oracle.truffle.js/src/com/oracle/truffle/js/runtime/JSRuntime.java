@@ -232,12 +232,8 @@ public final class JSRuntime {
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
             DynamicObject object = (DynamicObject) value;
             if (JSProxy.isJSProxy(object)) {
-                Object target = JSProxy.getTarget(object);
-                if (target == Null.instance) {
-                    return JSRuntime.isRevokedCallableProxy(object) ? JSFunction.TYPE_NAME : JSOrdinary.TYPE_NAME;
-                } else {
-                    return typeof(target);
-                }
+                Object target = JSProxy.getTargetNonProxy(object);
+                return typeof(target);
             } else if (JSFunction.isJSFunction(object)) {
                 return JSFunction.TYPE_NAME;
             }
@@ -2477,12 +2473,7 @@ public final class JSRuntime {
     public static boolean isCallableProxy(DynamicObject proxy) {
         assert JSProxy.isJSProxy(proxy);
         Object target = JSProxy.getTarget(proxy);
-        return (target == Null.instance) ? isRevokedCallableProxy(proxy) : isCallable(target);
-    }
-
-    public static boolean isRevokedCallableProxy(DynamicObject revokedProxy) {
-        assert JSProxy.isJSProxy(revokedProxy) && JSProxy.isRevoked(revokedProxy);
-        return Boolean.TRUE == JSDynamicObject.getOrDefault(revokedProxy, JSProxy.REVOKED_CALLABLE, Boolean.FALSE);
+        return isCallable(target);
     }
 
     /**

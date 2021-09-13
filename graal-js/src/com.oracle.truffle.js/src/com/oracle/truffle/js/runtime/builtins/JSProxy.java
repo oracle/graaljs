@@ -46,6 +46,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -91,7 +92,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     public static final String CONSTRUCT = "construct";
 
     public static final HiddenKey REVOCABLE_PROXY = new HiddenKey("RevocableProxy");
-    public static final HiddenKey REVOKED_CALLABLE = new HiddenKey("RevokedCallable");
 
     @TruffleBoundary
     public static boolean checkPropertyIsSettable(Object truffleTarget, Object key) {
@@ -166,16 +166,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             throw Errors.createTypeErrorProxyRevoked();
         }
         return handler;
-    }
-
-    // ES2015, 26.2.2.1.1
-    public static void revoke(DynamicObject obj) {
-        assert JSProxy.isJSProxy(obj);
-        try {
-            ((JSProxyObject) obj).revoke();
-        } catch (Exception ex) {
-            throw Errors.createTypeError("cannot revoke proxy");
-        }
     }
 
     public static boolean isJSProxy(Object obj) {
@@ -286,7 +276,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
 
     @TruffleBoundary
     public static boolean checkProxySetTrapInvariants(DynamicObject proxy, Object key, Object value) {
-        assert JSProxy.isJSProxy(proxy);
+        assert JSProxy.isJSProxy(proxy) && !isRevoked(proxy);
         assert JSRuntime.isPropertyKey(key);
         Object target = JSProxy.getTarget(proxy);
         if (!JSDynamicObject.isJSDynamicObject(target)) {
@@ -558,7 +548,14 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return "Object";
             }
         } else {
-            return "Foreign";
+            InteropLibrary interop = InteropLibrary.getUncached(targetNonProxy);
+            if (interop.hasArrayElements(targetNonProxy)) {
+                return JSArray.CLASS_NAME;
+            } else if (interop.isExecutable(targetNonProxy) || interop.isInstantiable(targetNonProxy)) {
+                return JSFunction.CLASS_NAME;
+            } else {
+                return "Object";
+            }
         }
     }
 
