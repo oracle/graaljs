@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,11 +65,16 @@ public abstract class JSArrayBase extends JSNonProxyObject {
         this.allocationSite = site;
     }
 
-    int length;
+    // Simplified schema of the meaning of the fields of this class:
+    // [------------------------- an array -------------------------]
+    // <-------------------------- length -------------------------->
+    // <-- indexOffset --><-- arrayOffset --><-- usedLength -->
+    // <-- indexOffset --><------------ arrayStorage ------------>
+    int length; // interpreted as unsigned int
     int usedLength;
-    int indexOffset;
-    int arrayOffset;
-    int holeCount;
+    int indexOffset; // can be negative (but arrayOffset >= -indexOffset when indexOffset < 0)
+    int arrayOffset; // must be non-negative
+    int holeCount; // number of holes in usedLength section of arrayStorage
     Object arrayStorage;
     ScriptArray arrayStrategy;
     ArrayAllocationSite allocationSite;

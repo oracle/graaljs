@@ -387,10 +387,6 @@
     "status" : "FAIL",
     "comment" : "FastCAPI"
   }, {
-    "filePath" : "mjsunit/compiler/regress-crbug-1211215.js",
-    "status" : "FAIL",
-    "comment" : "GR-33662"
-  }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1223107.js",
     "status" : "FAIL",
     "comment" : "FastCAPI"
