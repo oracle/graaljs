@@ -48,7 +48,7 @@
   }, {
     "filePath" : "intl/date-format/timezone-name-extended.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Extended TimeZoneName (GR-33686)"
   }, {
     "filePath" : "intl/date-format/timezone-name.js",
     "status" : "FAIL"
@@ -59,19 +59,19 @@
   }, {
     "filePath" : "intl/displaynames/calendar-v2.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl.DisplayNames v2 (GR-33659)"
   }, {
     "filePath" : "intl/displaynames/constructor-order-v2.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl.DisplayNames v2 (GR-33659)"
   }, {
     "filePath" : "intl/displaynames/constructor-v2.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl.DisplayNames v2 (GR-33659)"
   }, {
     "filePath" : "intl/displaynames/date-time-field-v2.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl.DisplayNames v2 (GR-33659)"
   }, {
     "filePath" : "intl/displaynames/languagecanonical.js",
     "status" : "FAIL",
@@ -79,7 +79,7 @@
   }, {
     "filePath" : "intl/displaynames/resolved-options-v2.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl.DisplayNames v2 (GR-33659)"
   }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
@@ -96,39 +96,39 @@
   }, {
     "filePath" : "intl/locale/locale-calendars.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-collations.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-info-check-property.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-info-ext.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-info-no-undefined.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-info-timezones-sorted.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/locale/locale-numberingSystems.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Intl Locale Info (GR-33660)"
   }, {
     "filePath" : "intl/localematcher/bestfit-supplemental-files.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "localeMatcher best fit"
   }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
@@ -252,25 +252,13 @@
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
   }, {
-    "filePath" : "mjsunit/baseline/batch-compilation.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
-  }, {
-    "filePath" : "mjsunit/baseline/cross-realm.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/baseline/test-baseline.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
     "filePath" : "mjsunit/baseline/test-osr.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "testing V8 internals (OSR)"
   }, {
     "filePath" : "mjsunit/baseline/verify-bytecode-offsets.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "test for fuzzer"
   }, {
     "filePath" : "mjsunit/big-array-literal.js",
     "status" : "PASS",
@@ -348,19 +336,19 @@
   }, {
     "filePath" : "mjsunit/compiler/deopt-pretenure.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "v8GetOptimizationStatus returns wrong value"
   }, {
     "filePath" : "mjsunit/compiler/fast-api-calls.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/fast-api-interface-types.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/fast-api-sequences.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/regress-1065737.js",
     "status" : "FAIL",
@@ -389,23 +377,23 @@
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1201011.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1201057.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1201082.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1211215.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "GR-33662"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1223107.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "FastCAPI"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1226264.js",
     "status" : "SKIP",
@@ -456,7 +444,7 @@
   }, {
     "filePath" : "mjsunit/d8/d8-os.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "d8s OS module"
   }, {
     "filePath" : "mjsunit/d8/d8-worker-shutdown-empty.js",
     "status" : "FAIL",
@@ -724,7 +712,7 @@
   }, {
     "filePath" : "mjsunit/harmony/class-static-blocks.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Class static blocks (GR-31574)"
   }, {
     "filePath" : "mjsunit/harmony/error-cause.js",
     "status" : "FAIL",
@@ -737,10 +725,6 @@
     "filePath" : "mjsunit/harmony/generators.js",
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
-  }, {
-    "filePath" : "mjsunit/harmony/has-own.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
   }, {
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
@@ -866,11 +850,11 @@
   }, {
     "filePath" : "mjsunit/ic-megadom-2.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "d8.dom"
   }, {
     "filePath" : "mjsunit/ic-megadom.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "d8.dom"
   }, {
     "filePath" : "mjsunit/icu-date-lord-howe.js",
     "status" : "FAIL",
@@ -958,7 +942,7 @@
   }, {
     "filePath" : "mjsunit/promise-hooks.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "d8.promise.setHooks"
   }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
@@ -1124,11 +1108,11 @@
   }, {
     "filePath" : "mjsunit/regress/regress-1205290.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Worker API"
   }, {
     "filePath" : "mjsunit/regress/regress-1212404.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Worker API"
   }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
@@ -1434,7 +1418,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-chromium-1194026.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Worker API"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-100859.js",
     "runInIsolation" : true,
@@ -1483,7 +1467,7 @@
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1197053.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "Realm.detachGlobal"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-150545.js",
     "status" : "SKIP",
@@ -2796,7 +2780,7 @@
   }, {
     "filePath" : "mjsunit/resizablearraybuffer-growablesharedarraybuffer.js",
     "status" : "FAIL",
-    "comment" : "new failures 2021-07-08"
+    "comment" : "ResizableArrayBuffer (GR-31575)"
   }, {
     "filePath" : "mjsunit/serialize-deserialize-now.js",
     "status" : "FAIL",
@@ -2920,15 +2904,15 @@
   }, {
     "filePath" : "mjsunit/typedarray-growablesharedarraybuffer.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "ResizableArrayBuffer (GR-31575)"
   }, {
     "filePath" : "mjsunit/typedarray-resizablearraybuffer-detach.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "ResizableArrayBuffer (GR-31575)"
   }, {
     "filePath" : "mjsunit/typedarray-resizablearraybuffer.js",
     "status" : "FAIL",
-    "comment" : "update 2021-07-07"
+    "comment" : "ResizableArrayBuffer (GR-31575)"
   }, {
     "filePath" : "mjsunit/tzoffset-seoul-noi18n.js",
     "status" : "FAIL",
@@ -3775,9 +3759,5 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "Uses Worker"
-  }, {
-    "filePath" : "mjsunit/web-snapshot/web-snapshot.js",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
   } ]
 }
