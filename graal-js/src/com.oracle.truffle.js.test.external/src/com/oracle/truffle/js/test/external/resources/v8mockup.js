@@ -42,6 +42,9 @@ var assertOptimized = function() {
 var isNeverOptimize = function() {
     return v8IgnoreResult;
 }
+var isNeverOptimizeLiteMode = function() {
+    return v8IgnoreResult;
+}
 var isAlwaysOptimize = function() {
     return v8IgnoreResult;
 }
@@ -75,7 +78,8 @@ var d8 = {
 
 // ---------------------- other mockup functions ---------------- //
 
-function v8OptimizeFunctionOnNextCall() {
+function v8OptimizeFunctionOnNextCall(f) {
+    f._optimized = true;
     return undefined;
 }
 
@@ -126,8 +130,9 @@ function v8IsConcurrentRecompilationSupported() {
     return true;
 }
 
-function v8GetOptimizationStatus() {
-    return 0;
+function v8GetOptimizationStatus(f) {
+    var all_flags = 0xFFFFF;
+    return f._optimized ? all_flags : (all_flags & ~V8OptimizationStatus.kTopmostFrameIsTurboFanned);
 }
 
 function v8ToFastProperties(obj) {
@@ -1054,6 +1059,7 @@ function v8RegexpTypeTag() {
 }
 
 function v8BaselineOsr() {
+    v8OptimizeFunctionOnNextCall(v8BaselineOsr.caller);
 }
 
 function v8GetAndResetRuntimeCallStats() {
