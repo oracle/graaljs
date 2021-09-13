@@ -142,6 +142,7 @@ import com.oracle.truffle.js.nodes.binary.JSRightShiftNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.binary.JSUnsignedRightShiftNode;
+import com.oracle.truffle.js.nodes.binary.PrivateFieldInNode;
 import com.oracle.truffle.js.nodes.cast.JSPrepareThisNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -1194,6 +1195,10 @@ public class NodeFactory {
 
     public InternalSlotId createInternalSlotId(String description, int ordinal) {
         return new InternalSlotId(description, ordinal);
+    }
+
+    public JavaScriptNode createPrivateFieldIn(JavaScriptNode left, JavaScriptNode right) {
+        return PrivateFieldInNode.create(left, right);
     }
 
     // #####

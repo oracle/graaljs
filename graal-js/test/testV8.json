@@ -732,7 +732,7 @@
   }, {
     "filePath" : "mjsunit/harmony/private-brand-checks.js",
     "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
+    "comment" : "Fails due to class heritage issue with private environments (GR-21866)"
   }, {
     "filePath" : "mjsunit/harmony/private-name-scopes.js",
     "status" : "FAIL",

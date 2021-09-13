@@ -102,6 +102,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-atomics-waitasync",
                     "--harmony-class-static-blocks",
                     "--harmony-object-has-own",
+                    "--harmony-private-brand-checks",
                     "--harmony-regexp-match-indices",
                     "--harmony-top-level-await"
     }));

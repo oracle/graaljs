@@ -72,6 +72,7 @@ import static com.oracle.js.parser.TokenType.GET;
 import static com.oracle.js.parser.TokenType.IDENT;
 import static com.oracle.js.parser.TokenType.IF;
 import static com.oracle.js.parser.TokenType.IMPORT;
+import static com.oracle.js.parser.TokenType.IN;
 import static com.oracle.js.parser.TokenType.INCPOSTFIX;
 import static com.oracle.js.parser.TokenType.INCPREFIX;
 import static com.oracle.js.parser.TokenType.LBRACE;
@@ -81,6 +82,7 @@ import static com.oracle.js.parser.TokenType.LPAREN;
 import static com.oracle.js.parser.TokenType.MUL;
 import static com.oracle.js.parser.TokenType.OF;
 import static com.oracle.js.parser.TokenType.PERIOD;
+import static com.oracle.js.parser.TokenType.PRIVATE_IDENT;
 import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
 import static com.oracle.js.parser.TokenType.RPAREN;
@@ -3806,6 +3808,10 @@ public class Parser extends AbstractParser {
         throw error(AbstractParser.message(MESSAGE_EXPECTED_OPERAND, type.getNameOrType()));
     }
 
+    private boolean isPrivateFieldsIn() {
+        return env.privateFieldsIn;
+    }
+
     /**
      * Convert execString to a call to $EXEC.
      *
@@ -5970,7 +5976,13 @@ public class Parser extends AbstractParser {
     }
 
     private Expression expression(int minPrecedence, boolean in, boolean yield, boolean await) {
-        return expression(unaryExpression(yield, await), minPrecedence, in, yield, await);
+        Expression lhs;
+        if (in && type == PRIVATE_IDENT && isPrivateFieldsIn() && lookahead() == IN) {
+            lhs = privateIdentifierUse().setIsPrivateInCheck();
+        } else {
+            lhs = unaryExpression(yield, await);
+        }
+        return expression(lhs, minPrecedence, in, yield, await);
     }
 
     private JoinPredecessorExpression joinPredecessorExpression(boolean yield, boolean await) {
@@ -6003,12 +6015,19 @@ public class Parser extends AbstractParser {
                 // Build up node.
                 lhs = new TernaryNode(op, lhs, new JoinPredecessorExpression(trueExpr), new JoinPredecessorExpression(falseExpr));
             } else {
+                final TokenType opType = type;
                 // Skip operator.
                 next();
 
                 assert !Token.descType(op).isAssignment();
                 // Get the next primary expression.
-                Expression rhs = unaryExpression(yield, await);
+                Expression rhs;
+                if (in && type == PRIVATE_IDENT && isPrivateFieldsIn() && lookahead() == IN && precedence < IN.getPrecedence()) {
+                    assert opType != IN;
+                    rhs = privateIdentifierUse().setIsPrivateInCheck();
+                } else {
+                    rhs = unaryExpression(yield, await);
+                }
 
                 // Get precedence of next operator.
                 int nextPrecedence = type.getPrecedence();

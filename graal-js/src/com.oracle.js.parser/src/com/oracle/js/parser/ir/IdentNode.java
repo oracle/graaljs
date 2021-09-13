@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@ public final class IdentNode extends Expression implements PropertyKey, Function
     private static final int ARGUMENTS         = 1 << 11;
     private static final int APPLY_ARGUMENTS   = 1 << 12;
     private static final int PRIVATE_IDENT     = 1 << 13;
+    private static final int PRIVATE_IN_CHECK  = 1 << 14;
     //@formatter:on
 
     /** Identifier. */
@@ -302,5 +303,13 @@ public final class IdentNode extends Expression implements PropertyKey, Function
 
     public boolean isPrivate() {
         return (flags & PRIVATE_IDENT) != 0;
+    }
+
+    public IdentNode setIsPrivateInCheck() {
+        return new IdentNode(this, name, flags | PRIVATE_IN_CHECK);
+    }
+
+    public boolean isPrivateInCheck() {
+        return (flags & PRIVATE_IN_CHECK) != 0;
     }
 }

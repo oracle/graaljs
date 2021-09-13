@@ -1550,6 +1550,17 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             result = enterNewTarget();
         } else if (identNode.isImportMeta()) {
             result = enterImportMeta();
+        } else if (identNode.isPrivateInCheck()) {
+            String privateVarName = identNode.getName();
+            VarRef privateVarRef = environment.findLocalVar(privateVarName);
+            JavaScriptNode readNode = privateVarRef.createReadNode();
+            FrameSlot frameSlot = privateVarRef.getFrameSlot();
+            if (JSFrameUtil.needsPrivateBrandCheck(frameSlot)) {
+                // Create a brand node so that a brand check can be performed in the InNode.
+                result = getPrivateBrandNode(frameSlot, privateVarRef);
+            } else {
+                result = readNode;
+            }
         } else {
             String varName = identNode.getName();
             VarRef varRef = findScopeVarCheckTDZ(varName, false);
@@ -2427,9 +2438,16 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     private JavaScriptNode enterBinaryExpressionNode(BinaryNode binaryNode) {
-        JavaScriptNode lhs = transform(binaryNode.getLhs());
+        Expression lhsExpr = binaryNode.getLhs();
+        JavaScriptNode lhs = transform(lhsExpr);
         JavaScriptNode rhs = transform(binaryNode.getRhs());
-        return tagExpression(factory.createBinary(context, tokenTypeToBinaryOperation(binaryNode.tokenType()), lhs, rhs), binaryNode);
+        JavaScriptNode result;
+        if (lhsExpr instanceof IdentNode && ((IdentNode) lhsExpr).isPrivateInCheck()) {
+            result = factory.createPrivateFieldIn(lhs, rhs);
+        } else {
+            result = factory.createBinary(context, tokenTypeToBinaryOperation(binaryNode.tokenType()), lhs, rhs);
+        }
+        return tagExpression(result, binaryNode);
     }
 
     private JavaScriptNode enterBinaryTransformNode(BinaryNode binaryNode) {
@@ -2886,20 +2904,23 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode insertPrivateBrandCheck(JavaScriptNode base, VarRef privateNameVar) {
         FrameSlot frameSlot = privateNameVar.getFrameSlot();
         if (JSFrameUtil.needsPrivateBrandCheck(frameSlot)) {
-            int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
-            int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
-            Environment memberEnv = environment.getParentAt(frameLevel, scopeLevel);
-            FrameSlot constructorSlot = memberEnv.getBlockFrameDescriptor().findFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
-            JavaScriptNode constructor = environment.createLocal(constructorSlot, frameLevel, scopeLevel);
-            JavaScriptNode brand;
-            if (JSFrameUtil.isPrivateNameStatic(frameSlot)) {
-                brand = constructor;
-            } else {
-                brand = factory.createGetPrivateBrand(context, constructor);
-            }
+            JavaScriptNode brand = getPrivateBrandNode(frameSlot, privateNameVar);
             return factory.createPrivateBrandCheck(base, brand);
         } else {
             return base;
+        }
+    }
+
+    private JavaScriptNode getPrivateBrandNode(FrameSlot frameSlot, VarRef privateNameVar) {
+        int frameLevel = ((AbstractFrameVarRef) privateNameVar).getFrameLevel();
+        int scopeLevel = ((AbstractFrameVarRef) privateNameVar).getScopeLevel();
+        Environment memberEnv = environment.getParentAt(frameLevel, scopeLevel);
+        FrameSlot constructorSlot = memberEnv.getBlockFrameDescriptor().findFrameSlot(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME);
+        JavaScriptNode constructor = environment.createLocal(constructorSlot, frameLevel, scopeLevel);
+        if (JSFrameUtil.isPrivateNameStatic(frameSlot)) {
+            return constructor;
+        } else {
+            return factory.createGetPrivateBrand(context, constructor);
         }
     }
 

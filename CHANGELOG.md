@@ -4,6 +4,7 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 21.3.0
+* Implemented the [Private Fields in `in`](https://tc39.es/proposal-private-fields-in-in) proposal. It is available behind the experimental option `--js.private-fields-in`. 
 * Implemented the [JavaScript BigInt to WebAssembly i64 integration](https://github.com/WebAssembly/JS-BigInt-integration) proposal. It can be disabled using the `--js.wasm-bigint=false` option.
 * Updated Node.js to version 14.17.6.
 * Implemented the [Error Cause](https://github.com/tc39/proposal-error-cause) proposal. It is available behind the experimental option `--js.error-cause`.
