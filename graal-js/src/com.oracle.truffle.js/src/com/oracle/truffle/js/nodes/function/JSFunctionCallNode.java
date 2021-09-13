@@ -105,7 +105,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -275,7 +274,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 c = c.nextNode;
             }
             if (c == null) {
-                if (cachedCount < getLanguage().getJSContext().getFunctionCacheLimit() && !generic) {
+                JSContext context = getLanguage().getJSContext();
+                if (cachedCount < context.getFunctionCacheLimit() && !generic) {
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeDirectCall((DynamicObject) function, currentHead);
                     }
@@ -285,7 +285,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeGenericFunction(currentHead, hasCached);
                     } else if (JSProxy.isJSProxy(function)) {
-                        c = insertAtFront(new JSProxyCacheNode(null, JSFunctionCallNode.isNew(flags), JSFunctionCallNode.isNewTarget(flags)), currentHead);
+                        c = insertAtFront(new JSProxyCacheNode(isNew(flags), isNewTarget(flags), context, null), currentHead);
                     } else if (JSGuards.isForeignObject(function)) {
                         c = specializeForeignCall(arguments, currentHead);
                     } else if (function instanceof JSNoSuchMethodAdapter) {
@@ -1619,28 +1619,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static class JSProxyCacheNode extends AbstractCacheNode {
         @Child private JSProxyCallNode proxyCall;
         @Child private AbstractCacheNode next;
-        private final boolean isNew;
-        private final boolean isNewTarget;
 
-        JSProxyCacheNode(AbstractCacheNode next, boolean isNew, boolean isNewTarget) {
+        JSProxyCacheNode(boolean isNew, boolean isNewTarget, JSContext context, AbstractCacheNode next) {
+            this.proxyCall = JSProxyCallNode.create(context, isNew, isNewTarget);
             this.next = next;
-            this.isNew = isNew;
-            this.isNewTarget = isNewTarget;
         }
 
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            if (JSProxy.isJSProxy(function)) {
-                if (proxyCall == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    JSContext context = JSShape.getJSContext(((DynamicObject) function).getShape());
-                    proxyCall = insert(JSProxyCallNode.create(context, isNew, isNewTarget));
-                }
-                return proxyCall.execute(arguments);
-            } else {
-                return next.executeCall(arguments);
-            }
+            assert accept(function);
+            return proxyCall.execute(arguments);
         }
 
         @Override
@@ -1661,15 +1650,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         @Override
         public Object executeCall(Object[] arguments) {
             Object function = JSArguments.getFunctionObject(arguments);
-            if (function instanceof JSNoSuchMethodAdapter) {
-                JSNoSuchMethodAdapter noSuchMethod = (JSNoSuchMethodAdapter) function;
-                Object[] handlerArguments = JSArguments.createInitial(noSuchMethod.getThisObject(), noSuchMethod.getFunction(), JSArguments.getUserArgumentCount(arguments) + 1);
-                JSArguments.setUserArgument(handlerArguments, 0, noSuchMethod.getKey());
-                JSArguments.setUserArguments(handlerArguments, 1, JSArguments.extractUserArguments(arguments));
-                return noSuchMethodCallNode.executeCall(handlerArguments);
-            } else {
-                return next.executeCall(arguments);
-            }
+            assert accept(function);
+            JSNoSuchMethodAdapter noSuchMethod = (JSNoSuchMethodAdapter) function;
+            Object[] handlerArguments = JSArguments.createInitial(noSuchMethod.getThisObject(), noSuchMethod.getFunction(), JSArguments.getUserArgumentCount(arguments) + 1);
+            JSArguments.setUserArgument(handlerArguments, 0, noSuchMethod.getKey());
+            JSArguments.setUserArguments(handlerArguments, 1, JSArguments.extractUserArguments(arguments));
+            return noSuchMethodCallNode.executeCall(handlerArguments);
         }
 
         @Override
