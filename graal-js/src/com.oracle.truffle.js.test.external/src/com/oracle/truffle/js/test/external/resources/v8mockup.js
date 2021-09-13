@@ -11,8 +11,6 @@
  * no valid part of a function name.
  */
 
- "use strict";
-
 // v8IgnoreResult is a special value returned by methods that we cannot
 // mock-up properly (like v8HasFastProperties()). This value is accepted
 // by both assertTrue() and assertFalse()
@@ -42,6 +40,9 @@ var assertUnoptimized = function() {
 var assertOptimized = function() {
 }
 var isNeverOptimize = function() {
+    return v8IgnoreResult;
+}
+var isNeverOptimizeLiteMode = function() {
     return v8IgnoreResult;
 }
 var isAlwaysOptimize = function() {
@@ -77,7 +78,8 @@ var d8 = {
 
 // ---------------------- other mockup functions ---------------- //
 
-function v8OptimizeFunctionOnNextCall() {
+function v8OptimizeFunctionOnNextCall(f) {
+    f._optimized = true;
     return undefined;
 }
 
@@ -128,8 +130,9 @@ function v8IsConcurrentRecompilationSupported() {
     return true;
 }
 
-function v8GetOptimizationStatus() {
-    return 0;
+function v8GetOptimizationStatus(f) {
+    var all_flags = 0xFFFFF;
+    return f._optimized ? all_flags : (all_flags & ~V8OptimizationStatus.kTopmostFrameIsTurboFanned);
 }
 
 function v8ToFastProperties(obj) {
@@ -629,6 +632,7 @@ function v8InterpretFunctionOnNextCall() {
 }
 
 function v8CreateDataProperty(obj, key, val) {
+    "use strict";
     obj[key] = val;
 }
 
@@ -1055,6 +1059,7 @@ function v8RegexpTypeTag() {
 }
 
 function v8BaselineOsr() {
+    v8OptimizeFunctionOnNextCall(v8BaselineOsr.caller);
 }
 
 function v8GetAndResetRuntimeCallStats() {
