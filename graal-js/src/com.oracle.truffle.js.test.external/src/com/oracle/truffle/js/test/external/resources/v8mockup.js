@@ -11,8 +11,6 @@
  * no valid part of a function name.
  */
 
- "use strict";
-
 // v8IgnoreResult is a special value returned by methods that we cannot
 // mock-up properly (like v8HasFastProperties()). This value is accepted
 // by both assertTrue() and assertFalse()
@@ -629,6 +627,7 @@ function v8InterpretFunctionOnNextCall() {
 }
 
 function v8CreateDataProperty(obj, key, val) {
+    "use strict";
     obj[key] = val;
 }
 
