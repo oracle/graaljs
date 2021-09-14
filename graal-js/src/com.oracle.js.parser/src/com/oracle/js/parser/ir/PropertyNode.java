@@ -150,11 +150,20 @@ public final class PropertyNode extends Node {
 
     @Override
     public void toString(final StringBuilder sb, final boolean printType) {
+        if (isStatic) {
+            sb.append("static ");
+        }
+
         if (value != null) {
-            if (isStatic) {
-                sb.append("static ");
-            }
-            if (value instanceof FunctionNode && ((FunctionNode) value).isMethod()) {
+            if (isClassStaticBlock()) {
+                sb.append("{}");
+            } else if (value instanceof FunctionNode && ((FunctionNode) value).isMethod()) {
+                if (((FunctionNode) value).isAsync()) {
+                    sb.append("async ");
+                }
+                if (((FunctionNode) value).isGenerator()) {
+                    sb.append('*');
+                }
                 toStringKey(sb, printType);
                 ((FunctionNode) value).toStringTail(sb, printType);
             } else {
@@ -162,21 +171,17 @@ public final class PropertyNode extends Node {
                 sb.append(": ");
                 value.toString(sb, printType);
             }
+        } else if (isClassField()) {
+            toStringKey(sb, printType);
         }
 
         if (getter != null) {
-            if (isStatic) {
-                sb.append("static ");
-            }
             sb.append("get ");
             toStringKey(sb, printType);
             getter.toStringTail(sb, printType);
         }
 
         if (setter != null) {
-            if (isStatic) {
-                sb.append("static ");
-            }
             sb.append("set ");
             toStringKey(sb, printType);
             setter.toStringTail(sb, printType);
