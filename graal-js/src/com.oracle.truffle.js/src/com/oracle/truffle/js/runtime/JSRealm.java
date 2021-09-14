@@ -57,6 +57,9 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.js.builtins.MLEBuiltins;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -203,6 +206,7 @@ public class JSRealm {
     public static final String PERFORMANCE_CLASS_NAME = "performance";
     public static final String DEBUG_CLASS_NAME = "Debug";
     public static final String CONSOLE_CLASS_NAME = "Console";
+    public static final String MLE_CLASS_NAME = "MLE";
 
     private static final String GRAALVM_VERSION = HomeFinder.getInstance().getVersion();
 
@@ -479,6 +483,11 @@ public class JSRealm {
     private final SimpleArrayList<Object> joinStack = new SimpleArrayList<>();
 
     private List<TruffleContext> innerContextsToClose;
+
+    /**
+     * Private MLE-only custom Path resolution callback for ESM.
+     */
+    private Object customEsmPathMappingCallback;
 
     public JSRealm(JSContext context, TruffleLanguage.Env env) {
         this.context = context;
@@ -1431,6 +1440,9 @@ public class JSRealm {
         if (context.isOptionDebugBuiltin()) {
             putGlobalProperty(context.getContextOptions().getDebugPropertyName(), createDebugObject());
         }
+        if (context.isOptionMleBuiltin()) {
+            putGlobalProperty(JSContextOptions.MLE_PROPERTY_NAME, createMleObject());
+        }
         if (context.getContextOptions().isTest262Mode()) {
             putGlobalProperty(JSTest262.GLOBAL_PROPERTY_NAME, JSTest262.create(this));
         }
@@ -1966,6 +1978,13 @@ public class JSRealm {
         return obj;
     }
 
+    private DynamicObject createMleObject() {
+        DynamicObject obj = JSOrdinary.createInit(this);
+        JSObjectUtil.putToStringTag(obj, MLE_CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(this, obj, MLEBuiltins.BUILTINS);
+        return obj;
+    }
+
     private void addStaticRegexResultProperties() {
         if (context.isOptionRegexpStaticResultInContextInit()) {
             if (context.isOptionNashornCompatibilityMode()) {
@@ -2441,6 +2460,30 @@ public class JSRealm {
 
     private static final String REALM_SHARED_NAME = "shared";
     private static final PropertyProxy REALM_SHARED_PROXY = new RealmSharedPropertyProxy();
+
+    public void registerCustomEsmPathMappingCallback(Object callback) {
+        assert context.isOptionMleBuiltin();
+        assert JSRuntime.isCallableForeign(callback);
+        this.customEsmPathMappingCallback = callback;
+    }
+
+    public String getCustomEsmPathMapping(String refPath, String specifier) {
+        if (getContext().isOptionMleBuiltin() && customEsmPathMappingCallback != null) {
+            Object[] args = new Object[]{refPath, specifier};
+            Object custom = JSInteropUtil.call(customEsmPathMappingCallback, args);
+            InteropLibrary interopLibrary = InteropLibrary.getUncached();
+            if (interopLibrary.isString(custom)) {
+                try {
+                    return interopLibrary.asString(custom);
+                } catch (UnsupportedMessageException e) {
+                    throw Errors.shouldNotReachHere(e);
+                }
+            } else {
+                throw Errors.createError("Custom ESM mapping not found for specifier: " + specifier);
+            }
+        }
+        return null;
+    }
 
     private static class RealmSharedPropertyProxy implements PropertyProxy {
         @Override

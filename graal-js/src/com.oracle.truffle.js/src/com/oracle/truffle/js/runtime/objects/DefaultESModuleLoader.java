@@ -92,23 +92,31 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         try {
             String specifier = moduleRequest.getSpecifier();
             TruffleFile moduleFile;
+            String canonicalPath;
             URI maybeUri = asURI(specifier);
-            if (refPath == null) {
-                if (maybeUri != null) {
-                    moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
-                } else {
-                    moduleFile = realm.getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
-                }
+
+            String maybeCustomPath = realm.getCustomEsmPathMapping(refPath, specifier);
+            if (maybeCustomPath != null) {
+                canonicalPath = maybeCustomPath;
+                moduleFile = realm.getEnv().getPublicTruffleFile(canonicalPath).getCanonicalFile();
             } else {
-                TruffleFile refFile = realm.getEnv().getPublicTruffleFile(refPath);
-                if (maybeUri != null) {
-                    String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
-                    moduleFile = refFile.resolveSibling(uriFile).getCanonicalFile();
+                if (refPath == null) {
+                    if (maybeUri != null) {
+                        moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile();
+                    } else {
+                        moduleFile = realm.getEnv().getPublicTruffleFile(specifier).getCanonicalFile();
+                    }
                 } else {
-                    moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                    TruffleFile refFile = realm.getEnv().getPublicTruffleFile(refPath);
+                    if (maybeUri != null) {
+                        String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
+                        moduleFile = refFile.resolveSibling(uriFile).getCanonicalFile();
+                    } else {
+                        moduleFile = refFile.resolveSibling(specifier).getCanonicalFile();
+                    }
                 }
+                canonicalPath = moduleFile.getPath();
             }
-            String canonicalPath = moduleFile.getPath();
             return loadModuleFromUrl(referrer, moduleRequest, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
             String fileName = fsex.getFile();

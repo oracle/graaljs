@@ -423,7 +423,6 @@ public final class JSContextOptions {
     public static final String INTEROP_COMPLETE_PROMISES_NAME = JS_OPTION_PREFIX + "interop-complete-promises";
     @Option(name = INTEROP_COMPLETE_PROMISES_NAME, category = OptionCategory.EXPERT, help = "Resolve promises when crossing a polyglot language boundary.") //
     public static final OptionKey<Boolean> INTEROP_COMPLETE_PROMISES = new OptionKey<>(false);
-    @CompilationFinal private boolean interopCompletePromises;
 
     public static final String DEBUG_PROPERTY_NAME_NAME = JS_OPTION_PREFIX + "debug-property-name";
     @Option(name = DEBUG_PROPERTY_NAME_NAME, category = OptionCategory.EXPERT, help = "The name used for the Graal.js debug builtin.") //
@@ -549,6 +548,12 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ESM_EVAL_RETURNS_EXPORTS = new OptionKey<>(false);
     @CompilationFinal private boolean esmEvalReturnsExports;
 
+    public static final String MLE_MODE_NAME = JS_OPTION_PREFIX + "mle-mode";
+    @Option(name = MLE_MODE_NAME, category = OptionCategory.INTERNAL, help = "Provide a non-API MLE builtin. Behaviour will likely change. Don't depend on this in production code.") //
+    public static final OptionKey<Boolean> MLE_MODE = new OptionKey<>(false);
+    public static final String MLE_PROPERTY_NAME = "MLE";
+    @CompilationFinal private boolean mleMode;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -626,7 +631,6 @@ public final class JSContextOptions {
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
         this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
         this.regexRegressionTestMode = readBooleanOption(REGEX_REGRESSION_TEST_MODE);
-        this.interopCompletePromises = readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.testCloneUninitialized = readBooleanOption(TEST_CLONE_UNINITIALIZED);
         this.lazyTranslation = readBooleanOption(LAZY_TRANSLATION);
         this.stackTraceLimit = readIntegerOption(STACK_TRACE_LIMIT);
@@ -645,6 +649,7 @@ public final class JSContextOptions {
         this.jsonModules = readBooleanOption(JSON_MODULES);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
+        this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -753,6 +758,10 @@ public final class JSContextOptions {
 
     public boolean isDebugBuiltin() {
         return debug;
+    }
+
+    public boolean isMLEMode() {
+        return mleMode;
     }
 
     public boolean isDirectByteBuffer() {
@@ -944,10 +953,6 @@ public final class JSContextOptions {
         return regexRegressionTestMode;
     }
 
-    public boolean interopCompletePromises() {
-        return interopCompletePromises;
-    }
-
     public String getDebugPropertyName() {
         CompilerAsserts.neverPartOfCompilation("Context patchable option debug-property-name was assumed not to be accessed in compiled code.");
         return DEBUG_PROPERTY_NAME.getValue(optionValues);
@@ -1076,7 +1081,6 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
         hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
         hash = 53 * hash + (this.regexRegressionTestMode ? 1 : 0);
-        hash = 53 * hash + (this.interopCompletePromises ? 1 : 0);
         hash = 53 * hash + (this.testCloneUninitialized ? 1 : 0);
         hash = 53 * hash + (this.lazyTranslation ? 1 : 0);
         hash = 53 * hash + this.stackTraceLimit;
@@ -1097,6 +1101,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.jsonModules ? 1 : 0);
         hash = 53 * hash + (this.wasmBigInt ? 1 : 0);
         hash = 53 * hash + (this.esmEvalReturnsExports ? 1 : 0);
+        hash = 53 * hash + (this.mleMode ? 1 : 0);
         return hash;
     }
 
@@ -1211,9 +1216,6 @@ public final class JSContextOptions {
         if (this.regexRegressionTestMode != other.regexRegressionTestMode) {
             return false;
         }
-        if (this.interopCompletePromises != other.interopCompletePromises) {
-            return false;
-        }
         if (this.testCloneUninitialized != other.testCloneUninitialized) {
             return false;
         }
@@ -1272,6 +1274,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.esmEvalReturnsExports != other.esmEvalReturnsExports) {
+            return false;
+        }
+        if (this.mleMode != other.mleMode) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);

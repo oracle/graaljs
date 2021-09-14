@@ -101,7 +101,7 @@ public final class InteropAsyncFunction extends InteropFunction {
                     @Cached ExportValueNode exportNode,
                     @Cached UnwrapPromiseNode unwrapPromise) throws UnsupportedMessageException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
-        assert language.getJSContext().getContextOptions().interopCompletePromises();
+        assert language.getJSContext().getContextOptions().isMLEMode();
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         Object result;

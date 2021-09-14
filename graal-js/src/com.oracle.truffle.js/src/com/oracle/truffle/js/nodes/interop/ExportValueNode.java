@@ -79,7 +79,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
     public abstract Object execute(Object value, Object thiz, boolean bindMemberFunctions);
 
     protected final boolean isInteropCompletePromises() {
-        return getLanguage().getJSContext().getContextOptions().interopCompletePromises();
+        return getLanguage().getJSContext().getContextOptions().isMLEMode();
     }
 
     @Specialization(guards = {"!bindFunctions", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
