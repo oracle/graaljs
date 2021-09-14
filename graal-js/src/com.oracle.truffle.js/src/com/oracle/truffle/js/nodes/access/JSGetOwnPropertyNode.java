@@ -44,9 +44,9 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
@@ -62,13 +62,14 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
@@ -151,7 +152,6 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
     @Specialization(guards = {
                     "allowCaching",
                     "cachedJSClass != null",
-                    "cachedJSClass.isInstance(thisObj)",
                     "propertyKeyEquals(cachedPropertyKey, propertyKey)",
                     "cachedShape == thisObj.getShape()"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "3")
     PropertyDescriptor cachedOrdinary(DynamicObject thisObj, Object propertyKey,
@@ -261,20 +261,24 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         }
 
         public final boolean execute(DynamicObject object) {
-            return execute(JSObject.getJSClass(object));
+            return execute(JSShape.getJSClassNoCast(object.getShape()));
         }
 
-        public abstract boolean execute(JSClass jsclass);
+        public abstract boolean execute(Object jsclass);
 
-        @Specialization(guards = {"jsclass == cachedJSClass"}, limit = "7")
-        static boolean doCached(@SuppressWarnings("unused") JSClass jsclass,
-                        @Cached(value = "jsclass") JSClass cachedJSClass) {
+        @Specialization(guards = {"isReferenceEquals(jsclass, cachedJSClass)"}, limit = "7")
+        static boolean doCached(@SuppressWarnings("unused") Object jsclass,
+                        @Cached(value = "asJSClass(jsclass)") JSClass cachedJSClass) {
             return cachedJSClass.usesOrdinaryGetOwnProperty();
         }
 
         @Specialization(replaces = {"doCached"})
-        static boolean doObjectPrototype(JSClass jsclass) {
-            return jsclass.usesOrdinaryGetOwnProperty();
+        static boolean doObjectPrototype(Object jsclass) {
+            return asJSClass(jsclass).usesOrdinaryGetOwnProperty();
+        }
+
+        static JSClass asJSClass(Object jsclass) {
+            return (JSClass) jsclass;
         }
     }
 
