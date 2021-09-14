@@ -287,7 +287,14 @@ public final class GraalJSEvaluator implements JSParser {
                 DynamicObject onAccepted = createTopLevelAwaitResolve(context, realm);
                 performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
             }
-            return promise;
+            if (realm.getContext().getContextOptions().isEsmEvalReturnsExports()) {
+                DynamicObject moduleNamespace = getModuleNamespace(moduleRecord);
+                assert moduleNamespace != null;
+                return moduleNamespace;
+            } else {
+                assert promise != null;
+                return promise;
+            }
         }
 
         JSModuleData getModuleData() {
@@ -719,7 +726,6 @@ public final class GraalJSEvaluator implements JSParser {
             Object result = module.getExecutionResult();
             return result == null ? Undefined.instance : result;
         }
-
     }
 
     @TruffleBoundary

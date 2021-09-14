@@ -54,7 +54,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
@@ -107,8 +106,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
                 functionBody.execute(asyncFrame);
 
                 assert promiseCapability != null;
-                DynamicObject result = context.getEvaluator().getModuleNamespace(moduleRecord);
-                promiseCapabilityResolve(callResolveNode, promiseCapability, result);
+                promiseCapabilityResolve(callResolveNode, promiseCapability, Undefined.instance);
             } catch (YieldException e) {
                 assert promiseCapability == null ? e.isYield() : e.isAwait();
                 if (e.isYield()) {

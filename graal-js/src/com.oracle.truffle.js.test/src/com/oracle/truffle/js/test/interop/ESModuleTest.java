@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
+import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_MIME_TYPE;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ESM_EVAL_RETURNS_EXPORTS_NAME;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -48,6 +50,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.FileSystem;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.js.test.JSTest;
@@ -78,6 +81,7 @@ import java.util.Set;
  * Various tests for EcmaScript 6 module loading via {@link Source}.
  */
 public class ESModuleTest {
+
     private static void commonCheck(Value v) {
         assertTrue(v.hasArrayElements());
         assertTrue(v.getArrayElement(0).isNumber());
@@ -221,7 +225,7 @@ public class ESModuleTest {
         try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/functionexporttest.js", "resources" +
                             "/functionexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
@@ -261,7 +265,7 @@ public class ESModuleTest {
         try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/defaultfunctionexporttest.js", "resources/diagmodule" +
                             ".js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
@@ -279,7 +283,7 @@ public class ESModuleTest {
 
             allFilesArray = prepareTestFileAndModules("resources/renamedexporttest.js", "resources" +
                             "/renamedexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
@@ -295,7 +299,7 @@ public class ESModuleTest {
         File[] allFilesArray = null;
         try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/classexporttest.js", "resources/classexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
@@ -312,7 +316,7 @@ public class ESModuleTest {
         try (Context context = JSTest.newContextBuilder().allowIO(true).build()) {
             allFilesArray = prepareTestFileAndModules("resources/defaultclassexporttest.js", "resources/mymathmodule" +
                             ".js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
@@ -394,11 +398,118 @@ public class ESModuleTest {
         try (Context context = JSTest.newContextBuilder().allowIO(true).fileSystem(fileSystem).build()) {
             allFilesArray = prepareTestFileAndModules("resources/importwithcustomfilesystemtest.js", "resources" +
                             "/functionexportmodule.js");
-            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType("application/javascript+module").build();
+            Source mainSource = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
             Value v = context.eval(mainSource);
             commonCheck(v);
         } finally {
             deleteFiles(allFilesArray);
+        }
+    }
+
+    /**
+     * Calling <code>eval()</code> on a ES module with option <code>esm-eval-returns-exports</code>
+     * enabled returns the module exports.
+     */
+    @Test
+    public void testExportNamespace() throws IOException {
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").build()) {
+            Source source = Source.newBuilder("js", "export const foo = 42; export var bar = 43", "test").mimeType(MODULE_MIME_TYPE).build();
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.hasMember("foo"));
+            Assert.assertTrue(exports.getMember("foo").fitsInInt());
+            Assert.assertEquals(42, exports.getMember("foo").asInt());
+            Assert.assertTrue(exports.hasMember("bar"));
+            Assert.assertTrue(exports.getMember("bar").fitsInInt());
+            Assert.assertEquals(43, exports.getMember("bar").asInt());
+        }
+    }
+
+    /**
+     * Calling <code>eval()</code> on a ES module with option <code>esm-eval-returns-exports</code>
+     * enabled returns the default namespace.
+     */
+    @Test
+    public void testExportNamespaceDefault() throws IOException {
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").build()) {
+            Source source = Source.newBuilder("js", "export default 'foo';", "test").mimeType(MODULE_MIME_TYPE).build();
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.hasMember("default"));
+            Assert.assertTrue(exports.getMember("default").isString());
+            Assert.assertEquals("foo", exports.getMember("default").asString());
+        }
+    }
+
+    /**
+     * When <code>esm-eval-returns-exports</code> is enabled, modules do not return the last
+     * expression.
+     */
+    @Test
+    public void testExportNoExport() throws IOException {
+        Source source = Source.newBuilder("js", "'foo';", "test").mimeType(MODULE_MIME_TYPE).build();
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.isString());
+            Assert.assertEquals("foo", exports.asString());
+        }
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").build()) {
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.hasMembers());
+            Assert.assertEquals(0, exports.getMemberKeys().size());
+        }
+    }
+
+    /**
+     * ES module namespace is returned only for the root module, and nested imports work as
+     * expected.
+     */
+    @Test
+    public void testNestedImportNamespace() throws IOException {
+        File[] allFilesArray = null;
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(true).build()) {
+            allFilesArray = prepareTestFileAndModules("resources/importexport.js", "resources/mymathmodule.js");
+            Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.hasMembers());
+            Assert.assertTrue(exports.hasMember("sqrtPlusOne"));
+            Value sqrtPlusOne = exports.getMember("sqrtPlusOne");
+            Value result = sqrtPlusOne.execute(121);
+            Assert.assertTrue(result.fitsInInt());
+            Assert.assertEquals(12, result.asInt());
+        }
+    }
+
+    /**
+     * When <code>esm-eval-returns-exports</code> is enabled, exports from ES modules with top-level
+     * await are returned as well.
+     */
+    @Test
+    public void testTopLevelAwait() throws IOException {
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").build()) {
+            Source source = Source.newBuilder("js", "export var async = await Promise.resolve('resolved!');", "test").mimeType(MODULE_MIME_TYPE).build();
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.hasMember("async"));
+            Assert.assertTrue(exports.getMember("async").isString());
+            Assert.assertEquals("resolved!", exports.getMember("async").asString());
+        }
+    }
+
+    /**
+     * When <code>esm-eval-returns-exports</code> is enabled, exports from ES modules with top-level
+     * await are returned as well.
+     */
+    @Test
+    public void testTopLevelAwaitImports() throws IOException {
+        File[] allFilesArray = null;
+        try (Context context = JSTest.newContextBuilder().option(ESM_EVAL_RETURNS_EXPORTS_NAME, "true").allowIO(true).build()) {
+            allFilesArray = prepareTestFileAndModules("resources/importexporttlawait.js", "resources/classexportmodule.js");
+            Source source = Source.newBuilder(ID, allFilesArray[0]).mimeType(MODULE_MIME_TYPE).build();
+            Value exports = context.eval(source);
+            Assert.assertTrue(exports.hasMembers());
+            Assert.assertTrue(exports.hasMember("sqrtPlusOne"));
+            Value sqrtPlusOne = exports.getMember("sqrtPlusOne");
+            Value result = sqrtPlusOne.execute(121);
+            Assert.assertTrue(result.fitsInInt());
+            Assert.assertEquals(14, result.asInt());
         }
     }
 }
