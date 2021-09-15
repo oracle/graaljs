@@ -1,9 +1,5 @@
 {
   "testFiles" : [ {
-    "filePath" : "annexB/built-ins/RegExp/prototype/compile/this-cross-realm-instance.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2020-11-23"
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -129,6 +125,14 @@
       "WINDOWS" : "SKIP"
     },
     "comment" : "GR-22846"
+  }, {
+    "filePath" : "built-ins/Date/prototype/valueOf/S9.4_A3_T1.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-09-15"
+  }, {
+    "filePath" : "built-ins/Date/prototype/valueOf/S9.4_A3_T2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2021-09-15"
   }, {
     "filePath" : "built-ins/Function/internals/Call/class-ctor-realm.js",
     "status" : "FAIL",
@@ -1764,10 +1768,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/supportedLocalesOf-unicode-extensions-ignored.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-07-08"
-  }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
@@ -1794,10 +1794,6 @@
     "filePath" : "language/expressions/class/accessor-name-static-computed-yield-expr.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (Test262 tests update 2017-07-10)"
-  }, {
-    "filePath" : "language/expressions/delete/super-property-null-base.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-07-08"
   }, {
     "filePath" : "language/expressions/dynamic-import/usage-from-eval.js",
     "status" : "FAIL",
