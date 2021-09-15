@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@
 
 void SimpleAccessorGetter(Local<Name> property, const PropertyCallbackInfo<Value>& info);
 void SimpleAccessorSetter(Local<Name> property, Local<Value> value, const PropertyCallbackInfo<void>& info);
+void EmptyPropertyEnumeratorCallback(const PropertyCallbackInfo<Array>& info) {};
 
 #endif
 
@@ -126,6 +127,40 @@ EXPORT_TO_JS(CheckNamedHandlerWithInternalFields) {
     Local<Object> instance = objectTemplate->NewInstance(context).ToLocalChecked();
     int actualCount = instance->InternalFieldCount();
     args.GetReturnValue().Set(expectedCount == actualCount);
+}
+
+EXPORT_TO_JS(CreateWithEmptyIndexedEnumerator) {
+    Isolate* isolate = args.GetIsolate();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
+    IndexedPropertyHandlerConfiguration handler(
+            nullptr, // getter
+            nullptr, // setter
+            nullptr, // query
+            nullptr, // deleter
+            EmptyPropertyEnumeratorCallback // enumerator
+    );
+    objectTemplate->SetHandler(handler);
+
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Object> instance = objectTemplate->NewInstance(context).ToLocalChecked();
+    args.GetReturnValue().Set(instance);
+}
+
+EXPORT_TO_JS(CreateWithEmptyNamedEnumerator) {
+    Isolate* isolate = args.GetIsolate();
+    Local<ObjectTemplate> objectTemplate = ObjectTemplate::New(isolate);
+    NamedPropertyHandlerConfiguration handler(
+            nullptr, // getter
+            nullptr, // setter
+            nullptr, // query
+            nullptr, // deleter
+            EmptyPropertyEnumeratorCallback // enumerator
+    );
+    objectTemplate->SetHandler(handler);
+
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Object> instance = objectTemplate->NewInstance(context).ToLocalChecked();
+    args.GetReturnValue().Set(instance);
 }
 
 #undef SUITE

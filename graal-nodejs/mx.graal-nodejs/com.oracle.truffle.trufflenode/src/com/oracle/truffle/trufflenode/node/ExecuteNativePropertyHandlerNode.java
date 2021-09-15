@@ -321,23 +321,25 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         }
         if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
             DynamicObject ownKeys2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
-            // indexed handler returns array of numbers but we need an array of property keys
-            long length = JSAbstractArray.arrayGetLength(ownKeys2);
-            for (long i = 0; i < length; i++) {
-                Object key = JSObject.get(ownKeys2, i);
-                JSObject.set(ownKeys2, i, JSRuntime.toString(key));
+            if (JSArray.isJSArray(ownKeys2)) {
+                // indexed handler returns array of numbers but we need an array of property keys
+                long length = JSAbstractArray.arrayGetLength(ownKeys2);
+                for (long i = 0; i < length; i++) {
+                    Object key = JSObject.get(ownKeys2, i);
+                    JSObject.set(ownKeys2, i, JSRuntime.toString(key));
+                }
+                ownKeys = concatArrays(ownKeys, ownKeys2);
             }
-            ownKeys = concatArrays(ownKeys, ownKeys2);
         }
-        if (ownKeys == null) {
+        if (!JSArray.isJSArray(ownKeys)) {
             ownKeys = JSArray.createEmpty(context, getRealm(), 0);
         }
         return ownKeys;
     }
 
     private DynamicObject concatArrays(DynamicObject array1, DynamicObject array2) {
-        if (JSRuntime.isArray(array1)) {
-            if (JSRuntime.isArray(array2)) {
+        if (JSArray.isJSArray(array1)) {
+            if (JSArray.isJSArray(array2)) {
                 List<Object> keys = new ArrayList<>(Arrays.asList(JSArray.toArray(array1)));
                 for (Object key : JSArray.toArray(array2)) {
                     if (!keys.contains(key)) {

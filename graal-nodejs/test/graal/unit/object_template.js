@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,6 +83,14 @@ describe('ObjectTemplate', function () {
         it('should create object with the specified internal field count', function () {
             var result = module.ObjectTemplate_CheckNamedHandlerWithInternalFields();
             assert.ok(result);
-        });        
+        });
+        it('should not crash with an empty named enumerator', function () {
+            var obj = module.ObjectTemplate_CreateWithEmptyNamedEnumerator();
+            assert.strictEqual(Object.keys(obj).length, 0);
+        });
+        it('should not crash with an empty indexed enumerator', function () {
+            var obj = module.ObjectTemplate_CreateWithEmptyIndexedEnumerator();
+            assert.strictEqual(Object.keys(obj).length, 0);
+        });
     });
 });
