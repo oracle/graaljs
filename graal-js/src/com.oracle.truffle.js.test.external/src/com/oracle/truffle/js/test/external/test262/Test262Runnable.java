@@ -231,12 +231,18 @@ public class Test262Runnable extends TestRunnable {
                     "top-level-await",
     }));
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+                    "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.DateTimeFormat-formatRange",
+                    "Intl.DisplayNames-v2",
                     "Intl.Locale-info",
+                    "Intl-enumeration",
                     "IsHTMLDDA",
+                    "ShadowRealm",
                     "Temporal",
                     "arbitrary-module-namespace-names",
+                    "array-find-from-last",
                     "class-fields-private-in",
+                    "class-static-block",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     }));
