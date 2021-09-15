@@ -4285,7 +4285,7 @@ public class Parser extends AbstractParser {
             lc.push(parameterBlock);
             try {
                 if (!env.syntaxExtensions || type != RPAREN) {
-                    formalParameter(yield, await);
+                    formalParameter(false, false);
                 } // else Nashorn allows no-argument setters
                 expect(RPAREN);
 
