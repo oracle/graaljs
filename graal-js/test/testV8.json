@@ -1868,7 +1868,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1152937.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1180690.js",
@@ -1886,7 +1886,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1184964.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1201340.js",
@@ -2112,7 +2112,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-722445.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-724846.js",
@@ -2124,7 +2124,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-724851.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-724972.js",
@@ -2630,7 +2630,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-924843.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-924905.js",
@@ -3359,7 +3359,7 @@
     "filePath" : "mjsunit/wasm/instantiate-module-basic.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/instantiate-run-basic.js",
