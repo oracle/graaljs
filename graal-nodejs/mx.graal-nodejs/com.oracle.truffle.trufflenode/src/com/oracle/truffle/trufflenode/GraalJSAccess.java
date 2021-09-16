@@ -1747,16 +1747,22 @@ public final class GraalJSAccess {
 
     private DynamicObject functionTemplateCreateCallback(JSContext context, JSRealm realm, FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
-        JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
-        JSFunctionData functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
-        CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
-        CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
-        CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false, instanceLayout));
-        CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true, instanceLayout));
-        functionData.setCallTarget(callTarget);
-        functionData.setConstructTarget(constructTarget);
-        functionData.setConstructNewTarget(constructNewTarget);
+
+        JSFunctionData functionData = template.getFunctionData();
+        if (functionData == null) {
+            JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
+            functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
+            CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
+            CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
+            CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false, instanceLayout));
+            CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true, instanceLayout));
+            functionData.setCallTarget(callTarget);
+            functionData.setConstructTarget(constructTarget);
+            functionData.setConstructNewTarget(constructNewTarget);
+            template.setFunctionData(functionData);
+        }
+
         DynamicObject functionObject = JSFunction.create(realm, functionData);
         template.setFunctionObject(realm, functionObject);
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.trufflenode.info;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
@@ -64,6 +65,7 @@ public final class FunctionTemplate {
     private FunctionTemplate parent;
     private String className = "";
     private boolean readOnlyPrototype;
+    private JSFunctionData functionData;
     private DynamicObject functionObj;
     private final boolean singleFunctionTemplate;
 
@@ -89,6 +91,14 @@ public final class FunctionTemplate {
 
     public ObjectTemplate getPrototypeTemplate() {
         return prototypeTemplate;
+    }
+
+    public void setFunctionData(JSFunctionData functionData) {
+        this.functionData = functionData;
+    }
+
+    public JSFunctionData getFunctionData() {
+        return functionData;
     }
 
     public void setFunctionObject(JSRealm realm, DynamicObject functionObj) {
