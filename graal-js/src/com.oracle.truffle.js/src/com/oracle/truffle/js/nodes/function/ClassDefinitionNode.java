@@ -210,7 +210,7 @@ public final class ClassDefinitionNode extends JavaScriptNode implements Functio
         for (ObjectLiteralMemberNode memberNode : memberNodes) {
             DynamicObject homeObject = memberNode.isStatic() ? constructor : proto;
             memberNode.executeVoid(frame, homeObject, context);
-            if (memberNode.isField()) {
+            if (memberNode.isFieldOrStaticBlock()) {
                 Object key = memberNode.evaluateKey(frame);
                 Object value = memberNode.evaluateValue(frame, homeObject);
                 Object[] field = new Object[]{key, value, memberNode.isAnonymousFunctionDefinition()};
