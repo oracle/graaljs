@@ -147,18 +147,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         protected final boolean isStatic;
         protected final byte attributes;
-        protected final boolean isField;
+        protected final boolean isFieldOrStaticBlock;
         protected final boolean isAnonymousFunctionDefinition;
 
         public ObjectLiteralMemberNode(boolean isStatic, int attributes) {
             this(isStatic, attributes, false, false);
         }
 
-        public ObjectLiteralMemberNode(boolean isStatic, int attributes, boolean isField, boolean isAnonymousFunctionDefinition) {
+        public ObjectLiteralMemberNode(boolean isStatic, int attributes, boolean isFieldOrStaticBlock, boolean isAnonymousFunctionDefinition) {
             assert attributes == (attributes & JSAttributes.ATTRIBUTES_MASK);
             this.isStatic = isStatic;
             this.attributes = (byte) attributes;
-            this.isField = isField;
+            this.isFieldOrStaticBlock = isFieldOrStaticBlock;
             this.isAnonymousFunctionDefinition = isAnonymousFunctionDefinition;
         }
 
@@ -180,8 +180,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
             return isStatic;
         }
 
-        public final boolean isField() {
-            return isField;
+        public final boolean isFieldOrStaticBlock() {
+            return isFieldOrStaticBlock;
         }
 
         public final boolean isAnonymousFunctionDefinition() {
@@ -218,9 +218,9 @@ public class ObjectLiteralNode extends JavaScriptNode {
         protected final Object name;
         @CompilationFinal private DynamicObjectLibrary dynamicObjectLibrary;
 
-        CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isField) {
-            super(isStatic, attributes, isField, false);
-            assert JSRuntime.isPropertyKey(name);
+        CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isFieldOrStaticBlock) {
+            super(isStatic, attributes, isFieldOrStaticBlock, false);
+            assert JSRuntime.isPropertyKey(name) || (name == null && isStatic && isFieldOrStaticBlock) : name;
             this.name = name;
         }
 
@@ -243,8 +243,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
     private static class ObjectLiteralDataMemberNode extends CachingObjectLiteralMemberNode {
         @Child protected JavaScriptNode valueNode;
 
-        ObjectLiteralDataMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode, boolean isField) {
-            super(name, isStatic, attributes, isField);
+        ObjectLiteralDataMemberNode(Object name, boolean isStatic, int attributes, JavaScriptNode valueNode, boolean isFieldOrStaticBlock) {
+            super(name, isStatic, attributes, isFieldOrStaticBlock);
             this.valueNode = valueNode;
         }
 
@@ -260,7 +260,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         private void execute(DynamicObject obj, Object value, JSContext context) {
-            if (isField) {
+            if (isFieldOrStaticBlock) {
                 return;
             }
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary(context);
@@ -269,7 +269,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode, materializedTags), isField);
+            return new ObjectLiteralDataMemberNode(name, isStatic, attributes, JavaScriptNode.cloneUninitialized(valueNode, materializedTags), isFieldOrStaticBlock);
         }
     }
 
@@ -338,7 +338,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isField", "!isAnonymousFunctionDefinition", "setFunctionName==null", "!isMethodNode(valueNode)"}, limit = "3")
+        @Specialization(guards = {"!isFieldOrStaticBlock", "!isAnonymousFunctionDefinition", "setFunctionName==null", "!isMethodNode(valueNode)"}, limit = "3")
         public final void doNoFieldNoFunctionDef(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context,
                         @CachedLibrary("receiver") DynamicObjectLibrary dynamicObject) {
             Object key = evaluateKey(frame);
@@ -349,7 +349,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @SuppressWarnings("unused")
         @Specialization
         public final void doGeneric(VirtualFrame frame, DynamicObject receiver, DynamicObject homeObject, JSContext context) {
-            if (isField) {
+            if (isFieldOrStaticBlock) {
                 return;
             }
             Object key = evaluateKey(frame);
@@ -382,7 +382,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return ObjectLiteralNodeFactory.ComputedObjectLiteralDataMemberNodeGen.create(JavaScriptNode.cloneUninitialized(propertyKey, materializedTags), isStatic, attributes,
-                            JavaScriptNode.cloneUninitialized(valueNode, materializedTags), isField, isAnonymousFunctionDefinition);
+                            JavaScriptNode.cloneUninitialized(valueNode, materializedTags), isFieldOrStaticBlock, isAnonymousFunctionDefinition);
         }
     }
 
@@ -663,6 +663,10 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     public static ObjectLiteralMemberNode newSpreadObjectMember(boolean isStatic, JavaScriptNode valueNode) {
         return new ObjectLiteralSpreadMemberNode(isStatic, JSAttributes.getDefault(), valueNode);
+    }
+
+    public static ObjectLiteralMemberNode newStaticBlockMember(JavaScriptNode valueNode) {
+        return new ObjectLiteralDataMemberNode(null, true, JSAttributes.getDefaultNotEnumerable(), valueNode, true);
     }
 
     @Children private final ObjectLiteralMemberNode[] members;

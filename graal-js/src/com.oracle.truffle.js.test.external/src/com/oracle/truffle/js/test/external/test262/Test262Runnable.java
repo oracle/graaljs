@@ -182,6 +182,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
+                    "class-static-block",
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",
@@ -242,7 +243,6 @@ public class Test262Runnable extends TestRunnable {
                     "arbitrary-module-namespace-names",
                     "array-find-from-last",
                     "class-fields-private-in",
-                    "class-static-block",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     }));
@@ -255,6 +255,7 @@ public class Test262Runnable extends TestRunnable {
                     "class-fields-private",
                     "class-fields-public",
                     "class-methods-private",
+                    "class-static-block",
                     "class-static-fields-private",
                     "class-static-fields-public",
                     "class-static-methods-private",

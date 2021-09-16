@@ -815,6 +815,10 @@ public class NodeFactory {
         return ObjectLiteralNode.newSpreadObjectMember(isStatic, value);
     }
 
+    public ObjectLiteralMemberNode createStaticBlockMember(JavaScriptNode value) {
+        return ObjectLiteralNode.newStaticBlockMember(value);
+    }
+
     public JavaScriptNode createClassDefinition(JSContext context, JSFunctionExpressionNode constructorFunction, JavaScriptNode classHeritage, ObjectLiteralMemberNode[] members,
                     JSWriteFrameSlotNode writeClassBinding, String className, int instanceFieldCount, int staticFieldCount, boolean hasPrivateInstanceMethods, FrameSlot blockScopeSlot) {
         return ClassDefinitionNode.create(context, constructorFunction, classHeritage, members,

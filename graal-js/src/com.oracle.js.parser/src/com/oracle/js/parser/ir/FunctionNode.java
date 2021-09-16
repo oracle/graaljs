@@ -230,7 +230,7 @@ public final class FunctionNode extends LexicalContextExpression implements Flag
     /** Does this function contain a {@code fn.apply(_, arguments)} call? */
     public static final int HAS_APPLY_ARGUMENTS_CALL = 1 << 29;
 
-    /** Is this function a class field initializer? */
+    /** Is this function a class field/static initializer? */
     public static final int IS_CLASS_FIELD_INITIALIZER = 1 << 30;
 
     /**

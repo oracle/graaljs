@@ -547,6 +547,10 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
         this.internalName = internalName;
     }
 
+    public boolean isClassStaticBlock() {
+        return getFlag(FunctionNode.IS_CLASS_FIELD_INITIALIZER) != 0;
+    }
+
     public boolean isCoverArrowHead() {
         return coverArrowHead;
     }

@@ -694,10 +694,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
-    "filePath" : "mjsunit/harmony/class-static-blocks.js",
-    "status" : "FAIL",
-    "comment" : "Class static blocks (GR-31574)"
-  }, {
     "filePath" : "mjsunit/harmony/error-cause.js",
     "status" : "FAIL",
     "comment" : "Uses Worker"

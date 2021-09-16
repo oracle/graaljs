@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,7 +133,7 @@ public final class PropertyNode extends Node {
         if (visitor.enterPropertyNode(this)) {
             //@formatter:off
             return visitor.leavePropertyNode(
-                setKey((Expression) key.accept(visitor)).
+                setKey(key == null ? null : (Expression) key.accept(visitor)).
                 setValue(value == null ? null : (Expression) value.accept(visitor)).
                 setGetter(getter == null ? null : (FunctionNode) getter.accept(visitor)).
                 setSetter(setter == null ? null : (FunctionNode) setter.accept(visitor)));
@@ -150,11 +150,20 @@ public final class PropertyNode extends Node {
 
     @Override
     public void toString(final StringBuilder sb, final boolean printType) {
+        if (isStatic) {
+            sb.append("static ");
+        }
+
         if (value != null) {
-            if (isStatic) {
-                sb.append("static ");
-            }
-            if (value instanceof FunctionNode && ((FunctionNode) value).isMethod()) {
+            if (isClassStaticBlock()) {
+                sb.append("{}");
+            } else if (value instanceof FunctionNode && ((FunctionNode) value).isMethod()) {
+                if (((FunctionNode) value).isAsync()) {
+                    sb.append("async ");
+                }
+                if (((FunctionNode) value).isGenerator()) {
+                    sb.append('*');
+                }
                 toStringKey(sb, printType);
                 ((FunctionNode) value).toStringTail(sb, printType);
             } else {
@@ -162,21 +171,17 @@ public final class PropertyNode extends Node {
                 sb.append(": ");
                 value.toString(sb, printType);
             }
+        } else if (isClassField()) {
+            toStringKey(sb, printType);
         }
 
         if (getter != null) {
-            if (isStatic) {
-                sb.append("static ");
-            }
             sb.append("get ");
             toStringKey(sb, printType);
             getter.toStringTail(sb, printType);
         }
 
         if (setter != null) {
-            if (isStatic) {
-                sb.append("static ");
-            }
             sb.append("set ");
             toStringKey(sb, printType);
             setter.toStringTail(sb, printType);
@@ -314,5 +319,9 @@ public final class PropertyNode extends Node {
 
     public boolean isAccessor() {
         return getter != null || setter != null;
+    }
+
+    public boolean isClassStaticBlock() {
+        return isStatic() && getKey() == null;
     }
 }

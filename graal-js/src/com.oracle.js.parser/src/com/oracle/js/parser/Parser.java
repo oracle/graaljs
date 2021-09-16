@@ -855,6 +855,13 @@ public class Parser extends AbstractParser {
         return env.ecmaScriptVersion >= 12;
     }
 
+    /**
+     * ES2022 or newer.
+     */
+    private boolean isES2022() {
+        return env.ecmaScriptVersion >= 13;
+    }
+
     private boolean isClassFields() {
         return ES2020_CLASS_FIELDS && env.classFields;
     }
@@ -1602,7 +1609,7 @@ public class Parser extends AbstractParser {
             ArrayList<PropertyNode> classElements = new ArrayList<>();
             Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
             int instanceFieldCount = 0;
-            int staticFieldCount = 0;
+            int staticElementCount = 0;
             boolean hasPrivateMethods = false;
             boolean hasPrivateInstanceMethods = false;
             for (;;) {
@@ -1618,7 +1625,17 @@ public class Parser extends AbstractParser {
                     TokenType nextToken = lookahead();
                     if (nextToken != LPAREN && nextToken != ASSIGN && nextToken != SEMICOLON && nextToken != RBRACE) {
                         isStatic = true;
+                        int staticLine = line;
+                        long staticToken = token;
                         next();
+
+                        if (type == LBRACE && isES2022()) {
+                            // static initialization block
+                            PropertyNode staticInit = staticInitializer(staticLine, staticToken);
+                            staticElementCount++;
+                            classElements.add(staticInit);
+                            continue;
+                        }
                     } // else method/field named 'static'
                 }
                 long classElementToken = token;
@@ -1642,7 +1659,7 @@ public class Parser extends AbstractParser {
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, classElementToken, computed);
                     if (isStatic) {
-                        staticFieldCount++;
+                        staticElementCount++;
                     } else {
                         instanceFieldCount++;
                     }
@@ -1733,7 +1750,7 @@ public class Parser extends AbstractParser {
 
             classScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classScope,
-                            instanceFieldCount, staticFieldCount, hasPrivateMethods, hasPrivateInstanceMethods);
+                            instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods);
         } finally {
             lc.pop(classNode);
         }
@@ -1984,6 +2001,32 @@ public class Parser extends AbstractParser {
         final List<Statement> statements = Collections.singletonList(new ReturnNode(lineNumber, fieldToken, finish, initializer));
         Block bodyBlock = new Block(fieldToken, finish, Block.IS_BODY | Block.IS_SYNTHETIC, body.getScope(), statements);
         return Pair.create(createFunctionNode(function, fieldToken, null, lineNumber, bodyBlock), isAnonymousFunctionDefinition);
+    }
+
+    /**
+     * Parse <code>{ ClassStaticBlockBody }</code>.
+     */
+    private PropertyNode staticInitializer(int lineNumber, long staticToken) {
+        assert type == LBRACE;
+        int functionFlags = FunctionNode.IS_METHOD | FunctionNode.IS_CLASS_FIELD_INITIALIZER | FunctionNode.IS_ANONYMOUS;
+        ParserContextFunctionNode function = createParserContextFunctionNode(null, staticToken, functionFlags, lineNumber, Collections.emptyList(), 0);
+        function.setInternalName(INITIALIZER_FUNCTION_NAME);
+        lc.push(function);
+        Block bodyBlock;
+        try {
+            bodyBlock = functionBody(function);
+        } finally {
+            lc.pop(function);
+        }
+
+        // It is a Syntax Error if ContainsArguments of Initializer is true.
+        assert function.getFlag(FunctionNode.USES_ARGUMENTS) == 0;
+
+        // currently required for all nested functions.
+        lc.setCurrentFunctionFlag(FunctionNode.HAS_CLOSURES);
+
+        FunctionNode functionNode = createFunctionNode(function, staticToken, null, lineNumber, bodyBlock);
+        return new PropertyNode(staticToken, finish, null, functionNode, null, null, true, false, false, false, false, false);
     }
 
     private boolean isPropertyName(long currentToken) {
@@ -3130,7 +3173,8 @@ public class Parser extends AbstractParser {
      */
     private void returnStatement(boolean yield, boolean await) {
         // check for return outside function
-        if (lc.getCurrentFunction().isScriptOrModule()) {
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        if (currentFunction.isScriptOrModule() || currentFunction.isClassStaticBlock()) {
             throw error(AbstractParser.message("invalid.return"));
         }
 
@@ -3232,15 +3276,20 @@ public class Parser extends AbstractParser {
         // Capture await token.
         long awaitToken = token;
 
+        ParserContextFunctionNode currentFunction = lc.getCurrentFunction();
+        if (currentFunction.isClassStaticBlock()) {
+            throw error(AbstractParser.message("unexpected.token", type.getNameOrType()));
+        }
+
         recordYieldOrAwait();
 
         nextOrEOL();
 
         Expression expression = unaryExpression(yield, true);
 
-        if (isModule && lc.getCurrentFunction().isModule()) {
+        if (isModule && currentFunction.isModule()) {
             // Top-level await module: mark the body of the module as async.
-            lc.getCurrentFunction().setFlag(FunctionNode.IS_ASYNC);
+            currentFunction.setFlag(FunctionNode.IS_ASYNC);
         }
         // Construct and add AWAIT node.
         return new UnaryNode(Token.recast(awaitToken, AWAIT), expression);
@@ -4236,7 +4285,7 @@ public class Parser extends AbstractParser {
             lc.push(parameterBlock);
             try {
                 if (!env.syntaxExtensions || type != RPAREN) {
-                    formalParameter(yield, await);
+                    formalParameter(false, false);
                 } // else Nashorn allows no-argument setters
                 expect(RPAREN);
 
@@ -5359,7 +5408,7 @@ public class Parser extends AbstractParser {
      */
     private Block functionBody(final ParserContextFunctionNode functionNode) {
         final boolean yield = functionNode.isGenerator();
-        final boolean await = functionNode.isAsync() || (isTopLevelAwait() && isModule && functionNode.isModule());
+        final boolean await = functionNode.isAsync() || (isTopLevelAwait() && isModule && functionNode.isModule()) || functionNode.isClassStaticBlock();
         final long bodyToken = token;
         final int bodyFinish;
         final boolean parseBody;

@@ -78,7 +78,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * <li>The [[PrivateBrand]] slot will either always or never be present.
  * </ul>
  *
- * This node is also used to define static fields ({@link #executeStaticFields}).
+ * This node is also used to define static fields ({@link #executeStaticElements}).
  */
 public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode targetNode;
@@ -105,8 +105,8 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         return InitializeInstanceElementsNodeGen.create(context, null, null);
     }
 
-    public final Object executeStaticFields(Object targetConstructor, Object[][] staticFields) {
-        return executeEvaluated(targetConstructor, Undefined.instance, staticFields, Undefined.instance);
+    public final Object executeStaticElements(Object targetConstructor, Object[][] staticElements) {
+        return executeEvaluated(targetConstructor, Undefined.instance, staticElements, Undefined.instance);
     }
 
     protected abstract Object executeEvaluated(Object target, Object constructor, Object[][] fields, Object brand);
@@ -164,10 +164,10 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             Object key = field[0];
             Object initializer = field[1];
             boolean isAnonymousFunctionDefinition = (boolean) field[2];
-            JavaScriptBaseNode writeNode;
+            JavaScriptBaseNode writeNode = null;
             if (key instanceof HiddenKey) {
                 writeNode = PrivateFieldAddNode.create(context);
-            } else {
+            } else if (key != null) {
                 writeNode = WriteElementNode.create(context, true, true);
             }
             JSFunctionCallNode callNode = null;
@@ -199,7 +199,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             if (writeNode instanceof PrivateFieldAddNode) {
                 assert key instanceof HiddenKey : key;
                 ((PrivateFieldAddNode) writeNode).execute(target, key, value);
-            } else {
+            } else if (writeNode != null) {
                 assert JSRuntime.isPropertyKey(key) : key;
                 ((WriteElementNode) writeNode).executeWithTargetAndIndexAndValue(target, key, value);
             }

@@ -100,6 +100,7 @@ public class TestV8Runnable extends TestRunnable {
     }));
     private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-atomics-waitasync",
+                    "--harmony-class-static-blocks",
                     "--harmony-object-has-own",
                     "--harmony-regexp-match-indices",
                     "--harmony-top-level-await"
