@@ -1244,8 +1244,11 @@ public final class GraalJSAccess {
         return JSArrayBuffer.createDirectArrayBuffer(realm.getContext(), realm, byteLength);
     }
 
-    public Object arrayBufferNewBackingStore(int byteLength) {
-        return DirectByteBufferHelper.allocateDirect(byteLength);
+    public Object arrayBufferNewBackingStore(long byteLength) {
+        if (byteLength > Integer.MAX_VALUE || byteLength < 0) {
+            throw Errors.createRangeError("Cannot create a Buffer larger than 2147483647 bytes");
+        }
+        return DirectByteBufferHelper.allocateDirect((int) byteLength);
     }
 
     public long arrayBufferByteLength(Object arrayBuffer) {

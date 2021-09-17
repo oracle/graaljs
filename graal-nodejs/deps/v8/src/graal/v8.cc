@@ -3453,7 +3453,7 @@ namespace v8 {
 
     std::unique_ptr<BackingStore> ArrayBuffer::NewBackingStore(Isolate* isolate, size_t byte_length) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_new_backing_store, Object, (jint) byte_length);
+        JNI_CALL(jobject, java_buffer, graal_isolate, GraalAccessMethod::array_buffer_new_backing_store, Object, (jlong) byte_length);
         JNIEnv* env = graal_isolate->GetJNIEnv();
         jobject java_store = env->NewGlobalRef(java_buffer);
         env->DeleteLocalRef(java_buffer);
