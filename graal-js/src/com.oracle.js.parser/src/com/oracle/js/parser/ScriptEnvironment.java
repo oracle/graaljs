@@ -116,8 +116,12 @@ public final class ScriptEnvironment {
     /** Are import assertions enabled. */
     final boolean importAssertions;
 
+    /** Is private field in enabled */
+    final boolean privateFieldsIn;
+
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, FunctionStatementBehavior functionStatementBehavior,
+                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn,
+                    FunctionStatementBehavior functionStatementBehavior,
                     PrintWriter dumpOnError) {
         this.namespace = new Namespace();
         this.err = dumpOnError;
@@ -135,6 +139,7 @@ public final class ScriptEnvironment {
         this.annexB = annexB;
         this.classFields = classFields;
         this.importAssertions = importAssertions;
+        this.privateFieldsIn = privateFieldsIn;
     }
 
     /**
@@ -176,6 +181,7 @@ public final class ScriptEnvironment {
         private boolean annexB = true;
         private boolean classFields = true;
         private boolean importAssertions = false;
+        private boolean privateFieldsIn = false;
         private FunctionStatementBehavior functionStatementBehavior = FunctionStatementBehavior.ERROR;
         private PrintWriter dumpOnError;
 
@@ -237,6 +243,11 @@ public final class ScriptEnvironment {
             return this;
         }
 
+        public Builder privateFieldsIn(boolean privateFieldsIn) {
+            this.privateFieldsIn = privateFieldsIn;
+            return this;
+        }
+
         public Builder functionStatementBehavior(FunctionStatementBehavior functionStatementBehavior) {
             this.functionStatementBehavior = functionStatementBehavior;
             return this;
@@ -249,7 +260,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAssertions, functionStatementBehavior, dumpOnError);
+                            classFields, importAssertions, privateFieldsIn, functionStatementBehavior, dumpOnError);
         }
     }
 }

@@ -554,6 +554,11 @@ public final class JSContextOptions {
     public static final String MLE_PROPERTY_NAME = "MLE";
     @CompilationFinal private boolean mleMode;
 
+    public static final String PRIVATE_FIELDS_IN_NAME = JS_OPTION_PREFIX + "private-fields-in";
+    @Option(name = PRIVATE_FIELDS_IN_NAME, category = OptionCategory.USER, help = "Enable private field in in operator") //
+    public static final OptionKey<Boolean> PRIVATE_FIELDS_IN = new OptionKey<>(false);
+    @CompilationFinal private boolean privateFieldsIn;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -650,6 +655,7 @@ public final class JSContextOptions {
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
+        this.privateFieldsIn = PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? readBooleanOption(PRIVATE_FIELDS_IN) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -1044,6 +1050,10 @@ public final class JSContextOptions {
         return esmEvalReturnsExports;
     }
 
+    public boolean isPrivateFieldsIn() {
+        return privateFieldsIn;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1102,6 +1112,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.wasmBigInt ? 1 : 0);
         hash = 53 * hash + (this.esmEvalReturnsExports ? 1 : 0);
         hash = 53 * hash + (this.mleMode ? 1 : 0);
+        hash = 53 * hash + (this.privateFieldsIn ? 1 : 0);
         return hash;
     }
 
@@ -1277,6 +1288,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.mleMode != other.mleMode) {
+            return false;
+        }
+        if (this.privateFieldsIn != other.privateFieldsIn) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
