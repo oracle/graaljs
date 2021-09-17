@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,5 +112,15 @@ describe('ArrayBuffer', function () {
                 assert.ok(array instanceof global[type]);
             });
         }
+    });
+    describe('NewBackingStore', function () {
+        it('should not crash for a very large byte length', function() {
+            try {
+                // should either succeed or throw RangeError
+                module.ArrayBuffer_NewBackingStoreSodium();
+            } catch (e) {
+                assert.ok(e instanceof RangeError);
+            }
+        });
     });
 });
