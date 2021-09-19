@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -91,5 +91,12 @@ ArrayBufferViewNewTest(Float64Array, 8)
 ArrayBufferViewNewTest(BigInt64Array, 8)
 ArrayBufferViewNewTest(BigUint64Array, 8)
 ArrayBufferViewNewTest(DataView, 1)
+
+// Extracted from a test of sodium npm package
+EXPORT_TO_JS(NewBackingStoreSodium) {
+    Isolate* isolate = args.GetIsolate();
+    // Check that we do not crash
+    ArrayBuffer::NewBackingStore(isolate, 4294967173u); // -123 interpreted as unsigned
+}
 
 #undef SUITE

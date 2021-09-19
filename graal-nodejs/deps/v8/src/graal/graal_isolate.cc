@@ -681,7 +681,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::array_buffer_byte_length, "arrayBufferByteLength", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new, "arrayBufferNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new_buffer, "arrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_new_backing_store, "arrayBufferNewBackingStore", "(I)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_new_backing_store, "arrayBufferNewBackingStore", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_get_contents, "arrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_buffer, "arrayBufferViewBuffer", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
