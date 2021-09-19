@@ -22,7 +22,7 @@ local common_json = (import "common.json");
   deploy:      {targets+: ['deploy']},
   gate:        {targets+: ['gate']},
   postMerge:   {targets+: ['post-merge']},
-  bench:       {targets+: ['bench', 'post-merge']},
+  bench:       {targets+: ['bench']},
   dailyBench:  {targets+: ['bench', 'daily']},
   weeklyBench: {targets+: ['bench', 'weekly']},
   manualBench: {targets+: ['bench']},
@@ -37,6 +37,7 @@ local common_json = (import "common.json");
 
   local common = python3 + {
     packages+: {
+      'mx': '5.310.0',
       'pip:pylint': '==1.9.3',
       'pip:ninja_syntax': '==1.7.2',
     },
