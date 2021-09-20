@@ -605,6 +605,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     ],
     has_polyglot_lib_entrypoints=True,
     installable=False,
+    supported=True,
 ))
 
 # pylint: disable=line-too-long
