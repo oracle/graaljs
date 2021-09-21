@@ -52,6 +52,7 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 import java.util.Set;
@@ -68,6 +69,8 @@ public abstract class JSUnaryMinusNode extends JSUnaryNode {
             int value = ((JSConstantIntegerNode) operand).executeInt(null);
             if (value == 0) {
                 return JSConstantNode.createDouble(-0.0); // negative zero
+            } else if (value == Integer.MIN_VALUE) {
+                return JSConstantNode.createSafeInteger(SafeInteger.valueOf(-(long) value));
             } else {
                 return JSConstantNode.createInt(-value);
             }
