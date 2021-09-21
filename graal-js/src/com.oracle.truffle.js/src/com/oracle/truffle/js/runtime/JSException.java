@@ -324,4 +324,10 @@ public final class JSException extends GraalJSException {
         return delegateLib.getMetaObject(getErrorObjectEager());
     }
 
+    public static void ensureInitialized() throws ClassNotFoundException {
+        // Ensure InteropLibrary is initialized, too.
+        Class.forName(JSExceptionGen.class.getName());
+        Class.forName(GraalJSExceptionGen.class.getName());
+        Class.forName(UserScriptExceptionGen.class.getName());
+    }
 }

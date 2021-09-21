@@ -106,6 +106,7 @@ import com.oracle.truffle.js.runtime.JSEngine;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.interop.JavaScriptLanguageView;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -555,14 +556,15 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         // Ensure error-related classes are initialized to avoid NoClassDefFoundError
         // during conversion of StackOverflowError to RangeError
         try {
+            JSException.ensureInitialized();
+            JSErrorObject.ensureInitialized();
             Class.forName(Errors.class.getName());
-            Class.forName(JSException.class.getName());
             Class.forName(TruffleStackTrace.class.getName());
             Class.forName(TruffleStackTraceElement.class.getName());
             Class.forName(InitErrorObjectNodeFactory.DefineStackPropertyNodeGen.class.getName());
             Class.forName(TryCatchNode.GetErrorObjectNode.class.getName());
-        } catch (Exception ex) {
-            ex.printStackTrace();
+        } catch (ClassNotFoundException ex) {
+            throw Errors.shouldNotReachHere(ex);
         }
     }
 }
