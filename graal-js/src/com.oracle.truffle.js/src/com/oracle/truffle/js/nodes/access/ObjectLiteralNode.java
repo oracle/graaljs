@@ -45,7 +45,6 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -216,7 +215,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     private abstract static class CachingObjectLiteralMemberNode extends ObjectLiteralMemberNode {
         protected final Object name;
-        @CompilationFinal private DynamicObjectLibrary dynamicObjectLibrary;
+        @Child private DynamicObjectLibrary dynamicObjectLibrary;
 
         CachingObjectLiteralMemberNode(Object name, boolean isStatic, int attributes, boolean isField) {
             super(isStatic, attributes, isField, false);
