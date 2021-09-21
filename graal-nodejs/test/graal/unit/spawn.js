@@ -113,4 +113,11 @@ describe('Spawn', function () {
             assert.strictEqual(result.status, 1);
         });
     }
+    it('should finish gracefully when the process is terminated from an inner context', function () {
+        var code = `require('vm').runInNewContext('process.exit()', { process: process })`;
+        var result = spawnSync(process.execPath, ['-e', code]);
+        assert.strictEqual(result.stdout.toString(), '');
+        assert.strictEqual(result.stderr.toString(), '');
+        assert.strictEqual(result.status, 0);
+    });
 });
