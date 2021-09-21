@@ -15,7 +15,7 @@ local common_json = (import "common.json");
 
   jdk17: {
     downloads+: {
-      JAVA_HOME: common_json.jdks["oraclejdk17"],
+      JAVA_HOME: common_json.jdks["labsjdk-ce-17"],
     },
   },
 
