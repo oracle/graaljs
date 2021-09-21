@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.concurrent.locks.Lock;
-
-import com.oracle.truffle.api.Assumption;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -69,8 +65,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.utilities.AlwaysValidAssumption;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -548,361 +542,69 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    static final class DefinePropertyCache {
-        protected final Shape oldShape;
-        protected final Shape newShape;
-        protected final Property property;
-        protected final Assumption newShapeValidAssumption;
-        protected final DefinePropertyCache next;
-        protected static final DefinePropertyCache GENERIC = new DefinePropertyCache(null, null, null, null, null);
+    public static class DataPropertyPutWithoutFlagsNode extends LinkedPropertySetNode {
+        @Child protected DynamicObjectLibrary objectLib;
 
-        protected DefinePropertyCache(Shape oldShape, Shape newShape, Property property, Assumption newShapeValidAssumption, DefinePropertyCache next) {
-            this.oldShape = oldShape;
-            this.newShape = newShape;
-            this.property = property;
-            this.newShapeValidAssumption = newShapeValidAssumption;
-            this.next = next;
-        }
-
-        protected boolean isValid() {
-            return newShapeValidAssumption == NeverValidAssumption.INSTANCE || newShapeValidAssumption.isValid();
-        }
-
-        protected void maybeUpdateShape(DynamicObject store) {
-            if (newShapeValidAssumption == NeverValidAssumption.INSTANCE) {
-                updateShape(store);
-            }
-        }
-
-        @TruffleBoundary
-        private static void updateShape(DynamicObject store) {
-            DynamicObjectLibrary.getUncached().updateShape(store);
-        }
-
-        protected boolean acceptsValue(Object value) {
-            if (oldShape != newShape) {
-                return property.getLocation().canStore(value);
-            } else {
-                return property.getLocation().canSet(value);
-            }
-        }
-
-        @Override
-        public String toString() {
-            CompilerAsserts.neverPartOfCompilation();
-            StringBuilder sb = new StringBuilder();
-            int count = 0;
-            sb.append('[');
-            for (DefinePropertyCache current = this; current != null; current = current.next) {
-                sb.append(++count);
-                sb.append(": {property=").append(current.property);
-                if (current.oldShape != current.newShape) {
-                    sb.append(", oldShape=").append(current.oldShape).append(", newShape=").append(current.newShape);
-                } else {
-                    sb.append(", shape=").append(current.oldShape);
-                }
-                sb.append("}");
-                if (current.next != null) {
-                    sb.append(", ");
-                }
-            }
-            sb.append(']');
-            return sb.toString();
-        }
-
-        protected DefinePropertyCache withNext(DefinePropertyCache newNext) {
-            return new DefinePropertyCache(oldShape, newShape, property, newShapeValidAssumption, newNext);
-        }
-    }
-
-    static DefinePropertyCache filterValid(DefinePropertyCache cache) {
-        if (cache == null) {
-            return null;
-        }
-        DefinePropertyCache filteredNext = filterValid(cache.next);
-        if (cache.isValid()) {
-            if (filteredNext == cache.next) {
-                return cache;
-            } else {
-                return cache.withNext(filteredNext);
-            }
-        } else {
-            return filteredNext;
-        }
-    }
-
-    public static class DataPropertySetNode extends LinkedPropertySetNode {
-        @CompilationFinal protected DefinePropertyCache cache;
-
-        public DataPropertySetNode(ReceiverCheckNode receiverCheck) {
+        public DataPropertyPutWithoutFlagsNode(Object key, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
+            this.objectLib = JSObjectUtil.createDispatched(key);
         }
 
-        public DataPropertySetNode(Object key, ReceiverCheckNode receiverCheck, Shape oldShape, Shape newShape, Property property) {
-            super(receiverCheck);
-            assert JSProperty.isData(property);
-            assert property.getKey().equals(key) : "property=" + property + " key=" + key;
-            assert property == newShape.getProperty(key);
-            this.cache = new DefinePropertyCache(oldShape, newShape, property, getShapeValidAssumption(oldShape, newShape), null);
-        }
-
-        protected JSDynamicObject getStore(Object thisObj) {
+        protected static JSDynamicObject getStore(Object thisObj) {
             return ((JSDynamicObject) thisObj);
         }
 
-        @ExplodeLoop
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = getStore(thisObj);
-            for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
-                if (resolved.oldShape.check(store)) {
-                    if (!resolved.isValid()) {
-                        break;
-                    }
-                    if (setCachedObject(store, value, resolved)) {
-                        return true;
-                    }
-                }
-            }
-
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return setValueAndSpecialize(store, value, root);
-        }
-
-        @ExplodeLoop
-        @Override
-        protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
-            JSDynamicObject store = getStore(thisObj);
-            for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
-                if (resolved.oldShape.check(store)) {
-                    if (!resolved.isValid()) {
-                        break;
-                    }
-                    if (setCachedInt(store, value, resolved)) {
-                        return true;
-                    } else if (setCachedDouble(store, value, resolved)) {
-                        return true;
-                    } else if (setCachedObject(store, value, resolved)) {
-                        return true;
-                    }
-                }
-            }
-
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return setValueAndSpecialize(store, value, root);
-        }
-
-        @ExplodeLoop
-        @Override
-        protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
-            JSDynamicObject store = getStore(thisObj);
-            for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
-                if (resolved.oldShape.check(store)) {
-                    if (!resolved.isValid()) {
-                        break;
-                    }
-                    if (setCachedDouble(store, value, resolved)) {
-                        return true;
-                    } else if (setCachedObject(store, value, resolved)) {
-                        return true;
-                    }
-                }
-            }
-
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return setValueAndSpecialize(store, value, root);
-        }
-
-        @ExplodeLoop
-        @Override
-        protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
-            JSDynamicObject store = getStore(thisObj);
-            for (DefinePropertyCache resolved = cache; resolved != null; resolved = resolved.next) {
-                if (resolved.oldShape.check(store)) {
-                    if (!resolved.isValid()) {
-                        break;
-                    }
-                    if (setCachedBoolean(store, value, resolved)) {
-                        return true;
-                    } else if (setCachedObject(store, value, resolved)) {
-                        return true;
-                    }
-                }
-            }
-
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            return setValueAndSpecialize(store, value, root);
-        }
-
-        private static boolean setCachedObject(DynamicObject store, Object value, DefinePropertyCache resolved) {
-            if (resolved.oldShape != resolved.newShape) {
-                if (resolved.property.getLocation().canStore(value)) {
-                    resolved.property.setSafe(store, value, resolved.oldShape, resolved.newShape);
-                    resolved.maybeUpdateShape(store);
-                    return true;
-                }
-            } else {
-                if (resolved.property.getLocation().canSet(value)) {
-                    resolved.property.setSafe(store, value, resolved.oldShape);
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        private static boolean setCachedInt(DynamicObject store, int value, DefinePropertyCache resolved) {
-            if (resolved.property.getLocation() instanceof IntLocation) {
-                IntLocation intLocation = (IntLocation) resolved.property.getLocation();
-                if (resolved.oldShape != resolved.newShape) {
-                    intLocation.setInt(store, value, resolved.oldShape, resolved.newShape);
-                    resolved.maybeUpdateShape(store);
-                    return true;
-                } else {
-                    if (!resolved.property.getLocation().isFinal()) {
-                        try {
-                            intLocation.setInt(store, value, resolved.oldShape);
-                        } catch (FinalLocationException e) {
-                            throw Errors.shouldNotReachHere();
-                        }
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private static boolean setCachedDouble(DynamicObject store, double value, DefinePropertyCache resolved) {
-            if (resolved.property.getLocation() instanceof DoubleLocation) {
-                DoubleLocation doubleLocation = (DoubleLocation) resolved.property.getLocation();
-                if (resolved.oldShape != resolved.newShape) {
-                    doubleLocation.setDouble(store, value, resolved.oldShape, resolved.newShape);
-                    resolved.maybeUpdateShape(store);
-                    return true;
-                } else {
-                    if (!resolved.property.getLocation().isFinal()) {
-                        try {
-                            doubleLocation.setDouble(store, value, resolved.oldShape);
-                        } catch (FinalLocationException e) {
-                            throw Errors.shouldNotReachHere();
-                        }
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private static boolean setCachedBoolean(DynamicObject store, boolean value, DefinePropertyCache resolved) {
-            if (resolved.property.getLocation() instanceof BooleanLocation) {
-                BooleanLocation booleanLocation = (BooleanLocation) resolved.property.getLocation();
-                if (resolved.oldShape != resolved.newShape) {
-                    booleanLocation.setBoolean(store, value, resolved.oldShape, resolved.newShape);
-                    resolved.maybeUpdateShape(store);
-                    return true;
-                } else {
-                    if (!resolved.property.getLocation().isFinal()) {
-                        try {
-                            booleanLocation.setBoolean(store, value, resolved.oldShape);
-                        } catch (FinalLocationException e) {
-                            throw Errors.shouldNotReachHere();
-                        }
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
-
-        private boolean setValueAndSpecialize(DynamicObject obj, Object value, PropertySetNode root) {
-            CompilerAsserts.neverPartOfCompilation();
-            Object key = root.getKey();
-            DefinePropertyCache res;
-            Lock lock = root.getLock();
-            lock.lock();
-            try {
-                DefinePropertyCache currentHead = cache;
-                do {
-                    assert currentHead == cache;
-                    int cachedCount = 0;
-                    boolean invalid = false;
-                    res = null;
-
-                    for (DefinePropertyCache c = currentHead; c != null; c = c.next) {
-                        cachedCount++;
-                        if (!c.isValid()) {
-                            invalid = true;
-                            break;
-                        } else {
-                            if (res == null && c.acceptsValue(value)) {
-                                res = c;
-                                // continue checking for invalid cache entries
-                            }
-                        }
-                    }
-                    if (invalid) {
-                        assert cachedCount > 0;
-                        currentHead = filterValid(currentHead);
-                        this.cache = currentHead;
-                        res = null;
-                        continue; // restart
-                    }
-                    if (res == null) {
-                        Shape oldShape = obj.getShape();
-                        Property property = oldShape.getProperty(key);
-                        Shape newShape;
-                        Property newProperty;
-                        if (property == null) {
-                            JSObjectUtil.putDataProperty(root.getContext(), obj, key, value, root.getAttributeFlags());
-                            newShape = obj.getShape();
-                            newProperty = newShape.getLastProperty();
-                            assert key.equals(newProperty.getKey());
-                        } else {
-                            if (JSProperty.isData(property) && !JSProperty.isProxy(property)) {
-                                assert JSProperty.isWritable(property);
-                                property.setGeneric(obj, value, null);
-                            } else {
-                                JSObjectUtil.defineDataProperty(obj, key, value, property.getFlags());
-                            }
-                            newShape = obj.getShape();
-                            newProperty = newShape.getProperty(key);
-                        }
-
-                        if (!oldShape.isValid()) {
-                            // pending removal
-                            this.cache = null;
-                            return true; // already set
-                        }
-
-                        Assumption newShapeValidAssumption = getShapeValidAssumption(oldShape, newShape);
-                        this.cache = new DefinePropertyCache(oldShape, newShape, newProperty, newShapeValidAssumption, currentHead);
-                        return true; // already set
-                    }
-                } while (res == null);
-            } finally {
-                lock.unlock();
-            }
-            assert res.acceptsValue(value);
-            res.property.setSafe(obj, value, res.oldShape, res.newShape);
+            objectLib.put(store, root.key, value);
             return true;
         }
 
-        private static Assumption getShapeValidAssumption(Shape oldShape, Shape newShape) {
-            if (oldShape == newShape) {
-                return AlwaysValidAssumption.INSTANCE;
-            }
-            return newShape.isValid() ? newShape.getValidAssumption() : NeverValidAssumption.INSTANCE;
+        @Override
+        protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
+            JSDynamicObject store = getStore(thisObj);
+            objectLib.putInt(store, root.key, value);
+            return true;
         }
 
         @Override
-        protected boolean sweep() {
-            DefinePropertyCache before = this.cache;
-            DefinePropertyCache after = filterValid(before);
-            if (before == after) {
-                return false;
-            } else {
-                this.cache = after;
-                return true;
-            }
+        protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
+            JSDynamicObject store = getStore(thisObj);
+            objectLib.putDouble(store, root.key, value);
+            return true;
+        }
+    }
+
+    public static class DataPropertyPutWithFlagsNode extends LinkedPropertySetNode {
+        @Child protected DynamicObjectLibrary objectLib;
+
+        protected DataPropertyPutWithFlagsNode(Object key, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            this.objectLib = JSObjectUtil.createDispatched(key);
+        }
+
+        @Override
+        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
+            JSDynamicObject store = (JSDynamicObject) thisObj;
+            this.objectLib.putWithFlags(store, root.key, value, root.getAttributeFlags());
+            return true;
+        }
+    }
+
+    public static class DataPropertyPutConstantNode extends LinkedPropertySetNode {
+        @Child protected DynamicObjectLibrary objectLib;
+
+        protected DataPropertyPutConstantNode(Object key, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            this.objectLib = JSObjectUtil.createDispatched(key);
+        }
+
+        @Override
+        protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
+            JSDynamicObject store = (JSDynamicObject) thisObj;
+            this.objectLib.putConstant(store, root.key, value, root.getAttributeFlags());
+            return true;
         }
     }
 
@@ -1255,10 +957,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return new PropertyProxySetNode(property, shapeCheck, isStrict());
         } else {
             assert JSProperty.isWritable(property) && depth == 0 && !JSProperty.isProxy(property);
-            if (property.getLocation().isDeclared()) {
-                return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property, value, context);
-            } else if (!property.getLocation().canSet(value)) {
-                return createCachedDataPropertyGeneralize(thisObj, depth);
+            if (property.getLocation().isConstant() || !property.getLocation().canSet(value)) {
+                return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
 
             if (property.getLocation() instanceof IntLocation) {
@@ -1273,25 +973,24 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
     }
 
-    private static SetCacheNode createDefinePropertyNode(Object key, ReceiverCheckNode shapeCheck, Object value, JSContext context, int attributeFlags, boolean declaration) {
-        Shape oldShape = shapeCheck.getShape();
-        Shape newShape = declaration ? JSObjectUtil.shapeDefineDeclaredDataProperty(context, oldShape, key, value, attributeFlags)
-                        : JSObjectUtil.shapeDefineDataProperty(context, oldShape, key, value, attributeFlags);
-        return createResolvedDefinePropertyNode(key, shapeCheck, oldShape, newShape, attributeFlags);
+    private SetCacheNode createDefineNewPropertyNode(ReceiverCheckNode shapeCheck) {
+        JSObjectUtil.checkForNoSuchPropertyOrMethod(context, key);
+        if (isDeclaration()) {
+            return new DataPropertyPutConstantNode(key, shapeCheck);
+        } else if (getAttributeFlags() == 0) {
+            // new property and flags=0 means we can use put without flags
+            // must not use this node if the property already exists and we want to change the flags
+            return new DataPropertyPutWithoutFlagsNode(key, shapeCheck);
+        } else {
+            return new DataPropertyPutWithFlagsNode(key, shapeCheck);
+        }
     }
 
-    private static SetCacheNode createRedefinePropertyNode(Object key, ReceiverCheckNode shapeCheck, Shape oldShape, Property property, Object value, JSContext context) {
+    private static SetCacheNode createRedefinePropertyNode(Object key, ReceiverCheckNode shapeCheck, Shape oldShape, Property property) {
         assert JSProperty.isData(property) && JSProperty.isWritable(property);
         assert property == oldShape.getProperty(key);
 
-        Shape newShape = JSObjectUtil.shapeDefineDataProperty(context, oldShape, key, value, property.getFlags());
-        return createResolvedDefinePropertyNode(key, shapeCheck, oldShape, newShape, property.getFlags());
-    }
-
-    private SetCacheNode createCachedDataPropertyGeneralize(JSDynamicObject thisObj, int depth) {
-        Shape oldShape = thisObj.getShape();
-        AbstractShapeCheckNode shapeCheck = createShapeCheckNode(oldShape, thisObj, depth, false, false);
-        return new DataPropertySetNode(shapeCheck);
+        return new DataPropertyPutWithoutFlagsNode(key, shapeCheck);
     }
 
     private SetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
@@ -1303,13 +1002,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             assert JSProperty.isAccessor(property);
             return new AccessorPropertySetNode(property, receiverCheck, isStrict());
         }
-    }
-
-    private static SetCacheNode createResolvedDefinePropertyNode(Object key, ReceiverCheckNode receiverCheck, Shape oldShape, Shape newShape, int attributeFlags) {
-        Property prop = newShape.getProperty(key);
-        assert (prop.getFlags() & (JSAttributes.ATTRIBUTES_MASK | JSProperty.CONST)) == attributeFlags;
-
-        return new DataPropertySetNode(key, receiverCheck, oldShape, newShape, prop);
     }
 
     @Override
@@ -1334,7 +1026,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 // define the property on the receiver; currently not handled, rewrite to generic
                 return createGenericPropertyNode();
             } else if (JSShape.isExtensible(cacheShape) || key instanceof HiddenKey) {
-                return createDefinePropertyNode(key, shapeCheck, value, context, getAttributeFlags(), isDeclaration());
+                return createDefineNewPropertyNode(shapeCheck);
             } else {
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
             }
@@ -1403,7 +1095,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
         if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
             if (JSProperty.isWritable(property) && depth == 0 && !superProperty && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isDeclared() && property.getLocation().canSet(value);
+                return !property.getLocation().isValue() && property.getLocation().canSet(value);
             }
         }
         return false;
