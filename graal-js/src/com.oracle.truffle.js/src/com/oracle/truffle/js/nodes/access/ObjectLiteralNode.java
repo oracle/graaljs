@@ -43,9 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Arrays;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -622,9 +620,8 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
     public static ObjectLiteralMemberNode newComputedDataMember(JavaScriptNode name, boolean isStatic, boolean enumerable, JavaScriptNode valueNode, boolean isField,
                     boolean isAnonymousFunctionDefinition) {
-        return ObjectLiteralNodeFactory.ComputedObjectLiteralDataMemberNodeGen.create(name, isStatic, enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable(), valueNode,
-                        isField,
-                        isAnonymousFunctionDefinition);
+        int attributes = enumerable ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable();
+        return ObjectLiteralNodeFactory.ComputedObjectLiteralDataMemberNodeGen.create(name, isStatic, attributes, valueNode, isField, isAnonymousFunctionDefinition);
     }
 
     public static ObjectLiteralMemberNode newComputedAccessorMember(JavaScriptNode name, boolean isStatic, boolean enumerable, JavaScriptNode getter, JavaScriptNode setter) {
@@ -719,22 +716,6 @@ public class ObjectLiteralNode extends JavaScriptNode {
     @Override
     public boolean isResultAlwaysOfType(Class<?> clazz) {
         return clazz == DynamicObject.class;
-    }
-
-    static CharSequence reasonResolved(Object key) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (TruffleOptions.TraceRewrites) {
-            return String.format("resolved property %s", key);
-        }
-        return "resolved property";
-    }
-
-    static CharSequence reasonNewShapeAssumptionInvalidated(Object key) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (TruffleOptions.TraceRewrites) {
-            return String.format("new shape assumption invalidated (property %s)", key);
-        }
-        return "new shape assumption invalidated";
     }
 
     @Override
