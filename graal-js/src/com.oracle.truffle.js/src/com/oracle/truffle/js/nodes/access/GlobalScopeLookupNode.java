@@ -47,13 +47,13 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.utilities.NeverValidAssumption;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.util.AssumptionUtil;
 
 /**
  * Checks if a scope binding is present and guards against TDZ and const assignment.
@@ -137,6 +137,6 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         if (property == null) {
             return JSShape.getPropertyAssumption(shape, varName);
         }
-        return NeverValidAssumption.INSTANCE;
+        return AssumptionUtil.neverValidAssumption();
     }
 }

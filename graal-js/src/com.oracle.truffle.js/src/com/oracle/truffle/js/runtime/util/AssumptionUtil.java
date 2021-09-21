@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,54 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.objects;
+package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.util.AssumptionUtil;
-import com.oracle.truffle.js.runtime.util.DebugCounter;
 
-/**
- * @see JSShape
- */
-public final class JSSharedData {
-    private final JSContext context;
-    private final JSDynamicObject proto;
-    private Assumption prototypeAssumption;
+public final class AssumptionUtil {
 
-    private static final DebugCounter prototypeAssumptionsCreated = DebugCounter.create("Prototype assumptions created");
-    private static final DebugCounter prototypeAssumptionsRemoved = DebugCounter.create("Prototype assumptions removed");
-
-    public JSSharedData(JSContext context, JSDynamicObject prototype) {
-        this.context = context;
-        this.proto = prototype;
+    private AssumptionUtil() {
     }
 
-    JSContext getContext() {
-        return context;
+    /** Not using NeverValidAssumption.INSTANCE in order not to pollute profiles. */
+    public static Assumption neverValidAssumption() {
+        return NEVER_VALID_ASSUMPTION;
     }
 
-    public JSDynamicObject getPrototype() {
-        return proto;
+    private static final Assumption NEVER_VALID_ASSUMPTION;
+
+    static {
+        NEVER_VALID_ASSUMPTION = Truffle.getRuntime().createAssumption("never valid");
+        NEVER_VALID_ASSUMPTION.invalidate();
     }
 
-    synchronized Assumption getPrototypeAssumption() {
-        Assumption assumption = prototypeAssumption;
-        if (assumption == null) {
-            assumption = Truffle.getRuntime().createAssumption("stable prototype");
-            prototypeAssumption = assumption;
-            prototypeAssumptionsCreated.inc();
-        }
-        return assumption;
-    }
-
-    synchronized void invalidatePrototypeAssumption() {
-        Assumption assumption = prototypeAssumption;
-        if (assumption != null) {
-            assumption.invalidate();
-            prototypeAssumption = AssumptionUtil.neverValidAssumption();
-            prototypeAssumptionsRemoved.inc();
-        }
-    }
 }
