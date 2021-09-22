@@ -338,10 +338,10 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
     private static boolean checkProxy(JSProxyObject value, boolean isFunction) {
         Object target = JSProxy.getTargetNonProxy(value);
         if (isFunction) {
-            return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
+            return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target);
         } else {
             return (JSDynamicObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
-                            (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
+                            (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target));
         }
     }
 
