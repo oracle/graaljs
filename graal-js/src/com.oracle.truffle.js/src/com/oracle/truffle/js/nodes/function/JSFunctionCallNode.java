@@ -285,13 +285,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeGenericFunction(currentHead, hasCached);
                     } else if (JSProxy.isJSProxy(function)) {
-                        c = insertAtFront(new JSProxyCacheNode(isNew(flags), isNewTarget(flags), context, null), currentHead);
+                        c = insertAtFront(new JSProxyCacheNode(isNew(flags), isNewTarget(flags), context), currentHead);
                     } else if (JSGuards.isForeignObject(function)) {
                         c = specializeForeignCall(arguments, currentHead);
                     } else if (function instanceof JSNoSuchMethodAdapter) {
-                        c = insertAtFront(new JSNoSuchMethodAdapterCacheNode(null), currentHead);
+                        c = insertAtFront(new JSNoSuchMethodAdapterCacheNode(), currentHead);
                     } else {
-                        c = insertAtFront(new GenericFallbackCacheNode(null), dropCachedNodes(currentHead, hasCached));
+                        c = insertAtFront(new GenericFallbackCacheNode(), dropCachedNodes(currentHead, hasCached));
                     }
                 }
                 assert c.getParent() != null;
@@ -1618,11 +1618,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     private static class JSProxyCacheNode extends AbstractCacheNode {
         @Child private JSProxyCallNode proxyCall;
-        @Child private AbstractCacheNode next;
 
-        JSProxyCacheNode(boolean isNew, boolean isNewTarget, JSContext context, AbstractCacheNode next) {
+        JSProxyCacheNode(boolean isNew, boolean isNewTarget, JSContext context) {
             this.proxyCall = JSProxyCallNode.create(context, isNew, isNewTarget);
-            this.next = next;
         }
 
         @Override
@@ -1640,11 +1638,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     private static class JSNoSuchMethodAdapterCacheNode extends AbstractCacheNode {
         @Child private JSFunctionCallNode noSuchMethodCallNode;
-        @Child private AbstractCacheNode next;
 
-        JSNoSuchMethodAdapterCacheNode(AbstractCacheNode next) {
+        JSNoSuchMethodAdapterCacheNode() {
             this.noSuchMethodCallNode = JSFunctionCallNode.createCall();
-            this.next = next;
         }
 
         @Override
@@ -1668,10 +1664,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
      * Fallback (TypeError) and Java method/class/package.
      */
     private static class GenericFallbackCacheNode extends AbstractCacheNode {
-        @Child private AbstractCacheNode next;
 
-        GenericFallbackCacheNode(AbstractCacheNode next) {
-            this.next = next;
+        GenericFallbackCacheNode() {
             megamorphicCount.inc();
         }
 
