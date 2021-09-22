@@ -3436,7 +3436,6 @@ public final class GraalJSAccess {
         }
         builder.mimeType(JavaScriptLanguage.MODULE_MIME_TYPE);
         Source source = builder.build();
-        hostDefinedOptionsMap.put(source, hostDefinedOptions);
         TruffleContext truffleContext = realm.getEnv().getContext();
         Object prev = truffleContext.enter(null);
         JSModuleData parsedModule;
@@ -3445,6 +3444,9 @@ public final class GraalJSAccess {
         } finally {
             truffleContext.leave(null, prev);
         }
+        // Get the correct Source instance to be used as weak map key.
+        source = parsedModule.getSource();
+        hostDefinedOptionsMap.put(source, hostDefinedOptions);
         JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
         return moduleRecord;
     }
