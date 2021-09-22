@@ -51,8 +51,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -67,6 +65,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -147,26 +146,20 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isJSFunction(operand)")
-    protected String doJSFunction(DynamicObject operand) {
+    protected String doJSFunction(Object operand) {
         return JSFunction.TYPE_NAME;
     }
 
     @Specialization(guards = {"isJSDynamicObject(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
-    protected String doJSObjectOnly(DynamicObject operand) {
+    protected String doJSObjectOnly(Object operand) {
         return JSOrdinary.TYPE_NAME;
     }
 
-    @Specialization(guards = {"isJSProxy(operand)"})
-    protected String doJSProxy(DynamicObject operand,
-                    @Cached("create()") TypeOfNode typeofNode,
-                    @Cached("create()") BranchProfile revokedProxyBranch) {
-        Object target = JSProxy.getTarget(operand);
-        if (target == Null.instance) {
-            revokedProxyBranch.enter();
-            return JSRuntime.isRevokedCallableProxy(operand) ? JSFunction.TYPE_NAME : JSOrdinary.TYPE_NAME;
-        } else {
-            return typeofNode.executeString(target);
-        }
+    @Specialization
+    protected String doJSProxy(JSProxyObject operand,
+                    @Cached("create()") TypeOfNode typeofNode) {
+        Object target = JSProxy.getTargetNonProxy(operand);
+        return typeofNode.executeString(target);
     }
 
     @Specialization

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -49,6 +50,8 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -56,6 +59,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -92,13 +96,13 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
      * Implements the [[Call]] internal method ("apply" trap) for Proxy.
      */
     @Specialization(guards = {"!isNew", "!isNewTarget"})
-    protected Object doCall(Object[] arguments) {
+    protected Object doCall(Object[] arguments,
+                    @Cached IsCallableNode isCallable) {
         Object thisObj = JSArguments.getThisObject(arguments);
         Object function = JSArguments.getFunctionObject(arguments);
-        assert JSProxy.isJSProxy(function);
-        DynamicObject proxy = (DynamicObject) function;
+        JSProxyObject proxy = (JSProxyObject) function;
 
-        if (!JSRuntime.isCallableProxy(proxy)) {
+        if (!isCallable.executeBoolean(JSProxy.getTarget(proxy))) {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {
@@ -118,12 +122,12 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
      * Implements the [[Construct]] internal method ("construct" trap) for Proxy.
      */
     @Specialization(guards = {"isNew || isNewTarget"})
-    protected Object doConstruct(Object[] arguments) {
+    protected Object doConstruct(Object[] arguments,
+                    @Cached IsConstructorNode isConstructor) {
         Object function = JSArguments.getFunctionObject(arguments);
-        assert JSProxy.isJSProxy(function);
-        DynamicObject proxy = (DynamicObject) function;
+        JSProxyObject proxy = (JSProxyObject) function;
 
-        if (!JSRuntime.isConstructorProxy(proxy)) {
+        if (!isConstructor.executeBoolean(JSProxy.getTarget(proxy))) {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAFunction(function, this);
         } else {

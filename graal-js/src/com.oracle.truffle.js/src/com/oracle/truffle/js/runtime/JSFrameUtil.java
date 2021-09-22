@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import java.util.Objects;
+
 import com.oracle.js.parser.ir.Symbol;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
@@ -134,7 +137,7 @@ public final class JSFrameUtil {
     }
 
     public static MaterializedFrame castMaterializedFrame(Object frame) {
-        return MATERIALIZED_FRAME_CLASS.cast(frame);
+        return CompilerDirectives.castExact(Objects.requireNonNull(frame), MATERIALIZED_FRAME_CLASS);
     }
 
     /**

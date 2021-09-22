@@ -342,7 +342,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             JSRealm thisRealm = getRealm();
             Object result = executeCompiledRegex(compiledRegex, input, lastIndex, compiledRegexAccessor);
             if (context.isOptionRegexpStaticResult() && regexResultAccessor.isMatch(result)) {
-                if (thisRealm == JSRegExp.getRealm(regExp)) {
+                if (isSameRealm(regExp, thisRealm)) {
                     if (areLegacyFeaturesEnabled.profile(JSRegExp.getLegacyFeaturesEnabled(regExp))) {
                         thisRealm.setStaticRegexResult(context, compiledRegex, input, lastIndex, result);
                     } else {
@@ -366,6 +366,14 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 }
                 return getEmptyResult();
             }
+        }
+
+        private boolean isSameRealm(JSRegExpObject regExp, JSRealm thisRealm) {
+            if (context.isSingleRealm()) {
+                assert JSRegExp.getRealm(regExp) == thisRealm;
+                return true;
+            }
+            return JSRegExp.getRealm(regExp) == thisRealm;
         }
 
         // converts RegexResult into DynamicObject

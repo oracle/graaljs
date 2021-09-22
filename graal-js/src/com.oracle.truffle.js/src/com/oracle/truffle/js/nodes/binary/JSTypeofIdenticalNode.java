@@ -57,18 +57,17 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantStringNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.nodes.unary.TypeOfNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -80,10 +79,10 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -110,7 +109,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         False
     }
 
-    private final Type type;
+    protected final Type type;
 
     protected JSTypeofIdenticalNode(JavaScriptNode childNode, Type type) {
         super(childNode);
@@ -275,31 +274,44 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         return (type == Type.String);
     }
 
-    @Specialization(guards = {"isJSDynamicObject(value)"})
-    protected final boolean doJSType(DynamicObject value,
-                    @Cached("create()") BranchProfile proxyBranch) {
-        if (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False) {
-            return false;
-        } else if (type == Type.Object) {
-            if (JSProxy.isJSProxy(value)) {
-                proxyBranch.enter();
-                return checkProxy(value, false);
-            } else {
-                return !JSFunction.isJSFunction(value) && value != Undefined.instance;
-            }
-        } else if (type == Type.Undefined) {
-            return value == Undefined.instance;
-        } else if (type == Type.Function) {
-            if (JSFunction.isJSFunction(value)) {
-                return true;
-            } else if (JSProxy.isJSProxy(value)) {
-                proxyBranch.enter();
-                return checkProxy(value, true);
-            } else {
-                return false;
-            }
+    @Specialization(guards = {"type == Object || type == Function", "isJSFunction(value)"})
+    protected final boolean doTypeObjectOrFunctionJSFunction(@SuppressWarnings("unused") Object value) {
+        assert type == Type.Object || type == Type.Function;
+        return type == Type.Function;
+    }
+
+    @Specialization(guards = {"type == Object || type == Function"})
+    protected final boolean doTypeObjectOrFunctionJSProxy(JSProxyObject value,
+                    @Cached IsCallableNode isCallableNode) {
+        Object proxyTarget = JSProxy.getTargetNonProxy(value);
+        boolean callable = isCallableNode.executeBoolean(proxyTarget);
+        if (type == Type.Object) {
+            return !callable;
+        } else {
+            assert type == Type.Function;
+            return callable;
         }
-        throw Errors.shouldNotReachHere();
+    }
+
+    @Specialization(guards = {"type == Object || type == Function", "!isJSFunction(value)", "!isJSProxy(value)"})
+    protected final boolean doTypeObjectOrFunctionOther(JSDynamicObject value) {
+        assert !JSGuards.isJSFunction(value) && !JSGuards.isJSProxy(value);
+        if (type == Type.Object) {
+            return value != Undefined.instance;
+        } else {
+            assert type == Type.Function;
+            return false;
+        }
+    }
+
+    @Specialization(guards = {"type != Object", "type != Function"})
+    protected final boolean doTypePrimitive(JSDynamicObject value) {
+        if (type == Type.Undefined) {
+            return value == Undefined.instance;
+        } else {
+            assert (type == Type.Number || type == Type.BigInt || type == Type.String || type == Type.Boolean || type == Type.Symbol || type == Type.False);
+            return false;
+        }
     }
 
     @Specialization(guards = {"isForeignObject(value)"}, limit = "InteropLibraryLimit")
@@ -333,27 +345,6 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             }
         }
         return false;
-    }
-
-    private static boolean checkProxy(DynamicObject value, boolean isFunction) {
-        // Find a non-proxy target (and the associated proxy)
-        DynamicObject proxy;
-        Object target = value;
-        do {
-            proxy = (DynamicObject) target;
-            target = JSProxy.getTarget(proxy);
-        } while (JSProxy.isJSProxy(target));
-
-        if (target == Null.instance) { // revoked proxy
-            return isFunction == JSRuntime.isRevokedCallableProxy(proxy);
-        } else {
-            if (isFunction) {
-                return JSFunction.isJSFunction(target) || JSRuntime.isCallableForeign(target) || JSRuntime.isConstructorForeign(target);
-            } else {
-                return (JSDynamicObject.isJSDynamicObject(target) && !JSFunction.isJSFunction(target)) ||
-                                (JSRuntime.isForeignObject(target) && !JSRuntime.isCallableForeign(target) && !JSRuntime.isConstructorForeign(target));
-            }
-        }
     }
 
     @Override

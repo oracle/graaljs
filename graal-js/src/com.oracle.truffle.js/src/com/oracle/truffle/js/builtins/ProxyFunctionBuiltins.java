@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -62,6 +63,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -111,20 +113,20 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
                 @Child private PropertyGetNode getRevocableProxyNode = PropertyGetNode.createGetHidden(JSProxy.REVOCABLE_PROXY, context);
                 @Child private PropertySetNode setRevocableProxyNode = PropertySetNode.createSetHidden(JSProxy.REVOCABLE_PROXY, context);
-                @Child private PropertySetNode setRevokedCallableProxyNode = PropertySetNode.createSetHidden(JSProxy.REVOKED_CALLABLE, context);
                 @Child private IsCallableNode isCallableNode = IsCallableNode.create();
+                @Child private IsConstructorNode isConstructorNode = IsConstructorNode.create();
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
-                    DynamicObject proxy = (DynamicObject) getRevocableProxyNode.getValue(functionObject);
-                    if (proxy == Null.instance) {
+                    Object revocableProxy = getRevocableProxyNode.getValue(functionObject);
+                    if (revocableProxy == Null.instance) {
                         return Undefined.instance;
                     }
                     setRevocableProxyNode.setValue(functionObject, Null.instance);
-                    boolean callable = isCallableNode.executeBoolean(proxy);
-                    JSProxy.revoke(proxy);
-                    setRevokedCallableProxyNode.setValueBoolean(proxy, callable);
+                    boolean callable = isCallableNode.executeBoolean(revocableProxy);
+                    boolean constructor = isConstructorNode.executeBoolean(revocableProxy);
+                    ((JSProxyObject) revocableProxy).revoke(callable, constructor);
                     return Undefined.instance;
                 }
             });
