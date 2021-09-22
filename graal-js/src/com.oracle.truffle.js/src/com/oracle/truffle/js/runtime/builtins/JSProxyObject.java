@@ -85,11 +85,6 @@ public final class JSProxyObject extends JSClassObject {
         return proxyTarget;
     }
 
-    public void revoke() {
-        this.proxyHandler = Null.instance;
-        this.proxyTarget = Null.instance;
-    }
-
     public void revoke(boolean isCallable, boolean isConstructor) {
         this.proxyHandler = Null.instance;
         this.proxyTarget = RevokedTarget.lookup(isCallable, isConstructor);
