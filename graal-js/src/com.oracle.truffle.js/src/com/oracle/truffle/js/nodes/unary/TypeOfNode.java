@@ -51,7 +51,6 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSTypeofIdenticalNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -147,12 +146,12 @@ public abstract class TypeOfNode extends JSUnaryNode {
     }
 
     @Specialization(guards = "isJSFunction(operand)")
-    protected String doJSFunction(DynamicObject operand) {
+    protected String doJSFunction(Object operand) {
         return JSFunction.TYPE_NAME;
     }
 
     @Specialization(guards = {"isJSDynamicObject(operand)", "!isJSFunction(operand)", "!isUndefined(operand)", "!isJSProxy(operand)"})
-    protected String doJSObjectOnly(DynamicObject operand) {
+    protected String doJSObjectOnly(Object operand) {
         return JSOrdinary.TYPE_NAME;
     }
 
