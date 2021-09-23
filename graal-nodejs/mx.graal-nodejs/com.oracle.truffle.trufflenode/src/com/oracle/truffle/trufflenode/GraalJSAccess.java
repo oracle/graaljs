@@ -3471,7 +3471,7 @@ public final class GraalJSAccess {
             jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
         }
 
-        if (!moduleRecord.isTopLevelAsync()) {
+        if (!moduleRecord.hasTLA()) {
             Throwable evaluationError = moduleRecord.getEvaluationError();
             if (evaluationError != null) {
                 throw JSRuntime.rethrow(evaluationError);

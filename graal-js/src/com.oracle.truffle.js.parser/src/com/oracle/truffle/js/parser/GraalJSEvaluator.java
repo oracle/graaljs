@@ -774,7 +774,7 @@ public final class GraalJSEvaluator implements JSParser {
                 requiredModule.appendAsyncParentModules(moduleRecord);
             }
         }
-        if (moduleRecord.getPendingAsyncDependencies() > 0 || moduleRecord.isTopLevelAsync()) {
+        if (moduleRecord.getPendingAsyncDependencies() > 0 || moduleRecord.hasTLA()) {
             assert !moduleRecord.isAsyncEvaluating() && moduleRecord.getAsyncEvaluatingOrder() == 0;
             moduleRecord.setAsyncEvaluating(true);
             moduleRecord.setAsyncEvaluatingOrder(realm.nextAsyncEvaluationOrder());
@@ -806,7 +806,7 @@ public final class GraalJSEvaluator implements JSParser {
     private static void moduleAsyncExecution(JSRealm realm, JSModuleRecord module) {
         // ExecuteAsyncModule ( module )
         assert module.getStatus() == Status.Evaluating || module.getStatus() == Status.Evaluated;
-        assert module.isTopLevelAsync();
+        assert module.hasTLA();
         PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
         DynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
         DynamicObject onRejected = createCallAsyncModuleRejected(realm, module);
@@ -881,7 +881,7 @@ public final class GraalJSEvaluator implements JSParser {
                 m.decPendingAsyncDependencies();
                 if (m.getPendingAsyncDependencies() == 0) {
                     execList.add(m);
-                    if (!m.isTopLevelAsync()) {
+                    if (!m.hasTLA()) {
                         gatherAvailableAncestors(m, execList);
                     }
                 }
@@ -908,7 +908,7 @@ public final class GraalJSEvaluator implements JSParser {
         for (JSModuleRecord m : execList) {
             if (!m.isAsyncEvaluating()) {
                 assert m.getEvaluationError() != null;
-            } else if (m.isTopLevelAsync()) {
+            } else if (m.hasTLA()) {
                 moduleAsyncExecution(realm, m);
             } else {
                 try {
@@ -948,7 +948,7 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     private static Object moduleExecution(JSRealm realm, JSModuleRecord moduleRecord, PromiseCapabilityRecord capability) {
-        if (!moduleRecord.isTopLevelAsync()) {
+        if (!moduleRecord.hasTLA()) {
             assert capability == null;
             return JSFunction.call(JSArguments.create(Undefined.instance, JSFunction.create(realm, moduleRecord.getFunctionData()), moduleRecord));
         } else {

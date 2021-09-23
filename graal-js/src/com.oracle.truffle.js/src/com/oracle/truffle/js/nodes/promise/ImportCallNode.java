@@ -356,7 +356,7 @@ public class ImportCallNode extends JavaScriptNode {
                 try {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     JSRealm realm = getRealm();
-                    if (moduleRecord.isTopLevelAsync()) {
+                    if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleInstantiation(realm, moduleRecord);
                         Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         assert JSPromise.isJSPromise(innerPromise);
