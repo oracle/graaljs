@@ -56,6 +56,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.function.Supplier;
 
 import com.oracle.js.parser.ir.Expression;
@@ -793,10 +794,13 @@ public final class GraalJSEvaluator implements JSParser {
                 requiredModule.appendAsyncParentModules(moduleRecord);
             }
         }
-        if (moduleRecord.getPendingAsyncDependencies() > 0) {
+        if (moduleRecord.getPendingAsyncDependencies() > 0 || moduleRecord.isTopLevelAsync()) {
+            assert !moduleRecord.isAsyncEvaluating() && moduleRecord.getAsyncEvaluatingOrder() == 0;
             moduleRecord.setAsyncEvaluating(true);
-        } else if (moduleRecord.isTopLevelAsync()) {
-            moduleAsyncExecution(realm, moduleRecord);
+            moduleRecord.setAsyncEvaluatingOrder(realm.nextAsyncEvaluationOrder());
+            if (moduleRecord.getPendingAsyncDependencies() == 0) {
+                moduleAsyncExecution(realm, moduleRecord);
+            }
         } else {
             Object result = moduleExecution(realm, moduleRecord, null);
             moduleRecord.setExecutionResult(result);
@@ -821,7 +825,6 @@ public final class GraalJSEvaluator implements JSParser {
         // ExecuteAsyncModule ( module )
         assert module.getStatus() == Status.Evaluating || module.getStatus() == Status.Evaluated;
         assert module.isTopLevelAsync();
-        module.setAsyncEvaluating(true);
         PromiseCapabilityRecord capability = NewPromiseCapabilityNode.createDefault(realm);
         DynamicObject onFulfilled = createCallAsyncModuleFulfilled(realm, module);
         DynamicObject onRejected = createCallAsyncModuleRejected(realm, module);
@@ -885,41 +888,57 @@ public final class GraalJSEvaluator implements JSParser {
         return JSFunctionData.createCallOnly(context, callTarget, 1, "");
     }
 
-    @TruffleBoundary
-    private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module, Object dynamicImportResolutionResult) {
+    private static void gatherAvailableAncestors(JSModuleRecord module, Set<JSModuleRecord> execList) {
+        // GatherAvailableAncestors ( module, execList )
         assert module.getStatus() == Status.Evaluated;
-        if (!module.isAsyncEvaluating()) {
-            assert module.getEvaluationError() != null;
-            return Undefined.instance;
-        }
-        assert module.getEvaluationError() == null;
-        module.setAsyncEvaluating(false);
         for (JSModuleRecord m : module.getAsyncParentModules()) {
-            if (module.getDFSIndex() != module.getDFSAncestorIndex()) {
-                assert m.getDFSAncestorIndex() <= module.getDFSAncestorIndex();
-            }
-            m.decPendingAsyncDependencies();
-            if (m.getPendingAsyncDependencies() == 0 && m.getEvaluationError() == null) {
+            if (!execList.contains(m) && getAsyncCycleRoot(m).getEvaluationError() == null) {
+                assert m.getEvaluationError() == null;
                 assert m.isAsyncEvaluating();
-                JSModuleRecord cycleRoot = getAsyncCycleRoot(m);
-                if (cycleRoot.getEvaluationError() != null) {
-                    return Undefined.instance;
-                }
-                if (m.isTopLevelAsync()) {
-                    moduleAsyncExecution(realm, m);
-                } else {
-                    try {
-                        moduleExecution(realm, m, null);
-                        asyncModuleExecutionFulfilled(realm, m, dynamicImportResolutionResult);
-                    } catch (Exception e) {
-                        asyncModuleExecutionRejected(realm, m, e);
+                assert m.getPendingAsyncDependencies() > 0;
+                m.decPendingAsyncDependencies();
+                if (m.getPendingAsyncDependencies() == 0) {
+                    execList.add(m);
+                    if (!m.isTopLevelAsync()) {
+                        gatherAvailableAncestors(m, execList);
                     }
                 }
             }
         }
+    }
+
+    @TruffleBoundary
+    private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module, Object dynamicImportResolutionResult) {
+        assert module.isAsyncEvaluating();
+        assert module.getEvaluationError() == null;
+        module.setAsyncEvaluating(false);
         if (module.getTopLevelCapability() != null) {
             assert module.getDFSIndex() == module.getDFSAncestorIndex();
             JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
+        }
+        Set<JSModuleRecord> execList = new TreeSet<>(new Comparator<JSModuleRecord>() {
+            @Override
+            public int compare(JSModuleRecord o1, JSModuleRecord o2) {
+                return Long.compare(o1.getAsyncEvaluatingOrder(), o2.getAsyncEvaluatingOrder());
+            }
+        });
+        gatherAvailableAncestors(module, execList);
+        for (JSModuleRecord m : execList) {
+            if (!m.isAsyncEvaluating()) {
+                assert m.getEvaluationError() != null;
+            } else if (m.isTopLevelAsync()) {
+                moduleAsyncExecution(realm, m);
+            } else {
+                try {
+                    moduleExecution(realm, m, null);
+                    m.setAsyncEvaluating(false);
+                    if (m.getTopLevelCapability() != null) {
+                        JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
+                    }
+                } catch (Exception e) {
+                    asyncModuleExecutionRejected(realm, m, e);
+                }
+            }
         }
         return Undefined.instance;
     }

@@ -243,6 +243,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     private final boolean async;
     // [[AsyncEvaluating]]
     private boolean asyncEvaluating = false;
+    private long asyncEvaluatingOrder;
     // [[TopLevelCapability]]
     private PromiseCapabilityRecord topLevelPromiseCapability = null;
     // [[AsyncParentModules]]
@@ -293,6 +294,14 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public void setAsyncEvaluating(boolean value) {
         asyncEvaluating = value;
+    }
+
+    public void setAsyncEvaluatingOrder(long order) {
+        asyncEvaluatingOrder = order;
+    }
+
+    public long getAsyncEvaluatingOrder() {
+        return asyncEvaluatingOrder;
     }
 
     public boolean isTopLevelAsync() {
