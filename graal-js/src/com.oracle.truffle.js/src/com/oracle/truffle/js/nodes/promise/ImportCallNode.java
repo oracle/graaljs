@@ -365,7 +365,7 @@ public class ImportCallNode extends JavaScriptNode {
                         promiseThenNode.execute((DynamicObject) innerPromise, resolve, reject, moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
-                        if (moduleRecord.isAsyncEvaluating()) {
+                        if (moduleRecord.isAsyncEvaluation()) {
                             // Some module import started an async loading chain. The top-level
                             // capability will reject/resolve the dynamic import promise.
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();

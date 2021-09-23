@@ -243,8 +243,8 @@ public final class JSModuleRecord extends ScriptOrModule {
     private JSModuleRecord cycleRoot = this;
     // [[HasTLA]]
     private final boolean hasTLA;
-    // [[AsyncEvaluating]]
-    private boolean asyncEvaluating = false;
+    // [[AsyncEvaluation]]
+    private boolean asyncEvaluation = false;
     private long asyncEvaluatingOrder;
     // [[TopLevelCapability]]
     private PromiseCapabilityRecord topLevelPromiseCapability = null;
@@ -261,8 +261,8 @@ public final class JSModuleRecord extends ScriptOrModule {
         this.topLevelPromiseCapability = capability;
     }
 
-    public boolean isAsyncEvaluating() {
-        return asyncEvaluating;
+    public boolean isAsyncEvaluation() {
+        return asyncEvaluation;
     }
 
     public List<JSModuleRecord> getAsyncParentModules() {
@@ -294,8 +294,8 @@ public final class JSModuleRecord extends ScriptOrModule {
         return pendingAsyncDependencies;
     }
 
-    public void setAsyncEvaluating(boolean value) {
-        asyncEvaluating = value;
+    public void setAsyncEvaluation(boolean value) {
+        asyncEvaluation = value;
     }
 
     public void setAsyncEvaluatingOrder(long order) {

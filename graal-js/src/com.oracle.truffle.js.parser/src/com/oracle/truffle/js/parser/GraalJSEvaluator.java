@@ -688,7 +688,7 @@ public final class GraalJSEvaluator implements JSParser {
                 innerModuleEvaluation(realm, module, stack, 0);
                 assert module.getStatus() == Status.Evaluated;
                 assert module.getEvaluationError() == null;
-                if (!module.isAsyncEvaluating()) {
+                if (!module.isAsyncEvaluation()) {
                     JSFunction.call(JSArguments.create(Undefined.instance, capability.getResolve(), Undefined.instance));
                 }
                 assert stack.isEmpty();
@@ -769,14 +769,14 @@ public final class GraalJSEvaluator implements JSParser {
                     throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
                 }
             }
-            if (requiredModule.isAsyncEvaluating()) {
+            if (requiredModule.isAsyncEvaluation()) {
                 moduleRecord.incPendingAsyncDependencies();
                 requiredModule.appendAsyncParentModules(moduleRecord);
             }
         }
         if (moduleRecord.getPendingAsyncDependencies() > 0 || moduleRecord.hasTLA()) {
-            assert !moduleRecord.isAsyncEvaluating() && moduleRecord.getAsyncEvaluatingOrder() == 0;
-            moduleRecord.setAsyncEvaluating(true);
+            assert !moduleRecord.isAsyncEvaluation() && moduleRecord.getAsyncEvaluatingOrder() == 0;
+            moduleRecord.setAsyncEvaluation(true);
             moduleRecord.setAsyncEvaluatingOrder(realm.nextAsyncEvaluationOrder());
             if (moduleRecord.getPendingAsyncDependencies() == 0) {
                 moduleAsyncExecution(realm, moduleRecord);
@@ -876,7 +876,7 @@ public final class GraalJSEvaluator implements JSParser {
         for (JSModuleRecord m : module.getAsyncParentModules()) {
             if (!execList.contains(m) && m.getCycleRoot().getEvaluationError() == null) {
                 assert m.getEvaluationError() == null;
-                assert m.isAsyncEvaluating();
+                assert m.isAsyncEvaluation();
                 assert m.getPendingAsyncDependencies() > 0;
                 m.decPendingAsyncDependencies();
                 if (m.getPendingAsyncDependencies() == 0) {
@@ -891,9 +891,9 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     private static Object asyncModuleExecutionFulfilled(JSRealm realm, JSModuleRecord module, Object dynamicImportResolutionResult) {
-        assert module.isAsyncEvaluating();
+        assert module.isAsyncEvaluation();
         assert module.getEvaluationError() == null;
-        module.setAsyncEvaluating(false);
+        module.setAsyncEvaluation(false);
         if (module.getTopLevelCapability() != null) {
             assert module.getCycleRoot() == module;
             JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
@@ -906,14 +906,14 @@ public final class GraalJSEvaluator implements JSParser {
         });
         gatherAvailableAncestors(module, execList);
         for (JSModuleRecord m : execList) {
-            if (!m.isAsyncEvaluating()) {
+            if (!m.isAsyncEvaluation()) {
                 assert m.getEvaluationError() != null;
             } else if (m.hasTLA()) {
                 moduleAsyncExecution(realm, m);
             } else {
                 try {
                     moduleExecution(realm, m, null);
-                    m.setAsyncEvaluating(false);
+                    m.setAsyncEvaluation(false);
                     if (m.getTopLevelCapability() != null) {
                         assert m.getCycleRoot() == m;
                         JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
@@ -930,13 +930,13 @@ public final class GraalJSEvaluator implements JSParser {
     private static Object asyncModuleExecutionRejected(JSRealm realm, JSModuleRecord module, Object error) {
         assert error != null : "Cannot reject a module creation with null error";
         assert module.getStatus() == Status.Evaluated;
-        if (!module.isAsyncEvaluating()) {
+        if (!module.isAsyncEvaluation()) {
             assert module.getEvaluationError() != null;
             return Undefined.instance;
         }
         assert module.getEvaluationError() == null;
         module.setEvaluationError(JSRuntime.getException(error));
-        module.setAsyncEvaluating(false);
+        module.setAsyncEvaluation(false);
         for (JSModuleRecord m : module.getAsyncParentModules()) {
             asyncModuleExecutionRejected(realm, m, error);
         }
