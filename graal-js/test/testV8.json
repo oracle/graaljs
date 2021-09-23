@@ -722,14 +722,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-async-cycle.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-rqstd-order-async-subgraph.mjs",
-    "status" : "FAIL",
-    "comment" : "update 2021-07-07"
-  }, {
     "filePath" : "mjsunit/harmony/private-brand-checks.js",
     "status" : "FAIL",
     "comment" : "Fails due to class heritage issue with private environments (GR-21866)"
