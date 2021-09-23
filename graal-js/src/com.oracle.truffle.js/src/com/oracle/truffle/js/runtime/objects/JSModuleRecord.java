@@ -239,6 +239,8 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     // ##### Top-level await
 
+    // [[CycleRoot]]
+    private JSModuleRecord cycleRoot = this;
     // [[Async]]
     private final boolean async;
     // [[AsyncEvaluating]]
@@ -314,6 +316,14 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public Object getExecutionContinuation() {
         return topLevelAwaitModuleLoadingContinuation;
+    }
+
+    public void setCycleRoot(JSModuleRecord module) {
+        cycleRoot = module;
+    }
+
+    public JSModuleRecord getCycleRoot() {
+        return cycleRoot;
     }
 
 }

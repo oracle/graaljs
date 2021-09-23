@@ -677,7 +677,7 @@ public final class GraalJSEvaluator implements JSParser {
         if (realm.getContext().isOptionTopLevelAwait()) {
             assert module.getStatus() == Status.Linked || module.getStatus() == Status.Evaluated;
             if (module.getStatus() == Status.Evaluated) {
-                module = getAsyncCycleRoot(module);
+                module = module.getCycleRoot();
             }
             if (module.getTopLevelCapability() != null) {
                 return module.getTopLevelCapability().getPromise();
@@ -730,26 +730,6 @@ public final class GraalJSEvaluator implements JSParser {
     }
 
     @TruffleBoundary
-    private static JSModuleRecord getAsyncCycleRoot(JSModuleRecord moduleRecord) {
-        // GetAsyncCycleRoot ( module )
-        JSModuleRecord module = moduleRecord;
-        assert module.getStatus() == Status.Evaluated;
-
-        if (module.getAsyncParentModules().size() == 0) {
-            return module;
-        }
-        while (module.getDFSIndex() > module.getDFSAncestorIndex()) {
-            assert module.getAsyncParentModules().size() != 0;
-            JSModuleRecord nextCycleModule = module.getAsyncParentModules().remove(0);
-            assert nextCycleModule.getDFSAncestorIndex() <= module.getDFSAncestorIndex();
-            module = nextCycleModule;
-        }
-
-        assert module.getDFSIndex() == module.getDFSAncestorIndex();
-        return module;
-    }
-
-    @TruffleBoundary
     private int innerModuleEvaluation(JSRealm realm, JSModuleRecord moduleRecord, Deque<JSModuleRecord> stack, int index0) {
         // InnerModuleEvaluation( module, stack, index )
         int index = index0;
@@ -783,7 +763,7 @@ public final class GraalJSEvaluator implements JSParser {
             if (requiredModule.getStatus() == Status.Evaluating) {
                 moduleRecord.setDFSAncestorIndex(Math.min(moduleRecord.getDFSAncestorIndex(), requiredModule.getDFSAncestorIndex()));
             } else {
-                requiredModule = getAsyncCycleRoot(requiredModule);
+                requiredModule = requiredModule.getCycleRoot();
                 assert requiredModule.getStatus() == Status.Evaluated;
                 if (requiredModule.getEvaluationError() != null) {
                     throw JSRuntime.rethrow(moduleRecord.getEvaluationError());
@@ -809,9 +789,11 @@ public final class GraalJSEvaluator implements JSParser {
         assert occursExactlyOnce(moduleRecord, stack);
         assert moduleRecord.getDFSAncestorIndex() <= moduleRecord.getDFSIndex();
         if (moduleRecord.getDFSAncestorIndex() == moduleRecord.getDFSIndex()) {
+            JSModuleRecord cycleRoot = moduleRecord;
             while (true) {
                 JSModuleRecord requiredModule = stack.pop();
                 requiredModule.setStatus(Status.Evaluated);
+                requiredModule.setCycleRoot(cycleRoot);
                 if (requiredModule.equals(moduleRecord)) {
                     break;
                 }
@@ -892,7 +874,7 @@ public final class GraalJSEvaluator implements JSParser {
         // GatherAvailableAncestors ( module, execList )
         assert module.getStatus() == Status.Evaluated;
         for (JSModuleRecord m : module.getAsyncParentModules()) {
-            if (!execList.contains(m) && getAsyncCycleRoot(m).getEvaluationError() == null) {
+            if (!execList.contains(m) && m.getCycleRoot().getEvaluationError() == null) {
                 assert m.getEvaluationError() == null;
                 assert m.isAsyncEvaluating();
                 assert m.getPendingAsyncDependencies() > 0;
@@ -913,7 +895,7 @@ public final class GraalJSEvaluator implements JSParser {
         assert module.getEvaluationError() == null;
         module.setAsyncEvaluating(false);
         if (module.getTopLevelCapability() != null) {
-            assert module.getDFSIndex() == module.getDFSAncestorIndex();
+            assert module.getCycleRoot() == module;
             JSFunction.call(JSArguments.create(Undefined.instance, module.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
         }
         Set<JSModuleRecord> execList = new TreeSet<>(new Comparator<JSModuleRecord>() {
@@ -933,6 +915,7 @@ public final class GraalJSEvaluator implements JSParser {
                     moduleExecution(realm, m, null);
                     m.setAsyncEvaluating(false);
                     if (m.getTopLevelCapability() != null) {
+                        assert m.getCycleRoot() == m;
                         JSFunction.call(JSArguments.create(Undefined.instance, m.getTopLevelCapability().getResolve(), dynamicImportResolutionResult));
                     }
                 } catch (Exception e) {
@@ -955,13 +938,10 @@ public final class GraalJSEvaluator implements JSParser {
         module.setEvaluationError(JSRuntime.getException(error));
         module.setAsyncEvaluating(false);
         for (JSModuleRecord m : module.getAsyncParentModules()) {
-            if (module.getDFSIndex() != module.getDFSAncestorIndex()) {
-                assert m.getDFSAncestorIndex() == module.getDFSAncestorIndex();
-            }
             asyncModuleExecutionRejected(realm, m, error);
         }
         if (module.getTopLevelCapability() != null) {
-            assert module.getDFSIndex() == module.getDFSAncestorIndex();
+            assert module.getCycleRoot() == module;
             JSFunction.call((DynamicObject) module.getTopLevelCapability().getReject(), Undefined.instance, new Object[]{error});
         }
         return Undefined.instance;
