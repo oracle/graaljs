@@ -194,7 +194,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     @Override
     public void initializeRoot(JSFunctionData fd) {
-        if (this.getCallTarget() != null) {
+        if (fd.getRootTarget() != null) {
             // Root call target is already being initialized! This can happen when instrumentation
             // is attempting to materialize this function's definition during its initialization.
             return;
