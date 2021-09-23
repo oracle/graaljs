@@ -3109,10 +3109,9 @@ public final class GraalJSAccess {
     private void exit(int status) {
         try {
             evaluator.close();
-        } catch (Throwable t) {
-            t.printStackTrace();
+        } finally {
+            System.exit(status);
         }
-        System.exit(status);
     }
 
     public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
