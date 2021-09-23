@@ -19,7 +19,7 @@ local common = import '../common.jsonnet';
   },
 
   local nativeImageSmokeTest = {
-    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js', '--extra-image-builder-argument=-H:+TruffleCheckBlackListedMethods', '--extra-image-builder-argument=-H:+ReportExceptionStackTraces'],
+    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js', '--extra-image-builder-argument=-H:+TruffleCheckBlockListMethods', '--extra-image-builder-argument=-H:+ReportExceptionStackTraces'],
     run+: [
       ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../../js-benchmarks'],
       baseNativeImageCmd + ['build'],
