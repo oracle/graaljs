@@ -60,6 +60,7 @@ public final class JSModuleRecord extends ScriptOrModule {
         Linking,
         Linked,
         Evaluating,
+        EvaluatingAsync,
         Evaluated,
     }
 
@@ -145,17 +146,17 @@ public final class JSModuleRecord extends ScriptOrModule {
         this.status = status;
     }
 
-    public boolean isEvaluated() {
-        return getStatus() == Status.Evaluated;
+    public boolean hasBeenEvaluated() {
+        return getStatus() == Status.Evaluated || getStatus() == Status.EvaluatingAsync;
     }
 
     public Throwable getEvaluationError() {
-        assert isEvaluated();
+        assert hasBeenEvaluated();
         return evaluationError;
     }
 
     public void setEvaluationError(Throwable evaluationError) {
-        assert isEvaluated();
+        assert hasBeenEvaluated();
         this.evaluationError = evaluationError;
     }
 
@@ -243,9 +244,8 @@ public final class JSModuleRecord extends ScriptOrModule {
     private JSModuleRecord cycleRoot = this;
     // [[HasTLA]]
     private final boolean hasTLA;
-    // [[AsyncEvaluation]]
-    private boolean asyncEvaluation = false;
-    private long asyncEvaluatingOrder;
+    // [[AsyncEvaluation]] (true when asyncEvaluationOrder > 0)
+    private long asyncEvaluationOrder;
     // [[TopLevelCapability]]
     private PromiseCapabilityRecord topLevelPromiseCapability = null;
     // [[AsyncParentModules]]
@@ -262,7 +262,7 @@ public final class JSModuleRecord extends ScriptOrModule {
     }
 
     public boolean isAsyncEvaluation() {
-        return asyncEvaluation;
+        return asyncEvaluationOrder > 0;
     }
 
     public List<JSModuleRecord> getAsyncParentModules() {
@@ -294,16 +294,12 @@ public final class JSModuleRecord extends ScriptOrModule {
         return pendingAsyncDependencies;
     }
 
-    public void setAsyncEvaluation(boolean value) {
-        asyncEvaluation = value;
-    }
-
     public void setAsyncEvaluatingOrder(long order) {
-        asyncEvaluatingOrder = order;
+        asyncEvaluationOrder = order;
     }
 
     public long getAsyncEvaluatingOrder() {
-        return asyncEvaluatingOrder;
+        return asyncEvaluationOrder;
     }
 
     public boolean hasTLA() {

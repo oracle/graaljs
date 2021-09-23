@@ -335,7 +335,7 @@ public class ImportCallNode extends JavaScriptNode {
                 // Note: PromiseReactionJob performs the promise rejection and resolution.
                 assert moduleRecord == context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                 // Evaluate has already been invoked on moduleRecord and successfully completed.
-                assert moduleRecord.isEvaluated();
+                assert moduleRecord.hasBeenEvaluated();
                 return context.getEvaluator().getModuleNamespace(moduleRecord);
             }
         }
