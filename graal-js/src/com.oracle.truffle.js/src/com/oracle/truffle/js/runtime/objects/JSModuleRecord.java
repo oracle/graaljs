@@ -107,7 +107,7 @@ public final class JSModuleRecord extends ScriptOrModule {
         super(parsedModule.getContext(), parsedModule.getSource());
         this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
-        this.async = parsedModule.isTopLevelAsync();
+        this.hasTLA = parsedModule.isTopLevelAsync();
         this.hostDefined = null;
         setUninstantiated();
     }
@@ -241,8 +241,8 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     // [[CycleRoot]]
     private JSModuleRecord cycleRoot = this;
-    // [[Async]]
-    private final boolean async;
+    // [[HasTLA]]
+    private final boolean hasTLA;
     // [[AsyncEvaluating]]
     private boolean asyncEvaluating = false;
     private long asyncEvaluatingOrder;
@@ -306,8 +306,8 @@ public final class JSModuleRecord extends ScriptOrModule {
         return asyncEvaluatingOrder;
     }
 
-    public boolean isTopLevelAsync() {
-        return async;
+    public boolean hasTLA() {
+        return hasTLA;
     }
 
     public void setExecutionContinuation(Object continuation) {
