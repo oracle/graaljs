@@ -3467,11 +3467,11 @@ public final class GraalJSAccess {
         JSContext jsContext = jsRealm.getContext();
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
 
-        if (!moduleRecord.isEvaluated()) {
+        if (!moduleRecord.hasBeenEvaluated()) {
             jsContext.getEvaluator().moduleEvaluation(jsRealm, moduleRecord);
         }
 
-        if (!moduleRecord.isTopLevelAsync()) {
+        if (!moduleRecord.hasTLA()) {
             Throwable evaluationError = moduleRecord.getEvaluationError();
             if (evaluationError != null) {
                 throw JSRuntime.rethrow(evaluationError);
@@ -3496,9 +3496,10 @@ public final class GraalJSAccess {
                 return 2; // v8::Module::Status::kInstantiated
             case Evaluating:
                 return 3; // v8::Module::Status::Evaluating
+            case EvaluatingAsync:
             case Evaluated:
             default:
-                assert record.getStatus() == JSModuleRecord.Status.Evaluated;
+                assert (record.getStatus() == JSModuleRecord.Status.Evaluated || record.getStatus() == JSModuleRecord.Status.EvaluatingAsync);
                 if (record.getEvaluationError() == null) {
                     return 4; // v8::Module::Status::kEvaluated
                 } else {

@@ -335,7 +335,7 @@ public class ImportCallNode extends JavaScriptNode {
                 // Note: PromiseReactionJob performs the promise rejection and resolution.
                 assert moduleRecord == context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                 // Evaluate has already been invoked on moduleRecord and successfully completed.
-                assert moduleRecord.isEvaluated();
+                assert moduleRecord.hasBeenEvaluated();
                 return context.getEvaluator().getModuleNamespace(moduleRecord);
             }
         }
@@ -356,7 +356,7 @@ public class ImportCallNode extends JavaScriptNode {
                 try {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     JSRealm realm = getRealm();
-                    if (moduleRecord.isTopLevelAsync()) {
+                    if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleInstantiation(realm, moduleRecord);
                         Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         assert JSPromise.isJSPromise(innerPromise);
@@ -365,7 +365,7 @@ public class ImportCallNode extends JavaScriptNode {
                         promiseThenNode.execute((DynamicObject) innerPromise, resolve, reject, moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
-                        if (moduleRecord.isAsyncEvaluating()) {
+                        if (moduleRecord.isAsyncEvaluation()) {
                             // Some module import started an async loading chain. The top-level
                             // capability will reject/resolve the dynamic import promise.
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();

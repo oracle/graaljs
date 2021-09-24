@@ -60,6 +60,7 @@ public final class JSModuleRecord extends ScriptOrModule {
         Linking,
         Linked,
         Evaluating,
+        EvaluatingAsync,
         Evaluated,
     }
 
@@ -107,7 +108,7 @@ public final class JSModuleRecord extends ScriptOrModule {
         super(parsedModule.getContext(), parsedModule.getSource());
         this.parsedModule = parsedModule;
         this.moduleLoader = moduleLoader;
-        this.async = parsedModule.isTopLevelAsync();
+        this.hasTLA = parsedModule.isTopLevelAsync();
         this.hostDefined = null;
         setUninstantiated();
     }
@@ -145,17 +146,17 @@ public final class JSModuleRecord extends ScriptOrModule {
         this.status = status;
     }
 
-    public boolean isEvaluated() {
-        return getStatus() == Status.Evaluated;
+    public boolean hasBeenEvaluated() {
+        return getStatus() == Status.Evaluated || getStatus() == Status.EvaluatingAsync;
     }
 
     public Throwable getEvaluationError() {
-        assert isEvaluated();
+        assert hasBeenEvaluated();
         return evaluationError;
     }
 
     public void setEvaluationError(Throwable evaluationError) {
-        assert isEvaluated();
+        assert hasBeenEvaluated();
         this.evaluationError = evaluationError;
     }
 
@@ -239,10 +240,12 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     // ##### Top-level await
 
-    // [[Async]]
-    private final boolean async;
-    // [[AsyncEvaluating]]
-    private boolean asyncEvaluating = false;
+    // [[CycleRoot]]
+    private JSModuleRecord cycleRoot = this;
+    // [[HasTLA]]
+    private final boolean hasTLA;
+    // [[AsyncEvaluation]] (true when asyncEvaluationOrder > 0)
+    private long asyncEvaluationOrder;
     // [[TopLevelCapability]]
     private PromiseCapabilityRecord topLevelPromiseCapability = null;
     // [[AsyncParentModules]]
@@ -258,8 +261,8 @@ public final class JSModuleRecord extends ScriptOrModule {
         this.topLevelPromiseCapability = capability;
     }
 
-    public boolean isAsyncEvaluating() {
-        return asyncEvaluating;
+    public boolean isAsyncEvaluation() {
+        return asyncEvaluationOrder > 0;
     }
 
     public List<JSModuleRecord> getAsyncParentModules() {
@@ -291,12 +294,16 @@ public final class JSModuleRecord extends ScriptOrModule {
         return pendingAsyncDependencies;
     }
 
-    public void setAsyncEvaluating(boolean value) {
-        asyncEvaluating = value;
+    public void setAsyncEvaluatingOrder(long order) {
+        asyncEvaluationOrder = order;
     }
 
-    public boolean isTopLevelAsync() {
-        return async;
+    public long getAsyncEvaluatingOrder() {
+        return asyncEvaluationOrder;
+    }
+
+    public boolean hasTLA() {
+        return hasTLA;
     }
 
     public void setExecutionContinuation(Object continuation) {
@@ -305,6 +312,14 @@ public final class JSModuleRecord extends ScriptOrModule {
 
     public Object getExecutionContinuation() {
         return topLevelAwaitModuleLoadingContinuation;
+    }
+
+    public void setCycleRoot(JSModuleRecord module) {
+        cycleRoot = module;
+    }
+
+    public JSModuleRecord getCycleRoot() {
+        return cycleRoot;
     }
 
 }
