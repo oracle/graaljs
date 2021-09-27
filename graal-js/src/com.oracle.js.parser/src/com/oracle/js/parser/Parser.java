@@ -1858,7 +1858,8 @@ public class Parser extends AbstractParser {
             IdentNode superIdent = new IdentNode(identToken, ctorFinish, SUPER.getName()).setIsDirectSuper();
             IdentNode argsIdent = new IdentNode(identToken, ctorFinish, "args").setIsRestParameter();
             Expression spreadArgs = new UnaryNode(Token.recast(classToken, TokenType.SPREAD_ARGUMENT), argsIdent);
-            Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, Collections.singletonList(spreadArgs));
+            Expression superCall = CallNode.forCall(classLineNumber, classToken, Token.descPosition(classToken), ctorFinish, superIdent, Collections.singletonList(spreadArgs), false, false, false,
+                            false, true);
             statements = Collections.singletonList(new ExpressionStatement(classLineNumber, classToken, ctorFinish, superCall));
             parameters = Collections.singletonList(argsIdent);
         } else {
@@ -4476,7 +4477,7 @@ public class Parser extends AbstractParser {
                 }
             }
 
-            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, false, eval, applyArguments);
+            lhs = CallNode.forCall(callLine, callToken, lhs.getStart(), finish, lhs, optimizeList(arguments), false, false, eval, applyArguments, false);
         }
 
         boolean optionalChain = false;

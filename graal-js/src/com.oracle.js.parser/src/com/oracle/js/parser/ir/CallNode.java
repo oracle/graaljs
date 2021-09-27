@@ -79,6 +79,9 @@ public final class CallNode extends OptionalExpression {
     /** Is this a tagged template literal call. */
     private static final int IS_TAGGED_TEMPLATE_LITERAL = 1 << 6;
 
+    /** It this a super call in the default derived constructor? */
+    private static final int IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL = 1 << 7;
+
     private final int flags;
 
     private final int lineNumber;
@@ -88,29 +91,30 @@ public final class CallNode extends OptionalExpression {
     }
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args) {
-        return forCall(lineNumber, token, start, finish, function, args, false, false, false, false);
+        return forCall(lineNumber, token, start, finish, function, args, false, false, false, false, false);
     }
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
                     boolean optional, boolean optionalChain) {
-        return forCall(lineNumber, token, start, finish, function, args, optional, optionalChain, false, false);
+        return forCall(lineNumber, token, start, finish, function, args, optional, optionalChain, false, false, false);
     }
 
     public static Expression forCall(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
-                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments) {
-        return create(lineNumber, token, start, finish, function, args, optional, optionalChain, isEval, isApplyArguments, false);
+                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isDefaultDerivedConstructorSuperCall) {
+        return create(lineNumber, token, start, finish, function, args, optional, optionalChain, isEval, isApplyArguments, isDefaultDerivedConstructorSuperCall, false);
     }
 
     public static Expression forTaggedTemplateLiteral(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args) {
-        return create(lineNumber, token, start, finish, function, args, false, false, false, false, true);
+        return create(lineNumber, token, start, finish, function, args, false, false, false, false, false, true);
     }
 
     private static Expression create(int lineNumber, long token, int start, int finish, Expression function, List<Expression> args,
-                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isTaggedTemplateLiteral) {
+                    boolean optional, boolean optionalChain, boolean isEval, boolean isApplyArguments, boolean isDefaultDerivedConstructorSuperCall, boolean isTaggedTemplateLiteral) {
         return new CallNode(lineNumber, token, start, finish, setIsFunction(function), args,
                         (optional ? IS_OPTIONAL : 0) | (optionalChain ? IS_OPTIONAL_CHAIN : 0) |
                                         (isEval ? IS_EVAL : 0) | (isApplyArguments ? IS_APPLY_ARGUMENTS : 0) |
-                                        (isTaggedTemplateLiteral ? IS_TAGGED_TEMPLATE_LITERAL : 0));
+                                        (isTaggedTemplateLiteral ? IS_TAGGED_TEMPLATE_LITERAL : 0) |
+                                        (isDefaultDerivedConstructorSuperCall ? IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL : 0));
     }
 
     public static Expression forImport(int lineNumber, long token, int start, int finish, IdentNode importIdent, List<Expression> args) {
@@ -287,4 +291,9 @@ public final class CallNode extends OptionalExpression {
     public boolean isTaggedTemplateLiteral() {
         return (flags & IS_TAGGED_TEMPLATE_LITERAL) != 0;
     }
+
+    public boolean isDefaultDerivedConstructorSuperCall() {
+        return (flags & IS_DEFAULT_DERIVED_CONSTRUCTOR_SUPER_CALL) != 0;
+    }
+
 }

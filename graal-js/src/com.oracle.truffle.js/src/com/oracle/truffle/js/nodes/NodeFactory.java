@@ -192,6 +192,7 @@ import com.oracle.truffle.js.nodes.function.CallApplyArgumentsNode;
 import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
 import com.oracle.truffle.js.nodes.function.ConstructorResultNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
+import com.oracle.truffle.js.nodes.function.DefaultDerivedConstructorSuperCallNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
 import com.oracle.truffle.js.nodes.function.IterationScopeNode;
@@ -1032,6 +1033,13 @@ public class NodeFactory {
 
     public JavaScriptNode createDerivedConstructorThis(JavaScriptNode thisNode) {
         return AccessDerivedConstructorThisNode.create(thisNode);
+    }
+
+    public JavaScriptNode createDefaultDerivedConstructorSuperCall(JavaScriptNode function) {
+        assert function instanceof JSTargetableWrapperNode;
+        JavaScriptNode superFunction = ((JSTargetableWrapperNode) function).getDelegate();
+        JavaScriptNode target = ((JSTargetableWrapperNode) function).getTarget();
+        return DefaultDerivedConstructorSuperCallNode.create(superFunction, target);
     }
 
     public JavaScriptNode createRequireObjectCoercible(JavaScriptNode argument) {
