@@ -216,6 +216,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -1010,14 +1011,17 @@ public class NodeFactory {
     }
 
     public JavaScriptRootNode createConstructorRequiresNewRoot(JSFunctionData functionData, SourceSection sourceSection) {
-        // no JavaScriptRealmBoundaryRootNode: error should be thrown in the context of the caller!
-        // ES6: 9.2.1. line 2.
         JSContext context = functionData.getContext();
         String message = "Class constructor " + functionData.getName() + " cannot be invoked without 'new'";
-        return new JavaScriptRootNode(context.getLanguage(), sourceSection, null) {
+        return new JavaScriptRealmBoundaryRootNode(context.getLanguage(), sourceSection, null) {
             @Override
-            public Object execute(VirtualFrame frame) {
+            protected Object executeInRealm(VirtualFrame frame) {
                 throw Errors.createTypeError(message);
+            }
+
+            @Override
+            protected JSContext getContext() {
+                return context;
             }
         };
     }
