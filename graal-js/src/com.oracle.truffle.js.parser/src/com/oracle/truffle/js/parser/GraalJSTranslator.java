@@ -2311,7 +2311,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         } else if (callNode.isApplyArguments() && currentFunction().isDirectArgumentsAccess()) {
             call = createCallApplyArgumentsNode(function, args);
         } else if (callNode.getFunction() instanceof IdentNode && ((IdentNode) callNode.getFunction()).isDirectSuper()) {
-            call = createCallDirectSuper(function, args);
+            call = createCallDirectSuper(function, args, callNode.isDefaultDerivedConstructorSuperCall());
         } else if (callNode.isImport()) {
             call = createImportCallNode(args);
         } else {
@@ -2369,8 +2369,13 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return factory.createCallApplyArguments((JSFunctionCallNode) factory.createFunctionCall(context, function, args));
     }
 
-    private JavaScriptNode createCallDirectSuper(JavaScriptNode function, JavaScriptNode[] args) {
-        return initializeThis(factory.createFunctionCallWithNewTarget(context, function, insertNewTargetArg(args)));
+    private JavaScriptNode createCallDirectSuper(JavaScriptNode function, JavaScriptNode[] args, boolean inDefaultDerivedConstructor) {
+        if (inDefaultDerivedConstructor) {
+            VarRef thisVar = environment.findThisVar();
+            return initializeInstanceElements(thisVar.createWriteNode(factory.createDefaultDerivedConstructorSuperCall(function)));
+        } else {
+            return initializeThis(factory.createFunctionCallWithNewTarget(context, function, insertNewTargetArg(args)));
+        }
     }
 
     private JavaScriptNode createImportCallNode(JavaScriptNode[] args) {
