@@ -11,7 +11,7 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalVM compatible with the JavaScript language?
-GraalVM is compatible with the ECMAScript 2021 specification and is further developed alongside the 2021 draft specification.
+GraalVM is compatible with the ECMAScript 2021 specification and is further developed alongside the 2022 draft specification.
 The compatibility of GraalVM's JavaScript runtime is verified by external sources, like the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalVM JavaScript is tested against a set of test engines, like the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalVM's own unit tests.
