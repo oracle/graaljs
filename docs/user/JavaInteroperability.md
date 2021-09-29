@@ -43,7 +43,7 @@ Context context = Context.newBuilder("js")
 context.eval("js", jsSourceCode);
 ```
 
-See the [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) reference for more details.
+See the [Polyglot Programming](../polyglot-programming.md) guide for more details.
 
 ## ScriptEngine (JSR 223)
 The `org.graalvm.polyglot.Context` is the preferred execution method for interoperability with GraalVM's languages and tools.

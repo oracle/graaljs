@@ -11,7 +11,7 @@ As such, it can run JavaScript code in a variety of embedding scenarios, includi
 
 Depending on the GraalVM's JavaScript embedding scenario, applications have access to different built-in capabilities.
 For example, Node.js applications executed using GraalVM's `bin/node` executable have access to all of Node.js' APIs, including built-in Node.js modules such as `fs`, `http`, etc.
-Conversely, JavaScript code embedded in a Java application has access to limited capabilities, as specified through the [Context API](https://www.graalvm.org/reference-manual/embed-languages/#compile-and-run-a-polyglot-application), and do not have access to Node.js built-in modules.
+Conversely, JavaScript code embedded in a Java application has access to limited capabilities, as specified through the [Context API](../embedding/embed-languages.md/#compile-and-run-a-polyglot-application), and do not have access to Node.js built-in modules.
 
 This guide describes the main differences between a Node.js application and a GraalVM JavaScript application embedded in Java.
 
@@ -38,7 +38,7 @@ The object is not available by default, and can be enabled in the following way:
 ```java
 Context.create("js").withHostInterop()
 ```
-More details on the Java interoperability capabilities of GraalVM JavaScript are available in [Java Interoperability](https://github.com/oracle/graaljs/blob/master/docs/user/JavaInteroperability.md).
+More details on the Java interoperability capabilities of GraalVM JavaScript are available in [Java Interoperability](JavaInteroperability.md).
 
 ## Multithreading
 
@@ -60,7 +60,7 @@ In order for a Java library to be accessible from a `Context`, its `jar` files n
 1. In Node.js mode, the classpath can be modified using the `--jvm.cp` option.
 2. In Java, the default Java's `-cp` option can be used.
 
-More details on GraalVM command line options are available in [Options](https://github.com/oracle/graaljs/blob/master/docs/user/Options.md).
+More details on GraalVM command line options are available in [Options](Options.md).
 
 ## JavaScript Packages and Modules
 
@@ -72,4 +72,4 @@ Therefore, GraalVM JavaScript supports all modules supported by Node.js (includi
 Modules can be loaded using a package bundler, or using the available built-in mechanisms for ES modules.
 CommonJS modules are supported in Java mode under an experimental flag.
 
-More details on JavaScript modules are available in [Modules](https://github.com/oracle/graaljs/blob/master/docs/user/Modules.md).
+More details on JavaScript modules are available in [Modules](Modules.md).

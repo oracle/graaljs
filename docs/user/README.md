@@ -69,13 +69,11 @@ Certain limits apply when launching a Node.js application or accessing npm packa
 
 ## Interoperability
 
-GraalVM supports several other programming languages like Ruby, R, Python, and
-LLVM languages. While GraalVM is designed to run Node.js and JavaScript applications, it
-also provides interoperability between those languages and lets you execute
-code from or call methods in any of those languages using GraalVM Polyglot APIs.
+GraalVM supports several other programming languages like Ruby, R, Python, and LLVM languages.
+While GraalVM is designed to run Node.js and JavaScript applications, it also provides interoperability between those languages and lets you execute code from or call methods in any of those languages using GraalVM Polyglot APIs.
 
-To enable Node.js or JavaScript interoperability with other languages, pass the
-`--jvm` and `--polyglot` options. For example:
+To enable Node.js or JavaScript interoperability with other languages, pass the `--jvm` and `--polyglot` options. For example:
+
 ```shell
 node --jvm --polyglot
 Welcome to Node.js v12.15.0.
@@ -87,8 +85,7 @@ Type ".help" for more information.
 0.8198353068437427
 ```
 
-For more information about interoperability with other programming
-languages, see [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) for a general description.
+For more information about interoperability with other programming languages, see [Polyglot Programming](../polyglot-programming.md) for a general description.
 
 ## Interoperability with Java
 
@@ -126,8 +123,7 @@ Run the above Java program:
 javac HelloPolyglot.java
 java HelloPolyglot JavaScript
 ```
-This way you can evaluate JavaScript context embedded in Java, but you will not be able to
-call a function and set parameters in the function directly from the Java code.
+This way you can evaluate JavaScript context embedded in Java, but you will not be able to call a function and set parameters in the function directly from the Java code.
 The Node.js runtime cannot be embedded into a JVM but has to be started as a separate process.
 
 For example, save this code as _app.js_:
