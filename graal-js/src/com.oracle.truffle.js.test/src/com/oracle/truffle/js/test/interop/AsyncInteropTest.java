@@ -607,6 +607,28 @@ public class AsyncInteropTest {
         }
     }
 
+    @Test
+    public void testAwaitInSwitchInLoop() {
+        TestOutput out = new TestOutput();
+        try (Context context = JSTest.newContextBuilder().out(out).build()) {
+            context.eval("js", "" //
+                            + "(async function () {" //
+                            + "  for (o of ['a', 'b']) {" //
+                            + "    switch (o) {" //
+                            + "      case 'a':" //
+                            + "        await 42;" //
+                            + "        console.log('seen a');" //
+                            + "        break;" //
+                            + "      case 'b':" //
+                            + "        console.log('seen b');" //
+                            + "        break;" //
+                            + "    }" //
+                            + "  }" //
+                            + "})();");
+            assertEquals("seen a\nseen b\n", out.toString());
+        }
+    }
+
     private static Function<String, CompletionStage<String>> asChainable(Value jsFunction) {
         assert jsFunction.canExecute();
         return v -> {
