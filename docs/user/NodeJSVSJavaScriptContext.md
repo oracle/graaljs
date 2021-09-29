@@ -11,7 +11,7 @@ As such, it can run JavaScript code in a variety of embedding scenarios, includi
 
 Depending on the GraalVM's JavaScript embedding scenario, applications have access to different built-in capabilities.
 For example, Node.js applications executed using GraalVM's `bin/node` executable have access to all of Node.js' APIs, including built-in Node.js modules such as `fs`, `http`, etc.
-Conversely, JavaScript code embedded in a Java application has access to limited capabilities, as specified through the [Context API](../embedding/embed-languages.md/#compile-and-run-a-polyglot-application), and do not have access to Node.js built-in modules.
+Conversely, JavaScript code embedded in a Java application has access to limited capabilities, as specified through the [Context API](https://github.com/oracle/graal/blob/master/docs/reference-manual/embedding/embed-languages.md#compile-and-run-a-polyglot-application), and do not have access to Node.js built-in modules.
 
 This guide describes the main differences between a Node.js application and a GraalVM JavaScript application embedded in Java.
 

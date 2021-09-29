@@ -85,7 +85,7 @@ Type ".help" for more information.
 0.8198353068437427
 ```
 
-For more information about interoperability with other programming languages, see [Polyglot Programming](../polyglot-programming.md) for a general description.
+For more information about interoperability with other programming languages, see [Polyglot Programming](https://github.com/oracle/graal/blob/master/docs/reference-manual/polyglot-programming.md) for a general description.
 
 ## Interoperability with Java
 

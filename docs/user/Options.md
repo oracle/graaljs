@@ -57,7 +57,7 @@ Context context = Context.newBuilder("js")
 context.eval("js", "42");
 ```
 
-See the [Polyglot Programming](../polyglot-programming.md/#passing-options-programmatically) reference for information on how to set options programmatically.
+See the [Polyglot Programming](https://github.com/oracle/graal/blob/master/docs/reference-manual/polyglot-programming.md#passing-options-programmatically) reference for information on how to set options programmatically.
 
 ## Stable and Experimental Options
 

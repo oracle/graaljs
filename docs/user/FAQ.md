@@ -92,7 +92,7 @@ Here are a few tips you can follow to analyse and improve peak performance:
 * Compare the performance between the Native Image and the JVM mode if possible. Depending on the characteristics of your application, one or the other might show better peak performance.
 * The Polyglot API comes with several tools and options to inspect the performance of your application:
     * `--cpusampler` and `--cputracer` will print a list of the hottest methods when the application is terminated. Use that list to figure out where most time is spent in your application.
-    * `--experimental-options --memtracer` can help you understand the memory allocations of your application. Refer to the [Profiling Command Line Tool](../../tools/profiling.md) reference for more detail.
+    * `--experimental-options --memtracer` can help you understand the memory allocations of your application. Refer to the [Profiling Command Line Tool](https://github.com/oracle/graal/blob/master/docs/tools/profiling.md) reference for more detail.
 
 ### What is the difference between running GraalVM's JavaScript in a Native Image compared to the JVM?
 In essence, the JavaScript engine of GraalVM is a plain Java application.
@@ -249,7 +249,7 @@ Execution only in interpreted mode will strongly impact the guest application pe
 To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
 
-To resolve this, use [GraalVM](../../getting-started/graalvm-community/get-started-graalvm-community.md) or see [RunOnJDK.md](https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
+To resolve this, use [GraalVM](https://github.com/oracle/graal/blob/master/docs/getting-started/graalvm-community/get-started-graalvm-community.md) or see the [Run GraalVM JavaScript on a Stock JDK guide](RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
 
 Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the above mentioned option, either via the command line or using the `Context.Builder`, e.g.:
 ```java

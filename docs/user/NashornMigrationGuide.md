@@ -88,7 +88,7 @@ GraalVM JavaScript differs from Nashorn in some aspects that were intentional de
 GraalVM JavaScript takes a _secure by default_ approach.
 Unless explicitly permitted by the embedder, JavaScript code cannot access Java classes or access the file system, among other restrictions.
 Several features of GraalVM JavaScript, including Nashorn compatibility features, are only available when the relevant security settings are permissive enough.
-Make sure you [understand the security implications](../../security/security-guide.md) of any change that lifts the secure default limits to your application and the host system.
+Make sure you [understand the security implications](https://github.com/oracle/graal/blob/master/docs/security/security-guide.md) of any change that lifts the secure default limits to your application and the host system.
 
 For a full list of available settings, see [`Context.Builder`](https://www.graalvm.org/truffle/javadoc/org/graalvm/polyglot/Context.Builder.html).
 Those flags can be defined when building the context with GraalVM Polyglot API.
