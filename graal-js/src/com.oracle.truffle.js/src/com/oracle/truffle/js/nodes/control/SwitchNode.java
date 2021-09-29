@@ -207,6 +207,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode {
         int statementIndex;
         Object resumptionResult;
         if (maybeState instanceof SwitchResumptionRecord) {
+            resetState(frame);
             SwitchResumptionRecord state = (SwitchResumptionRecord) maybeState;
             caseIndex = state.caseIndex;
             statementIndex = state.statementIndex;
