@@ -69,24 +69,23 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
         final JSContext context = getContext();
         CompilerAsserts.partialEvaluationConstant(context);
 
-        final JSRealm currentRealm = getRealm();
-        final JSRealm realm;
+        JSRealm functionRealm = null;
         final boolean enterContext;
         if (context.neverCreatedChildRealms()) {
             // fast path: if there are no child realms we are guaranteed to be in the right realm
-            assert currentRealm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-            realm = currentRealm;
+            assert getRealm() == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
             enterContext = false;
         } else {
-            // must enter function context if realm != currentRealm
-            realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-            enterContext = realm != currentRealm;
+            // must enter function context if functionRealm != currentRealm
+            functionRealm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
+            JSRealm currentRealm = getRealm();
+            enterContext = functionRealm != currentRealm;
         }
         Object prev = null;
         TruffleContext childContext = null;
 
         if (enterContext) {
-            childContext = realm.getTruffleContext();
+            childContext = functionRealm.getTruffleContext();
             prev = childContext.enter(this);
         }
         try {
@@ -101,7 +100,10 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     seenNullRealm = true;
                 }
-                ex.setRealm(realm);
+                if (functionRealm == null) {
+                    functionRealm = getRealm();
+                }
+                ex.setRealm(functionRealm);
             }
             throw ex;
         } catch (StackOverflowError ex) {
