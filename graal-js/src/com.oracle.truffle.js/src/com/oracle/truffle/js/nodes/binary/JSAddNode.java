@@ -176,12 +176,12 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @Specialization
     protected CharSequence doStringInt(CharSequence a, int b) {
-        return JSLazyString.createLazyInt(a, b);
+        return JSLazyString.createLazyInt(a, b, getLanguage().getJSContext().getStringLengthLimit());
     }
 
     @Specialization
     protected CharSequence doIntString(int a, CharSequence b) {
-        return JSLazyString.createLazyInt(a, b);
+        return JSLazyString.createLazyInt(a, b, getLanguage().getJSContext().getStringLengthLimit());
     }
 
     @Specialization(guards = "isNumber(b)")

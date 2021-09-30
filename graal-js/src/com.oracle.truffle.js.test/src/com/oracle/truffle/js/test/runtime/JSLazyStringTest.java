@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,13 +106,13 @@ public class JSLazyStringTest extends JSTest {
     }
 
     private static void checkLazyIntLength(String left, int right) {
-        int actual = JSLazyString.createLazyInt(left, right).length();
+        int actual = JSLazyString.createLazyInt(left, right, JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()).length();
         int expected = left.length() + Integer.toString(right).length();
         assertSame(expected, actual);
     }
 
     private static void checkLazyIntLength(int left, String right) {
-        int actual = JSLazyString.createLazyInt(left, right).length();
+        int actual = JSLazyString.createLazyInt(left, right, JavaScriptLanguage.getCurrentLanguage().getJSContext().getStringLengthLimit()).length();
         int expected = Integer.toString(left).length() + right.length();
         assertSame(expected, actual);
     }
