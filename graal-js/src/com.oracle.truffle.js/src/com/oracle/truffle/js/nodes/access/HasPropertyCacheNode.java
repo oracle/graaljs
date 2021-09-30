@@ -299,7 +299,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                 return new AbsentHasPropertyCacheNode(shapeCheck);
             }
         } else {
-            return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass(), context));
+            return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass()));
         }
     }
 

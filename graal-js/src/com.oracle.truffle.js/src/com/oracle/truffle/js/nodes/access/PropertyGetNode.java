@@ -1610,7 +1610,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 }
             }
 
-            receiverCheck = new InstanceofCheckNode(thisObj.getClass(), context);
+            receiverCheck = new InstanceofCheckNode(thisObj.getClass());
 
             if (isStringLengthProperty(property)) {
                 return new StringLengthPropertyGetNode(property, receiverCheck);

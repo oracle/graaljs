@@ -62,7 +62,6 @@ import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -211,11 +210,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static final class InstanceofCheckNode extends ReceiverCheckNode {
         protected final Class<?> type;
-        @Child private JSToObjectNode toObject;
 
-        protected InstanceofCheckNode(Class<?> type, JSContext context) {
+        protected InstanceofCheckNode(Class<?> type) {
             this.type = type;
-            this.toObject = JSToObjectNode.createToObjectNoCheckNoForeign(context);
         }
 
         @Override
@@ -225,7 +222,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return (DynamicObject) toObject.execute(thisObj);
+            throw Errors.shouldNotReachHere();
         }
     }
 
@@ -1544,7 +1541,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected final ReceiverCheckNode createPrimitiveReceiverCheck(Object thisObj, int depth) {
         if (depth == 0) {
-            return new InstanceofCheckNode(thisObj.getClass(), context);
+            return new InstanceofCheckNode(thisObj.getClass());
         } else {
             assert JSRuntime.isJSPrimitive(thisObj);
             DynamicObject wrapped = wrapPrimitive(thisObj, context);

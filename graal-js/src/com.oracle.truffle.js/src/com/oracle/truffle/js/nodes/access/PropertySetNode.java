@@ -1039,7 +1039,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 // Nashorn never throws when setting inexistent properties on Java objects
                 doThrow = false;
             }
-            return new ReadOnlyPropertySetNode(new InstanceofCheckNode(thisObj.getClass(), context), doThrow);
+            return new ReadOnlyPropertySetNode(new InstanceofCheckNode(thisObj.getClass()), doThrow);
         }
     }
 
