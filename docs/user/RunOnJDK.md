@@ -7,7 +7,7 @@ permalink: /reference-manual/js/RunOnJDK/
 # Run GraalVM JavaScript on a Stock JDK
 
 GraalVM JavaScript is optimized for execution as part of GraalVM, or in an embedding scenario built on GraalVM.
-This guarantees best possible performance by using the [GraalVM compiler](https://github.com/oracle/graal) as the optimizing compiler, and potentially [Native Image](https://www.graalvm.org/reference-manual/native-image/) to ahead-of-time compile the engine into a native binary.
+This guarantees best possible performance by using the [GraalVM compiler](https://github.com/oracle/graal) as the optimizing compiler, and potentially [Native Image](https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/README.md) to ahead-of-time compile the engine into a native binary.
 
 As GraalVM JavaScript is a Java application, it is possible to execute it on a stock Java VM like OpenJDK.
 When executed without the GraalVM compiler, JavaScript performance will be significantly worse.

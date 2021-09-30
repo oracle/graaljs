@@ -11,7 +11,7 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalVM compatible with the JavaScript language?
-GraalVM is compatible with the ECMAScript 2020 specification and is further developed alongside the 2021 draft specification.
+GraalVM is compatible with the ECMAScript 2021 specification and is further developed alongside the 2022 draft specification.
 The compatibility of GraalVM's JavaScript runtime is verified by external sources, like the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalVM JavaScript is tested against a set of test engines, like the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalVM's own unit tests.
@@ -68,13 +68,9 @@ In such cases, you can wrap the Java object and handle that case explicitly.
 Use the interfaces `ProxyObject` and `ProxyArray` for that purpose.
 
 ### How can one verify GraalVM works on their application?
-If your module ships with tests, execute them with GraalVM. Of course, this will
-only test your application, but not its dependencies. You can use the
-[Compatibility](https://www.graalvm.org/docs/reference-manual/compatibility/)
-tool to find whether the module you are interested in is tested on GraalVM, and
-whether the tests pass successfully. Additionally, you can upload your
-`package-lock.json` or `package.json` file into that tool and it will analyze
-all your dependencies at once.
+If your module ships with tests, execute them with GraalVM. Of course, this will only test your application, but not its dependencies.
+You can use the [Compatibility](https://www.graalvm.org/compatibility/) tool to find whether the module you are interested in is tested on GraalVM, and whether the tests pass successfully.
+Additionally, you can upload your `package-lock.json` or `package.json` file into that tool and it will analyze all your dependencies at once.
 
 ## Performance
 
@@ -96,7 +92,7 @@ Here are a few tips you can follow to analyse and improve peak performance:
 * Compare the performance between the Native Image and the JVM mode if possible. Depending on the characteristics of your application, one or the other might show better peak performance.
 * The Polyglot API comes with several tools and options to inspect the performance of your application:
     * `--cpusampler` and `--cputracer` will print a list of the hottest methods when the application is terminated. Use that list to figure out where most time is spent in your application.
-    * `--experimental-options --memtracer` can help you understand the memory allocations of your application. Refer to the [Profiling Command Line Tool](https://www.graalvm.org/tools/profiling/) reference for more detail.
+    * `--experimental-options --memtracer` can help you understand the memory allocations of your application. Refer to the [Profiling Command Line Tool](https://github.com/oracle/graal/blob/master/docs/tools/profiling.md) reference for more detail.
 
 ### What is the difference between running GraalVM's JavaScript in a Native Image compared to the JVM?
 In essence, the JavaScript engine of GraalVM is a plain Java application.
@@ -250,11 +246,10 @@ If you get the following warning, you are not running on GraalVM or a JVMCI-enab
 [engine] WARNING: The polyglot context is using an implementation that does not support runtime compilation.
 The guest application code will therefore be executed in interpreted mode only.
 Execution only in interpreted mode will strongly impact the guest application performance.
-For more information on using GraalVM see https://www.graalvm.org/java/quickstart/.
 To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
 
-To resolve this, use [GraalVM](https://www.graalvm.org/java/quickstart/) or see [RunOnJDK.md](https://github.com/oracle/graaljs/blob/master/docs/user/RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
+To resolve this, use [GraalVM](https://github.com/oracle/graal/blob/master/docs/getting-started/graalvm-community/get-started-graalvm-community.md) or see the [Run GraalVM JavaScript on a Stock JDK guide](RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
 
 Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the above mentioned option, either via the command line or using the `Context.Builder`, e.g.:
 ```java
