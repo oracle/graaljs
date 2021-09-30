@@ -769,7 +769,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (!JSDynamicObject.isJSDynamicObject(thisObj)) {
                 return false;
             }
-            DynamicObject current = (DynamicObject) thisObj;
+            DynamicObject current = (JSDynamicObject) thisObj;
             boolean result = getShape().check(current);
             if (!result) {
                 return false;
@@ -788,7 +788,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public DynamicObject getStore(Object thisObj) {
-            DynamicObject proto = (DynamicObject) thisObj;
+            DynamicObject proto = (JSDynamicObject) thisObj;
             for (int i = 0; i < shapeCheckNodes.length; i++) {
                 proto = getPrototypeNodes[i].executeDynamicObject(proto);
             }
@@ -838,7 +838,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public boolean accept(Object thisObj) {
             if (JSDynamicObject.isJSDynamicObject(thisObj)) {
-                DynamicObject jsobj = (DynamicObject) thisObj;
+                DynamicObject jsobj = (JSDynamicObject) thisObj;
                 if (getShape().check(jsobj)) {
                     // Return the shape check of the prototype we're going to access.
                     return protoShapeCheck.accept(getPrototypeNode.executeDynamicObject(jsobj));
@@ -849,7 +849,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return getPrototypeNode.executeDynamicObject((DynamicObject) thisObj);
+            return getPrototypeNode.executeDynamicObject((JSDynamicObject) thisObj);
         }
 
         @Override
@@ -1012,7 +1012,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return (DynamicObject) thisObj;
+            return (JSDynamicObject) thisObj;
         }
     }
 
@@ -1199,7 +1199,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         DynamicObject store = null;
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             if ((!JSAdapter.isJSAdapter(thisObj) && !JSProxy.isJSProxy(thisObj)) || key instanceof HiddenKey) {
-                store = (DynamicObject) thisObj;
+                store = (JSDynamicObject) thisObj;
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
             assert !JSDynamicObject.isJSDynamicObject(thisObj);
