@@ -1427,7 +1427,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected int getValueInt(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            CharSequence charSequence = (CharSequence) ((InstanceofCheckNode) receiverCheck).type.cast(thisObj);
+            CharSequence charSequence = (CharSequence) CompilerDirectives.castExact(thisObj, ((InstanceofCheckNode) receiverCheck).type);
             return JSRuntime.length(charSequence);
         }
 

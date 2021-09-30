@@ -217,7 +217,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return type.isInstance(thisObj);
+            return CompilerDirectives.isExact(thisObj, type);
         }
 
         @Override
@@ -237,7 +237,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (type.isInstance(thisObj)) {
+            if (CompilerDirectives.isExact(thisObj, type)) {
                 return prototypeShapeCheck.accept(thisObj);
             } else {
                 return false;
