@@ -1991,6 +1991,8 @@ public final class GraalJSAccess {
         JSRealm realm = (JSRealm) context;
         JSContext jsContext = realm.getContext();
         Evaluator nodeEvaluator = jsContext.getEvaluator();
+        JSParserOptions parserOptions = jsContext.getParserOptions();
+        boolean isStrict = parserOptions.isStrict();
         Object extraArgument = getExtraArgumentOfInternalScript(sourceName, realm);
         Object[] extensions;
         ByteBuffer snapshot = null;
@@ -2017,7 +2019,7 @@ public final class GraalJSAccess {
         String parameterList = params.toString();
 
         try {
-            GraalJSParserHelper.checkFunctionSyntax(jsContext, jsContext.getParserOptions(), parameterList, body, false, false, sourceName);
+            GraalJSParserHelper.checkFunctionSyntax(jsContext, parserOptions, parameterList, body, false, false, sourceName);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
             nodeEvaluator.parseFunction(jsContext, parameterList, body, false, false, sourceName);
@@ -2026,7 +2028,15 @@ public final class GraalJSAccess {
         StringBuilder code = new StringBuilder();
 
         boolean anyExtension = extensions.length > 0;
+        boolean injectStrict = false;
         if (anyExtension) {
+            if (isStrict) {
+                // We use `with` to implement the right semantics. `with` is not allowed
+                // in strict mode => parse the whole script in sloppy mode but ensure
+                // that the returned function is in strict mode still
+                injectStrict = true;
+                isStrict = false;
+            }
             code.append("(function () {");
 
             for (int i = 0; i < extensions.length; i++) {
@@ -2039,6 +2049,10 @@ public final class GraalJSAccess {
         code.append("(function (");
         code.append(parameterList);
         code.append(") {");
+
+        if (injectStrict) {
+            code.append("'use strict';");
+        }
 
         // hashbang would result in SyntaxError => comment it out
         if (body.startsWith("#!")) {
@@ -2083,7 +2097,7 @@ public final class GraalJSAccess {
 
         Object function;
         if (snapshot == null) {
-            ScriptNode scriptNode = nodeEvaluator.parseScript(jsContext, source, prefix, suffix);
+            ScriptNode scriptNode = nodeEvaluator.parseScript(jsContext, source, prefix, suffix, isStrict);
             DynamicObject fn = (DynamicObject) scriptNode.run(realm);
             function = anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
         } else {
@@ -2279,7 +2293,7 @@ public final class GraalJSAccess {
                 System.err.printf("error when parsing binary snapshot for %s: %s\n", moduleName, e);
                 System.err.printf("falling back to parsing %s at runtime\n", moduleName);
             }
-            return parser.parseScript(context, source, prefix, suffix);
+            return parser.parseScript(context, source, prefix, suffix, context.getParserOptions().isStrict());
         }
     }
 

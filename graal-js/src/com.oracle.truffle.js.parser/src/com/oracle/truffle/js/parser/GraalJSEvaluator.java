@@ -235,12 +235,12 @@ public final class GraalJSEvaluator implements JSParser {
 
     @TruffleBoundary
     @Override
-    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames) {
+    public ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, String[] argumentNames) {
         if (isModuleSource(source)) {
             return fakeScriptForModule(context, source);
         }
         try {
-            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, context.getParserOptions().isStrict(), prolog, epilog, argumentNames);
+            return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, isStrict, prolog, epilog, argumentNames);
         } catch (com.oracle.js.parser.ParserException e) {
             throw Errors.createSyntaxError(e.getMessage());
         }

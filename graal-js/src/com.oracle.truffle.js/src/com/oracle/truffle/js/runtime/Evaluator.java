@@ -116,14 +116,14 @@ public interface Evaluator {
     ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
 
     default ScriptNode parseScript(JSContext context, Source source) {
-        return parseScript(context, source, "", "");
+        return parseScript(context, source, "", "", context.getParserOptions().isStrict());
     }
 
-    default ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog) {
-        return parseScript(context, source, prolog, epilog, null);
+    default ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict) {
+        return parseScript(context, source, prolog, epilog, isStrict, null);
     }
 
-    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, String[] argumentNames);
+    ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict, String[] argumentNames);
 
     ScriptNode parseScript(JSContext context, String sourceString);
 

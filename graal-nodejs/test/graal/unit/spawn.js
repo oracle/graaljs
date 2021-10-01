@@ -67,6 +67,10 @@ describe('Spawn', function () {
         var result = spawnSync(process.execPath, ['-p', 'Error.stackTraceLimit'], {env: { NODE_OPTIONS: '--stack-trace-limit=42' }});
         checkTheAnswerToLifeTheUniverseAndEverything(result);
     });
+    it('should accept --use-strict option', function () {
+        var result = spawnSync(process.execPath, ['--use-strict', '-p', '6*7']);
+        checkTheAnswerToLifeTheUniverseAndEverything(result);
+    });
     it('should survive duplicates in envPairs', function (done) {
         // Copy the current content of process.env
         var envPairs = [];
