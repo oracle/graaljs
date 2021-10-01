@@ -710,7 +710,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         @Override
-        public JavaScriptNode getTarget() {
+        public final JavaScriptNode getTarget() {
             if (targetNode != null) {
                 return targetNode;
             }
@@ -732,7 +732,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return executeCall(createArguments(frame, receiver, function));
         }
 
-        protected Object executeTarget(VirtualFrame frame) {
+        protected final Object executeTarget(VirtualFrame frame) {
             if (targetNode != null) {
                 return targetNode.execute(frame);
             }

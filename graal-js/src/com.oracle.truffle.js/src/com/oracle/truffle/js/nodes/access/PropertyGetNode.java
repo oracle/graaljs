@@ -373,16 +373,16 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    protected abstract static class AbstractFinalDataPropertyGetNode extends LinkedPropertyGetNode {
+    protected abstract static class AbstractFinalPropertyGetNode extends LinkedPropertyGetNode {
         private final Assumption finalAssumption;
 
-        protected AbstractFinalDataPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck) {
+        protected AbstractFinalPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck) {
             super(shapeCheck);
             this.finalAssumption = property.getLocation().isFinal() ? null : property.getLocation().getFinalAssumption();
         }
 
         @Override
-        protected boolean isValid() {
+        protected final boolean isValid() {
             return super.isValid() && (finalAssumption == null || finalAssumption.isValid());
         }
 
@@ -399,7 +399,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class FinalObjectPropertyGetNode extends AbstractFinalDataPropertyGetNode {
+    public static final class FinalObjectPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final Object finalValue;
 
@@ -442,7 +442,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class FinalIntPropertyGetNode extends AbstractFinalDataPropertyGetNode {
+    public static final class FinalIntPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final int finalValue;
 
@@ -490,7 +490,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class FinalDoublePropertyGetNode extends AbstractFinalDataPropertyGetNode {
+    public static final class FinalDoublePropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final double finalValue;
 
@@ -533,7 +533,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class FinalBooleanPropertyGetNode extends AbstractFinalDataPropertyGetNode {
+    public static final class FinalBooleanPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final boolean finalValue;
 
@@ -576,7 +576,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class FinalLongPropertyGetNode extends AbstractFinalDataPropertyGetNode {
+    public static final class FinalLongPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         private final long finalValue;
 
@@ -625,19 +625,17 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static final class FinalAccessorPropertyGetNode extends LinkedPropertyGetNode {
+    public static final class FinalAccessorPropertyGetNode extends AbstractFinalPropertyGetNode {
 
         @Child private JSFunctionCallNode callNode;
         private final BranchProfile undefinedGetterBranch = BranchProfile.create();
         private final Accessor finalAccessor;
-        private final Assumption finalAssumption;
 
-        public FinalAccessorPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, Accessor finalAccessor) {
-            super(receiverCheck);
+        public FinalAccessorPropertyGetNode(Property property, AbstractShapeCheckNode receiverCheck, Accessor finalAccessor) {
+            super(property, receiverCheck);
             assert JSProperty.isAccessor(property);
             this.callNode = JSFunctionCallNode.createCall();
             this.finalAccessor = finalAccessor;
-            this.finalAssumption = property.getLocation().isFinal() ? null : property.getLocation().getFinalAssumption();
         }
 
         @Override
@@ -649,11 +647,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 undefinedGetterBranch.enter();
                 return Undefined.instance;
             }
-        }
-
-        @Override
-        protected boolean isValid() {
-            return super.isValid() && (finalAssumption == null || finalAssumption.isValid());
         }
     }
 
@@ -809,7 +802,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
     }
 
-    public static class JavaStringMethodGetNode extends LinkedPropertyGetNode {
+    public static final class JavaStringMethodGetNode extends LinkedPropertyGetNode {
         @Child private InteropLibrary interop;
 
         public JavaStringMethodGetNode(ReceiverCheckNode receiverCheck) {
@@ -1058,7 +1051,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     @NodeInfo(cost = NodeCost.MEGAMORPHIC)
-    public static class GenericPropertyGetNode extends GetCacheNode {
+    public static final class GenericPropertyGetNode extends GetCacheNode {
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertyGetNode foreignGetNode;
         @Child private GetPropertyFromJSObjectNode getFromJSObjectNode;
@@ -1585,7 +1578,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     private static boolean isFinalSpecialization(GetCacheNode existingNode) {
-        return existingNode instanceof AbstractFinalDataPropertyGetNode || existingNode instanceof FinalAccessorPropertyGetNode;
+        return existingNode instanceof AbstractFinalPropertyGetNode;
     }
 
     private boolean isEligibleForFinalSpecialization(Shape cacheShape, DynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
