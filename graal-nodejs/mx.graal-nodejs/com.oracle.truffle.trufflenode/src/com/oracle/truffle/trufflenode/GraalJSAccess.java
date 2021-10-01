@@ -2028,7 +2028,15 @@ public final class GraalJSAccess {
         StringBuilder code = new StringBuilder();
 
         boolean anyExtension = extensions.length > 0;
+        boolean injectStrict = false;
         if (anyExtension) {
+            if (isStrict) {
+                // We use `with` to implement the right semantics. `with` is not allowed
+                // in strict mode => parse the whole script in sloppy mode but ensure
+                // that the returned function is in strict mode still
+                injectStrict = true;
+                isStrict = false;
+            }
             code.append("(function () {");
 
             for (int i = 0; i < extensions.length; i++) {
@@ -2041,6 +2049,10 @@ public final class GraalJSAccess {
         code.append("(function (");
         code.append(parameterList);
         code.append(") {");
+
+        if (injectStrict) {
+            code.append("'use strict';");
+        }
 
         // hashbang would result in SyntaxError => comment it out
         if (body.startsWith("#!")) {
