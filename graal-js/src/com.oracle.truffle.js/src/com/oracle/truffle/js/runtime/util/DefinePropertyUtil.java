@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.util;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
@@ -220,7 +221,8 @@ public final class DefinePropertyUtil {
         } else {
             if (currentDesc.isDataDescriptor() && descriptor.isDataDescriptor() && currentProperty.getFlags() == newAttr) {
                 if (descriptor.hasValue()) {
-                    currentProperty.setGeneric(thisObj, descriptor.getValue(), null);
+                    boolean present = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, key, descriptor.getValue());
+                    assert present : key;
                 }
             } else if (currentDesc.isAccessorDescriptor() && descriptor.isAccessorDescriptor()) {
                 if (descriptor.hasSet() || descriptor.hasGet()) {
@@ -239,7 +241,8 @@ public final class DefinePropertyUtil {
                     }
 
                     if (currentProperty.getFlags() == newAttr) {
-                        currentProperty.setGeneric(obj, newAccessor, null);
+                        boolean present = DynamicObjectLibrary.getUncached().putIfPresent(thisObj, key, newAccessor);
+                        assert present : key;
                     } else {
                         JSObjectUtil.defineAccessorProperty(thisObj, key, newAccessor, newAttr);
                     }
