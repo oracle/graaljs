@@ -295,7 +295,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             if (!argumentNames.isEmpty()) {
                 arguments = argumentNames.toArray(new String[0]);
             }
-            return context.getEvaluator().parseScript(context, code, prolog, epilog, arguments);
+            return context.getEvaluator().parseScript(context, code, prolog, epilog, context.getParserOptions().isStrict(), arguments);
         } finally {
             if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());
