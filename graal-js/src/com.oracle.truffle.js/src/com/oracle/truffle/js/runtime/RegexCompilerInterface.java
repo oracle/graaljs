@@ -57,19 +57,12 @@ public final class RegexCompilerInterface {
     }
 
     public static Object compile(String pattern, String flags, JSContext context) {
-        return compile(pattern, flags, context, TRegexUtil.InteropIsNullNode.getUncached());
+        return compile(pattern, flags, context, JSRealm.get(null), TRegexUtil.InteropIsNullNode.getUncached());
     }
 
-    public static Object compile(String pattern, String flags, JSContext context, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {
-        // RegexLanguage does its own validation of the flags. This call to validateFlags only
-        // serves the purpose of mimicking the error messages of Nashorn and V8.
-        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices());
-        Object compiledRegex;
-        try {
-            compiledRegex = JSRealm.get(null).getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexOptions())).call();
-        } catch (AbstractTruffleException e) {
-            throw rethrowAsSyntaxError(e);
-        }
+    public static Object compile(String pattern, String flags, JSContext context, JSRealm realm, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {
+        Source regexSource = createRegexSource(pattern, flags, context.getRegexOptions());
+        Object compiledRegex = compile(regexSource, flags, context, realm);
         if (isCompiledRegexNullNode.execute(compiledRegex)) {
             throw Errors.createSyntaxError("regular expression not supported");
         }
@@ -77,18 +70,38 @@ public final class RegexCompilerInterface {
     }
 
     @TruffleBoundary
-    private static Source createRegexSource(String pattern, String flags, String options) {
+    private static Object compile(Source regexSource, String flags, JSContext context, JSRealm realm) {
+        Object compiledRegex = realm.getCachedCompiledRegex(regexSource);
+        if (compiledRegex != null) {
+            return compiledRegex;
+        }
+        // RegexLanguage does its own validation of the flags. This call to validateFlags only
+        // serves the purpose of mimicking the error messages of Nashorn and V8.
+        validateFlags(flags, context.getEcmaScriptVersion(), context.isOptionNashornCompatibilityMode(), context.isOptionRegexpMatchIndices());
+        try {
+            compiledRegex = realm.getEnv().parseInternal(regexSource).call();
+            realm.putCachedCompiledRegex(regexSource, compiledRegex);
+        } catch (AbstractTruffleException e) {
+            throw rethrowAsSyntaxError(e);
+        }
+        return compiledRegex;
+    }
+
+    @TruffleBoundary
+    public static Source createRegexSource(String pattern, String flags, String options) {
         String regexStr = options + '/' + pattern + '/' + flags;
         return Source.newBuilder("regex", regexStr, regexStr).mimeType("application/tregex").internal(true).build();
     }
 
     @TruffleBoundary
     public static void validate(JSContext context, String pattern, String flags, int ecmaScriptVersion) {
+        Source regexSource = createRegexSource(pattern, flags, context.getRegexValidateOptions());
         if (context.isOptionNashornCompatibilityMode() && !flags.isEmpty()) {
             validateFlags(flags, ecmaScriptVersion, true, context.isOptionRegexpMatchIndices());
         }
+        JSRealm realm = JSRealm.get(null);
         try {
-            JSRealm.get(null).getEnv().parseInternal(createRegexSource(pattern, flags, context.getRegexValidateOptions())).call();
+            realm.getEnv().parseInternal(regexSource).call();
         } catch (AbstractTruffleException e) {
             throw rethrowAsSyntaxError(e);
         }

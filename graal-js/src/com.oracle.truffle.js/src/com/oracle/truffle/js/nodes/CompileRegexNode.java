@@ -102,7 +102,7 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"getCached"})
     protected Object doCompile(String pattern, String flags) {
-        return RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
+        return RegexCompilerInterface.compile(pattern, flags, context, getRealm(), getIsCompiledRegexNullNode());
     }
 
     private TRegexUtil.InteropIsNullNode getIsCompiledRegexNullNode() {

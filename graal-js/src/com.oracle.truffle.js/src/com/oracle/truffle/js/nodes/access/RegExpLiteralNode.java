@@ -92,7 +92,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         if (compiledRegex == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            compiledRegex = RegexCompilerInterface.compile(pattern, flags, context, getIsCompiledRegexNullNode());
+            compiledRegex = RegexCompilerInterface.compile(pattern, flags, context, getRealm(), getIsCompiledRegexNullNode());
         }
         return getCreateRegExpNode().createRegExp(compiledRegex);
     }
