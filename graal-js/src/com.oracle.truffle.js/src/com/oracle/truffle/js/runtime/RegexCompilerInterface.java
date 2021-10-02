@@ -56,8 +56,8 @@ public final class RegexCompilerInterface {
     private RegexCompilerInterface() {
     }
 
-    public static Object compile(String pattern, String flags, JSContext context) {
-        return compile(pattern, flags, context, JSRealm.get(null), TRegexUtil.InteropIsNullNode.getUncached());
+    public static Object compile(String pattern, String flags, JSContext context, JSRealm realm) {
+        return compile(pattern, flags, context, realm, TRegexUtil.InteropIsNullNode.getUncached());
     }
 
     public static Object compile(String pattern, String flags, JSContext context, JSRealm realm, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {

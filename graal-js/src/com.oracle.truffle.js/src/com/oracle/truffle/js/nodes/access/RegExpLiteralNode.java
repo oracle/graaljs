@@ -52,7 +52,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.LiteralTag;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public class RegExpLiteralNode extends JavaScriptNode {
     private final JSContext context;
@@ -62,7 +61,6 @@ public class RegExpLiteralNode extends JavaScriptNode {
     @CompilationFinal private Object compiledRegex;
 
     @Child private CreateRegExpNode createRegExpNode;
-    @Child private TRegexUtil.InteropIsNullNode isCompiledRegexNullNode;
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -92,7 +90,7 @@ public class RegExpLiteralNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         if (compiledRegex == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            compiledRegex = RegexCompilerInterface.compile(pattern, flags, context, getRealm(), getIsCompiledRegexNullNode());
+            compiledRegex = RegexCompilerInterface.compile(pattern, flags, context, getRealm());
         }
         return getCreateRegExpNode().createRegExp(compiledRegex);
     }
@@ -103,14 +101,6 @@ public class RegExpLiteralNode extends JavaScriptNode {
             createRegExpNode = insert(CreateRegExpNode.create(context));
         }
         return createRegExpNode;
-    }
-
-    private TRegexUtil.InteropIsNullNode getIsCompiledRegexNullNode() {
-        if (isCompiledRegexNullNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            isCompiledRegexNullNode = insert(TRegexUtil.InteropIsNullNode.create());
-        }
-        return isCompiledRegexNullNode;
     }
 
     @Override

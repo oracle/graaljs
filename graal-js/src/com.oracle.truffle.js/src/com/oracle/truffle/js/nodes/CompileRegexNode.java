@@ -81,6 +81,7 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
                     @Cached("pattern") String cachedPattern,
                     @Cached("flags") String cachedFlags,
                     @Cached("createAssumedValue()") AssumedValue<Object> cachedCompiledRegex) {
+        // Note: we must not compile the regex while holding the AST lock (initializing @Cached).
         Object cached = cachedCompiledRegex.get();
         if (cached == null) {
             cached = doCompile(cachedPattern, cachedFlags);
