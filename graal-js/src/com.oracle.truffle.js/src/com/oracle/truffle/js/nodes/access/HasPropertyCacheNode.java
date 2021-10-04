@@ -85,10 +85,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @ExplodeLoop
     public boolean hasProperty(Object thisObj) {
-        for (HasCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.hasProperty(thisObj, this);
-            }
+        HasCacheNode c = cacheNode;
+        if (c instanceof GenericHasPropertyCacheNode) {
+            return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
+        }
+        for (; c != null; c = c.next) {
             if (!c.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
@@ -104,13 +105,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @TruffleBoundary
     private boolean hasPropertyAndSpecialize(Object thisObj) {
-        HasCacheNode node = specialize(thisObj);
-        if (node.accepts(thisObj)) {
-            return node.hasProperty(thisObj, this);
-        } else {
-            CompilerDirectives.transferToInterpreter();
-            throw new AssertionError("Inconsistent guards.");
-        }
+        return specialize(thisObj).hasProperty(thisObj, this);
     }
 
     @Override

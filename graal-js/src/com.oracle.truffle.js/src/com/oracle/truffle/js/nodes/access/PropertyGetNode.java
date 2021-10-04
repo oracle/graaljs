@@ -199,10 +199,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
-        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.getValueInt(thisObj, receiver, this, false);
-            }
+        GetCacheNode c = cacheNode;
+        if (c instanceof GenericPropertyGetNode) {
+            return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
+        }
+        for (; c != null; c = c.next) {
             if (!c.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
@@ -223,10 +224,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
-        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.getValueDouble(thisObj, receiver, this, false);
-            }
+        GetCacheNode c = cacheNode;
+        if (c instanceof GenericPropertyGetNode) {
+            return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
+        }
+        for (; c != null; c = c.next) {
             if (!c.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
@@ -247,10 +249,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
-        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.getValueBoolean(thisObj, receiver, this, false);
-            }
+        GetCacheNode c = cacheNode;
+        if (c instanceof GenericPropertyGetNode) {
+            return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
+        }
+        for (; c != null; c = c.next) {
             if (!c.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
@@ -271,10 +274,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
-        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.getValueLong(thisObj, receiver, this, false);
-            }
+        GetCacheNode c = cacheNode;
+        if (c instanceof GenericPropertyGetNode) {
+            return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
+        }
+        for (; c != null; c = c.next) {
             if (!c.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
@@ -295,10 +299,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @ExplodeLoop
     protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
-        for (GetCacheNode c = cacheNode; c != null; c = c.next) {
-            if (c.isGeneric()) {
-                return c.getValue(thisObj, receiver, defaultValue, this, false);
-            }
+        GetCacheNode c = cacheNode;
+        if (c instanceof GenericPropertyGetNode) {
+            return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
+        }
+        for (; c != null; c = c.next) {
             if (!c.isValid()) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
