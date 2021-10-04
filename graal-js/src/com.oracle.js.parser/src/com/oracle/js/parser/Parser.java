@@ -6284,8 +6284,11 @@ public class Parser extends AbstractParser {
             addDestructuringParameter(paramToken, param.getFinish(), paramLine, param, null, currentFunction, false);
         } else if (param.isTokenType(SPREAD_ARGUMENT)) {
             // rest parameter
+            if (lookbehindIsTrailingCommaInArrowParameters()) {
+                throw error(AbstractParser.message(MESSAGE_INVALID_ARROW_PARAMETER), param.getToken());
+            }
             Expression restParam = ((UnaryNode) param).getExpression();
-            if (restParam instanceof IdentNode && identAtTheEndOfArrowParamList()) {
+            if (restParam instanceof IdentNode) {
                 IdentNode ident = ((IdentNode) restParam).setIsRestParameter();
                 convertArrowParameter(ident, index, paramLine, currentFunction);
             } else if (isDestructuringLhs(restParam)) {
@@ -6299,34 +6302,25 @@ public class Parser extends AbstractParser {
         }
     }
 
-    // Checks whether there is IDENT and RPAREN before ARROW. The function
-    // is used to verify that rest parameter is not followed by a trailing comma.
-    private boolean identAtTheEndOfArrowParamList() {
+    // Checks whether arrow function parameters end with a trailing comma
+    // (which is not allowed if rest parameter is present).
+    private boolean lookbehindIsTrailingCommaInArrowParameters() {
         int idx = k - 1;
-        assert T(idx) == ARROW;
         while (true) {
             idx--;
             TokenType t = T(idx);
-            if (t == COMMENT) {
-                continue;
-            } else if (t == RPAREN) {
-                break;
-            } else {
-                return false;
+            switch (t) {
+                case COMMENT:
+                case EOL:
+                case ARROW:
+                case RPAREN:
+                    continue;
+                case COMMARIGHT:
+                    return true;
+                default:
+                    return false;
             }
         }
-        while (true) {
-            idx--;
-            TokenType t = T(idx);
-            if (t == COMMENT) {
-                continue;
-            } else if (t == IDENT) {
-                break;
-            } else {
-                return false;
-            }
-        }
-        return true;
     }
 
     private boolean lookbehindNoLineTerminatorBeforeArrow() {
