@@ -204,7 +204,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid()) {
+            if (!c.isValid(context)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -229,7 +229,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid()) {
+            if (!c.isValid(context)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -254,7 +254,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid()) {
+            if (!c.isValid(context)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -279,7 +279,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid()) {
+            if (!c.isValid(context)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -304,7 +304,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid()) {
+            if (!c.isValid(context)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }

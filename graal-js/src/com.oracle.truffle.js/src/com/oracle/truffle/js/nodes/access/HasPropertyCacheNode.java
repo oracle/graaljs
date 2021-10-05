@@ -90,7 +90,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid()) {
+            if (!c.isValid(context)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }

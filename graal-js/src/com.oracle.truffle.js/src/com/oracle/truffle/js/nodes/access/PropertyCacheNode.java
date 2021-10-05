@@ -278,12 +278,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected abstract static class AbstractAssumptionShapeCheckNode extends AbstractShapeCheckNode {
-        protected final JSContext context;
+    protected abstract static class AbstractSingleRealmShapeCheckNode extends AbstractShapeCheckNode {
 
-        protected AbstractAssumptionShapeCheckNode(Shape shape, JSContext context) {
+        protected AbstractSingleRealmShapeCheckNode(Shape shape, JSContext context) {
             super(shape);
-            this.context = context;
+            assert !context.isMultiContext();
         }
     }
 
@@ -292,7 +291,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * Requires that the object is constant. Used for stable global object property accesses.
      */
-    protected static final class GlobalPropertyAssumptionShapeCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class GlobalPropertyAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedPropertyAssumption;
@@ -319,9 +318,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            } else if (!shapeValidAssumption.isValid()) {
+            if (!shapeValidAssumption.isValid()) {
                 return false;
             } else if (!unchangedPropertyAssumption.isValid()) {
                 return false;
@@ -376,7 +373,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Check the shape of the object by identity and the shape of its immediate prototype by
      * assumption (valid and unchanged).
      */
-    protected static final class PrototypeShapeCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class PrototypeShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption notObsoletedAssumption;
         private final Assumption protoNotObsoletedAssumption;
@@ -406,9 +403,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            } else if (!notObsoletedAssumption.isValid()) {
+            if (!notObsoletedAssumption.isValid()) {
                 return false;
             } else if (!protoNotObsoletedAssumption.isValid()) {
                 return false;
@@ -423,7 +418,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks the top shape by identity and the shapes of the prototype chain up to the given depth
      * using assumptions only.
      */
-    protected static final class PrototypeChainShapeCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class PrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
         private final DynamicObject prototype;
@@ -458,9 +453,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            } else if (!shapeValidAssumption.isValid()) {
+            if (!shapeValidAssumption.isValid()) {
                 return false;
             }
             for (PrototypeAssumption prototypeAssumption : prototypeAssumptions) {
@@ -532,7 +525,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode implements ConstantObjectReceiverCheck {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
@@ -558,9 +551,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            } else if (!shapeValidAssumption.isValid()) {
+            if (!shapeValidAssumption.isValid()) {
                 return false;
             } else if (!unchangedAssumption.isValid()) {
                 return false;
@@ -592,7 +583,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode implements ConstantObjectReceiverCheck {
 
         private final Assumption shapeValidAssumption;
         private final Assumption shapeUnchangedAssumption;
@@ -641,9 +632,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            } else if (!shapeValidAssumption.isValid()) {
+            if (!shapeValidAssumption.isValid()) {
                 return false;
             } else if (!shapeUnchangedAssumption.isValid()) {
                 return false;
@@ -682,7 +671,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractAssumptionShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractSingleRealmShapeCheckNode implements ConstantObjectReceiverCheck {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
@@ -727,9 +716,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            } else if (!shapeValidAssumption.isValid()) {
+            if (!shapeValidAssumption.isValid()) {
                 return false;
             } else if (!unchangedAssumption.isValid()) {
                 return false;
@@ -900,7 +887,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     /**
      * Checks the shapes of the prototype chain up to the given depth using assumptions only.
      */
-    protected static final class PrototypeChainCheckNode extends AbstractAssumptionShapeCheckNode {
+    protected static final class PrototypeChainCheckNode extends AbstractSingleRealmShapeCheckNode {
         private final DynamicObject prototype;
         @CompilationFinal(dimensions = 1) private final PrototypeAssumption[] prototypeAssumptions;
 
@@ -938,9 +925,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean isValid() {
-            if (!context.isSingleRealm()) {
-                return false;
-            }
             for (PrototypeAssumption prototypeAssumption : prototypeAssumptions) {
                 if (!prototypeAssumption.isValid()) {
                     return false;
@@ -1060,10 +1044,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     // ---
 
     public abstract static class CacheNode<T extends CacheNode<T>> extends JavaScriptBaseNode {
+        private final boolean isSingleRealm;
         @Child protected ReceiverCheckNode receiverCheck;
 
         protected CacheNode(ReceiverCheckNode receiverCheck) {
             this.receiverCheck = receiverCheck;
+            this.isSingleRealm = receiverCheck instanceof AbstractSingleRealmShapeCheckNode;
         }
 
         protected abstract T getNext();
@@ -1087,6 +1073,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         protected boolean isValid() {
             return receiverCheck == null || receiverCheck.isValid();
+        }
+
+        protected final boolean isValid(JSContext context) {
+            return (!isSingleRealm() || context.isSingleRealm()) && isValid();
+        }
+
+        protected final boolean isSingleRealm() {
+            return isSingleRealm;
         }
 
         protected boolean acceptsValue(Object value) {
@@ -1171,7 +1165,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                         break;
                     } else {
                         cachedCount++;
-                        if (!c.isValid()) {
+                        if (!c.isValid(context)) {
                             invalid = true;
                             break;
                         } else {
@@ -1454,12 +1448,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return cache.receiverCheck instanceof ConstantObjectReceiverCheck && ((ConstantObjectReceiverCheck) cache.receiverCheck).getExpectedObject() != thisObj;
     }
 
-    protected static <T extends CacheNode<T>> T filterValid(T cache) {
+    protected T filterValid(T cache) {
         if (cache == null) {
             return null;
         }
         T filteredNext = filterValid(cache.getNext());
-        if (cache.isValid()) {
+        if (cache.isValid(context)) {
             if (filteredNext == cache.getNext()) {
                 return cache;
             } else {
@@ -1679,9 +1673,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static DynamicObjectLibrary createCachedAccess(Object key, ReceiverCheckNode receiverCheck, DynamicObject store) {
         assert key != null;
-        if (receiverCheck instanceof AbstractAssumptionShapeCheckNode) {
+        if (receiverCheck instanceof AbstractSingleRealmShapeCheckNode) {
             return DynamicObjectLibrary.getFactory().create(store);
-        } else if (receiverCheck instanceof AbstractShapeCheckNode && !(receiverCheck instanceof AbstractAssumptionShapeCheckNode)) {
+        } else if (receiverCheck instanceof AbstractShapeCheckNode && !(receiverCheck instanceof AbstractSingleRealmShapeCheckNode)) {
             return DynamicObjectLibrary.getFactory().create(store);
         } else {
             return DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
