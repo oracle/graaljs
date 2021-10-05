@@ -465,33 +465,15 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected interface ConstantObjectReceiverCheck {
-        Object getExpectedObject();
-
-        void clearExpectedObject();
-    }
-
     /**
      * Checks that the object is constant and the shape by comparison.
      */
-    protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode {
         private final Assumption shapeValidAssumption;
-        private final WeakReference<JSDynamicObject> expectedObjectRef;
 
-        public ConstantObjectShapeCheckNode(Shape shape, JSDynamicObject thisObj) {
+        public ConstantObjectShapeCheckNode(Shape shape) {
             super(shape);
             this.shapeValidAssumption = shape.getValidAssumption();
-            this.expectedObjectRef = new WeakReference<>(thisObj);
-        }
-
-        @Override
-        public boolean accept(Object thisObj) {
-            JSDynamicObject expectedObj = this.expectedObjectRef.get();
-            if (thisObj != expectedObj) {
-                return false;
-            }
-            assert expectedObj != null;
-            return super.accept(thisObj);
         }
 
         @Override
@@ -503,20 +485,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         public boolean isValid() {
             if (!shapeValidAssumption.isValid()) {
                 return false;
-            } else if (expectedObjectRef.get() == null) {
-                return false;
             }
             return true;
-        }
-
-        @Override
-        public Object getExpectedObject() {
-            return expectedObjectRef.get();
-        }
-
-        @Override
-        public void clearExpectedObject() {
-            expectedObjectRef.clear();
         }
     }
 
@@ -525,23 +495,20 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
-        private final WeakReference<JSDynamicObject> expectedObjectRef;
 
-        public ConstantObjectAssumptionShapeCheckNode(Shape shape, JSDynamicObject thisObj, Object key, JSContext context) {
+        public ConstantObjectAssumptionShapeCheckNode(Shape shape, Object key, JSContext context) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.unchangedAssumption = JSShape.getPropertyAssumption(shape, key);
-            this.expectedObjectRef = new WeakReference<>(thisObj);
         }
 
         @Override
         public boolean accept(Object thisObj) {
-            JSDynamicObject expectedObj = this.expectedObjectRef.get();
-            return thisObj == expectedObj;
+            return true;
         }
 
         @Override
@@ -555,8 +522,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 return false;
             } else if (!unchangedAssumption.isValid()) {
                 return false;
-            } else if (expectedObjectRef.get() == null) {
-                return false;
             }
             return true;
         }
@@ -564,16 +529,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         protected boolean isUnstable() {
             return shapeValidAssumption.isValid() && !unchangedAssumption.isValid();
-        }
-
-        @Override
-        public Object getExpectedObject() {
-            return expectedObjectRef.get();
-        }
-
-        @Override
-        public void clearExpectedObject() {
-            expectedObjectRef.clear();
         }
     }
 
@@ -583,11 +538,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectPrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
         private final Assumption shapeUnchangedAssumption;
-        private final WeakReference<JSDynamicObject> expectedObjectRef;
         private final WeakReference<DynamicObject> prototype;
         @CompilationFinal(dimensions = 1) private final PrototypeAssumption[] prototypeAssumptions;
 
@@ -595,7 +549,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
             this.shapeUnchangedAssumption = JSShape.getPropertyAssumption(shape, key);
-            this.expectedObjectRef = new WeakReference<>(thisObj);
             this.prototypeAssumptions = new PrototypeAssumption[depth];
 
             Shape depthShape = shape;
@@ -611,10 +564,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            JSDynamicObject expectedObj = this.expectedObjectRef.get();
-            if (thisObj != expectedObj) {
-                return false;
-            }
             assert this.prototype.get() != null;
             return true;
         }
@@ -636,10 +585,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 return false;
             } else if (!shapeUnchangedAssumption.isValid()) {
                 return false;
-            } else if (expectedObjectRef.get() == null) {
-                return false;
-            } else if (prototype.get() == null) {
-                return false;
             }
             for (PrototypeAssumption prototypeAssumption : prototypeAssumptions) {
                 if (!prototypeAssumption.isValid()) {
@@ -653,16 +598,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         protected boolean isUnstable() {
             return shapeValidAssumption.isValid() && !shapeUnchangedAssumption.isValid();
         }
-
-        @Override
-        public Object getExpectedObject() {
-            return expectedObjectRef.get();
-        }
-
-        @Override
-        public void clearExpectedObject() {
-            expectedObjectRef.clear();
-        }
     }
 
     /**
@@ -671,14 +606,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipFinalShapeCheck
      */
-    protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractSingleRealmShapeCheckNode implements ConstantObjectReceiverCheck {
+    protected static final class ConstantObjectPrototypeShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
         private final Assumption unchangedAssumption;
         private final Assumption stableProtoAssumption;
         private final Assumption protoShapeValidAssumption;
         private final Assumption protoUnchangedAssumption;
-        private final WeakReference<JSDynamicObject> expectedObjectRef;
         private final WeakReference<DynamicObject> prototype;
 
         public ConstantObjectPrototypeShapeCheckNode(Shape shape, JSDynamicObject thisObj, Object key, JSContext context) {
@@ -690,16 +624,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Shape protoShape = finalProto.getShape();
             this.protoShapeValidAssumption = protoShape.getValidAssumption();
             this.protoUnchangedAssumption = JSShape.getPropertyAssumption(protoShape, key, true);
-            this.expectedObjectRef = new WeakReference<>(thisObj);
             this.prototype = new WeakReference<>(finalProto);
         }
 
         @Override
         public boolean accept(Object thisObj) {
-            JSDynamicObject expectedObj = this.expectedObjectRef.get();
-            if (thisObj != expectedObj) {
-                return false;
-            }
             assert this.prototype.get() != null;
             return true;
         }
@@ -726,10 +655,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 return false;
             } else if (!protoUnchangedAssumption.isValid()) {
                 return false;
-            } else if (expectedObjectRef.get() == null) {
-                return false;
-            } else if (prototype.get() == null) {
-                return false;
             }
             return true;
         }
@@ -737,16 +662,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         protected boolean isUnstable() {
             return shapeValidAssumption.isValid() && !unchangedAssumption.isValid();
-        }
-
-        @Override
-        public Object getExpectedObject() {
-            return expectedObjectRef.get();
-        }
-
-        @Override
-        public void clearExpectedObject() {
-            expectedObjectRef.clear();
         }
     }
 
@@ -1044,12 +959,20 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     // ---
 
     public abstract static class CacheNode<T extends CacheNode<T>> extends JavaScriptBaseNode {
-        private final boolean isSingleRealm;
+        protected static final int IS_SINGLE_REALM = 1 << 0;
+        protected static final int IS_FINAL = 1 << 1;
+        protected static final int IS_FINAL_CONSTANT_OBJECT = 1 << 2;
+
+        private final int specializationFlags;
         @Child protected ReceiverCheckNode receiverCheck;
 
         protected CacheNode(ReceiverCheckNode receiverCheck) {
+            this(receiverCheck, 0);
+        }
+
+        protected CacheNode(ReceiverCheckNode receiverCheck, int specializationFlags) {
             this.receiverCheck = receiverCheck;
-            this.isSingleRealm = receiverCheck instanceof AbstractSingleRealmShapeCheckNode;
+            this.specializationFlags = specializationFlags | (receiverCheck instanceof AbstractSingleRealmShapeCheckNode ? IS_SINGLE_REALM : 0);
         }
 
         protected abstract T getNext();
@@ -1071,16 +994,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return receiverCheck == null || receiverCheck.accept(thisObj);
         }
 
-        protected boolean isValid() {
+        protected final boolean isValid() {
             return receiverCheck == null || receiverCheck.isValid();
         }
 
         protected final boolean isValid(JSContext context) {
-            return (!isSingleRealm() || context.isSingleRealm()) && isValid();
+            return isValid() && (!isSingleRealm() || context.isSingleRealm()) && (!isFinalSpecialization() || isValidFinalAssumption());
         }
 
         protected final boolean isSingleRealm() {
-            return isSingleRealm;
+            return (specializationFlags & IS_SINGLE_REALM) != 0;
         }
 
         protected boolean acceptsValue(Object value) {
@@ -1090,6 +1013,25 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         protected boolean sweep() {
             return false;
+        }
+
+        protected final boolean isFinalSpecialization() {
+            return (specializationFlags & IS_FINAL) != 0;
+        }
+
+        protected final boolean isConstantObjectSpecialization() {
+            return (specializationFlags & IS_FINAL_CONSTANT_OBJECT) != 0;
+        }
+
+        protected boolean isValidFinalAssumption() {
+            return true;
+        }
+
+        protected JSDynamicObject getExpectedObject() {
+            return null;
+        }
+
+        protected void clearExpectedObject() {
         }
 
         protected String debugString() {
@@ -1173,7 +1115,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                             if (res == null && c.accepts(thisObj) && c.acceptsValue(value)) {
                                 res = c;
                                 // continue checking for invalid cache entries
-                            } else if (isUnexpectedConstantObject(c, thisObj)) {
+                            }
+                            if (isUnexpectedConstantObject(c, thisObj)) {
                                 invalid = true;
                                 break;
                             }
@@ -1436,7 +1379,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
             if (isUnexpectedConstantObject(cur, thisObj)) {
                 // constant object is null or another object
-                ((ConstantObjectReceiverCheck) check).clearExpectedObject();
+                cur.clearExpectedObject();
                 setPropertyAssumptionCheckEnabled(false);
                 constantObjectCheckFailedCount.inc();
                 traceRewriteEvictFinal(cur);
@@ -1445,7 +1388,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     private boolean isUnexpectedConstantObject(T cache, Object thisObj) {
-        return cache.receiverCheck instanceof ConstantObjectReceiverCheck && ((ConstantObjectReceiverCheck) cache.receiverCheck).getExpectedObject() != thisObj;
+        return cache.isConstantObjectSpecialization() && cache.getExpectedObject() != thisObj;
     }
 
     protected T filterValid(T cache) {
@@ -1453,7 +1396,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return null;
         }
         T filteredNext = filterValid(cache.getNext());
-        if (cache.isValid(context)) {
+        if (cache.isValid(context) && (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
             if (filteredNext == cache.getNext()) {
                 return cache;
             } else {
@@ -1481,15 +1424,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, JSDynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
+        assert thisObj.getShape() == shape;
         // if isDefine is true, shape change is imminent, so don't use assumption
         if (isGlobal() && JSConfig.SkipGlobalShapeCheck && !isDefine && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
             return new GlobalPropertyAssumptionShapeCheckNode(shape, key, getContext());
         } else if (isConstantObjectFinal) {
             assert !isDefine;
             if (isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
-                return new ConstantObjectAssumptionShapeCheckNode(shape, thisObj, key, getContext());
+                return new ConstantObjectAssumptionShapeCheckNode(shape, key, getContext());
             } else {
-                return new ConstantObjectShapeCheckNode(shape, thisObj);
+                return new ConstantObjectShapeCheckNode(shape);
             }
         } else {
             assert !isConstantObjectFinal;
