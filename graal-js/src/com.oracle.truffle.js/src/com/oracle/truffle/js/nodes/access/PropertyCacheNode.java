@@ -1060,30 +1060,20 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     // ---
 
     public abstract static class CacheNode<T extends CacheNode<T>> extends JavaScriptBaseNode {
-        @Child protected T next;
         @Child protected ReceiverCheckNode receiverCheck;
 
         protected CacheNode(ReceiverCheckNode receiverCheck) {
             this.receiverCheck = receiverCheck;
         }
 
-        protected CacheNode(T next, ReceiverCheckNode receiverCheck) {
-            this.next = next;
-            this.receiverCheck = receiverCheck;
-        }
+        protected abstract T getNext();
 
-        protected final T getNext() {
-            return next;
-        }
-
-        protected final void setNext(T to) {
-            next = to;
-        }
+        protected abstract void setNext(T next);
 
         @SuppressWarnings("unchecked")
         protected T withNext(T newNext) {
             T copy = (T) copy();
-            copy.next = newNext;
+            copy.setNext(newNext);
             return copy;
         }
 
@@ -1111,7 +1101,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         protected String debugString() {
             CompilerAsserts.neverPartOfCompilation();
             if (receiverCheck != null) {
-                return getClass().getSimpleName() + "<check=" + receiverCheck + ", shape=" + receiverCheck.getShape() + ">\n" + ((next == null) ? "" : next.debugString());
+                return getClass().getSimpleName() + "<check=" + receiverCheck + ", shape=" + receiverCheck.getShape() + ">\n" + ((getNext() == null) ? "" : getNext().debugString());
             }
             return null;
         }
@@ -1124,7 +1114,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected final Object key;
     protected final JSContext context;
-    @Child protected T cacheNode;
     @CompilationFinal private Assumption invalidationAssumption;
 
     public PropertyCacheNode(Object key, JSContext context) {
@@ -1136,6 +1125,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     public final Object getKey() {
         return key;
     }
+
+    protected abstract T getCacheNode();
+
+    protected abstract void setCacheNode(T cache);
 
     protected abstract T createGenericPropertyNode();
 
@@ -1162,19 +1155,19 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         Lock lock = getLock();
         lock.lock();
         try {
-            T currentHead = cacheNode;
+            T currentHead = getCacheNode();
             do {
-                assert currentHead == cacheNode;
+                assert currentHead == getCacheNode();
                 int cachedCount = 0;
                 boolean invalid = false;
                 boolean generic = false;
                 res = null;
 
-                for (T c = currentHead; c != null; c = c.next) {
+                for (T c = currentHead; c != null; c = c.getNext()) {
                     if (c.isGeneric()) {
                         generic = true;
                         res = c;
-                        assert c.next == null;
+                        assert c.getNext() == null;
                         break;
                     } else {
                         cachedCount++;
@@ -1204,7 +1197,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                     assert !generic;
                     T newNode = createSpecialization(thisObj, currentHead, cachedCount, value);
                     if (newNode == null) {
-                        currentHead = this.cacheNode;
+                        currentHead = this.getCacheNode();
                         continue; // restart
                     }
                     res = newNode;
@@ -1306,7 +1299,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         assert newNode != null;
         invalidateCache();
         insert(newNode);
-        this.cacheNode = newNode;
+        this.setCacheNode(newNode);
         return newNode;
     }
 
@@ -1367,12 +1360,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected T insertCached(T specialized, T currentHead, int cachedCount) {
-        assert currentHead == this.cacheNode;
+        assert currentHead == this.getCacheNode();
         // insert specialization at the front
         invalidateCache();
         insert(specialized);
         specialized.setNext(currentHead);
-        this.cacheNode = specialized;
+        this.setCacheNode(specialized);
 
         if (cachedCount > 0) {
             polymorphicCount.inc();
@@ -1385,12 +1378,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected T rewriteToGeneric(T currentHead, int cachedCount, String reason) {
-        assert currentHead == this.cacheNode;
+        assert currentHead == this.getCacheNode();
         // replace the entire cache with the generic case
         T newNode = createGenericPropertyNode();
         invalidateCache();
         insert(newNode);
-        this.cacheNode = newNode;
+        this.setCacheNode(newNode);
 
         if (cachedCount > 0 && cachedCount >= context.getPropertyCacheLimit()) {
             megamorphicCount.inc();
@@ -1404,9 +1397,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected T rewriteCached(T currentHead, T newHead) {
-        assert currentHead == this.cacheNode;
+        assert currentHead == this.getCacheNode();
         invalidateCache();
-        this.cacheNode = newHead;
+        this.setCacheNode(newHead);
         return newHead;
     }
 
@@ -1421,7 +1414,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         assert cacheShape.isValid();
         boolean result = false;
 
-        for (T cur = head; cur != null; cur = cur.next) {
+        for (T cur = head; cur != null; cur = cur.getNext()) {
             if (cur.receiverCheck == null) {
                 continue;
             }
@@ -1438,7 +1431,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected void checkForUnstableAssumption(T head, Object thisObj) {
-        for (T cur = head; cur != null; cur = cur.next) {
+        for (T cur = head; cur != null; cur = cur.getNext()) {
             ReceiverCheckNode check = cur.receiverCheck;
             if (check == null) {
                 continue;
@@ -1465,9 +1458,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         if (cache == null) {
             return null;
         }
-        T filteredNext = filterValid(cache.next);
+        T filteredNext = filterValid(cache.getNext());
         if (cache.isValid()) {
-            if (filteredNext == cache.next) {
+            if (filteredNext == cache.getNext()) {
                 return cache;
             } else {
                 return cache.withNext(filteredNext);
@@ -1597,6 +1590,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     @Override
     public NodeCost getCost() {
+        T cacheNode = getCacheNode();
         if (cacheNode == null) {
             return NodeCost.UNINITIALIZED;
         } else if (cacheNode.isGeneric()) {

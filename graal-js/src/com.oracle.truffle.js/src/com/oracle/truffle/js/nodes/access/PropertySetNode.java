@@ -105,6 +105,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     private final boolean superProperty;
     private final byte attributeFlags;
     private boolean propertyAssumptionCheckEnabled;
+    @Child protected SetCacheNode cacheNode;
 
     public static PropertySetNode create(Object key, boolean isGlobal, JSContext context, boolean isStrict) {
         final boolean setOwnProperty = false;
@@ -263,9 +264,31 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         specialize(thisObj, value).setValueBoolean(thisObj, value, receiver, this, false);
     }
 
+    @Override
+    protected SetCacheNode getCacheNode() {
+        return this.cacheNode;
+    }
+
+    @Override
+    protected void setCacheNode(SetCacheNode cache) {
+        this.cacheNode = cache;
+    }
+
     public abstract static class SetCacheNode extends PropertyCacheNode.CacheNode<SetCacheNode> {
+        @Child protected SetCacheNode next;
+
         protected SetCacheNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
+        }
+
+        @Override
+        protected final SetCacheNode getNext() {
+            return next;
+        }
+
+        @Override
+        protected final void setNext(SetCacheNode next) {
+            this.next = next;
         }
 
         protected abstract boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard);

@@ -68,6 +68,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode.HasCacheNode> {
     private final boolean hasOwnProperty;
     private boolean propertyAssumptionCheckEnabled = true;
+    @Child protected HasCacheNode cacheNode;
 
     public static HasPropertyCacheNode create(Object key, JSContext context, boolean hasOwnProperty) {
         return new HasPropertyCacheNode(key, context, hasOwnProperty);
@@ -112,9 +113,31 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         }
     }
 
+    @Override
+    protected HasCacheNode getCacheNode() {
+        return this.cacheNode;
+    }
+
+    @Override
+    protected void setCacheNode(HasCacheNode cache) {
+        this.cacheNode = cache;
+    }
+
     public abstract static class HasCacheNode extends PropertyCacheNode.CacheNode<HasCacheNode> {
+        @Child protected HasCacheNode next;
+
         protected HasCacheNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
+        }
+
+        @Override
+        protected final HasCacheNode getNext() {
+            return next;
+        }
+
+        @Override
+        protected final void setNext(HasCacheNode next) {
+            this.next = next;
         }
 
         protected abstract boolean hasProperty(Object thisObj, HasPropertyCacheNode root);

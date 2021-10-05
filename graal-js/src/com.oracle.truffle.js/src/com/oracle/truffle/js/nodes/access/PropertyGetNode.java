@@ -131,6 +131,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     protected final boolean getOwnProperty;
     @CompilationFinal protected boolean isMethod;
     private boolean propertyAssumptionCheckEnabled = true;
+    @Child protected GetCacheNode cacheNode;
 
     public static PropertyGetNode create(Object key, JSContext context) {
         return create(key, false, context);
@@ -316,13 +317,36 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return specialize(thisObj).getValue(thisObj, receiver, defaultValue, this, false);
     }
 
+    @Override
+    protected GetCacheNode getCacheNode() {
+        return this.cacheNode;
+    }
+
+    @Override
+    protected void setCacheNode(GetCacheNode cache) {
+        this.cacheNode = cache;
+    }
+
     public abstract static class GetCacheNode extends PropertyCacheNode.CacheNode<GetCacheNode> {
+        @Child protected GetCacheNode next;
+
         protected GetCacheNode(ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
         }
 
         protected GetCacheNode(GetCacheNode next, ReceiverCheckNode receiverCheck) {
-            super(next, receiverCheck);
+            super(receiverCheck);
+            this.next = next;
+        }
+
+        @Override
+        protected final GetCacheNode getNext() {
+            return next;
+        }
+
+        @Override
+        protected final void setNext(GetCacheNode next) {
+            this.next = next;
         }
 
         protected abstract Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard);
