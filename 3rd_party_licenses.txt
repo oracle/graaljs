@@ -895,7 +895,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
 
-ASM 6.2.1
+ASM 9.1
 
 https://gitlab.ow2.org/asm/asm/blob/master/LICENSE.txt
 
