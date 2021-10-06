@@ -607,9 +607,6 @@
     "status" : "SKIP",
     "comment" : "test should fail (V8 should report Early Error as we do)"
   }, {
-    "filePath" : "mjsunit/es8/async-await-basic.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es8/async-destructuring.js",
     "status" : "FAIL"
   }, {

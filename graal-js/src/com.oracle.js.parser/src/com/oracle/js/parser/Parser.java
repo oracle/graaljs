@@ -3286,7 +3286,7 @@ public class Parser extends AbstractParser {
 
         recordYieldOrAwait();
 
-        nextOrEOL();
+        next();
 
         Expression expression = unaryExpression(yield, true);
 
