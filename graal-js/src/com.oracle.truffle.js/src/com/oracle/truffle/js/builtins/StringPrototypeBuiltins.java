@@ -48,8 +48,8 @@ import java.util.List;
 import java.util.Locale;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
@@ -62,7 +62,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
@@ -1163,8 +1162,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected final ConditionProfile functionalReplaceProfile = ConditionProfile.createBinaryProfile();
         protected final ConditionProfile replaceNecessaryProfile = ConditionProfile.createBinaryProfile();
         protected final BranchProfile dollarProfile = BranchProfile.create();
-        protected final ValueProfile searchValueProfile = ValueProfile.createIdentityProfile();
-        protected final ValueProfile replaceValueProfile = ValueProfile.createIdentityProfile();
 
         public JSStringReplaceBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -1267,12 +1264,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isStringString(searchValue, replaceValue)")
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
             requireObjectCoercible(thisObj);
-            Object searchVal = searchValueProfile.profile(searchValue);
-            Object replaceVal = replaceValueProfile.profile(replaceValue);
-            if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
-                Object replacer = getMethod(searchVal, Symbol.SYMBOL_REPLACE);
+            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
+                Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
                 if (callSpecialProfile.profile(replacer != Undefined.instance)) {
-                    return call(replacer, searchVal, new Object[]{thisObj, replaceVal});
+                    return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
             // all child nodes must be checked to avoid race conditions on shared ASTs
@@ -1282,7 +1277,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toString3Node = insert(JSToStringNode.create());
                 isCallableNode = insert(IsCallableNode.create());
             }
-            return builtinReplace(searchVal, replaceVal, thisObj);
+            return builtinReplace(searchValue, replaceValue, thisObj);
         }
 
         private String builtinReplace(Object searchValue, Object replParam, Object o) {
@@ -1369,9 +1364,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(replaces = {"replaceString", "replaceStringCached"})
         protected Object replaceGeneric(Object thisObj, Object searchValue, Object replaceValue) {
             requireObjectCoercible(thisObj);
-            Object searchVal = searchValueProfile.profile(searchValue);
-            Object replaceVal = replaceValueProfile.profile(replaceValue);
-            if (isSpecialProfile.profile(!(searchVal == Undefined.instance || searchVal == Null.instance))) {
+            if (isSpecialProfile.profile(!(searchValue == Undefined.instance || searchValue == Null.instance))) {
                 if (isRegExp.profile(getIsRegExpNode().executeBoolean(searchValue))) {
                     Object flags = getFlags(searchValue);
                     requireObjectCoercible(flags);
@@ -1380,9 +1373,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         throw Errors.createTypeError("Only global regexps allowed");
                     }
                 }
-                Object replacer = getMethod(searchVal, Symbol.SYMBOL_REPLACE);
+                Object replacer = getMethod(searchValue, Symbol.SYMBOL_REPLACE);
                 if (callSpecialProfile.profile(replacer != Undefined.instance)) {
-                    return call(replacer, searchVal, new Object[]{thisObj, replaceVal});
+                    return call(replacer, searchValue, new Object[]{thisObj, replaceValue});
                 }
             }
             // all child nodes must be checked to avoid race conditions on shared ASTs
@@ -1392,7 +1385,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 toString3Node = insert(JSToStringNode.create());
                 isCallableNode = insert(IsCallableNode.create());
             }
-            return performReplaceAllGeneric(searchVal, replaceVal, thisObj);
+            return performReplaceAllGeneric(searchValue, replaceValue, thisObj);
         }
 
         protected Object performReplaceAllGeneric(Object searchValue, Object replParam, Object thisObj) {
