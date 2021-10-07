@@ -1755,6 +1755,7 @@ public final class GraalJSAccess {
         if (functionData == null) {
             JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
             functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
+            template.setFunctionData(functionData);
             CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
             CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
             CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
@@ -1763,7 +1764,6 @@ public final class GraalJSAccess {
             functionData.setCallTarget(callTarget);
             functionData.setConstructTarget(constructTarget);
             functionData.setConstructNewTarget(constructNewTarget);
-            template.setFunctionData(functionData);
         }
 
         DynamicObject functionObject = JSFunction.create(realm, functionData);
