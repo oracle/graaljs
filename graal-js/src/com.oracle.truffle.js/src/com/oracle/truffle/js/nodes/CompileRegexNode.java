@@ -45,17 +45,17 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.utilities.AssumedValue;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.RegexCompilerInterface;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 @ImportStatic(JSConfig.class)
 public abstract class CompileRegexNode extends JavaScriptBaseNode {
 
     private final JSContext context;
-    @Child private TRegexUtil.InteropIsNullNode isCompiledRegexNullNode;
+    @Child private InteropLibrary isCompiledRegexNullNode;
 
     protected CompileRegexNode(JSContext context) {
         this.context = context;
@@ -106,10 +106,10 @@ public abstract class CompileRegexNode extends JavaScriptBaseNode {
         return RegexCompilerInterface.compile(pattern, flags, context, getRealm(), getIsCompiledRegexNullNode());
     }
 
-    private TRegexUtil.InteropIsNullNode getIsCompiledRegexNullNode() {
+    private InteropLibrary getIsCompiledRegexNullNode() {
         if (isCompiledRegexNullNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            isCompiledRegexNullNode = insert(TRegexUtil.InteropIsNullNode.create());
+            isCompiledRegexNullNode = insert(InteropLibrary.getFactory().createDispatched(3));
         }
         return isCompiledRegexNullNode;
     }

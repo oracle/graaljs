@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.intl;
 
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -52,7 +53,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil;
 public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     @Child private TRegexUtil.InteropReadMemberNode readNamedCG = TRegexUtil.InteropReadMemberNode.create();
-    @Child private TRegexUtil.InteropIsNullNode isNamedCGNull = TRegexUtil.InteropIsNullNode.create();
+    @Child private InteropLibrary isNamedCGNull = InteropLibrary.getFactory().createDispatched(3);
     @Child private PropertySetNode setLastIndex;
     private final JSContext context;
 
@@ -65,33 +66,31 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
         return CreateRegExpNodeGen.create(context);
     }
 
-    public JSRegExpObject createRegExp(Object compiledRegex) {
+    public final JSRegExpObject createRegExp(Object compiledRegex) {
         return createRegExp(compiledRegex, true);
     }
 
-    public JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
-        return execute(compiledRegex, legacyFeaturesEnabled);
+    public final JSRegExpObject createRegExp(Object compiledRegex, boolean legacyFeaturesEnabled) {
+        Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
+        boolean hasNamedCaptureGroups = !isNamedCGNull.isNull(namedCaptureGroups);
+        return execute(compiledRegex, legacyFeaturesEnabled, namedCaptureGroups, hasNamedCaptureGroups);
     }
 
-    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled);
+    protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled, Object namedCaptureGroups, boolean hasNamedCG);
 
-    @Specialization(guards = {"!hasNamedCG(compiledRegex)"})
-    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
+    @Specialization(guards = {"!hasNamedCaptureGroups"})
+    protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
+                    @SuppressWarnings("unused") Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
         JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, null, legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
     }
 
-    @Specialization(guards = {"hasNamedCG(compiledRegex)"})
-    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled) {
-        Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
+    @Specialization(guards = {"hasNamedCaptureGroups"})
+    protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
+                    Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
         JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
-    }
-
-    protected boolean hasNamedCG(Object compiledRegex) {
-        Object namedCaptureGroups = readNamedCG.execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        return !isNamedCGNull.execute(namedCaptureGroups);
     }
 }

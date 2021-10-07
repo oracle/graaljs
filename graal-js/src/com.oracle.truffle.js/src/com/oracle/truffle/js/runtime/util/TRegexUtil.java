@@ -55,11 +55,11 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.Props.CompiledRegex;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsMemberReadableNodeGen;
-import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropIsNullNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadBooleanMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadIntMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadMemberNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropReadStringMemberNodeGen;
+import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InteropToIntNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeExecMethodNodeGen;
 import com.oracle.truffle.js.runtime.util.TRegexUtilFactory.InvokeGetGroupBoundariesMethodNodeGen;
 
@@ -113,6 +113,7 @@ public final class TRegexUtil {
     }
 
     private static final String NUMBER_OF_REGEX_RESULT_TYPES = "9";
+    private static final int NUMBER_OF_REGEX_RESULT_TYPES_INT = 9;
 
     public static final class Constants {
         private Constants() {
@@ -120,25 +121,6 @@ public final class TRegexUtil {
         }
 
         public static final int CAPTURE_GROUP_NO_MATCH = -1;
-    }
-
-    @GenerateUncached
-    public abstract static class InteropIsNullNode extends Node {
-
-        public abstract boolean execute(Object obj);
-
-        @Specialization(limit = "3")
-        static boolean read(Object obj, @CachedLibrary("obj") InteropLibrary objs) {
-            return objs.isNull(obj);
-        }
-
-        public static InteropIsNullNode create() {
-            return InteropIsNullNodeGen.create();
-        }
-
-        public static InteropIsNullNode getUncached() {
-            return InteropIsNullNodeGen.getUncached();
-        }
     }
 
     @GenerateUncached
@@ -436,9 +418,8 @@ public final class TRegexUtil {
 
     public static final class TRegexNamedCaptureGroupsAccessor extends Node {
 
-        @Child private InteropIsNullNode isNullNode;
-        @Child private InteropIsMemberReadableNode hasGroupNode;
-        @Child private InteropReadIntMemberNode readGroupNode;
+        @Child private InteropLibrary interop = InteropLibrary.getFactory().createDispatched(NUMBER_OF_REGEX_RESULT_TYPES_INT);
+        @Child private InteropToIntNode toIntNode;
 
         private TRegexNamedCaptureGroupsAccessor() {
         }
@@ -448,39 +429,24 @@ public final class TRegexUtil {
         }
 
         public boolean isNull(Object namedCaptureGroupsMap) {
-            return getIsNullNode().execute(namedCaptureGroupsMap);
+            return interop.isNull(namedCaptureGroupsMap);
         }
 
         public boolean hasGroup(Object namedCaptureGroupsMap, String name) {
-            return getHasGroupNode().execute(namedCaptureGroupsMap, name);
+            return interop.isMemberReadable(namedCaptureGroupsMap, name);
         }
 
         public int getGroupNumber(Object namedCaptureGroupsMap, String name) {
-            return getReadGroupNode().execute(namedCaptureGroupsMap, name);
-        }
-
-        private InteropIsNullNode getIsNullNode() {
-            if (isNullNode == null) {
+            InteropToIntNode toInt = toIntNode;
+            if (toInt == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                isNullNode = insert(InteropIsNullNode.create());
+                toIntNode = toInt = insert(InteropToIntNodeGen.create());
             }
-            return isNullNode;
-        }
-
-        private InteropIsMemberReadableNode getHasGroupNode() {
-            if (hasGroupNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                hasGroupNode = insert(InteropIsMemberReadableNode.create());
+            try {
+                return toInt.execute(interop.readMember(namedCaptureGroupsMap, name));
+            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
             }
-            return hasGroupNode;
-        }
-
-        private InteropReadIntMemberNode getReadGroupNode() {
-            if (readGroupNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                readGroupNode = insert(InteropReadIntMemberNode.create());
-            }
-            return readGroupNode;
         }
     }
 

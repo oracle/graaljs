@@ -46,7 +46,6 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
 public final class RegexCompilerInterface {
     private static final String REPEATED_REG_EXP_FLAG_MSG = "Repeated RegExp flag: %c";
@@ -57,13 +56,13 @@ public final class RegexCompilerInterface {
     }
 
     public static Object compile(String pattern, String flags, JSContext context, JSRealm realm) {
-        return compile(pattern, flags, context, realm, TRegexUtil.InteropIsNullNode.getUncached());
+        return compile(pattern, flags, context, realm, InteropLibrary.getUncached());
     }
 
-    public static Object compile(String pattern, String flags, JSContext context, JSRealm realm, TRegexUtil.InteropIsNullNode isCompiledRegexNullNode) {
+    public static Object compile(String pattern, String flags, JSContext context, JSRealm realm, InteropLibrary isCompiledRegexNull) {
         Source regexSource = createRegexSource(pattern, flags, context.getRegexOptions());
         Object compiledRegex = compile(regexSource, flags, context, realm);
-        if (isCompiledRegexNullNode.execute(compiledRegex)) {
+        if (isCompiledRegexNull.isNull(compiledRegex)) {
             throw Errors.createSyntaxError("regular expression not supported");
         }
         return compiledRegex;
