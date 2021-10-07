@@ -643,7 +643,11 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         private Reader reader;
         private CharsetEncoder encoder = Charset.defaultCharset().newEncoder();
         private CharBuffer charBuffer = CharBuffer.allocate(2);
-        private ByteBuffer byteBuffer = (ByteBuffer) ByteBuffer.allocate((int) encoder.maxBytesPerChar() * 2).flip();
+        private ByteBuffer byteBuffer = ByteBuffer.allocate((int) encoder.maxBytesPerChar() * 2);
+
+        DelegatingInputStream() {
+            byteBuffer.flip();
+        }
 
         @Override
         public int read() throws IOException {
