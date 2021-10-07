@@ -362,6 +362,7 @@ def testnodeInstrument(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     test = join(_suite.dir, 'test', 'graal', 'instrument', 'async-test.js')
     node(['--experimental-options', '--testing-agent', '-ea', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
     node(['--experimental-options', '--broken-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    node(['--experimental-options', '--coverage-like-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     mode, vmArgs, progArgs = setupNodeEnvironment(args)
