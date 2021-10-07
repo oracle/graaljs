@@ -405,6 +405,11 @@ public final class JSContextOptions {
     public static final OptionKey<Integer> FUNCTION_CONSTRUCTOR_CACHE_SIZE = new OptionKey<>(32);
     @CompilationFinal private int functionConstructorCacheSize;
 
+    public static final String REGEX_CACHE_SIZE_NAME = JS_OPTION_PREFIX + "regex-cache-size";
+    @Option(name = REGEX_CACHE_SIZE_NAME, category = OptionCategory.EXPERT, help = "Maximum size of the regex cache used by the RegExp constructor to avoid re-parsing known sources.") //
+    public static final OptionKey<Integer> REGEX_CACHE_SIZE = new OptionKey<>(128);
+    @CompilationFinal private int regexCacheSize;
+
     public static final String STRING_LENGTH_LIMIT_NAME = JS_OPTION_PREFIX + "string-length-limit";
     @Option(name = STRING_LENGTH_LIMIT_NAME, category = OptionCategory.EXPERT, help = "Maximum string length.") //
     public static final OptionKey<Integer> STRING_LENGTH_LIMIT = new OptionKey<>(JSConfig.StringLengthLimit);
@@ -632,6 +637,7 @@ public final class JSContextOptions {
         this.testV8Mode = readBooleanOption(TESTV8_MODE);
         this.validateRegExpLiterals = readBooleanOption(VALIDATE_REGEXP_LITERALS);
         this.functionConstructorCacheSize = readIntegerOption(FUNCTION_CONSTRUCTOR_CACHE_SIZE);
+        this.regexCacheSize = readIntegerOption(REGEX_CACHE_SIZE);
         this.stringLengthLimit = readIntegerOption(STRING_LENGTH_LIMIT);
         this.bindMemberFunctions = readBooleanOption(BIND_MEMBER_FUNCTIONS);
         this.commonJSRequire = readBooleanOption(COMMONJS_REQUIRE);
@@ -947,6 +953,10 @@ public final class JSContextOptions {
         return functionConstructorCacheSize;
     }
 
+    public int getRegexCacheSize() {
+        return regexCacheSize;
+    }
+
     public int getStringLengthLimit() {
         return stringLengthLimit;
     }
@@ -1087,6 +1097,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.testV8Mode ? 1 : 0);
         hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
         hash = 53 * hash + this.functionConstructorCacheSize;
+        hash = 53 * hash + this.regexCacheSize;
         hash = 53 * hash + this.stringLengthLimit;
         hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
         hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
@@ -1213,6 +1224,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.functionConstructorCacheSize != other.functionConstructorCacheSize) {
+            return false;
+        }
+        if (this.regexCacheSize != other.regexCacheSize) {
             return false;
         }
         if (this.stringLengthLimit != other.stringLengthLimit) {

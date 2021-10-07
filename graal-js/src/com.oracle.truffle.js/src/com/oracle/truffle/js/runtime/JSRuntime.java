@@ -742,7 +742,7 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static int toInt8(long number) {
-        int res = (int) Math.floorMod(number, 256);
+        int res = floorMod(number, 256);
         if (res >= 128) {
             res = res - 256;
         }
@@ -798,11 +798,17 @@ public final class JSRuntime {
 
     @TruffleBoundary()
     public static int toInt16(long number) {
-        int res = (int) Math.floorMod(number, 65536);
+        int res = floorMod(number, 65536);
         if (res >= 32768) {
             res = res - 65536;
         }
         return res;
+    }
+
+    public static int floorMod(long x, int y) {
+        // Result cannot overflow the range of int.
+        long divisor = y;
+        return (int) Math.floorMod(x, divisor);
     }
 
     /**

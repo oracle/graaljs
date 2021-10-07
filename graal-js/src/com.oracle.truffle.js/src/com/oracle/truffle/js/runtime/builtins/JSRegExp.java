@@ -49,6 +49,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -229,7 +230,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     @TruffleBoundary
     private static JSObjectFactory computeGroupsFactory(JSContext ctx, Object compiledRegex) {
         Object namedCaptureGroups = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
-        if (TRegexUtil.InteropIsNullNode.getUncached().execute(namedCaptureGroups)) {
+        if (InteropLibrary.getUncached().isNull(namedCaptureGroups)) {
             return null;
         } else {
             return buildGroupsFactory(ctx, namedCaptureGroups);

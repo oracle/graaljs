@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.util.EnumSet;
-import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.StringJoiner;
 
@@ -240,6 +239,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 
@@ -1680,21 +1680,6 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Override
         public boolean isCallerSensitive() {
             return getContext().isOptionV8CompatibilityMode();
-        }
-    }
-
-    static final class LRUCache<K, V> extends LinkedHashMap<K, V> {
-        private static final long serialVersionUID = 7813848977534444613L;
-        private final int maxCacheSize;
-
-        LRUCache(int maxCacheSize) {
-            super(16, 0.75F, true);
-            this.maxCacheSize = maxCacheSize;
-        }
-
-        @Override
-        protected boolean removeEldestEntry(java.util.Map.Entry<K, V> eldest) {
-            return size() > maxCacheSize;
         }
     }
 

@@ -3293,7 +3293,7 @@ public final class GraalJSAccess {
     }
 
     public static Object regexpCreate(JSContext context, JSRealm realm, String pattern, int v8Flags) {
-        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context);
+        Object compiledRegexp = RegexCompilerInterface.compile(pattern, regexpFlagsToString(v8Flags), context, realm);
         return JSRegExp.create(context, realm, compiledRegexp);
     }
 

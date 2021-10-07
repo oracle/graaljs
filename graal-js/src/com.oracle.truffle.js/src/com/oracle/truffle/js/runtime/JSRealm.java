@@ -57,9 +57,6 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.js.builtins.MLEBuiltins;
-import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
@@ -84,12 +81,14 @@ import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.ArrayIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.AtomicsBuiltins;
 import com.oracle.truffle.js.builtins.ConsoleBuiltins;
@@ -98,6 +97,7 @@ import com.oracle.truffle.js.builtins.DebugBuiltins;
 import com.oracle.truffle.js.builtins.GlobalBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.JavaBuiltins;
+import com.oracle.truffle.js.builtins.MLEBuiltins;
 import com.oracle.truffle.js.builtins.MapIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
@@ -171,6 +171,7 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryGrowCallba
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.interop.DynamicScopeWrapper;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.interop.TopScopeObject;
 import com.oracle.truffle.js.runtime.java.JavaImporter;
 import com.oracle.truffle.js.runtime.java.JavaPackage;
@@ -185,6 +186,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -484,6 +486,11 @@ public class JSRealm {
     private final SimpleArrayList<Object> joinStack = new SimpleArrayList<>();
 
     private List<TruffleContext> innerContextsToClose;
+
+    /**
+     * Cache of least recently compiled compiled regular expressions.
+     */
+    private Map<Source, Object> compiledRegexCache;
 
     /**
      * Private MLE-only custom Path resolution callback for ESM.
@@ -2760,4 +2767,25 @@ public class JSRealm {
         return ++lastAsyncEvaluationOrder;
     }
 
+    @TruffleBoundary
+    public void putCachedCompiledRegex(Source regexSource, Object compiledRegex) {
+        int regexCacheSize = context.getContextOptions().getRegexCacheSize();
+        if (regexCacheSize > 0) {
+            if (compiledRegexCache == null) {
+                compiledRegexCache = new LRUCache<>(regexCacheSize);
+            }
+            compiledRegexCache.put(regexSource, compiledRegex);
+        }
+    }
+
+    @TruffleBoundary
+    public Object getCachedCompiledRegex(Source regexSource) {
+        int regexCacheSize = context.getContextOptions().getRegexCacheSize();
+        if (regexCacheSize > 0) {
+            if (compiledRegexCache != null) {
+                return compiledRegexCache.get(regexSource);
+            }
+        }
+        return null;
+    }
 }
