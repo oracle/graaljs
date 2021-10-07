@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.function.Function;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -128,7 +127,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
 
     private static void putGetter(JSRealm realm, DynamicObject prototype, String name, BuiltinFunctionKey key, Function<DynamicObject, Object> function) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(key, (c) -> {
-            return JSFunctionData.createCallOnly(c, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
@@ -137,7 +136,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
                     }
                     throw Errors.createTypeErrorNotADataView();
                 }
-            }), 0, "get " + name);
+            }.getCallTarget(), 0, "get " + name);
         });
         DynamicObject getter = JSFunction.create(realm, getterData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, name, getter, Undefined.instance);

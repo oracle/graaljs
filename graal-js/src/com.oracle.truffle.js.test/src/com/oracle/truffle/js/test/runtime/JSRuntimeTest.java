@@ -50,7 +50,6 @@ import java.math.BigInteger;
 
 import org.junit.Test;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -202,14 +201,14 @@ public class JSRuntimeTest extends JSTest {
 
     private static <T extends JavaScriptNode> T adopt(T node) {
         assert node.isAdoptable();
-        Truffle.getRuntime().createCallTarget(new RootNode(null) {
+        new RootNode(null) {
             @Child JavaScriptNode child = node;
 
             @Override
             public Object execute(VirtualFrame frame) {
                 return child.execute(frame);
             }
-        });
+        }.getCallTarget(); // Ensure call target is initialized.
         return node;
     }
 
@@ -353,13 +352,13 @@ public class JSRuntimeTest extends JSTest {
         Object[] defaultArgs = new Object[]{"foo", 42, false};
 
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
-        DynamicObject fnObj = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
+        DynamicObject fnObj = JSFunction.create(realm, JSFunctionData.createCallOnly(ctx, new JavaScriptRootNode(ctx.getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
                 return "" + JSArguments.getUserArgument(args, 0) + JSArguments.getUserArgument(args, 1) + JSArguments.getUserArgument(args, 2);
             }
-        }), 0, "test"));
+        }.getCallTarget(), 0, "test"));
 
         assertEquals("foo42false", JSRuntime.call(fnObj, thisObj, defaultArgs));
         assertEquals("foo42false", JSRuntime.call(JSProxy.create(ctx, realm, fnObj, createOrdinaryObject()), thisObj, defaultArgs));

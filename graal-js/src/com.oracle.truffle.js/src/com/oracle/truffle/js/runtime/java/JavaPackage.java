@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.java;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
@@ -187,7 +186,7 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     private static JSFunctionData createToPrimitiveFunctionImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
 
             @Override
             public Object execute(VirtualFrame frame) {
@@ -206,7 +205,7 @@ public final class JavaPackage extends JSNonProxy {
                     throw Errors.createTypeError("invalid hint");
                 }
             }
-        });
+        }.getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, "[Symbol.toPrimitive]");
     }
 

@@ -50,7 +50,6 @@ import com.ibm.icu.text.Collator;
 import com.ibm.icu.text.RuleBasedCollator;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -310,7 +309,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     }
 
     private static CallTarget createGetCompareCallTarget(JSContext context) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+        return new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
             private final BranchProfile errorBranch = BranchProfile.create();
 
@@ -341,11 +340,11 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 errorBranch.enter();
                 throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
-        });
+        }.getCallTarget();
     }
 
     private static JSFunctionData createCompareFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
             @Child private JSToStringNode toString1Node = JSToStringNode.create();
             @Child private JSToStringNode toString2Node = JSToStringNode.create();
@@ -360,7 +359,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 String two = (argumentCount > 1) ? toString2Node.executeString(JSArguments.getUserArgument(arguments, 1)) : Undefined.NAME;
                 return compare(thisObj, one, two);
             }
-        }), 2, "");
+        }.getCallTarget(), 2, "");
     }
 
     private static DynamicObject createCompareFunctionGetter(JSRealm realm, JSContext context) {

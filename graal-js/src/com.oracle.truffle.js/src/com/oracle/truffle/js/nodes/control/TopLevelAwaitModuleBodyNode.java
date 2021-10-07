@@ -46,7 +46,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -214,7 +213,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         atomic(() -> {
             if (asyncCallTargetInitializationRequired()) {
                 TopLevelAwaitModuleRootNode asyncRootNode = new TopLevelAwaitModuleRootNode(context, moduleBodyNode, writeAsyncResult, getRootNode().getSourceSection(), "");
-                this.resumptionTarget = Truffle.getRuntime().createCallTarget(asyncRootNode);
+                this.resumptionTarget = asyncRootNode.getCallTarget();
                 this.asyncCallNode = insert(DirectCallNode.create(resumptionTarget));
                 // these children have been transferred to the async root node and are now disowned
                 this.moduleBodyNode = null;

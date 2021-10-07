@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -158,7 +157,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
 
         @TruffleBoundary
         private DynamicObject createConstructor(OperatorSet operatorSet) {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+            CallTarget callTarget = new JavaScriptRootNode() {
                 @Child private PropertyNode getPrototypeNode = PropertyNode.createProperty(getContext(), null, JSObject.PROTOTYPE);
                 @Child private CreateOverloadedOperatorsObjectNode createOverloadedOperatorsObjectNode = CreateOverloadedOperatorsObjectNode.create(getContext(), operatorSet);
 
@@ -168,7 +167,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                     Object prototype = getPrototypeNode.executeWithTarget(frame, constructor);
                     return createOverloadedOperatorsObjectNode.execute(prototype);
                 }
-            });
+            }.getCallTarget();
             JSFunctionData constructorFunctionData = JSFunctionData.create(getContext(), callTarget, 0, "");
             return JSFunction.create(getRealm(), constructorFunctionData);
         }

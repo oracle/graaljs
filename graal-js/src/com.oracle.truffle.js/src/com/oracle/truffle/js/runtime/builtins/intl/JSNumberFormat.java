@@ -67,7 +67,6 @@ import com.ibm.icu.util.MeasureUnit;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -775,7 +774,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     private static CallTarget createGetFormatCallTarget(JSContext context) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+        return new JavaScriptRootNode(context.getLanguage(), null, null) {
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
 
@@ -806,11 +805,11 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 errorBranch.enter();
                 throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
             }
-        });
+        }.getCallTarget();
     }
 
     private static JSFunctionData createFormatFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
 
             @Override
@@ -821,7 +820,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
                 return format(thisObj, n);
             }
-        }), 1, "");
+        }.getCallTarget(), 1, "");
     }
 
     private static DynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {

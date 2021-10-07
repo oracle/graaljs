@@ -44,7 +44,6 @@ import java.util.ArrayDeque;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -256,8 +255,7 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 return asyncGeneratorResolveNode.execute(frame, generatorObject, value, true);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncGeneratorReturnFulfilledRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnFulfilledRootNode().getCallTarget(), 1, "");
     }
 
     private DynamicObject createAsyncGeneratorReturnProcessorRejectedFunction(DynamicObject generator) {
@@ -283,7 +281,6 @@ public class AsyncGeneratorResumeNextNode extends JavaScriptBaseNode {
                 return asyncGeneratorRejectNode.execute(frame, generatorObject, reason);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncGeneratorReturnRejectedRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncGeneratorReturnRejectedRootNode().getCallTarget(), 1, "");
     }
 }

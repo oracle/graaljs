@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -126,7 +125,7 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
 
     private static DynamicObject createLengthGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyTableGetLength, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
                 @Child InteropLibrary tableLengthLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
 
@@ -145,7 +144,7 @@ public class JSWebAssemblyTable extends JSNonProxy implements JSConstructorFacto
                         throw Errors.shouldNotReachHere(ex);
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + LENGTH);
         });
 

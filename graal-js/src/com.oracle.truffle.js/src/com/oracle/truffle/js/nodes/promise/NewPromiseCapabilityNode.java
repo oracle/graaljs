@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -158,7 +156,6 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
                 return Undefined.instance;
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new GetCapabilitiesExecutorNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 2, "");
+        return JSFunctionData.createCallOnly(context, new GetCapabilitiesExecutorNode().getCallTarget(), 2, "");
     }
 }

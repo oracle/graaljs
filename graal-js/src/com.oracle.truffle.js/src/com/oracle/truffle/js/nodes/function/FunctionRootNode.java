@@ -45,7 +45,6 @@ import java.util.Map;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -199,7 +198,7 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
             // is attempting to materialize this function's definition during its initialization.
             return;
         }
-        fd.setRootTarget(Truffle.getRuntime().createCallTarget(this));
+        fd.setRootTarget(this.getCallTarget());
     }
 
     @Override
@@ -212,12 +211,12 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
         if (target == JSFunctionData.Target.Call) {
             CallTarget functionCallTarget;
             if (functionData.requiresNew()) {
-                functionCallTarget = Truffle.getRuntime().createCallTarget(factory.createConstructorRequiresNewRoot(functionData, functionRoot.getSourceSection()));
+                functionCallTarget = factory.createConstructorRequiresNewRoot(functionData, functionRoot.getSourceSection()).getCallTarget();
             } else {
                 if (functionData.needsNewTarget()) {
                     // functions that use new.target are wrapped with a delegating call target that
                     // supplies an additional implicit newTarget argument to the original function.
-                    functionCallTarget = Truffle.getRuntime().createCallTarget(factory.createNewTargetCall(functionData.getContext(), rootTarget));
+                    functionCallTarget = factory.createNewTargetCall(functionData.getContext(), rootTarget).getCallTarget();
                 } else {
                     functionCallTarget = rootTarget;
                 }
@@ -230,11 +229,11 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
             } else if (functionData.isAsync()) {
                 constructCallTarget = functionData.getContext().getNotConstructibleCallTarget();
             } else {
-                constructCallTarget = Truffle.getRuntime().createCallTarget(factory.createConstructorRootNode(functionData, rootTarget, false));
+                constructCallTarget = factory.createConstructorRootNode(functionData, rootTarget, false).getCallTarget();
                 if (functionData.needsNewTarget()) {
                     // functions that use new.target are wrapped with a delegating call target that
                     // supplies an additional implicit newTarget argument to the original function.
-                    constructCallTarget = Truffle.getRuntime().createCallTarget(factory.createNewTargetConstruct(functionData.getContext(), constructCallTarget));
+                    constructCallTarget = factory.createNewTargetConstruct(functionData.getContext(), constructCallTarget).getCallTarget();
                 }
             }
             functionData.setConstructTarget(constructCallTarget);
@@ -243,9 +242,9 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
             if (functionData.needsNewTarget()) {
                 newTargetCallTarget = rootTarget;
             } else {
-                newTargetCallTarget = Truffle.getRuntime().createCallTarget(factory.createDropNewTarget(functionData.getContext(), rootTarget));
+                newTargetCallTarget = factory.createDropNewTarget(functionData.getContext(), rootTarget).getCallTarget();
             }
-            CallTarget constructNewTargetCallTarget = Truffle.getRuntime().createCallTarget(factory.createConstructorRootNode(functionData, newTargetCallTarget, true));
+            CallTarget constructNewTargetCallTarget = factory.createConstructorRootNode(functionData, newTargetCallTarget, true).getCallTarget();
             functionData.setConstructNewTarget(constructNewTargetCallTarget);
         }
     }

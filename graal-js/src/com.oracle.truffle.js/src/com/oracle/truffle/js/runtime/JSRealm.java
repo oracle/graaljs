@@ -1675,7 +1675,7 @@ public class JSRealm {
 
     private static JSFunctionData isGraalRuntimeFunction(JSContext context) {
         return context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.IsGraalRuntime, (c) -> {
-            return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return isGraalRuntime();
@@ -1685,7 +1685,7 @@ public class JSRealm {
                 private boolean isGraalRuntime() {
                     return Truffle.getRuntime().getName().contains("Graal");
                 }
-            }), 0, "isGraalRuntime");
+            }.getCallTarget(), 0, "isGraalRuntime");
         });
     }
 

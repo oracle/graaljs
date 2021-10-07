@@ -45,7 +45,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -377,7 +376,7 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     protected static void putArrayBufferViewPrototypeGetter(JSRealm realm, DynamicObject prototype, String key, BuiltinFunctionKey functionKey, ArrayBufferViewGetter getter) {
         JSFunctionData lengthGetterData = realm.getContext().getOrCreateBuiltinFunctionData(functionKey, (c) -> {
-            return JSFunctionData.createCallOnly(c, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            return JSFunctionData.createCallOnly(c, new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child private ArrayBufferViewGetter getterNode = getter;
                 private final BranchProfile errorBranch = BranchProfile.create();
 
@@ -390,7 +389,7 @@ public final class JSArrayBufferView extends JSNonProxy {
                     errorBranch.enter();
                     throw Errors.createTypeError("method called on incompatible receiver");
                 }
-            }), 0, "get " + key);
+            }.getCallTarget(), 0, "get " + key);
         });
         DynamicObject lengthGetter = JSFunction.create(realm, lengthGetterData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, key, lengthGetter, Undefined.instance);
@@ -451,7 +450,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             }
         });
         JSFunctionData toStringData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ArrayBufferViewToString, (c) -> {
-            return JSFunctionData.createCallOnly(ctx, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(ctx.getLanguage(), null, null) {
+            return JSFunctionData.createCallOnly(ctx, new JavaScriptRootNode(ctx.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = JSArguments.getThisObject(frame.getArguments());
@@ -460,7 +459,7 @@ public final class JSArrayBufferView extends JSNonProxy {
                     }
                     return Undefined.instance;
                 }
-            }), 0, "get [Symbol.toStringTag]");
+            }.getCallTarget(), 0, "get [Symbol.toStringTag]");
         });
         DynamicObject toStringTagGetter = JSFunction.create(realm, toStringData);
         JSObjectUtil.putBuiltinAccessorProperty(prototype, Symbol.SYMBOL_TO_STRING_TAG, toStringTagGetter, Undefined.instance);

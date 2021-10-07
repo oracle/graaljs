@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -317,7 +316,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
         }
 
         private JSFunctionData createSourceInstantiationImpl(JSContext context) {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     InstantiatedSourceInfo info = (InstantiatedSourceInfo) JSArguments.getUserArgument(frame.getArguments(), 0);
@@ -332,7 +331,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                     JSObject.set(instantiatedSource, "instance", jsInstance);
                     return instantiatedSource;
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(context, callTarget, 1, "");
         }
     }

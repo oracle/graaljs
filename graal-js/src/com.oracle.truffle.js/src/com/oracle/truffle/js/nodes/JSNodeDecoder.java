@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
@@ -229,7 +228,7 @@ public class JSNodeDecoder {
                 }
 
                 case ID_CALL_TARGET:
-                    storeResult(state, Truffle.getRuntime().createCallTarget((RootNode) state.getObject()));
+                    storeResult(state, ((RootNode) state.getObject()).getCallTarget());
                     break;
                 case ID_FRAME_DESCRIPTOR:
                     storeResult(state, new FrameDescriptor(Undefined.instance));

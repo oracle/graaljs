@@ -773,12 +773,12 @@ public final class JSFunction extends JSNonProxy {
         JSContext context = realm.getContext();
         DynamicObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSFunctionData functionData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.FunctionAsyncIterator, (c) -> {
-            return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+            return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return JSFrameUtil.getThisObj(frame);
                 }
-            }), 0, Symbol.SYMBOL_ASYNC_ITERATOR.toFunctionNameString());
+            }.getCallTarget(), 0, Symbol.SYMBOL_ASYNC_ITERATOR.toFunctionNameString());
         });
         DynamicObject asyncIterator = JSFunction.create(realm, functionData);
         JSObjectUtil.putDataProperty(context, prototype, Symbol.SYMBOL_ASYNC_ITERATOR, asyncIterator, JSAttributes.getDefaultNotEnumerable());

@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -188,7 +186,6 @@ public class PerformPromiseAnyNode extends PerformPromiseCombinatorNode {
                 return aggregateErrorObject;
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAnyRejectElementRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAnyRejectElementRootNode().getCallTarget(), 1, "");
     }
 }

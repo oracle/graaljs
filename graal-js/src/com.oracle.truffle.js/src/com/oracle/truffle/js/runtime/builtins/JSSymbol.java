@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -112,7 +111,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createDescriptionGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.SymbolGetDescription, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final ConditionProfile isSymbolProfile = ConditionProfile.createBinaryProfile();
                 private final ConditionProfile isJSSymbolProfile = ConditionProfile.createBinaryProfile();
 
@@ -127,7 +126,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorSymbolExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + DESCRIPTION);
         });
 

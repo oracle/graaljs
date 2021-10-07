@@ -42,7 +42,6 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -99,7 +98,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
 
     private static DynamicObject createSizeGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.MapGetSize, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
@@ -112,7 +111,7 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
                         throw Errors.createTypeErrorMapExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + SIZE);
         });
         DynamicObject sizeGetter = JSFunction.create(realm, getterData);

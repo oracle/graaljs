@@ -1127,12 +1127,12 @@ public class JSContext {
 
     /** CallTarget for an empty function that returns undefined. */
     private static CallTarget createEmptyFunctionCallTarget(JavaScriptLanguage lang) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
+        return new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return Undefined.instance;
             }
-        });
+        }.getCallTarget();
     }
 
     public CallTarget getSpeciesGetterFunctionCallTarget() {
@@ -1140,12 +1140,12 @@ public class JSContext {
     }
 
     private static CallTarget createSpeciesGetterFunctionCallTarget(JavaScriptLanguage lang) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
+        return new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return JSFrameUtil.getThisObj(frame);
             }
-        });
+        }.getCallTarget();
     }
 
     @TruffleBoundary
@@ -1177,7 +1177,7 @@ public class JSContext {
     }
 
     private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator, JSContext context) {
-        return Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(lang, null, null) {
+        return new JavaScriptRootNode(lang, null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (generator) {
@@ -1186,7 +1186,7 @@ public class JSContext {
                     throw Errors.createTypeErrorNotAConstructor(JSArguments.getFunctionObject(frame.getArguments()), context);
                 }
             }
-        });
+        }.getCallTarget();
     }
 
     @TruffleBoundary
@@ -1196,7 +1196,7 @@ public class JSContext {
             synchronized (this) {
                 result = boundFunctionCallTargetCache;
                 if (result == null) {
-                    result = boundFunctionCallTargetCache = Truffle.getRuntime().createCallTarget(JSFunction.createBoundRootNode(this, false, false));
+                    result = boundFunctionCallTargetCache = JSFunction.createBoundRootNode(this, false, false).getCallTarget();
                 }
             }
         }
@@ -1210,7 +1210,7 @@ public class JSContext {
             synchronized (this) {
                 result = boundFunctionConstructTargetCache;
                 if (result == null) {
-                    result = boundFunctionConstructTargetCache = Truffle.getRuntime().createCallTarget(JSFunction.createBoundRootNode(this, true, false));
+                    result = boundFunctionConstructTargetCache = JSFunction.createBoundRootNode(this, true, false).getCallTarget();
                 }
             }
         }
@@ -1224,7 +1224,7 @@ public class JSContext {
             synchronized (this) {
                 result = boundFunctionConstructNewTargetCache;
                 if (result == null) {
-                    result = boundFunctionConstructNewTargetCache = Truffle.getRuntime().createCallTarget(JSFunction.createBoundRootNode(this, true, true));
+                    result = boundFunctionConstructNewTargetCache = JSFunction.createBoundRootNode(this, true, true).getCallTarget();
                 }
             }
         }
@@ -1639,17 +1639,17 @@ public class JSContext {
     }
 
     private JSFunctionData throwTypeErrorFunction() {
-        CallTarget throwTypeErrorCallTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+        CallTarget throwTypeErrorCallTarget = new JavaScriptRootNode(getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 throw Errors.createTypeError("[[ThrowTypeError]] defined by ECMAScript");
             }
-        });
+        }.getCallTarget();
         return JSFunctionData.create(this, throwTypeErrorCallTarget, throwTypeErrorCallTarget, 0, "", false, false, false, true);
     }
 
     private JSFunctionData protoSetterFunction() {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+        CallTarget callTarget = new JavaScriptRootNode(getLanguage(), null, null) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
@@ -1670,12 +1670,12 @@ public class JSContext {
                 }
                 return Undefined.instance;
             }
-        });
+        }.getCallTarget();
         return JSFunctionData.createCallOnly(this, callTarget, 0, "set " + JSObject.PROTO);
     }
 
     private JSFunctionData protoGetterFunction() {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(getLanguage(), null, null) {
+        CallTarget callTarget = new JavaScriptRootNode(getLanguage(), null, null) {
             @Child private JSToObjectNode toObjectNode = JSToObjectNode.createToObject(JSContext.this);
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
 
@@ -1687,7 +1687,7 @@ public class JSContext {
                 }
                 return Null.instance;
             }
-        });
+        }.getCallTarget();
         return JSFunctionData.createCallOnly(this, callTarget, 0, "get " + JSObject.PROTO);
     }
 
