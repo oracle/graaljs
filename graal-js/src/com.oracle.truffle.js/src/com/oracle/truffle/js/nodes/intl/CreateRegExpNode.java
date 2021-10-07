@@ -78,7 +78,7 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
 
     protected abstract JSRegExpObject execute(Object compiledRegex, boolean legacyFeaturesEnabled, Object namedCaptureGroups, boolean hasNamedCG);
 
-    @Specialization(guards = {"!hasNamedCaptureGroups"})
+    @Specialization(guards = {"!b(hasNamedCaptureGroups)"})
     protected JSRegExpObject createWithoutNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
                     @SuppressWarnings("unused") Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
         JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, null, legacyFeaturesEnabled);
@@ -86,11 +86,16 @@ public abstract class CreateRegExpNode extends JavaScriptBaseNode {
         return reObj;
     }
 
-    @Specialization(guards = {"hasNamedCaptureGroups"})
+    @Specialization(guards = {"b(hasNamedCaptureGroups)"})
     protected JSRegExpObject createWithNamedCG(Object compiledRegex, boolean legacyFeaturesEnabled,
                     Object namedCaptureGroups, @SuppressWarnings("unused") boolean hasNamedCaptureGroups) {
         JSRegExpObject reObj = JSRegExp.create(context, getRealm(), compiledRegex, JSRegExp.buildGroupsFactory(context, namedCaptureGroups), legacyFeaturesEnabled);
         setLastIndex.setValueInt(reObj, 0);
         return reObj;
+    }
+
+    // Workaround for SpotBugs warning: Useless condition
+    static boolean b(boolean value) {
+        return value;
     }
 }
