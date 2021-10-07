@@ -57,6 +57,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -180,11 +181,27 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         }
     }
 
+    private JavaScriptLanguage getLanguageSafe() {
+        JavaScriptLanguage language = null;
+        try {
+            language = getRootNode().getLanguage(JavaScriptLanguage.class);
+            if (language == null) {
+                language = getLanguage();
+            }
+        } finally {
+            return language;
+        }
+    }
+
     private Object[] parseMaterializationInfo() {
         String literal;
         boolean identity;
         boolean typeofAsLeftOperand;
-        JSContext context = getLanguage().getJSContext();
+        JavaScriptLanguage language = getLanguageSafe();
+        if (language == null) {
+            return null;
+        }
+        JSContext context = language.getJSContext();
         try {
             Expression expression = context.getEvaluator().parseExpression(context, getSourceSection().getCharacters().toString());
             if (expression instanceof BinaryNode) {
