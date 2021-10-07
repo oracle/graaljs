@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -125,7 +124,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
     private static DynamicObject createBufferGetterFunction(JSRealm realm) {
         JSContext context = realm.getContext();
         JSFunctionData getterData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyMemoryGetBuffer, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
@@ -138,7 +137,7 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
                         throw Errors.createTypeError("WebAssembly.Memory.buffer: Receiver is not a WebAssembly.Memory", this);
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + BUFFER);
         });
 

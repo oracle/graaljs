@@ -57,7 +57,6 @@ import org.junit.rules.ExpectedException;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -75,7 +74,7 @@ public class InnerContextTest {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new TestLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                return new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return innerJS();
@@ -95,7 +94,7 @@ public class InnerContextTest {
                             innerContext.close();
                         }
                     }
-                });
+                }.getCallTarget();
             }
         })) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
@@ -114,7 +113,7 @@ public class InnerContextTest {
         try (AutoCloseable languageScope = TestLanguage.withTestLanguage(new TestLanguage() {
             @Override
             protected CallTarget parse(ParsingRequest request) throws Exception {
-                return Truffle.getRuntime().createCallTarget(new RootNode(languageInstance) {
+                return new RootNode(languageInstance) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return innerJS();
@@ -137,7 +136,7 @@ public class InnerContextTest {
                             innerContext.close();
                         }
                     }
-                });
+                }.getCallTarget();
             }
         })) {
             try (Context context = JSTest.newContextBuilder(JavaScriptLanguage.ID, TestLanguage.ID).allowPolyglotAccess(PolyglotAccess.ALL).build()) {
@@ -321,7 +320,7 @@ public class InnerContextTest {
                     return new ExecutableObject(call);
                 }
             }
-            return Truffle.getRuntime().createCallTarget(new ParseJsRootNode(languageInstance));
+            return new ParseJsRootNode(languageInstance).getCallTarget();
         }
     }
 }

@@ -51,7 +51,6 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -2461,8 +2460,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private static JSFunctionData createOrGetFlattenCallFunctionData(JSContext context) {
-            return JSFunctionData.createCallOnly(context,
-                            Truffle.getRuntime().createCallTarget(new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false))), 0, "");
+            return JSFunctionData.createCallOnly(context, new InnerFlattenCallNode(context, FlattenIntoArrayNode.create(context, false)).getCallTarget(), 0, "");
         }
     }
 

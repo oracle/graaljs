@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
@@ -253,7 +252,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         FrameDescriptor frameDescriptor = null;
         FunctionRootNode callRoot = FunctionRootNode.create(functionRoot, frameDescriptor, functionData, getSourceSection(), builtin.getFullName());
 
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(callRoot);
+        CallTarget callTarget = callRoot.getCallTarget();
         callTarget = functionData.setRootTarget(callTarget);
         functionData.setCallTarget(callTarget);
     }
@@ -270,9 +269,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             } else {
                 constructRoot = factory.createConstructorRootNode(functionData, callTarget, false);
             }
-            CallTarget constructTarget;
-            constructTarget = Truffle.getRuntime().createCallTarget(constructRoot);
-            functionData.setConstructTarget(constructTarget);
+            functionData.setConstructTarget(constructRoot.getCallTarget());
         } else if (target == JSFunctionData.Target.ConstructNewTarget) {
             JavaScriptRootNode constructNewTargetRoot;
             if (builtin.hasNewTargetConstructor()) {
@@ -282,7 +279,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
                 CallTarget constructTarget = functionData.getConstructTarget();
                 constructNewTargetRoot = factory.createDropNewTarget(functionData.getContext(), constructTarget);
             }
-            functionData.setConstructNewTarget(Truffle.getRuntime().createCallTarget(constructNewTargetRoot));
+            functionData.setConstructNewTarget(constructNewTargetRoot.getCallTarget());
         }
     }
 

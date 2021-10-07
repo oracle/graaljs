@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
@@ -266,7 +265,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
             if (asyncCallTargetInitializationRequired()) {
                 RootNode rootNode = getRootNode();
                 AsyncFunctionRootNode asyncRootNode = new AsyncFunctionRootNode(getContext(), functionBody, writeAsyncResult, readAsyncContext, rootNode.getSourceSection(), rootNode.getName());
-                this.resumptionTarget = Truffle.getRuntime().createCallTarget(asyncRootNode);
+                this.resumptionTarget = asyncRootNode.getCallTarget();
                 DirectCallNode callNode = DirectCallNode.create(resumptionTarget);
                 this.asyncCallNode = insert(callNode);
                 // these children have been transferred to the async root node and are now disowned

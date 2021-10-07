@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTrace;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -364,8 +363,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                 super(context, false);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitFulfilledRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new AwaitFulfilledRootNode().getCallTarget(), 1, "");
     }
 
     private DynamicObject createAwaitRejectedFunction(CallTarget resumeTarget, MaterializedFrame asyncContext, Object generator) {
@@ -383,8 +381,7 @@ public class AwaitNode extends JavaScriptNode implements ResumableNode, SuspendN
                 super(context, true);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AwaitRejectedRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new AwaitRejectedRootNode().getCallTarget(), 1, "");
     }
 
     @Override

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
@@ -301,7 +300,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
                 AsyncGeneratorRootNode asyncGeneratorRootNode = new AsyncGeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, readAsyncContext,
                                 rootNode.getSourceSection(),
                                 rootNode.getName());
-                this.resumeTarget = Truffle.getRuntime().createCallTarget(asyncGeneratorRootNode);
+                this.resumeTarget = asyncGeneratorRootNode.getCallTarget();
                 // these children have been transferred to the generator root node and are now
                 // disowned
                 this.functionBody = null;

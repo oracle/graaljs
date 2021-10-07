@@ -45,7 +45,6 @@ import java.util.Locale;
 import com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -135,7 +134,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createBaseNameGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleBaseName, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -145,7 +144,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.BASE_NAME);
         });
         return JSFunction.create(realm, getterData);
@@ -153,7 +152,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createCalendarGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleCalendar, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -163,7 +162,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.CALENDAR);
         });
         return JSFunction.create(realm, getterData);
@@ -171,7 +170,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createCaseFirstGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleCaseFirst, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -181,7 +180,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.CASE_FIRST);
         });
         return JSFunction.create(realm, getterData);
@@ -189,7 +188,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createCollationGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleCollation, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -199,7 +198,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.COLLATION);
         });
         return JSFunction.create(realm, getterData);
@@ -207,7 +206,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createHourCycleGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleHourCycle, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -217,7 +216,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.HOUR_CYCLE);
         });
         return JSFunction.create(realm, getterData);
@@ -225,7 +224,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createNumericGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleNumeric, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -235,7 +234,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.NUMERIC);
         });
         return JSFunction.create(realm, getterData);
@@ -243,7 +242,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createNumberingSystemGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleNumberingSystem, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -253,7 +252,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.NUMBERING_SYSTEM);
         });
         return JSFunction.create(realm, getterData);
@@ -261,7 +260,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createLanguageGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleLanguage, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -271,7 +270,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.LANGUAGE);
         });
         return JSFunction.create(realm, getterData);
@@ -279,7 +278,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createScriptGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleScript, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -289,7 +288,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.SCRIPT);
         });
         return JSFunction.create(realm, getterData);
@@ -297,7 +296,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
     private static DynamicObject createRegionGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleRegion, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Object obj = frame.getArguments()[0];
@@ -307,7 +306,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
                         throw Errors.createTypeErrorLocaleExpected();
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.REGION);
         });
         return JSFunction.create(realm, getterData);

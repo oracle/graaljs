@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -130,7 +129,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
 
     private static DynamicObject createValueGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalGetValue, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
                 @Child InteropLibrary globalReadLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -152,7 +151,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                         throw Errors.createTypeError("get WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + VALUE);
         });
 
@@ -161,7 +160,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
 
     private static DynamicObject createValueSetterFunction(JSRealm realm) {
         JSFunctionData setterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyGlobalSetValue, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
                 @Child InteropLibrary globalWriteLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
                 private final BranchProfile errorBranch = BranchProfile.create();
@@ -200,7 +199,7 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
                         throw Errors.createTypeError("set WebAssembly.Global.value: Receiver is not a WebAssembly.Global", this);
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 1, "set " + VALUE);
         });
 

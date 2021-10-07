@@ -199,8 +199,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             return createEmptyScript(context).getCallTarget();
         }
 
-        RootNode rootNode = new ParsedProgramRoot(this, context, program);
-        return Truffle.getRuntime().createCallTarget(rootNode);
+        return new ParsedProgramRoot(this, context, program).getCallTarget();
     }
 
     private final class ParsedProgramRoot extends RootNode {

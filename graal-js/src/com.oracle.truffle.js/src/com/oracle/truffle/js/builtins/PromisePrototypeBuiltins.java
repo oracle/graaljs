@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -269,8 +268,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                     return function;
                 }
             }
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseFinallyRootNode());
-            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+            return JSFunctionData.createCallOnly(context, new PromiseFinallyRootNode().getCallTarget(), 1, "");
         }
 
         static JSFunctionData createThrower(JSContext context) {
@@ -282,14 +280,14 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         private static JSFunctionData createThunkImpl(JSContext context, JavaScriptNode expression) {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+            CallTarget callTarget = new JavaScriptRootNode() {
                 @Child private JavaScriptNode body = expression;
 
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return body.execute(frame);
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(context, callTarget, 0, "");
         }
     }

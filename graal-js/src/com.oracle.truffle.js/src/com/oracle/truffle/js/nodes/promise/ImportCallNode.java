@@ -41,10 +41,8 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -420,14 +418,12 @@ public class ImportCallNode extends JavaScriptNode {
                         }
                     }
                 }
-                CallTarget callTarget = Truffle.getRuntime().createCallTarget(new FinishDynamicImportNormalRootNode());
-                return JSFunctionData.createCallOnly(cx, callTarget, 0, "");
+                return JSFunctionData.createCallOnly(cx, new FinishDynamicImportNormalRootNode().getCallTarget(), 0, "");
             }
         }
 
         JavaScriptRootNode root = context.isOptionTopLevelAwait() ? new TopLevelAwaitImportModuleDynamicallyRootNode() : new ImportModuleDynamicallyRootNode();
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(root);
-        return JSFunctionData.createCallOnly(context, callTarget, 0, "");
+        return JSFunctionData.createCallOnly(context, root.getCallTarget(), 0, "");
     }
 
     @Override

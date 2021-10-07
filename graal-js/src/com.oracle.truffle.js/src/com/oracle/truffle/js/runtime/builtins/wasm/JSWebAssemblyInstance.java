@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
@@ -134,7 +133,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
     private static DynamicObject createExportsGetterFunction(JSRealm realm) {
         JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyInstanceGetExports, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(c.getLanguage(), null, null) {
+            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
                 private final BranchProfile errorBranch = BranchProfile.create();
 
                 @Override
@@ -147,7 +146,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         throw Errors.createTypeError("WebAssembly.Instance.exports(): Receiver is not a WebAssembly.Instance", this);
                     }
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + EXPORTS);
         });
 
@@ -210,7 +209,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         boolean returnTypeIsI64 = JSWebAssemblyValueTypes.isI64(returnType);
         boolean anyArgTypeIsI64 = argTypes.contains(JSWebAssemblyValueTypes.I64);
 
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode(context.getLanguage(), null, null) {
+        CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
             @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
             private final BranchProfile errorBranch = BranchProfile.create();
@@ -263,7 +262,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     throw Errors.shouldNotReachHere(ex);
                 }
             }
-        });
+        }.getCallTarget();
 
         JSFunctionData functionData = JSFunctionData.createCallOnly(context, callTarget, argCount, name);
         DynamicObject result = JSFunction.create(realm, functionData);

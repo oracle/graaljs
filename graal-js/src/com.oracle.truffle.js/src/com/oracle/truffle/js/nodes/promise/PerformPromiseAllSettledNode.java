@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -119,8 +117,7 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 return Undefined.instance;
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllSEttledResolveElementRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAllSEttledResolveElementRootNode().getCallTarget(), 1, "");
     }
 
     private static JSFunctionData createRejectElementFunctionImpl(JSContext context) {
@@ -155,7 +152,6 @@ public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
                 return Undefined.instance;
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllSettledRejectElementRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAllSettledRejectElementRootNode().getCallTarget(), 1, "");
     }
 }

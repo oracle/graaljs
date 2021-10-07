@@ -67,7 +67,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -254,7 +253,7 @@ public final class GraalJSEvaluator implements JSParser {
     private ScriptNode fakeScriptForModule(JSContext context, Source source) {
         JSModuleData parsedModule = parseModule(context, source);
         RootNode rootNode = new ModuleScriptRoot(context, parsedModule, source);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(rootNode), 0, "");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(context, rootNode.getCallTarget(), 0, "");
         return ScriptNode.fromFunctionData(context, functionData);
     }
 
@@ -318,8 +317,7 @@ public final class GraalJSEvaluator implements JSParser {
                 throw JSRuntime.getException(error);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TopLevelAwaitRejectedRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new TopLevelAwaitRejectedRootNode().getCallTarget(), 1, "");
     }
 
     private static DynamicObject createTopLevelAwaitResolve(JSContext context, JSRealm realm) {
@@ -335,8 +333,7 @@ public final class GraalJSEvaluator implements JSParser {
                 return Undefined.instance;
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new TopLevelAwaitFulfilledRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new TopLevelAwaitFulfilledRootNode().getCallTarget(), 1, "");
     }
 
     @Override
@@ -428,8 +425,7 @@ public final class GraalJSEvaluator implements JSParser {
                 module.getEnvironment().setObject(defaultSlot, module.getHostDefined());
             }
         };
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), callTarget, 0, "");
+        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "");
         final JSModuleData parseModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
         return new JSModuleRecord(parseModule, realm.getModuleLoader(), hostDefined);
     }
@@ -843,8 +839,7 @@ public final class GraalJSEvaluator implements JSParser {
                 return asyncModuleExecutionFulfilled(getRealm(), (JSModuleRecord) module, dynamicImportResolutionResult);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleFulfilledRoot());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncModuleFulfilledRoot().getCallTarget(), 1, "");
     }
 
     @TruffleBoundary
@@ -872,8 +867,7 @@ public final class GraalJSEvaluator implements JSParser {
                 return asyncModuleExecutionRejected(getRealm(), module, reaction);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncModuleExecutionRejectedRoot());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new AsyncModuleExecutionRejectedRoot().getCallTarget(), 1, "");
     }
 
     private static void gatherAvailableAncestors(JSModuleRecord module, Set<JSModuleRecord> execList) {

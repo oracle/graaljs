@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -228,8 +226,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return new AsyncStackTraceInfo(promise, null);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseResolveRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseResolveRootNode().getCallTarget(), 1, "");
     }
 
     private static JSFunctionData createPromiseResolveThenableJobImpl(JSContext context) {
@@ -248,8 +245,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return promiseResolveThenable.execute(promiseToResolve, thenable, then);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseResolveThenableJob());
-        return JSFunctionData.createCallOnly(context, callTarget, 0, "");
+        return JSFunctionData.createCallOnly(context, new PromiseResolveThenableJob().getCallTarget(), 0, "");
     }
 
     private DynamicObject createPromiseRejectFunction(DynamicObject promise, AlreadyResolved alreadyResolved) {
@@ -300,7 +296,6 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                 return new AsyncStackTraceInfo(promise, null);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseRejectRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseRejectRootNode().getCallTarget(), 1, "");
     }
 }

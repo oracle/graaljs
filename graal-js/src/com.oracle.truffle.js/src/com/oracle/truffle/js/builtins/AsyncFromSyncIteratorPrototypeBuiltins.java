@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -245,8 +243,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                     return createIterResult.execute(frame, value, done);
                 }
             }
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new AsyncFromSyncIteratorValueUnwrapRootNode());
-            return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+            return JSFunctionData.createCallOnly(context, new AsyncFromSyncIteratorValueUnwrapRootNode().getCallTarget(), 1, "");
         }
     }
 

@@ -42,9 +42,7 @@ package com.oracle.truffle.js.nodes.promise;
 
 import java.util.List;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -102,8 +100,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
     }
 
     private static JSFunctionData createPromiseReactionJobImpl(JSContext context) {
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseReactionJobRootNode(context));
-        return JSFunctionData.createCallOnly(context, callTarget, 0, "");
+        return JSFunctionData.createCallOnly(context, new PromiseReactionJobRootNode(context).getCallTarget(), 0, "");
     }
 
     public static class PromiseReactionJobRootNode extends JavaScriptRootNode implements InstrumentableNode {

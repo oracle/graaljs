@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleStackTraceElement;
@@ -185,8 +184,7 @@ public class PerformPromiseAllNode extends PerformPromiseCombinatorNode {
                 return new AsyncStackTraceInfo(resultPromise, asyncStackTraceElement);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new PromiseAllResolveElementRootNode());
-        return JSFunctionData.createCallOnly(context, callTarget, 1, "");
+        return JSFunctionData.createCallOnly(context, new PromiseAllResolveElementRootNode().getCallTarget(), 1, "");
     }
 
     static TruffleStackTraceElement createPromiseAllStackTraceElement(int promiseIndex, JSRealm realm) {

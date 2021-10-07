@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -215,7 +214,7 @@ public final class GeneratorBodyNode extends JavaScriptNode {
             if (generatorCallTarget == null) {
                 RootNode rootNode = getRootNode();
                 GeneratorRootNode generatorRootNode = new GeneratorRootNode(context, functionBody, writeYieldValueNode, readYieldResultNode, rootNode.getSourceSection(), rootNode.getName());
-                this.generatorCallTarget = Truffle.getRuntime().createCallTarget(generatorRootNode);
+                this.generatorCallTarget = generatorRootNode.getCallTarget();
                 // these children have been transferred to the generator root node and are now
                 // disowned
                 this.functionBody = null;

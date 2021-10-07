@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -110,7 +109,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
         }
 
         private static JSFunctionData createProxyRevokerFunctionImpl(JSContext context) {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+            CallTarget callTarget = new JavaScriptRootNode() {
                 @Child private PropertyGetNode getRevocableProxyNode = PropertyGetNode.createGetHidden(JSProxy.REVOCABLE_PROXY, context);
                 @Child private PropertySetNode setRevocableProxyNode = PropertySetNode.createSetHidden(JSProxy.REVOCABLE_PROXY, context);
                 @Child private IsCallableNode isCallableNode = IsCallableNode.create();
@@ -129,7 +128,7 @@ public final class ProxyFunctionBuiltins extends JSBuiltinsContainer.Lambda {
                     ((JSProxyObject) revocableProxy).revoke(callable, constructor);
                     return Undefined.instance;
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(context, callTarget, 0, ""); // anonymous
         }
     }
