@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,60 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.instrumentation;
+package com.oracle.truffle.trufflenode.test;
 
-import com.oracle.truffle.api.instrumentation.LoadSourceEvent;
-import com.oracle.truffle.api.instrumentation.LoadSourceListener;
+import com.oracle.truffle.api.Option;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionEvent;
 import com.oracle.truffle.api.instrumentation.LoadSourceSectionListener;
-import com.oracle.truffle.api.instrumentation.SourceFilter;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import org.graalvm.polyglot.Context;
-import org.junit.Assert;
-import org.junit.Test;
+import org.graalvm.options.OptionCategory;
+import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionKey;
 
-public class GR18957 {
+/**
+ * Instrument with a source section listener (with a root name filter). It resembles
+ * {@code coverage} instrument.
+ */
+@Option.Group(CoverageLikeInstrument.ID)
+@TruffleInstrument.Registration(id = CoverageLikeInstrument.ID, name = "Coverage-like Instrument")
+public class CoverageLikeInstrument extends TruffleInstrument implements LoadSourceSectionListener {
+    static final String ID = "coverage-like-instrument";
 
-    @Test
-    public void testIt() throws InterruptedException {
-        final Context context = TestUtil.newContextBuilder().build();
-        context.eval(JavaScriptLanguage.ID, "typeof abc === 'undefined'");
-        // Verify that the materialization of JSTypeofIdenticalNode does not
-        // throw when it is triggered without an entered context.
-        final boolean[] passed = new boolean[1];
-        Thread t = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                context.getEngine().getInstruments().get(GR18957Instrument.ID).lookup(GR18957Instrument.class);
-                passed[0] = true; // Invoked when no exception is thrown only
-            }
-        });
-        t.start();
-        t.join();
-        Assert.assertTrue(passed[0]);
+    @Option(name = "", help = "Enable the instrument.", category = OptionCategory.USER) //
+    static final OptionKey<Boolean> ENABLED = new OptionKey<>(true);
+
+    @Override
+    protected OptionDescriptors getOptionDescriptors() {
+        return new CoverageLikeInstrumentOptionDescriptors();
     }
 
-    @TruffleInstrument.Registration(id = GR18957Instrument.ID, services = {GR18957Instrument.class})
-    public static class GR18957Instrument extends TruffleInstrument {
-        public static final String ID = "GR18957Instrument";
-
-        @Override
-        protected void onCreate(Env env) {
-            env.registerService(this);
-            env.getInstrumenter().attachLoadSourceListener(SourceFilter.ANY, new LoadSourceListener() {
-                @Override
-                public void onLoad(LoadSourceEvent event) {
-                    // no action needed
-                }
-            }, true);
-            env.getInstrumenter().visitLoadedSourceSections(SourceSectionFilter.ANY, new LoadSourceSectionListener() {
-                @Override
-                public void onLoad(LoadSourceSectionEvent event) {
-                    // no action needed
-                }
-            });
-        }
+    @Override
+    protected void onCreate(final TruffleInstrument.Env environment) {
+        SourceSectionFilter filter = SourceSectionFilter.newBuilder().rootNameIs((name) -> true).build();
+        environment.getInstrumenter().attachLoadSourceSectionListener(filter, this, true);
     }
+
+    @Override
+    public void onLoad(LoadSourceSectionEvent event) {
+    }
+
 }
