@@ -12,6 +12,8 @@ local common = import 'common.jsonnet';
 
   overlay: if debug then no_overlay else overlay,
 
+  specVersion: "2",
+
   local deployBinary = {
     setup+: [
       ['mx', '-p', 'graal-nodejs', 'sversions'],
