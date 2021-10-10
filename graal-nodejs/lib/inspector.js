@@ -158,4 +158,12 @@ module.exports = {
 };
 
 // Use the mockup provided by 'inspect' instrument
-module.exports = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
+const graalExport = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
+if (graalExport) {
+  // The object provided by 'inspect' instrument is a foreign object.
+  // This breaks some use-cases (insertion into WeakMap)
+  // => copy its members into JS object that is used instead.
+  const inspector = {};
+  Object.keys(graalExport).forEach(key => inspector[key] = graalExport[key]);
+  module.exports = inspector;
+}
