@@ -111,7 +111,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @TruffleBoundary
         @Specialization
         public Object enter(SharedMemMessagingBindings.Instance self, JSExternalObject nativeMessagePortData) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
             access.setCurrentMessagePortData(nativeMessagePortData);
             return self;
         }
@@ -138,7 +138,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @TruffleBoundary
         @Specialization
         static boolean encodedJavaRefs(SharedMemMessagingBindings.Instance self) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
             assert access.getCurrentMessagePortData() != null;
             return access.getCurrentMessagePortData().encodedJavaRefs();
         }
@@ -162,7 +162,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @TruffleBoundary
         @Specialization
         static Object free(SharedMemMessagingBindings.Instance self) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
             access.getCurrentMessagePortData().disposeLastMessageRefs();
             return self;
         }
@@ -186,7 +186,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @TruffleBoundary
         @Specialization
         static Object leave(SharedMemMessagingBindings.Instance self) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField(self);
+            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
             access.unsetCurrentMessagePortData();
             return self;
         }

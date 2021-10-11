@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,66 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.info;
+package com.oracle.truffle.trufflenode;
 
-/**
- * Represents a property handler object. Contains runtime data (e.g., pointers), and must not be
- * persisted.
- *
- * @author Jan Stola
- */
-public final class PropertyHandler {
+import java.util.HashMap;
+import java.util.Map;
 
-    private final long getter;
-    private final long setter;
-    private final long query;
-    private final long deleter;
-    private final long enumerator;
-    private final long definer;
-    private final long descriptor;
-    private final Object data;
+import com.oracle.js.parser.ir.Module;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSModuleData;
+import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
-    public PropertyHandler(long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data) {
-        this.getter = getter;
-        this.setter = setter;
-        this.query = query;
-        this.deleter = deleter;
-        this.enumerator = enumerator;
-        this.definer = definer;
-        this.descriptor = descriptor;
-        this.data = data;
+class ESModuleLoader implements JSModuleLoader {
+    private final Map<ScriptOrModule, Map<String, JSModuleRecord>> cache = new HashMap<>();
+    private long resolver;
+
+    void setResolver(long resolver) {
+        this.resolver = resolver;
     }
 
-    public long getGetter() {
-        return getter;
+    @Override
+    public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
+        Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
+        String specifier = moduleRequest.getSpecifier();
+        if (referrerCache == null) {
+            referrerCache = new HashMap<>();
+            cache.put(referrer, referrerCache);
+        } else {
+            JSModuleRecord cached = referrerCache.get(specifier);
+            if (cached != null) {
+                return cached;
+            }
+        }
+        if (resolver == 0) {
+            System.err.println("Cannot resolve module outside module instantiation!");
+            System.exit(1);
+        }
+        JSRealm realm = JSRealm.get(null);
+        JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, referrer);
+        referrerCache.put(specifier, result);
+        return result;
     }
 
-    public long getSetter() {
-        return setter;
+    @Override
+    public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
+        throw new UnsupportedOperationException();
     }
-
-    public long getQuery() {
-        return query;
-    }
-
-    public long getDeleter() {
-        return deleter;
-    }
-
-    public long getEnumerator() {
-        return enumerator;
-    }
-
-    public long getDefiner() {
-        return definer;
-    }
-
-    public long getDescriptor() {
-        return descriptor;
-    }
-
-    public Object getData() {
-        return data;
-    }
-
 }

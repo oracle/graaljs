@@ -51,6 +51,7 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
@@ -60,21 +61,17 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
+import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
+import com.oracle.truffle.trufflenode.RealmData;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 import com.oracle.truffle.trufflenode.info.PropertyHandler;
 
 public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
-    private final GraalJSAccess graalAccess;
     private final JSContext context;
-    private final PropertyHandler namedHandler;
-    private final PropertyHandler indexedHandler;
-    private final Object proxy;
-    private final Object namedHandlerData;
-    private final Object indexedHandlerData;
     private final Mode mode;
-    private final boolean stringKeysOnly;
+    private final int handlerId;
 
     @Child private PropertyGetNode holderPropertyGetNode;
 
@@ -88,15 +85,9 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         DEFINE_PROPERTY
     }
 
-    public ExecuteNativePropertyHandlerNode(GraalJSAccess graalAccess, JSContext context, ObjectTemplate template, Object proxy, Mode mode) {
-        this.graalAccess = graalAccess;
+    public ExecuteNativePropertyHandlerNode(JSContext context, int id, Mode mode) {
         this.context = context;
-        this.indexedHandler = template.getIndexedPropertyHandler();
-        this.indexedHandlerData = (indexedHandler == null) ? null : indexedHandler.getData();
-        this.namedHandler = template.getNamedPropertyHandler();
-        this.namedHandlerData = (namedHandler == null) ? null : namedHandler.getData();
-        this.stringKeysOnly = template.getStringKeysOnly();
-        this.proxy = proxy;
+        this.handlerId = id;
         this.mode = mode;
         this.holderPropertyGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.HOLDER_KEY, context);
     }
@@ -130,27 +121,45 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         }
     }
 
+    protected ObjectTemplate getObjectTemplate() {
+        RealmData realmData = GraalJSAccess.getRealmEmbedderData(JSRealm.get(this));
+        Pair<ObjectTemplate, DynamicObject> propertyHandler = realmData.getPropertyHandler(this.handlerId);
+        return propertyHandler.getFirst();
+    }
+
+    private DynamicObject getObjectTemplateProxy() {
+        RealmData realmData = GraalJSAccess.getRealmEmbedderData(JSRealm.get(this));
+        Pair<ObjectTemplate, DynamicObject> propertyHandler = realmData.getPropertyHandler(this.handlerId);
+        return propertyHandler.getSecond();
+    }
+
     @CompilerDirectives.TruffleBoundary
     private Object executeGetter(Object holder, Object[] arguments) {
         Object result = null;
         Object key = arguments[3];
+
+        ObjectTemplate template = getObjectTemplate();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+        PropertyHandler namedHandler = template.getNamedPropertyHandler();
+
         if (!(key instanceof HiddenKey)) {
             if (JSRuntime.isArrayIndex(key)) {
                 if (indexedHandler != null) {
-                    result = NativeAccess.executePropertyHandlerGetter(indexedHandler.getGetter(), holder, arguments, indexedHandlerData, false);
+                    result = NativeAccess.executePropertyHandlerGetter(indexedHandler.getGetter(), holder, arguments, indexedHandler.getData(), false);
                 }
             } else if (namedHandler != null) {
                 if (!(key instanceof Symbol)) {
                     key = JSRuntime.toString(key);
                 }
-                if (!stringKeysOnly || JSRuntime.isString(key)) {
-                    result = NativeAccess.executePropertyHandlerGetter(namedHandler.getGetter(), holder, arguments, namedHandlerData, true);
+                if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+                    result = NativeAccess.executePropertyHandlerGetter(namedHandler.getGetter(), holder, arguments, namedHandler.getData(), true);
                 }
             }
         }
         if (result == null) {
             result = JSObject.get((DynamicObject) arguments[2], key);
         } else {
+            GraalJSAccess graalAccess = GraalJSAccess.get(this);
             result = graalAccess.correctReturnValue(result);
         }
         return result;
@@ -159,14 +168,21 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     @CompilerDirectives.TruffleBoundary
     private boolean executeSetter(Object holder, Object[] arguments) {
         Object key = arguments[3];
+
+        ObjectTemplate template = getObjectTemplate();
+
         boolean handled = false;
         if (JSRuntime.isArrayIndex(key)) {
+            PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+
             if (indexedHandler != null && indexedHandler.getSetter() != 0) {
-                handled = NativeAccess.executePropertyHandlerSetter(indexedHandler.getSetter(), holder, arguments, indexedHandlerData, false);
+                handled = NativeAccess.executePropertyHandlerSetter(indexedHandler.getSetter(), holder, arguments, indexedHandler.getData(), false);
             }
-        } else if (!(key instanceof HiddenKey) && (!stringKeysOnly || JSRuntime.isString(key))) {
+        } else if (!(key instanceof HiddenKey) && (!template.getStringKeysOnly() || JSRuntime.isString(key))) {
+            PropertyHandler namedHandler = template.getNamedPropertyHandler();
+
             if (namedHandler != null && namedHandler.getSetter() != 0) {
-                handled = NativeAccess.executePropertyHandlerSetter(namedHandler.getSetter(), holder, arguments, namedHandlerData, true);
+                handled = NativeAccess.executePropertyHandlerSetter(namedHandler.getSetter(), holder, arguments, namedHandler.getData(), true);
             }
         }
         if (handled) {
@@ -179,25 +195,32 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     @CompilerDirectives.TruffleBoundary
     private Object executeQuery(Object holder, Object[] arguments) {
         Object key = arguments[3];
+
+        ObjectTemplate template = getObjectTemplate();
+        DynamicObject proxy = getObjectTemplateProxy();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 if (indexedHandler.getQuery() != 0) {
-                    return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandlerData, false) != null);
+                    return (NativeAccess.executePropertyHandlerQuery(indexedHandler.getQuery(), holder, nativeCallArgs, indexedHandler.getData(), false) != null);
                 } else if (indexedHandler.getDescriptor() != 0) {
-                    Object result = NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandlerData, false);
+                    Object result = NativeAccess.executePropertyHandlerDescriptor(indexedHandler.getDescriptor(), holder, nativeCallArgs, indexedHandler.getData(), false);
                     if (result != null) {
                         return true;
                     }
                 }
             }
-        } else if (!stringKeysOnly || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+            PropertyHandler namedHandler = template.getNamedPropertyHandler();
+
             if (namedHandler != null) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
                 if (namedHandler.getQuery() != 0) {
-                    return (NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandlerData, true) != null);
+                    return (NativeAccess.executePropertyHandlerQuery(namedHandler.getQuery(), holder, nativeCallArgs, namedHandler.getData(), true) != null);
                 } else if (namedHandler.getDescriptor() != 0) {
-                    Object result = NativeAccess.executePropertyHandlerDescriptor(namedHandler.getDescriptor(), holder, nativeCallArgs, namedHandlerData, true);
+                    Object result = NativeAccess.executePropertyHandlerDescriptor(namedHandler.getDescriptor(), holder, nativeCallArgs, namedHandler.getData(), true);
                     if (result != null) {
                         return true;
                     }
@@ -212,15 +235,22 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private boolean executeDeleter(Object holder, Object[] arguments) {
         boolean success = true;
         Object key = arguments[3];
+
+        ObjectTemplate template = getObjectTemplate();
+        DynamicObject proxy = getObjectTemplateProxy();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null && indexedHandler.getDeleter() != 0) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
-                success = NativeAccess.executePropertyHandlerDeleter(indexedHandler.getDeleter(), holder, nativeCallArgs, indexedHandlerData, false);
+                success = NativeAccess.executePropertyHandlerDeleter(indexedHandler.getDeleter(), holder, nativeCallArgs, indexedHandler.getData(), false);
             }
-        } else if (!stringKeysOnly || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+            PropertyHandler namedHandler = template.getNamedPropertyHandler();
+
             if (namedHandler != null && namedHandler.getDeleter() != 0) {
                 Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
-                success = NativeAccess.executePropertyHandlerDeleter(namedHandler.getDeleter(), holder, nativeCallArgs, namedHandlerData, true);
+                success = NativeAccess.executePropertyHandlerDeleter(namedHandler.getDeleter(), holder, nativeCallArgs, namedHandler.getData(), true);
             }
         }
         // Delete properties introduced through defineProperty trap
@@ -234,6 +264,10 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     private Object executeGetOwnPropertyDescriptor(Object holder, Object[] arguments) {
         Object key = arguments[3];
         PropertyDescriptor desc = null;
+
+        ObjectTemplate template = getObjectTemplate();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null) {
                 if (indexedHandler.getDescriptor() != 0) {
@@ -248,7 +282,9 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
             if (desc == null) {
                 desc = JSObject.getOwnProperty((DynamicObject) arguments[2], arguments[3]);
             }
-        } else if (!stringKeysOnly || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
+            PropertyHandler namedHandler = template.getNamedPropertyHandler();
+
             if (namedHandler != null) {
                 if (namedHandler.getDescriptor() != 0) {
                     Object result = executeDescriptorCallback(holder, arguments, true);
@@ -271,20 +307,31 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
     }
 
     private Object executeDescriptorCallback(Object holder, Object[] arguments, boolean named) {
+
+        ObjectTemplate template = getObjectTemplate();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+        PropertyHandler namedHandler = template.getNamedPropertyHandler();
+
         PropertyHandler handler = named ? namedHandler : indexedHandler;
-        Object handlerData = named ? namedHandlerData : indexedHandlerData;
+        Object handlerData = named ? namedHandler.getData() : indexedHandler.getData();
         return NativeAccess.executePropertyHandlerDescriptor(handler.getDescriptor(), holder, arguments, handlerData, named);
     }
 
     @CompilerDirectives.TruffleBoundary
     private PropertyDescriptor executeGetOwnPropertyDescriptorHelper(Object holder, Object[] arguments, boolean named) {
+        ObjectTemplate template = getObjectTemplate();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+        PropertyHandler namedHandler = template.getNamedPropertyHandler();
+        DynamicObject proxy = getObjectTemplateProxy();
+
         PropertyDescriptor desc = null;
         PropertyHandler handler = named ? namedHandler : indexedHandler;
-        Object handlerData = named ? namedHandlerData : indexedHandlerData;
+        Object handlerData = named ? namedHandler.getData() : indexedHandler.getData();
         Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2], arguments[3]);
         Object attributes = null;
         if (handler.getQuery() != 0) {
             attributes = NativeAccess.executePropertyHandlerQuery(handler.getQuery(), holder, nativeCallArgs, handlerData, named);
+            GraalJSAccess graalAccess = GraalJSAccess.get(this);
             attributes = graalAccess.correctReturnValue(attributes);
         }
         if (attributes == null && handler.getEnumerator() != 0) {
@@ -314,13 +361,19 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
 
     @CompilerDirectives.TruffleBoundary
     private Object executeOwnKeys(Object holder, Object[] arguments) {
+
+        ObjectTemplate template = getObjectTemplate();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+        PropertyHandler namedHandler = template.getNamedPropertyHandler();
+        DynamicObject proxy = getObjectTemplateProxy();
+
         Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2]);
         DynamicObject ownKeys = null;
         if (namedHandler != null && namedHandler.getEnumerator() != 0) {
-            ownKeys = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandlerData);
+            ownKeys = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandler.getData());
         }
         if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
-            DynamicObject ownKeys2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandlerData);
+            DynamicObject ownKeys2 = (DynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandler.getData());
             if (JSArray.isJSArray(ownKeys2)) {
                 // indexed handler returns array of numbers but we need an array of property keys
                 long length = JSAbstractArray.arrayGetLength(ownKeys2);
@@ -367,6 +420,12 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                         (descriptor.getWritable() ? (1 << 5) : 0);
         DynamicObject target = (DynamicObject) arguments[2];
         Object result = Undefined.instance;
+
+        ObjectTemplate template = getObjectTemplate();
+        PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
+        PropertyHandler namedHandler = template.getNamedPropertyHandler();
+        DynamicObject proxy = getObjectTemplateProxy();
+
         if (JSRuntime.isArrayIndex(key)) {
             if (indexedHandler != null && indexedHandler.getDefiner() != 0) {
                 result = NativeAccess.executePropertyHandlerDefiner(
@@ -377,10 +436,10 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 descriptor.getSet(),
                                 flags,
                                 arguments,
-                                indexedHandlerData,
+                                indexedHandler.getData(),
                                 false);
             }
-        } else if (!stringKeysOnly || JSRuntime.isString(key)) {
+        } else if (!template.getStringKeysOnly() || JSRuntime.isString(key)) {
             if (namedHandler != null && namedHandler.getDefiner() != 0) {
                 result = NativeAccess.executePropertyHandlerDefiner(
                                 namedHandler.getDefiner(),
@@ -390,7 +449,7 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
                                 descriptor.getSet(),
                                 flags,
                                 arguments,
-                                namedHandlerData,
+                                namedHandler.getData(),
                                 true);
             }
         }

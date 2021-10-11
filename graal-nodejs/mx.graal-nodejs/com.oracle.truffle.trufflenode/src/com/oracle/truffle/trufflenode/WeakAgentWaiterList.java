@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,66 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.info;
+package com.oracle.truffle.trufflenode;
 
-/**
- * Represents a property handler object. Contains runtime data (e.g., pointers), and must not be
- * persisted.
- *
- * @author Jan Stola
- */
-public final class PropertyHandler {
+import java.lang.ref.WeakReference;
 
-    private final long getter;
-    private final long setter;
-    private final long query;
-    private final long deleter;
-    private final long enumerator;
-    private final long definer;
-    private final long descriptor;
-    private final Object data;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 
-    public PropertyHandler(long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data) {
-        this.getter = getter;
-        this.setter = setter;
-        this.query = query;
-        this.deleter = deleter;
-        this.enumerator = enumerator;
-        this.definer = definer;
-        this.descriptor = descriptor;
-        this.data = data;
-    }
+class WeakAgentWaiterList extends WeakReference<JSAgentWaiterList> {
+    long pointer;
 
-    public long getGetter() {
-        return getter;
-    }
-
-    public long getSetter() {
-        return setter;
-    }
-
-    public long getQuery() {
-        return query;
-    }
-
-    public long getDeleter() {
-        return deleter;
-    }
-
-    public long getEnumerator() {
-        return enumerator;
-    }
-
-    public long getDefiner() {
-        return definer;
-    }
-
-    public long getDescriptor() {
-        return descriptor;
-    }
-
-    public Object getData() {
-        return data;
+    WeakAgentWaiterList(JSAgentWaiterList wl, long pointer) {
+        super(wl, GraalJSAccess.agentWaiterListQueue);
+        this.pointer = pointer;
     }
 
 }

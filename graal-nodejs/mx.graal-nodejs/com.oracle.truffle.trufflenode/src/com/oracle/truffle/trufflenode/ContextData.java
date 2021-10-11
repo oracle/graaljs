@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
  * Embedder data shared between realms.
  */
 public final class ContextData {
+
     private final Map<String, FunctionNode> functionNodeCache = new WeakHashMap<>();
     private final Map<Source, ScriptNode> scriptNodeCache = new WeakHashMap<>();
     private final List<Pair<JSFunctionData, JSFunctionData>> accessorPairs = new ArrayList<>();
@@ -117,4 +118,5 @@ public final class ContextData {
             return accessFunctionData.get(index);
         }
     }
+
 }

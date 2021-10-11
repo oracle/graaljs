@@ -107,7 +107,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
 
         public StringIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isStringIteratorNode = HasHiddenKeyCacheNode.create(JSString.ITERATED_STRING_ID);
+            this.isStringIteratorNode = HasHiddenKeyCacheNode.create(context, JSString.ITERATED_STRING_ID);
             this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSString.ITERATED_STRING_ID, context);
             this.getNextIndexNode = PropertyGetNode.createGetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
             this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);

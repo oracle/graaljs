@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,18 +121,16 @@ import com.oracle.truffle.trufflenode.JSExternal;
 @SuppressWarnings("unused")
 @ImportStatic({JSExternal.class, JSRuntime.class, JSMap.class, JSSet.class, JSPromise.class, JSProxy.class, JSObject.class, JSDataView.class})
 abstract class ValueTypeNode extends JavaScriptBaseNode {
-    protected final GraalJSAccess graalAccess;
     protected final JSContext context;
     protected final boolean useSharedBuffer;
 
-    ValueTypeNode(GraalJSAccess graalAccess, JSContext context, boolean useSharedBuffer) {
-        this.graalAccess = graalAccess;
+    ValueTypeNode(JSContext context, boolean useSharedBuffer) {
         this.context = context;
         this.useSharedBuffer = useSharedBuffer;
     }
 
-    public static ValueTypeNode create(GraalJSAccess graalAccess, JSContext context, boolean useSharedBuffer) {
-        return ValueTypeNodeGen.create(graalAccess, context, useSharedBuffer);
+    public static ValueTypeNode create(JSContext context, boolean useSharedBuffer) {
+        return ValueTypeNodeGen.create(context, useSharedBuffer);
     }
 
     protected abstract int executeInt(Object value);
@@ -169,7 +167,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization
     protected final int doDouble(double value) {
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putDouble(value);
+            GraalJSAccess.get(this).getSharedBuffer().putDouble(value);
         }
         return NUMBER_VALUE;
     }
@@ -177,7 +175,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = "isNumber(value)", replaces = {"doInt", "doDouble"})
     protected final int doNumber(Object value) {
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putDouble(JSRuntime.doubleValue((Number) value));
+            GraalJSAccess.get(this).getSharedBuffer().putDouble(JSRuntime.doubleValue((Number) value));
         }
         return NUMBER_VALUE;
     }
@@ -234,8 +232,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
-            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
+            GraalJSAccess.get(this).getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
+            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return cachedTypeInt;
     }
@@ -245,8 +243,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
-            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
+            GraalJSAccess.get(this).getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
+            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         TypedArray array = value.getArrayType();
         return identifyType(array);
@@ -255,8 +253,8 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isJSDataView(value)"})
     protected final int doDataView(DynamicObject value) {
         if (useSharedBuffer) {
-            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
-            graalAccess.getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
+            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
+            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return DATA_VIEW_OBJECT;
     }
@@ -377,7 +375,7 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
         } else if (interop.isString(value)) {
             return STRING_VALUE;
         } else if (interop.isNumber(value)) {
-            return graalAccess.valueTypeForeignNumber(value, interop, useSharedBuffer);
+            return GraalJSAccess.get(this).valueTypeForeignNumber(value, interop, useSharedBuffer);
         } else {
             return ORDINARY_OBJECT;
         }

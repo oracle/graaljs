@@ -70,14 +70,14 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     private SharedMemMessagingBindings() {
     }
 
-    public static GraalJSAccess getApiField(SharedMemMessagingBindings.Instance self) {
-        return self.graalJSAccess;
+    public static GraalJSAccess getApiField() {
+        return GraalJSAccess.get();
     }
 
     @TruffleBoundary
-    private static DynamicObject create(JSRealm realm, GraalJSAccess graalJSAccess) {
+    private static DynamicObject create(JSRealm realm) {
         Shape shape = realm.getContext().makeEmptyShapeWithNullPrototype(INSTANCE);
-        DynamicObject obj = new Instance(shape, graalJSAccess);
+        DynamicObject obj = new Instance(shape);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, BUILTINS);
         return obj;
     }
@@ -88,12 +88,12 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(GraalJSAccess graalJSAccess, JSRealm realm) {
+    public static Object createInitFunction(JSRealm realm) {
         // This JS function will be executed at node.js bootstrap time
         JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
             @Override
             public Object execute(VirtualFrame frame) {
-                return create(getRealm(), graalJSAccess);
+                return create(getRealm());
             }
         };
         JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
@@ -101,11 +101,9 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     }
 
     public static final class Instance extends JSNonProxyObject {
-        final GraalJSAccess graalJSAccess;
 
-        protected Instance(Shape shape, GraalJSAccess graalJSAccess) {
+        protected Instance(Shape shape) {
             super(shape);
-            this.graalJSAccess = graalJSAccess;
         }
     }
 }

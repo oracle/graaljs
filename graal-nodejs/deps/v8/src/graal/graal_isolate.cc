@@ -1043,7 +1043,7 @@ void GraalIsolate::Dispose() {
 void GraalIsolate::Dispose(bool exit, int status) {
     JNIEnv* env = jni_env_;
     jni_env_ = nullptr; // mark the isolate as disposed, see ~GraalHandleContent()
-
+    
     // we do not use JNI_CALL_VOID because jni_env_ is cleared
     jmethodID method_id = GetJNIMethod(GraalAccessMethod::isolate_dispose);
     env->functions->CallVoidMethod(env, access_, method_id, exit, status);

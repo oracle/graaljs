@@ -165,4 +165,7 @@ public final class FunctionTemplate {
         return readOnlyPrototype;
     }
 
+    public boolean isSingleFunctionTemplate() {
+        return singleFunctionTemplate;
+    }
 }

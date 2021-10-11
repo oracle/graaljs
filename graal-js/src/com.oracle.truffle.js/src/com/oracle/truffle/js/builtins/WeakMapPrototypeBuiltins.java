@@ -127,7 +127,7 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         protected HasHiddenKeyCacheNode createInvertedHas() {
-            return WeakMap.createInvertedKeyMapHasNode();
+            return WeakMap.createInvertedKeyMapHasNode(getContext());
         }
     }
 

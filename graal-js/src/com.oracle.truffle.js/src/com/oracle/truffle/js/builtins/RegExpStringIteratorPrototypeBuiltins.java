@@ -120,7 +120,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
 
         public RegExpStringIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isRegExpStringIteratorNode = insert(HasHiddenKeyCacheNode.create(JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID));
+            this.isRegExpStringIteratorNode = insert(HasHiddenKeyCacheNode.create(context, JSString.REGEXP_ITERATOR_ITERATING_REGEXP_ID));
         }
 
         @Specialization(guards = "isRegExpStringIterator(iterator)")

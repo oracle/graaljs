@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -62,10 +63,11 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public class SetBreakPointNode extends JavaScriptRootNode {
     public static final String NAME = "setBreakPoint";
-    private final GraalJSAccess graalJSAccess;
 
-    public SetBreakPointNode(GraalJSAccess graalJSAccess) {
-        this.graalJSAccess = graalJSAccess;
+    private final JSContext context;
+
+    public SetBreakPointNode(JSContext context) {
+        this.context = context;
     }
 
     @Override
@@ -173,7 +175,8 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             builder.oneShot();
         }
         Breakpoint breakpoint = builder.build();
-        Debugger debugger = graalJSAccess.lookupInstrument("debugger", Debugger.class);
+        GraalJSAccess graalJSaccess = GraalJSAccess.get(this);
+        Debugger debugger = graalJSaccess.lookupInstrument("debugger", Debugger.class);
         debugger.install(breakpoint);
     }
 

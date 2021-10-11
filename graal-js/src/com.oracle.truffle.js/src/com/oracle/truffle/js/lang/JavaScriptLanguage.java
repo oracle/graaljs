@@ -326,6 +326,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         // make sure initial environment is cleared otherwise
         // it might leak data
         context.clearInitialEnvironment();
+        context.setEmbedderData(null);
 
         return realm;
     }

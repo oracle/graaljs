@@ -40,16 +40,27 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.util.Pair;
+import com.oracle.truffle.trufflenode.info.Accessor;
+import com.oracle.truffle.trufflenode.info.FunctionTemplate;
+import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 
 /**
- * Realm-specific embedder data.
+ * Realm-specific embedder data. Should never be persisted.
  */
 public final class RealmData {
+
+    // TODO for accessors too?
+    private static final int NODEJS_BOOTSTRAP_TEMPLATES = 512;
+
     private Object securityToken;
     private final Map<Integer, Object> embedderData = new HashMap<>();
     private final Map<Integer, DynamicObject> functionTemplateObjects = new HashMap<>();
@@ -59,6 +70,9 @@ public final class RealmData {
     private DynamicObject resolverFactory;
     private DynamicObject extrasBindingObject;
     private DynamicObject arrayBufferGetContentsFunction;
+
+    private final List<Accessor> accessors = new ArrayList<>();
+    private final List<Pair<ObjectTemplate, DynamicObject>> propertyHandlers = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
 
     public RealmData() {
     }
@@ -128,4 +142,45 @@ public final class RealmData {
         this.arrayBufferGetContentsFunction = arrayBufferGetContentsFunction;
     }
 
+    private final List<FunctionTemplate> functionTemplates = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
+
+    public void registerFunctionTemplate(FunctionTemplate template) {
+        CompilerAsserts.neverPartOfCompilation();
+        int id = template.getID();
+        while (functionTemplates.size() <= id) {
+            functionTemplates.add(null);
+        }
+        functionTemplates.set(id, template);
+    }
+
+    public FunctionTemplate getFunctionTemplate(int id) {
+        assert functionTemplates.size() > id && functionTemplates.get(id) != null;
+        return functionTemplates.get(id);
+    }
+
+    public void registerAccessor(int id, Accessor accessor) {
+        CompilerAsserts.neverPartOfCompilation();
+        while (accessors.size() <= id) {
+            accessors.add(null);
+        }
+        accessors.set(id, accessor);
+    }
+
+    public Accessor getAccessor(int id) {
+        assert accessors.size() > id && accessors.get(id) != null;
+        return accessors.get(id);
+    }
+
+    public void registerPropertyHandlerInstance(int id, ObjectTemplate template, DynamicObject proxy) {
+        CompilerAsserts.neverPartOfCompilation();
+        while (propertyHandlers.size() <= id) {
+            propertyHandlers.add(null);
+        }
+        propertyHandlers.set(id, new Pair<>(template, proxy));
+    }
+
+    public Pair<ObjectTemplate, DynamicObject> getPropertyHandler(int id) {
+        assert propertyHandlers.size() > id && propertyHandlers.get(id) != null;
+        return propertyHandlers.get(id);
+    }
 }

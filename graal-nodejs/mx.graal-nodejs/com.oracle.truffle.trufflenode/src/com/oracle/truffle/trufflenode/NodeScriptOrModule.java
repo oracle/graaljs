@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,55 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.object.DynamicObject;
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 
-public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
-    protected final HiddenKey key;
-    protected final JSContext context;
+/**
+ * {@code ScriptOrModule} of a function produced by
+ * {@code ScriptCompiler::CompileFunctionInContext()}. It supports native weak references.
+ */
+public class NodeScriptOrModule extends ScriptOrModule {
+    static final HiddenKey SCRIPT_OR_MODULE = new HiddenKey("scriptOrModule");
 
-    protected HasHiddenKeyCacheNode(JSContext context, HiddenKey key) {
-        this.key = key;
-        this.context = context;
+    private Map<Long, WeakCallback> weakCallbackMap;
+
+    NodeScriptOrModule(JSContext context, Source source) {
+        super(context, source);
     }
 
-    public static HasHiddenKeyCacheNode create(JSContext context, HiddenKey key) {
-        return HasHiddenKeyCacheNodeGen.create(context, key);
+    Map<Long, WeakCallback> getWeakCallbackMap() {
+        if (weakCallbackMap == null) {
+            weakCallbackMap = new HashMap<>();
+        }
+        return weakCallbackMap;
     }
 
-    public abstract boolean executeHasHiddenKey(Object object);
-
-    @Specialization(guards = {"!context.isMultiContext()", "cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
-    protected static boolean doCached(@SuppressWarnings("unused") DynamicObject object,
-                    @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
-                    @Cached("doUncached(object)") boolean hasOwnProperty,
-                    @SuppressWarnings("unused") @Cached("getPropertyCacheLimit()") int cacheLimit) {
-        return hasOwnProperty;
-    }
-
-    protected int getPropertyCacheLimit() {
-        return getLanguage().getJSContext().getPropertyCacheLimit();
-    }
-
-    @Specialization(guards = "isJSObject(object)", replaces = {"doCached"})
-    protected final boolean doUncached(DynamicObject object) {
-        return JSDynamicObject.hasProperty(object, key);
-    }
-
-    @Specialization(guards = "!isJSObject(object)")
-    protected static boolean doNonObject(@SuppressWarnings("unused") Object object) {
-        return false;
-    }
-
-    public final HiddenKey getKey() {
-        return key;
-    }
 }

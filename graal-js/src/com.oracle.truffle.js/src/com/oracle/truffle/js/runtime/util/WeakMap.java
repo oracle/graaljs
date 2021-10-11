@@ -68,8 +68,8 @@ public class WeakMap implements Map<DynamicObject, Object> {
         return PropertyGetNode.createGetHidden(WeakMap.INVERTED_WEAK_MAP_KEY, context);
     }
 
-    public static HasHiddenKeyCacheNode createInvertedKeyMapHasNode() {
-        return HasHiddenKeyCacheNode.create(WeakMap.INVERTED_WEAK_MAP_KEY);
+    public static HasHiddenKeyCacheNode createInvertedKeyMapHasNode(JSContext context) {
+        return HasHiddenKeyCacheNode.create(context, WeakMap.INVERTED_WEAK_MAP_KEY);
     }
 
     private static DynamicObject checkKey(Object key) {

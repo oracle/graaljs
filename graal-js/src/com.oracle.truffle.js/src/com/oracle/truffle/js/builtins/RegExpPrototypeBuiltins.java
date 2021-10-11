@@ -921,7 +921,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             this.toIntegerNode = JSToIntegerAsIntNode.create();
             this.isObjectNode = IsJSObjectNode.create();
             this.isCallableNode = IsCallableNode.create();
-            this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(JSArray.LAZY_REGEX_RESULT_ID);
+            this.hasLazyRegexResultNode = HasHiddenKeyCacheNode.create(context, JSArray.LAZY_REGEX_RESULT_ID);
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
             this.lazyRegexResultNode = DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit);
         }

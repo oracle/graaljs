@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,66 +38,42 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.info;
+package com.oracle.truffle.trufflenode;
 
-/**
- * Represents a property handler object. Contains runtime data (e.g., pointers), and must not be
- * persisted.
- *
- * @author Jan Stola
- */
-public final class PropertyHandler {
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
-    private final long getter;
-    private final long setter;
-    private final long query;
-    private final long deleter;
-    private final long enumerator;
-    private final long definer;
-    private final long descriptor;
-    private final Object data;
+class ESNativeModuleRootNode extends JavaScriptRootNode {
+    private final long evaluationStepsCallback;
 
-    public PropertyHandler(long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data) {
-        this.getter = getter;
-        this.setter = setter;
-        this.query = query;
-        this.deleter = deleter;
-        this.enumerator = enumerator;
-        this.definer = definer;
-        this.descriptor = descriptor;
-        this.data = data;
+    public ESNativeModuleRootNode(JavaScriptLanguage language, Source source, FrameDescriptor frameDescriptor, long evaluationStepsCallback) {
+        super(language, source.createUnavailableSection(), frameDescriptor);
+        this.evaluationStepsCallback = evaluationStepsCallback;
     }
 
-    public long getGetter() {
-        return getter;
+    @Override
+    public Object execute(VirtualFrame frame) {
+        JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+        if (module.getEnvironment() == null) {
+            assert module.getStatus() == JSModuleRecord.Status.Linking;
+            module.setEnvironment(frame.materialize());
+            return Undefined.instance;
+        } else {
+            assert module.getStatus() == JSModuleRecord.Status.Evaluating;
+            return invokeEvaluationStepsCallback(getRealm(), module);
+        }
     }
 
-    public long getSetter() {
-        return setter;
+    @CompilerDirectives.TruffleBoundary
+    private Object invokeEvaluationStepsCallback(JSRealm realm, JSModuleRecord module) {
+        return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
     }
-
-    public long getQuery() {
-        return query;
-    }
-
-    public long getDeleter() {
-        return deleter;
-    }
-
-    public long getEnumerator() {
-        return enumerator;
-    }
-
-    public long getDefiner() {
-        return definer;
-    }
-
-    public long getDescriptor() {
-        return descriptor;
-    }
-
-    public Object getData() {
-        return data;
-    }
-
 }

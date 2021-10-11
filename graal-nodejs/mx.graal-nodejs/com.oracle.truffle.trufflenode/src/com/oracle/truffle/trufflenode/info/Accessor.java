@@ -40,20 +40,30 @@
  */
 package com.oracle.truffle.trufflenode.info;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.ContextData;
+import com.oracle.truffle.trufflenode.EngineCacheData;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
+import com.oracle.truffle.trufflenode.RealmData;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeAccessorNode;
-import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Represents an object accessor. Initialized at Node.js initialization time, usually from native.
+ * Contains runtime data (e.g. pointers), and must not be persisted.
+ */
 public class Accessor {
 
     private static final AtomicInteger idGenerator = new AtomicInteger();
 
-    private final GraalJSAccess graalAccess;
     private final Object name;
     private final long getterPtr;
     private final long setterPtr;
@@ -62,8 +72,7 @@ public class Accessor {
     private final int id;
     private final int attributes;
 
-    public Accessor(GraalJSAccess graalAccess, Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
-        this.graalAccess = graalAccess;
+    public Accessor(Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
         this.name = name;
         this.getterPtr = getterPtr;
         this.setterPtr = setterPtr;
@@ -71,6 +80,10 @@ public class Accessor {
         this.signature = signature;
         this.id = idGenerator.getAndIncrement();
         this.attributes = attributes;
+    }
+
+    public int getId() {
+        return id;
     }
 
     public long getGetterPtr() {
@@ -93,6 +106,10 @@ public class Accessor {
         return signature;
     }
 
+    public boolean hasSignature() {
+        return signature != null;
+    }
+
     public int getAttributes() {
         return attributes;
     }
@@ -104,7 +121,16 @@ public class Accessor {
     }
 
     private JSFunctionData createFunction(JSContext context, boolean getter) {
-        return GraalJSAccess.functionDataFromRootNode(context, new ExecuteNativeAccessorNode(graalAccess, context, this, getter));
+        RealmData realmData = GraalJSAccess.getRealmEmbedderData(JSRealm.get(null));
+        realmData.registerAccessor(id, this);
+
+        EngineCacheData cacheData = GraalJSAccess.getContextEngineCacheData(context);
+        return cacheData.getOrCreateFunctionDataFromAccessor(this.id, getter, (c) -> {
+            RootNode rootNode = new ExecuteNativeAccessorNode(context, this.id, getter);
+            CallTarget callbackCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false,
+                            false, false, true);
+        });
     }
 
     public Pair<JSFunctionData, JSFunctionData> getFunctions(JSContext context) {

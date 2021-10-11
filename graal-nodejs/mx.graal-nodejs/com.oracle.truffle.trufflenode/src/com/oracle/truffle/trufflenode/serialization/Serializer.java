@@ -52,6 +52,7 @@ import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -93,6 +94,7 @@ public class Serializer {
 
     /** Pointer to the corresponding v8::ValueSerializer. */
     private final long delegate;
+    private final JSContext context;
     /** Buffer used for serialization. */
     private ByteBuffer buffer = allocateBuffer(1024);
     /** ID of the next serialized object. **/
@@ -105,12 +107,11 @@ public class Serializer {
     private boolean treatArrayBufferViewsAsHostObjects;
 
     private final Env env;
-    private final GraalJSAccess access;
 
-    public Serializer(Env env, GraalJSAccess access, long delegate) {
+    public Serializer(Env env, JSContext context, long delegate) {
         this.delegate = delegate;
         this.env = env;
-        this.access = access;
+        this.context = context;
     }
 
     public void setTreatArrayBufferViewsAsHostObjects(boolean treatArrayBufferViewsAsHostObjects) {
@@ -176,8 +177,8 @@ public class Serializer {
         } else if (JSRuntime.isBigInt(value)) {
             writeTag(SerializationTag.BIG_INT);
             writeBigIntContents((BigInt) value);
-        } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
-            JavaMessagePortData messagePort = access.getCurrentMessagePortData();
+        } else if (env.isHostObject(value) && GraalJSAccess.get().getCurrentMessagePortData() != null) {
+            JavaMessagePortData messagePort = GraalJSAccess.get().getCurrentMessagePortData();
             writeTag(SerializationTag.SHARED_JAVA_OBJECT);
             writeVarInt(messagePort.getMessagePortDataPointer());
             assignId(value);
