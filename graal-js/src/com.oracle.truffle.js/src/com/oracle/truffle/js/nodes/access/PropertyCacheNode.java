@@ -542,10 +542,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
-            if (!JSDynamicObject.isJSDynamicObject(thisObj)) {
+            if (!isDynamicObject(thisObj, shape)) {
                 return false;
             }
-            DynamicObject current = (JSDynamicObject) thisObj;
+            DynamicObject current = castDynamicObject(thisObj, shape);
             boolean result = getShape().check(current);
             if (!result) {
                 return false;
@@ -614,9 +614,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            if (JSDynamicObject.isJSDynamicObject(thisObj)) {
-                DynamicObject jsobj = (JSDynamicObject) thisObj;
-                if (getShape().check(jsobj)) {
+            if (isDynamicObject(thisObj, shape)) {
+                DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                if (shape.check(jsobj)) {
                     // Return the shape check of the prototype we're going to access.
                     return protoShape.check(getPrototypeNode.execute(jsobj));
                 }

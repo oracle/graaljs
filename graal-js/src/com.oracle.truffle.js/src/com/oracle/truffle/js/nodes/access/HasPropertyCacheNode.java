@@ -103,7 +103,8 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
 
     @TruffleBoundary
     private boolean hasPropertyAndSpecialize(Object thisObj) {
-        return specialize(thisObj).hasProperty(thisObj, this);
+        HasCacheNode c = specialize(thisObj);
+        return c.hasProperty(thisObj, this);
     }
 
     @Override
@@ -199,10 +200,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             Object key = root.getKey();
+            DynamicObject store = receiverCheck.getStore(thisObj);
             if (hasOwnProperty) {
-                return getOwnPropertyNode.execute(receiverCheck.getStore(thisObj), key) != null;
+                return getOwnPropertyNode.execute(store, key) != null;
             } else {
-                return proxyGet.executeWithTargetAndKeyBoolean(receiverCheck.getStore(thisObj), key);
+                return proxyGet.executeWithTargetAndKeyBoolean(store, key);
             }
         }
     }

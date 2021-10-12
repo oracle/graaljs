@@ -230,7 +230,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private int getValueIntAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        return specialize(thisObj).getValueInt(thisObj, receiver, this, false);
+        GetCacheNode c = specialize(thisObj);
+        return c.getValueInt(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -264,7 +265,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private double getValueDoubleAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        return specialize(thisObj).getValueDouble(thisObj, receiver, this, false);
+        GetCacheNode c = specialize(thisObj);
+        return c.getValueDouble(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -298,7 +300,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private boolean getValueBooleanAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        return specialize(thisObj).getValueBoolean(thisObj, receiver, this, false);
+        GetCacheNode c = specialize(thisObj);
+        return c.getValueBoolean(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -332,7 +335,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private long getValueLongAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        return specialize(thisObj).getValueLong(thisObj, receiver, this, false);
+        GetCacheNode c = specialize(thisObj);
+        return c.getValueLong(thisObj, receiver, this, false);
     }
 
     @ExplodeLoop
@@ -366,7 +370,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     @TruffleBoundary
     private Object getValueAndSpecialize(Object thisObj, Object receiver, Object defaultValue) {
-        return specialize(thisObj).getValue(thisObj, receiver, defaultValue, this, false);
+        GetCacheNode c = specialize(thisObj);
+        return c.getValue(thisObj, receiver, defaultValue, this, false);
     }
 
     @Override
@@ -527,7 +532,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return location.getInt(receiverCheck.getStore(thisObj), guard);
+            return getValueInt(thisObj, receiver, root, guard);
         }
 
         @Override
@@ -537,7 +542,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected double getValueDouble(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return location.getInt(receiverCheck.getStore(thisObj), guard);
+            return getValueInt(thisObj, receiver, root, guard);
         }
     }
 
@@ -580,7 +585,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return location.getDouble(receiverCheck.getStore(thisObj), guard);
+            return getValueDouble(thisObj, receiver, root, guard);
         }
 
         @Override
@@ -666,7 +671,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return location.getLong(receiverCheck.getStore(thisObj), guard);
+            return getValueLong(thisObj, receiver, root, guard);
         }
 
         @Override
@@ -1344,15 +1349,16 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            DynamicObject store = receiverCheck.getStore(thisObj);
             if (!longLength) {
                 try {
-                    return arrayLengthRead.executeInt(receiverCheck.getStore(thisObj));
+                    return arrayLengthRead.executeInt(store);
                 } catch (UnexpectedResultException e) {
                     longLength = true;
                     return e.getResult();
                 }
             } else {
-                return arrayLengthRead.executeDouble(receiverCheck.getStore(thisObj));
+                return arrayLengthRead.executeDouble(store);
             }
         }
 
