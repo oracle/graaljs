@@ -115,12 +115,24 @@ The properties included on each object include:
       idle: 1070905480,
       irq: 20
     }
-  }
+  },
 ]
 ```
 
 `nice` values are POSIX-only. On Windows, the `nice` values of all processors
 are always 0.
+
+## `os.devNull`
+<!-- YAML
+added: v14.18.0
+-->
+
+* {string}
+
+The platform-specific file path of the null device.
+
+* `\\.\nul` on Windows
+* `/dev/null` on POSIX
 
 ## `os.endianness()`
 <!-- YAML

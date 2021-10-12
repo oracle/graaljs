@@ -167,12 +167,10 @@ function linkManPages(text) {
       const displayAs = `<code>${name}(${number}${optionalCharacter})</code>`;
 
       if (BSD_ONLY_SYSCALLS.has(name)) {
-        return `${beginning}<a href="https://www.freebsd.org/cgi/man.cgi` +
-          `?query=${name}&sektion=${number}">${displayAs}</a>`;
+        return `${beginning}<a href="https://www.freebsd.org/cgi/man.cgi?query=${name}&sektion=${number}">${displayAs}</a>`;
       }
 
-      return `${beginning}<a href="http://man7.org/linux/man-pages/man${number}` +
-        `/${name}.${number}${optionalCharacter}.html">${displayAs}</a>`;
+      return `${beginning}<a href="http://man7.org/linux/man-pages/man${number}/${name}.${number}${optionalCharacter}.html">${displayAs}</a>`;
     });
 }
 
@@ -210,17 +208,14 @@ export function preprocessElements({ filename }) {
       } else if (node.type === 'code') {
         if (!node.lang) {
           console.warn(
-            `No language set in ${filename}, ` +
-            `line ${node.position.start.line}`);
+            `No language set in ${filename}, line ${node.position.start.line}`
+          );
         }
         const className = isJSFlavorSnippet(node) ?
           `language-js ${node.lang}` :
           `language-${node.lang}`;
         const highlighted =
-          `<code class='${className}'>` +
-          (getLanguage(node.lang || '') ?
-            highlight(node.value, { language: node.lang }) : node).value +
-          '</code>';
+          `<code class='${className}'>${(getLanguage(node.lang || '') ? highlight(node.value, { language: node.lang }) : node).value}</code>`;
         node.type = 'html';
 
         if (isJSFlavorSnippet(node)) {
@@ -354,8 +349,7 @@ function parseYAML(text) {
 
     result += '</table>\n</details>\n';
   } else {
-    result += `${added.description}${deprecated.description}` +
-              `${removed.description}\n`;
+    result += `${added.description}${deprecated.description}${removed.description}\n`;
   }
 
   if (meta.napiVersion) {
@@ -418,15 +412,14 @@ export function buildToc({ filename, apilinks }) {
       const hasStability = node.stability !== undefined;
       toc += ' '.repeat((depth - 1) * 2) +
         (hasStability ? `* <span class="stability_${node.stability}">` : '* ') +
-        `<a href="#${isDeprecationHeading ? node.data.hProperties.id : id}">` +
-        `${headingText}</a>${hasStability ? '</span>' : ''}\n`;
+        `<a href="#${isDeprecationHeading ? node.data.hProperties.id : id}">${headingText}</a>${hasStability ? '</span>' : ''}\n`;
 
       let anchor =
          `<span><a class="mark" href="#${id}" id="${id}">#</a></span>`;
 
       if (realFilename === 'errors' && headingText.startsWith('ERR_')) {
-        anchor += `<span><a class="mark" href="#${headingText}" ` +
-                  `id="${headingText}">#</a></span>`;
+        anchor +=
+          `<span><a class="mark" href="#${headingText}" id="${headingText}">#</a></span>`;
       }
 
       const api = headingText.replace(/^.*:\s+/, '').replace(/\(.*/, '');
@@ -476,8 +469,7 @@ function altDocs(filename, docCreated, versions) {
     `${host}/docs/latest-v${versionNum}/api/${filename}.html`;
 
   const wrapInListItem = (version) =>
-    `<li><a href="${getHref(version.num)}">${version.num}` +
-    `${version.lts ? ' <b>LTS</b>' : ''}</a></li>`;
+    `<li><a href="${getHref(version.num)}">${version.num}${version.lts ? ' <b>LTS</b>' : ''}</a></li>`;
 
   function isDocInVersion(version) {
     const [versionMajor, versionMinor] = version.num.split('.').map(Number);
@@ -497,8 +489,6 @@ function altDocs(filename, docCreated, versions) {
   ` : '';
 }
 
-// eslint-disable-next-line max-len
-const githubLogo = '<span class="github_icon"><svg height="16" width="16" viewBox="0 0 16.1 16.1" fill="currentColor"><path d="M8 0a8 8 0 0 0-2.5 15.6c.4 0 .5-.2.5-.4v-1.5c-2 .4-2.5-.5-2.7-1 0-.1-.5-.9-.8-1-.3-.2-.7-.6 0-.6.6 0 1 .6 1.2.8.7 1.2 1.9 1 2.4.7 0-.5.2-.9.5-1-1.8-.3-3.7-1-3.7-4 0-.9.3-1.6.8-2.2 0-.2-.3-1 .1-2 0 0 .7-.3 2.2.7a7.4 7.4 0 0 1 4 0c1.5-1 2.2-.8 2.2-.8.5 1.1.2 2 .1 2.1.5.6.8 1.3.8 2.2 0 3-1.9 3.7-3.6 4 .3.2.5.7.5 1.4v2.2c0 .2.1.5.5.4A8 8 0 0 0 16 8a8 8 0 0 0-8-8z"/></svg></span>';
 function editOnGitHub(filename) {
-  return `<li class="edit_on_github"><a href="https://github.com/nodejs/node/edit/master/doc/api/${filename}.md">${githubLogo}Edit on GitHub</a></li>`;
+  return `<li class="edit_on_github"><a href="https://github.com/nodejs/node/edit/master/doc/api/${filename}.md">Edit on GitHub</a></li>`;
 }

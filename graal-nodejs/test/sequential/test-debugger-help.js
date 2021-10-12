@@ -4,12 +4,12 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const fixtures = require('../common/fixtures');
-const startCLI = require('../common/inspector-cli');
+const startCLI = require('../common/debugger');
 
 const assert = require('assert');
 
 {
-  const cli = startCLI([fixtures.path('inspector-cli/empty.js')]);
+  const cli = startCLI([fixtures.path('debugger/empty.js')]);
 
   function onFatal(error) {
     cli.quit();

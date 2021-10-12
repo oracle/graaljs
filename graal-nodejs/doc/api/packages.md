@@ -290,7 +290,7 @@ import submodule from 'es-module-package/private-module.js';
 ```
 
 ### Subpath imports
-<!--YAML
+<!-- YAML
 added:
   - v14.6.0
   - v12.19.0
@@ -332,7 +332,7 @@ The resolution rules for the imports field are otherwise
 analogous to the exports field.
 
 ### Subpath patterns
-<!--YAML
+<!-- YAML
 added:
   - v14.13.0
   - v12.20.0
@@ -406,7 +406,7 @@ import featureX from 'es-module-package/features/x';
 ```
 
 ### Exports sugar
-<!--YAML
+<!-- YAML
 added: v12.11.0
 -->
 
@@ -433,7 +433,7 @@ can be written:
 ```
 
 ### Conditional exports
-<!--YAML
+<!-- YAML
 added:
   - v13.2.0
   - v12.16.0
@@ -565,7 +565,7 @@ Any number of custom conditions can be set with repeat flags.
 
 The `"import"`, `"require"`, `"node"` and `"default"` conditions are defined
 and implemented in Node.js core,
-[as specified above](#esm_conditional_exports).
+[as specified above](#packages_conditional_exports).
 
 Other condition strings are unknown to Node.js and thus ignored by default.
 Runtimes or tools other than Node.js can use them at their discretion.
@@ -590,9 +590,9 @@ Platform specific conditions such as `"deno"`, `"electron"`, or `"react-native"`
 may be used, but while there remain no implementation or integration intent
 from these platforms, the above are not explicitly endorsed by Node.js.
 
-New conditions definitions may be added to this list by creating a PR to the
-[Node.js documentation for this section][]. The requirements for listing a
-new condition definition here are that:
+New conditions definitions may be added to this list by creating a pull request
+to the [Node.js documentation for this section][]. The requirements for listing
+a new condition definition here are that:
 
 * The definition should be clear and unambiguous for all implementers.
 * The use case for why the condition is needed should be clearly justified.
@@ -608,7 +608,7 @@ The above definitions may be moved to a dedicated conditions registry in due
 course.
 
 ### Self-referencing a package using its name
-<!--YAML
+<!-- YAML
 added:
   - v13.1.0
   - v12.16.0
@@ -662,6 +662,32 @@ and in a CommonJS one. For example, this code will also work:
 ```cjs
 // ./a-module.js
 const { something } = require('a-package/foo'); // Loads from ./foo.js.
+```
+
+Finally, self-referencing also works with scoped packages. For example, this
+code will also work:
+
+```json
+// package.json
+{
+  "name": "@my/package",
+  "exports": "./index.js"
+}
+```
+
+```cjs
+// ./index.js
+module.exports = 42;
+```
+
+```cjs
+// ./other.js
+console.log(require('@my/package'));
+```
+
+```console
+$ node other.js
+42
 ```
 
 ## Dual CommonJS/ES module packages
@@ -760,7 +786,7 @@ The preceding example uses explicit extensions `.mjs` and `.cjs`.
 If your files use the `.js` extension, `"type": "module"` will cause such files
 to be treated as ES modules, just as `"type": "commonjs"` would cause them
 to be treated as CommonJS.
-See [Enabling](#esm_enabling).
+See [Enabling](esm.md#esm_enabling).
 
 ```cjs
 // ./node_modules/pkg/index.cjs
@@ -1126,22 +1152,22 @@ Import maps permit mapping to external packages.
 This field defines [subpath imports][] for the current package.
 
 [Babel]: https://babeljs.io/
-[Conditional exports]: #packages_conditional_exports
 [CommonJS]: modules.md
+[Conditional exports]: #packages_conditional_exports
 [ES module]: esm.md
 [ES modules]: esm.md
 [Node.js documentation for this section]: https://github.com/nodejs/node/blob/HEAD/doc/api/packages.md#conditions-definitions
-[`ERR_PACKAGE_PATH_NOT_EXPORTED`]: errors.md#errors_err_package_path_not_exported
-[`esm`]: https://github.com/standard-things/esm#readme
 [`"exports"`]: #packages_exports
+[`"imports"`]: #packages_imports
 [`"main"`]: #packages_main
 [`"name"`]: #packages_name
-[`"imports"`]: #packages_imports
 [`"type"`]: #packages_type
+[`ERR_PACKAGE_PATH_NOT_EXPORTED`]: errors.md#errors_err_package_path_not_exported
+[`esm`]: https://github.com/standard-things/esm#readme
 [`package.json`]: #packages_node_js_package_json_field_definitions
 [entry points]: #packages_package_entry_points
 [self-reference]: #packages_self_referencing_a_package_using_its_name
 [subpath exports]: #packages_subpath_exports
 [subpath imports]: #packages_subpath_imports
-[the full specifier path]: esm.md#esm_mandatory_file_extensions
 [the dual CommonJS/ES module packages section]: #packages_dual_commonjs_es_module_packages
+[the full specifier path]: esm.md#esm_mandatory_file_extensions

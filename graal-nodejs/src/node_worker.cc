@@ -1,5 +1,6 @@
 #include "node_worker.h"
 #include "debug_utils-inl.h"
+#include "histogram-inl.h"
 #include "memory_tracker-inl.h"
 #include "node_errors.h"
 #include "node_buffer.h"
@@ -157,6 +158,9 @@ class WorkerThreadData {
     Isolate::Initialize(isolate, params);
     SetIsolateUpForNode(isolate);
 
+    // Be sure it's called before Environment::InitializeDiagnostics()
+    // so that this callback stays when the callback of
+    // --heapsnapshot-near-heap-limit gets is popped.
     isolate->AddNearHeapLimitCallback(Worker::NearHeapLimit, w);
 
     {
@@ -175,6 +179,8 @@ class WorkerThreadData {
       if (w_->per_isolate_opts_)
         isolate_data_->set_options(std::move(w_->per_isolate_opts_));
       isolate_data_->set_worker_context(w_);
+      isolate_data_->max_young_gen_size =
+          params.constraints.max_young_generation_size_in_bytes();
     }
 
     Mutex::ScopedLock lock(w_->mutex_);
@@ -352,7 +358,8 @@ void Worker::Run() {
           more = uv_loop_alive(&data.loop_);
           if (more && !is_stopped()) continue;
 
-          EmitBeforeExit(env_.get());
+          if (EmitProcessBeforeExit(env_.get()).IsNothing())
+            break;
 
           // Emit `beforeExit` if the loop became alive either after emitting
           // event, or after running some callbacks.
@@ -368,7 +375,7 @@ void Worker::Run() {
       bool stopped = is_stopped();
       if (!stopped) {
         env_->VerifyNoStrongBaseObjects();
-        exit_code = EmitExit(env_.get());
+        exit_code = EmitProcessExit(env_.get()).FromMaybe(1);
       }
       Mutex::ScopedLock lock(mutex_);
       if (exit_code_ == 0 && !stopped)
@@ -588,6 +595,8 @@ void Worker::New(const FunctionCallbackInfo<Value>& args) {
   CHECK(args[4]->IsBoolean());
   if (args[4]->IsTrue() || env->tracks_unmanaged_fds())
     worker->environment_flags_ |= EnvironmentFlags::kTrackUnmanagedFds;
+  if (env->hide_console_windows())
+    worker->environment_flags_ |= EnvironmentFlags::kHideConsoleWindows;
 }
 
 void Worker::StartThread(const FunctionCallbackInfo<Value>& args) {
@@ -842,12 +851,7 @@ void InitWorker(Local<Object> target,
     env->SetProtoMethod(w, "loopIdleTime", Worker::LoopIdleTime);
     env->SetProtoMethod(w, "loopStartTime", Worker::LoopStartTime);
 
-    Local<String> workerString =
-        FIXED_ONE_BYTE_STRING(env->isolate(), "Worker");
-    w->SetClassName(workerString);
-    target->Set(env->context(),
-                workerString,
-                w->GetFunction(env->context()).ToLocalChecked()).Check();
+    env->SetConstructorFunction(target, "Worker", w);
   }
 
   {

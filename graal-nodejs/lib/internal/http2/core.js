@@ -71,6 +71,7 @@ const {
     ERR_HTTP2_INVALID_STREAM,
     ERR_HTTP2_MAX_PENDING_SETTINGS_ACK,
     ERR_HTTP2_NESTED_PUSH,
+    ERR_HTTP2_NO_MEM,
     ERR_HTTP2_NO_SOCKET_MANIPULATION,
     ERR_HTTP2_ORIGIN_LENGTH,
     ERR_HTTP2_OUT_OF_STREAMS,
@@ -104,6 +105,7 @@ const {
 } = require('internal/errors');
 const {
   isUint32,
+  validateInt32,
   validateNumber,
   validateString,
   validateUint32,
@@ -127,6 +129,7 @@ const {
   getSettings,
   getStreamState,
   isPayloadMeaningless,
+  kSensitiveHeaders,
   kSocket,
   kRequest,
   kProxySocket,
@@ -252,6 +255,7 @@ const {
   NGHTTP2_ERR_STREAM_ID_NOT_AVAILABLE,
   NGHTTP2_ERR_INVALID_ARGUMENT,
   NGHTTP2_ERR_STREAM_CLOSED,
+  NGHTTP2_ERR_NOMEM,
 
   HTTP2_HEADER_AUTHORITY,
   HTTP2_HEADER_DATE,
@@ -309,7 +313,7 @@ function emit(self, ...args) {
 // create the associated Http2Stream instance and emit the 'stream'
 // event. If the stream is not new, emit the 'headers' event to pass
 // the block of headers on.
-function onSessionHeaders(handle, id, cat, flags, headers) {
+function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
   const session = this[kOwner];
   if (session.destroyed)
     return;
@@ -323,7 +327,7 @@ function onSessionHeaders(handle, id, cat, flags, headers) {
   let stream = streams.get(id);
 
   // Convert the array of header name value pairs into an object
-  const obj = toHeaderObject(headers);
+  const obj = toHeaderObject(headers, sensitiveHeaders);
 
   if (stream === undefined) {
     if (session.closed) {
@@ -1288,6 +1292,21 @@ class Http2Session extends EventEmitter {
     if (id <= 0 || id > kMaxStreams)
       throw new ERR_OUT_OF_RANGE('id', `> 0 and <= ${kMaxStreams}`, id);
     this[kHandle].setNextStreamID(id);
+  }
+
+  // Sets the local window size (local endpoints's window size)
+  // Returns 0 if sucess or throw an exception if NGHTTP2_ERR_NOMEM
+  // if the window allocation fails
+  setLocalWindowSize(windowSize) {
+    if (this.destroyed)
+      throw new ERR_HTTP2_INVALID_SESSION();
+
+    validateInt32(windowSize, 'windowSize', 0);
+    const ret = this[kHandle].setLocalWindowSize(windowSize);
+
+    if (ret === NGHTTP2_ERR_NOMEM) {
+      this.destroy(new ERR_HTTP2_NO_MEM());
+    }
   }
 
   // If ping is called while we are still connecting, or after close() has
@@ -2333,6 +2352,7 @@ function processHeaders(oldHeaders, options) {
         headers[key] = oldHeaders[key];
       }
     }
+    headers[kSensitiveHeaders] = oldHeaders[kSensitiveHeaders];
   }
 
   const statusCode =
@@ -2354,6 +2374,10 @@ function processHeaders(oldHeaders, options) {
   // non-standard, non-compliant status codes.
   if (statusCode < 200 || statusCode > 599)
     throw new ERR_HTTP2_STATUS_INVALID(headers[HTTP2_HEADER_STATUS]);
+
+  const neverIndex = headers[kSensitiveHeaders];
+  if (neverIndex !== undefined && !ArrayIsArray(neverIndex))
+    throw new ERR_INVALID_OPT_VALUE('headers[http2.neverIndex]', neverIndex);
 
   return headers;
 }
@@ -3315,6 +3339,7 @@ module.exports = {
   getDefaultSettings,
   getPackedSettings,
   getUnpackedSettings,
+  sensitiveHeaders: kSensitiveHeaders,
   Http2Session,
   Http2Stream,
   Http2ServerRequest,

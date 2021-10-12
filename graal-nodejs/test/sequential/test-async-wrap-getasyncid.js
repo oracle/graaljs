@@ -55,6 +55,7 @@ const { getSystemErrorName } = require('util');
     delete providers.ELDHISTOGRAM;
     delete providers.SIGINTWATCHDOG;
     delete providers.WORKERHEAPSNAPSHOT;
+    delete providers.FIXEDSIZEBLOBCOPY;
 
     const objKeys = Object.keys(providers);
     if (objKeys.length > 0)

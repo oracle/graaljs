@@ -19,7 +19,6 @@
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-/* eslint-disable node-core/require-common-first, node-core/required-modules */
 /* eslint-disable node-core/crypto-check */
 'use strict';
 const process = global.process;  // Some tests tamper with the process global.
@@ -614,7 +613,7 @@ function getArrayBufferViews(buf) {
     Uint32Array,
     Float32Array,
     Float64Array,
-    DataView
+    DataView,
   ];
 
   for (const type of arrayBufferViews) {

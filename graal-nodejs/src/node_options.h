@@ -101,6 +101,7 @@ class EnvironmentOptions : public Options {
  public:
   bool abort_on_uncaught_exception = false;
   std::vector<std::string> conditions;
+  std::string dns_result_order;
   bool enable_source_maps = false;
   bool experimental_abortcontroller = false;
   bool experimental_json_modules = false;
@@ -116,11 +117,12 @@ class EnvironmentOptions : public Options {
   bool experimental_vm_modules = false;
   bool expose_internals = false;
   bool frozen_intrinsics = false;
+  int64_t heap_snapshot_near_heap_limit = 0;
   std::string heap_snapshot_signal;
   uint64_t max_http_header_size = 16 * 1024;
-  bool no_deprecation = false;
-  bool no_force_async_hooks_checks = false;
-  bool no_warnings = false;
+  bool deprecation = true;
+  bool force_async_hooks_checks = true;
+  bool warnings = true;
   bool force_context_aware = false;
   bool pending_deprecation = false;
   bool preserve_symlinks = false;
@@ -192,7 +194,7 @@ class PerIsolateOptions : public Options {
  public:
   std::shared_ptr<EnvironmentOptions> per_env { new EnvironmentOptions() };
   bool track_heap_objects = false;
-  bool no_node_snapshot = false;
+  bool node_snapshot = true;
   bool report_uncaught_exception = false;
   bool report_on_signal = false;
   bool experimental_top_level_await = true;
@@ -300,7 +302,8 @@ class OptionsParser {
   void AddOption(const char* name,
                  const char* help_text,
                  bool Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment,
+                 bool default_is_true = false);
   void AddOption(const char* name,
                  const char* help_text,
                  uint64_t Options::* field,
@@ -423,6 +426,7 @@ class OptionsParser {
     std::shared_ptr<BaseOptionField> field;
     OptionEnvvarSettings env_setting;
     std::string help_text;
+    bool default_is_true = false;
   };
 
   // An implied option is composed of the information on where to store a

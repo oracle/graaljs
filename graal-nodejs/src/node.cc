@@ -26,6 +26,7 @@
 #include "debug_utils-inl.h"
 #include "env-inl.h"
 #include "memory_tracker-inl.h"
+#include "histogram-inl.h"
 #include "node_binding.h"
 #include "node_errors.h"
 #include "node_internals.h"
@@ -267,6 +268,10 @@ static void AtomicsWaitCallback(Isolate::AtomicsWaitEvent event,
 void Environment::InitializeDiagnostics() {
   isolate_->GetHeapProfiler()->AddBuildEmbedderGraphCallback(
       Environment::BuildEmbedderGraph, this);
+  if (options_->heap_snapshot_near_heap_limit > 0) {
+    isolate_->AddNearHeapLimitCallback(Environment::NearHeapLimitCallback,
+                                       this);
+  }
   if (options_->trace_uncaught)
     isolate_->SetCaptureStackTraceForUncaughtExceptions(true);
   if (options_->trace_atomics_wait) {
@@ -1102,9 +1107,9 @@ int Start(int argc, char** argv) {
     const std::vector<size_t>* indexes = nullptr;
     std::vector<intptr_t> external_references;
 
-    bool force_no_snapshot =
-        per_process::cli_options->per_isolate->no_node_snapshot;
-    if (!force_no_snapshot) {
+    bool use_no_snapshot =
+        per_process::cli_options->per_isolate->node_snapshot;
+    if (use_no_snapshot) {
       v8::StartupData* blob = NodeMainInstance::GetEmbeddedSnapshotBlob();
       if (blob != nullptr) {
         // TODO(joyeecheung): collect external references and set it in

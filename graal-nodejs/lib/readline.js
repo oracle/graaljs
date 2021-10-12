@@ -43,6 +43,7 @@ const {
   MathCeil,
   MathFloor,
   MathMax,
+  MathMaxApply,
   NumberIsFinite,
   NumberIsNaN,
   ObjectDefineProperty,
@@ -57,17 +58,25 @@ const {
   StringPrototypeSplit,
   StringPrototypeStartsWith,
   StringPrototypeTrim,
+  Promise,
   Symbol,
   SymbolAsyncIterator,
   SafeStringIterator,
 } = primordials;
 
 const {
+  AbortError,
+  codes
+} = require('internal/errors');
+
+const {
   ERR_INVALID_CALLBACK,
   ERR_INVALID_CURSOR_POS,
-  ERR_INVALID_OPT_VALUE
-} = require('internal/errors').codes;
+  ERR_INVALID_OPT_VALUE,
+} = codes;
 const {
+  validateAbortSignal,
+  validateArray,
   validateString,
   validateUint32,
 } = require('internal/validators');
@@ -86,6 +95,8 @@ const {
   kSubstringSearch,
 } = require('internal/readline/utils');
 
+const { promisify } = require('internal/util');
+
 const { clearTimeout, setTimeout } = require('timers');
 const {
   kEscape,
@@ -94,6 +105,7 @@ const {
   kClearLine,
   kClearScreenDown
 } = CSI;
+
 
 const { StringDecoder } = require('string_decoder');
 
@@ -132,18 +144,21 @@ function Interface(input, output, completer, terminal) {
   this.escapeCodeTimeout = ESCAPE_CODE_TIMEOUT;
   this.tabSize = 8;
 
-  FunctionPrototypeCall(EventEmitter, this,);
+  FunctionPrototypeCall(EventEmitter, this);
+  let history;
   let historySize;
   let removeHistoryDuplicates = false;
   let crlfDelay;
   let prompt = '> ';
-
+  let signal;
   if (input && input.input) {
     // An options object was given
     output = input.output;
     completer = input.completer;
     terminal = input.terminal;
+    history = input.history;
     historySize = input.historySize;
+    signal = input.signal;
     if (input.tabSize !== undefined) {
       validateUint32(input.tabSize, 'tabSize', true);
       this.tabSize = input.tabSize;
@@ -162,12 +177,23 @@ function Interface(input, output, completer, terminal) {
         );
       }
     }
+
+    if (signal) {
+      validateAbortSignal(signal, 'options.signal');
+    }
+
     crlfDelay = input.crlfDelay;
     input = input.input;
   }
 
   if (completer !== undefined && typeof completer !== 'function') {
     throw new ERR_INVALID_OPT_VALUE('completer', completer);
+  }
+
+  if (history === undefined) {
+    history = [];
+  } else {
+    validateArray(history, 'history');
   }
 
   if (historySize === undefined) {
@@ -188,9 +214,11 @@ function Interface(input, output, completer, terminal) {
 
   const self = this;
 
+  this.line = '';
   this[kSubstringSearch] = null;
   this.output = output;
   this.input = input;
+  this.history = history;
   this.historySize = historySize;
   this.removeHistoryDuplicates = !!removeHistoryDuplicates;
   this.crlfDelay = crlfDelay ?
@@ -203,6 +231,8 @@ function Interface(input, output, completer, terminal) {
         cb(null, completer(v));
       };
   }
+
+  this._questionCancel = FunctionPrototypeBind(_questionCancel, this);
 
   this.setPrompt(prompt);
 
@@ -280,13 +310,22 @@ function Interface(input, output, completer, terminal) {
     // Cursor position on the line.
     this.cursor = 0;
 
-    this.history = [];
     this.historyIndex = -1;
 
     if (output !== null && output !== undefined)
       output.on('resize', onresize);
 
     self.once('close', onSelfCloseWithTerminal);
+  }
+
+  if (signal) {
+    const onAborted = () => self.close();
+    if (signal.aborted) {
+      process.nextTick(onAborted);
+    } else {
+      signal.addEventListener('abort', onAborted, { once: true });
+      self.once('close', () => signal.removeEventListener('abort', onAborted));
+    }
   }
 
   // Current line
@@ -340,7 +379,16 @@ Interface.prototype.prompt = function(preserveCursor) {
 };
 
 
-Interface.prototype.question = function(query, cb) {
+Interface.prototype.question = function(query, options, cb) {
+  cb = typeof options === 'function' ? options : cb;
+  options = typeof options === 'object' ? options : {};
+
+  if (options.signal) {
+    options.signal.addEventListener('abort', () => {
+      this._questionCancel();
+    }, { once: true });
+  }
+
   if (typeof cb === 'function') {
     if (this._questionCallback) {
       this.prompt();
@@ -352,6 +400,28 @@ Interface.prototype.question = function(query, cb) {
     }
   }
 };
+
+Interface.prototype.question[promisify.custom] = function(query, options) {
+  options = typeof options === 'object' ? options : {};
+
+  return new Promise((resolve, reject) => {
+    this.question(query, options, resolve);
+
+    if (options.signal) {
+      options.signal.addEventListener('abort', () => {
+        reject(new AbortError());
+      }, { once: true });
+    }
+  });
+};
+
+function _questionCancel() {
+  if (this._questionCallback) {
+    this._questionCallback = null;
+    this.setPrompt(this._oldPrompt);
+    this.clearLine();
+  }
+}
 
 
 Interface.prototype._onLine = function(line) {
@@ -396,7 +466,16 @@ Interface.prototype._addHistory = function() {
   }
 
   this.historyIndex = -1;
-  return this.history[0];
+
+  // The listener could change the history object, possibly
+  // to remove the last added entry if it is sensitive and should
+  // not be persisted in the history, like a password
+  const line = this.history[0];
+
+  // Emit history event to notify listeners of update
+  this.emit('history', this.history);
+
+  return line;
 };
 
 
@@ -544,7 +623,7 @@ Interface.prototype._tabComplete = function(lastKeypressWasTab) {
     }
 
     // Result and the text that was completed.
-    const [completions, completeOn] = value;
+    const { 0: completions, 1: completeOn } = value;
 
     if (!completions || completions.length === 0) {
       return;
@@ -553,8 +632,20 @@ Interface.prototype._tabComplete = function(lastKeypressWasTab) {
     // If there is a common prefix to all matches, then apply that portion.
     const prefix = commonPrefix(ArrayPrototypeFilter(completions,
                                                      (e) => e !== ''));
-    if (prefix.length > completeOn.length) {
+    if (StringPrototypeStartsWith(prefix, completeOn) &&
+        prefix.length > completeOn.length) {
       this._insertString(StringPrototypeSlice(prefix, completeOn.length));
+      return;
+    } else if (!StringPrototypeStartsWith(completeOn, prefix)) {
+      this.line = StringPrototypeSlice(this.line,
+                                       0,
+                                       this.cursor - completeOn.length) +
+                  prefix +
+                  StringPrototypeSlice(this.line,
+                                       this.cursor,
+                                       this.line.length);
+      this.cursor = this.cursor - completeOn.length + prefix.length;
+      this._refreshLine();
       return;
     }
 
@@ -565,7 +656,7 @@ Interface.prototype._tabComplete = function(lastKeypressWasTab) {
     // Apply/show completions.
     const completionsWidth = ArrayPrototypeMap(completions,
                                                (e) => getStringWidth(e));
-    const width = MathMax(...completionsWidth) + 2; // 2 space padding
+    const width = MathMaxApply(completionsWidth) + 2; // 2 space padding
     let maxColumns = MathFloor(this.columns / width) || 1;
     if (maxColumns === Infinity) {
       maxColumns = 1;

@@ -28,13 +28,12 @@ const {
   ArrayPrototypePush,
   Error,
   FunctionPrototypeBind,
-  MathMax,
+  MathMaxApply,
   NumberIsFinite,
   NumberIsNaN,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectFreeze,
-  ObjectGetPrototypeOf,
   ObjectKeys,
   ObjectSetPrototypeOf,
   ReflectApply,
@@ -60,7 +59,8 @@ const {
 } = require('internal/util');
 const {
   isArrayBufferView,
-  isAnyArrayBuffer
+  isAnyArrayBuffer,
+  isUint8Array,
 } = require('internal/util/types');
 const binding = internalBinding('zlib');
 const assert = require('internal/assert');
@@ -109,10 +109,9 @@ for (const ckey of ObjectKeys(codes)) {
 function zlibBuffer(engine, buffer, callback) {
   if (typeof callback !== 'function')
     throw new ERR_INVALID_ARG_TYPE('callback', 'function', callback);
-  // Streams do not support non-Buffer ArrayBufferViews yet. Convert it to a
+  // Streams do not support non-Uint8Array ArrayBufferViews yet. Convert it to a
   // Buffer without copying.
-  if (isArrayBufferView(buffer) &&
-      ObjectGetPrototypeOf(buffer) !== Buffer.prototype) {
+  if (isArrayBufferView(buffer) && !isUint8Array(buffer)) {
     buffer = Buffer.from(buffer.buffer, buffer.byteOffset, buffer.byteLength);
   } else if (isAnyArrayBuffer(buffer)) {
     buffer = Buffer.from(buffer);
@@ -796,7 +795,7 @@ function createConvenienceMethod(ctor, sync) {
   };
 }
 
-const kMaxBrotliParam = MathMax(...ArrayPrototypeMap(
+const kMaxBrotliParam = MathMaxApply(ArrayPrototypeMap(
   ObjectKeys(constants),
   (key) => (StringPrototypeStartsWith(key, 'BROTLI_PARAM_') ?
     constants[key] :

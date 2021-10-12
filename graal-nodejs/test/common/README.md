@@ -9,6 +9,7 @@ This directory contains modules used to test the Node.js implementation.
 * [Common module API](#common-module-api)
 * [Countdown module](#countdown-module)
 * [CPU Profiler module](#cpu-profiler-module)
+* [Debugger module](#debugger-module)
 * [DNS module](#dns-module)
 * [Duplex pair helper](#duplex-pair-helper)
 * [Environment variables](#environment-variables)
@@ -16,7 +17,6 @@ This directory contains modules used to test the Node.js implementation.
 * [Heap dump checker module](#heap-dump-checker-module)
 * [hijackstdio module](#hijackstdio-module)
 * [HTTP2 module](#http2-module)
-* [Inspector CLI module](#inspector-cli-module)
 * [Internet module](#internet-module)
 * [ongc module](#ongc-module)
 * [Report module](#report-module)
@@ -115,12 +115,12 @@ expectWarning('Warning', 'Foobar is really bad');
 expectWarning('DeprecationWarning', 'Foobar is deprecated', 'DEP0XXX');
 
 expectWarning('DeprecationWarning', [
-  'Foobar is deprecated', 'DEP0XXX'
+  'Foobar is deprecated', 'DEP0XXX',
 ]);
 
 expectWarning('DeprecationWarning', [
   ['Foobar is deprecated', 'DEP0XXX'],
-  ['Baz is also deprecated', 'DEP0XX2']
+  ['Baz is also deprecated', 'DEP0XX2'],
 ]);
 
 expectWarning('DeprecationWarning', {
@@ -135,7 +135,7 @@ expectWarning({
   },
   Warning: [
     ['Multiple array entries are fine', 'SpecialWarningCode'],
-    ['No code is also fine']
+    ['No code is also fine'],
   ],
   SingleEntry: ['This will also work', 'WarningCode'],
   SingleString: 'Single string entries without code will also work'
@@ -513,6 +513,34 @@ Sampling interval in microseconds.
 Throws an `AssertionError` if there are no call frames with the expected
 `suffix` in the profiling data contained in `file`.
 
+## Debugger module
+
+Provides common functionality for tests for `node inspect`.
+
+### `startCLI(args[[, flags], spawnOpts])`
+
+* `args` [&lt;string>][]
+* `flags` [&lt;string>][] default = []
+* `showOpts` [&lt;Object>][] default = {}
+* return [&lt;Object>][]
+
+Returns a null-prototype object with properties that are functions and getters
+used to interact with the `node inspect` CLI. These functions are:
+
+* `flushOutput()`
+* `waitFor()`
+* `waitForPrompt()`
+* `waitForInitialBreak()`
+* `breakInfo`
+* `ctrlC()`
+* `output`
+* `rawOutput`
+* `parseSourceLines()`
+* `writeLine()`
+* `command()`
+* `stepCommand()`
+* `quit()`
+
 ## `DNS` Module
 
 The `DNS` module provides utilities related to the `dns` built-in module.
@@ -667,9 +695,9 @@ validateSnapshotNodes('TLSWRAP', [
     children: [
       { name: 'enc_out' },
       { name: 'enc_in' },
-      { name: 'TLSWrap' }
+      { name: 'TLSWrap' },
     ]
-  }
+  },
 ]);
 ```
 
@@ -830,34 +858,6 @@ upon initial establishment of a connection.
 ```js
 socket.write(http2.kClientMagic);
 ```
-
-## Inspector CLI module
-
-Provides common functionality for tests for `node inspect`.
-
-### `startCLI(args[[, flags], spawnOpts])`
-
-* `args` [&lt;string>][]
-* `flags` [&lt;string>][] default = []
-* `showOpts` [&lt;Object>][] default = {}
-* return [&lt;Object>][]
-
-Returns a null-prototype object with properties that are functions and getters
-used to interact with the `node inspect` CLI. These functions are:
-
-* `flushOutput()`
-* `waitFor()`
-* `waitForPrompt()`
-* `waitForInitialBreak()`
-* `breakInfo`
-* `ctrlC()`
-* `output`
-* `rawOutput`
-* `parseSourceLines()`
-* `writeLine()`
-* `command()`
-* `stepCommand()`
-* `quit()`
 
 ## Internet Module
 

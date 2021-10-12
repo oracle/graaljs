@@ -42,7 +42,8 @@ const {
   validateAbortSignal,
   validateBoolean,
   validateInt32,
-  validateUint32
+  validateInteger,
+  validateUint32,
 } = require('internal/validators');
 const pathModule = require('path');
 const kType = Symbol('type');
@@ -111,6 +112,23 @@ const kMinimumCopyMode = MathMin(
 const kMaximumCopyMode = COPYFILE_EXCL |
                          COPYFILE_FICLONE |
                          COPYFILE_FICLONE_FORCE;
+
+// Most platforms don't allow reads or writes >= 2 GB.
+// See https://github.com/libuv/libuv/pull/1501.
+const kIoMaxLength = 2 ** 31 - 1;
+
+// Use 64kb in case the file type is not a regular file and thus do not know the
+// actual file size. Increasing the value further results in more frequent over
+// allocation for small files and consumes CPU time and memory that should be
+// used else wise.
+// Use up to 512kb per read otherwise to partition reading big files to prevent
+// blocking other threads in case the available threads are all in use.
+const kReadFileUnknownBufferLength = 64 * 1024;
+const kReadFileBufferLength = 512 * 1024;
+
+const kWriteFileMaxChunkSize = 512 * 1024;
+
+const kMaxUserId = 2 ** 32 - 1;
 
 const isWindows = process.platform === 'win32';
 
@@ -797,7 +815,30 @@ const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
   );
 });
 
+const validatePosition = hideStackFrames((position, name) => {
+  if (typeof position === 'number') {
+    validateInteger(position, 'position');
+  } else if (typeof position === 'bigint') {
+    if (!(position >= -(2n ** 63n) && position <= 2n ** 63n - 1n)) {
+      throw new ERR_OUT_OF_RANGE('position',
+                                 `>= ${-(2n ** 63n)} && <= ${2n ** 63n - 1n}`,
+                                 position);
+    }
+  } else {
+    throw new ERR_INVALID_ARG_TYPE('position',
+                                   ['integer', 'bigint'],
+                                   position);
+  }
+});
+
 module.exports = {
+  constants: {
+    kIoMaxLength,
+    kMaxUserId,
+    kReadFileBufferLength,
+    kReadFileUnknownBufferLength,
+    kWriteFileMaxChunkSize,
+  },
   assertEncoding,
   BigIntStats,  // for testing
   copyObject,
@@ -820,6 +861,7 @@ module.exports = {
   validateOffsetLengthRead,
   validateOffsetLengthWrite,
   validatePath,
+  validatePosition,
   validateRmOptions,
   validateRmOptionsSync,
   validateRmdirOptions,

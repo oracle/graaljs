@@ -25,6 +25,7 @@ const {
   initializeESMLoader,
   initializeFrozenIntrinsics,
   initializeReport,
+  initializeSourceMapsHandlers,
   loadPreloadModules,
   setupTraceCategoryState
 } = require('internal/bootstrap/pre_execution');
@@ -72,6 +73,7 @@ setupInspectorHooks();
 setupDebugEnv();
 
 setupWarningHandler();
+initializeSourceMapsHandlers();
 
 // Since worker threads cannot switch cwd, we do not need to
 // overwrite the process.env.NODE_V8_COVERAGE variable.
@@ -116,6 +118,7 @@ port.on('message', (message) => {
       filename,
       doEval,
       workerData,
+      environmentData,
       publicPort,
       manifestSrc,
       manifestURL,
@@ -138,6 +141,8 @@ port.on('message', (message) => {
     }
     publicWorker.parentPort = publicPort;
     publicWorker.workerData = workerData;
+
+    require('internal/worker').assignEnvironmentData(environmentData);
 
     // The counter is only passed to the workers created by the main thread, not
     // to workers created by other workers.

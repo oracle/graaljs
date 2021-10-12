@@ -44,6 +44,7 @@ sys.path.insert(0, 'tools')
 import getmoduleversion
 import getnapibuildversion
 from gyp_node import run_gyp
+from utils import SearchFiles
 
 # imports in deps/v8/tools/node
 sys.path.insert(0, os.path.join('deps', 'v8', 'tools', 'node'))
@@ -988,13 +989,7 @@ def is_arm_hard_float_abi():
 def host_arch_cc():
   """Host architecture check using the CC command."""
 
-  import platform
-  if sys.platform.startswith('aix') or platform.processor() == "sparc":
-    # we only support gcc at this point and the default on AIX
-    # would be xlc so hard code gcc
-    k = cc_macros('gcc')
-  else:
-    k = cc_macros(os.environ.get('CC_host'))
+  k = cc_macros(os.environ.get('CC_host'))
 
   matchup = {
     '__aarch64__' : 'arm64',
@@ -1089,6 +1084,8 @@ def gcc_version_ge(version_checked):
       return False
   return True
 
+def configure_node_lib_files(o):
+  o['variables']['node_library_files'] = SearchFiles('lib', 'js')
 
 def configure_node(o):
   if options.dest_os == 'android':
@@ -1857,6 +1854,7 @@ if (options.dest_os):
 flavor = GetFlavor(flavor_params)
 
 configure_node(output)
+configure_node_lib_files(output)
 configure_napi(output)
 configure_library('zlib', output)
 configure_library('http_parser', output)
@@ -1957,6 +1955,10 @@ else:
 
 if options.compile_commands_json:
   gyp_args += ['-f', 'compile_commands_json']
+
+# override the variable `python` defined in common.gypi
+if bin_override is not None:
+  gyp_args += ['-Dpython=' + sys.executable]
 
 # pass the leftover positional arguments to GYP
 gyp_args += args

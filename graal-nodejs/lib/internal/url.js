@@ -19,7 +19,6 @@ const {
   ReflectApply,
   ReflectGetOwnPropertyDescriptor,
   ReflectOwnKeys,
-  RegExpPrototypeExec,
   String,
   StringPrototypeCharCodeAt,
   StringPrototypeIncludes,
@@ -40,7 +39,12 @@ const {
   isHexTable
 } = require('internal/querystring');
 
-const { getConstructorOf, removeColors } = require('internal/util');
+const {
+  getConstructorOf,
+  removeColors,
+  toUSVString,
+} = require('internal/util');
+
 const {
   ERR_ARG_NOT_ITERABLE,
   ERR_INVALID_ARG_TYPE,
@@ -76,7 +80,6 @@ const {
   domainToASCII: _domainToASCII,
   domainToUnicode: _domainToUnicode,
   encodeAuth,
-  toUSVString: _toUSVString,
   parse,
   setURLConstructor,
   URL_FLAGS_CANNOT_BE_BASE,
@@ -109,18 +112,6 @@ const kFormat = Symbol('format');
 const IteratorPrototype = ObjectGetPrototypeOf(
   ObjectGetPrototypeOf([][SymbolIterator]())
 );
-
-const unpairedSurrogateRe =
-    /(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
-function toUSVString(val) {
-  const str = `${val}`;
-  // As of V8 5.5, `str.search()` (and `unpairedSurrogateRe[@@search]()`) are
-  // slower than `unpairedSurrogateRe.exec()`.
-  const match = RegExpPrototypeExec(unpairedSurrogateRe, str);
-  if (!match)
-    return str;
-  return _toUSVString(str, match.index);
-}
 
 // Refs: https://html.spec.whatwg.org/multipage/browsers.html#concept-origin-opaque
 const kOpaqueOrigin = 'null';
@@ -853,7 +844,7 @@ const noEscape = new Int8Array([
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x40 - 0x4F
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, // 0x50 - 0x5F
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x60 - 0x6F
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0  // 0x70 - 0x7F
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,  // 0x70 - 0x7F
 ]);
 
 // Special version of hexTable that uses `+` for U+0020 SPACE.
@@ -1295,7 +1286,7 @@ function domainToUnicode(domain) {
 // Utility function that converts a URL object into an ordinary
 // options object as expected by the http.request and https.request
 // APIs.
-function urlToOptions(url) {
+function urlToHttpOptions(url) {
   const options = {
     protocol: url.protocol,
     hostname: typeof url.hostname === 'string' &&
@@ -1312,7 +1303,7 @@ function urlToOptions(url) {
     options.port = Number(url.port);
   }
   if (url.username || url.password) {
-    options.auth = `${url.username}:${url.password}`;
+    options.auth = `${decodeURIComponent(url.username)}:${decodeURIComponent(url.password)}`;
   }
   return options;
 }
@@ -1494,7 +1485,7 @@ module.exports = {
   URLSearchParams,
   domainToASCII,
   domainToUnicode,
-  urlToOptions,
+  urlToHttpOptions,
   formatSymbol: kFormat,
   searchParamsSymbol: searchParams,
   encodeStr

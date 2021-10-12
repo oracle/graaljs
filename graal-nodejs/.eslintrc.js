@@ -18,6 +18,7 @@ const hacks = [
   'eslint-plugin-markdown',
   '@babel/eslint-parser',
   '@babel/plugin-syntax-class-properties',
+  '@babel/plugin-syntax-import-assertions',
   '@babel/plugin-syntax-top-level-await',
 ];
 Module._findPath = (request, paths, isMain) => {
@@ -41,6 +42,7 @@ module.exports = {
     babelOptions: {
       plugins: [
         Module._findPath('@babel/plugin-syntax-class-properties'),
+        Module._findPath('@babel/plugin-syntax-import-assertions'),
         Module._findPath('@babel/plugin-syntax-top-level-await'),
       ],
     },
@@ -124,7 +126,13 @@ module.exports = {
         ignorePattern: '.*',
       },
     }],
-    'comma-dangle': ['error', 'only-multiline'],
+    'comma-dangle': ['error', {
+      arrays: 'always-multiline',
+      exports: 'only-multiline',
+      functions: 'only-multiline',
+      imports: 'only-multiline',
+      objects: 'only-multiline',
+    }],
     'comma-spacing': 'error',
     'comma-style': 'error',
     'computed-property-spacing': 'error',
@@ -155,6 +163,7 @@ module.exports = {
       code: 80,
       ignorePattern: '^// Flags:',
       ignoreRegExpLiterals: true,
+      ignoreTemplateLiterals: true,
       ignoreUrls: true,
       tabWidth: 2,
     }],

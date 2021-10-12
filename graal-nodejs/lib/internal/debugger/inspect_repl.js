@@ -1,6 +1,3 @@
-// TODO(trott): enable ESLint
-/* eslint-disable getter-return */
-
 'use strict';
 
 const {
@@ -328,6 +325,7 @@ function createRepl(inspector) {
   const history = { control: [], debug: [] };
   const watchedExpressions = [];
   const knownBreakpoints = [];
+  let heapSnapshotPromise = null;
   let pauseOnExceptionState = 'none';
   let lastCommand;
 
@@ -899,7 +897,7 @@ function createRepl(inspector) {
 
     copyOwnProperties(context, {
       get help() {
-        print(HELP);
+        return print(HELP);
       },
 
       get run() {
@@ -964,7 +962,13 @@ function createRepl(inspector) {
       },
 
       takeHeapSnapshot(filename = 'node.heapsnapshot') {
-        return new Promise((resolve, reject) => {
+        if (heapSnapshotPromise) {
+          print(
+            'Cannot take heap snapshot because another snapshot is in progress.'
+          );
+          return heapSnapshotPromise;
+        }
+        heapSnapshotPromise = new Promise((resolve, reject) => {
           const absoluteFile = Path.resolve(filename);
           const writer = FS.createWriteStream(absoluteFile);
           let sizeWritten = 0;
@@ -986,6 +990,7 @@ function createRepl(inspector) {
             writer.end(() => {
               teardown();
               print(`Wrote snapshot: ${absoluteFile}`);
+              heapSnapshotPromise = null;
               resolve();
             });
           }
@@ -1009,6 +1014,7 @@ function createRepl(inspector) {
             HeapProfiler.takeHeapSnapshot({ reportProgress: true }),
             onResolve, onReject);
         });
+        return heapSnapshotPromise;
       },
 
       get watchers() {
@@ -1078,7 +1084,7 @@ function createRepl(inspector) {
         repl.setPrompt('> ');
 
         print('Press Ctrl+C to leave debug repl');
-        repl.displayPrompt();
+        return repl.displayPrompt();
       },
 
       get version() {
