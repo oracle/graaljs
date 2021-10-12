@@ -67,6 +67,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
         this.propertyName = propertyName;
         this.context = context;
         this.globalObjectNode = globalObjectNode;
+        this.cache = PropertyGetNode.create(propertyName, true, context);
     }
 
     public static JSTargetableNode createPropertyNode(JSContext ctx, String propertyName) {
@@ -118,7 +119,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
             GlobalObjectNode global = GlobalObjectNode.create();
             GlobalPropertyNode materialized = new GlobalPropertyNode(context, propertyName, global);
             if (this.cache != null && this.cache.isMethod()) {
-                materialized.getCache().setMethod();
+                materialized.cache.setMethod();
             }
             transferSourceSectionAndTags(this, materialized);
             transferSourceSection(this, global);
@@ -129,7 +130,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public Object executeWithTarget(VirtualFrame frame, Object target) {
-        return getCache().getValue(target);
+        return cache.getValue(target);
     }
 
     @Override
@@ -147,17 +148,17 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        return getCache().getValue(evaluateTarget(frame));
+        return cache.getValue(evaluateTarget(frame));
     }
 
     @Override
     public int executeInt(VirtualFrame frame) throws UnexpectedResultException {
-        return getCache().getValueInt(evaluateTarget(frame));
+        return cache.getValueInt(evaluateTarget(frame));
     }
 
     @Override
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
-        return getCache().getValueDouble(evaluateTarget(frame));
+        return cache.getValueDouble(evaluateTarget(frame));
     }
 
     public String getPropertyKey() {
@@ -165,19 +166,11 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     }
 
     public void setMethod() {
-        getCache().setMethod();
+        cache.setMethod();
     }
 
     public void setPropertyAssumptionCheckEnabled(boolean enabled) {
-        getCache().setPropertyAssumptionCheckEnabled(enabled);
-    }
-
-    private PropertyGetNode getCache() {
-        if (cache == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.cache = insert(PropertyGetNode.create(propertyName, true, context));
-        }
-        return cache;
+        cache.setPropertyAssumptionCheckEnabled(enabled);
     }
 
     private JavaScriptNode getGlobalObjectNode() {
@@ -192,7 +185,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         GlobalPropertyNode copy = new GlobalPropertyNode(context, propertyName, cloneUninitialized(globalObjectNode, materializedTags));
         if (this.cache != null && this.cache.isMethod()) {
-            copy.getCache().setMethod();
+            copy.cache.setMethod();
         }
         return copy;
     }
