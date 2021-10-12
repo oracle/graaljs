@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -76,7 +77,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
  *
  * thing a generic value to be converted to a DynamicObject or TruffleObject
  */
-@ImportStatic({JSConfig.class})
+@ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class JSToObjectNode extends JavaScriptBaseNode {
 
     protected final JSContext context;
@@ -173,7 +174,7 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return JSSymbol.create(getContext(), getRealm(), value);
     }
 
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static Object doJSObjectCached(Object object,
                     @Cached("getClassIfObject(object)") Class<?> cachedClass) {
         return cachedClass.cast(object);

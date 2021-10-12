@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -59,7 +60,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
  *
  * @see JSIsArrayNode
  */
-@ImportStatic(value = {IsArrayNode.Kind.class})
+@ImportStatic({IsArrayNode.Kind.class, CompilerDirectives.class})
 public abstract class IsArrayNode extends JavaScriptBaseNode {
 
     protected static final int MAX_SHAPE_COUNT = 1;
@@ -139,7 +140,7 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         return checkResult(object, false);
     }
 
-    @Specialization(guards = {"cachedClass.isInstance(object)"}, limit = "1")
+    @Specialization(guards = {"isExact(object, cachedClass)"}, limit = "1")
     protected final boolean doOtherCached(Object object,
                     @Cached("object.getClass()") @SuppressWarnings("unused") Class<?> cachedClass) {
         return checkResult(object, false);

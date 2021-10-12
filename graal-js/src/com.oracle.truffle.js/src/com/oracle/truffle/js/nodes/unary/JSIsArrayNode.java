@@ -40,7 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.unary;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -54,6 +56,7 @@ import com.oracle.truffle.js.runtime.JSRuntime;
  *
  * @see IsArrayNode
  */
+@ImportStatic({CompilerDirectives.class})
 public abstract class JSIsArrayNode extends JavaScriptBaseNode {
 
     final boolean jsType;
@@ -65,7 +68,7 @@ public abstract class JSIsArrayNode extends JavaScriptBaseNode {
     public abstract boolean execute(Object operand);
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    @Specialization(guards = {"!cachedIsProxy", "cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static boolean doIsArrayClass(Object object,
                     @Cached("getClassIfJSDynamicObject(object)") Class<?> cachedClass,
                     @Cached("isJSArray(object)") boolean cachedIsArray,

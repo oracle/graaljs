@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -64,7 +65,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
  */
-@ImportStatic({JSConfig.class})
+@ImportStatic({CompilerDirectives.class, JSConfig.class})
 public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
     protected RequireObjectCoercibleNode() {
@@ -113,7 +114,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     protected static void doBigInt(@SuppressWarnings("unused") BigInt value) {
     }
 
-    @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "1")
+    @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static void doCachedJSClass(@SuppressWarnings("unused") Object object,
                     @Cached("getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
     }
