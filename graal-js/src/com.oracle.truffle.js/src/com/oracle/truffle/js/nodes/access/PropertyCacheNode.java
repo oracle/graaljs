@@ -133,6 +133,30 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         public final NodeCost getCost() {
             return NodeCost.NONE;
         }
+
+        /**
+         * Checks if the obj is an instance of the shape's layout class in compiled code and
+         * <code>obj instanceof {@link JSDynamicObject}</code> in the interpreter.
+         */
+        protected static boolean isDynamicObject(Object obj, Shape shape) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return shape.getLayoutClass().isInstance(obj);
+            } else {
+                return obj instanceof JSDynamicObject;
+            }
+        }
+
+        /**
+         * Casts the obj to the shape's layout class in compiled code and to {@link JSDynamicObject}
+         * in the interpreter.
+         */
+        protected static DynamicObject castDynamicObject(Object obj, Shape shape) {
+            if (CompilerDirectives.inCompiledCode()) {
+                return shape.getLayoutClass().cast(obj);
+            } else {
+                return (JSDynamicObject) obj;
+            }
+        }
     }
 
     /**
@@ -152,12 +176,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return shape1.getLayoutClass().isInstance(thisObj) && (shape1.check((DynamicObject) thisObj) || shape2.check((DynamicObject) thisObj));
+            if (isDynamicObject(thisObj, shape1)) {
+                DynamicObject castObj = castDynamicObject(thisObj, shape1);
+                return (shape1.check(castObj) || shape2.check(castObj));
+            } else {
+                return false;
+            }
         }
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return shape1.getLayoutClass().cast(thisObj);
+            return castDynamicObject(thisObj, shape1);
         }
     }
 
@@ -166,7 +195,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected abstract static class AbstractShapeCheckNode extends ReceiverCheckNode {
 
-        private final Shape shape;
+        protected final Shape shape;
 
         protected AbstractShapeCheckNode(Shape shape) {
             this.shape = shape;
@@ -185,7 +214,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean accept(Object thisObj) {
-            return shape.getLayoutClass().isInstance(thisObj) && shape.check((DynamicObject) thisObj);
+            if (isDynamicObject(thisObj, shape)) {
+                return shape.check(castDynamicObject(thisObj, shape));
+            } else {
+                return false;
+            }
         }
 
         public int getDepth() {
@@ -258,7 +291,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     /**
      * Check the object shape by identity comparison.
      */
-    public static final class ShapeCheckNode extends AbstractShapeCheckNode {
+    protected static final class ShapeCheckNode extends AbstractShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
 
@@ -269,7 +302,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return getShape().getLayoutClass().cast(thisObj);
+            return castDynamicObject(thisObj, shape);
         }
 
         @Override
