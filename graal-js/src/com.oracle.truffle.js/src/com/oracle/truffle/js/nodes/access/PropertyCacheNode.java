@@ -287,52 +287,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     /**
-     * Check that the given shape is valid and unchanged using assumptions only.
-     *
-     * Requires that the object is constant. Used for stable global object property accesses.
-     */
-    protected static final class GlobalPropertyAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
-
-        private final Assumption shapeValidAssumption;
-        private final Assumption unchangedPropertyAssumption;
-
-        protected GlobalPropertyAssumptionShapeCheckNode(Shape shape, @SuppressWarnings("unused") Object key, JSContext context, Assumption unchangedAssumption) {
-            super(shape, context);
-            this.shapeValidAssumption = shape.getValidAssumption();
-            this.unchangedPropertyAssumption = unchangedAssumption;
-        }
-
-        public GlobalPropertyAssumptionShapeCheckNode(Shape shape, Object key, JSContext context) {
-            this(shape, key, context, JSShape.getPropertyAssumption(shape, key, false));
-        }
-
-        @Override
-        public boolean accept(Object thisObj) {
-            return true;
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return ((JSDynamicObject) thisObj);
-        }
-
-        @Override
-        public boolean isValid() {
-            if (!shapeValidAssumption.isValid()) {
-                return false;
-            } else if (!unchangedPropertyAssumption.isValid()) {
-                return false;
-            }
-            return true;
-        }
-
-        @Override
-        protected boolean isUnstable() {
-            return shapeValidAssumption.isValid() && !unchangedPropertyAssumption.isValid();
-        }
-    }
-
-    /**
      * Check that the given shape is valid and unchanged. Requires that the object is constant.
      *
      * For global object and prototype chain checks only.
@@ -466,44 +420,22 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     /**
-     * Checks that the object is constant and the shape by comparison.
-     */
-    protected static final class ConstantObjectShapeCheckNode extends AbstractShapeCheckNode {
-        private final Assumption shapeValidAssumption;
-
-        public ConstantObjectShapeCheckNode(Shape shape) {
-            super(shape);
-            this.shapeValidAssumption = shape.getValidAssumption();
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return ((JSDynamicObject) thisObj);
-        }
-
-        @Override
-        public boolean isValid() {
-            if (!shapeValidAssumption.isValid()) {
-                return false;
-            }
-            return true;
-        }
-    }
-
-    /**
-     * Checks that the object is constant and the shape by assumption (valid and unchanged).
+     * Check that the given shape is valid and the property is unchanged using assumptions only.
+     *
+     * Requires that the object is constant. Used e.g. for stable global object property accesses.
      *
      * @see JSConfig#SkipFinalShapeCheck
+     * @see JSConfig#SkipGlobalShapeCheck
      */
     protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
         private final Assumption shapeValidAssumption;
-        private final Assumption unchangedAssumption;
+        private final Assumption unchangedPropertyAssumption;
 
         public ConstantObjectAssumptionShapeCheckNode(Shape shape, Object key, JSContext context) {
             super(shape, context);
             this.shapeValidAssumption = shape.getValidAssumption();
-            this.unchangedAssumption = JSShape.getPropertyAssumption(shape, key);
+            this.unchangedPropertyAssumption = JSShape.getPropertyAssumption(shape, key);
         }
 
         @Override
@@ -520,7 +452,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         public boolean isValid() {
             if (!shapeValidAssumption.isValid()) {
                 return false;
-            } else if (!unchangedAssumption.isValid()) {
+            } else if (!unchangedPropertyAssumption.isValid()) {
                 return false;
             }
             return true;
@@ -528,7 +460,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         protected boolean isUnstable() {
-            return shapeValidAssumption.isValid() && !unchangedAssumption.isValid();
+            return shapeValidAssumption.isValid() && !unchangedPropertyAssumption.isValid();
         }
     }
 
@@ -1426,17 +1358,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     private AbstractShapeCheckNode createShapeCheckNodeDepth0(Shape shape, JSDynamicObject thisObj, boolean isConstantObjectFinal, boolean isDefine) {
         assert thisObj.getShape() == shape;
         // if isDefine is true, shape change is imminent, so don't use assumption
-        if (isGlobal() && JSConfig.SkipGlobalShapeCheck && !isDefine && isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
-            return new GlobalPropertyAssumptionShapeCheckNode(shape, key, getContext());
-        } else if (isConstantObjectFinal) {
-            assert !isDefine;
-            if (isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
-                return new ConstantObjectAssumptionShapeCheckNode(shape, key, getContext());
-            } else {
-                return new ConstantObjectShapeCheckNode(shape);
-            }
+        if (!isDefine && (isConstantObjectFinal || (isGlobal() && JSConfig.SkipGlobalShapeCheck)) &&
+                        isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
+            return new ConstantObjectAssumptionShapeCheckNode(shape, key, getContext());
         } else {
-            assert !isConstantObjectFinal;
             return new ShapeCheckNode(shape);
         }
     }
