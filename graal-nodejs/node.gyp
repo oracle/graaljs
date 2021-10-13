@@ -1031,7 +1031,7 @@
     }, # fuzz_env
     {
       'target_name': 'cctest',
-      'type': 'executable',
+      'type': 'none',
 
       'dependencies': [
         '<(node_lib_target_name)',
