@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,26 +40,29 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.*;
-import com.oracle.truffle.js.nodes.*;
-
 import java.util.Set;
 
-@NodeInfo(shortName = "&&")
-public class JSAndNode extends JSLogicalNode {
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 
-    public JSAndNode(JavaScriptNode left, JavaScriptNode right) {
-        super(left, right, true);
+@NodeInfo(shortName = "&&")
+public final class JSAndNode extends JSLogicalNode {
+
+    @Child private JSToBooleanNode toBooleanCast = JSToBooleanNode.create();
+
+    JSAndNode(JavaScriptNode left, JavaScriptNode right) {
+        super(left, right);
     }
 
-    public static JSAndNode create(JavaScriptNode left, JavaScriptNode right) {
+    public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         return new JSAndNode(left, right);
     }
 
     @Override
-    public boolean isResultAlwaysOfType(Class<?> clazz) {
-        return getLeft().isResultAlwaysOfType(clazz) && getRight().isResultAlwaysOfType(clazz);
+    protected boolean useLeftValue(Object leftValue) {
+        return !toBooleanCast.executeBoolean(leftValue);
     }
 
     @Override
