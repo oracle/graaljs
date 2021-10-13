@@ -106,12 +106,12 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static boolean doLazyString(JSLazyString value) {
-        return !value.isEmpty();
+        return value.length() != 0;
     }
 
     @Specialization
     protected static boolean doString(String value) {
-        return value.length() > 0;
+        return value.length() != 0;
     }
 
     @Specialization(guards = "isJSObject(value)")
