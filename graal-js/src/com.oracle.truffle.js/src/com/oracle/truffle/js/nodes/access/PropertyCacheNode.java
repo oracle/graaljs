@@ -670,9 +670,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (!result) {
                 return false;
             }
-            for (int i = 0; i < shapeCheckNodes.length; i++) {
-                current = getPrototypeNodes[i].executeDynamicObject(current);
-                result = shapeCheckNodes[i].accept(current);
+            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
+            GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
+            for (int i = 0; i < shapeCheckArray.length; i++) {
+                current = getPrototypeArray[i].executeDynamicObject(current);
+                result = shapeCheckArray[i].accept(current);
                 if (!result) {
                     return false;
                 }
@@ -685,8 +687,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public DynamicObject getStore(Object thisObj) {
             DynamicObject proto = (JSDynamicObject) thisObj;
-            for (int i = 0; i < shapeCheckNodes.length; i++) {
-                proto = getPrototypeNodes[i].executeDynamicObject(proto);
+            GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
+            for (int i = 0; i < getPrototypeArray.length; i++) {
+                proto = getPrototypeArray[i].executeDynamicObject(proto);
             }
             return proto;
         }
@@ -702,8 +705,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (!shapeValidAssumption.isValid()) {
                 return false;
             }
-            for (int i = 0; i < shapeCheckNodes.length; i++) {
-                if (!shapeCheckNodes[i].isValid()) {
+            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
+            for (int i = 0; i < shapeCheckArray.length; i++) {
+                if (!shapeCheckArray[i].isValid()) {
                     return false;
                 }
             }
@@ -850,13 +854,15 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         public boolean accept(Object thisObj) {
             DynamicObject current = jsclass.getIntrinsicDefaultProto(getRealm());
             boolean result = true;
-            for (int i = 0; i < shapeCheckNodes.length; i++) {
-                result = shapeCheckNodes[i].accept(current);
+            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
+            GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
+            for (int i = 0; i < shapeCheckArray.length; i++) {
+                result = shapeCheckArray[i].accept(current);
                 if (!result) {
                     return false;
                 }
-                if (i < shapeCheckNodes.length - 1) {
-                    current = getPrototypeNodes[i].executeDynamicObject(current);
+                if (i < shapeCheckArray.length - 1) {
+                    current = getPrototypeArray[i].executeDynamicObject(current);
                 }
             }
             // Return the shape check of the prototype we're going to access.
@@ -867,8 +873,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Override
         public DynamicObject getStore(Object thisObj) {
             DynamicObject proto = jsclass.getIntrinsicDefaultProto(getRealm());
-            for (int i = 0; i < getPrototypeNodes.length; i++) {
-                proto = getPrototypeNodes[i].executeDynamicObject(proto);
+            GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
+            for (int i = 0; i < getPrototypeArray.length; i++) {
+                proto = getPrototypeArray[i].executeDynamicObject(proto);
             }
             return proto;
         }
@@ -881,8 +888,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean isValid() {
-            for (int i = 0; i < shapeCheckNodes.length; i++) {
-                if (!shapeCheckNodes[i].isValid()) {
+            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
+            for (int i = 0; i < shapeCheckArray.length; i++) {
+                if (!shapeCheckArray[i].isValid()) {
                     return false;
                 }
             }
