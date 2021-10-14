@@ -3430,6 +3430,14 @@ namespace v8 {
         TRACE
     }
 
+    void Isolate::RemoveNearHeapLimitCallback(NearHeapLimitCallback callback, size_t heap_limit) {
+        TRACE
+    }
+
+    void Isolate::AutomaticallyRestoreInitialHeapLimit(double threshold_percent) {
+        TRACE
+    }
+
     void Isolate::RequestInterrupt(InterruptCallback callback, void* data) {
         TRACE
     }
@@ -3665,5 +3673,9 @@ namespace v8 {
 }
 
 void V8_Fatal(const char* format, ...) {
+    TRACE
+}
+
+void V8_Fatal(const char* file, int line, const char* format, ...) {
     TRACE
 }
