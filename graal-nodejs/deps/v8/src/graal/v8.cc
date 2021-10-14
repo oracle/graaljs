@@ -3639,6 +3639,10 @@ namespace v8 {
         TRACE
     }
 
+    void Context::SetPromiseHooks(Local<Function> init_hook, Local<Function> before_hook, Local<Function> after_hook, Local<Function> resolve_hook) {
+        reinterpret_cast<GraalContext*> (this)->SetPromiseHooks(init_hook, before_hook, after_hook, resolve_hook);
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
