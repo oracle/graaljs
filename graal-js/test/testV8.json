@@ -434,6 +434,10 @@
     "status" : "FAIL",
     "comment" : "d8s OS module"
   }, {
+    "filePath" : "mjsunit/d8/d8-performance-now.js",
+    "status" : "SKIP",
+    "comment" : "transiently fails, skipping because test not really useful (GR-14954)"
+  }, {
     "filePath" : "mjsunit/d8/d8-worker-shutdown-empty.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
