@@ -39,6 +39,7 @@
       { "name": "contextNew" },
       { "name": "contextSetEmbedderData" },
       { "name": "contextSetPointerInEmbedderData" },
+      { "name": "contextSetPromiseHooks" },
       { "name": "contextSetSecurityToken" },
       { "name": "create" },
       { "name": "dataViewNew" },

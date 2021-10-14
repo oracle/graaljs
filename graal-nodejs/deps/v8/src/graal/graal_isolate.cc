@@ -803,6 +803,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::context_set_security_token, "contextSetSecurityToken", "(Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::context_get_security_token, "contextGetSecurityToken", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::context_get_extras_binding_object, "contextGetExtrasBindingObject", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::context_set_promise_hooks, "contextSetPromiseHooks", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::find_dynamic_object_fields, "findDynamicObjectFields", "(Ljava/lang/Object;)[Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::proxy_is_function, "proxyIsFunction", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::proxy_get_handler, "proxyGetHandler", "(Ljava/lang/Object;)Ljava/lang/Object;")

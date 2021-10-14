@@ -2809,6 +2809,41 @@ public final class GraalJSAccess {
         return data.getEmbedderData(index);
     }
 
+    public void contextSetPromiseHooks(Object context, Object initHook, Object beforeHook, Object afterHook, Object resolveHook) {
+        PromiseHook hook = new PromiseHook() {
+            @Override
+            public void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise) {
+                Object hook;
+                switch (changeType) {
+                    case PromiseHook.TYPE_INIT:
+                        hook = initHook;
+                        break;
+                    case PromiseHook.TYPE_RESOLVE:
+                        hook = resolveHook;
+                        break;
+                    case PromiseHook.TYPE_BEFORE:
+                        hook = beforeHook;
+                        break;
+                    case PromiseHook.TYPE_AFTER:
+                        hook = afterHook;
+                        break;
+                    default:
+                        throw Errors.shouldNotReachHere();
+                }
+                if (hook != null) {
+                    Object[] arguments;
+                    if (changeType == PromiseHook.TYPE_INIT) {
+                        arguments = new Object[]{promise, parentPromise};
+                    } else {
+                        arguments = new Object[]{promise};
+                    }
+                    JSRuntime.call(hook, Undefined.instance, arguments);
+                }
+            }
+        };
+        ((JSRealm) context).getContext().setPromiseHook(hook);
+    }
+
     public void isolateRunMicrotasks() {
         pollWeakCallbackQueue(false);
         try {
