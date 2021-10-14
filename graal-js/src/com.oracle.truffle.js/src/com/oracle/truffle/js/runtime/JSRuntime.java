@@ -1008,6 +1008,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues, boolean allowSideEffects) {
         assert JSDynamicObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
+        boolean v8CompatMode = JSObject.getJSContext(obj).isOptionV8CompatibilityMode();
         StringBuilder sb = new StringBuilder();
 
         if (name != null) {
@@ -1038,7 +1039,7 @@ public final class JSRuntime {
                     }
                     sb.append('(').append(length).append(')');
                     return sb.toString();
-                } else if (topLevel && length >= 2) {
+                } else if (topLevel && length >= 2 && !v8CompatMode) {
                     sb.append('(').append(length).append(')');
                 }
             }
@@ -1057,7 +1058,7 @@ public final class JSRuntime {
                 continue;
             }
             if (propertyCount > 0) {
-                sb.append(", ");
+                sb.append(v8CompatMode ? "," : ", ");
                 if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
                     sb.append("...");
                     break;
