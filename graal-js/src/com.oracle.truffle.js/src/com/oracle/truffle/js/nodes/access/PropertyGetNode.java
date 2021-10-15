@@ -207,14 +207,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
                     if (expectedObj == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         break;
                     } else {
                         continue;
@@ -226,7 +224,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return c.getValueInt(thisObj, receiver, this, guard);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return getValueIntAndSpecialize(thisObj, receiver);
     }
 
@@ -243,14 +241,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
                     if (expectedObj == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         break;
                     } else {
                         continue;
@@ -262,7 +258,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return c.getValueDouble(thisObj, receiver, this, guard);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return getValueDoubleAndSpecialize(thisObj, receiver);
     }
 
@@ -279,14 +275,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
                     if (expectedObj == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         break;
                     } else {
                         continue;
@@ -298,7 +292,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return c.getValueBoolean(thisObj, receiver, this, guard);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return getValueBooleanAndSpecialize(thisObj, receiver);
     }
 
@@ -315,14 +309,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
                     if (expectedObj == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         break;
                     } else {
                         continue;
@@ -334,7 +326,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return c.getValueLong(thisObj, receiver, this, guard);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return getValueLongAndSpecialize(thisObj, receiver);
     }
 
@@ -351,14 +343,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
                     if (expectedObj == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
                         break;
                     } else {
                         continue;
@@ -370,7 +360,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return c.getValue(thisObj, receiver, defaultValue, this, guard);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return getValueAndSpecialize(thisObj, receiver, defaultValue);
     }
 

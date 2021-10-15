@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -91,7 +90,6 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             boolean guard = c.accepts(thisObj);
@@ -99,7 +97,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                 return c.hasProperty(thisObj, this);
             }
         }
-        deoptimize();
+        deoptimize(c);
         return hasPropertyAndSpecialize(thisObj);
     }
 

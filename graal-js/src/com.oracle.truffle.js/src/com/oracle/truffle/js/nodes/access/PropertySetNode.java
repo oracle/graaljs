@@ -165,7 +165,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             boolean guard = c.accepts(thisObj);
@@ -175,7 +174,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
             }
         }
-        deoptimize();
+        deoptimize(c);
         setValueAndSpecialize(thisObj, value, receiver);
     }
 
@@ -193,7 +192,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             boolean guard = c.accepts(thisObj);
@@ -203,7 +201,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
             }
         }
-        deoptimize();
+        deoptimize(c);
         setValueIntAndSpecialize(thisObj, value, receiver);
     }
 
@@ -221,7 +219,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             boolean guard = c.accepts(thisObj);
@@ -231,7 +228,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
             }
         }
-        deoptimize();
+        deoptimize(c);
         setValueDoubleAndSpecialize(thisObj, value, receiver);
     }
 
@@ -249,7 +246,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
         for (; c != null; c = c.next) {
             if (!c.isValid(this)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
             boolean guard = c.accepts(thisObj);
@@ -259,7 +255,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 }
             }
         }
-        deoptimize();
+        deoptimize(c);
         setValueBooleanAndSpecialize(thisObj, value, receiver);
     }
 

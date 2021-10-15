@@ -52,7 +52,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -1101,21 +1100,18 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return JSProxy.isJSProxy(store) || (JSArrayBufferView.isJSArrayBufferView(store) && isNonIntegerIndex(key)) || key instanceof HiddenKey;
     }
 
-    protected final void deoptimize() {
-        if (invalidationAssumption == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-        } else {
-            if (CompilerDirectives.inCompiledCode()) {
-                try {
-                    invalidationAssumption.check();
-                } catch (InvalidAssumptionException e) {
-                }
-            }
+    protected final void deoptimize(CacheNode<?> stop) {
+        if (CompilerDirectives.inCompiledCode() && stop != null) {
             /*
+             * If the invalidation assumption is initialized, we have previously retried the cache.
              * Do not invalidate code here, since we might just re-shape the object (which does not
              * need a modification of the AST). The assumption will be used to invalidate the code.
              */
+            if (Assumption.isValidAssumption(invalidationAssumption)) {
+                return;
+            }
         }
+        CompilerDirectives.transferToInterpreterAndInvalidate();
     }
 
     protected T retryCache() {
