@@ -206,9 +206,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
-            }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -218,6 +215,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         continue;
                     }
                 }
+            }
+            if (!c.isValid(this)) {
+                break;
             }
             boolean guard = c.accepts(thisObj);
             if (guard) {
@@ -240,9 +240,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
-            }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -252,6 +249,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         continue;
                     }
                 }
+            }
+            if (!c.isValid(this)) {
+                break;
             }
             boolean guard = c.accepts(thisObj);
             if (guard) {
@@ -274,9 +274,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
-            }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -286,6 +283,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         continue;
                     }
                 }
+            }
+            if (!c.isValid(this)) {
+                break;
             }
             boolean guard = c.accepts(thisObj);
             if (guard) {
@@ -308,9 +308,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
-            }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -320,6 +317,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         continue;
                     }
                 }
+            }
+            if (!c.isValid(this)) {
+                break;
             }
             boolean guard = c.accepts(thisObj);
             if (guard) {
@@ -342,9 +342,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
-            }
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -354,6 +351,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                         continue;
                     }
                 }
+            }
+            if (!c.isValid(this)) {
+                break;
             }
             boolean guard = c.accepts(thisObj);
             if (guard) {

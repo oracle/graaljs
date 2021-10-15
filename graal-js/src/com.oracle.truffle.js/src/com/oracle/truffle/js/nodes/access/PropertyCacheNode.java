@@ -838,7 +838,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
 
         protected final boolean isValid(PropertyCacheNode<T> root) {
-            return isValid() && (!isSingleRealm() || root.context.isSingleRealm()) && (!isFinalSpecialization() || isValidFinalAssumption());
+            boolean singleRealm = isSingleRealm();
+            boolean finalSpecialization = isFinalSpecialization();
+            return isValid() && (!singleRealm || root.context.getSingleRealmAssumption().isValid()) && (!finalSpecialization || isValidFinalAssumption());
         }
 
         protected final boolean isSingleRealm() {
