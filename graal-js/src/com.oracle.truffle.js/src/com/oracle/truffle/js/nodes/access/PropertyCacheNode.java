@@ -971,8 +971,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return receiverCheck == null || receiverCheck.isValid();
         }
 
-        protected final boolean isValid(JSContext context) {
-            return isValid() && (!isSingleRealm() || context.isSingleRealm()) && (!isFinalSpecialization() || isValidFinalAssumption());
+        protected final boolean isValid(PropertyCacheNode<T> root) {
+            return isValid() && (!isSingleRealm() || root.context.isSingleRealm()) && (!isFinalSpecialization() || isValidFinalAssumption());
         }
 
         protected final boolean isSingleRealm() {
@@ -1080,7 +1080,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                         break;
                     } else {
                         cachedCount++;
-                        if (!c.isValid(context)) {
+                        if (!c.isValid(this)) {
                             invalid = true;
                             break;
                         } else {
@@ -1369,7 +1369,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return null;
         }
         T filteredNext = filterValid(cache.getNext());
-        if (cache.isValid(context) && (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
+        if (cache.isValid(this) && (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
             if (filteredNext == cache.getNext()) {
                 return cache;
             } else {

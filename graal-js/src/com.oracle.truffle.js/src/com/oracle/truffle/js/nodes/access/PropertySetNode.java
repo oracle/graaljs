@@ -164,7 +164,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(context)) {
+            if (!c.isValid(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -192,7 +192,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(context)) {
+            if (!c.isValid(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -220,7 +220,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(context)) {
+            if (!c.isValid(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
@@ -248,7 +248,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(context)) {
+            if (!c.isValid(this)) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 break;
             }
