@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1257,7 +1257,7 @@ public class JSDebugTest {
                 assertEquals("Jimmy Smith", person.getProperty("fullName").toDisplayString());
                 assertEquals(1, person.getProperty("numQueries").asInt());
 
-                person.getProperty("fullName").set("Jack Jones");
+                person.getProperty("fullName").set(session.createPrimitiveValue("Jack Jones", null));
                 assertEquals(1, person.getProperty("numQueries").asInt());
                 assertEquals("Jack", person.getProperty("firstName").toDisplayString());
                 assertEquals("Jones", person.getProperty("lastName").toDisplayString());

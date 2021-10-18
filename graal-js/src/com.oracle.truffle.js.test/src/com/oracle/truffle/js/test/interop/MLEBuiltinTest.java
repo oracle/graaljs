@@ -79,7 +79,7 @@ public class MLEBuiltinTest {
         }
 
         @Override
-        public Object execute(Value[] args) {
+        public Object execute(Value... args) {
             String referrer = args[0].asString();
             String symbol = args[1].asString();
 
