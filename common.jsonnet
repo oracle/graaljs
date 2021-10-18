@@ -73,6 +73,7 @@ local common_json = (import "common.json");
   },
 
   linux_aarch64: common + {
+    os:: 'linux',
     arch:: 'aarch64',
     capabilities+: ['linux', 'aarch64'],
     packages+: {

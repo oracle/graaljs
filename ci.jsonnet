@@ -1,6 +1,7 @@
 local graalJs = import 'graal-js/ci.jsonnet';
 local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
 local common = import 'common.jsonnet';
+local defs = import 'defs.jsonnet';
 
 {
   // Used to run fewer jobs
@@ -30,4 +31,7 @@ local common = import 'common.jsonnet';
     common.jdk8 + deployBinary + common.deploy + common.postMerge + common.ol65 + {name: 'js-deploybinary-ol65-amd64'},
     common.jdk8 + deployBinary + common.deploy + common.postMerge + common.darwin + {name: 'js-deploybinary-darwin-amd64'},
   ],
+
+  defs:: defs,
+  useArtifacts:: defs.enabled,
 }

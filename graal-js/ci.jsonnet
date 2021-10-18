@@ -2,10 +2,16 @@ local common = import '../common.jsonnet';
 
 {
   local graalJs = {
-    setup: [
+    run+: [
       ['cd', 'graal-js'],
       ['mx', 'sversions'],
     ],
+  },
+
+  local gateTags(tags) = common.gateTags + {
+    environment+: {
+      TAGS: tags,
+    },
   },
 
   local gateCoverage = common.eclipse + {
@@ -61,42 +67,42 @@ local common = import '../common.jsonnet';
   },
 
   builds: [
-    // jdk 8 - linux
+    // gates
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'noic'}}               + {name: 'js-gate-noic-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'directbytebuffer'}}   + {name: 'js-gate-directbytebuffer-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'cloneuninitialized'}} + {name: 'js-gate-cloneuninitialized-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'lazytranslation'}}    + {name: 'js-gate-lazytranslation-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'shareengine'}}        + {name: 'js-gate-shareengine-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'latestversion'}}      + {name: 'js-gate-latestversion-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'instrument'}}         + {name: 'js-gate-instrument-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'tck'}}                + {name: 'js-gate-tck-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk8-linux-amd64'},
-    graalJs + common.jdk8  + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk8-linux-amd64'},
-    graalJs + common.jdk17 + common.daily  + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-daily-native-image-smoke-test-jdk17-linux-amd64'},
+    graalJs + common.jdk11 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk11-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk17-linux-amd64'},
 
-    // jdk 8 - coverage
-    graalJs + common.jdk8  + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk8-linux-amd64'},
-
-    // jdk 8 - windows
-    graalJs + common.jdk8  + common.gate   + common.windows_jdk8   + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk8-windows-amd64'},
+    // jdk 17 - linux
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('default')                                                      + {name: 'js-gate-default-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('noic')                                                         + {name: 'js-gate-noic-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('directbytebuffer')                                             + {name: 'js-gate-directbytebuffer-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('cloneuninitialized')                                           + {name: 'js-gate-cloneuninitialized-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('lazytranslation')                                              + {name: 'js-gate-lazytranslation-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('shareengine')                                                  + {name: 'js-gate-shareengine-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('latestversion')                                                + {name: 'js-gate-latestversion-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('instrument')                                                   + {name: 'js-gate-instrument-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + gateTags('tck')                                                          + {name: 'js-gate-tck-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + webassemblyTest                                                          + {name: 'js-gate-webassembly-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + nativeImageSmokeTest                                                     + {name: 'js-gate-native-image-smoke-test-jdk17-linux-amd64'},
 
     // jdk 11 - linux
-    graalJs + common.jdk11 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk11-linux-amd64'},
-    graalJs + common.jdk11 + common.gate   + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk11-linux-amd64'},
+    graalJs + common.jdk11 + common.gate   + common.linux          + gateTags('default')                                                      + {name: 'js-gate-default-jdk11-linux-amd64'},
+
+    // windows
+    graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.windows_jdk17  + gateTags('Test262-default')                                              + {name: 'js-gate-test262-default-jdk17-windows-amd64'},
+
+    // linux aarch64
+    graalJs + common.jdk11 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-jdk11-linux-aarch64'},
+    graalJs + common.jdk17 + common.gate   + common.linux_aarch64  + gateTags('default')                                                      + {name: 'js-gate-default-jdk17-linux-aarch64'},
+
+    // maven deploy dry run
     graalJs + common.jdk11 + common.gate   + common.linux          + mavenDeployDryRun                                                        + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
 
-    // jdk 11 - linux aarch64
-    graalJs + common.jdk11 + common.gate   + common.linux_aarch64  + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-gate-default-jdk11-linux-aarch64'},
-
-    // jdk 11 - windows
-    graalJs + common.jdk11 + common.gate   + common.windows_jdk11  + common.gateTags           + {environment+: {TAGS: 'Test262-default'}}    + {name: 'js-gate-test262-default-jdk11-windows-amd64'},
-
-    // jdk 16 - linux
-    graalJs + common.jdk17 + common.daily  + common.linux          + common.gateTags           + {environment+: {TAGS: 'default'}}            + {name: 'js-daily-default-jdk17-linux-amd64'},
+    // coverage
+    graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk17-linux-amd64'},
 
     // interop benchmarks
-    graalJs + common.jdk8  + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk8-linux-amd64'},
+    graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
   ],
 }
