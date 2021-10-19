@@ -234,16 +234,16 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         String result;
         switch (type) {
             case IntlUtil.LANGUAGE:
-                IntlUtil.ensureIsStructurallyValidLanguageTag(code);
-                result = displayNames.localeDisplayName(code);
+                result = displayNames.localeDisplayName(IntlUtil.validateAndCanonicalizeLanguageTag(code));
                 break;
             case IntlUtil.REGION:
                 IntlUtil.ensureIsStructurallyValidRegionSubtag(code);
-                result = displayNames.regionDisplayName(code);
+                result = displayNames.regionDisplayName(code.toUpperCase());
                 break;
             case IntlUtil.SCRIPT:
                 IntlUtil.ensureIsStructurallyValidScriptSubtag(code);
-                result = displayNames.scriptDisplayName(code);
+                String canonicalScript = Character.toUpperCase(code.charAt(0)) + code.substring(1).toLowerCase();
+                result = displayNames.scriptDisplayName(canonicalScript);
                 break;
             case IntlUtil.CALENDAR:
                 IntlUtil.ensureIsStructurallyValidCalendar(code);
@@ -254,7 +254,7 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 break;
             case IntlUtil.CURRENCY:
                 IntlUtil.ensureIsWellFormedCurrencyCode(code);
-                result = displayNames.keyValueDisplayName(IntlUtil.CURRENCY, code);
+                result = displayNames.keyValueDisplayName(IntlUtil.CURRENCY, code.toUpperCase());
                 break;
             default:
                 throw Errors.shouldNotReachHere(type);

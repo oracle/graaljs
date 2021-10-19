@@ -405,15 +405,6 @@ public final class IntlUtil {
         }
     }
 
-    @TruffleBoundary
-    public static void ensureIsStructurallyValidLanguageTag(String languageTag) {
-        try {
-            new Locale.Builder().setLanguageTag(languageTag).build();
-        } catch (IllformedLocaleException e) {
-            throw Errors.createRangeError(e.getMessage());
-        }
-    }
-
     // Placeholders used to work around incorrect modifications of local extensions
     // performed by ULocale.Builder
     private static final String YES_PLACEHOLDER = "yes31415";
