@@ -57,30 +57,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/displaynames/calendar-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/constructor-order-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/constructor-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/date-time-field-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/languagecanonical.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/displaynames/resolved-options-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
   }, {

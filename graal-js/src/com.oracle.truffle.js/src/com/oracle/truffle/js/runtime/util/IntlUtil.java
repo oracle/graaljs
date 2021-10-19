@@ -100,10 +100,12 @@ public final class IntlUtil {
     public static final String CURRENCY_DISPLAY = "currencyDisplay";
     public static final String CURRENCY_SIGN = "currencySign";
     public static final String DATE_STYLE = "dateStyle";
+    public static final String DATE_TIME_FIELD = "dateTimeField";
     public static final String DAY = "day";
     public static final String DAY_PERIOD = "dayPeriod";
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
+    public static final String DIALECT = "dialect";
     public static final String DISJUNCTION = "disjunction";
     public static final String ELEMENT = "element";
     public static final String ENGINEERING = "engineering";
@@ -128,6 +130,7 @@ public final class IntlUtil {
     public static final String IS_WORD_LIKE = "isWordLike";
     public static final String IGNORE_PUNCTUATION = "ignorePunctuation";
     public static final String LANGUAGE = "language";
+    public static final String LANGUAGE_DISPLAY = "languageDisplay";
     public static final String LITERAL = "literal";
     public static final String LOCALE = "locale";
     public static final String LOCALE_MATCHER = "localeMatcher";
@@ -157,6 +160,7 @@ public final class IntlUtil {
     public static final String OR_SHORT = "or-short";
     public static final String ORDINAL = "ordinal";
     public static final String PERCENT = "percent";
+    public static final String QUARTER = "quarter";
     public static final String REGION = "region";
     public static final String SCIENTIFIC = "scientific";
     public static final String SCRIPT = "script";
@@ -192,6 +196,7 @@ public final class IntlUtil {
     public static final String VARIANT = "variant";
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
+    public static final String WEEK_OF_YEAR = "weekOfYear";
     public static final String YEAR = "year";
     public static final String YEAR_NAME = "yearName";
 
@@ -394,12 +399,9 @@ public final class IntlUtil {
         }
     }
 
-    @TruffleBoundary
-    public static void ensureIsStructurallyValidLanguageTag(String languageTag) {
-        try {
-            new Locale.Builder().setLanguageTag(languageTag).build();
-        } catch (IllformedLocaleException e) {
-            throw Errors.createRangeError(e.getMessage());
+    public static void ensureIsStructurallyValidCalendar(String calendar) {
+        if (!UTS35Validator.isStructurallyValidType(calendar)) {
+            throw Errors.createRangeErrorInvalidCalendar(calendar);
         }
     }
 
