@@ -311,10 +311,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected abstract static class AbstractSingleRealmShapeCheckNode extends AbstractShapeCheckNode {
-        @CompilationFinal(dimensions = 1) protected Assumption[] assumptions;
+        @CompilationFinal(dimensions = 1) protected final Assumption[] assumptions;
 
-        protected AbstractSingleRealmShapeCheckNode(Shape shape, JSContext context) {
+        protected AbstractSingleRealmShapeCheckNode(Shape shape, Assumption[] assumptions, JSContext context) {
             super(shape);
+            this.assumptions = assumptions;
             assert !context.isMultiContext();
         }
 
@@ -330,17 +331,33 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
+    protected abstract static class AbstractFinalPrototypeShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
+        private final DynamicObject prototype;
+
+        protected AbstractFinalPrototypeShapeCheckNode(Shape shape, Assumption[] assumptions, DynamicObject prototype, JSContext context) {
+            super(shape, assumptions, context);
+            this.prototype = prototype;
+        }
+
+        @Override
+        public final DynamicObject getStore(Object thisObj) {
+            return prototype;
+        }
+    }
+
     /**
      * Check the shape of the object by identity and the shape of its immediate prototype by
      * assumption (valid and unchanged).
      */
-    protected static final class PrototypeShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
+    protected static final class PrototypeShapeCheckNode extends AbstractFinalPrototypeShapeCheckNode {
 
-        private final DynamicObject prototype;
+        private PrototypeShapeCheckNode(Shape shape, Assumption[] assumptions, DynamicObject prototype, JSContext context) {
+            super(shape, assumptions, prototype, context);
 
-        public PrototypeShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
-            super(shape, context);
-            assert depth == 1;
+        }
+
+        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
+            assert depth == 1; // This specialization must only be used for prototype depth 1.
             Assumption[] ass = new Assumption[3];
             int pos = 0;
             ass[pos++] = shape.getValidAssumption();
@@ -348,13 +365,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             Shape protoShape = finalProto.getShape();
             ass[pos++] = protoShape.getValidAssumption();
             ass[pos++] = JSShape.getPropertyAssumption(protoShape, key, true);
-            this.assumptions = ass;
-            this.prototype = finalProto;
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return prototype;
+            assert pos == ass.length;
+            return new PrototypeShapeCheckNode(shape, ass, finalProto, context);
         }
 
         @Override
@@ -367,12 +379,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks the top shape by identity and the shapes of the prototype chain up to the given depth
      * using assumptions only (valid and property unchanged).
      */
-    protected static final class PrototypeChainShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
+    protected static final class PrototypeChainShapeCheckNode extends AbstractFinalPrototypeShapeCheckNode {
 
-        private final DynamicObject prototype;
+        private PrototypeChainShapeCheckNode(Shape shape, Assumption[] assumptions, DynamicObject prototype, JSContext context) {
+            super(shape, assumptions, prototype, context);
+        }
 
-        public PrototypeChainShapeCheckNode(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
-            super(shape, context);
+        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
             Assumption[] ass = new Assumption[1 + (depth == 0 ? 0 : depth * 3 - 1)];
             int pos = 0;
             ass[pos++] = shape.getValidAssumption();
@@ -389,14 +402,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 }
             }
             assert pos == ass.length;
-            this.assumptions = ass;
-
-            this.prototype = depthProto;
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return prototype;
+            return new PrototypeChainShapeCheckNode(shape, ass, depthProto, context);
         }
 
         @Override
@@ -415,14 +421,19 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected static final class ConstantObjectAssumptionShapeCheckNode extends AbstractSingleRealmShapeCheckNode {
 
-        public ConstantObjectAssumptionShapeCheckNode(Shape shape, Object key, JSContext context) {
-            super(shape, context);
+        private ConstantObjectAssumptionShapeCheckNode(Shape shape, Assumption[] assumptions, JSContext context) {
+            super(shape, assumptions, context);
+        }
+
+        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
+            assert thisObj != null;
+            assert depth == 0;
             Assumption[] ass = new Assumption[2];
             int pos = 0;
             ass[pos++] = shape.getValidAssumption();
             ass[pos++] = JSShape.getPropertyAssumption(shape, key);
             assert pos == ass.length;
-            this.assumptions = ass;
+            return new ConstantObjectAssumptionShapeCheckNode(shape, ass, context);
         }
 
         @Override
@@ -452,8 +463,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         private final WeakReference<DynamicObject> prototype;
 
-        public ConstantObjectPrototypeChainShapeCheckNode(Shape shape, JSDynamicObject thisObj, Object key, int depth, JSContext context) {
-            super(shape, context);
+        private ConstantObjectPrototypeChainShapeCheckNode(Shape shape, Assumption[] assumptions, DynamicObject prototype, JSContext context) {
+            super(shape, assumptions, context);
+            this.prototype = new WeakReference<>(prototype);
+        }
+
+        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
             Assumption[] ass = new Assumption[2 + depth * 3];
             int pos = 0;
             ass[pos++] = shape.getValidAssumption();
@@ -469,9 +484,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 ass[pos++] = stablePrototypeAssumption;
             }
             assert pos == ass.length;
-            this.assumptions = ass;
-
-            this.prototype = new WeakReference<>(depthProto);
+            return new ConstantObjectPrototypeChainShapeCheckNode(shape, ass, depthProto, context);
         }
 
         @Override
@@ -644,11 +657,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks the shapes of the prototype chain up to the given depth using assumptions only (valid
      * and property unchanged).
      */
-    protected static final class PrototypeChainCheckNode extends AbstractSingleRealmShapeCheckNode {
-        private final DynamicObject prototype;
+    protected static final class PrototypeChainCheckNode extends AbstractFinalPrototypeShapeCheckNode {
 
-        public PrototypeChainCheckNode(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
-            super(shape, context);
+        private PrototypeChainCheckNode(Shape shape, JSContext context, Assumption[] assumptions, DynamicObject prototype) {
+            super(shape, assumptions, prototype, context);
+        }
+
+        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
             assert depth >= 1;
             Assumption[] ass = new Assumption[depth * 3];
             int pos = 0;
@@ -663,19 +678,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 ass[pos++] = stablePrototypeAssumption;
             }
             assert pos == ass.length;
-            this.assumptions = ass;
-
-            this.prototype = depthProto;
+            return new PrototypeChainCheckNode(shape, context, ass, depthProto);
         }
 
         @Override
         public boolean accept(Object thisObj) {
             return true;
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return prototype;
         }
 
         @Override
@@ -1266,7 +1274,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         // if isDefine is true, shape change is imminent, so don't use assumption
         if (!isDefine && (isConstantObjectFinal || (isGlobal() && JSConfig.SkipGlobalShapeCheck)) &&
                         isPropertyAssumptionCheckEnabled() && JSShape.getPropertyAssumption(shape, key).isValid()) {
-            return new ConstantObjectAssumptionShapeCheckNode(shape, key, getContext());
+            return ConstantObjectAssumptionShapeCheckNode.create(shape, thisObj, key, 0, getContext());
         } else {
             return new ShapeCheckNode(shape);
         }
@@ -1276,8 +1284,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         assert depth == 1;
         if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             return isConstantObjectFinal
-                            ? new ConstantObjectPrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext())
-                            : new PrototypeShapeCheckNode(shape, thisObj, key, depth, getContext());
+                            ? ConstantObjectPrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext())
+                            : PrototypeShapeCheckNode.create(shape, thisObj, key, depth, getContext());
         } else {
             traversePrototypeShapeCheckCount.inc();
             return new TraversePrototypeShapeCheckNode(shape, thisObj);
@@ -1288,8 +1296,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         assert depth > 1;
         if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             return isConstantObjectFinal
-                            ? new ConstantObjectPrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext())
-                            : new PrototypeChainShapeCheckNode(shape, thisObj, key, depth, getContext());
+                            ? ConstantObjectPrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext())
+                            : PrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext());
         } else {
             traversePrototypeChainShapeCheckCount.inc();
             return new TraversePrototypeChainShapeCheckNode(shape, thisObj, depth);
@@ -1337,7 +1345,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             DynamicObject wrapped = wrapPrimitive(thisObj, context);
             AbstractShapeCheckNode prototypeShapeCheck;
             if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
-                prototypeShapeCheck = new PrototypeChainCheckNode(wrapped.getShape(), wrapped, key, depth, context);
+                prototypeShapeCheck = PrototypeChainCheckNode.create(wrapped.getShape(), wrapped, key, depth, context);
             } else {
                 prototypeShapeCheck = new TraversePrototypeChainCheckNode(wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped));
             }
