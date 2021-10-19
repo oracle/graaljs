@@ -716,7 +716,8 @@ public abstract class Environment {
         }
 
         public ScopeFrameNode createScopeFrameNode() {
-            return factory.createScopeFrame(frameLevel, getEffectiveScopeLevel(), getParentSlots(frameLevel, getEffectiveScopeLevel()), getBlockScopeSlot());
+            int effectiveScopeLevel = getEffectiveScopeLevel();
+            return factory.createScopeFrame(frameLevel, effectiveScopeLevel, getParentSlots(frameLevel, effectiveScopeLevel), getBlockScopeSlot());
         }
 
         public FrameDescriptor getFrameDescriptor() {
@@ -724,11 +725,11 @@ public abstract class Environment {
         }
 
         public FrameSlot getBlockScopeSlot() {
-            return current instanceof BlockEnvironment ? current.function().getBlockScopeSlot() : null;
+            return current.getCurrentBlockScopeSlot();
         }
 
         public int getEffectiveScopeLevel() {
-            return current instanceof BlockEnvironment || frameLevel != 0 ? scopeLevel : 0;
+            return (current instanceof FunctionEnvironment && frameLevel == 0) ? 0 : scopeLevel;
         }
     }
 

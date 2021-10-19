@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,86 +40,49 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import java.util.Objects;
-
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
-public class BlockEnvironment extends Environment {
-    private final FunctionEnvironment functionEnvironment;
-    private final FrameDescriptor blockFrameDescriptor;
-    private final FrameSlot parentSlot;
-    private final int scopeLevel;
-    private final FrameSlot[] parentSlots;
-    private final boolean isFunctionBlock;
+public final class PrivateEnvironment extends Environment {
 
-    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context, boolean isFunctionBlock) {
+    public PrivateEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
-        this.functionEnvironment = parent.function();
-        this.blockFrameDescriptor = factory.createBlockFrameDescriptor();
-        this.parentSlot = Objects.requireNonNull(blockFrameDescriptor.findFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER));
-        this.scopeLevel = parent.getScopeLevel() + 1;
-        this.parentSlots = prepend(parent.getParentSlots(), parentSlot);
-        assert parentSlots.length == scopeLevel;
-        this.isFunctionBlock = isFunctionBlock;
-        this.functionEnvironment.getOrCreateBlockScopeSlot();
-    }
-
-    public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context) {
-        this(parent, factory, context, false);
     }
 
     @Override
     public FunctionEnvironment function() {
-        return functionEnvironment;
-    }
-
-    @Override
-    public FrameSlot findBlockFrameSlot(Object name) {
-        FrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
-        if (slot != null && JSFrameUtil.isPrivateName(slot)) {
-            // Private names are only visible from PrivateEnvironment.
-            return null;
-        }
-        return slot;
-    }
-
-    @Override
-    public FrameDescriptor getBlockFrameDescriptor() {
-        return blockFrameDescriptor;
-    }
-
-    public FrameSlot getParentSlot() {
-        return parentSlot;
+        return getParent().function();
     }
 
     @Override
     public int getScopeLevel() {
-        return scopeLevel;
+        return getParent().getScopeLevel();
     }
 
     @Override
-    public FrameSlot[] getParentSlots() {
-        return parentSlots;
+    protected FrameSlot findBlockFrameSlot(Object name) {
+        FrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
+        if (slot != null && JSFrameUtil.isPrivateName(slot)) {
+            return slot;
+        }
+        return null;
+    }
+
+    @Override
+    public FrameDescriptor getBlockFrameDescriptor() {
+        return getParent().getBlockFrameDescriptor();
     }
 
     @Override
     public FrameSlot getCurrentBlockScopeSlot() {
-        return functionEnvironment.getBlockScopeSlot();
+        return getParent().getCurrentBlockScopeSlot();
     }
 
-    public boolean isFunctionBlock() {
-        return isFunctionBlock;
-    }
-
-    private static FrameSlot[] prepend(FrameSlot[] srcArray, FrameSlot newSlot) {
-        FrameSlot[] newArray = new FrameSlot[srcArray.length + 1];
-        newArray[0] = newSlot;
-        System.arraycopy(srcArray, 0, newArray, 1, srcArray.length);
-        return newArray;
+    @Override
+    public FrameSlot[] getParentSlots() {
+        return getParent().getParentSlots();
     }
 }
