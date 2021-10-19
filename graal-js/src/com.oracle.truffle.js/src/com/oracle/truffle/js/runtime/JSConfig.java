@@ -147,6 +147,7 @@ public final class JSConfig {
     public static final boolean SkipGlobalShapeCheck = true;
     public static final boolean SkipFinalShapeCheck = true;
     public static final boolean LeafShapeAssumption = true;
+    public static final boolean PropertyAssumption = true;
 
     // SubstrateVM
     public static final boolean SubstrateVM = TruffleOptions.AOT;

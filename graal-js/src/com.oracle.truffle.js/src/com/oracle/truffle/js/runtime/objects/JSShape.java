@@ -222,7 +222,8 @@ public final class JSShape {
                         dynamicType(jsclass).//
                         sharedData(JSShape.makeJSSharedData(context, (JSDynamicObject) proto)).//
                         shapeFlags(getDefaultShapeFlags(jsclass)).//
-                        allowImplicitCastIntToDouble(true);
+                        allowImplicitCastIntToDouble(true).//
+                        propertyAssumptions(JSConfig.PropertyAssumption && !context.isMultiContext());
     }
 
     public static int getDefaultShapeFlags(JSClass jsclass) {
