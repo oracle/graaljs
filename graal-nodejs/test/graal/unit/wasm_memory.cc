@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -39,35 +39,62 @@
  * SOFTWARE.
  */
 
-#include "arguments.cc"
-#include "array.cc"
-#include "arraybuffer.cc"
-#include "bigint.cc"
-#include "boolean.cc"
-#include "bootstrap.cc"
-#include "cast.cc"
-#include "context.cc"
-#include "exception.cc"
-#include "external.cc"
-#include "function.cc"
-#include "function_template.cc"
-#include "gc.cc"
-#include "local.cc"
-#include "integer.cc"
-#include "isolate.cc"
-#include "message.cc"
-#include "null.cc"
-#include "object.cc"
-#include "object_new.cc"
-#include "object_template.cc"
-#include "persistent.cc"
-#include "script.cc"
-#include "set.cc"
-#include "stacktrace.cc"
-#include "string.cc"
-#include "symbol.cc"
-#include "try_catch.cc"
-#include "undefined.cc"
-#include "value.cc"
-#include "v8obj.cc"
-#include "wasm_memory.cc"
+#define SUITE WasmMemory
+
+#include <array>
+
+#ifdef SUITE_INTERNALS
+#endif
+
+// WasmMemory::CheckBackingStore
+
+EXPORT_TO_JS(CheckBackingStore) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+
+    Local<ArrayBuffer> buffer = args[0].As<ArrayBuffer>();
+    Local<Function> callback = args[1].As<Function>();
+
+    std::shared_ptr<BackingStore> backingStore = buffer->GetBackingStore();
+
+    const int argc = 2;
+    std::array<Local<Value>, argc> argv;
+    argv[0] = Integer::New(isolate, backingStore->ByteLength());
+    if (backingStore->Data() != nullptr) {
+        argv[1] = Integer::New(isolate,((uint8_t*)backingStore->Data())[0]);
+    } else {
+        argv[1] = Undefined(isolate);
+    }
+    if (callback->Call(context, context->Global(), argc, argv.data()).IsEmpty()) {
+        args.GetReturnValue().Set(false);
+        return;
+    }
+
+    argv[0] = Integer::New(isolate, backingStore->ByteLength());
+    if (backingStore->Data() != nullptr) {
+        argv[1] = Integer::New(isolate,((uint8_t*)backingStore->Data())[0]);
+    } else {
+        argv[1] = Undefined(isolate);
+    }
+    if (callback->Call(context, context->Global(), argc, argv.data()).IsEmpty()) {
+        args.GetReturnValue().Set(false);
+        return;
+    }
+
+    backingStore = buffer->GetBackingStore();
+
+    argv[0] = Integer::New(isolate, backingStore->ByteLength());
+    if (backingStore->Data() != nullptr) {
+        argv[1] = Integer::New(isolate,((uint8_t*)backingStore->Data())[0]);
+    } else {
+        argv[1] = Undefined(isolate);
+    }
+    if (callback->Call(context, context->Global(), argc, argv.data()).IsEmpty()) {
+        args.GetReturnValue().Set(false);
+        return;
+    }
+
+    args.GetReturnValue().Set(true);
+}
+
+#undef SUITE
