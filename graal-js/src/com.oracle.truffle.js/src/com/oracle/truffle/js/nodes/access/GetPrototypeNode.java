@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,9 +68,9 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
     GetPrototypeNode() {
     }
 
-    protected abstract DynamicObject executeDynamicObject(DynamicObject obj);
+    public abstract DynamicObject execute(DynamicObject obj);
 
-    public abstract DynamicObject executeJSObject(Object obj);
+    public abstract DynamicObject execute(Object obj);
 
     public static GetPrototypeNode create() {
         return GetPrototypeNodeGen.create();
@@ -84,7 +84,7 @@ public abstract class GetPrototypeNode extends JavaScriptBaseNode {
 
             @Override
             public DynamicObject execute(VirtualFrame frame) {
-                return getPrototypeNode.executeJSObject(objectNode.execute(frame));
+                return getPrototypeNode.execute(objectNode.execute(frame));
             }
 
             @Override

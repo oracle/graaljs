@@ -465,7 +465,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getSuperclassNode = insert(GetPrototypeNode.create());
             }
-            return getSuperclassNode.executeJSObject(constructor);
+            return getSuperclassNode.execute(constructor);
         }
 
         protected OperatorSet getOperatorDefinitions(DynamicObject constructor) {

@@ -259,7 +259,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached @Shared("invalidPrototypeBranch") BranchProfile invalidPrototypeBranch) {
             DynamicObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
             if (lessThan4) {
-                DynamicObject proto = getPrototype1Node.executeJSObject(left);
+                DynamicObject proto = getPrototype1Node.execute(left);
                 if (proto == ctorPrototype) {
                     firstTrue.enter();
                     return true;
@@ -268,14 +268,14 @@ public abstract class InstanceofNode extends JSBinaryNode {
                     return false;
                 }
                 need2Hops.enter();
-                proto = getPrototype2Node.executeJSObject(proto);
+                proto = getPrototype2Node.execute(proto);
                 if (proto == ctorPrototype) {
                     return true;
                 } else if (proto == Null.instance) {
                     return false;
                 }
                 need3Hops.enter();
-                proto = getPrototype3Node.executeJSObject(proto);
+                proto = getPrototype3Node.execute(proto);
                 if (proto == ctorPrototype) {
                     return true;
                 }
@@ -303,7 +303,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         private boolean doJSObject4(DynamicObject obj, DynamicObject check, GetPrototypeNode getLoopedPrototypeNode, BranchProfile errorBranch) {
             DynamicObject proto = obj;
             int counter = 0;
-            while ((proto = getLoopedPrototypeNode.executeJSObject(proto)) != Null.instance) {
+            while ((proto = getLoopedPrototypeNode.execute(proto)) != Null.instance) {
                 counter++;
                 if (counter > context.getContextOptions().getMaxPrototypeChainLength()) {
                     errorBranch.enter();

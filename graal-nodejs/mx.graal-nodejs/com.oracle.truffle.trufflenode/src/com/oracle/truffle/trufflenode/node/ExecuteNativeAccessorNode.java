@@ -89,7 +89,7 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
             DynamicObject functionObject = signature.getFunctionObject(getRealm());
             if (functionObject != null) {
                 Object functionPrototype = prototypePropertyGetNode.getValue(functionObject);
-                Object instancePrototype = getPrototypeNode.executeJSObject(arguments[0]);
+                Object instancePrototype = getPrototypeNode.execute(arguments[0]);
                 if (functionPrototype != instancePrototype) {
                     errorBranch.enter();
                     throw Errors.createTypeError(incompatibleReceiverMessage(accessor));

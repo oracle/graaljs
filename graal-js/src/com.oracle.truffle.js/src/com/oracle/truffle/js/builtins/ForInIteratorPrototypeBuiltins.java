@@ -231,7 +231,7 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     }
                 }
 
-                DynamicObject proto = getPrototypeNode.executeJSObject(object);
+                DynamicObject proto = getPrototypeNode.execute(object);
                 if (tryFastForwardImmutablePrototype(proto)) {
                     proto = Null.instance;
                 }

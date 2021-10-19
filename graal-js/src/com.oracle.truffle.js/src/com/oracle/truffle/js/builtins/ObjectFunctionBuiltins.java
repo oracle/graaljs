@@ -332,7 +332,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = "isJSObject(object)")
         protected DynamicObject getPrototypeOfJSObject(DynamicObject object,
                         @Cached("create()") GetPrototypeNode getPrototypeNode) {
-            return getPrototypeNode.executeJSObject(object);
+            return getPrototypeNode.execute(object);
         }
     }
 

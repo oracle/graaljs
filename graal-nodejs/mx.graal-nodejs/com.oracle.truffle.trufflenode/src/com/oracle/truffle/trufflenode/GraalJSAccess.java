@@ -3970,7 +3970,7 @@ public final class GraalJSAccess {
             if (global) {
                 return target;
             } else {
-                return getPrototypeNode.executeJSObject(target);
+                return getPrototypeNode.execute(target);
             }
         }
 

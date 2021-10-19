@@ -137,7 +137,7 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                     @Cached IsExtensibleNode isExtensible) {
         PropertyDescriptor desc = null;
         boolean isProxy = false;
-        for (DynamicObject proto = target; proto != Null.instance; proto = getPrototype.executeJSObject(proto)) {
+        for (DynamicObject proto = target; proto != Null.instance; proto = getPrototype.execute(proto)) {
             desc = JSObject.getOwnProperty(proto, key);
             if (JSProxy.isJSProxy(proto)) {
                 isProxy = true;

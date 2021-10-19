@@ -558,7 +558,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
             GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
             for (int i = 0; i < shapeCheckArray.length; i++) {
-                current = getPrototypeArray[i].executeDynamicObject(current);
+                current = getPrototypeArray[i].execute(current);
                 result = shapeCheckArray[i].accept(current);
                 if (!result) {
                     return false;
@@ -574,7 +574,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             DynamicObject proto = (JSDynamicObject) thisObj;
             GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
             for (int i = 0; i < getPrototypeArray.length; i++) {
-                proto = getPrototypeArray[i].executeDynamicObject(proto);
+                proto = getPrototypeArray[i].execute(proto);
             }
             return proto;
         }
@@ -626,7 +626,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 DynamicObject jsobj = (JSDynamicObject) thisObj;
                 if (getShape().check(jsobj)) {
                     // Return the shape check of the prototype we're going to access.
-                    return protoShapeCheck.accept(getPrototypeNode.executeDynamicObject(jsobj));
+                    return protoShapeCheck.accept(getPrototypeNode.execute(jsobj));
                 }
             }
             return false;
@@ -634,7 +634,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            return getPrototypeNode.executeDynamicObject((JSDynamicObject) thisObj);
+            return getPrototypeNode.execute(thisObj);
         }
 
         @Override
@@ -736,7 +736,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                     return false;
                 }
                 if (i < shapeCheckArray.length - 1) {
-                    current = getPrototypeArray[i].executeDynamicObject(current);
+                    current = getPrototypeArray[i].execute(current);
                 }
             }
             // Return the shape check of the prototype we're going to access.
@@ -749,7 +749,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             DynamicObject proto = jsclass.getIntrinsicDefaultProto(getRealm());
             GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
             for (int i = 0; i < getPrototypeArray.length; i++) {
-                proto = getPrototypeArray[i].executeDynamicObject(proto);
+                proto = getPrototypeArray[i].execute(proto);
             }
             return proto;
         }
