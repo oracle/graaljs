@@ -292,11 +292,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected static final class ShapeCheckNode extends AbstractShapeCheckNode {
 
-        private final Assumption shapeValidAssumption;
-
         public ShapeCheckNode(Shape shape) {
             super(shape);
-            this.shapeValidAssumption = shape.getValidAssumption();
         }
 
         @Override
@@ -306,7 +303,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean isValid() {
-            return shapeValidAssumption.isValid();
+            return shape.getValidAssumption().isValid();
         }
     }
 
@@ -524,14 +521,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected static final class TraversePrototypeChainShapeCheckNode extends AbstractShapeCheckNode {
 
-        private final Assumption shapeValidAssumption;
-        @Children private final ShapeCheckNode[] shapeCheckNodes;
+        @CompilationFinal(dimensions = 1) private final Shape[] protoShapes;
         @Children private final GetPrototypeNode[] getPrototypeNodes;
 
         public TraversePrototypeChainShapeCheckNode(Shape shape, DynamicObject thisObj, int depth) {
             super(shape);
-            this.shapeValidAssumption = shape.getValidAssumption();
-            this.shapeCheckNodes = new ShapeCheckNode[depth];
+            this.protoShapes = new Shape[depth];
             this.getPrototypeNodes = new GetPrototypeNode[depth];
 
             Shape depthShape = shape;
@@ -539,7 +534,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             for (int i = 0; i < depth; i++) {
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
-                shapeCheckNodes[i] = new ShapeCheckNode(depthShape);
+                protoShapes[i] = depthShape;
                 getPrototypeNodes[i] = GetPrototypeNode.create();
             }
         }
@@ -555,11 +550,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             if (!result) {
                 return false;
             }
-            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
+            Shape[] shapeArray = protoShapes;
             GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
-            for (int i = 0; i < shapeCheckArray.length; i++) {
+            for (int i = 0; i < shapeArray.length; i++) {
                 current = getPrototypeArray[i].execute(current);
-                result = shapeCheckArray[i].accept(current);
+                result = shapeArray[i].check(current);
                 if (!result) {
                     return false;
                 }
@@ -581,18 +576,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public int getDepth() {
-            return shapeCheckNodes.length;
+            return protoShapes.length;
         }
 
         @ExplodeLoop
         @Override
         public boolean isValid() {
-            if (!shapeValidAssumption.isValid()) {
+            if (!shape.getValidAssumption().isValid()) {
                 return false;
             }
-            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
-            for (int i = 0; i < shapeCheckArray.length; i++) {
-                if (!shapeCheckArray[i].isValid()) {
+            for (Shape protoShape : protoShapes) {
+                if (!protoShape.getValidAssumption().isValid()) {
                     return false;
                 }
             }
@@ -609,14 +603,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected static final class TraversePrototypeShapeCheckNode extends AbstractShapeCheckNode {
 
-        private final Assumption shapeValidAssumption;
-        @Child private ShapeCheckNode protoShapeCheck;
+        private final Shape protoShape;
         @Child private GetPrototypeNode getPrototypeNode;
 
         public TraversePrototypeShapeCheckNode(Shape shape, DynamicObject thisObj) {
             super(shape);
-            this.shapeValidAssumption = shape.getValidAssumption();
-            this.protoShapeCheck = new ShapeCheckNode(JSObject.getPrototype(thisObj).getShape());
+            this.protoShape = JSObject.getPrototype(thisObj).getShape();
             this.getPrototypeNode = GetPrototypeNode.create();
         }
 
@@ -626,7 +618,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 DynamicObject jsobj = (JSDynamicObject) thisObj;
                 if (getShape().check(jsobj)) {
                     // Return the shape check of the prototype we're going to access.
-                    return protoShapeCheck.accept(getPrototypeNode.execute(jsobj));
+                    return protoShape.check(getPrototypeNode.execute(jsobj));
                 }
             }
             return false;
@@ -644,9 +636,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public boolean isValid() {
-            if (!shapeValidAssumption.isValid()) {
+            if (!shape.getValidAssumption().isValid()) {
                 return false;
-            } else if (!protoShapeCheck.isValid()) {
+            } else if (!protoShape.getValidAssumption().isValid()) {
                 return false;
             }
             return true;
@@ -701,14 +693,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected static final class TraversePrototypeChainCheckNode extends AbstractShapeCheckNode {
         private final PrototypeSupplier jsclass;
-        @Children private final ShapeCheckNode[] shapeCheckNodes;
+        @CompilationFinal(dimensions = 1) private final Shape[] protoShapes;
         @Children private final GetPrototypeNode[] getPrototypeNodes;
 
         public TraversePrototypeChainCheckNode(Shape shape, DynamicObject thisObj, int depth, JSClass jsclass) {
             super(shape);
             assert depth >= 1;
             this.jsclass = (PrototypeSupplier) jsclass;
-            this.shapeCheckNodes = new ShapeCheckNode[depth];
+            this.protoShapes = new Shape[depth];
             this.getPrototypeNodes = new GetPrototypeNode[depth - 1];
 
             Shape depthShape = shape;
@@ -716,7 +708,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             for (int i = 0; i < depth; i++) {
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
-                shapeCheckNodes[i] = new ShapeCheckNode(depthShape);
+                protoShapes[i] = depthShape;
                 if (i < depth - 1) {
                     getPrototypeNodes[i] = GetPrototypeNode.create();
                 }
@@ -728,14 +720,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         public boolean accept(Object thisObj) {
             DynamicObject current = jsclass.getIntrinsicDefaultProto(getRealm());
             boolean result = true;
-            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
+            Shape[] shapeArray = protoShapes;
             GetPrototypeNode[] getPrototypeArray = getPrototypeNodes;
-            for (int i = 0; i < shapeCheckArray.length; i++) {
-                result = shapeCheckArray[i].accept(current);
+            for (int i = 0; i < shapeArray.length; i++) {
+                result = shapeArray[i].check(current);
                 if (!result) {
                     return false;
                 }
-                if (i < shapeCheckArray.length - 1) {
+                if (i < shapeArray.length - 1) {
                     current = getPrototypeArray[i].execute(current);
                 }
             }
@@ -756,15 +748,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public int getDepth() {
-            return shapeCheckNodes.length;
+            return protoShapes.length;
         }
 
         @ExplodeLoop
         @Override
         public boolean isValid() {
-            ShapeCheckNode[] shapeCheckArray = shapeCheckNodes;
-            for (int i = 0; i < shapeCheckArray.length; i++) {
-                if (!shapeCheckArray[i].isValid()) {
+            for (Shape protoShape : protoShapes) {
+                if (!protoShape.getValidAssumption().isValid()) {
                     return false;
                 }
             }
