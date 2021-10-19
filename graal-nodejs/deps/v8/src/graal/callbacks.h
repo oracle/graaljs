@@ -156,6 +156,4 @@ jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, 
 
 jobject GraalSyntheticModuleEvaluationSteps(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_module);
 
-jobject GraalNewDirectByteBuffer(JNIEnv* env, jclass nativeAccess, jlong address, jlong capacity);
-
 #endif /* CALLBACKS_H_ */
