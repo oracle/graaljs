@@ -108,7 +108,7 @@ public final class DateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<D
         protected double parse(Object parseDate,
                         @Cached("create()") JSToStringNode toStringNode) {
             String dateString = toStringNode.executeString(parseDate);
-            Integer[] fields = getContext().getEvaluator().parseDate(getContext().getRealm(), dateString.trim(), false);
+            Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), dateString.trim(), false);
             if (gotFieldsProfile.profile(fields != null)) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
             }

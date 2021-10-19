@@ -109,7 +109,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         if (!TemporalUtil.isoDateTimeWithinLimits(y, m, d, hour, minute, second, millisecond, microsecond, nanosecond)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainDateTimeFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateTimeObject(factory.getShape(realm),
                         y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar), realm);

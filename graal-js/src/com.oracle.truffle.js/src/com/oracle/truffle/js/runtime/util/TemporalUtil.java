@@ -129,6 +129,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
@@ -525,7 +526,8 @@ public final class TemporalUtil {
     }
 
     private static JSTemporalDateTimeRecord tryJSDateParser(JSContext ctx, String string) {
-        Integer[] f = ctx.getEvaluator().parseDate(ctx.getRealm(), string, true);
+        JSRealm realm = JSRealm.get(null);
+        Integer[] f = ctx.getEvaluator().parseDate(realm, string, true);
         if (f != null) {
             int millis = get(f, 6);
             int ms = 0;
@@ -809,7 +811,8 @@ public final class TemporalUtil {
     // 13.52
     @TruffleBoundary
     public static DynamicObject prepareTemporalFields(JSContext ctx, DynamicObject fields, Set<String> fieldNames, Set<String> requiredFields) {
-        DynamicObject result = JSOrdinary.create(ctx);
+        JSRealm realm = JSRealm.get(null);
+        DynamicObject result = JSOrdinary.create(ctx, realm);
         for (String property : fieldNames) {
             Object value = JSObject.get(fields, property);
             if (isNullish(value)) {
@@ -833,7 +836,8 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static DynamicObject preparePartialTemporalFields(JSContext ctx, DynamicObject fields, Set<String> fieldNames) {
-        DynamicObject result = JSOrdinary.create(ctx);
+        JSRealm realm = JSRealm.get(null);
+        DynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
         for (String property : fieldNames) {
             Object value = JSObject.get(fields, property);
@@ -1024,7 +1028,8 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static DynamicObject getBuiltinCalendar(JSContext ctx, String id) {
-        Object cal = JSRuntime.construct(ctx.getRealm().getTemporalCalendarConstructor(), new Object[]{id});
+        JSRealm realm = JSRealm.get(null);
+        Object cal = JSRuntime.construct(realm.getTemporalCalendarConstructor(), new Object[]{id});
         return (DynamicObject) cal;
     }
 
@@ -1056,7 +1061,8 @@ public final class TemporalUtil {
         if (fields == Undefined.instance) {
             return strings;
         } else {
-            DynamicObject fieldsArray = JSArray.createConstant(ctx, strings.toArray(new String[]{}));
+            JSRealm realm = JSRealm.get(null);
+            DynamicObject fieldsArray = JSArray.createConstant(ctx, realm, strings.toArray(new String[]{}));
             return arrayToStringSet((DynamicObject) JSRuntime.call(fields, calendar, new Object[]{fieldsArray}));
         }
     }
@@ -1800,7 +1806,8 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static Object defaultMergeFields(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, DynamicObject fields, DynamicObject additionalFields) {
-        DynamicObject merged = JSOrdinary.create(ctx);
+        JSRealm realm = JSRealm.get(null);
+        DynamicObject merged = JSOrdinary.create(ctx, realm);
         UnmodifiableArrayList<? extends Object> originalKeys = namesNode.execute(fields);
         for (Object nextKey : originalKeys) {
             if (!MONTH.equals(nextKey) && !MONTH_CODE.equals(nextKey)) {
@@ -1964,7 +1971,8 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static DynamicObject mergeLargestUnitOption(JSContext ctx, EnumerableOwnPropertyNamesNode namesNode, DynamicObject options, String largestUnit) {
-        DynamicObject merged = JSOrdinary.create(ctx);
+        JSRealm realm = JSRealm.get(null);
+        DynamicObject merged = JSOrdinary.create(ctx, realm);
         UnmodifiableArrayList<?> keys = namesNode.execute(options);
         for (Object nextKey : keys) {
             String key = nextKey.toString();
@@ -2597,7 +2605,8 @@ public final class TemporalUtil {
         if (!isObjectNode.executeBoolean(temporalDurationLike)) {
             throw Errors.createTypeError("Given duration like is not a object.");
         }
-        DynamicObject result = JSOrdinary.create(ctx);
+        JSRealm realm = JSRealm.get(null);
+        DynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
         for (String property : DURATION_PROPERTIES) {
             Object value = JSObject.get(temporalDurationLike, property);
@@ -3263,12 +3272,12 @@ public final class TemporalUtil {
             timeZone = toTemporalTimeZone(ctx, temporalTimeZoneLike);
         }
         DynamicObject calendar = toTemporalCalendar(ctx, calendarLike);
-        BigInt ns = systemUTCEpochNanoseconds(ctx);
+        BigInt ns = systemUTCEpochNanoseconds();
         return createTemporalZonedDateTime(ctx, ns, timeZone, calendar);
     }
 
     public static DynamicObject systemInstant(JSContext ctx) {
-        BigInt ns = systemUTCEpochNanoseconds(ctx);
+        BigInt ns = systemUTCEpochNanoseconds();
         return createTemporalInstant(ctx, ns);
     }
 
@@ -3281,8 +3290,9 @@ public final class TemporalUtil {
         return (JSTemporalInstantObject) JSTemporalInstant.create(ctx, ns);
     }
 
-    public static BigInt systemUTCEpochNanoseconds(JSContext ctx) {
-        BigInt ns = BigInt.valueOf(ctx.getRealm().nanoTime());
+    public static BigInt systemUTCEpochNanoseconds() {
+        JSRealm realm = JSRealm.get(null);
+        BigInt ns = BigInt.valueOf(realm.nanoTime());
         // clamping omitted
         return ns;
     }

@@ -637,7 +637,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         public DynamicObject getISOFields(Object thisObj) {
             JSTemporalPlainDateObject dt = requireTemporalDate(thisObj);
-            DynamicObject obj = JSOrdinary.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, dt.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", dt.getDay());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", dt.getMonth());

@@ -75,7 +75,7 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
 
     public static DynamicObject create(JSContext context, BigInt nanoseconds, String identifier) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
         DynamicObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
         return context.trackAllocation(obj);

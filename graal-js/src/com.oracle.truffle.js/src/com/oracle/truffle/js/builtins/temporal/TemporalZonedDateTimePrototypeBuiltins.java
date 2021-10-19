@@ -938,7 +938,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public Object getISOFields(Object thisObj) {
             JSTemporalZonedDateTimeObject zdt = requireTemporalZonedDateTime(thisObj);
-            DynamicObject obj = JSOrdinary.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext(), getRealm());
             DynamicObject timeZone = zdt.getTimeZone();
             DynamicObject instant = TemporalUtil.createTemporalInstant(getContext(), zdt.getNanoseconds());
             DynamicObject calendar = zdt.getCalendar();

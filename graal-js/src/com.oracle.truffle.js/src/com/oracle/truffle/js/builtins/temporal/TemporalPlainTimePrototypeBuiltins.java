@@ -599,7 +599,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected DynamicObject getISOFields(Object thisObj) {
             TemporalTime time = requireTemporalTime(thisObj);
-            DynamicObject fields = JSOrdinary.create(getContext());
+            DynamicObject fields = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.CALENDAR, time.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoHour", time.getHour());
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, "isoMinute", time.getMinute());

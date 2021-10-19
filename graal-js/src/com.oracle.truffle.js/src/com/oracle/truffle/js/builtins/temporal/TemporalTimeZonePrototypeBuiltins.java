@@ -294,7 +294,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 Object instant = TemporalUtil.createTemporalInstant(getContext(), (long) (epochNanoseconds - timeZone.getNanoseconds().bigIntegerValue().doubleValue()));
                 List<Object> list = new ArrayList<>();
                 list.add(instant);
-                return JSRuntime.createArrayFromList(getContext(), list);
+                return JSRuntime.createArrayFromList(getContext(), getRealm(), list);
             }
             List<Long> possibleEpochNanoseconds = TemporalUtil.getIANATimeZoneEpochValue(timeZone.getIdentifier(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
@@ -303,7 +303,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                 DynamicObject instant = TemporalUtil.createTemporalInstant(getContext(), epochNanoseconds);
                 possibleInstants.add(instant);
             }
-            return JSRuntime.createArrayFromList(getContext(), possibleInstants);
+            return JSRuntime.createArrayFromList(getContext(), getRealm(), possibleInstants);
         }
     }
 

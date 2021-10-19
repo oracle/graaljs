@@ -86,7 +86,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
         DynamicObject calendar = TemporalUtil.getISO8601Calendar(context);
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
@@ -154,7 +154,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         if (!isObject.executeBoolean(temporalTimeLike)) {
             throw TemporalErrors.createTypeErrorTemporalTimeExpected();
         }
-        DynamicObject result = JSOrdinary.create(ctx);
+        JSRealm realm = JSRealm.get(null);
+        DynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
         for (String property : TemporalUtil.TIME_LIKE_PROPERTIES) {
             Object value = JSObject.get(temporalTimeLike, property);

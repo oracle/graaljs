@@ -458,7 +458,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public DynamicObject getISOFields(Object thisObj) {
             JSTemporalPlainDateTimeObject dt = requireTemporalDateTime(thisObj);
-            DynamicObject obj = JSOrdinary.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, dt.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", dt.getDay());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoHour", dt.getHour());

@@ -255,7 +255,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         public DynamicObject getISOFields(Object thisObj) {
             JSTemporalPlainMonthDayObject md = requireTemporalMonthDay(thisObj);
-            DynamicObject obj = JSOrdinary.create(getContext());
+            DynamicObject obj = JSOrdinary.create(getContext(), getRealm());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, md.getCalendar());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoDay", md.getDay());
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, "isoMonth", md.getMonth());

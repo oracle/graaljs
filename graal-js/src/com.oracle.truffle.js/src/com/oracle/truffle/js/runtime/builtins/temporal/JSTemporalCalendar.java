@@ -91,7 +91,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (!isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalCalendarFactory();
         DynamicObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
         return context.trackAllocation(obj);

@@ -147,7 +147,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         if (!TemporalUtil.dateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
         DynamicObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
                         (int) year, (int) month, (int) day, calendar), realm);

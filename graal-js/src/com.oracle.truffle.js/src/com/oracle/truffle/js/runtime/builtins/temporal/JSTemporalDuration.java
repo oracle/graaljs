@@ -96,7 +96,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                         nanoseconds)) {
             throw Errors.createRangeError("Given duration outside range.");
         }
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalDurationFactory();
         DynamicObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
                         years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), realm);

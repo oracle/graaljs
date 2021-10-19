@@ -69,7 +69,7 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
 
     public static DynamicObject create(JSContext context, BigInt nanoseconds, DynamicObject timeZone, DynamicObject calendar) {
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
-        JSRealm realm = context.getRealm();
+        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalZonedDateTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalZonedDateTimeObject(factory.getShape(realm), nanoseconds, timeZone, calendar), realm);
         return context.trackAllocation(obj);
