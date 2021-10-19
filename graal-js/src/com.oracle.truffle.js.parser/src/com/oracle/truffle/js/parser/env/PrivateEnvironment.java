@@ -40,26 +40,15 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
-public final class PrivateEnvironment extends Environment {
+public final class PrivateEnvironment extends DerivedEnvironment {
 
     public PrivateEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
-    }
-
-    @Override
-    public FunctionEnvironment function() {
-        return getParent().function();
-    }
-
-    @Override
-    public int getScopeLevel() {
-        return getParent().getScopeLevel();
     }
 
     @Override
@@ -69,20 +58,5 @@ public final class PrivateEnvironment extends Environment {
             return slot;
         }
         return null;
-    }
-
-    @Override
-    public FrameDescriptor getBlockFrameDescriptor() {
-        return getParent().getBlockFrameDescriptor();
-    }
-
-    @Override
-    public FrameSlot getCurrentBlockScopeSlot() {
-        return getParent().getCurrentBlockScopeSlot();
-    }
-
-    @Override
-    public FrameSlot[] getParentSlots() {
-        return getParent().getParentSlots();
     }
 }

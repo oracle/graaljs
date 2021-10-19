@@ -70,7 +70,7 @@ public class FunctionEnvironment extends Environment {
     private static final String YIELD_RESULT_SLOT_IDENTIFIER = "<yieldresult>";
     public static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
 
-    private final FunctionEnvironment parent;
+    private final FunctionEnvironment parentFunction;
     private final FrameDescriptor frameDescriptor;
     private EconomicMap<FrameSlot, Integer> parameters;
     private final boolean isStrictMode;
@@ -121,15 +121,10 @@ public class FunctionEnvironment extends Environment {
         this.isDerivedConstructor = isDerivedConstructor;
         this.isGlobal = isGlobal;
         this.hasSyntheticArguments = hasSyntheticArguments;
-        this.parent = parent == null ? null : parent.function();
+        this.parentFunction = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFrameDescriptor();
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
-    }
-
-    @Override
-    public FunctionEnvironment function() {
-        return this;
     }
 
     @Override
@@ -166,6 +161,11 @@ public class FunctionEnvironment extends Environment {
 
     public FrameSlot getBlockScopeSlot() {
         return blockScopeSlot;
+    }
+
+    @Override
+    public FrameSlot getCurrentBlockScopeSlot() {
+        return null;
     }
 
     public boolean isEval() {
@@ -364,7 +364,7 @@ public class FunctionEnvironment extends Environment {
     }
 
     public final FunctionEnvironment getParentFunction() {
-        return parent;
+        return parentFunction;
     }
 
     public final FunctionEnvironment getParentFunction(int level) {
@@ -372,7 +372,7 @@ public class FunctionEnvironment extends Environment {
         if (level == 0) {
             return this;
         } else {
-            return parent.getParentFunction(level - 1);
+            return parentFunction.getParentFunction(level - 1);
         }
     }
 
@@ -381,6 +381,11 @@ public class FunctionEnvironment extends Environment {
             return getParentFunction().getNonArrowParentFunction();
         }
         return this;
+    }
+
+    @Override
+    public int getScopeLevel() {
+        return 0;
     }
 
     @Override

@@ -42,42 +42,23 @@ package com.oracle.truffle.js.parser.env;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSContext;
 
-public class GlobalEnvironment extends Environment {
-    private final FunctionEnvironment functionEnvironment;
+public final class GlobalEnvironment extends DerivedEnvironment {
     private final EconomicMap<String, Boolean> lexicalDeclarations;
     private final EconomicMap<String, Boolean> varDeclarations;
 
     public GlobalEnvironment(Environment parent, NodeFactory factory, JSContext context) {
         super(parent, factory, context);
-        this.functionEnvironment = parent.function();
         this.lexicalDeclarations = EconomicMap.create();
         this.varDeclarations = EconomicMap.create();
     }
 
     @Override
-    public FunctionEnvironment function() {
-        return functionEnvironment;
-    }
-
-    @Override
     public FrameSlot findBlockFrameSlot(Object name) {
         return null;
-    }
-
-    @Override
-    public FrameDescriptor getBlockFrameDescriptor() {
-        return getFunctionFrameDescriptor();
-    }
-
-    @Override
-    public FrameSlot[] getParentSlots() {
-        return ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY;
     }
 
     public boolean addLexicalDeclaration(String name, boolean isConst) {

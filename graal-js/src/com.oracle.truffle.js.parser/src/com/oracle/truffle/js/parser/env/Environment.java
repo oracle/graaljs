@@ -79,6 +79,7 @@ public abstract class Environment {
     public static final String NEW_TARGET_NAME = "new.target";
 
     private final Environment parent;
+    private final FunctionEnvironment functionEnvironment;
     protected final NodeFactory factory;
     protected final JSContext context;
 
@@ -86,6 +87,7 @@ public abstract class Environment {
         this.parent = parent;
         this.factory = factory;
         this.context = context;
+        this.functionEnvironment = this instanceof FunctionEnvironment ? (FunctionEnvironment) this : (parent == null ? null : parent.functionEnvironment);
     }
 
     public FrameSlot declareLocalVar(Object name) {
@@ -448,7 +450,7 @@ public abstract class Environment {
     protected abstract FrameSlot findBlockFrameSlot(Object name);
 
     public FrameDescriptor getBlockFrameDescriptor() {
-        throw new UnsupportedOperationException();
+        throw unsupported();
     }
 
     private static boolean isMappedArgumentsParameter(FrameSlot slot, Environment current) {
@@ -460,7 +462,9 @@ public abstract class Environment {
         return parent;
     }
 
-    public abstract FunctionEnvironment function();
+    public final FunctionEnvironment function() {
+        return functionEnvironment;
+    }
 
     public final Environment getParentAt(int frameLevel, int scopeLevel) {
         Environment current = this;
@@ -534,11 +538,15 @@ public abstract class Environment {
     }
 
     public int getScopeLevel() {
-        return 0;
+        throw unsupported();
     }
 
     public FrameSlot[] getParentSlots() {
-        throw new UnsupportedOperationException(getClass().getName());
+        throw unsupported();
+    }
+
+    private UnsupportedOperationException unsupported() {
+        return new UnsupportedOperationException(getClass().getName());
     }
 
     public final FrameSlot[] getParentSlots(int frameLevel, int scopeLevel) {

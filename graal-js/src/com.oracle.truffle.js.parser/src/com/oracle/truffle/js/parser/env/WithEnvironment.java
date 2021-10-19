@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -50,7 +49,7 @@ import com.oracle.truffle.js.runtime.JSContext;
  * This environment stores "with" blocks. Actually, this is just a marker in the chain (tree) of
  * environments.
  */
-public class WithEnvironment extends Environment {
+public final class WithEnvironment extends DerivedEnvironment {
 
     /**
      * Name of the frame slot that contains the with object.
@@ -68,37 +67,12 @@ public class WithEnvironment extends Environment {
     }
 
     @Override
-    public FunctionEnvironment function() {
-        return getParent().function();
-    }
-
-    @Override
-    public int getScopeLevel() {
-        return getParent().getScopeLevel();
-    }
-
-    @Override
     protected FrameSlot findBlockFrameSlot(Object name) {
         return null;
     }
 
     @Override
-    public FrameDescriptor getBlockFrameDescriptor() {
-        return getParent().getBlockFrameDescriptor();
-    }
-
-    @Override
-    public FrameSlot getCurrentBlockScopeSlot() {
-        return getParent().getCurrentBlockScopeSlot();
-    }
-
-    @Override
     public boolean isDynamicScopeContext() {
         return true;
-    }
-
-    @Override
-    public FrameSlot[] getParentSlots() {
-        return getParent().getParentSlots();
     }
 }

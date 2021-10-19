@@ -58,11 +58,6 @@ public class EvalEnvironment extends Environment {
     }
 
     @Override
-    public FunctionEnvironment function() {
-        return getParent() == null ? null : getParent().function();
-    }
-
-    @Override
     protected FrameSlot findBlockFrameSlot(Object name) {
         throw new UnsupportedOperationException();
     }
