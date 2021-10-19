@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
 
+import com.ibm.icu.text.DateTimePatternGenerator;
 import com.ibm.icu.text.DisplayContext;
 import com.ibm.icu.text.LocaleDisplayNames;
 import com.ibm.icu.util.ULocale;
@@ -121,7 +122,10 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         String style;
         String type;
         String fallback;
+        String languageDisplay;
         LocaleDisplayNames displayNames;
+        DateTimePatternGenerator dateTimePatternGenerator;
+        DateTimePatternGenerator.DisplayWidth displayWidth;
 
         DynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             DynamicObject result = JSOrdinary.create(context, realm);
@@ -129,12 +133,15 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.STYLE, style, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.TYPE, type, JSAttributes.getDefault());
             JSObjectUtil.defineDataProperty(context, result, IntlUtil.FALLBACK, fallback, JSAttributes.getDefault());
+            if (languageDisplay != null) {
+                JSObjectUtil.defineDataProperty(context, result, IntlUtil.LANGUAGE_DISPLAY, languageDisplay, JSAttributes.getDefault());
+            }
             return result;
         }
     }
 
     @TruffleBoundary
-    public static void setupInternalState(JSContext ctx, InternalState state, String[] locales, String optStyle, String optType, String optFallback) {
+    public static void setupInternalState(JSContext ctx, InternalState state, String[] locales, String optStyle, String optType, String optFallback, String optLanguageDisplay) {
         Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
         Locale strippedLocale = selectedLocale.stripExtensions();
         if (strippedLocale.toLanguageTag().equals(IntlUtil.UND)) {
@@ -145,9 +152,16 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         state.style = optStyle;
         state.type = optType;
         state.fallback = optFallback;
-        DisplayContext fallbackCtx = fallbackDisplayContext(optFallback);
-        DisplayContext styleCtx = styleDisplayContext(optStyle);
-        state.displayNames = LocaleDisplayNames.getInstance(convertOldISOCodes(strippedLocale), styleCtx, fallbackCtx);
+        state.languageDisplay = IntlUtil.LANGUAGE.equals(optType) ? optLanguageDisplay : null;
+        if (IntlUtil.DATE_TIME_FIELD.equals(optType)) {
+            state.dateTimePatternGenerator = DateTimePatternGenerator.getInstance(strippedLocale);
+            state.displayWidth = styleDisplayWidth(optStyle);
+        } else {
+            DisplayContext fallbackCtx = fallbackDisplayContext(optFallback);
+            DisplayContext styleCtx = styleDisplayContext(optStyle);
+            DisplayContext languageDisplayCtx = languageDisplayContext(optLanguageDisplay);
+            state.displayNames = LocaleDisplayNames.getInstance(convertOldISOCodes(strippedLocale), styleCtx, fallbackCtx, languageDisplayCtx);
+        }
     }
 
     private static DisplayContext fallbackDisplayContext(String optFallback) {
@@ -156,6 +170,28 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
 
     private static DisplayContext styleDisplayContext(String optStyle) {
         return IntlUtil.LONG.equals(optStyle) ? DisplayContext.LENGTH_FULL : DisplayContext.LENGTH_SHORT;
+    }
+
+    private static DisplayContext languageDisplayContext(String optLanguageDisplay) {
+        return IntlUtil.DIALECT.equals(optLanguageDisplay) ? DisplayContext.DIALECT_NAMES : DisplayContext.STANDARD_NAMES;
+    }
+
+    private static DateTimePatternGenerator.DisplayWidth styleDisplayWidth(String optStyle) {
+        DateTimePatternGenerator.DisplayWidth displayWidth;
+        switch (optStyle) {
+            case IntlUtil.LONG:
+                displayWidth = DateTimePatternGenerator.DisplayWidth.WIDE;
+                break;
+            case IntlUtil.SHORT:
+                displayWidth = DateTimePatternGenerator.DisplayWidth.ABBREVIATED;
+                break;
+            case IntlUtil.NARROW:
+                displayWidth = DateTimePatternGenerator.DisplayWidth.NARROW;
+                break;
+            default:
+                throw Errors.shouldNotReachHere(optStyle);
+        }
+        return displayWidth;
     }
 
     /**
@@ -209,6 +245,13 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 IntlUtil.ensureIsStructurallyValidScriptSubtag(code);
                 result = displayNames.scriptDisplayName(code);
                 break;
+            case IntlUtil.CALENDAR:
+                IntlUtil.ensureIsStructurallyValidCalendar(code);
+                result = displayNames.keyValueDisplayName(IntlUtil.CALENDAR, displayNamesFriendlyCalendar(code.toLowerCase()));
+                break;
+            case IntlUtil.DATE_TIME_FIELD:
+                result = state.dateTimePatternGenerator.getFieldDisplayName(toDateTimeFieldCode(code), state.displayWidth);
+                break;
             case IntlUtil.CURRENCY:
                 IntlUtil.ensureIsWellFormedCurrencyCode(code);
                 result = displayNames.keyValueDisplayName(IntlUtil.CURRENCY, code);
@@ -227,6 +270,63 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getDisplayNamesPrototype();
+    }
+
+    private static int toDateTimeFieldCode(String code) {
+        int fieldCode;
+        switch (code) {
+            case IntlUtil.ERA:
+                fieldCode = DateTimePatternGenerator.ERA;
+                break;
+            case IntlUtil.YEAR:
+                fieldCode = DateTimePatternGenerator.YEAR;
+                break;
+            case IntlUtil.QUARTER:
+                fieldCode = DateTimePatternGenerator.QUARTER;
+                break;
+            case IntlUtil.MONTH:
+                fieldCode = DateTimePatternGenerator.MONTH;
+                break;
+            case IntlUtil.WEEK_OF_YEAR:
+                fieldCode = DateTimePatternGenerator.WEEK_OF_YEAR;
+                break;
+            case IntlUtil.WEEKDAY:
+                fieldCode = DateTimePatternGenerator.WEEKDAY;
+                break;
+            case IntlUtil.DAY:
+                fieldCode = DateTimePatternGenerator.DAY;
+                break;
+            case IntlUtil.DAY_PERIOD:
+                fieldCode = DateTimePatternGenerator.DAYPERIOD;
+                break;
+            case IntlUtil.HOUR:
+                fieldCode = DateTimePatternGenerator.HOUR;
+                break;
+            case IntlUtil.MINUTE:
+                fieldCode = DateTimePatternGenerator.MINUTE;
+                break;
+            case IntlUtil.SECOND:
+                fieldCode = DateTimePatternGenerator.SECOND;
+                break;
+            case IntlUtil.TIME_ZONE_NAME:
+                fieldCode = DateTimePatternGenerator.ZONE;
+                break;
+            default:
+                throw Errors.createRangeErrorInvalidDateTimeField(code);
+        }
+        return fieldCode;
+    }
+
+    private static String displayNamesFriendlyCalendar(String calendar) {
+        // DisplayNames.keyValueDisplayName("calendar", ...) handles some
+        // preferred calendars worse than their aliases
+        // => using non-preferred aliases in some special cases
+        if ("gregory".equals(calendar)) {
+            return "gregorian";
+        } else if ("ethioaa".equals(calendar)) {
+            return "ethiopic-amete-alem";
+        }
+        return calendar;
     }
 
 }

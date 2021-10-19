@@ -60,6 +60,7 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getStyleOption;
     @Child GetStringOptionNode getTypeOption;
     @Child GetStringOptionNode getFallbackOption;
+    @Child GetStringOptionNode getLanguageDisplayOption;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected InitializeDisplayNamesNode(JSContext context) {
@@ -68,8 +69,10 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
         this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE, new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY}, null);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.TYPE,
+                        new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY, IntlUtil.CALENDAR, IntlUtil.DATE_TIME_FIELD}, null);
         this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.FALLBACK, new String[]{IntlUtil.CODE, IntlUtil.NONE}, IntlUtil.CODE);
+        this.getLanguageDisplayOption = GetStringOptionNode.create(context, IntlUtil.LANGUAGE_DISPLAY, new String[]{IntlUtil.DIALECT, IntlUtil.STANDARD}, IntlUtil.DIALECT);
     }
 
     public abstract DynamicObject executeInit(DynamicObject displayNames, Object locales, Object options);
@@ -96,8 +99,9 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
                 throw Errors.createTypeError("'type' option not specified");
             }
             String optFallback = getFallbackOption.executeValue(options);
+            String optLanguageDisplay = getLanguageDisplayOption.executeValue(options);
             JSDisplayNames.InternalState state = JSDisplayNames.getInternalState(displayNamesObject);
-            JSDisplayNames.setupInternalState(context, state, locales, optStyle, optType, optFallback);
+            JSDisplayNames.setupInternalState(context, state, locales, optStyle, optType, optFallback, optLanguageDisplay);
         } catch (MissingResourceException e) {
             errorBranch.enter();
             throw Errors.createICU4JDataError(e);
