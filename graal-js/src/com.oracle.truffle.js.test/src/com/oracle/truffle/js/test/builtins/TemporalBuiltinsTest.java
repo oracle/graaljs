@@ -770,6 +770,67 @@ public class TemporalBuiltinsTest extends JSTest {
         assertEquals("18", rec.getDay());
         assertEquals("Europe/Madrid", rec.getName());
         assertEquals("gregory", rec.getCalendar());
+    }
 
+    @Test
+    public void testInstant() {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "Temporal.Instant.from('1900-01-01T12:00Z').toString();");
+            assertEquals("1900-01-01T12:00:00Z", result.toString());
+        }
+    }
+
+    @Test
+    public void testTemporalBalancing() {
+        try (Context ctx = getJSContext()) {
+            // normal operations
+            assertEquals("PT80M30S", ctx.eval(ID, "Temporal.Duration.from({ minutes: 80, seconds: 30 }).toString()").toString());
+            assertEquals("PT81M30S", ctx.eval(ID, "Temporal.Duration.from({ minutes: 80, seconds: 90 }).round({largestUnit:'auto'}).toString()").toString());
+            assertEquals("PT1H21M30S", ctx.eval(ID, "Temporal.Duration.from({ minutes: 80, seconds: 90 }).round({largestUnit:'hour'}).toString()").toString());
+
+            // with relativeTo
+            assertEquals("P370D", ctx.eval(ID, "Temporal.Duration.from({ days: 370 }).toString()").toString());
+            assertEquals("P1Y5D", ctx.eval(ID, "Temporal.Duration.from({ days: 370 }).round({largestUnit:'year', relativeTo: '2019-01-01'}).toString()").toString());
+            assertEquals("P1Y4D", ctx.eval(ID, "Temporal.Duration.from({ days: 370 }).round({largestUnit:'year', relativeTo: '2020-01-01'}).toString()").toString());
+
+            assertEquals("P2D", ctx.eval(ID, "Temporal.Duration.from({ hours:48}).round({largestUnit: 'day'}).toString()").toString());
+            assertEquals("P2DT1H", ctx.eval(ID, "Temporal.Duration.from({ hours:48}).round({largestUnit: 'day', relativeTo:'2020-03-08T00:00-08:00[America/Los_Angeles]'}).toString()").toString());
+
+            // balancing in arithmetics
+            assertEquals("PT27H15M", ctx.eval(ID, "let d1=Temporal.Duration.from({ hours: 26, minutes: 45 });\n" +
+                            "let d2=Temporal.Duration.from({ minutes: 30 });\n" +
+                            "d1.add(d2).toString()").toString());
+            assertEquals("PT3H1M45S", ctx.eval(ID, "let d3=Temporal.Duration.from({ minutes: 80, seconds: 90 });\n" +
+                            "let d4= Temporal.Duration.from({ minutes: 100, seconds: 15 });\n" +
+                            "d3.add(d4).round({ largestUnit: 'hour' }).toString()").toString());
+        }
+    }
+
+    @Test
+    public void testTemporalRounding() {
+        String code = "  function test(time1,time2,options,expected) {\n" +
+                        "  let earlier = Temporal.PlainTime.from(time1);\n" +
+                        "  let later = Temporal.PlainTime.from(time2);\n" +
+                        "  let result = `${earlier.until(later, options)}`;\n" +
+                        "  if (result !== expected) { throw new Error(expected+' expected but was '+result); }\n" +
+                        "};\n";
+
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, code);
+            System.out.println(result.asString());
+
+            ctx.eval(ID, "test('01:00:00','02:00:00',{ smallestUnit: 'hours' }, 'PT1H');");
+            ctx.eval(ID, "test('02:00:00','01:00:00',{ smallestUnit: 'hours' }, '-PT1H');");
+
+            ctx.eval(ID, "test('01:00:00','01:01:00',{ smallestUnit: 'minutes' }, 'PT1M');");
+            ctx.eval(ID, "test('01:00:00','02:01:00',{ smallestUnit: 'minutes' }, 'PT1H1M');");
+
+            ctx.eval(ID, "test('01:00:00','01:00:01',{ smallestUnit: 'seconds' }, 'PT1S');");
+            ctx.eval(ID, "test('01:00:00','02:00:01',{ smallestUnit: 'seconds' }, 'PT1H1S');");
+
+            ctx.eval(ID, "test('01:02:03.45','02:00:00.000',{ smallestUnit: 'milliseconds', roundingMode: 'floor' }, 'PT57M56.55S');");
+            ctx.eval(ID, "test('02:00:00.000','01:02:03.45',{ smallestUnit: 'milliseconds' }, '-PT57M56.55S');");
+            ctx.eval(ID, "test('01:02:03.45','02:00:00.000',{ smallestUnit: 'milliseconds' }, 'PT57M56.55S');");
+        }
     }
 }

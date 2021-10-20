@@ -247,7 +247,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             return JSTemporalDurationRecord.createWeeks(year, month, week, day, (long) hour,
                             result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
         }
-        throw TemporalErrors.createTypeErrorTemporalMalformedDuration();
+        throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
     }
 
     private static long parseDurationIntl(Matcher matcher, int i) {

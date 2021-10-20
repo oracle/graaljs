@@ -88,10 +88,14 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     public static DynamicObject create(JSContext context, String id) {
+        JSRealm realm = JSRealm.get(null);
+        return create(context, realm, id);
+    }
+
+    public static DynamicObject create(JSContext context, JSRealm realm, String id) {
         if (!isBuiltinCalendar(id)) {
             throw TemporalErrors.createRangeErrorCalendarNotSupported();
         }
-        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalCalendarFactory();
         DynamicObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
         return context.trackAllocation(obj);
@@ -168,7 +172,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (result == Undefined.instance) {
             throw Errors.createRangeError("");
         }
-        return TemporalUtil.toIntegerOrInfinity(result);
+        return TemporalUtil.toIntegerThrowOnInfinity(result);
     }
 
     // 12.1.10
@@ -177,7 +181,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (result == Undefined.instance) {
             throw Errors.createRangeError("");
         }
-        return TemporalUtil.toIntegerOrInfinity(result);
+        return TemporalUtil.toIntegerThrowOnInfinity(result);
     }
 
     // 12.1.11
@@ -195,7 +199,7 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
         if (result == Undefined.instance) {
             throw Errors.createRangeError("");
         }
-        return TemporalUtil.toIntegerOrInfinity(result);
+        return TemporalUtil.toIntegerThrowOnInfinity(result);
     }
 
     // 12.1.13

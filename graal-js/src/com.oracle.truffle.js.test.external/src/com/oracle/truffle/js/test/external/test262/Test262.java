@@ -69,7 +69,8 @@ public class Test262 extends TestSuite {
 
     private static final String[] COMMON_PREQUEL_FILES = new String[]{
                     "assert.js",
-                    "sta.js"
+                    "sta.js",
+                    "temporalHelpers.js"
     };
     private static final String[] ASYNC_PREQUEL_FILES = new String[]{
                     "doneprintHandle.js"
@@ -92,6 +93,7 @@ public class Test262 extends TestSuite {
         options.put(JSContextOptions.INTL_402_NAME, "true");
         options.put(JSContextOptions.TEST262_MODE_NAME, "true");
         options.put(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
+        options.put(JSContextOptions.TEMPORAL_NAME, "true");
         config.addCommonOptions(options);
         commonOptions = Collections.unmodifiableMap(options);
         commonOptionsExtLauncher = optionsToExtLauncherOptions(options);

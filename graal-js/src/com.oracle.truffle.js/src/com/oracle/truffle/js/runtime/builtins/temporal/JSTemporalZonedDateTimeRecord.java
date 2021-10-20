@@ -40,37 +40,38 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecord {
     private final String timeZoneOffsetString;
-    private final String offsetString;
     private final String timeZoneName;
+    private final boolean timeZoneZ;
 
     private JSTemporalZonedDateTimeRecord(long year, long month, long day, long hour, long minute, long second, long millisecond, long microsecond, long nanosecond,
-                    long weeks, boolean hasWeeks, DynamicObject calendar, boolean hasCalendar, String timeZoneOffsetString, String offsetString, String timeZoneName) {
-        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, weeks, hasWeeks, calendar, hasCalendar);
+                    String calendar, boolean hasCalendar, boolean timeZoneZ, String timeZoneOffsetString, String timeZoneName) {
+        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, calendar, hasCalendar);
         this.timeZoneOffsetString = timeZoneOffsetString;
-        this.offsetString = offsetString;
         this.timeZoneName = timeZoneName;
+        this.timeZoneZ = timeZoneZ;
     }
 
     @SuppressWarnings("hiding")
     public static JSTemporalZonedDateTimeRecord create(long year, long month, long day, long hour, long minute, long second,
-                    long millisecond, long microsecond, long nanosecond, String timeZoneOffsetString, String offsetString, String timeZoneName) {
-        return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, 0, false, null, false, timeZoneOffsetString, offsetString, timeZoneName);
+                    long millisecond, long microsecond, long nanosecond, String calendar, boolean timeZoneZ, String timeZoneOffsetString, String timeZoneName) {
+        return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond,
+                        calendar, !TemporalUtil.isNullish(calendar), timeZoneZ, timeZoneOffsetString, timeZoneName);
     }
 
     public String getTimeZoneOffsetString() {
         return timeZoneOffsetString;
     }
 
-    public String getOffsetString() {
-        return offsetString;
-    }
-
     public String getTimeZoneName() {
         return timeZoneName;
+    }
+
+    public boolean getTimeZoneZ() {
+        return timeZoneZ;
     }
 
 }

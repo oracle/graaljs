@@ -96,6 +96,12 @@ public final class TemporalConstants {
     public static final String ISO_YEAR = "ISOYear";
     public static final String ISO_MONTH = "ISOMonth";
     public static final String ISO_DAY = "ISODay";
+    public static final String ISO_HOUR = "ISOHour";
+    public static final String ISO_MINUTE = "ISOMinute";
+    public static final String ISO_SECOND = "ISOSecond";
+    public static final String ISO_MILLISECOND = "ISOMillisecond";
+    public static final String ISO_MICROSECOND = "ISOMicrosecond";
+    public static final String ISO_NANOSECOND = "ISONanosecond";
 
     public static final String CONSTRAIN = "constrain";
     public static final String REJECT = "reject";

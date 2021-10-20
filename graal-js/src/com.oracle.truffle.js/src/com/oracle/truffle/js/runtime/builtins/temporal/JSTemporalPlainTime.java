@@ -85,8 +85,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
         if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
-        DynamicObject calendar = TemporalUtil.getISO8601Calendar(context);
         JSRealm realm = JSRealm.get(null);
+        DynamicObject calendar = TemporalUtil.getISO8601Calendar(realm);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
         DynamicObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
                         hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);

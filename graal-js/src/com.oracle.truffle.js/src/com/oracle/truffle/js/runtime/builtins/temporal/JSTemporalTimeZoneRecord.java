@@ -41,21 +41,21 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 public final class JSTemporalTimeZoneRecord {
-    private final String z;
+    private final boolean z;
     private final String offsetString;
     private final String name;
 
-    private JSTemporalTimeZoneRecord(String z, String offsetString, String name) {
+    private JSTemporalTimeZoneRecord(boolean z, String offsetString, String name) {
         this.z = z;
         this.offsetString = offsetString;
         this.name = name;
     }
 
-    public static JSTemporalTimeZoneRecord create(String z, String offsetString, String name) {
+    public static JSTemporalTimeZoneRecord create(boolean z, String offsetString, String name) {
         return new JSTemporalTimeZoneRecord(z, offsetString, name);
     }
 
-    public String getZ() {
+    public boolean getZ() {
         return z;
     }
 

@@ -115,7 +115,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             result2 = TemporalUtil.regulateTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);
         } else {
             String string = toStringNode.executeString(item);
-            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(ctx, string);
+            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
             if (result.hasCalendar() && !toStringNode.executeString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
                 throw TemporalErrors.createTypeErrorTemporalISO8601Expected();

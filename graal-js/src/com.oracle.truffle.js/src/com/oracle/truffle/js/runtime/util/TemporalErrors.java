@@ -199,8 +199,8 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTemporalMalformedDuration() {
-        return Errors.createTypeError("malformed Duration");
+    public static JSException createRangeErrorTemporalMalformedDuration() {
+        return Errors.createRangeError("malformed Duration");
     }
 
     @TruffleBoundary

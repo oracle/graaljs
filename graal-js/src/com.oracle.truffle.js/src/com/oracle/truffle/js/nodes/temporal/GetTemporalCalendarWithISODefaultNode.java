@@ -80,7 +80,7 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
         } else {
             Object calendar = getCalendar((DynamicObject) item);
             if (isNullishProfile.profile(TemporalUtil.isNullish(calendar))) {
-                return TemporalUtil.getISO8601Calendar(ctx);
+                return TemporalUtil.getISO8601Calendar(getRealm());
             } else {
                 return toTemporalCalendar(calendar);
             }

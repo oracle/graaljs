@@ -84,6 +84,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -398,12 +399,10 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getNanosecond(),
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode,
-                            0, 0, 0, 0,
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
+                            0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
                             roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
             JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), namesNode,
-                            0,
-                            result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds(),
+                            0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(), result2.getNanoseconds(),
                             largestUnit, Undefined.instance);
             return JSTemporalDuration.createTemporalDuration(getContext(),
                             0, 0, 0, 0,
@@ -566,8 +565,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public DynamicObject toZonedDateTime(Object thisObj, Object itemParam,
                         @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
-            DynamicObject item = (DynamicObject) itemParam;
             TemporalTime time = requireTemporalTime(thisObj);
+            if (!JSRuntime.isObject(itemParam)) {
+                throw Errors.createTypeErrorNotAnObject(itemParam);
+            }
+            DynamicObject item = (DynamicObject) itemParam;
+
             Object temporalDateLike = JSObject.get(item, PLAIN_DATE);
             if (temporalDateLike == Undefined.instance) {
                 errorBranch.enter();

@@ -98,7 +98,7 @@ public class TemporalPlainMonthDayFunctionBuiltins extends JSBuiltinsContainer.S
                 toTemporalOverflow(options);
                 return JSTemporalPlainMonthDay.create(getContext(), pmd.getMonth(), pmd.getDay(), pmd.getCalendar(), pmd.getYear());
             }
-            return JSTemporalPlainMonthDay.toTemporalMonthDay(item, options, getContext());
+            return JSTemporalPlainMonthDay.toTemporalMonthDay(item, options, getContext(), getRealm());
         }
 
     }

@@ -136,7 +136,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @TruffleBoundary
-    public static DynamicObject toTemporalMonthDay(Object item, DynamicObject optParam, JSContext ctx) {
+    public static DynamicObject toTemporalMonthDay(Object item, DynamicObject optParam, JSContext ctx, JSRealm realm) {
         DynamicObject options = optParam;
         if (optParam == Undefined.instance) {
             options = JSOrdinary.createWithNullPrototype(ctx);
@@ -157,7 +157,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             } else {
                 Object calendarObj = JSObject.get(itemObj, CALENDAR);
                 calendarAbsent = TemporalUtil.isNullish(calendar);
-                calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, calendarObj);
+                calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, calendarObj);
             }
             Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.setDMMCY);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, new HashSet<>());
@@ -172,8 +172,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         }
         TemporalUtil.toTemporalOverflow(options);
         String string = JSRuntime.toString(item);
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(ctx, string);
-        DynamicObject calendar = result.getCalendar();
+        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalMonthDayString(string);
+        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
         if (result.getYear() == 0) { // TODO Check for undefined here!
             if (!TemporalUtil.validateISODate(referenceISOYear, result.getMonth(), result.getDay())) {
                 throw TemporalErrors.createRangeErrorDateOutsideRange();

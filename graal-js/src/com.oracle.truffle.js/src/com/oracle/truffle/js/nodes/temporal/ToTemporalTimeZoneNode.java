@@ -79,9 +79,10 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
     public abstract DynamicObject executeDynamicObject(Object temporalTimeZoneLike);
 
     @Specialization
-    protected DynamicObject toTemporalTimeZone(Object temporalTimeZoneLike,
+    protected DynamicObject toTemporalTimeZone(Object temporalTimeZoneLikeParam,
                     @Cached("create()") IsObjectNode isObjectNode,
                     @Cached("create()") JSToStringNode toStringNode) {
+        Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike))) {
             DynamicObject tzObj = (DynamicObject) temporalTimeZoneLike;
             if (isTimeZoneProfile.profile(TemporalUtil.isTemporalZonedDateTime(tzObj))) {
@@ -89,9 +90,9 @@ public abstract class ToTemporalTimeZoneNode extends JavaScriptBaseNode {
             } else if (hasProperty1Profile.profile(!JSObject.hasProperty(tzObj, TIME_ZONE))) {
                 return tzObj;
             }
-            Object temp = getTimeZone(tzObj);
-            if (hasProperty2Profile.profile(isObjectNode.executeBoolean(temp) && !JSObject.hasProperty((DynamicObject) temp, TIME_ZONE))) {
-                return (DynamicObject) temp;
+            temporalTimeZoneLike = getTimeZone(tzObj);
+            if (hasProperty2Profile.profile(isObjectNode.executeBoolean(temporalTimeZoneLike) && !JSObject.hasProperty((DynamicObject) temporalTimeZoneLike, TIME_ZONE))) {
+                return (DynamicObject) temporalTimeZoneLike;
             }
         }
         String identifier = toStringNode.executeString(temporalTimeZoneLike);

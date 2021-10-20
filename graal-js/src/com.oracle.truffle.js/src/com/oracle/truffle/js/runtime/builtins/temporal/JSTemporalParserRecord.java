@@ -44,7 +44,7 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
  * Represents the information of a parsed TemporalTimeZoneString format.
  */
 public final class JSTemporalParserRecord {
-    private String z;
+    private boolean z;
 
     private final String year;
     private final String month;
@@ -63,7 +63,7 @@ public final class JSTemporalParserRecord {
     private final String offsetSecond;
     private final String offsetFraction;
 
-    public JSTemporalParserRecord(String z, String year, String month, String day, String hour, String minute, String second, String fraction, String offsetSign, String offsetHour,
+    public JSTemporalParserRecord(boolean z, String year, String month, String day, String hour, String minute, String second, String fraction, String offsetSign, String offsetHour,
                     String offsetMinute, String offsetSecond, String offsetFraction, String name, String calendar) {
         this.z = z;
 
@@ -85,7 +85,7 @@ public final class JSTemporalParserRecord {
         this.name = name;
     }
 
-    public String getZ() {
+    public boolean getZ() {
         return z;
     }
 

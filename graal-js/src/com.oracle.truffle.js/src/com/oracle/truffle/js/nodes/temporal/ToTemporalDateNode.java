@@ -45,12 +45,12 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
@@ -59,9 +59,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.TemporalOverflowEnum;
 
 /**
  * Implementation of ToTemporalDate() operation.
@@ -72,7 +70,6 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
     private final ConditionProfile isPlainDateTimeProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isPlainDateProfile = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected final JSContext ctx;
 
@@ -110,14 +107,11 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
-        TemporalOverflowEnum overflows = TemporalUtil.toTemporalOverflow(options);
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(ctx, toStringNode.executeString(itemParam));
-        if (!TemporalUtil.validateISODate(result.getYear(), result.getMonth(), result.getDay())) {
-            errorBranch.enter();
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
-        result = TemporalUtil.regulateISODate(result.getYear(), result.getMonth(), result.getDay(), overflows);
+        JSRealm realm = JSRealm.get(this);
+        TemporalUtil.toTemporalOverflow(options);
+        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toStringNode.executeString(itemParam));
+        assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
+        DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
         return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 }

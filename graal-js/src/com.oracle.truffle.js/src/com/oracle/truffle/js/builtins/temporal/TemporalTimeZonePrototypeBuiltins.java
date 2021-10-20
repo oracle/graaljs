@@ -67,6 +67,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
@@ -253,8 +254,9 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected DynamicObject getPlainDateTimeFor(Object thisObj, Object instantParam, Object calendarLike) {
+            JSRealm realm = JSRealm.get(this);
             DynamicObject instant = TemporalUtil.toTemporalInstant(getContext(), instantParam);
-            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), calendarLike);
+            DynamicObject calendar = TemporalUtil.toTemporalCalendarWithISODefault(getContext(), realm, calendarLike);
             return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), (DynamicObject) thisObj, instant, calendar);
         }
     }
@@ -323,7 +325,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (!TemporalUtil.isNullish(timeZone.getNanoseconds())) {
                 return Null.instance;
             }
-            long transition;
+            Object transition;
             if (isNext) {
                 transition = TemporalUtil.getIANATimeZoneNextTransition(startingPoint.getNanoseconds(), timeZone.getIdentifier());
             } else {
@@ -332,7 +334,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             if (TemporalUtil.isNullish(transition)) {
                 return Null.instance;
             }
-            return TemporalUtil.createTemporalInstant(getContext(), transition);
+            return TemporalUtil.createTemporalInstant(getContext(), (long) transition);
         }
     }
 

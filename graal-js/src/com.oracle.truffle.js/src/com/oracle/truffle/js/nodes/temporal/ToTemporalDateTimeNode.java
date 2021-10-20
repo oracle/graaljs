@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
@@ -110,12 +111,13 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, new HashSet<>());
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
         } else {
+            JSRealm realm = JSRealm.get(this);
             TemporalUtil.toTemporalOverflow(options);
             String string = toStringNode.executeString(item);
-            result = TemporalUtil.parseTemporalDateTimeString(string, ctx);
+            result = TemporalUtil.parseTemporalDateTimeString(string);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
-            calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
+            calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
         }
         return JSTemporalPlainDateTime.create(ctx,
                         result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),

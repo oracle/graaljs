@@ -89,6 +89,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
@@ -208,11 +209,11 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSTemporalCalendar(thisObj)")
-        protected Object durationGetter(Object thisObj) {
-            JSTemporalCalendarObject calendar = (JSTemporalCalendarObject) thisObj;
+        protected Object durationGetter(Object thisObj,
+                        @Cached JSToStringNode toStringNode) {
             switch (property) {
                 case id:
-                    return calendar.getId();
+                    return toStringNode.executeString(thisObj);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();
@@ -401,9 +402,14 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
+
+            if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(dateLike)) {
+                throw Errors.createTypeError("PlainMonthDay not expected");
+            }
+
             if (!isObject(dateLike) ||
-                            (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(dateLike))) {
-                assert !(dateLike instanceof TemporalMonth);
+                            (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(dateLike) &&
+                                            !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(dateLike))) {
                 dateLike = toTemporalDate(dateLike, Undefined.instance);
             }
             assert dateLike instanceof TemporalMonth;
@@ -423,9 +429,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
-            if (!isObject(dateLike) ||
-                            (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !(dateLike instanceof JSTemporalPlainMonthDayObject) &&
-                                            !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(dateLike))) {
+            if (!isObject(dateLike) || (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(temporalDateLike) &&
+                            !(dateLike instanceof JSTemporalPlainMonthDayObject) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(dateLike))) {
                 dateLike = toTemporalDate(dateLike, Undefined.instance);
             }
             return JSTemporalCalendar.isoMonthCode((TemporalMonth) dateLike);
@@ -446,7 +451,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             DynamicObject tdl = Undefined.instance;
-            if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(temporalDateLike)) {
+            if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(temporalDateLike) &&
+                            !JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(temporalDateLike)) {
                 tdl = toTemporalDate.executeDynamicObject(temporalDateLike, null);
             } else {
                 tdl = (DynamicObject) temporalDateLike;

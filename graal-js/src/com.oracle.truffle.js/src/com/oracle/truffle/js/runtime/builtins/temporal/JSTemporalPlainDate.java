@@ -144,7 +144,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         if (!TemporalUtil.validateISODate(year, month, day)) {
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
-        if (!TemporalUtil.dateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
+        if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         JSRealm realm = JSRealm.get(null);

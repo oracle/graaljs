@@ -358,7 +358,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInt ns = instant.getNanoseconds();
             double roundedNs = TemporalUtil.roundTemporalInstant(ns.longValue(), precision.getIncrement(), precision.getUnit(), roundingMode);
             DynamicObject roundedInstant = TemporalUtil.createTemporalInstant(getContext(), (long) roundedNs);
-            return TemporalUtil.temporalInstantToString(getContext(), roundedInstant, timeZone, precision.getPrecision());
+            return TemporalUtil.temporalInstantToString(getContext(), getRealm(), roundedInstant, timeZone, precision.getPrecision());
         }
     }
 
@@ -372,7 +372,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         public String toLocaleString(Object thisObj) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            return TemporalUtil.temporalInstantToString(getContext(), instant, Undefined.instance, AUTO);
+            return TemporalUtil.temporalInstantToString(getContext(), getRealm(), instant, Undefined.instance, AUTO);
         }
     }
 
@@ -439,7 +439,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 }
             }
             DynamicObject timeZone = toTemporalTimeZone.executeDynamicObject(item);
-            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
+            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getRealm());
             return TemporalUtil.createTemporalZonedDateTime(getContext(), instant.getNanoseconds(), timeZone, calendar);
         }
     }

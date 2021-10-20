@@ -49,20 +49,20 @@ import java.util.Set;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetBehaviour;
 
 /**
  * Implementation of ToTemporalZonedDateTime() operation.
@@ -71,7 +71,6 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
     private final ConditionProfile isObjectProfile = ConditionProfile.createBinaryProfile();
     private final ConditionProfile isZonedDateTimeProfile = ConditionProfile.createBinaryProfile();
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     protected final JSContext ctx;
 
@@ -100,6 +99,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         String offsetString = null;
         JSTemporalTimeZoneObject timeZone = null;
         DynamicObject calendar = null;
+        JSRealm realm = JSRealm.get(this);
+        OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
         if (isObjectProfile.profile(isObjectNode.executeBoolean(item))) {
             DynamicObject itemObj = (DynamicObject) item;
             if (isZonedDateTimeProfile.profile(TemporalUtil.isTemporalZonedDateTime(itemObj))) {
@@ -112,28 +113,34 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
             timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.executeDynamicObject(timeZoneObj);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
-            if (!TemporalUtil.isNullish(offsetStringObj)) {
+            if (TemporalUtil.isNullish(offsetStringObj)) {
+                offsetBehaviour = OffsetBehaviour.WALL;
+            } else {
                 offsetString = toStringNode.executeString(offsetStringObj);
             }
             result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             String string = toStringNode.executeString(item);
-            JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(ctx, string);
+            JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
-            if (TemporalUtil.isNullish(resultZDT.getTimeZoneName())) {
-                errorBranch.enter();
-                throw Errors.createRangeError("TimeZoneName expected");
+            if (resultZDT.getTimeZoneZ()) {
+                offsetBehaviour = OffsetBehaviour.EXACT;
+            } else {
+                offsetBehaviour = OffsetBehaviour.WALL;
             }
             timeZone = (JSTemporalTimeZoneObject) TemporalUtil.createTemporalTimeZone(ctx, resultZDT.getTimeZoneName());
             offsetString = resultZDT.getTimeZoneOffsetString();
-            calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, result.getCalendar());
+            calendar = TemporalUtil.toTemporalCalendarWithISODefault(ctx, realm, result.getCalendar());
         }
-        long offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
+        long offsetNanoseconds = 0;
+        if (offsetBehaviour == OffsetBehaviour.OPTION) {
+            offsetNanoseconds = TemporalUtil.parseTimeZoneOffsetString(offsetString);
+        }
         String disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode);
         String offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode);
-        BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
-                        result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetNanoseconds, timeZone, disambiguation, offset);
+        BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
+                        result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset);
         return TemporalUtil.createTemporalZonedDateTime(ctx, epochNanoseconds, timeZone, calendar);
     }
 }

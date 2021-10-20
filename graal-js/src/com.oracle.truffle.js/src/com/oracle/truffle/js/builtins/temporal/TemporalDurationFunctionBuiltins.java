@@ -123,7 +123,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationObject one = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(oneParam, getContext(), isObjectNode, toString);
             JSTemporalDurationObject two = (JSTemporalDurationObject) JSTemporalDuration.toTemporalDuration(twoParam, getContext(), isObjectNode, toString);
             DynamicObject options = getOptionsObject(optionsParam);
-            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), options);
+            DynamicObject relativeTo = TemporalUtil.toRelativeTemporalObject(getContext(), getRealm(), options);
             long shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             one.getHours(), one.getMinutes(), one.getSeconds(),

@@ -69,7 +69,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
     public static final JSBuiltinsContainer BUILTINS = new TemporalNowBuiltins();
 
     protected TemporalNowBuiltins() {
-        super("now", TemporalNow.class);
+        super("Now", TemporalNow.class);
     }
 
     public enum TemporalNow implements BuiltinEnum<TemporalNow> {
@@ -170,7 +170,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject plainDateTimeISO(Object temporalTimeZoneLike) {
-            return TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalUtil.getISO8601Calendar(getContext()), getContext());
+            return TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalUtil.getISO8601Calendar(getRealm()), getContext());
         }
     }
 
@@ -194,7 +194,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject zonedDateTimeISO(Object temporalTimeZoneLike) {
-            return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, TemporalUtil.getISO8601Calendar(getContext()), getContext());
+            return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, TemporalUtil.getISO8601Calendar(getRealm()), getContext());
         }
     }
 
@@ -219,7 +219,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject plainDateISO(Object temporalTimeZoneLike) {
-            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
+            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getRealm());
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
             return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar());
         }
@@ -233,7 +233,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public DynamicObject plainTimeISO(Object temporalTimeZoneLike) {
-            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext());
+            DynamicObject calendar = TemporalUtil.getISO8601Calendar(getRealm());
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext());
             return JSTemporalPlainTime.create(getContext(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(),
                             dateTime.getNanosecond());

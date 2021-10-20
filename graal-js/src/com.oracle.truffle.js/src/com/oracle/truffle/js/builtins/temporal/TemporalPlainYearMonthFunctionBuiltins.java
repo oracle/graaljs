@@ -48,6 +48,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBui
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltinsFactory.JSTemporalPlainYearMonthFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
@@ -105,7 +106,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
                 toTemporalOverflow(options);
                 return JSTemporalPlainYearMonth.create(getContext(), pmd.getYear(), pmd.getMonth(), pmd.getCalendar(), pmd.getDay());
             }
-            return TemporalUtil.toTemporalYearMonth(getContext(), item, options);
+            return TemporalUtil.toTemporalYearMonth(getContext(), getRealm(), item, options);
         }
 
     }
@@ -118,8 +119,9 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected int compare(Object one, Object two) {
-            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), one, Undefined.instance);
-            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), two, Undefined.instance);
+            JSRealm realm = JSRealm.get(this);
+            JSTemporalPlainYearMonthObject oneYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, one, Undefined.instance);
+            JSTemporalPlainYearMonthObject twoYM = (JSTemporalPlainYearMonthObject) TemporalUtil.toTemporalYearMonth(getContext(), realm, two, Undefined.instance);
             return TemporalUtil.compareISODate(oneYM.getYear(), oneYM.getMonth(), oneYM.getDay(), twoYM.getYear(), twoYM.getMonth(), twoYM.getDay());
         }
 

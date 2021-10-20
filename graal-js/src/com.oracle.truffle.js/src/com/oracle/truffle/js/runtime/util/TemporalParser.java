@@ -52,14 +52,14 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
  */
 public final class TemporalParser {
 
-    private static final String patternDate = "^([+-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)[-]?(\\d\\d)";
-    private static final String patternTime = "^(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
+    private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternTime = "^(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendar = "^(\\[u-ca=([^\\]]*)\\])";
     private static final String patternTimeZoneBracketedAnnotation = "^(\\[([^\\]]*)\\])";
-    private static final String patternTimeZoneNumericUTCOffset = "^([+-\\u2212])(\\d\\d)[:]?((\\d\\d)[:]?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
-    private static final String patternDateSpecYearMonth = "^([+-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[-]?(\\d\\d)";
-    private static final String patternDateSpecMonthDay = "^[-]?(\\d\\d)[-]?(\\d\\d)";
-    private static final String patternTimeZoneIANAName = "^(\\w*(/\\w*)*)";
+    private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
+    private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternDateSpecMonthDay = "^[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
+    private static final String patternTimeZoneIANAName = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
 
     private final String input;
     private String rest;
@@ -191,7 +191,8 @@ public final class TemporalParser {
     }
 
     public JSTemporalParserRecord result() {
-        return new JSTemporalParserRecord(utcDesignator, year, month, day, hour, minute, second, fraction, offsetSign, offsetHour, offsetMinute, offsetSecond, offsetFraction, timeZoneName, calendar);
+        return new JSTemporalParserRecord(utcDesignator != null, year, month, day, hour, minute, second, fraction, offsetSign, offsetHour, offsetMinute, offsetSecond, offsetFraction,
+                        timeZoneName, calendar);
     }
 
     private boolean atEnd() {
@@ -201,6 +202,24 @@ public final class TemporalParser {
     private void reset() {
         pos = 0;
         rest = input;
+
+        year = null;
+        month = null;
+        day = null;
+        hour = null;
+        minute = null;
+        second = null;
+        fraction = null;
+
+        calendar = null;
+        timeZoneName = null;
+        utcDesignator = null;
+
+        offsetSign = null;
+        offsetHour = null;
+        offsetMinute = null;
+        offsetSecond = null;
+        offsetFraction = null;
     }
 
     private void move(int newPos) {
@@ -287,7 +306,7 @@ public final class TemporalParser {
     }
 
     private boolean parseTimeZone() {
-        Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest);
+        Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, false);
         if (matcher.matches()) {
             offsetSign = matcher.group(1);
             offsetHour = matcher.group(2);
@@ -300,12 +319,14 @@ public final class TemporalParser {
             parseTimeZoneBracket();
             return true;
         }
-        if (rest.equals("Z") || rest.equals("z")) {
-            move(1);
-            this.timeZoneName = TemporalConstants.UTC;
-            this.utcDesignator = "Z";
-            return true;
-        }
+        // TODO this might be relevant, might need to split the `parseTimeZone` into two?
+        // parse target `TimeZoneNumericUTCOffset` does not allow Z, but `TimeZone` does
+// if (rest.equals("Z") || rest.equals("z")) {
+// move(1);
+// this.timeZoneName = TemporalConstants.UTC;
+// this.utcDesignator = "Z";
+// return true;
+// }
         return parseTimeZoneBracket();
     }
 
@@ -321,7 +342,11 @@ public final class TemporalParser {
     }
 
     private static Matcher createMatch(String pattern, String input) {
-        Pattern patternObj = Pattern.compile(pattern + ".*");
+        return createMatch(pattern, input, true);
+    }
+
+    private static Matcher createMatch(String pattern, String input, boolean addMatchAll) {
+        Pattern patternObj = Pattern.compile(pattern + (addMatchAll ? ".*" : ""));
         return patternObj.matcher(input);
     }
 }

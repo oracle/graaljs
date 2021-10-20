@@ -1889,7 +1889,7 @@ public class JSRealm {
         assert context.isOptionTemporal();
         DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 
-        int flags = JSAttributes.notConfigurableEnumerableNotWritable();
+        int flags = JSAttributes.configurableNotEnumerableWritable();
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainDate", getTemporalPlainDateConstructor(), flags);
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainDateTime", getTemporalPlainDateTimeConstructor(), flags);
@@ -1903,7 +1903,7 @@ public class JSRealm {
 
         DynamicObject nowObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
 
-        JSObjectUtil.putDataProperty(context, temporalObject, "now", nowObject, flags);
+        JSObjectUtil.putDataProperty(context, temporalObject, "Now", nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
 
         putGlobalProperty("Temporal", temporalObject);
