@@ -95,7 +95,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks whether the receiver can be handled by the corresponding specialization.
      */
     protected abstract static class ReceiverCheckNode extends JavaScriptBaseNode {
-        protected ReceiverCheckNode() {
+
+        protected final Shape shape;
+
+        protected ReceiverCheckNode(Shape shape) {
+            this.shape = shape;
         }
 
         /**
@@ -110,8 +114,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
          */
         public abstract DynamicObject getStore(Object thisObj);
 
-        public Shape getShape() {
-            return null;
+        public final Shape getShape() {
+            return shape;
         }
 
         /**
@@ -168,6 +172,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         private final Shape shape2;
 
         CombinedShapeCheckNode(Shape shape1, Shape shape2) {
+            super(null);
             assert shape1.getLayoutClass() == shape2.getLayoutClass();
             this.shape1 = shape1;
             this.shape2 = shape2;
@@ -194,10 +199,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      */
     protected abstract static class AbstractShapeCheckNode extends ReceiverCheckNode {
 
-        protected final Shape shape;
-
         protected AbstractShapeCheckNode(Shape shape) {
-            this.shape = shape;
+            super(shape);
         }
 
         /**
@@ -205,11 +208,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
          */
         @Override
         public abstract DynamicObject getStore(Object thisObj);
-
-        @Override
-        public final Shape getShape() {
-            return shape;
-        }
 
         @Override
         public boolean accept(Object thisObj) {
@@ -229,6 +227,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static final class NullCheckNode extends ReceiverCheckNode {
+
+        protected NullCheckNode() {
+            super(null);
+        }
+
         @Override
         public boolean accept(Object thisObj) {
             return thisObj == null;
@@ -244,6 +247,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         protected final Class<?> type;
 
         protected InstanceofCheckNode(Class<?> type) {
+            super(null);
             this.type = type;
         }
 
@@ -263,6 +267,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @Child private AbstractShapeCheckNode prototypeShapeCheck;
 
         protected PrimitiveReceiverCheckNode(Class<?> type, AbstractShapeCheckNode prototypeShapeCheck) {
+            super(null);
             this.type = type;
             this.prototypeShapeCheck = prototypeShapeCheck;
         }
@@ -767,6 +772,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         private final JSClass jsclass;
 
         protected JSClassCheckNode(JSClass jsclass) {
+            super(null);
             this.jsclass = jsclass;
         }
 
@@ -782,6 +788,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected static final class ForeignLanguageCheckNode extends ReceiverCheckNode {
+
+        protected ForeignLanguageCheckNode() {
+            super(null);
+        }
 
         @Override
         public boolean accept(Object thisObj) {
