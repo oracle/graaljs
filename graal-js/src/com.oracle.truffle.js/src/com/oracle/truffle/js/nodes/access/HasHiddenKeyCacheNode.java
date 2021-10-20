@@ -46,25 +46,22 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public abstract class HasHiddenKeyCacheNode extends JavaScriptBaseNode {
     protected final HiddenKey key;
-    protected final JSContext context;
 
-    protected HasHiddenKeyCacheNode(JSContext context, HiddenKey key) {
+    protected HasHiddenKeyCacheNode(HiddenKey key) {
         this.key = key;
-        this.context = context;
     }
 
-    public static HasHiddenKeyCacheNode create(JSContext context, HiddenKey key) {
-        return HasHiddenKeyCacheNodeGen.create(context, key);
+    public static HasHiddenKeyCacheNode create(HiddenKey key) {
+        return HasHiddenKeyCacheNodeGen.create(key);
     }
 
     public abstract boolean executeHasHiddenKey(Object object);
 
-    @Specialization(guards = {"!context.isMultiContext()", "cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
+    @Specialization(guards = {"cachedShape.check(object)"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "cacheLimit")
     protected static boolean doCached(@SuppressWarnings("unused") DynamicObject object,
                     @SuppressWarnings("unused") @Cached("object.getShape()") Shape cachedShape,
                     @Cached("doUncached(object)") boolean hasOwnProperty,

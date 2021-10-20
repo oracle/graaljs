@@ -116,7 +116,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         public ArrayIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isArrayIteratorNode = HasHiddenKeyCacheNode.create(context, JSArray.ARRAY_ITERATION_KIND_ID);
+            this.isArrayIteratorNode = HasHiddenKeyCacheNode.create(JSArray.ARRAY_ITERATION_KIND_ID);
             this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.getNextIndexNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.getIterationKindNode = PropertyGetNode.createGetHidden(JSArray.ARRAY_ITERATION_KIND_ID, context);

@@ -110,7 +110,7 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         public SetIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isSetIteratorNode = HasHiddenKeyCacheNode.create(context, JSSet.SET_ITERATION_KIND_ID);
+            this.isSetIteratorNode = HasHiddenKeyCacheNode.create(JSSet.SET_ITERATION_KIND_ID);
             this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.getNextIndexNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.getIterationKindNode = PropertyGetNode.createGetHidden(JSSet.SET_ITERATION_KIND_ID, context);

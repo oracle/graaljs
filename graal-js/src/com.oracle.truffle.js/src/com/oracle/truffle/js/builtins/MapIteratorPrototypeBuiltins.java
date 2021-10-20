@@ -111,7 +111,7 @@ public final class MapIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         public MapIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isMapIteratorNode = HasHiddenKeyCacheNode.create(context, JSMap.MAP_ITERATION_KIND_ID);
+            this.isMapIteratorNode = HasHiddenKeyCacheNode.create(JSMap.MAP_ITERATION_KIND_ID);
             this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.getNextIndexNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
             this.getIterationKindNode = PropertyGetNode.createGetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
