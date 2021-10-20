@@ -339,7 +339,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            boolean ret = ((PropertyProxy) property.get(store, guard)).set(store, value);
+            boolean ret = ((PropertyProxy) property.getLocation().get(store, guard)).set(store, value);
             if (!ret && isStrict) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
@@ -527,7 +527,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Accessor accessor = (Accessor) property.get(store, guard);
+            Accessor accessor = (Accessor) property.getLocation().get(store, guard);
 
             DynamicObject setter = accessor.getSetter();
             if (setter != Undefined.instance) {

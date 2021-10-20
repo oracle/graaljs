@@ -363,7 +363,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Object value = property.get(store, guard);
+            Object value = property.getLocation().get(store, guard);
             if (JSProperty.isProxy(property)) {
                 return ((PropertyProxy) value).get(store);
             } else {
@@ -613,7 +613,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Accessor accessor = (Accessor) property.get(store, guard);
+            Accessor accessor = (Accessor) property.getLocation().get(store, guard);
 
             DynamicObject getter = accessor.getGetter();
             if (getter != Undefined.instance) {
