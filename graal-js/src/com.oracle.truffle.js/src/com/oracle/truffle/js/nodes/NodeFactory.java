@@ -671,8 +671,8 @@ public class NodeFactory {
         return AccessVarArgsNode.create(startIndex);
     }
 
-    public JavaScriptNode createAccessRestArgument(JSContext context, int index, int trailingArgCount) {
-        return AccessRestArgumentsNode.create(context, index, trailingArgCount);
+    public JavaScriptNode createAccessRestArgument(JSContext context, int index) {
+        return AccessRestArgumentsNode.create(context, index);
     }
 
     public JavaScriptNode createAccessNewTarget() {
@@ -774,8 +774,8 @@ public class NodeFactory {
         return GlobalObjectNode.create();
     }
 
-    public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount, int trailingArgumentCount) {
-        return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount, trailingArgumentCount);
+    public JavaScriptNode createArgumentsObjectNode(JSContext context, boolean unmapped, int leadingArgumentCount) {
+        return ArgumentsObjectNode.create(context, unmapped, leadingArgumentCount);
     }
 
     public JavaScriptNode createThrowError(JSErrorType errorType, String message) {
@@ -1084,8 +1084,8 @@ public class NodeFactory {
         return JSToObjectNode.JSToObjectWrapperNode.createToObjectFromWith(context, operand, checkForNullOrUndefined);
     }
 
-    public JavaScriptNode createAccessArgumentsArrayDirectly(JavaScriptNode writeArguments, JavaScriptNode readArguments, int leadingArgCount, int trailingArgCount) {
-        return new AccessArgumentsArrayDirectlyNode(writeArguments, readArguments, leadingArgCount, trailingArgCount);
+    public JavaScriptNode createAccessArgumentsArrayDirectly(JavaScriptNode writeArguments, JavaScriptNode readArguments, int leadingArgCount) {
+        return new AccessArgumentsArrayDirectlyNode(writeArguments, readArguments, leadingArgCount);
     }
 
     public JavaScriptNode createCallApplyArguments(JSFunctionCallNode callNode) {

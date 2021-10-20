@@ -833,10 +833,9 @@ public abstract class Environment {
             JavaScriptNode argumentsVarNode = factory.createReadFrameSlot(frameSlot, createScopeFrameNode());
             if (function().isDirectArgumentsAccess()) {
                 FunctionEnvironment currentFunction = current.function();
-                JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount(),
-                                currentFunction.getTrailingArgumentCount());
+                JavaScriptNode createArgumentsObjectNode = factory.createArgumentsObjectNode(context, isStrictMode(), currentFunction.getLeadingArgumentCount());
                 JavaScriptNode writeNode = factory.createWriteFrameSlot(frameSlot, createScopeFrameNode(), current.getBlockFrameDescriptor(), createArgumentsObjectNode);
-                return factory.createAccessArgumentsArrayDirectly(writeNode, argumentsVarNode, currentFunction.getLeadingArgumentCount(), currentFunction.getTrailingArgumentCount());
+                return factory.createAccessArgumentsArrayDirectly(writeNode, argumentsVarNode, currentFunction.getLeadingArgumentCount());
             } else {
                 return argumentsVarNode;
             }

@@ -848,7 +848,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (int argIndex = currentFunction.getLeadingArgumentCount(); i < parameterCount; i++, argIndex++) {
             final JavaScriptNode valueNode;
             if (hasRestParameter && i == parameterCount - 1) {
-                valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction.getTrailingArgumentCount()));
+                valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex));
             } else {
                 valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
@@ -1131,7 +1131,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode prepareArguments() {
         VarRef argumentsVar = environment.findLocalVar(Environment.ARGUMENTS_NAME);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
-        JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount(), currentFunction().getTrailingArgumentCount());
+        JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount());
         if (!unmappedArgumentsObject) {
             argumentsObject = environment.findArgumentsVar().createWriteNode(argumentsObject);
         }
@@ -3449,7 +3449,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         final FunctionEnvironment currentFunction = currentFunction();
         final JavaScriptNode valueNode;
         if (paramNode.isRestParameter()) {
-            valueNode = factory.createAccessRestArgument(context, currentFunction.getLeadingArgumentCount() + paramNode.getIndex(), currentFunction.getTrailingArgumentCount());
+            valueNode = factory.createAccessRestArgument(context, currentFunction.getLeadingArgumentCount() + paramNode.getIndex());
         } else {
             valueNode = factory.createAccessArgument(currentFunction.getLeadingArgumentCount() + paramNode.getIndex());
         }

@@ -515,11 +515,6 @@ public final class FunctionEnvironment extends Environment {
         return needsNewTarget ? 1 : 0;
     }
 
-    @SuppressWarnings("static-method")
-    public int getTrailingArgumentCount() {
-        return 0;
-    }
-
     public boolean isDerivedConstructor() {
         return isDerivedConstructor;
     }

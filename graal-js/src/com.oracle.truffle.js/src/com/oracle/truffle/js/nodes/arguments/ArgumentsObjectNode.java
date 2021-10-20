@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,6 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
     private final boolean strict;
     @Child private RealmNode realmNode;
     private final int leadingArgCount;
-    private final int trailingArgCount;
 
     @Child private DynamicObjectLibrary putLengthNode;
     @Child private DynamicObjectLibrary putSymbolIteratorNode;
@@ -79,19 +78,18 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
 
     private static final int THROWER_ACCESSOR_PROPERTY_FLAGS = JSAttributes.notConfigurableNotEnumerable() | JSProperty.ACCESSOR;
 
-    protected ArgumentsObjectNode(JSContext context, boolean strict, int leadingArgCount, int trailingArgCount) {
+    protected ArgumentsObjectNode(JSContext context, boolean strict, int leadingArgCount) {
         this.strict = strict;
         this.realmNode = RealmNode.create(context);
         this.leadingArgCount = leadingArgCount;
-        this.trailingArgCount = trailingArgCount;
 
         this.putLengthNode = JSObjectUtil.createDispatched(JSArgumentsArray.LENGTH);
         this.putSymbolIteratorNode = JSObjectUtil.createDispatched(Symbol.SYMBOL_ITERATOR);
         this.putCalleeNode = JSObjectUtil.createDispatched(JSArgumentsArray.CALLEE);
     }
 
-    public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount, int trailingArgCount) {
-        return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount, trailingArgCount);
+    public static JavaScriptNode create(JSContext context, boolean strict, int leadingArgCount) {
+        return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount);
     }
 
     protected final boolean isStrict(VirtualFrame frame) {
@@ -148,7 +146,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
     }
 
     public Object[] getObjectArray(VirtualFrame frame) {
-        return JSArguments.extractUserArguments(frame.getArguments(), leadingArgCount, trailingArgCount);
+        return JSArguments.extractUserArguments(frame.getArguments(), leadingArgCount);
     }
 
     static boolean isInitialized(Object argumentsArray) {
@@ -157,6 +155,6 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return ArgumentsObjectNodeGen.create(realmNode.getContext(), strict, leadingArgCount, trailingArgCount);
+        return ArgumentsObjectNodeGen.create(realmNode.getContext(), strict, leadingArgCount);
     }
 }
