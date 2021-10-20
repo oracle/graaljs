@@ -75,7 +75,6 @@ import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaSynchronizedNodeGe
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaToNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaTypeNameNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaTypeNodeGen;
-import com.oracle.truffle.js.nodes.access.RealmNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -620,22 +619,21 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
     }
 
     abstract static class JavaSynchronizedNode extends JSBuiltinNode {
-        @Child private RealmNode realmNode;
 
         JavaSynchronizedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.realmNode = RealmNode.create(context);
         }
 
+        @TruffleBoundary
         @Specialization
-        protected Object doSynchronize(VirtualFrame frame, Object func, Object lock) {
+        protected Object doSynchronize(Object func, Object lock) {
             if (!JSFunction.isJSFunction(func)) {
                 throw Errors.createTypeErrorNotAFunction(func);
             }
+            JSRealm realm = getRealm();
             if (lock != Undefined.instance) {
-                unwrapAndCheckLockObject(lock, getRealm().getEnv());
+                unwrapAndCheckLockObject(lock, realm.getEnv());
             }
-            JSRealm realm = realmNode.execute(frame);
             JSFunctionData synchronizedFunctionData = createSynchronizedWrapper((DynamicObject) func);
             DynamicObject synchronizedFunction = JSFunction.create(realm, synchronizedFunctionData);
             if (lock != Undefined.instance) {
