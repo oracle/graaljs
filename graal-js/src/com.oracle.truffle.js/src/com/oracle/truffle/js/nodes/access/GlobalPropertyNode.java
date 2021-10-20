@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -80,7 +79,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
                 return new GlobalConstantNode(propertyName, new GlobalConstantNode.DirNameNode());
             }
         }
-        return new GlobalPropertyNode(ctx, propertyName, null);
+        return new GlobalPropertyNode(ctx, propertyName, GlobalObjectNode.create());
     }
 
     public static JSTargetableNode createLexicalGlobal(JSContext ctx, String propertyName, boolean checkTDZ) {
@@ -116,7 +115,7 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
     @Override
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
         if (materializedTags.contains(ReadPropertyTag.class) && !isScopeAccess() && globalObjectNode == null) {
-            GlobalObjectNode global = GlobalObjectNode.create();
+            GlobalObjectNode global = new GlobalObjectNode();
             GlobalPropertyNode materialized = new GlobalPropertyNode(context, propertyName, global);
             if (this.cache != null && this.cache.isMethod()) {
                 materialized.cache.setMethod();
@@ -135,15 +134,15 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     @Override
     public final Object evaluateTarget(VirtualFrame frame) {
-        if (globalObjectNode != null) {
-            return globalObjectNode.execute(frame);
+        if (globalObjectNode == GlobalObjectNode.SINGLETON) {
+            return getRealm().getGlobalObject();
         }
-        return getRealm().getGlobalObject();
+        return globalObjectNode.execute(frame);
     }
 
     @Override
     public JavaScriptNode getTarget() {
-        return getGlobalObjectNode();
+        return globalObjectNode;
     }
 
     @Override
@@ -171,14 +170,6 @@ public class GlobalPropertyNode extends JSTargetableNode implements ReadNode {
 
     public void setPropertyAssumptionCheckEnabled(boolean enabled) {
         cache.setPropertyAssumptionCheckEnabled(enabled);
-    }
-
-    private JavaScriptNode getGlobalObjectNode() {
-        if (globalObjectNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.globalObjectNode = insert(GlobalObjectNode.create());
-        }
-        return globalObjectNode;
     }
 
     @Override

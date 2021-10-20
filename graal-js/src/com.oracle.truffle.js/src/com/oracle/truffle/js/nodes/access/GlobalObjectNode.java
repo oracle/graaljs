@@ -54,11 +54,13 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 @NodeInfo(cost = NodeCost.NONE)
 public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
 
+    static final GlobalObjectNode SINGLETON = new GlobalObjectNode();
+
     protected GlobalObjectNode() {
     }
 
     public static GlobalObjectNode create() {
-        return new GlobalObjectNode();
+        return SINGLETON;
     }
 
     @Override
@@ -85,7 +87,12 @@ public class GlobalObjectNode extends JavaScriptNode implements RepeatableNode {
     }
 
     @Override
+    public boolean isAdoptable() {
+        return false;
+    }
+
+    @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create();
+        return this;
     }
 }
