@@ -149,6 +149,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -2780,7 +2781,13 @@ public final class GraalJSAccess {
         EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
 
         JSFunctionData functionData = engineCacheData.getOrCreateBuiltinFunctionData(GcBuiltinRoot, (c) -> {
-            JavaScriptRootNode rootNode = new GcBuiltinRootNode();
+            JavaScriptRootNode rootNode = new JavaScriptRootNode() {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    GraalJSAccess.get(this).isolatePerformGC();
+                    return Undefined.instance;
+                }
+            };
             return JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(rootNode), 0, "gc");
         });
         DynamicObject function = JSFunction.create(realm, functionData);
@@ -2824,14 +2831,26 @@ public final class GraalJSAccess {
         EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
 
         JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(AlwaysFalse, (c) -> {
-            CallTarget target = Truffle.getRuntime().createCallTarget(new AlwaysFalseRootNode());
+// CallTarget target = Truffle.getRuntime().createCallTarget(new AlwaysFalseRootNode());
+            CallTarget target = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return false;
+                }
+            });
             return JSFunctionData.createCallOnly(realm.getContext(), target, 0, "isTraceCategoryEnabled");
         });
         DynamicObject isEnabledFunction = JSFunction.create(realm, isEnabledFunctionData);
         JSObject.set(extras, "isTraceCategoryEnabled", isEnabledFunction);
 
         JSFunctionData traceFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(AlwaysUndefined, (c) -> {
-            CallTarget target = Truffle.getRuntime().createCallTarget(new AlwaysUndefinedRootNode());
+// CallTarget target = Truffle.getRuntime().createCallTarget(new AlwaysUndefinedRootNode());
+            CallTarget target = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return Undefined.instance;
+                }
+            });
             return JSFunctionData.createCallOnly(realm.getContext(), target, 0, "trace");
         });
         DynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
@@ -3094,7 +3113,19 @@ public final class GraalJSAccess {
             System.err.println("Debugger is not available!");
             return;
         }
-        debugger.startSession(new SyncSuspendedCallback(terminateExecution)).suspendNextExecution();
+        debugger.startSession(se -> {
+            se.getSession().close();
+            synchronized (GraalJSAccess.get()) {
+                if (!terminateExecution) {
+                    return; // termination has been cancelled
+                }
+            }
+            throw new GraalJSKillException();
+        }).suspendNextExecution();
+    }
+
+    static final class GraalJSKillException extends ThreadDeath {
+        private static final long serialVersionUID = 3930431622452607906L;
     }
 
     public Object isolateGetIntPlaceholder() {
@@ -3786,10 +3817,10 @@ public final class GraalJSAccess {
     }
 
     public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
-        if (backingStore instanceof ByteBuffer)
-            return;
-        if (backingStore instanceof NodeScriptOrModule)
-            return;
+// if (backingStore instanceof ByteBuffer)
+// return;
+// if (backingStore instanceof NodeScriptOrModule)
+// return;
 
         weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
     }
@@ -3817,4 +3848,15 @@ public final class GraalJSAccess {
         return currentMessagePortData;
     }
 
+    // v8:BackingStore::DeleterCallback
+    static class DeleterCallback extends WeakCallback {
+        int length;
+        long deleterData;
+
+        DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
+            super(backingStore, data, callback, -1, queue);
+            this.length = length;
+            this.deleterData = deleterData;
+        }
+    }
 }
