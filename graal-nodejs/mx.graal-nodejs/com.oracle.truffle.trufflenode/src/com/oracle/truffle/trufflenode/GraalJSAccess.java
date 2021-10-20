@@ -2131,23 +2131,19 @@ public final class GraalJSAccess {
         }
 
         Object function;
+        TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
+        String realBody = prefix + body + suffix;
+        Source actualCode = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(realBody).name(sourceName).build();
         if (snapshot == null) {
-
             if (!anyExtension) {
-                TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-                String realBody = prefix + body + suffix;
-                Source actualCode = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(realBody).name(sourceName).build();
                 CallTarget target = JavaScriptLanguage.getCurrentEnv().parsePublic(actualCode);
                 function = target.call();
             } else {
-                ScriptNode scriptNode = nodeEvaluator.parseScript(jsContext, source, prefix, suffix, isStrict);
-                DynamicObject fn = (DynamicObject) scriptNode.run(realm);
-                function = JSFunction.call(fn, Undefined.instance, extensions);
+                CallTarget target = JavaScriptLanguage.getCurrentEnv().parsePublic(actualCode);
+                DynamicObject script = (DynamicObject) target.call(extensions);
+                function = JSFunction.call(script, Undefined.instance, extensions);
             }
         } else {
-            TruffleFile truffleFile = realm.getEnv().getPublicTruffleFile(sourceName);
-            String realBody = prefix + body + suffix;
-            Source actualCode = Source.newBuilder(JavaScriptLanguage.ID, truffleFile).content(realBody).name(sourceName).build();
             CallTarget target = JavaScriptLanguage.getCurrentEnv().parsePublic(actualCode);
             function = target.call();
         }
