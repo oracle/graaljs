@@ -875,14 +875,12 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     public static final class ArrayLengthPropertySetNode extends LinkedPropertySetNode {
 
         @Child private ArrayLengthWriteNode arrayLengthWrite;
-        private final Property property;
         private final boolean isStrict;
         private final BranchProfile errorBranch = BranchProfile.create();
 
         public ArrayLengthPropertySetNode(Property property, AbstractShapeCheckNode shapeCheck, boolean isStrict) {
             super(shapeCheck);
             assert JSProperty.isData(property) && JSProperty.isWritable(property) && isArrayLengthProperty(property);
-            this.property = property;
             this.isStrict = isStrict;
             this.arrayLengthWrite = ArrayLengthWriteNode.create(isStrict);
         }
@@ -890,10 +888,10 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            boolean ret = ((PropertyProxy) property.get(store, guard)).set(store, value);
+            boolean ret = JSArray.setLength(store, value);
             if (!ret && isStrict) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(JSArray.LENGTH, thisObj);
             }
             return true;
         }
