@@ -1118,20 +1118,17 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
-            AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, true);
             if (JSAdapter.isJSAdapter(store)) {
-                ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
-                return new JSAdapterPropertySetNode(receiverCheck);
+                return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
-                ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
-                return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
+                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, depth), isStrict());
             } else if (!JSRuntime.isObject(thisJSObj)) {
-                return new TypeErrorPropertySetNode(shapeCheck);
+                return new TypeErrorPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, true));
             } else if (superProperty) {
                 // define the property on the receiver; currently not handled, rewrite to generic
                 return createGenericPropertyNode();
             } else if (JSShape.isExtensible(cacheShape) || key instanceof HiddenKey) {
-                return createDefineNewPropertyNode(shapeCheck);
+                return createDefineNewPropertyNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, true));
             } else {
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
             }

@@ -258,7 +258,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         @Override
         public DynamicObject getStore(Object thisObj) {
-            throw Errors.shouldNotReachHere();
+            return (JSDynamicObject) thisObj;
         }
     }
 
@@ -746,25 +746,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 }
             }
             return true;
-        }
-    }
-
-    protected static final class JSClassCheckNode extends ReceiverCheckNode {
-        private final JSClass jsclass;
-
-        protected JSClassCheckNode(JSClass jsclass) {
-            super(null);
-            this.jsclass = jsclass;
-        }
-
-        @Override
-        public boolean accept(Object thisObj) {
-            return JSClass.isInstance(thisObj, jsclass);
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return (JSDynamicObject) thisObj;
         }
     }
 
@@ -1336,6 +1317,15 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             } else {
                 return new TraverseValuePrototypeChainCheckNode(valueClass, wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped));
             }
+        }
+    }
+
+    protected final ReceiverCheckNode createJSClassCheck(Object thisObj, int depth) {
+        JSDynamicObject jsobject = (JSDynamicObject) thisObj;
+        if (depth == 0) {
+            return new InstanceofCheckNode(jsobject.getClass());
+        } else {
+            return createShapeCheckNode(jsobject.getShape(), jsobject, depth, false, false);
         }
     }
 

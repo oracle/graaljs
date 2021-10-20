@@ -1915,9 +1915,9 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @Override
     protected GetCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
         if (JavaPackage.isJavaPackage(thisObj)) {
-            return new JavaPackagePropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new JavaPackagePropertyGetNode(createJSClassCheck(thisObj, depth));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
-            return new UnspecializedPropertyGetNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new UnspecializedPropertyGetNode(createJSClassCheck(thisObj, depth));
         }
         if (JSConfig.SubstrateVM) {
             return null;
@@ -1939,15 +1939,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject jsobject = (JSDynamicObject) thisObj;
-            Shape cacheShape = jsobject.getShape();
-            AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, jsobject, depth, false, false);
-            ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(jsobject)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterPropertyGetNode(receiverCheck);
+                return new JSAdapterPropertyGetNode(createJSClassCheck(thisObj, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
-                return createJSProxyCache(receiverCheck);
+                return createJSProxyCache(createJSClassCheck(thisObj, depth));
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedPropertyGetNode(receiverCheck);
+                return new UnspecializedPropertyGetNode(createJSClassCheck(thisObj, depth));
             } else {
                 return createUndefinedJSObjectPropertyNode(jsobject, depth);
             }

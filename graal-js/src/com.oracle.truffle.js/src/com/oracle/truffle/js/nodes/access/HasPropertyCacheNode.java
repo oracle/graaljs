@@ -325,16 +325,14 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
-            AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
-            ReceiverCheckNode receiverCheck = (depth == 0) ? new JSClassCheckNode(JSObject.getJSClass(thisJSObj)) : shapeCheck;
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterHasPropertyCacheNode(key, receiverCheck);
+                return new JSAdapterHasPropertyCacheNode(key, createJSClassCheck(thisObj, depth));
             } else if (JSProxy.isJSProxy(store)) {
-                return new JSProxyDispatcherPropertyHasNode(context, key, receiverCheck, isOwnProperty());
+                return new JSProxyDispatcherPropertyHasNode(context, key, createJSClassCheck(thisObj, depth), isOwnProperty());
             } else if (JSModuleNamespace.isJSModuleNamespace(store)) {
-                return new UnspecializedHasPropertyCacheNode(receiverCheck);
+                return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
             } else {
-                return new AbsentHasPropertyCacheNode(shapeCheck);
+                return new AbsentHasPropertyCacheNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false));
             }
         } else {
             return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass()));
@@ -344,9 +342,9 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     @Override
     protected HasCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
         if (JavaPackage.isJavaPackage(thisObj)) {
-            return new PresentHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new PresentHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
-            return new UnspecializedHasPropertyCacheNode(new JSClassCheckNode(JSObject.getJSClass((DynamicObject) thisObj)));
+            return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
         }
         return null;
     }
