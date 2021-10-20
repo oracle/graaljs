@@ -169,8 +169,11 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
+import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
+import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.function.ConstructorRootNode;
 import com.oracle.truffle.js.parser.GraalJSEvaluator;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
@@ -237,6 +240,7 @@ import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
+import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -258,6 +262,7 @@ import com.oracle.truffle.trufflenode.info.PropertyHandler;
 import com.oracle.truffle.trufflenode.info.Script;
 import com.oracle.truffle.trufflenode.info.UnboundScript;
 import com.oracle.truffle.trufflenode.info.Value;
+import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeFunctionNode;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 import com.oracle.truffle.trufflenode.node.debug.SetBreakPointNode;
@@ -1316,7 +1321,16 @@ public final class GraalJSAccess {
     private static JSFunctionData createInteropBufferGetContents(JSContext context) {
         EngineCacheData engineCacheData = getContextEngineCacheData(context);
         return engineCacheData.getOrCreateBuiltinFunctionData(InteropArrayBuffer, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new InteropArrayBufferGetContents());
+            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+                @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
+                @Child private ArrayBufferGetContentsNode bufferGetContents = ArrayBufferGetContentsNode.create();
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    Object value = valueNode.execute(frame);
+                    return bufferGetContents.execute(value);
+                }
+            });
             return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
         });
     }
@@ -3182,7 +3196,14 @@ public final class GraalJSAccess {
     public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, "(function(r) { r.run(); })", "polyglotEngineWrapper").internal(true).buildLiteral();
         org.graalvm.polyglot.Value wrapper = evaluator.eval(source);
-        wrapper.execute(new RunnableInvoker(new NativeRunnable(callback, isolate, param1, param2, args, execArgs)));
+// wrapper.execute(new RunnableInvoker(new NativeRunnable(callback, isolate, param1, param2, args,
+// execArgs)));
+        wrapper.execute(new RunnableInvoker(new Runnable() {
+            @Override
+            public void run() {
+                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, args, execArgs);
+            }
+        }));
     }
 
     private static final ThreadLocal<Deque<Pair<Long, Object>>> isolateStack = new ThreadLocal<>();
@@ -3825,6 +3846,93 @@ public final class GraalJSAccess {
         weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
     }
 
+    private static class WeakCallback extends WeakReference<Object> {
+
+        long data;
+        long callback;
+        int type;
+
+        WeakCallback(Object object, long data, long callback, int type, ReferenceQueue<Object> queue) {
+            super(object, queue);
+            this.data = data;
+            this.callback = callback;
+            this.type = type;
+        }
+
+    }
+
+    // v8:BackingStore::DeleterCallback
+    private static class DeleterCallback extends WeakCallback {
+        int length;
+        long deleterData;
+
+        DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
+            super(backingStore, data, callback, -1, queue);
+            this.length = length;
+            this.deleterData = deleterData;
+        }
+    }
+
+    static class PropertyHandlerPrototypeNode extends JavaScriptRootNode {
+        private final boolean global;
+        @Child private GetPrototypeNode getPrototypeNode;
+
+        PropertyHandlerPrototypeNode(boolean global) {
+            this.global = global;
+            if (!global) {
+                this.getPrototypeNode = GetPrototypeNode.create();
+            }
+        }
+
+        @Override
+        public Object execute(VirtualFrame vf) {
+            Object target = vf.getArguments()[2];
+            if (global) {
+                return target;
+            } else {
+                return getPrototypeNode.executeJSObject(target);
+            }
+        }
+
+    }
+
+    static class ESModuleLoader implements JSModuleLoader {
+        private final Map<ScriptOrModule, Map<String, JSModuleRecord>> cache = new HashMap<>();
+        private long resolver;
+
+        void setResolver(long resolver) {
+            this.resolver = resolver;
+        }
+
+        @Override
+        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
+            Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
+            String specifier = moduleRequest.getSpecifier();
+            if (referrerCache == null) {
+                referrerCache = new HashMap<>();
+                cache.put(referrer, referrerCache);
+            } else {
+                JSModuleRecord cached = referrerCache.get(specifier);
+                if (cached != null) {
+                    return cached;
+                }
+            }
+            if (resolver == 0) {
+                System.err.println("Cannot resolve module outside module instantiation!");
+                System.exit(1);
+            }
+            JSRealm realm = JSRealm.get(null);
+            JSModuleRecord result = (JSModuleRecord) NativeAccess.executeResolveCallback(resolver, realm, specifier, referrer);
+            referrerCache.put(specifier, result);
+            return result;
+        }
+
+        @Override
+        public JSModuleRecord loadModule(Source moduleSource, JSModuleData moduleData) {
+            throw new UnsupportedOperationException();
+        }
+    }
+
     /**
      * Used to establish a communication channels between node workers when they attempt to exchange
      * Java host objects.
@@ -3848,15 +3956,24 @@ public final class GraalJSAccess {
         return currentMessagePortData;
     }
 
-    // v8:BackingStore::DeleterCallback
-    static class DeleterCallback extends WeakCallback {
-        int length;
-        long deleterData;
+    /**
+     * {@code ScriptOrModule} of a function produced by
+     * {@code ScriptCompiler::CompileFunctionInContext()}. It supports native weak references.
+     */
+    static class NodeScriptOrModule extends ScriptOrModule {
+        static final HiddenKey SCRIPT_OR_MODULE = new HiddenKey("scriptOrModule");
 
-        DeleterCallback(Object backingStore, long data, int length, long deleterData, long callback, ReferenceQueue<Object> queue) {
-            super(backingStore, data, callback, -1, queue);
-            this.length = length;
-            this.deleterData = deleterData;
+        private Map<Long, WeakCallback> weakCallbackMap;
+
+        NodeScriptOrModule(JSContext context, Source source) {
+            super(context, source);
+        }
+
+        Map<Long, WeakCallback> getWeakCallbackMap() {
+            if (weakCallbackMap == null) {
+                weakCallbackMap = new HashMap<>();
+            }
+            return weakCallbackMap;
         }
     }
 }
