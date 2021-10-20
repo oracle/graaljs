@@ -165,6 +165,7 @@ import com.oracle.truffle.js.parser.env.EvalEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment;
 import com.oracle.truffle.js.parser.env.FunctionEnvironment.JumpTargetCloseable;
 import com.oracle.truffle.js.parser.env.GlobalEnvironment;
+import com.oracle.truffle.js.parser.env.PrivateEnvironment;
 import com.oracle.truffle.js.parser.env.WithEnvironment;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -847,7 +848,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (int argIndex = currentFunction.getLeadingArgumentCount(); i < parameterCount; i++, argIndex++) {
             final JavaScriptNode valueNode;
             if (hasRestParameter && i == parameterCount - 1) {
-                valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex, currentFunction.getTrailingArgumentCount()));
+                valueNode = tagHiddenExpression(factory.createAccessRestArgument(context, argIndex));
             } else {
                 valueNode = tagHiddenExpression(factory.createAccessArgument(argIndex));
             }
@@ -1130,7 +1131,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode prepareArguments() {
         VarRef argumentsVar = environment.findLocalVar(Environment.ARGUMENTS_NAME);
         boolean unmappedArgumentsObject = currentFunction().isStrictMode() || !currentFunction().hasSimpleParameterList();
-        JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount(), currentFunction().getTrailingArgumentCount());
+        JavaScriptNode argumentsObject = factory.createArgumentsObjectNode(context, unmappedArgumentsObject, currentFunction().getLeadingArgumentCount());
         if (!unmappedArgumentsObject) {
             argumentsObject = environment.findArgumentsVar().createWriteNode(argumentsObject);
         }
@@ -3408,23 +3409,34 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             }
 
             JavaScriptNode classHeritage = transform(classNode.getClassHeritage());
-            JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
-            ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
+            JavaScriptNode classDefinition;
+            try (EnvironmentCloseable privateEnv = enterPrivateEnvironment(classNode)) {
+                JavaScriptNode classFunction = transform(classNode.getConstructor().getValue());
 
-            JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
+                ArrayList<ObjectLiteralMemberNode> members = transformPropertyDefinitionList(classNode.getClassElements(), true, classNameSymbol);
 
-            JavaScriptNode classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
-                            members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className,
-                            classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), currentFunction().getBlockScopeSlot());
+                JSWriteFrameSlotNode writeClassBinding = className == null ? null : (JSWriteFrameSlotNode) findScopeVar(className, true).createWriteNode(null);
 
-            if (classNode.hasPrivateMethods()) {
-                // internal constructor binding used for private brand checks.
-                classDefinition = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createWriteNode(classDefinition);
+                classDefinition = factory.createClassDefinition(context, (JSFunctionExpressionNode) classFunction, classHeritage,
+                                members.toArray(ObjectLiteralMemberNode.EMPTY), writeClassBinding, className,
+                                classNode.getInstanceFieldCount(), classNode.getStaticElementCount(), classNode.hasPrivateInstanceMethods(), currentFunction().getBlockScopeSlot());
+
+                if (classNode.hasPrivateMethods()) {
+                    // internal constructor binding used for private brand checks.
+                    classDefinition = environment.findLocalVar(ClassNode.PRIVATE_CONSTRUCTOR_BINDING_NAME).createWriteNode(classDefinition);
+                }
             }
 
             return tagExpression(blockEnv.wrapBlockScope(classDefinition), classNode);
         }
+    }
+
+    private EnvironmentCloseable enterPrivateEnvironment(ClassNode classNode) {
+        if (classNode.getScope().hasPrivateNames()) {
+            return new EnvironmentCloseable(new PrivateEnvironment(environment, factory, context));
+        }
+        return null;
     }
 
     @Override
@@ -3437,7 +3449,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         final FunctionEnvironment currentFunction = currentFunction();
         final JavaScriptNode valueNode;
         if (paramNode.isRestParameter()) {
-            valueNode = factory.createAccessRestArgument(context, currentFunction.getLeadingArgumentCount() + paramNode.getIndex(), currentFunction.getTrailingArgumentCount());
+            valueNode = factory.createAccessRestArgument(context, currentFunction.getLeadingArgumentCount() + paramNode.getIndex());
         } else {
             valueNode = factory.createAccessArgument(currentFunction.getLeadingArgumentCount() + paramNode.getIndex());
         }

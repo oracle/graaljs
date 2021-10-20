@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,16 +62,14 @@ import java.util.Set;
  */
 public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
     private final int leadingArgCount;
-    private final int trailingArgCount;
     @Child private JavaScriptNode writeArgumentsNode;
     @Child private JavaScriptNode readArgumentsNode;
 
     @CompilationFinal private volatile boolean directArrayAccess = true;
     private final ConditionProfile initializedProfile = ConditionProfile.createBinaryProfile();
 
-    public AccessArgumentsArrayDirectlyNode(JavaScriptNode writeArgumentsNode, JavaScriptNode readArgumentsNode, int leadingArgCount, int trailingArgCount) {
+    public AccessArgumentsArrayDirectlyNode(JavaScriptNode writeArgumentsNode, JavaScriptNode readArgumentsNode, int leadingArgCount) {
         this.leadingArgCount = leadingArgCount;
-        this.trailingArgCount = trailingArgCount;
         this.writeArgumentsNode = writeArgumentsNode;
         this.readArgumentsNode = readArgumentsNode;
     }
@@ -86,7 +84,7 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
     }
 
     private Object[] asObjectArray(VirtualFrame frame) {
-        return JSArguments.extractUserArguments(frame.getArguments(), leadingArgCount, trailingArgCount);
+        return JSArguments.extractUserArguments(frame.getArguments(), leadingArgCount);
     }
 
     /**
@@ -113,7 +111,7 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         AccessArgumentsArrayDirectlyNode copy = new AccessArgumentsArrayDirectlyNode(cloneUninitialized(writeArgumentsNode, materializedTags), cloneUninitialized(readArgumentsNode, materializedTags),
-                        leadingArgCount, trailingArgCount);
+                        leadingArgCount);
         copy.directArrayAccess = directArrayAccess;
         return copy;
     }

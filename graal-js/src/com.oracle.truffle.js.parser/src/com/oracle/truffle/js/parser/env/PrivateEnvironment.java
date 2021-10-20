@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,32 +38,25 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 
-public class RealmNode extends JavaScriptBaseNode {
-    private final JSContext context;
+public final class PrivateEnvironment extends DerivedEnvironment {
 
-    protected RealmNode(JSContext context) {
-        this.context = context;
+    public PrivateEnvironment(Environment parent, NodeFactory factory, JSContext context) {
+        super(parent, factory, context);
     }
 
-    public static RealmNode create(JSContext context) {
-        return new RealmNode(context);
-    }
-
-    public JSRealm execute(VirtualFrame frame) {
-        assert getRealm() == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-        return getRealm();
-    }
-
-    public JSContext getContext() {
-        return context;
+    @Override
+    protected FrameSlot findBlockFrameSlot(Object name) {
+        FrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
+        if (slot != null && JSFrameUtil.isPrivateName(slot)) {
+            return slot;
+        }
+        return null;
     }
 }

@@ -58,7 +58,7 @@ import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
-public class FunctionEnvironment extends Environment {
+public final class FunctionEnvironment extends Environment {
     private static final String RETURN_SLOT_IDENTIFIER = "<return>";
     static final String ARGUMENTS_SLOT_IDENTIFIER = "<arguments>";
     static final String THIS_SLOT_IDENTIFIER = "<this>";
@@ -70,7 +70,7 @@ public class FunctionEnvironment extends Environment {
     private static final String YIELD_RESULT_SLOT_IDENTIFIER = "<yieldresult>";
     public static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
 
-    private final FunctionEnvironment parent;
+    private final FunctionEnvironment parentFunction;
     private final FrameDescriptor frameDescriptor;
     private EconomicMap<FrameSlot, Integer> parameters;
     private final boolean isStrictMode;
@@ -121,15 +121,10 @@ public class FunctionEnvironment extends Environment {
         this.isDerivedConstructor = isDerivedConstructor;
         this.isGlobal = isGlobal;
         this.hasSyntheticArguments = hasSyntheticArguments;
-        this.parent = parent == null ? null : parent.function();
+        this.parentFunction = parent == null ? null : parent.function();
 
         this.frameDescriptor = factory.createFrameDescriptor();
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
-    }
-
-    @Override
-    public FunctionEnvironment function() {
-        return this;
     }
 
     @Override
@@ -166,6 +161,11 @@ public class FunctionEnvironment extends Environment {
 
     public FrameSlot getBlockScopeSlot() {
         return blockScopeSlot;
+    }
+
+    @Override
+    public FrameSlot getCurrentBlockScopeSlot() {
+        return null;
     }
 
     public boolean isEval() {
@@ -291,39 +291,39 @@ public class FunctionEnvironment extends Environment {
         parameters.put(slot, index);
     }
 
-    protected final int getMappedParameterIndex(FrameSlot slot) {
+    protected int getMappedParameterIndex(FrameSlot slot) {
         return parameters.get(slot, -1);
     }
 
-    public final String getFunctionName() {
+    public String getFunctionName() {
         return functionName;
     }
 
-    public final void setFunctionName(String functionName) {
+    public void setFunctionName(String functionName) {
         this.functionName = functionName;
     }
 
-    public final String getInternalFunctionName() {
+    public String getInternalFunctionName() {
         return internalFunctionName;
     }
 
-    public final void setInternalFunctionName(String internalFunctionName) {
+    public void setInternalFunctionName(String internalFunctionName) {
         this.internalFunctionName = internalFunctionName;
     }
 
-    public final void setNamedFunctionExpression(boolean isNamedExpression) {
+    public void setNamedFunctionExpression(boolean isNamedExpression) {
         this.isNamedExpression = isNamedExpression;
     }
 
-    protected final boolean isNamedFunctionExpression() {
+    protected boolean isNamedFunctionExpression() {
         return isNamedExpression;
     }
 
-    public final boolean needsParentFrame() {
+    public boolean needsParentFrame() {
         return needsParentFrame;
     }
 
-    public final void setNeedsParentFrame(boolean needsParentFrame) {
+    public void setNeedsParentFrame(boolean needsParentFrame) {
         if (frozen && needsParentFrame != this.needsParentFrame) {
             throw errorFrozenEnv();
         }
@@ -349,38 +349,43 @@ public class FunctionEnvironment extends Environment {
         return isFrozen() && (getParentFunction() == null || getParentFunction().isDeepFrozen());
     }
 
-    public final boolean hasMappedParameters() {
+    public boolean hasMappedParameters() {
         return parameters != null;
     }
 
     @Override
-    public final FrameDescriptor getFunctionFrameDescriptor() {
+    public FrameDescriptor getFunctionFrameDescriptor() {
         return frameDescriptor;
     }
 
     @Override
-    public final boolean isStrictMode() {
+    public boolean isStrictMode() {
         return this.isStrictMode;
     }
 
-    public final FunctionEnvironment getParentFunction() {
-        return parent;
+    public FunctionEnvironment getParentFunction() {
+        return parentFunction;
     }
 
-    public final FunctionEnvironment getParentFunction(int level) {
+    public FunctionEnvironment getParentFunction(int level) {
         assert level >= 0;
         if (level == 0) {
             return this;
         } else {
-            return parent.getParentFunction(level - 1);
+            return parentFunction.getParentFunction(level - 1);
         }
     }
 
-    public final FunctionEnvironment getNonArrowParentFunction() {
+    public FunctionEnvironment getNonArrowParentFunction() {
         if (isArrowFunction() || isDirectEval()) {
             return getParentFunction().getNonArrowParentFunction();
         }
         return this;
+    }
+
+    @Override
+    public int getScopeLevel() {
+        return 0;
     }
 
     @Override
@@ -508,10 +513,6 @@ public class FunctionEnvironment extends Environment {
 
     public int getLeadingArgumentCount() {
         return needsNewTarget ? 1 : 0;
-    }
-
-    public int getTrailingArgumentCount() {
-        return 0;
     }
 
     public boolean isDerivedConstructor() {

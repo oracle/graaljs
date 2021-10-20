@@ -64,11 +64,6 @@ public class DebugEnvironment extends Environment {
     }
 
     @Override
-    public FunctionEnvironment function() {
-        return null;
-    }
-
-    @Override
     public boolean isStrictMode() {
         return true;
     }

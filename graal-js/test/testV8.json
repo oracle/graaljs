@@ -699,14 +699,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
   }, {
-    "filePath" : "mjsunit/harmony/private-brand-checks.js",
-    "status" : "FAIL",
-    "comment" : "Fails due to class heritage issue with private environments (GR-21866)"
-  }, {
-    "filePath" : "mjsunit/harmony/private-name-scopes.js",
-    "status" : "FAIL",
-    "comment" : "Uses private fields"
-  }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL",
     "comment" : "Uses unsupported %CreatePrivateSymbol."
