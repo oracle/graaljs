@@ -159,14 +159,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @ExplodeLoop
     protected void setValue(Object thisObj, Object value, Object receiver) {
         SetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertySetNode) {
-            ((GenericPropertySetNode) c).setValue(thisObj, value, receiver, this, false);
-            return;
-        }
         for (; c != null; c = c.next) {
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertySetNode) {
+                ((GenericPropertySetNode) c).setValue(thisObj, value, receiver, this, false);
+                return;
+            }
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {
@@ -207,14 +207,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @ExplodeLoop
     protected void setValueInt(Object thisObj, int value, Object receiver) {
         SetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertySetNode) {
-            ((GenericPropertySetNode) c).setValueInt(thisObj, value, receiver, this, false);
-            return;
-        }
         for (; c != null; c = c.next) {
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertySetNode) {
+                ((GenericPropertySetNode) c).setValueInt(thisObj, value, receiver, this, false);
+                return;
+            }
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {
@@ -255,14 +255,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @ExplodeLoop
     protected void setValueDouble(Object thisObj, double value, Object receiver) {
         SetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertySetNode) {
-            ((GenericPropertySetNode) c).setValueDouble(thisObj, value, receiver, this, false);
-            return;
-        }
         for (; c != null; c = c.next) {
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertySetNode) {
+                ((GenericPropertySetNode) c).setValueDouble(thisObj, value, receiver, this, false);
+                return;
+            }
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {
@@ -303,14 +303,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @ExplodeLoop
     protected void setValueBoolean(Object thisObj, boolean value, Object receiver) {
         SetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertySetNode) {
-            ((GenericPropertySetNode) c).setValueBoolean(thisObj, value, receiver, this, false);
-            return;
-        }
         for (; c != null; c = c.next) {
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertySetNode) {
+                ((GenericPropertySetNode) c).setValueBoolean(thisObj, value, receiver, this, false);
+                return;
+            }
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {

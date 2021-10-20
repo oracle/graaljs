@@ -202,14 +202,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @ExplodeLoop
     protected int getValueInt(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertyGetNode) {
-            return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
-        }
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+                return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
+            }
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -262,14 +262,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @ExplodeLoop
     protected double getValueDouble(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertyGetNode) {
-            return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
-        }
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+                return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
+            }
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -322,14 +322,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @ExplodeLoop
     protected boolean getValueBoolean(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertyGetNode) {
-            return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
-        }
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+                return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
+            }
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -382,14 +382,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @ExplodeLoop
     protected long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
         GetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertyGetNode) {
-            return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
-        }
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+                return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
+            }
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -442,14 +442,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     @ExplodeLoop
     protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
         GetCacheNode c = cacheNode;
-        if (c instanceof GenericPropertyGetNode) {
-            return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
-        }
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericPropertyGetNode) {
+                return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
+            }
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {

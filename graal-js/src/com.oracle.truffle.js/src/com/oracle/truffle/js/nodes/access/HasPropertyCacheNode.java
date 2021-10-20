@@ -85,13 +85,13 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     @ExplodeLoop
     public boolean hasProperty(Object thisObj) {
         HasCacheNode c = cacheNode;
-        if (c instanceof GenericHasPropertyCacheNode) {
-            return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
-        }
         for (; c != null; c = c.next) {
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
+            if (receiverCheck == null && c instanceof GenericHasPropertyCacheNode) {
+                return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
+            }
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {
