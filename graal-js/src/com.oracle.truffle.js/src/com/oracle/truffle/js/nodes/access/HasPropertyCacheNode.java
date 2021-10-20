@@ -90,10 +90,12 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         }
         for (; c != null; c = c.next) {
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean isSingleRealm = c.isSingleRealm();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {
-                Shape shape = c.receiverCheck.getShape();
+                Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
                     DynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
@@ -105,11 +107,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                     continue;
                 }
             } else {
-                guard = c.accepts(thisObj);
+                guard = receiverCheck.accept(thisObj);
                 castObj = thisObj;
             }
             if (guard) {
-                if (!isSimpleShapeCheck && !c.isValid(this)) {
+                if (!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) {
                     break;
                 }
                 return c.hasProperty(castObj, this);

@@ -849,11 +849,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return receiverCheck == null || receiverCheck.isValid();
         }
 
-        protected final boolean isValid(PropertyCacheNode<T> root) {
-            boolean singleRealm = isSingleRealm();
-            return isValid() && (!singleRealm || root.context.getSingleRealmAssumption().isValid());
-        }
-
         protected final boolean isSingleRealm() {
             return (specializationFlags & IS_SINGLE_REALM) != 0;
         }
@@ -963,7 +958,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                         break;
                     } else {
                         cachedCount++;
-                        if (!c.isValid(this) || (c.isFinalSpecialization() && !c.isValidFinalAssumption())) {
+                        if (!c.isValid() ||
+                                        (c.isSingleRealm() && !this.context.getSingleRealmAssumption().isValid()) ||
+                                        (c.isFinalSpecialization() && !c.isValidFinalAssumption())) {
                             invalid = true;
                             break;
                         } else {
@@ -1249,7 +1246,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return null;
         }
         T filteredNext = filterValid(cache.getNext());
-        if (cache.isValid(this) && (!cache.isFinalSpecialization() || cache.isValidFinalAssumption()) && (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
+        if (cache.isValid() && (!cache.isSingleRealm() || this.context.getSingleRealmAssumption().isValid()) &&
+                        (!cache.isFinalSpecialization() || cache.isValidFinalAssumption()) &&
+                        (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
             if (filteredNext == cache.getNext()) {
                 return cache;
             } else {

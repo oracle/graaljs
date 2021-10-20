@@ -208,6 +208,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean isSingleRealm = c.isSingleRealm();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -221,10 +223,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } else {
                     guard = true;
                     castObj = expectedObj;
-                    assert c.accepts(thisObj);
+                    assert receiverCheck.accept(thisObj);
                 }
             } else if (isSimpleShapeCheck) {
-                Shape shape = c.receiverCheck.getShape();
+                Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
                     DynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
@@ -236,11 +238,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     continue;
                 }
             } else {
-                guard = c.accepts(thisObj);
+                guard = receiverCheck.accept(thisObj);
                 castObj = thisObj;
             }
             if (guard) {
-                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                if ((!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) ||
+                                (isFinalSpecialization && !c.isValidFinalAssumption())) {
                     break;
                 }
                 return c.getValueInt(castObj, receiver, this, guard);
@@ -265,6 +268,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean isSingleRealm = c.isSingleRealm();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -278,10 +283,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } else {
                     guard = true;
                     castObj = expectedObj;
-                    assert c.accepts(thisObj);
+                    assert receiverCheck.accept(thisObj);
                 }
             } else if (isSimpleShapeCheck) {
-                Shape shape = c.receiverCheck.getShape();
+                Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
                     DynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
@@ -293,11 +298,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     continue;
                 }
             } else {
-                guard = c.accepts(thisObj);
+                guard = receiverCheck.accept(thisObj);
                 castObj = thisObj;
             }
             if (guard) {
-                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                if ((!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) ||
+                                (isFinalSpecialization && !c.isValidFinalAssumption())) {
                     break;
                 }
                 return c.getValueDouble(castObj, receiver, this, guard);
@@ -322,6 +328,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean isSingleRealm = c.isSingleRealm();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -335,10 +343,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } else {
                     guard = true;
                     castObj = expectedObj;
-                    assert c.accepts(thisObj);
+                    assert receiverCheck.accept(thisObj);
                 }
             } else if (isSimpleShapeCheck) {
-                Shape shape = c.receiverCheck.getShape();
+                Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
                     DynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
@@ -350,11 +358,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     continue;
                 }
             } else {
-                guard = c.accepts(thisObj);
+                guard = receiverCheck.accept(thisObj);
                 castObj = thisObj;
             }
             if (guard) {
-                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                if ((!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) ||
+                                (isFinalSpecialization && !c.isValidFinalAssumption())) {
                     break;
                 }
                 return c.getValueBoolean(castObj, receiver, this, guard);
@@ -379,6 +388,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean isSingleRealm = c.isSingleRealm();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -392,10 +403,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } else {
                     guard = true;
                     castObj = expectedObj;
-                    assert c.accepts(thisObj);
+                    assert receiverCheck.accept(thisObj);
                 }
             } else if (isSimpleShapeCheck) {
-                Shape shape = c.receiverCheck.getShape();
+                Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
                     DynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
@@ -407,11 +418,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     continue;
                 }
             } else {
-                guard = c.accepts(thisObj);
+                guard = receiverCheck.accept(thisObj);
                 castObj = thisObj;
             }
             if (guard) {
-                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                if ((!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) ||
+                                (isFinalSpecialization && !c.isValidFinalAssumption())) {
                     break;
                 }
                 return c.getValueLong(castObj, receiver, this, guard);
@@ -436,6 +448,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         for (; c != null; c = c.next) {
             boolean isFinalSpecialization = c.isFinalSpecialization();
             boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean isSingleRealm = c.isSingleRealm();
+            ReceiverCheckNode receiverCheck = c.receiverCheck;
             boolean guard;
             Object castObj;
             if (c.isConstantObjectSpecialization()) {
@@ -449,10 +463,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 } else {
                     guard = true;
                     castObj = expectedObj;
-                    assert c.accepts(thisObj);
+                    assert receiverCheck.accept(thisObj);
                 }
             } else if (isSimpleShapeCheck) {
-                Shape shape = c.receiverCheck.getShape();
+                Shape shape = receiverCheck.getShape();
                 if (isDynamicObject(thisObj, shape)) {
                     DynamicObject jsobj = castDynamicObject(thisObj, shape);
                     guard = shape.check(jsobj);
@@ -464,11 +478,12 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     continue;
                 }
             } else {
-                guard = c.accepts(thisObj);
+                guard = receiverCheck.accept(thisObj);
                 castObj = thisObj;
             }
             if (guard) {
-                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                if ((!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) ||
+                                (isFinalSpecialization && !c.isValidFinalAssumption())) {
                     break;
                 }
                 return c.getValue(castObj, receiver, defaultValue, this, guard);
