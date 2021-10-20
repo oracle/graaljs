@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -109,9 +110,8 @@ class InternalScriptRootNode extends JavaScriptRootNode {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             extraArgument = SharedMemMessagingBindings.createInitFunction(realm);
         } else if ("inspector.js".equals(moduleName)) {
-// TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
-// extraArgument = (inspector == null) ? Null.instance : inspector;
-            throw new UnsupportedOperationException("TODO");
+            TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
+            extraArgument = (inspector == null) ? Null.instance : inspector;
         }
         return extraArgument;
     }

@@ -133,6 +133,7 @@ import org.graalvm.polyglot.PolyglotException;
 
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.js.parser.ir.Module;
+import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -397,7 +398,6 @@ public final class GraalJSAccess {
         envForInstruments = mainJSRealm.getEnv();
         // Disallow importing dynamically unless ESM Loader (--experimental-modules) is enabled.
         isolateEnableImportModuleDynamically(false);
-
     }
 
     private static String[] prepareArguments(String[] args) {
@@ -3196,8 +3196,6 @@ public final class GraalJSAccess {
     public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, "(function(r) { r.run(); })", "polyglotEngineWrapper").internal(true).buildLiteral();
         org.graalvm.polyglot.Value wrapper = evaluator.eval(source);
-// wrapper.execute(new RunnableInvoker(new NativeRunnable(callback, isolate, param1, param2, args,
-// execArgs)));
         wrapper.execute(new RunnableInvoker(new Runnable() {
             @Override
             public void run() {
@@ -3644,11 +3642,10 @@ public final class GraalJSAccess {
         frame.setObject(frameSlot, exportValue);
     }
 
-// private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
+    private static final ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
 
     public Object moduleGetUnboundModuleScript(Object module) {
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
-        ByteBuffer DUMMY_UNBOUND_MODULE_PARSE_RESULT = ByteBuffer.allocate(0);
         return new UnboundScript(moduleRecord.getSource(), DUMMY_UNBOUND_MODULE_PARSE_RESULT);
     }
 
@@ -3838,11 +3835,6 @@ public final class GraalJSAccess {
     }
 
     public void backingStoreRegisterCallback(Object backingStore, long data, int byteLength, long deleterData, long callback) {
-// if (backingStore instanceof ByteBuffer)
-// return;
-// if (backingStore instanceof NodeScriptOrModule)
-// return;
-
         weakCallbacks.add(new DeleterCallback(backingStore, data, byteLength, deleterData, callback, weakCallbackQueue));
     }
 
@@ -3905,7 +3897,7 @@ public final class GraalJSAccess {
         }
 
         @Override
-        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
+        public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Map<String, JSModuleRecord> referrerCache = cache.get(referrer);
             String specifier = moduleRequest.getSpecifier();
             if (referrerCache == null) {
@@ -3975,5 +3967,7 @@ public final class GraalJSAccess {
             }
             return weakCallbackMap;
         }
+
     }
+
 }
