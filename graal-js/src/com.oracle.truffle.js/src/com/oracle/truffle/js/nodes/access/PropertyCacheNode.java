@@ -262,36 +262,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected static final class PrimitiveReceiverCheckNode extends ReceiverCheckNode {
-        private final Class<?> type;
-        @Child private AbstractShapeCheckNode prototypeShapeCheck;
-
-        protected PrimitiveReceiverCheckNode(Class<?> type, AbstractShapeCheckNode prototypeShapeCheck) {
-            super(null);
-            this.type = type;
-            this.prototypeShapeCheck = prototypeShapeCheck;
-        }
-
-        @Override
-        public boolean accept(Object thisObj) {
-            if (CompilerDirectives.isExact(thisObj, type)) {
-                return prototypeShapeCheck.accept(thisObj);
-            } else {
-                return false;
-            }
-        }
-
-        @Override
-        public DynamicObject getStore(Object thisObj) {
-            return prototypeShapeCheck.getStore(thisObj);
-        }
-
-        @Override
-        public boolean isValid() {
-            return prototypeShapeCheck.isValid();
-        }
-    }
-
     /**
      * Check the object shape by identity comparison.
      */
@@ -654,38 +624,43 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      * Checks the shapes of the prototype chain up to the given depth using assumptions only (valid
      * and property unchanged).
      */
-    protected static final class PrototypeChainCheckNode extends AbstractFinalPrototypeShapeCheckNode {
+    protected static final class ValuePrototypeChainCheckNode extends AbstractFinalPrototypeShapeCheckNode {
 
-        private PrototypeChainCheckNode(Shape shape, JSContext context, Assumption[] assumptions, DynamicObject prototype) {
+        private final Class<?> valueClass;
+
+        private ValuePrototypeChainCheckNode(Class<?> valueClass, Shape shape, Assumption[] assumptions, DynamicObject prototype, JSContext context) {
             super(shape, assumptions, prototype, context);
+            this.valueClass = valueClass;
         }
 
-        static AbstractShapeCheckNode create(Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
+        static AbstractShapeCheckNode create(Class<?> valueClass, Shape shape, DynamicObject thisObj, Object key, int depth, JSContext context) {
             assert depth >= 1;
-            Assumption[] ass = new Assumption[depth * 3];
+            Assumption[] ass = new Assumption[Math.max(0, depth * 3 - 1)];
             int pos = 0;
             Shape depthShape = shape;
             DynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
-                Assumption stablePrototypeAssumption = JSShape.getPrototypeAssumption(depthShape);
+                Assumption stablePrototypeAssumption = i == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
                 ass[pos++] = depthShape.getValidAssumption();
                 ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
-                ass[pos++] = stablePrototypeAssumption;
+                if (stablePrototypeAssumption != null) {
+                    ass[pos++] = stablePrototypeAssumption;
+                }
             }
             assert pos == ass.length;
-            return new PrototypeChainCheckNode(shape, context, ass, depthProto);
+            return new ValuePrototypeChainCheckNode(valueClass, shape, ass, depthProto, context);
         }
 
         @Override
         public boolean accept(Object thisObj) {
-            return true;
+            return CompilerDirectives.isExact(thisObj, valueClass);
         }
 
         @Override
         public int getDepth() {
-            return assumptions.length / 3;
+            return (assumptions.length + 1) / 3;
         }
     }
 
@@ -696,14 +671,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
      *
      * @see JSConfig#SkipPrototypeShapeCheck
      */
-    protected static final class TraversePrototypeChainCheckNode extends AbstractShapeCheckNode {
+    protected static final class TraverseValuePrototypeChainCheckNode extends AbstractShapeCheckNode {
+
+        private final Class<?> valueClass;
         private final PrototypeSupplier jsclass;
         @CompilationFinal(dimensions = 1) private final Shape[] protoShapes;
         @Children private final GetPrototypeNode[] getPrototypeNodes;
 
-        public TraversePrototypeChainCheckNode(Shape shape, DynamicObject thisObj, int depth, JSClass jsclass) {
+        public TraverseValuePrototypeChainCheckNode(Class<?> valueClass, Shape shape, DynamicObject thisObj, int depth, JSClass jsclass) {
             super(shape);
             assert depth >= 1;
+            this.valueClass = valueClass;
             this.jsclass = (PrototypeSupplier) jsclass;
             this.protoShapes = new Shape[depth];
             this.getPrototypeNodes = new GetPrototypeNode[depth - 1];
@@ -723,6 +701,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         @ExplodeLoop
         @Override
         public boolean accept(Object thisObj) {
+            if (!CompilerDirectives.isExact(thisObj, valueClass)) {
+                return false;
+            }
             DynamicObject current = jsclass.getIntrinsicDefaultProto(getRealm());
             boolean result = true;
             Shape[] shapeArray = protoShapes;
@@ -1344,18 +1325,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     }
 
     protected final ReceiverCheckNode createPrimitiveReceiverCheck(Object thisObj, int depth) {
+        Class<?> valueClass = thisObj.getClass();
         if (depth == 0) {
-            return new InstanceofCheckNode(thisObj.getClass());
+            return new InstanceofCheckNode(valueClass);
         } else {
             assert JSRuntime.isJSPrimitive(thisObj);
             DynamicObject wrapped = wrapPrimitive(thisObj, context);
-            AbstractShapeCheckNode prototypeShapeCheck;
             if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
-                prototypeShapeCheck = PrototypeChainCheckNode.create(wrapped.getShape(), wrapped, key, depth, context);
+                return ValuePrototypeChainCheckNode.create(valueClass, wrapped.getShape(), wrapped, key, depth, context);
             } else {
-                prototypeShapeCheck = new TraversePrototypeChainCheckNode(wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped));
+                return new TraverseValuePrototypeChainCheckNode(valueClass, wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped));
             }
-            return new PrimitiveReceiverCheckNode(thisObj.getClass(), prototypeShapeCheck);
         }
     }
 
