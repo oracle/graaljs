@@ -89,12 +89,30 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
+            if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.hasProperty(thisObj, this);
+                if (!isSimpleShapeCheck && !c.isValid(this)) {
+                    break;
+                }
+                return c.hasProperty(castObj, this);
             }
         }
         deoptimize(c);

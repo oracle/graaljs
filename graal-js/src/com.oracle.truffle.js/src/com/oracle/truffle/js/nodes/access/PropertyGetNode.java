@@ -206,6 +206,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueInt(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
+            boolean isFinalSpecialization = c.isFinalSpecialization();
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -214,14 +218,32 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     } else {
                         continue;
                     }
+                } else {
+                    guard = true;
+                    castObj = expectedObj;
+                    assert c.accepts(thisObj);
                 }
+            } else if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            if (!c.isValid(this)) {
-                break;
-            }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.getValueInt(thisObj, receiver, this, guard);
+                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                    break;
+                }
+                return c.getValueInt(castObj, receiver, this, guard);
             }
         }
         deoptimize(c);
@@ -241,6 +263,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueDouble(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
+            boolean isFinalSpecialization = c.isFinalSpecialization();
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -249,14 +275,32 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     } else {
                         continue;
                     }
+                } else {
+                    guard = true;
+                    castObj = expectedObj;
+                    assert c.accepts(thisObj);
                 }
+            } else if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            if (!c.isValid(this)) {
-                break;
-            }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.getValueDouble(thisObj, receiver, this, guard);
+                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                    break;
+                }
+                return c.getValueDouble(castObj, receiver, this, guard);
             }
         }
         deoptimize(c);
@@ -276,6 +320,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueBoolean(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
+            boolean isFinalSpecialization = c.isFinalSpecialization();
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -284,14 +332,32 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     } else {
                         continue;
                     }
+                } else {
+                    guard = true;
+                    castObj = expectedObj;
+                    assert c.accepts(thisObj);
                 }
+            } else if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            if (!c.isValid(this)) {
-                break;
-            }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.getValueBoolean(thisObj, receiver, this, guard);
+                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                    break;
+                }
+                return c.getValueBoolean(castObj, receiver, this, guard);
             }
         }
         deoptimize(c);
@@ -311,6 +377,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
         }
         for (; c != null; c = c.next) {
+            boolean isFinalSpecialization = c.isFinalSpecialization();
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -319,14 +389,32 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     } else {
                         continue;
                     }
+                } else {
+                    guard = true;
+                    castObj = expectedObj;
+                    assert c.accepts(thisObj);
                 }
+            } else if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            if (!c.isValid(this)) {
-                break;
-            }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.getValueLong(thisObj, receiver, this, guard);
+                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                    break;
+                }
+                return c.getValueLong(castObj, receiver, this, guard);
             }
         }
         deoptimize(c);
@@ -346,6 +434,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return ((GenericPropertyGetNode) c).getValue(thisObj, receiver, defaultValue, this, false);
         }
         for (; c != null; c = c.next) {
+            boolean isFinalSpecialization = c.isFinalSpecialization();
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
             if (c.isConstantObjectSpecialization()) {
                 JSDynamicObject expectedObj = c.getExpectedObject();
                 if (thisObj != expectedObj) {
@@ -354,14 +446,32 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     } else {
                         continue;
                     }
+                } else {
+                    guard = true;
+                    castObj = expectedObj;
+                    assert c.accepts(thisObj);
                 }
+            } else if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            if (!c.isValid(this)) {
-                break;
-            }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                return c.getValue(thisObj, receiver, defaultValue, this, guard);
+                if ((!isSimpleShapeCheck && !c.isValid(this)) || (isFinalSpecialization && !c.isValidFinalAssumption())) {
+                    break;
+                }
+                return c.getValue(castObj, receiver, defaultValue, this, guard);
             }
         }
         deoptimize(c);

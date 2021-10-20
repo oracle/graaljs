@@ -136,29 +136,29 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         public final NodeCost getCost() {
             return NodeCost.NONE;
         }
+    }
 
-        /**
-         * Checks if the obj is an instance of the shape's layout class in compiled code and
-         * <code>obj instanceof {@link JSDynamicObject}</code> in the interpreter.
-         */
-        protected static boolean isDynamicObject(Object obj, Shape shape) {
-            if (CompilerDirectives.inCompiledCode()) {
-                return shape.getLayoutClass().isInstance(obj);
-            } else {
-                return obj instanceof JSDynamicObject;
-            }
+    /**
+     * Checks if the obj is an instance of the shape's layout class in compiled code and
+     * <code>obj instanceof {@link JSDynamicObject}</code> in the interpreter.
+     */
+    protected static boolean isDynamicObject(Object obj, Shape shape) {
+        if (CompilerDirectives.inCompiledCode()) {
+            return shape.getLayoutClass().isInstance(obj);
+        } else {
+            return obj instanceof JSDynamicObject;
         }
+    }
 
-        /**
-         * Casts the obj to the shape's layout class in compiled code and to {@link JSDynamicObject}
-         * in the interpreter.
-         */
-        protected static DynamicObject castDynamicObject(Object obj, Shape shape) {
-            if (CompilerDirectives.inCompiledCode()) {
-                return shape.getLayoutClass().cast(obj);
-            } else {
-                return (JSDynamicObject) obj;
-            }
+    /**
+     * Casts the obj to the shape's layout class in compiled code and to {@link JSDynamicObject} in
+     * the interpreter.
+     */
+    protected static DynamicObject castDynamicObject(Object obj, Shape shape) {
+        if (CompilerDirectives.inCompiledCode()) {
+            return shape.getLayoutClass().cast(obj);
+        } else {
+            return (JSDynamicObject) obj;
         }
     }
 
@@ -810,6 +810,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         protected static final int IS_SINGLE_REALM = 1 << 0;
         protected static final int IS_FINAL = 1 << 1;
         protected static final int IS_FINAL_CONSTANT_OBJECT = 1 << 2;
+        protected static final int IS_SIMPLE_SHAPE_CHECK = 1 << 3;
 
         private final int specializationFlags;
         @Child protected ReceiverCheckNode receiverCheck;
@@ -820,7 +821,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         protected CacheNode(ReceiverCheckNode receiverCheck, int specializationFlags) {
             this.receiverCheck = receiverCheck;
-            this.specializationFlags = specializationFlags | (receiverCheck instanceof AbstractSingleRealmShapeCheckNode ? IS_SINGLE_REALM : 0);
+            this.specializationFlags = specializationFlags |
+                            (receiverCheck instanceof AbstractSingleRealmShapeCheckNode ? IS_SINGLE_REALM : 0) |
+                            (receiverCheck instanceof ShapeCheckNode ? IS_SIMPLE_SHAPE_CHECK : 0);
         }
 
         protected abstract T getNext();
@@ -848,8 +851,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         protected final boolean isValid(PropertyCacheNode<T> root) {
             boolean singleRealm = isSingleRealm();
-            boolean finalSpecialization = isFinalSpecialization();
-            return isValid() && (!singleRealm || root.context.getSingleRealmAssumption().isValid()) && (!finalSpecialization || isValidFinalAssumption());
+            return isValid() && (!singleRealm || root.context.getSingleRealmAssumption().isValid());
         }
 
         protected final boolean isSingleRealm() {
@@ -871,6 +873,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
         protected final boolean isConstantObjectSpecialization() {
             return (specializationFlags & IS_FINAL_CONSTANT_OBJECT) != 0;
+        }
+
+        protected final boolean isSimpleShapeCheck() {
+            return (specializationFlags & IS_SIMPLE_SHAPE_CHECK) != 0;
         }
 
         protected boolean isValidFinalAssumption() {
@@ -957,7 +963,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                         break;
                     } else {
                         cachedCount++;
-                        if (!c.isValid(this)) {
+                        if (!c.isValid(this) || (c.isFinalSpecialization() && !c.isValidFinalAssumption())) {
                             invalid = true;
                             break;
                         } else {
@@ -1243,7 +1249,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return null;
         }
         T filteredNext = filterValid(cache.getNext());
-        if (cache.isValid(this) && (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
+        if (cache.isValid(this) && (!cache.isFinalSpecialization() || cache.isValidFinalAssumption()) && (!cache.isConstantObjectSpecialization() || cache.getExpectedObject() != null)) {
             if (filteredNext == cache.getNext()) {
                 return cache;
             } else {

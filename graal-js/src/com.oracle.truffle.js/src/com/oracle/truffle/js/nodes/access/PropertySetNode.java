@@ -164,12 +164,30 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
+            if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                if (c.setValue(thisObj, value, receiver, this, guard)) {
+                if (!isSimpleShapeCheck && !c.isValid(this)) {
+                    break;
+                }
+                if (c.setValue(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
@@ -192,12 +210,30 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
+            if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                if (c.setValueInt(thisObj, value, receiver, this, guard)) {
+                if (!isSimpleShapeCheck && !c.isValid(this)) {
+                    break;
+                }
+                if (c.setValueInt(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
@@ -220,12 +256,30 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
+            if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                if (c.setValueDouble(thisObj, value, receiver, this, guard)) {
+                if (!isSimpleShapeCheck && !c.isValid(this)) {
+                    break;
+                }
+                if (c.setValueDouble(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
@@ -248,12 +302,30 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return;
         }
         for (; c != null; c = c.next) {
-            if (!c.isValid(this)) {
-                break;
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
+            boolean guard;
+            Object castObj;
+            if (isSimpleShapeCheck) {
+                Shape shape = c.receiverCheck.getShape();
+                if (isDynamicObject(thisObj, shape)) {
+                    DynamicObject jsobj = castDynamicObject(thisObj, shape);
+                    guard = shape.check(jsobj);
+                    castObj = jsobj;
+                    if (!shape.getValidAssumption().isValid()) {
+                        break;
+                    }
+                } else {
+                    continue;
+                }
+            } else {
+                guard = c.accepts(thisObj);
+                castObj = thisObj;
             }
-            boolean guard = c.accepts(thisObj);
             if (guard) {
-                if (c.setValueBoolean(thisObj, value, receiver, this, guard)) {
+                if (!isSimpleShapeCheck && !c.isValid(this)) {
+                    break;
+                }
+                if (c.setValueBoolean(castObj, value, receiver, this, guard)) {
                     return;
                 }
             }
