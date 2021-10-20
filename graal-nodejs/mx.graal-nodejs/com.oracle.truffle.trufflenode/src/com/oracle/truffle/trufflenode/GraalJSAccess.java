@@ -1407,8 +1407,18 @@ public final class GraalJSAccess {
         }
     }
 
-    static final ReferenceQueue<JSAgentWaiterList> agentWaiterListQueue = new ReferenceQueue<>();
-    static final Map<Long, WeakReference<JSAgentWaiterList>> agentWaiterListMap = new HashMap<>();
+    private static final ReferenceQueue<JSAgentWaiterList> agentWaiterListQueue = new ReferenceQueue<>();
+    private static final Map<Long, WeakReference<JSAgentWaiterList>> agentWaiterListMap = new HashMap<>();
+
+    private static class WeakAgentWaiterList extends WeakReference<JSAgentWaiterList> {
+        long pointer;
+
+        WeakAgentWaiterList(JSAgentWaiterList wl, long pointer) {
+            super(wl, agentWaiterListQueue);
+            this.pointer = pointer;
+        }
+
+    }
 
     private static void pollAgentWaiterListQueue() {
         WeakAgentWaiterList ref;
