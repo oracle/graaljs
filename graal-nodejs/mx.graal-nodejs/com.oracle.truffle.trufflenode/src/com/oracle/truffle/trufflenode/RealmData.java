@@ -73,6 +73,7 @@ public final class RealmData {
 
     private final List<Accessor> accessors = new ArrayList<>(NODEJS_BOOTSTRAP_ACCESSORS);
     private final List<Pair<ObjectTemplate, DynamicObject>> propertyHandlers = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
+    private final List<FunctionTemplate> functionTemplates = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
     private final Map<String, DynamicObject> internalScriptFunctions = new HashMap<>();
 
     public RealmData() {
@@ -142,8 +143,6 @@ public final class RealmData {
     public void setArrayBufferGetContentsFunction(DynamicObject arrayBufferGetContentsFunction) {
         this.arrayBufferGetContentsFunction = arrayBufferGetContentsFunction;
     }
-
-    private final List<FunctionTemplate> functionTemplates = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
 
     public void registerFunctionTemplate(FunctionTemplate template) {
         CompilerAsserts.neverPartOfCompilation();

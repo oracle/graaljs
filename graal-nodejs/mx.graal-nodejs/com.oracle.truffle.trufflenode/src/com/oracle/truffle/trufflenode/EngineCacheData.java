@@ -67,6 +67,7 @@ public class EngineCacheData {
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedAccessorsFunctionData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedInternalScriptData;
+    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedESNativeModulesData;
 
     private final JSFunctionData[] persistedBuiltins = new JSFunctionData[CacheableSingletons.values().length];
 
@@ -76,6 +77,7 @@ public class EngineCacheData {
         this.persistedAccessorsFunctionData = new ConcurrentHashMap<>();
         this.persistedNativePropertyHandlerData = new ConcurrentHashMap<>();
         this.persistedInternalScriptData = new ConcurrentHashMap<>();
+        this.persistedESNativeModulesData = new ConcurrentHashMap<>();
     }
 
     public JSFunctionData getOrCreateFunctionDataFromTemplate(FunctionTemplate template, Function<JSContext, JSFunctionData> factory) {
@@ -96,6 +98,11 @@ public class EngineCacheData {
     public JSFunctionData getOrCreateInternalScriptData(String scriptNodeName, Function<JSContext, JSFunctionData> factory) {
         Descriptor descriptor = new Descriptor(0, 0, false, scriptNodeName);
         return getOrStore(descriptor, factory, persistedInternalScriptData);
+    }
+
+    public JSFunctionData getOrCreateESNativeModuleData(String moduleName, Function<JSContext, JSFunctionData> factory) {
+        Descriptor descriptor = new Descriptor(0, 0, false, moduleName);
+        return getOrStore(descriptor, factory, persistedESNativeModulesData);
     }
 
     public JSFunctionData getOrCreateBuiltinFunctionData(CacheableSingletons builtin, Function<JSContext, JSFunctionData> factory) {

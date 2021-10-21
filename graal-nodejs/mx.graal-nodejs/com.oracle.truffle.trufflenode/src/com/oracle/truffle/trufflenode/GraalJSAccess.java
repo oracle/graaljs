@@ -140,7 +140,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -1321,7 +1320,7 @@ public final class GraalJSAccess {
     private static JSFunctionData createInteropBufferGetContents(JSContext context) {
         EngineCacheData engineCacheData = getContextEngineCacheData(context);
         return engineCacheData.getOrCreateBuiltinFunctionData(InteropArrayBuffer, (c) -> {
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
+            CallTarget callTarget = new JavaScriptRootNode() {
                 @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
                 @Child private ArrayBufferGetContentsNode bufferGetContents = ArrayBufferGetContentsNode.create();
 
@@ -1330,7 +1329,7 @@ public final class GraalJSAccess {
                     Object value = valueNode.execute(frame);
                     return bufferGetContents.execute(value);
                 }
-            });
+            }.getCallTarget();
             return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
         });
     }
@@ -1831,16 +1830,14 @@ public final class GraalJSAccess {
         if (functionData == null) {
             functionData = cacheData.getOrCreateFunctionDataFromTemplate(template, (c) -> {
                 JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
-                JSFunctionData initFunctionData = JSFunctionData.create(context, template.getLength(),
-                                template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
+                boolean isConstructor = template.getPrototypeTemplate() != null;
+                JSFunctionData initFunctionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), isConstructor, false, false, false);
                 template.setFunctionData(initFunctionData);
-                CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, false, false));
-                CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, true, false));
-                CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, true, true));
-                CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(initFunctionData, newCallTarget,
-                                false, instanceLayout));
-                CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(initFunctionData,
-                                newTargetCallTarget, true, instanceLayout));
+                CallTarget callTarget = new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, false, false).getCallTarget();
+                CallTarget newCallTarget = new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, true, false).getCallTarget();
+                CallTarget newTargetCallTarget = new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, true, true).getCallTarget();
+                CallTarget constructTarget = ConstructorRootNode.create(initFunctionData, newCallTarget, false, instanceLayout).getCallTarget();
+                CallTarget constructNewTarget = ConstructorRootNode.create(initFunctionData, newTargetCallTarget, true, instanceLayout).getCallTarget();
                 initFunctionData.setCallTarget(callTarget);
                 initFunctionData.setConstructTarget(constructTarget);
                 initFunctionData.setConstructNewTarget(constructNewTarget);
@@ -1948,8 +1945,7 @@ public final class GraalJSAccess {
         EngineCacheData.CacheableSingletons nodeType = global ? PropertyHandlerPrototypeGlobal : PropertyHandlerPrototype;
         JSFunctionData getPrototypeOfFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(nodeType, (c) -> {
             JavaScriptRootNode rootNode = new PropertyHandlerPrototypeNode(global);
-            return JSFunctionData.createCallOnly(realm.getContext(),
-                            Truffle.getRuntime().createCallTarget(rootNode), 0, "");
+            return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "");
         });
         DynamicObject getPrototypeOf = functionFromFunctionData(realm, getPrototypeOfFunctionData, null);
         JSObject.set(handler, JSProxy.GET_PROTOTYPE_OF, getPrototypeOf);
@@ -2225,7 +2221,7 @@ public final class GraalJSAccess {
         realmData.registerInternalScriptFunction(scriptNodeName, moduleFunction);
         JSFunctionData functionData = engineCacheData.getOrCreateInternalScriptData(scriptNodeName, (c) -> {
             JavaScriptRootNode wrapperNode = new InternalScriptRootNode(moduleFunction, scriptNodeName);
-            return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 5, "");
+            return JSFunctionData.createCallOnly(context, wrapperNode.getCallTarget(), 5, "");
         });
         return JSFunction.create(realm, functionData);
     }
@@ -2240,7 +2236,7 @@ public final class GraalJSAccess {
         } else if ("internal/graal/debug.js".equals(moduleName)) {
             EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
             JSFunctionData setBreakPointData = engineCacheData.getOrCreateBuiltinFunctionData(SetBreakPoint, (c) -> {
-                CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(context));
+                CallTarget setBreakPointCallTarget = new SetBreakPointNode(context).getCallTarget();
                 return JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             });
             DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
@@ -2393,11 +2389,9 @@ public final class GraalJSAccess {
         EngineCacheData engineCacheData = getContextEngineCacheData(context);
 
         JSFunctionData functionData = engineCacheData.getOrCreateFunctionDataFromPropertyHandler(templateId, mode, (c) -> {
-            JavaScriptRootNode rootNode = new ExecuteNativePropertyHandlerNode(
-                            context, templateId, mode);
-            CallTarget newTarget = Truffle.getRuntime().createCallTarget(rootNode);
-            return JSFunctionData.create(context, newTarget, newTarget, 0, "", false,
-                            false, false, true);
+            JavaScriptRootNode rootNode = new ExecuteNativePropertyHandlerNode(context, templateId, mode);
+            CallTarget callTarget = rootNode.getCallTarget();
+            return JSFunctionData.create(context, callTarget, callTarget, 0, "", false, false, false, true);
         });
         return functionFromFunctionData(realm, functionData, proxy);
     }
@@ -2415,7 +2409,7 @@ public final class GraalJSAccess {
     }
 
     public static JSFunctionData functionDataFromRootNode(JSContext context, JavaScriptRootNode rootNode) {
-        CallTarget callbackCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
+        CallTarget callbackCallTarget = rootNode.getCallTarget();
         return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false,
                         false, false, true);
     }
@@ -2806,7 +2800,7 @@ public final class GraalJSAccess {
         return (EngineCacheData) context.getEngineCacheData();
     }
 
-    private void contextExposeGC(JSRealm realm) {
+    private static void contextExposeGC(JSRealm realm) {
         DynamicObject global = realm.getGlobalObject();
 
         EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
@@ -2819,7 +2813,7 @@ public final class GraalJSAccess {
                     return Undefined.instance;
                 }
             };
-            return JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(rootNode), 0, "gc");
+            return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "gc");
         });
         DynamicObject function = JSFunction.create(realm, functionData);
         JSObject.set(global, "gc", function);
@@ -2862,26 +2856,14 @@ public final class GraalJSAccess {
         EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
 
         JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(AlwaysFalse, (c) -> {
-// CallTarget target = Truffle.getRuntime().createCallTarget(new AlwaysFalseRootNode());
-            CallTarget target = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return false;
-                }
-            });
+            CallTarget target = RootNode.createConstantNode(false).getCallTarget();
             return JSFunctionData.createCallOnly(realm.getContext(), target, 0, "isTraceCategoryEnabled");
         });
         DynamicObject isEnabledFunction = JSFunction.create(realm, isEnabledFunctionData);
         JSObject.set(extras, "isTraceCategoryEnabled", isEnabledFunction);
 
         JSFunctionData traceFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(AlwaysUndefined, (c) -> {
-// CallTarget target = Truffle.getRuntime().createCallTarget(new AlwaysUndefinedRootNode());
-            CallTarget target = Truffle.getRuntime().createCallTarget(new JavaScriptRootNode() {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return Undefined.instance;
-                }
-            });
+            CallTarget target = RootNode.createConstantNode(Undefined.instance).getCallTarget();
             return JSFunctionData.createCallOnly(realm.getContext(), target, 0, "trace");
         });
         DynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
@@ -3275,12 +3257,7 @@ public final class GraalJSAccess {
     public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, "(function(r) { r.run(); })", "polyglotEngineWrapper").internal(true).buildLiteral();
         org.graalvm.polyglot.Value wrapper = evaluator.eval(source);
-        wrapper.execute(new RunnableInvoker(new Runnable() {
-            @Override
-            public void run() {
-                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, args, execArgs);
-            }
-        }));
+        wrapper.execute(new RunnableInvoker(() -> NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, args, execArgs)));
     }
 
     private static final ThreadLocal<Deque<Pair<Long, Object>>> isolateStack = new ThreadLocal<>();
@@ -3702,12 +3679,29 @@ public final class GraalJSAccess {
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
 
-        JavaScriptRootNode rootNode = new ESNativeModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor, evaluationStepsCallback);
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+        EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
+        JSFunctionData functionData = engineCacheData.getOrCreateESNativeModuleData(moduleName, (c) -> {
+            JavaScriptRootNode rootNode = new ESNativeModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
+            CallTarget callTarget = rootNode.getCallTarget();
+            return JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+        });
+
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
-        final JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
-        return moduleRecord;
+        return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
+    }
+
+    public static final class NativeBackedModuleRecord extends JSModuleRecord {
+
+        private final long evaluationStepsCallback;
+
+        NativeBackedModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, long evaluationStepsCallback) {
+            super(parsedModule, moduleLoader);
+            this.evaluationStepsCallback = evaluationStepsCallback;
+        }
+
+        public long getEvaluationStepsCallback() {
+            return evaluationStepsCallback;
+        }
     }
 
     public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {

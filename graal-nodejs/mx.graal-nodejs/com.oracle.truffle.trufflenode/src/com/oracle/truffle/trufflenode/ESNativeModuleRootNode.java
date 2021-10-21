@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.Source;
@@ -50,18 +50,17 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.trufflenode.GraalJSAccess.NativeBackedModuleRecord;
 
 class ESNativeModuleRootNode extends JavaScriptRootNode {
-    private final long evaluationStepsCallback;
 
-    public ESNativeModuleRootNode(JavaScriptLanguage language, Source source, FrameDescriptor frameDescriptor, long evaluationStepsCallback) {
+    public ESNativeModuleRootNode(JavaScriptLanguage language, Source source, FrameDescriptor frameDescriptor) {
         super(language, source.createUnavailableSection(), frameDescriptor);
-        this.evaluationStepsCallback = evaluationStepsCallback;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+        NativeBackedModuleRecord module = (NativeBackedModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
         if (module.getEnvironment() == null) {
             assert module.getStatus() == JSModuleRecord.Status.Linking;
             module.setEnvironment(frame.materialize());
@@ -72,8 +71,8 @@ class ESNativeModuleRootNode extends JavaScriptRootNode {
         }
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private Object invokeEvaluationStepsCallback(JSRealm realm, JSModuleRecord module) {
-        return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
+    @TruffleBoundary
+    private Object invokeEvaluationStepsCallback(JSRealm realm, NativeBackedModuleRecord module) {
+        return NativeAccess.syntheticModuleEvaluationSteps(module.getEvaluationStepsCallback(), realm, module);
     }
 }

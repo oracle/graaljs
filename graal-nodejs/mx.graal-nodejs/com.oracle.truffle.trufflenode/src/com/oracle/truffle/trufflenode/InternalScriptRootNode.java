@@ -44,7 +44,6 @@ import static com.oracle.truffle.trufflenode.buffer.NIOBuffer.NIO_BUFFER_MODULE_
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -79,7 +78,7 @@ class InternalScriptRootNode extends JavaScriptRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object[] getInternalModuleUserArguments(Object[] args, String moduleName, JSRealm realm) {
+    private static Object[] getInternalModuleUserArguments(Object[] args, String moduleName, JSRealm realm) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
         Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
         if (extraArgument == null) {
@@ -91,7 +90,7 @@ class InternalScriptRootNode extends JavaScriptRootNode {
         return extendedArgs;
     }
 
-    private Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
+    private static Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
         Object extraArgument = null;
         JSContext context = realm.getContext();
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
@@ -99,7 +98,7 @@ class InternalScriptRootNode extends JavaScriptRootNode {
             // extra argument to the module loading function.
             extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
-            CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(context));
+            CallTarget setBreakPointCallTarget = new SetBreakPointNode(context).getCallTarget();
             JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
             extraArgument = setBreakPoint;

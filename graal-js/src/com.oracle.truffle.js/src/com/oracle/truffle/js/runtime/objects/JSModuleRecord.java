@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 /**
  * Source Text Module Record.
  */
-public final class JSModuleRecord extends ScriptOrModule {
+public class JSModuleRecord extends ScriptOrModule {
 
     public enum Status {
         Unlinked,
