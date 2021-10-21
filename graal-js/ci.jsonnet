@@ -58,6 +58,15 @@ local common = import '../common.jsonnet';
     timelimit: '30:00',
   },
 
+  local downstreamGraal = {
+    run+: [
+      ['cd', '../../graal/vm'],
+      ['set-export', 'NATIVE_IMAGES', 'native-image'],
+      ['mx', '--dynamicimports', '/graal-js,/substratevm', '--strict-compliance', 'gate', '--strict-mode', '--tags', 'build,svm-truffle-tck-js'],
+    ],
+    timelimit: '45:00',
+  },
+
   local interopJmhBenchmarks = common.buildCompiler + {
     run+: [
         ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '-Dpolyglot.engine.TraceCompilation=true'],
@@ -98,6 +107,9 @@ local common = import '../common.jsonnet';
 
     // maven deploy dry run
     graalJs + common.jdk11 + common.gate   + common.linux          + mavenDeployDryRun                                                        + {name: 'js-gate-maven-dry-run-jdk11-linux-amd64'},
+
+    // downstream graal gate
+    graalJs + common.jdk8  + common.gate   + common.linux          + downstreamGraal                                                          + {name: 'js-gate-downstream-graal-jdk8-linux-amd64'},
 
     // coverage
     graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk17-linux-amd64'},
