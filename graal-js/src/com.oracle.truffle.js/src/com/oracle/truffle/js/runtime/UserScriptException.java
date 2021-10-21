@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
@@ -115,6 +116,27 @@ public final class UserScriptException extends GraalJSException {
     @ExportMessage
     public ExceptionType getExceptionType() {
         return ExceptionType.RUNTIME_ERROR;
+    }
+
+    @SuppressWarnings("static-method")
+    @ExportMessage
+    public boolean isExceptionIncompleteSource() {
+        return false;
+    }
+
+    @ExportMessage
+    public boolean hasExceptionMessage() {
+        return getMessage() != null;
+    }
+
+    @ExportMessage
+    public Object getExceptionMessage() throws UnsupportedMessageException {
+        String message = getMessage();
+        if (message == null) {
+            throw UnsupportedMessageException.create();
+        } else {
+            return message;
+        }
     }
 
     /**
