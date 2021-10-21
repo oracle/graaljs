@@ -116,29 +116,31 @@ public class EngineCacheData {
 
     private static class Descriptor {
 
-        private final int templateId;
-        private final int length;
-        private final boolean singleFunction;
+        private final int uid;
+        private final int anInt;
+        private final boolean aBoolean;
 
-        private Descriptor(int id, int length, boolean singleFunction) {
-            this.templateId = id;
-            this.length = length;
-            this.singleFunction = singleFunction;
+        private Descriptor(int id, int anInt, boolean aBoolean) {
+            this.uid = id;
+            this.anInt = anInt;
+            this.aBoolean = aBoolean;
         }
 
         @Override
         public boolean equals(Object o) {
-            if (this == o)
+            if (this == o) {
                 return true;
-            if (o == null || getClass() != o.getClass())
+            }
+            if (o == null || getClass() != o.getClass()) {
                 return false;
+            }
             Descriptor that = (Descriptor) o;
-            return templateId == that.templateId && length == that.length && singleFunction == that.singleFunction;
+            return uid == that.uid && anInt == that.anInt && aBoolean == that.aBoolean;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(templateId, length, singleFunction);
+            return Objects.hash(uid, anInt, aBoolean);
         }
     }
 }

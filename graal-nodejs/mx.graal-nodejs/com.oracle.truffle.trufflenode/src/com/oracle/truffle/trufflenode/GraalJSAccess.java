@@ -3195,6 +3195,68 @@ public final class GraalJSAccess {
         mainJSContext.setPrepareStackTraceCallback(callback);
     }
 
+    private static class NativePromiseHook implements PromiseHook {
+        @Override
+        public void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise) {
+            NativeAccess.notifyPromiseHook(changeType, promise, parentPromise);
+        }
+    }
+
+    private static class NativePromiseRejectionTracker implements PromiseRejectionTracker {
+        @Override
+        public void promiseRejected(DynamicObject promise, Object value) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            0, // v8::PromiseRejectEvent::kPromiseRejectWithNoHandler
+                            value);
+        }
+
+        @Override
+        public void promiseRejectionHandled(DynamicObject promise) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            1, // v8::PromiseRejectEvent::kPromiseHandlerAddedAfterReject
+                            Undefined.instance);
+        }
+
+        @Override
+        public void promiseRejectedAfterResolved(DynamicObject promise, Object value) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            2, // v8::PromiseRejectEvent::kPromiseRejectAfterResolved
+                            value);
+        }
+
+        @Override
+        public void promiseResolvedAfterResolved(DynamicObject promise, Object value) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            3, // v8::PromiseRejectEvent::kPromiseResolveAfterResolved
+                            value);
+        }
+    }
+
+    private static class NativeImportMetaInitializer implements ImportMetaInitializer {
+        @Override
+        public void initializeImportMeta(DynamicObject importMeta, JSModuleRecord module) {
+            NativeAccess.notifyImportMetaInitializer(importMeta, module);
+        }
+    }
+
+    private static class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
+        @Override
+        public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
+            return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier());
+        }
+    }
+
+    private static class NativePrepareStackTraceCallback implements PrepareStackTraceCallback {
+        @Override
+        public Object prepareStackTrace(JSRealm realm, DynamicObject error, DynamicObject structuredStackTrace) {
+            return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
+        }
+    }
+
     private void exit(int status) {
         try {
             evaluator.close();
