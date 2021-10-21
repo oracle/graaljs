@@ -66,6 +66,7 @@ public class EngineCacheData {
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedTemplatesFunctionData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedAccessorsFunctionData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
+    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedInternalScriptData;
 
     private final JSFunctionData[] persistedBuiltins = new JSFunctionData[CacheableSingletons.values().length];
 
@@ -74,21 +75,27 @@ public class EngineCacheData {
         this.persistedTemplatesFunctionData = new ConcurrentHashMap<>();
         this.persistedAccessorsFunctionData = new ConcurrentHashMap<>();
         this.persistedNativePropertyHandlerData = new ConcurrentHashMap<>();
+        this.persistedInternalScriptData = new ConcurrentHashMap<>();
     }
 
     public JSFunctionData getOrCreateFunctionDataFromTemplate(FunctionTemplate template, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(template.getID(), template.getLength(), template.isSingleFunctionTemplate());
+        Descriptor descriptor = new Descriptor(template.getID(), template.getLength(), template.isSingleFunctionTemplate(), null);
         return getOrStore(descriptor, factory, persistedTemplatesFunctionData);
     }
 
     public JSFunctionData getOrCreateFunctionDataFromAccessor(int id, boolean getter, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(id, 0, getter);
+        Descriptor descriptor = new Descriptor(id, 0, getter, null);
         return getOrStore(descriptor, factory, persistedAccessorsFunctionData);
     }
 
     public JSFunctionData getOrCreateFunctionDataFromPropertyHandler(int templateId, ExecuteNativePropertyHandlerNode.Mode mode, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(templateId, mode.ordinal(), false);
+        Descriptor descriptor = new Descriptor(templateId, mode.ordinal(), false, null);
         return getOrStore(descriptor, factory, persistedNativePropertyHandlerData);
+    }
+
+    public JSFunctionData getOrCreateInternalScriptData(String scriptNodeName, Function<JSContext, JSFunctionData> factory) {
+        Descriptor descriptor = new Descriptor(0, 0, false, scriptNodeName);
+        return getOrStore(descriptor, factory, persistedInternalScriptData);
     }
 
     public JSFunctionData getOrCreateBuiltinFunctionData(CacheableSingletons builtin, Function<JSContext, JSFunctionData> factory) {
@@ -119,11 +126,13 @@ public class EngineCacheData {
         private final int uid;
         private final int anInt;
         private final boolean aBoolean;
+        private final String aString;
 
-        private Descriptor(int id, int anInt, boolean aBoolean) {
+        private Descriptor(int id, int anInt, boolean aBoolean, String aString) {
             this.uid = id;
             this.anInt = anInt;
             this.aBoolean = aBoolean;
+            this.aString = aString == null ? "" : aString;
         }
 
         @Override
@@ -135,12 +144,12 @@ public class EngineCacheData {
                 return false;
             }
             Descriptor that = (Descriptor) o;
-            return uid == that.uid && anInt == that.anInt && aBoolean == that.aBoolean;
+            return uid == that.uid && anInt == that.anInt && aBoolean == that.aBoolean && aString.equals(that.aString);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(uid, anInt, aBoolean);
+            return Objects.hash(uid, anInt, aBoolean, aString);
         }
     }
 }

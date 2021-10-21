@@ -48,7 +48,6 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -64,26 +63,24 @@ class InternalScriptRootNode extends JavaScriptRootNode {
 
     private static final boolean USE_NIO_BUFFER = !"false".equals(System.getProperty("node.buffer.nio"));
 
-    private final DynamicObject moduleFunction;
-    private final ScriptNode scriptNode;
+    private final String internalScriptName;
 
-    public InternalScriptRootNode(DynamicObject moduleFunction, ScriptNode scriptNode) {
-        this.moduleFunction = moduleFunction;
-        this.scriptNode = scriptNode;
+    public InternalScriptRootNode(DynamicObject moduleFunction, String scriptNodeName) {
+        this.internalScriptName = scriptNodeName;
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         DynamicObject thisObject = (DynamicObject) JSArguments.getThisObject(args);
-        Object result = JSFunction.call(moduleFunction, thisObject, getInternalModuleUserArguments(args, scriptNode, getRealm()));
-        return result;
+        RealmData realmData = GraalJSAccess.getRealmEmbedderData(getRealm());
+        DynamicObject moduleFunction = realmData.getInternalScriptFunction(internalScriptName);
+        return JSFunction.call(moduleFunction, thisObject, getInternalModuleUserArguments(args, internalScriptName, getRealm()));
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node, JSRealm realm) {
+    private Object[] getInternalModuleUserArguments(Object[] args, String moduleName, JSRealm realm) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
-        String moduleName = node.getRootNode().getSourceSection().getSource().getName();
         Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
         if (extraArgument == null) {
             return userArgs;

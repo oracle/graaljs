@@ -2218,8 +2218,15 @@ public final class GraalJSAccess {
         JSContext context = scriptNode.getContext();
         final DynamicObject moduleFunction = (DynamicObject) scriptNode.run(arguments);
 
-        JavaScriptRootNode wrapperNode = new InternalScriptRootNode(moduleFunction, scriptNode);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 5, "");
+        RealmData realmData = getRealmEmbedderData(realm);
+        EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
+
+        String scriptNodeName = scriptNode.getRootNode().getSourceSection().getSource().getName();
+        realmData.registerInternalScriptFunction(scriptNodeName, moduleFunction);
+        JSFunctionData functionData = engineCacheData.getOrCreateInternalScriptData(scriptNodeName, (c) -> {
+            JavaScriptRootNode wrapperNode = new InternalScriptRootNode(moduleFunction, scriptNodeName);
+            return JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 5, "");
+        });
         return JSFunction.create(realm, functionData);
     }
 
