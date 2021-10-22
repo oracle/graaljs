@@ -283,6 +283,7 @@ public final class GraalJSAccess {
     private static final boolean USE_SNAPSHOTS = !"false".equalsIgnoreCase(System.getProperty("truffle.node.js.snapshots"));
 
     private static final HiddenKey PRIVATE_VALUES_KEY = new HiddenKey("PrivateValues");
+    public static final HiddenKey FUNCTION_TEMPLATE_KEY = new HiddenKey("FunctionTemplate");
     public static final HiddenKey FUNCTION_TEMPLATE_DATA_KEY = new HiddenKey("FunctionTemplateData");
     public static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
     private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
@@ -1847,6 +1848,8 @@ public final class GraalJSAccess {
 
         DynamicObject functionObject = JSFunction.create(realm, functionData);
         template.setFunctionObject(realm, functionObject);
+
+        JSObjectUtil.putHiddenProperty(functionObject, FUNCTION_TEMPLATE_KEY, template);
 
         // Additional data are held weakly from C => we have to ensure that
         // they are not GCed before the corresponding function is GCed

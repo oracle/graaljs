@@ -86,6 +86,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     @Children private final FlattenNode[] flattenNodes;
 
     private static final boolean USE_TEMPLATE_NODES = true;
+    @Child private PropertyGetNode getFunctionTemplateNode;
     @Child private PropertySetNode setConstructorTemplateNode;
     @Child private PropertyGetNode getConstructorTemplateNode;
     @Child private ObjectTemplateNode instanceTemplateNode;
@@ -98,6 +99,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         this.isNewTarget = isNewTarget;
         this.valueTypeNodes = new ValueTypeNode[IMPLICIT_ARG_COUNT + EXPLICIT_ARG_COUNT];
         this.flattenNodes = new FlattenNode[EXPLICIT_ARG_COUNT];
+        this.getFunctionTemplateNode = PropertyGetNode.createGetHidden(GraalJSAccess.FUNCTION_TEMPLATE_KEY, context);
     }
 
     // Truffle profiler merges identical source sections
@@ -120,9 +122,10 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        JSRealm realm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-        RealmData realmData = GraalJSAccess.getRealmEmbedderData(realm);
-        FunctionTemplate functionTemplate = realmData.getFunctionTemplate(this.templateId);
+        DynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
+        FunctionTemplate functionTemplate = (FunctionTemplate) getFunctionTemplateNode.getValue(functionObject);
+
+        JSRealm realm = JSFunction.getRealm(functionObject);
         assert functionTemplate != null;
         GraalJSAccess graalAccess = GraalJSAccess.get(this);
 
