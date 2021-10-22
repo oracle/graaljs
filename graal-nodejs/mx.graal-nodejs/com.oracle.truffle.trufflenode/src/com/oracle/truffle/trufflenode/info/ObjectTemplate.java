@@ -43,7 +43,6 @@ package com.oracle.truffle.trufflenode.info;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  *
@@ -62,10 +61,8 @@ public final class ObjectTemplate {
     private FunctionTemplate parentFunctionTemplate;
     private int internalFieldCount;
 
-    private static final AtomicInteger idGenerator = new AtomicInteger();
-
-    public ObjectTemplate() {
-        this.id = idGenerator.getAndIncrement();
+    public ObjectTemplate(int id) {
+        this.id = id;
     }
 
     public List<Accessor> getAccessors() {

@@ -55,7 +55,6 @@ public class EngineCacheData {
     enum CacheableSingletons {
         AlwaysFalse,
         AlwaysUndefined,
-        InteropArrayBuffer,
         SetBreakPoint,
         GcBuiltinRoot,
         PropertyHandlerPrototype,

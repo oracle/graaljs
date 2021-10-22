@@ -125,6 +125,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -334,6 +336,8 @@ public final class GraalJSAccess {
 
     private final boolean exposeGC;
     private final boolean unsafeWasmMemory;
+
+    private final IntSupplier objectTemplateIdGenerator = new AtomicInteger()::incrementAndGet;
 
     public static GraalJSAccess get() {
         return (GraalJSAccess) JSRealm.get(null).getEngineCacheRuntimeData();
@@ -1319,20 +1323,18 @@ public final class GraalJSAccess {
     }
 
     private static JSFunctionData createInteropBufferGetContents(JSContext context) {
-        EngineCacheData engineCacheData = getContextEngineCacheData(context);
-        return engineCacheData.getOrCreateBuiltinFunctionData(InteropArrayBuffer, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode() {
-                @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
-                @Child private ArrayBufferGetContentsNode bufferGetContents = ArrayBufferGetContentsNode.create();
+        class InteropArrayBufferGetContents extends JavaScriptRootNode {
+            @Child private JavaScriptNode valueNode = AccessIndexedArgumentNode.create(0);
+            @Child private ArrayBufferGetContentsNode bufferGetContents = ArrayBufferGetContentsNode.create();
 
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object value = valueNode.execute(frame);
-                    return bufferGetContents.execute(value);
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
-        });
+            @Override
+            public Object execute(VirtualFrame frame) {
+                Object value = valueNode.execute(frame);
+                return bufferGetContents.execute(value);
+            }
+        }
+        CallTarget callTarget = new InteropArrayBufferGetContents().getCallTarget();
+        return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
     }
 
     private ByteBuffer wasmMemoryAsByteBuffer(Object interopBuffer) {
@@ -1757,7 +1759,7 @@ public final class GraalJSAccess {
     }
 
     public Object functionTemplateNew(int id, long pointer, Object additionalData, Object signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
-        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor, singleFunctionTemplate);
+        FunctionTemplate template = new FunctionTemplate(id, pointer, additionalData, (FunctionTemplate) signature, length, isConstructor, singleFunctionTemplate, objectTemplateIdGenerator);
         template.getInstanceTemplate().setParentFunctionTemplate(template);
         return template;
     }
@@ -1884,7 +1886,7 @@ public final class GraalJSAccess {
     }
 
     public Object objectTemplateNew() {
-        return new ObjectTemplate();
+        return new ObjectTemplate(objectTemplateIdGenerator.getAsInt());
     }
 
     @CompilerDirectives.TruffleBoundary

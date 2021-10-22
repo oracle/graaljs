@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.trufflenode.info;
 
+import java.util.function.IntSupplier;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -69,10 +71,11 @@ public final class FunctionTemplate {
     private DynamicObject functionObj;
     private final boolean singleFunctionTemplate;
 
-    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor, boolean singleFunctionTemplate) {
-        functionObjectTemplate = new ObjectTemplate();
-        instanceTemplate = new ObjectTemplate();
-        prototypeTemplate = isConstructor ? new ObjectTemplate() : null;
+    public FunctionTemplate(int id, long functionPointer, Object additionalData, FunctionTemplate signature, int length, boolean isConstructor, boolean singleFunctionTemplate,
+                    IntSupplier objectTemplateIdGenerator) {
+        functionObjectTemplate = new ObjectTemplate(objectTemplateIdGenerator.getAsInt());
+        instanceTemplate = new ObjectTemplate(objectTemplateIdGenerator.getAsInt());
+        prototypeTemplate = isConstructor ? new ObjectTemplate(objectTemplateIdGenerator.getAsInt()) : null;
         this.id = id;
         this.functionPointer = functionPointer;
         this.additionalData = additionalData;
