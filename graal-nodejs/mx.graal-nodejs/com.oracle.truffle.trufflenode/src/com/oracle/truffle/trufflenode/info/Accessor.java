@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.info;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -61,8 +59,6 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativeAccessorNode;
  */
 public class Accessor {
 
-    private static final AtomicInteger idGenerator = new AtomicInteger();
-
     private final Object name;
     private final long getterPtr;
     private final long setterPtr;
@@ -71,13 +67,13 @@ public class Accessor {
     private final int id;
     private final int attributes;
 
-    public Accessor(Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
+    public Accessor(int accessorId, Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
         this.name = name;
         this.getterPtr = getterPtr;
         this.setterPtr = setterPtr;
         this.data = data;
         this.signature = signature;
-        this.id = idGenerator.getAndIncrement();
+        this.id = accessorId;
         this.attributes = attributes;
     }
 

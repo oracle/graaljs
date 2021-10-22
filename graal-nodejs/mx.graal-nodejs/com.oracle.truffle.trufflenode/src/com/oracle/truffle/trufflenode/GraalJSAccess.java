@@ -337,13 +337,14 @@ public final class GraalJSAccess {
     private final boolean unsafeWasmMemory;
 
     private final IntSupplier objectTemplateIdGenerator = new AtomicInteger()::incrementAndGet;
+    private final IntSupplier accessorIdGenerator = new AtomicInteger()::incrementAndGet;
 
     public static GraalJSAccess get() {
-        return (GraalJSAccess) JSRealm.get(null).getEngineCacheRuntimeData();
+        return getRealmEmbedderData(JSRealm.get(null)).getGraalJSAccess();
     }
 
     public static GraalJSAccess get(Node node) {
-        return (GraalJSAccess) JSRealm.get(node).getEngineCacheRuntimeData();
+        return getRealmEmbedderData(JSRealm.get(node)).getGraalJSAccess();
     }
 
     /**
@@ -369,7 +370,6 @@ public final class GraalJSAccess {
             unsafeWasmMemory = options.isUnsafeWasmMemory();
             evaluator = contextBuilder.build();
             mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
-            mainJSRealm.setEngineCacheRuntimeData(this);
         } catch (IllegalArgumentException iaex) {
             System.err.printf("ERROR: %s", iaex.getMessage());
             System.exit(1);
@@ -972,7 +972,7 @@ public final class GraalJSAccess {
         DynamicObject dynamicObject = (DynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
         int flags = propertyAttributes(attributes);
-        Accessor accessor = new Accessor(name, getterPtr, setterPtr, data, null, flags);
+        Accessor accessor = new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, null, flags);
         Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
         JSRealm realm = getCurrentRealm();
         DynamicObject getter = functionFromFunctionData(realm, accessorFunctions.getFirst(), dynamicObject);
@@ -1856,8 +1856,6 @@ public final class GraalJSAccess {
         // they are not GCed before the corresponding function is GCed
         JSObjectUtil.putHiddenProperty(functionObject, FUNCTION_TEMPLATE_DATA_KEY, template.getAdditionalData());
 
-        RealmData realmData = getRealmEmbedderData(realm);
-        realmData.registerFunctionTemplate(template);
         return functionObject;
     }
 
@@ -2019,7 +2017,7 @@ public final class GraalJSAccess {
 
     public void objectTemplateSetAccessor(Object templateObj, Object name, long getterPtr, long setterPtr, Object data, Object signature, int attributes) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        template.addAccessor(new Accessor(name, getterPtr, setterPtr, data, (FunctionTemplate) signature, propertyAttributes(attributes)));
+        template.addAccessor(new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, (FunctionTemplate) signature, propertyAttributes(attributes)));
     }
 
     public void objectTemplateSetHandler(Object templateObj, long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data, boolean named,
@@ -2224,13 +2222,36 @@ public final class GraalJSAccess {
         String scriptNodeName = scriptNode.getRootNode().getSourceSection().getSource().getName();
         realmData.registerInternalScriptFunction(scriptNodeName, moduleFunction);
         JSFunctionData functionData = engineCacheData.getOrCreateInternalScriptData(scriptNodeName, (c) -> {
-            JavaScriptRootNode wrapperNode = new InternalScriptRootNode(moduleFunction, scriptNodeName);
+            JavaScriptRootNode wrapperNode = new InternalScriptRootNode(scriptNodeName);
             return JSFunctionData.createCallOnly(context, wrapperNode.getCallTarget(), 5, "");
         });
         return JSFunction.create(realm, functionData);
     }
 
-    private Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
+    private static final class InternalScriptRootNode extends JavaScriptRootNode {
+        private final String internalScriptName;
+
+        public InternalScriptRootNode(String scriptNodeName) {
+            this.internalScriptName = scriptNodeName;
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object[] args = frame.getArguments();
+            DynamicObject thisObject = (DynamicObject) JSArguments.getThisObject(args);
+            JSRealm realm = getRealm();
+            RealmData realmData = GraalJSAccess.getRealmEmbedderData(realm);
+            DynamicObject moduleFunction = realmData.getInternalScriptFunction(internalScriptName);
+            return JSFunction.call(moduleFunction, thisObject, getInternalModuleUserArguments(args, internalScriptName, realm));
+        }
+
+        @Override
+        public String getName() {
+            return internalScriptName;
+        }
+    }
+
+    private static Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
         Object extraArgument = null;
         JSContext context = realm.getContext();
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
@@ -2248,16 +2269,15 @@ public final class GraalJSAccess {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
             extraArgument = SharedMemMessagingBindings.createInitFunction(realm);
         } else if ("inspector.js".equals(moduleName)) {
-            TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
+            TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
         }
         return extraArgument;
     }
 
     @TruffleBoundary
-    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node, JSRealm realm) {
+    private static Object[] getInternalModuleUserArguments(Object[] args, String moduleName, JSRealm realm) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
-        String moduleName = node.getRootNode().getSourceSection().getSource().getName();
         Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
         if (extraArgument == null) {
             return userArgs;
@@ -2393,8 +2413,8 @@ public final class GraalJSAccess {
 
         JSFunctionData functionData = engineCacheData.getOrCreateFunctionDataFromPropertyHandler(templateId, mode, (c) -> {
             JavaScriptRootNode rootNode = new ExecuteNativePropertyHandlerNode(context, templateId, mode);
-            CallTarget callTarget = rootNode.getCallTarget();
-            return JSFunctionData.create(context, callTarget, callTarget, 0, "", false, false, false, true);
+            CallTarget callbackCallTarget = rootNode.getCallTarget();
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
         });
         return functionFromFunctionData(realm, functionData, proxy);
     }
@@ -2404,17 +2424,6 @@ public final class GraalJSAccess {
         boolean enumerable = ((v8Attributes & 2 /* v8::PropertyAttribute::DontEnum */) == 0);
         boolean configurable = ((v8Attributes & 4 /* v8::PropertyAttribute::DontDelete */) == 0);
         return PropertyDescriptor.createData(value, enumerable, writable, configurable);
-    }
-
-    private static DynamicObject functionFromRootNode(JSContext context, JSRealm realm,
-                    JavaScriptRootNode rootNode, Object holder) {
-        return functionFromFunctionData(realm, functionDataFromRootNode(context, rootNode), holder);
-    }
-
-    public static JSFunctionData functionDataFromRootNode(JSContext context, JavaScriptRootNode rootNode) {
-        CallTarget callbackCallTarget = rootNode.getCallTarget();
-        return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false,
-                        false, false, true);
     }
 
     private static DynamicObject functionFromFunctionData(JSRealm realm, JSFunctionData functionData, Object holder) {
@@ -2767,7 +2776,7 @@ public final class GraalJSAccess {
             context.setEmbedderData(new ContextData(context));
             createChildContext = true;
         }
-        RealmData realmData = new RealmData();
+        RealmData realmData = new RealmData(this);
         realm.setEmbedderData(realmData);
         DynamicObject global = realm.getGlobalObject();
         // Node.js does not have global arguments property

@@ -508,11 +508,6 @@ public class JSRealm {
      */
     private Object customEsmPathMappingCallback;
 
-    /**
-     * Used to store runtime-only data used by engine caching.
-     */
-    private Object engineCacheRuntimeData;
-
     protected JSRealm(JSContext context, TruffleLanguage.Env env) {
         this(context, env, null);
     }
@@ -881,14 +876,6 @@ public class JSRealm {
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
-    }
-
-    public Object getEngineCacheRuntimeData() {
-        return this.engineCacheRuntimeData;
-    }
-
-    public void setEngineCacheRuntimeData(Object data) {
-        this.engineCacheRuntimeData = data;
     }
 
     private void initializeTypedArrayConstructors() {

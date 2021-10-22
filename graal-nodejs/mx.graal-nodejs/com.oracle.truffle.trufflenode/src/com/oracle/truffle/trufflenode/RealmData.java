@@ -50,7 +50,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.info.Accessor;
-import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 
 /**
@@ -73,10 +72,12 @@ public final class RealmData {
 
     private final List<Accessor> accessors = new ArrayList<>(NODEJS_BOOTSTRAP_ACCESSORS);
     private final List<Pair<ObjectTemplate, DynamicObject>> propertyHandlers = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
-    private final List<FunctionTemplate> functionTemplates = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
     private final Map<String, DynamicObject> internalScriptFunctions = new HashMap<>();
 
-    public RealmData() {
+    private final GraalJSAccess graalJSAccess;
+
+    public RealmData(GraalJSAccess graalJSAccess) {
+        this.graalJSAccess = graalJSAccess;
     }
 
     public void setSecurityToken(Object securityToken) {
@@ -144,18 +145,8 @@ public final class RealmData {
         this.arrayBufferGetContentsFunction = arrayBufferGetContentsFunction;
     }
 
-    public void registerFunctionTemplate(FunctionTemplate template) {
-        CompilerAsserts.neverPartOfCompilation();
-        int id = template.getID();
-        while (functionTemplates.size() <= id) {
-            functionTemplates.add(null);
-        }
-        functionTemplates.set(id, template);
-    }
-
-    public FunctionTemplate getFunctionTemplate(int id) {
-        assert functionTemplates.size() > id && functionTemplates.get(id) != null;
-        return functionTemplates.get(id);
+    public GraalJSAccess getGraalJSAccess() {
+        return graalJSAccess;
     }
 
     public void registerAccessor(int id, Accessor accessor) {
