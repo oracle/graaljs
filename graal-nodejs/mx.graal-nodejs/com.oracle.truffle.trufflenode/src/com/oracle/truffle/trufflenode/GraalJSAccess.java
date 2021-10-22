@@ -1019,6 +1019,14 @@ public final class GraalJSAccess {
             try {
                 List<Object> names = new ArrayList<>();
                 InteropLibrary library = InteropLibrary.getFactory().getUncached(object);
+                if (library.hasArrayElements(object)) {
+                    long size = library.getArraySize(object);
+                    for (long i = 0; i < size; i++) {
+                        if (library.isArrayElementExisting(object, i)) {
+                            names.add(JSRuntime.longToIntOrDouble(i));
+                        }
+                    }
+                }
                 if (library.hasMembers(object)) {
                     Object members = library.getMembers(object);
                     InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
@@ -1026,14 +1034,6 @@ public final class GraalJSAccess {
                     for (long i = 0; i < size; i++) {
                         Object key = membersLibrary.readArrayElement(members, i);
                         names.add(foreignStringToString(key));
-                    }
-                }
-                if (library.hasArrayElements(object)) {
-                    long size = library.getArraySize(object);
-                    for (long i = 0; i < size; i++) {
-                        if (library.isArrayElementExisting(object, i)) {
-                            names.add(JSRuntime.longToIntOrDouble(i));
-                        }
                     }
                 }
                 namesArray = names.toArray();
@@ -1091,18 +1091,6 @@ public final class GraalJSAccess {
             try {
                 List<Object> keys = new ArrayList<>();
                 InteropLibrary library = InteropLibrary.getFactory().getUncached(object);
-                if (!skipStrings && library.hasMembers(object)) {
-                    Object members = library.getMembers(object);
-                    InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
-                    long size = membersLibrary.getArraySize(members);
-                    for (long i = 0; i < size; i++) {
-                        Object key = membersLibrary.readArrayElement(members, i);
-                        String stringKey = foreignStringToString(key);
-                        if (!writableOnly || library.isMemberWritable(object, stringKey)) {
-                            keys.add(stringKey);
-                        }
-                    }
-                }
                 if (!skipIndices && library.hasArrayElements(object)) {
                     long size = library.getArraySize(object);
                     for (long i = 0; i < size; i++) {
@@ -1116,6 +1104,18 @@ public final class GraalJSAccess {
                             if (!writableOnly || library.isArrayElementWritable(object, i)) {
                                 keys.add(key);
                             }
+                        }
+                    }
+                }
+                if (!skipStrings && library.hasMembers(object)) {
+                    Object members = library.getMembers(object);
+                    InteropLibrary membersLibrary = InteropLibrary.getFactory().getUncached(members);
+                    long size = membersLibrary.getArraySize(members);
+                    for (long i = 0; i < size; i++) {
+                        Object key = membersLibrary.readArrayElement(members, i);
+                        String stringKey = foreignStringToString(key);
+                        if (!writableOnly || library.isMemberWritable(object, stringKey)) {
+                            keys.add(stringKey);
                         }
                     }
                 }
