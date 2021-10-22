@@ -43,7 +43,6 @@ package com.oracle.truffle.trufflenode.info;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -125,11 +124,11 @@ public class Accessor {
         realmData.registerAccessor(id, this);
 
         EngineCacheData cacheData = GraalJSAccess.getContextEngineCacheData(context);
-        return cacheData.getOrCreateFunctionDataFromAccessor(this.id, getter, (c) -> {
-            RootNode rootNode = new ExecuteNativeAccessorNode(context, this.id, getter);
-            CallTarget callbackCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
-            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false,
-                            false, false, true);
+        int accessorId = this.id;
+        return cacheData.getOrCreateFunctionDataFromAccessor(accessorId, getter, (c) -> {
+            RootNode rootNode = new ExecuteNativeAccessorNode(context, accessorId, getter);
+            CallTarget callbackCallTarget = rootNode.getCallTarget();
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
         });
     }
 

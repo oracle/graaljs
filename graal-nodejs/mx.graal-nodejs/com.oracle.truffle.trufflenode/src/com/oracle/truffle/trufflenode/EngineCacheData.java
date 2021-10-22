@@ -52,23 +52,12 @@ import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 
 public class EngineCacheData {
 
-    enum CacheableSingletons {
-        AlwaysFalse,
-        AlwaysUndefined,
-        SetBreakPoint,
-        GcBuiltinRoot,
-        PropertyHandlerPrototype,
-        PropertyHandlerPrototypeGlobal
-    }
-
     private final JSContext context;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedTemplatesFunctionData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedAccessorsFunctionData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedInternalScriptData;
     private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedESNativeModulesData;
-
-    private final JSFunctionData[] persistedBuiltins = new JSFunctionData[CacheableSingletons.values().length];
 
     public EngineCacheData(JSContext context) {
         this.context = context;
@@ -102,20 +91,6 @@ public class EngineCacheData {
     public JSFunctionData getOrCreateESNativeModuleData(String moduleName, Function<JSContext, JSFunctionData> factory) {
         Descriptor descriptor = new Descriptor(0, 0, false, moduleName);
         return getOrStore(descriptor, factory, persistedESNativeModulesData);
-    }
-
-    public JSFunctionData getOrCreateBuiltinFunctionData(CacheableSingletons builtin, Function<JSContext, JSFunctionData> factory) {
-        if (persistedBuiltins[builtin.ordinal()] != null) {
-            return persistedBuiltins[builtin.ordinal()];
-        }
-
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        synchronized (this) {
-            if (persistedBuiltins[builtin.ordinal()] == null) {
-                persistedBuiltins[builtin.ordinal()] = factory.apply(context);
-            }
-            return persistedBuiltins[builtin.ordinal()];
-        }
     }
 
     private JSFunctionData getOrStore(Descriptor descriptor, Function<JSContext, JSFunctionData> factory, ConcurrentHashMap<Descriptor, JSFunctionData> storage) {

@@ -157,11 +157,6 @@ public class JSContext {
     private Object embedderData;
 
     /**
-     * Slot for engine cache data that is persisted across executions.
-     */
-    private Object engineCacheData;
-
-    /**
      * Nashorn compatibility mode only: Assumption is valid as long as no
      * {@code __noSuchProperty__}, {@code __noSuchMethod__} properties have been defined.
      */
@@ -618,21 +613,6 @@ public class JSContext {
     public final void setEmbedderData(Object embedderData) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         this.embedderData = embedderData;
-    }
-
-    public final Object getEngineCacheData() {
-        return engineCacheData;
-    }
-
-    public final void setEngineCacheData(Object data) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        if (this.engineCacheData == null) {
-            System.out.println("==== SET");
-            this.engineCacheData = data;
-        } else {
-            System.out.println("---- DONT SET");
-            // Cached
-        }
     }
 
     public final Assumption getNoSuchPropertyUnusedAssumption() {

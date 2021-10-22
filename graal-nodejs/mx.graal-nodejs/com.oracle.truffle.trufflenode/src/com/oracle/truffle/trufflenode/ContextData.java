@@ -65,9 +65,16 @@ public final class ContextData {
     private final Shape externalObjectShape;
     private final JSContext context;
     private final AtomicReferenceArray<JSFunctionData> accessFunctionData = new AtomicReferenceArray<>(FunctionKey.LENGTH);
+    private final EngineCacheData engineCacheData;
 
     public enum FunctionKey {
-        ArrayBufferGetContents;
+        ArrayBufferGetContents,
+        ConstantFalse,
+        ConstantUndefined,
+        GcBuiltinRoot,
+        PropertyHandlerPrototype,
+        PropertyHandlerPrototypeGlobal,
+        SetBreakPoint;
 
         static final int LENGTH = FunctionKey.values().length;
     }
@@ -75,6 +82,7 @@ public final class ContextData {
     public ContextData(JSContext context) {
         this.context = context;
         this.externalObjectShape = JSExternal.makeInitialShape(context);
+        this.engineCacheData = new EngineCacheData(context);
     }
 
     public Pair<JSFunctionData, JSFunctionData> getAccessorPair(int id) {
@@ -102,6 +110,10 @@ public final class ContextData {
 
     public Map<String, FunctionNode> getFunctionNodeCache() {
         return functionNodeCache;
+    }
+
+    public EngineCacheData getEngineCacheData() {
+        return engineCacheData;
     }
 
     public JSFunctionData getOrCreateFunctionData(FunctionKey key, Function<JSContext, JSFunctionData> factory) {

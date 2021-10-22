@@ -41,13 +41,12 @@
 package com.oracle.truffle.trufflenode;
 
 import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.AlwaysFalse;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.AlwaysUndefined;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.GcBuiltinRoot;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.InteropArrayBuffer;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.PropertyHandlerPrototype;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.PropertyHandlerPrototypeGlobal;
-import static com.oracle.truffle.trufflenode.EngineCacheData.CacheableSingletons.SetBreakPoint;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantFalse;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantUndefined;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GcBuiltinRoot;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototype;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototypeGlobal;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetBreakPoint;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
@@ -1923,7 +1922,7 @@ public final class GraalJSAccess {
         RealmData realmData = getRealmEmbedderData(realm);
         realmData.registerPropertyHandlerInstance(template.getId(), template, proxy);
 
-        EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
+        ContextData engineCacheData = getContextEmbedderData(context);
         int templateId = template.getId();
 
         DynamicObject getter = getOrCreateNativePropertyHandlerFunction(templateId, realm, GETTER, proxy);
@@ -1947,10 +1946,10 @@ public final class GraalJSAccess {
         DynamicObject defineProperty = getOrCreateNativePropertyHandlerFunction(templateId, realm, DEFINE_PROPERTY, proxy);
         JSObject.set(handler, JSProxy.DEFINE_PROPERTY, defineProperty);
 
-        EngineCacheData.CacheableSingletons nodeType = global ? PropertyHandlerPrototypeGlobal : PropertyHandlerPrototype;
-        JSFunctionData getPrototypeOfFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(nodeType, (c) -> {
+        ContextData.FunctionKey nodeType = global ? PropertyHandlerPrototypeGlobal : PropertyHandlerPrototype;
+        JSFunctionData getPrototypeOfFunctionData = engineCacheData.getOrCreateFunctionData(nodeType, (c) -> {
             JavaScriptRootNode rootNode = new PropertyHandlerPrototypeNode(global);
-            return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "");
+            return JSFunctionData.createCallOnly(c, rootNode.getCallTarget(), 0, "");
         });
         DynamicObject getPrototypeOf = functionFromFunctionData(realm, getPrototypeOfFunctionData, null);
         JSObject.set(handler, JSProxy.GET_PROTOTYPE_OF, getPrototypeOf);
@@ -2239,8 +2238,7 @@ public final class GraalJSAccess {
             // extra argument to the module loading function.
             extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
-            EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
-            JSFunctionData setBreakPointData = engineCacheData.getOrCreateBuiltinFunctionData(SetBreakPoint, (c) -> {
+            JSFunctionData setBreakPointData = getContextEmbedderData(context).getOrCreateFunctionData(SetBreakPoint, (c) -> {
                 CallTarget setBreakPointCallTarget = new SetBreakPointNode(context).getCallTarget();
                 return JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
             });
@@ -2767,7 +2765,6 @@ public final class GraalJSAccess {
             realm = mainJSRealm;
             context = mainJSContext;
             context.setEmbedderData(new ContextData(context));
-            context.setEngineCacheData(new EngineCacheData(context));
             createChildContext = true;
         }
         RealmData realmData = new RealmData();
@@ -2802,15 +2799,13 @@ public final class GraalJSAccess {
     }
 
     public static EngineCacheData getContextEngineCacheData(JSContext context) {
-        return (EngineCacheData) context.getEngineCacheData();
+        return getContextEmbedderData(context).getEngineCacheData();
     }
 
     private static void contextExposeGC(JSRealm realm) {
         DynamicObject global = realm.getGlobalObject();
 
-        EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
-
-        JSFunctionData functionData = engineCacheData.getOrCreateBuiltinFunctionData(GcBuiltinRoot, (c) -> {
+        JSFunctionData functionData = getContextEmbedderData(realm.getContext()).getOrCreateFunctionData(GcBuiltinRoot, (c) -> {
             JavaScriptRootNode rootNode = new JavaScriptRootNode() {
                 @Override
                 public Object execute(VirtualFrame frame) {
@@ -2858,18 +2853,18 @@ public final class GraalJSAccess {
 
     private static DynamicObject initializeExtrasBindingObject(JSRealm realm) {
         DynamicObject extras = JSOrdinary.create(realm.getContext(), realm);
-        EngineCacheData engineCacheData = getContextEngineCacheData(realm.getContext());
 
-        JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(AlwaysFalse, (c) -> {
+        ContextData engineCacheData = getContextEmbedderData(realm.getContext());
+        JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateFunctionData(ConstantFalse, (c) -> {
             CallTarget target = RootNode.createConstantNode(false).getCallTarget();
-            return JSFunctionData.createCallOnly(realm.getContext(), target, 0, "isTraceCategoryEnabled");
+            return JSFunctionData.createCallOnly(c, target, 0, "isTraceCategoryEnabled");
         });
         DynamicObject isEnabledFunction = JSFunction.create(realm, isEnabledFunctionData);
         JSObject.set(extras, "isTraceCategoryEnabled", isEnabledFunction);
 
-        JSFunctionData traceFunctionData = engineCacheData.getOrCreateBuiltinFunctionData(AlwaysUndefined, (c) -> {
+        JSFunctionData traceFunctionData = engineCacheData.getOrCreateFunctionData(ConstantUndefined, (c) -> {
             CallTarget target = RootNode.createConstantNode(Undefined.instance).getCallTarget();
-            return JSFunctionData.createCallOnly(realm.getContext(), target, 0, "trace");
+            return JSFunctionData.createCallOnly(c, target, 0, "trace");
         });
         DynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
         JSObject.set(extras, "trace", traceFunction);
