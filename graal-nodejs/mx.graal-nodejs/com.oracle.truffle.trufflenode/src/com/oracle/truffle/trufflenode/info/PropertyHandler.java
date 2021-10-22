@@ -41,8 +41,6 @@
 package com.oracle.truffle.trufflenode.info;
 
 /**
- * Represents a property handler object. Contains runtime data (e.g., pointers), and must not be
- * persisted.
  *
  * @author Jan Stola
  */

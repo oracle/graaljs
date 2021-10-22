@@ -87,6 +87,8 @@ import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNDEFINED_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -232,8 +234,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
-            GraalJSAccess.get(this).getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
-            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
+            ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
+            sharedBuffer.putInt(getByteLengthNode.executeInt(value));
+            sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return cachedTypeInt;
     }
@@ -243,8 +246,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
                     @Cached("create(getContext())") ArrayBufferViewGetByteLengthNode getByteLengthNode) {
         assert JSArrayBufferView.isJSArrayBufferView(value);
         if (useSharedBuffer) {
-            GraalJSAccess.get(this).getSharedBuffer().putInt(getByteLengthNode.executeInt(value));
-            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
+            ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
+            sharedBuffer.putInt(getByteLengthNode.executeInt(value));
+            sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         TypedArray array = value.getArrayType();
         return identifyType(array);
@@ -253,8 +257,9 @@ abstract class ValueTypeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"isJSDataView(value)"})
     protected final int doDataView(DynamicObject value) {
         if (useSharedBuffer) {
-            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
-            GraalJSAccess.get(this).getSharedBuffer().putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
+            ByteBuffer sharedBuffer = GraalJSAccess.get(this).getSharedBuffer();
+            sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteLength(context, value));
+            sharedBuffer.putInt(GraalJSAccess.arrayBufferViewByteOffset(context, value));
         }
         return DATA_VIEW_OBJECT;
     }

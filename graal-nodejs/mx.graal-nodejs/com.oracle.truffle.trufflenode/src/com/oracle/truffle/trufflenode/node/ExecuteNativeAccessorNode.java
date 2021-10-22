@@ -124,4 +124,8 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
         return result;
     }
 
+    @Override
+    public String toString() {
+        return "NativeAccessor";
+    }
 }

@@ -52,9 +52,9 @@ import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess.NativeBackedModuleRecord;
 
-class ESNativeModuleRootNode extends JavaScriptRootNode {
+class SyntheticModuleRootNode extends JavaScriptRootNode {
 
-    public ESNativeModuleRootNode(JavaScriptLanguage language, Source source, FrameDescriptor frameDescriptor) {
+    SyntheticModuleRootNode(JavaScriptLanguage language, Source source, FrameDescriptor frameDescriptor) {
         super(language, source.createUnavailableSection(), frameDescriptor);
     }
 
@@ -72,7 +72,7 @@ class ESNativeModuleRootNode extends JavaScriptRootNode {
     }
 
     @TruffleBoundary
-    private Object invokeEvaluationStepsCallback(JSRealm realm, NativeBackedModuleRecord module) {
+    private static Object invokeEvaluationStepsCallback(JSRealm realm, NativeBackedModuleRecord module) {
         return NativeAccess.syntheticModuleEvaluationSteps(module.getEvaluationStepsCallback(), realm, module);
     }
 }

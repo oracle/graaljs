@@ -54,7 +54,6 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
@@ -63,12 +62,6 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public class SetBreakPointNode extends JavaScriptRootNode {
     public static final String NAME = "setBreakPoint";
-
-    private final JSContext context;
-
-    public SetBreakPointNode(JSContext context) {
-        this.context = context;
-    }
 
     @Override
     public Object execute(VirtualFrame frame) {
@@ -175,8 +168,8 @@ public class SetBreakPointNode extends JavaScriptRootNode {
             builder.oneShot();
         }
         Breakpoint breakpoint = builder.build();
-        GraalJSAccess graalJSaccess = GraalJSAccess.get(this);
-        Debugger debugger = graalJSaccess.lookupInstrument("debugger", Debugger.class);
+        GraalJSAccess graalJSAccess = GraalJSAccess.get(this);
+        Debugger debugger = graalJSAccess.lookupInstrument("debugger", Debugger.class);
         debugger.install(breakpoint);
     }
 

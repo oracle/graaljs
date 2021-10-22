@@ -973,16 +973,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public ScriptNode parseScript(JSContext context, Source source, ByteBuffer binary) {
-        if (binary.isDirect()) {
-            assert binary.position() == 0;
-            assert binary.capacity() == binary.limit();
-            byte[] data = new byte[binary.capacity()];
-            binary.get(data, 0, data.length);
-            ByteBuffer heap = ByteBuffer.wrap(data);
-            return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(heap).apply(NodeFactory.getInstance(context), context, source));
-        } else {
-            return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
-        }
+        return ScriptNode.fromFunctionRoot(context, (FunctionRootNode) new BinarySnapshotProvider(binary).apply(NodeFactory.getInstance(context), context, source));
     }
 
     @Override

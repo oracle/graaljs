@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -111,8 +111,7 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @TruffleBoundary
         @Specialization
         public Object enter(SharedMemMessagingBindings.Instance self, JSExternalObject nativeMessagePortData) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
-            access.setCurrentMessagePortData(nativeMessagePortData);
+            GraalJSAccess.get(this).setCurrentMessagePortData(nativeMessagePortData);
             return self;
         }
 
@@ -137,8 +136,8 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @TruffleBoundary
         @Specialization
-        static boolean encodedJavaRefs(SharedMemMessagingBindings.Instance self) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
+        boolean encodedJavaRefs(@SuppressWarnings("unused") SharedMemMessagingBindings.Instance self) {
+            GraalJSAccess access = GraalJSAccess.get(this);
             assert access.getCurrentMessagePortData() != null;
             return access.getCurrentMessagePortData().encodedJavaRefs();
         }
@@ -161,9 +160,8 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @TruffleBoundary
         @Specialization
-        static Object free(SharedMemMessagingBindings.Instance self) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
-            access.getCurrentMessagePortData().disposeLastMessageRefs();
+        Object free(SharedMemMessagingBindings.Instance self) {
+            GraalJSAccess.get(this).getCurrentMessagePortData().disposeLastMessageRefs();
             return self;
         }
 
@@ -185,9 +183,8 @@ public class SharedMemMessagingBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         @TruffleBoundary
         @Specialization
-        static Object leave(SharedMemMessagingBindings.Instance self) {
-            GraalJSAccess access = SharedMemMessagingBindings.getApiField();
-            access.unsetCurrentMessagePortData();
+        Object leave(SharedMemMessagingBindings.Instance self) {
+            GraalJSAccess.get(this).unsetCurrentMessagePortData();
             return self;
         }
 

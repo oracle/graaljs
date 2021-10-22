@@ -40,23 +40,16 @@
  */
 package com.oracle.truffle.trufflenode;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.runtime.util.Pair;
-import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 
 /**
  * Realm-specific embedder data. Should never be persisted.
  */
 public final class RealmData {
-
-    private static final int NODEJS_BOOTSTRAP_TEMPLATES = 512;
 
     private Object securityToken;
     private final Map<Integer, Object> embedderData = new HashMap<>();
@@ -67,9 +60,6 @@ public final class RealmData {
     private DynamicObject resolverFactory;
     private DynamicObject extrasBindingObject;
     private DynamicObject arrayBufferGetContentsFunction;
-
-    private final List<Pair<ObjectTemplate, DynamicObject>> propertyHandlers = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
-    private final Map<String, DynamicObject> internalScriptFunctions = new HashMap<>();
 
     private final GraalJSAccess graalJSAccess;
 
@@ -146,27 +136,4 @@ public final class RealmData {
         return graalJSAccess;
     }
 
-    public void registerPropertyHandlerInstance(int id, ObjectTemplate template, DynamicObject proxy) {
-        CompilerAsserts.neverPartOfCompilation();
-        while (propertyHandlers.size() <= id) {
-            propertyHandlers.add(null);
-        }
-        propertyHandlers.set(id, new Pair<>(template, proxy));
-    }
-
-    public Pair<ObjectTemplate, DynamicObject> getPropertyHandler(int id) {
-        assert propertyHandlers.size() > id && propertyHandlers.get(id) != null;
-        return propertyHandlers.get(id);
-    }
-
-    public void registerInternalScriptFunction(String scriptNodeName, DynamicObject moduleFunction) {
-        assert !internalScriptFunctions.containsKey(scriptNodeName);
-        internalScriptFunctions.put(scriptNodeName, moduleFunction);
-    }
-
-    @TruffleBoundary
-    public DynamicObject getInternalScriptFunction(String internalScriptName) {
-        assert internalScriptFunctions.containsKey(internalScriptName);
-        return internalScriptFunctions.get(internalScriptName);
-    }
 }

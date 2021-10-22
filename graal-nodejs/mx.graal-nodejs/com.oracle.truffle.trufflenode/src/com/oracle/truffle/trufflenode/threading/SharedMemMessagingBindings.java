@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 /**
  * JS Builtins used by Node.s workers to send Java object references via message passing (@see
@@ -68,10 +67,6 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     private static final String CLASS_NAME = "SharedMemMessaging";
 
     private SharedMemMessagingBindings() {
-    }
-
-    public static GraalJSAccess getApiField() {
-        return GraalJSAccess.get();
     }
 
     @TruffleBoundary

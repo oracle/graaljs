@@ -54,6 +54,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -125,12 +126,12 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         assert functionTemplate != null;
         GraalJSAccess graalAccess = GraalJSAccess.get(this);
 
-        int templateId = functionTemplate.getID();
+        int templateId = functionTemplate.getId();
         FunctionTemplate signature = functionTemplate.getSignature();
         long functionPointer = functionTemplate.getFunctionPointer();
 
         Object[] arguments = frame.getArguments();
-        Object thisObject = arguments[0];
+        Object thisObject = JSArguments.getThisObject(arguments);
 
         if (isNew) {
             ObjectTemplate instanceTemplate = functionTemplate.getInstanceTemplate();
@@ -146,7 +147,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         }
         Object result;
         int offset = isNewTarget ? 1 : 0;
-        Object newTarget = isNew ? (isNewTarget ? arguments[2] : arguments[1]) : null;
+        Object newTarget = isNew ? (isNewTarget ? JSArguments.getNewTarget(arguments) : JSArguments.getFunctionObject(arguments)) : null;
         if (isTemplate.profile(functionPointer == 0)) {
             result = thisObject;
         } else if (eightOrLessArgs.profile(arguments.length <= IMPLICIT_ARG_COUNT + EXPLICIT_ARG_COUNT + offset)) {
@@ -232,6 +233,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             }
             instanceTemplateNode.executeWithObject(frame, thisObject);
         } else {
+            // when aux engine cache is enabled, don't specialize on ObjectTemplate instances.
             graalAccess.objectTemplateInstantiate(realm, instanceTemplate, thisObject);
         }
     }
@@ -375,7 +377,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             this.context = context;
             this.isNew = isNew;
             this.isNewTarget = isNewTarget;
-            this.name = template.getFunctionData().getName();
+            this.name = template.getClassName();
         }
 
         @Override
@@ -390,6 +392,11 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         @Override
         public String getName() {
             return name;
+        }
+
+        @Override
+        public String toString() {
+            return "NativeFunction" + (name != null ? "[" + name + "]" : "");
         }
 
         @Override

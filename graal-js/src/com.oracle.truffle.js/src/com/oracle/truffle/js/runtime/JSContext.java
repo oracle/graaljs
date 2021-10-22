@@ -611,7 +611,6 @@ public class JSContext {
     }
 
     public final void setEmbedderData(Object embedderData) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
         this.embedderData = embedderData;
     }
 

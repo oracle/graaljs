@@ -40,80 +40,64 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.trufflenode.info.Accessor;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
+import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 
-public class EngineCacheData {
+public final class EngineCacheData {
 
     private final JSContext context;
-    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedTemplatesFunctionData;
-    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedAccessorsFunctionData;
-    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
-    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedInternalScriptData;
-    private final ConcurrentHashMap<Descriptor, JSFunctionData> persistedESNativeModulesData;
+    private final ConcurrentHashMap<FunctionTemplate.Descriptor, JSFunctionData> persistedTemplatesFunctionData;
+    private final ConcurrentHashMap<Accessor.Descriptor, JSFunctionData> persistedAccessorsFunctionData;
+    private final ConcurrentHashMap<ObjectTemplate.Descriptor, JSFunctionData> persistedNativePropertyHandlerData;
+    private final ConcurrentHashMap<SyntheticModuleDescriptor, JSFunctionData> persistedSyntheticModulesData;
 
     public EngineCacheData(JSContext context) {
         this.context = context;
         this.persistedTemplatesFunctionData = new ConcurrentHashMap<>();
         this.persistedAccessorsFunctionData = new ConcurrentHashMap<>();
         this.persistedNativePropertyHandlerData = new ConcurrentHashMap<>();
-        this.persistedInternalScriptData = new ConcurrentHashMap<>();
-        this.persistedESNativeModulesData = new ConcurrentHashMap<>();
+        this.persistedSyntheticModulesData = new ConcurrentHashMap<>();
     }
 
     public JSFunctionData getOrCreateFunctionDataFromTemplate(FunctionTemplate template, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(template.getID(), template.getLength(), template.isSingleFunctionTemplate(), null);
-        return getOrStore(descriptor, factory, persistedTemplatesFunctionData);
-    }
-
-    public JSFunctionData getOrCreateFunctionDataFromAccessor(int id, boolean getter, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(id, 0, getter, null);
-        return getOrStore(descriptor, factory, persistedAccessorsFunctionData);
-    }
-
-    public JSFunctionData getOrCreateFunctionDataFromPropertyHandler(int templateId, ExecuteNativePropertyHandlerNode.Mode mode, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(templateId, mode.ordinal(), false, null);
-        return getOrStore(descriptor, factory, persistedNativePropertyHandlerData);
-    }
-
-    public JSFunctionData getOrCreateInternalScriptData(String scriptNodeName, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(0, 0, false, scriptNodeName);
-        return getOrStore(descriptor, factory, persistedInternalScriptData);
-    }
-
-    public JSFunctionData getOrCreateESNativeModuleData(String moduleName, Function<JSContext, JSFunctionData> factory) {
-        Descriptor descriptor = new Descriptor(0, 0, false, moduleName);
-        return getOrStore(descriptor, factory, persistedESNativeModulesData);
-    }
-
-    private JSFunctionData getOrStore(Descriptor descriptor, Function<JSContext, JSFunctionData> factory, ConcurrentHashMap<Descriptor, JSFunctionData> storage) {
-        if (storage.containsKey(descriptor)) {
-            return storage.get(descriptor);
+        if (context.isMultiContext()) {
+            // when aux engine cache is enabled, load shared function data from the image.
+            return persistedTemplatesFunctionData.computeIfAbsent(template.getEngineCacheDescriptor(), d -> factory.apply(context));
+        } else {
+            return factory.apply(context);
         }
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        storage.computeIfAbsent(descriptor, (d) -> factory.apply(context));
-        return storage.get(descriptor);
     }
 
-    private static class Descriptor {
+    public JSFunctionData getOrCreateFunctionDataFromAccessor(Accessor accessor, boolean getter, Function<JSContext, JSFunctionData> factory) {
+        return persistedAccessorsFunctionData.computeIfAbsent(accessor.getEngineCacheDescriptor(getter), d -> factory.apply(context));
+    }
 
-        private final int uid;
-        private final int anInt;
-        private final boolean aBoolean;
-        private final String aString;
+    public JSFunctionData getOrCreateFunctionDataFromPropertyHandler(ObjectTemplate template, ExecuteNativePropertyHandlerNode.Mode mode, Function<JSContext, JSFunctionData> factory) {
+        return persistedNativePropertyHandlerData.computeIfAbsent(template.getEngineCacheDescriptor(mode), d -> factory.apply(context));
+    }
 
-        private Descriptor(int id, int anInt, boolean aBoolean, String aString) {
-            this.uid = id;
-            this.anInt = anInt;
-            this.aBoolean = aBoolean;
-            this.aString = aString == null ? "" : aString;
+    public JSFunctionData getOrCreateSyntheticModuleData(String moduleName, Object[] exportNames, Function<JSContext, JSFunctionData> factory) {
+        SyntheticModuleDescriptor descriptor = new SyntheticModuleDescriptor(moduleName, exportNames);
+        return persistedSyntheticModulesData.computeIfAbsent(descriptor, d -> factory.apply(context));
+    }
+
+    private static class SyntheticModuleDescriptor {
+
+        private final String moduleName;
+        private final Object[] exportNames;
+
+        SyntheticModuleDescriptor(String moduleName, Object[] exportNames) {
+            this.moduleName = moduleName;
+            this.exportNames = exportNames;
         }
 
         @Override
@@ -124,13 +108,15 @@ public class EngineCacheData {
             if (o == null || getClass() != o.getClass()) {
                 return false;
             }
-            Descriptor that = (Descriptor) o;
-            return uid == that.uid && anInt == that.anInt && aBoolean == that.aBoolean && aString.equals(that.aString);
+            SyntheticModuleDescriptor that = (SyntheticModuleDescriptor) o;
+            return Objects.equals(moduleName, that.moduleName) && Arrays.equals(exportNames, that.exportNames);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(uid, anInt, aBoolean, aString);
+            int result = Objects.hash(moduleName);
+            result = 31 * result + Arrays.hashCode(exportNames);
+            return result;
         }
     }
 }
