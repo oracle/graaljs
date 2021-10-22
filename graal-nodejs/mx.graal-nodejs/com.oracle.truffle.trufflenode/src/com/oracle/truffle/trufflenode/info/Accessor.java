@@ -43,14 +43,12 @@ package com.oracle.truffle.trufflenode.info;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.ContextData;
 import com.oracle.truffle.trufflenode.EngineCacheData;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
-import com.oracle.truffle.trufflenode.RealmData;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeAccessorNode;
 
 /**
@@ -116,13 +114,10 @@ public class Accessor {
     }
 
     private JSFunctionData createFunction(JSContext context, boolean getter) {
-        RealmData realmData = GraalJSAccess.getRealmEmbedderData(JSRealm.get(null));
-        realmData.registerAccessor(id, this);
-
         EngineCacheData cacheData = GraalJSAccess.getContextEngineCacheData(context);
         int accessorId = this.id;
         return cacheData.getOrCreateFunctionDataFromAccessor(accessorId, getter, (c) -> {
-            RootNode rootNode = new ExecuteNativeAccessorNode(context, accessorId, getter);
+            RootNode rootNode = new ExecuteNativeAccessorNode(context, getter);
             CallTarget callbackCallTarget = rootNode.getCallTarget();
             return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
         });

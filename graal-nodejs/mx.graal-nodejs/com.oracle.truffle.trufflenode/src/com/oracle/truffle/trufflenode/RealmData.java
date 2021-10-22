@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.util.Pair;
-import com.oracle.truffle.trufflenode.info.Accessor;
 import com.oracle.truffle.trufflenode.info.ObjectTemplate;
 
 /**
@@ -57,7 +56,6 @@ import com.oracle.truffle.trufflenode.info.ObjectTemplate;
  */
 public final class RealmData {
 
-    private static final int NODEJS_BOOTSTRAP_ACCESSORS = 16;
     private static final int NODEJS_BOOTSTRAP_TEMPLATES = 512;
 
     private Object securityToken;
@@ -70,7 +68,6 @@ public final class RealmData {
     private DynamicObject extrasBindingObject;
     private DynamicObject arrayBufferGetContentsFunction;
 
-    private final List<Accessor> accessors = new ArrayList<>(NODEJS_BOOTSTRAP_ACCESSORS);
     private final List<Pair<ObjectTemplate, DynamicObject>> propertyHandlers = new ArrayList<>(NODEJS_BOOTSTRAP_TEMPLATES);
     private final Map<String, DynamicObject> internalScriptFunctions = new HashMap<>();
 
@@ -147,19 +144,6 @@ public final class RealmData {
 
     public GraalJSAccess getGraalJSAccess() {
         return graalJSAccess;
-    }
-
-    public void registerAccessor(int id, Accessor accessor) {
-        CompilerAsserts.neverPartOfCompilation();
-        while (accessors.size() <= id) {
-            accessors.add(null);
-        }
-        accessors.set(id, accessor);
-    }
-
-    public Accessor getAccessor(int id) {
-        assert accessors.size() > id && accessors.get(id) != null;
-        return accessors.get(id);
     }
 
     public void registerPropertyHandlerInstance(int id, ObjectTemplate template, DynamicObject proxy) {

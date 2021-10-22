@@ -48,13 +48,12 @@ import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
-import com.oracle.truffle.trufflenode.RealmData;
 import com.oracle.truffle.trufflenode.info.Accessor;
 import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 
@@ -66,25 +65,25 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
 
     private final boolean getter;
     private final BranchProfile errorBranch = BranchProfile.create();
-    private final int accessorId;
 
     @Child private GetPrototypeNode getPrototypeNode;
     @Child private PropertyGetNode prototypePropertyGetNode;
     @Child private PropertyGetNode holderPropertyGetNode;
+    @Child private PropertyGetNode accessorGetNode;
 
-    public ExecuteNativeAccessorNode(JSContext context, int accessorId, boolean getter) {
-        this.accessorId = accessorId;
+    public ExecuteNativeAccessorNode(JSContext context, boolean getter) {
         this.getter = getter;
         this.getPrototypeNode = GetPrototypeNode.create();
         this.prototypePropertyGetNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
+        this.accessorGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.ACCESSOR_KEY, context);
         this.holderPropertyGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.HOLDER_KEY, context);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
+        Accessor accessor = (Accessor) accessorGetNode.getValue(JSFrameUtil.getFunctionObject(frame));
 
-        Accessor accessor = getAccessor();
         if (accessor.hasSignature()) {
             FunctionTemplate signature = accessor.getSignature();
             DynamicObject functionObject = signature.getFunctionObject(getRealm());
@@ -93,7 +92,7 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
                 Object instancePrototype = getPrototypeNode.executeJSObject(arguments[0]);
                 if (functionPrototype != instancePrototype) {
                     errorBranch.enter();
-                    throw Errors.createTypeError(incompatibleReceiverMessage());
+                    throw Errors.createTypeError(incompatibleReceiverMessage(accessor));
                 }
             }
         }
@@ -103,22 +102,16 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
             return false;
         }
         Object holder = holderPropertyGetNode.getValue(arguments[1]);
-        return executeAccessorMethod(functionPointer, holder, arguments);
-    }
-
-    private Accessor getAccessor() {
-        RealmData realmData = GraalJSAccess.getRealmEmbedderData(JSRealm.get(this));
-        return realmData.getAccessor(accessorId);
+        return executeAccessorMethod(functionPointer, accessor, holder, arguments);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private String incompatibleReceiverMessage() {
-        return "Method " + getAccessor().getName() + " called on incompatible receiver";
+    private static String incompatibleReceiverMessage(Accessor accessor) {
+        return "Method " + accessor.getName() + " called on incompatible receiver";
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeAccessorMethod(long functionPointer, Object holder, Object[] arguments) {
-        Accessor accessor = getAccessor();
+    private Object executeAccessorMethod(long functionPointer, Accessor accessor, Object holder, Object[] arguments) {
         Object result;
         if (getter) {
             result = NativeAccess.executeAccessorGetter(functionPointer, holder, accessor.getName(), arguments, accessor.getData());

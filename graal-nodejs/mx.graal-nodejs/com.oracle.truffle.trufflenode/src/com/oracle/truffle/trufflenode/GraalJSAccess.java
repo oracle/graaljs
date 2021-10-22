@@ -294,6 +294,7 @@ public final class GraalJSAccess {
     private static final Symbol RESOLVER_REJECT = Symbol.create("Reject");
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
+    public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
 
     public static final HiddenKey EXTERNALIZED_KEY = new HiddenKey("Externalized");
 
@@ -975,10 +976,19 @@ public final class GraalJSAccess {
         Accessor accessor = new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, null, flags);
         Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
         JSRealm realm = getCurrentRealm();
-        DynamicObject getter = functionFromFunctionData(realm, accessorFunctions.getFirst(), dynamicObject);
-        DynamicObject setter = functionFromFunctionData(realm, accessorFunctions.getSecond(), dynamicObject);
+        DynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), dynamicObject, accessor);
+        DynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), dynamicObject, accessor);
         JSObjectUtil.putAccessorProperty(context, dynamicObject, accessor.getName(), getter, setter, flags);
         return true;
+    }
+
+    private DynamicObject instantiateAccessorFunction(JSRealm realm, JSFunctionData functionData, DynamicObject holder, Accessor accessor) {
+        if (functionData == null) {
+            return null;
+        }
+        DynamicObject functionObj = functionFromFunctionData(realm, functionData, holder);
+        JSObjectUtil.putHiddenProperty(functionObj, ACCESSOR_KEY, accessor);
+        return functionObj;
     }
 
     public Object objectClone(Object object) {
@@ -1975,8 +1985,8 @@ public final class GraalJSAccess {
 
         for (Accessor accessor : template.getAccessors()) {
             Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
-            DynamicObject getter = functionFromFunctionData(realm, accessorFunctions.getFirst(), obj);
-            DynamicObject setter = functionFromFunctionData(realm, accessorFunctions.getSecond(), obj);
+            DynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), obj, accessor);
+            DynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), obj, accessor);
             JSObjectUtil.putAccessorProperty(context, obj, accessor.getName(), getter, setter, accessor.getAttributes());
         }
 
