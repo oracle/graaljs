@@ -57,6 +57,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -88,6 +89,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Nullish;
 import com.oracle.truffle.js.runtime.objects.OperatorSet;
@@ -1050,6 +1052,13 @@ public final class JSRuntime {
         sb.append(isArrayLike ? '[' : '{');
         int propertyCount = 0;
         for (Object key : JSObject.ownPropertyKeys(obj)) {
+            if (!allowSideEffects && JSError.STACK_NAME.equals(key)) {
+                Property prop = obj.getShape().getProperty(JSError.STACK_NAME);
+                if (prop != null && JSProperty.isProxy(prop)) {
+                    // stack PropertyProxy may have side effects
+                    continue;
+                }
+            }
             PropertyDescriptor desc = JSObject.getOwnProperty(obj, key);
             if ((isArrayLike || isStringObj) && key.equals("length") || (isStringObj && JSRuntime.isArrayIndex(key) && JSRuntime.parseArrayIndexRaw(key.toString()) < length)) {
                 // length for arrays is printed as very first item
