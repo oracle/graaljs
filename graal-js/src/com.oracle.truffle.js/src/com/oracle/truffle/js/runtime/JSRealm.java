@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime;
 
+import static com.oracle.truffle.api.CompilerDirectives.SLOWPATH_PROBABILITY;
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.MODULE_SOURCE_NAME_SUFFIX;
 
 import java.io.OutputStream;
@@ -415,20 +416,22 @@ public class JSRealm {
     private final DynamicObject foreignIterablePrototype;
 
     /**
-     * Local time zone ID. Initialized lazily.
+     * Local time zone ID. Initialized lazily. May be reinitialized by {@link #setLocalTimeZone}.
      */
-    @CompilationFinal private ZoneId localTimeZoneId;
-    @CompilationFinal private TimeZone localTimeZone;
+    private ZoneId localTimeZoneId;
+    private TimeZone localTimeZone;
 
+    // local time zone independent formats; initialized once
     @CompilationFinal private DateFormat jsDateFormat;
     @CompilationFinal private DateFormat jsDateFormatBeforeYear0;
     @CompilationFinal private DateFormat jsDateFormatAfterYear9999;
     @CompilationFinal private DateFormat jsDateFormatISO;
-    @CompilationFinal private DateFormat jsShortDateFormat;
-    @CompilationFinal private DateFormat jsShortDateLocalFormat;
-    @CompilationFinal private DateFormat jsShortTimeFormat;
-    @CompilationFinal private DateFormat jsShortTimeLocalFormat;
-    @CompilationFinal private DateFormat jsDateToStringFormat;
+    // local time zone dependent formats; may be reset multiple times
+    private DateFormat jsShortDateFormat;
+    private DateFormat jsShortDateLocalFormat;
+    private DateFormat jsShortTimeFormat;
+    private DateFormat jsShortTimeLocalFormat;
+    private DateFormat jsDateToStringFormat;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
     private SplittableRandom random;
@@ -2358,10 +2361,8 @@ public class JSRealm {
 
     public TimeZone getLocalTimeZone() {
         TimeZone timeZone = localTimeZone;
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, timeZone == null)) {
-            if (CompilerDirectives.isPartialEvaluationConstant(timeZone)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, timeZone == null)) {
+            enterOncePerContextBranch();
             timeZone = IntlUtil.getICUTimeZone(getLocalTimeZoneId());
         }
         return timeZone;
@@ -2369,10 +2370,8 @@ public class JSRealm {
 
     public ZoneId getLocalTimeZoneId() {
         ZoneId id = localTimeZoneId;
-        if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, id == null)) {
-            if (CompilerDirectives.isPartialEvaluationConstant(id)) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, id == null)) {
+            enterOncePerContextBranch();
             id = getTimeZoneFromEnv();
             localTimeZoneId = id;
         }
@@ -2647,24 +2646,23 @@ public class JSRealm {
         return webAssemblyMemoryGrowCallback;
     }
 
-    public DateFormat getJSDateFormat(double time) {
+    public DateFormat getJSDateISOFormat(double time) {
         long milliseconds = (long) time;
         if (milliseconds < -62167219200000L) {
-            if (jsDateFormatBeforeYear0 == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, jsDateFormatBeforeYear0 == null)) {
+                enterOncePerContextBranch();
                 jsDateFormatBeforeYear0 = createDateFormat("uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'", false);
             }
             return jsDateFormatBeforeYear0;
         } else if (milliseconds >= 253402300800000L) {
-            if (jsDateFormatAfterYear9999 == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, jsDateFormatAfterYear9999 == null)) {
+                enterOncePerContextBranch();
                 jsDateFormatAfterYear9999 = createDateFormat("+uuuuuu-MM-dd'T'HH:mm:ss.SSS'Z'", false);
             }
             return jsDateFormatAfterYear9999;
         } else {
-            if (jsDateFormat == null) {
-                // UTC
-                CompilerDirectives.transferToInterpreterAndInvalidate();
+            if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, jsDateFormat == null)) {
+                enterOncePerContextBranch();
                 jsDateFormat = createDateFormat("uuuu-MM-dd'T'HH:mm:ss.SSS'Z'", false);
             }
             return jsDateFormat;
@@ -2672,55 +2670,53 @@ public class JSRealm {
     }
 
     public DateFormat getJSDateUTCFormat() {
-        if (jsDateFormatISO == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateFormatISO = createDateFormat("EEE, dd MMM uuuu HH:mm:ss 'GMT'", false);
+        DateFormat dateFormat = jsDateFormatISO;
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
+            enterOncePerContextBranch();
+            jsDateFormatISO = dateFormat = createDateFormat("EEE, dd MMM uuuu HH:mm:ss 'GMT'", false);
         }
-        return jsDateFormatISO;
+        return dateFormat;
     }
 
     public DateFormat getJSShortDateFormat() {
-        if (jsShortDateFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortDateFormat = createDateFormat("EEE MMM dd uuuu", true);
+        DateFormat dateFormat = jsShortDateFormat;
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
+            jsShortDateFormat = dateFormat = createDateFormat("EEE MMM dd uuuu", true);
         }
-        return jsShortDateFormat;
+        return dateFormat;
     }
 
     public DateFormat getJSShortDateLocalFormat() {
-        if (jsShortDateLocalFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortDateLocalFormat = createDateFormat("uuuu-MM-dd", true);
+        DateFormat dateFormat = jsShortDateLocalFormat;
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
+            jsShortDateLocalFormat = dateFormat = createDateFormat("uuuu-MM-dd", true);
         }
-        return jsShortDateLocalFormat;
+        return dateFormat;
     }
 
     public DateFormat getJSShortTimeFormat() {
-        if (jsShortTimeFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            // no UTC
-            jsShortTimeFormat = createDateFormat("HH:mm:ss 'GMT'xx (z)", true);
+        DateFormat dateFormat = jsShortTimeFormat;
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
+            jsShortTimeFormat = dateFormat = createDateFormat("HH:mm:ss 'GMT'xx (z)", true);
         }
-        return jsShortTimeFormat;
+        return dateFormat;
     }
 
     public DateFormat getJSShortTimeLocalFormat() {
-        if (jsShortTimeLocalFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        DateFormat dateFormat = jsShortTimeLocalFormat;
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
             // no UTC
-            jsShortTimeLocalFormat = createDateFormat("HH:mm:ss", true);
+            jsShortTimeLocalFormat = dateFormat = createDateFormat("HH:mm:ss", true);
         }
-        return jsShortTimeLocalFormat;
+        return dateFormat;
     }
 
     public DateFormat getDateToStringFormat() {
-        if (jsDateToStringFormat == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            jsDateToStringFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'xx (z)", true);
+        DateFormat dateFormat = jsDateToStringFormat;
+        if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
+            jsDateToStringFormat = dateFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'xx (z)", true);
         }
-        return jsDateToStringFormat;
+        return dateFormat;
     }
 
     @TruffleBoundary
@@ -2740,6 +2736,43 @@ public class JSRealm {
             ((GregorianCalendar) calendar).setGregorianChange(new Date(Long.MIN_VALUE));
         }
         return format;
+    }
+
+    public void setLocalTimeZone(String tzId) {
+        ZoneId newZoneId;
+        TimeZone newTimeZone;
+        try {
+            if (tzId != null) {
+                newZoneId = ZoneId.of(tzId);
+                newTimeZone = IntlUtil.getICUTimeZone(tzId);
+            } else {
+                // Reset to default time zone.
+                newZoneId = getTimeZoneFromEnv();
+                newTimeZone = IntlUtil.getICUTimeZone(newZoneId);
+            }
+        } catch (DateTimeException e) {
+            // If new time zone is invalid/unknown, do not update anything.
+            return;
+        }
+        localTimeZoneId = newZoneId;
+        localTimeZone = newTimeZone;
+
+        // Clear local time zone dependent date/time formats, so that they are updated on next use.
+        jsDateToStringFormat = null;
+        jsShortTimeFormat = null;
+        jsShortTimeLocalFormat = null;
+        jsShortDateFormat = null;
+        jsShortDateLocalFormat = null;
+    }
+
+    /**
+     * Used in lazy initialization branch of compilation final fields that are set once per context.
+     * Transfers to interpreter if this branch is entered with a single constant context.
+     */
+    private void enterOncePerContextBranch() {
+        if (CompilerDirectives.isPartialEvaluationConstant(this)) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+        }
     }
 
     public synchronized void addInnerContext(TruffleContext nestedContext) {

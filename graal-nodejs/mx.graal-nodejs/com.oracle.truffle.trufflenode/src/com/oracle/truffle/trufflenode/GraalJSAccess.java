@@ -1503,6 +1503,19 @@ public final class GraalJSAccess {
         return JSDate.getTimeMillisField((DynamicObject) date);
     }
 
+    private enum TimeZoneDetection {
+        kSkip,
+        kRedetect
+    }
+
+    public void dateTimeConfigurationChangeNotification(int timeZoneDetection, String tzValue) {
+        assert timeZoneDetection == TimeZoneDetection.kSkip.ordinal() || timeZoneDetection == TimeZoneDetection.kRedetect.ordinal();
+        if (timeZoneDetection == TimeZoneDetection.kRedetect.ordinal()) {
+            // TZ value may be null, which means process.env.TZ has been deleted.
+            getCurrentRealm().setLocalTimeZone(tzValue);
+        }
+    }
+
     public Object symbolNew(Object name) {
         return Symbol.create((String) name);
     }
