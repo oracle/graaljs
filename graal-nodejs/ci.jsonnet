@@ -101,7 +101,6 @@ local ci = import '../ci.jsonnet';
     graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17                     + gateTags('windows')                                                                  + {name: 'nodejs-gate-jdk17-windows-amd64'},
 
     graalNodeJs + common.jdk11 + common.gate      + common.linux                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk11-linux-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.linux                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk17-linux-amd64'},
     graalNodeJs + common.jdk11 + common.gate      + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk11-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk17 + common.gate      + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk17-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows_jdk11                     + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk11-windows-amd64'},
