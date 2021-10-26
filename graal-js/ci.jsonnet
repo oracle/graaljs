@@ -75,6 +75,14 @@ local ci = import '../ci.jsonnet';
     timelimit: '45:00',
   },
 
+  local downstreamSubstratevmEnterprise = checkoutJsBenchmarks + ee + {
+    suiteimports+:: ['substratevm'],
+    run+: [
+      ['mx', '--strict-compliance', 'gate', '--all-suites', '--strict-mode', '--tags', 'build,downtest_js'],
+    ],
+    timelimit: '45:00',
+  },
+
   local interopJmhBenchmarks = common.buildCompiler + {
     run+: [
         ['mx', '--dynamicimports', '/compiler', '--kill-with-sigquit', 'benchmark', '--results-file', 'bench-results.json', 'js-interop-jmh:JS_INTEROP_MICRO_BENCHMARKS', '--', '-Dpolyglot.engine.TraceCompilation=true'],
@@ -118,6 +126,7 @@ local ci = import '../ci.jsonnet';
 
     // downstream graal gate
     graalJs + common.jdk8  + common.gate   + common.linux          + downstreamGraal                                                          + {name: 'js-gate-downstream-graal-jdk8-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + downstreamSubstratevmEnterprise                                          + {name: 'js-gate-downstream-substratevm-enterprise-jdk17-linux-amd64'},
 
     // coverage
     graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk17-linux-amd64'},
