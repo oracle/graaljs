@@ -75,10 +75,10 @@ local ci = import '../ci.jsonnet';
     timelimit: '45:00',
   },
 
-  local downstreamSubstratevmEnterprise = checkoutJsBenchmarks + ee + {
+  local downstreamSubstratevmEE = checkoutJsBenchmarks + ee + {
     suiteimports+:: ['substratevm'],
     run+: [
-      ['mx', '--strict-compliance', 'gate', '--all-suites', '--strict-mode', '--tags', 'build,downtest_js'],
+      ['mx', '--strict-compliance', 'gate', '--all-suites', '--strict-mode', '--tags', 'build,${TAGS}'],
     ],
     timelimit: '45:00',
   },
@@ -92,7 +92,7 @@ local ci = import '../ci.jsonnet';
   },
 
   builds: [
-    // gates
+    // GATE
     graalJs + common.jdk8  + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk8-linux-amd64'},
     graalJs + common.jdk11 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk11-linux-amd64'},
     graalJs + common.jdk17 + common.gate   + common.linux          + common.gateStyleFullBuild                                                + {name: 'js-gate-style-fullbuild-jdk17-linux-amd64'},
@@ -126,12 +126,15 @@ local ci = import '../ci.jsonnet';
 
     // downstream graal gate
     graalJs + common.jdk8  + common.gate   + common.linux          + downstreamGraal                                                          + {name: 'js-gate-downstream-graal-jdk8-linux-amd64'},
-    graalJs + common.jdk17 + common.gate   + common.linux          + downstreamSubstratevmEnterprise                                          + {name: 'js-gate-downstream-substratevm-enterprise-jdk17-linux-amd64'},
+    graalJs + common.jdk17 + common.gate   + common.linux          + downstreamSubstratevmEE   + {environment+: {TAGS: 'downtest_js'}}        + {name: 'js-gate-downstream-substratevm-enterprise-jdk17-linux-amd64'},
 
     // coverage
     graalJs + common.jdk17 + common.weekly + common.linux          + gateCoverage              + {environment+: {TAGS: 'build,default,tck'}}  + {name: 'js-coverage-jdk17-linux-amd64'},
 
     // interop benchmarks
     graalJs + common.jdk17 + common.bench  + common.x52            + interopJmhBenchmarks                                                     + {name: 'js-bench-interop-jmh-jdk17-linux-amd64'},
+
+    // POST-MERGE - PGO profiles
+    graalJs + common.jdk17 + common.postMerge + common.linux       + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}     + {name: 'js-postmerge-pgo-profiles-jdk17-linux-amd64'},
   ],
 }
