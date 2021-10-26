@@ -3551,8 +3551,8 @@ namespace v8 {
     }
 
     std::unique_ptr<MicrotaskQueue> MicrotaskQueue::New(Isolate* isolate, MicrotasksPolicy policy) {
-        return nullptr;
         TRACE
+        return nullptr;
     }
 
     class DefaultMeasureMemoryDelegate : public MeasureMemoryDelegate {
