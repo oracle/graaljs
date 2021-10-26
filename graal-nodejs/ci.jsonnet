@@ -95,16 +95,14 @@ local ci = import '../ci.jsonnet';
     graalNodeJs + common.jdk11 + common.gate      + common.linux                             + gateTags('all')                                                                      + {name: 'nodejs-gate-jdk11-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux                             + gateTags('all')                                                                      + {name: 'nodejs-gate-jdk17-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux_aarch64                     + gateTags('all')                                                                      + {name: 'nodejs-gate-jdk17-linux-aarch64'},
-    graalNodeJs + common.jdk11 + common.gate      + common.darwin                            + gateTags('all')                                                                      + {name: 'nodejs-gate-jdk11-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk17 + common.gate      + common.darwin                            + gateTags('all')                                                                      + {name: 'nodejs-gate-jdk17-darwin-amd64', timelimit: '55:00'},
     graalNodeJs + common.jdk11 + common.gate      + common.windows_jdk11                     + gateTags('windows')                                                                  + {name: 'nodejs-gate-jdk11-windows-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17                     + gateTags('windows')                                                                  + {name: 'nodejs-gate-jdk17-windows-amd64'},
 
-    graalNodeJs + common.jdk11 + common.gate      + common.linux                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk11-linux-amd64'},
-    graalNodeJs + common.jdk11 + common.gate      + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk11-darwin-amd64', timelimit: '55:00'},
-    graalNodeJs + common.jdk17 + common.gate      + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk17-darwin-amd64', timelimit: '55:00'},
-    graalNodeJs + common.jdk11 + common.gate      + common.windows_jdk11                     + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk11-windows-amd64'},
-    graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17                     + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-jdk17-windows-amd64'},
+    graalNodeJs + common.jdk11 + common.gate      + common.linux                             + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk11-linux-amd64'},
+    graalNodeJs + common.jdk17 + common.gate      + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-darwin-amd64', timelimit: '55:00'},
+    graalNodeJs + common.jdk11 + common.gate      + common.windows_jdk11                     + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk11-windows-amd64'},
+    graalNodeJs + common.jdk17 + common.gate      + common.windows_jdk17                     + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-gate-substratevm-ce-jdk17-windows-amd64'},
 
     graalNodeJs + common.jdk17 + common.gate      + common.linux + vm_env                    + gateVmSmokeTest                                                    + artifact   + ce + {name: 'nodejs-gate-substratevm-ce-jdk17-linux-amd64'},
     graalNodeJs + common.jdk17 + common.gate      + common.linux + vm_env                    + gateVmSmokeTest                                                                 + ee + {name: 'nodejs-gate-substratevm-ee-jdk17-linux-amd64'},
@@ -128,5 +126,8 @@ local ci = import '../ci.jsonnet';
 
     // post-merges
     graalNodeJs + common.jdk17 + common.postMerge + common.linux + vm_env + build            + testNode(parallelHttp2,   part='-r0,1', max_heap='8G')                               + {name: 'nodejs-postmerge-parallel-http2-jdk8-linux-amd64'},
+
+    graalNodeJs + common.jdk11 + common.postMerge + common.darwin                            + gateTags('all')                                                                      + {name: 'nodejs-postmerge-gate-jdk11-darwin-amd64', timelimit: '55:00'},
+    graalNodeJs + common.jdk11 + common.postMerge + common.darwin                            + gateSubstrateVmSmokeTest                                                             + {name: 'nodejs-postmerge-gate-substratevm-ce-jdk11-darwin-amd64', timelimit: '55:00'},
   ],
 }
