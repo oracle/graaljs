@@ -1,12 +1,13 @@
 local common = import '../common.jsonnet';
+local ci = import '../ci.jsonnet';
 
 {
-  local graalJs = {
-    run+: [
-      ['cd', 'graal-js'],
-      ['mx', 'sversions'],
-    ],
+  local graalJs = ci.jobtemplate + {
+    cd:: 'graal-js'
   },
+
+  local ce = ci.ce,
+  local ee = ci.ee,
 
   local gateTags(tags) = common.gateTags + {
     environment+: {
@@ -24,14 +25,21 @@ local common = import '../common.jsonnet';
     timelimit: '30:00',
   },
 
-  local nativeImageSmokeTest = {
-    local baseNativeImageCmd = ['mx', '--dynamicimports', '/substratevm', '--native-images=js', '--extra-image-builder-argument=-H:+TruffleCheckBlockListMethods', '--extra-image-builder-argument=-H:+ReportExceptionStackTraces'],
+  local checkoutJsBenchmarks = {
+    setup+: [
+      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../js-benchmarks'],
+    ],
+  },
+
+  local nativeImageSmokeTest = checkoutJsBenchmarks + {
+    suiteimports+:: ['substratevm'],
+    nativeimages+:: ['js'],
+    extraimagebuilderarguments+:: ['-H:+TruffleCheckBlockListMethods', '-H:+ReportExceptionStackTraces'],
     run+: [
-      ['git', 'clone', '--depth', '1', ['mx', 'urlrewrite', 'https://github.com/graalvm/js-benchmarks.git'], '../../js-benchmarks'],
-      baseNativeImageCmd + ['build'],
-      ['set-export', 'GRAALVM_HOME', baseNativeImageCmd + ['graalvm-home']],
-      ['${GRAALVM_HOME}/bin/js', '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'],
-      ['${GRAALVM_HOME}/bin/js', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      ['mx', 'build'],
+      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
+      ['${GRAALVM_HOME}/bin/js', '--native', '-e', 'print("hello:" + Array.from(new Array(10), (x,i) => i*i ).join("|"))'],
+      ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
     ],
   },
 
