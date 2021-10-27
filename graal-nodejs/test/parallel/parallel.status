@@ -158,7 +158,6 @@ test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
-test-process-env-tz: FAIL
 test-repl: FAIL
 test-string-decoder: FAIL
 test-tls-connect-memleak: FAIL
@@ -172,6 +171,9 @@ test-worker-error-stack-getter-throws: FAIL
 test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
+
+# process.env.TZ change notification not implemented.
+test-process-env-tz: SKIP
 
 # Fails randomly
 test-http-outgoing-end-cork: SKIP
