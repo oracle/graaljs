@@ -7,9 +7,9 @@ The goals of GraalVM JavaScript are:
 
 * Execute JavaScript code with best possible performance
 * [Full compatibility with the latest ECMAScript specification](docs/user/JavaScriptCompatibility.md)
-* Support Node.js applications, including native packages ([check](https://www.graalvm.org/docs/reference-manual/compatibility/))
+* Support Node.js applications, including native packages ([check](https://www.graalvm.org/reference-manual/js/JavaScriptCompatibility/))
 * Allow simple upgrading from [Nashorn](docs/user/NashornMigrationGuide.md) or [Rhino](docs/user/RhinoMigrationGuide.md) based applications
-* [Fast interoperability](https://www.graalvm.org/docs/reference-manual/polyglot/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
+* [Fast interoperability](https://www.graalvm.org/reference-manual/polyglot-programming/) with Java, Scala, or Kotlin, or with other GraalVM languages like Ruby, Python, or R
 * Be embeddable in systems like [Oracle RDBMS](https://labs.oracle.com/pls/apex/f?p=LABS:project_details:0:15) or MySQL
 
 
