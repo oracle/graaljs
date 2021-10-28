@@ -2362,16 +2362,19 @@ public class JSRealm {
     public TimeZone getLocalTimeZone() {
         TimeZone timeZone = localTimeZone;
         if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, timeZone == null)) {
-            enterOncePerContextBranch();
-            timeZone = IntlUtil.getICUTimeZone(getLocalTimeZoneId());
+            timeZone = getICUTimeZoneFromEnv();
         }
         return timeZone;
+    }
+
+    @TruffleBoundary
+    private TimeZone getICUTimeZoneFromEnv() {
+        return IntlUtil.getICUTimeZone(getLocalTimeZoneId());
     }
 
     public ZoneId getLocalTimeZoneId() {
         ZoneId id = localTimeZoneId;
         if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, id == null)) {
-            enterOncePerContextBranch();
             id = getTimeZoneFromEnv();
             localTimeZoneId = id;
         }
@@ -2738,6 +2741,7 @@ public class JSRealm {
         return format;
     }
 
+    @TruffleBoundary
     public void setLocalTimeZone(String tzId) {
         ZoneId newZoneId;
         TimeZone newTimeZone;
@@ -2746,9 +2750,9 @@ public class JSRealm {
                 newZoneId = ZoneId.of(tzId);
                 newTimeZone = IntlUtil.getICUTimeZone(tzId);
             } else {
-                // Reset to default time zone.
-                newZoneId = getTimeZoneFromEnv();
-                newTimeZone = IntlUtil.getICUTimeZone(newZoneId);
+                // Reset to default time zone (fields are reinitialized on next use).
+                newZoneId = null;
+                newTimeZone = null;
             }
         } catch (DateTimeException e) {
             // If new time zone is invalid/unknown, do not update anything.
