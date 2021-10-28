@@ -206,11 +206,12 @@ public abstract class JSAgent implements EcmaAgent {
                     if (JSFunction.isJSFunction(nextJob)) {
                         checkWaiterRecords = true;
                         JSRealm functionRealm = JSFunction.getRealm(nextJob);
-                        Object prev = functionRealm.getTruffleContext().enter(null);
+                        JSRealm mainRealm = JSRealm.getMain(null);
+                        JSRealm prev = mainRealm.enterRealm(null, functionRealm);
                         try {
                             JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                         } finally {
-                            functionRealm.getTruffleContext().leave(null, prev);
+                            mainRealm.leaveRealm(null, prev);
                         }
                     }
                 }

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.source.SourceSection;
@@ -70,24 +69,25 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
         CompilerAsserts.partialEvaluationConstant(context);
 
         JSRealm functionRealm = null;
-        final boolean enterContext;
+        final boolean enterRealm;
         if (context.neverCreatedChildRealms()) {
             // fast path: if there are no child realms we are guaranteed to be in the right realm
             assert getRealm() == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-            enterContext = false;
+            enterRealm = false;
         } else {
             // must enter function context if functionRealm != currentRealm
             functionRealm = JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
             JSRealm currentRealm = getRealm();
-            enterContext = functionRealm != currentRealm;
+            enterRealm = functionRealm != currentRealm;
         }
-        Object prev = null;
-        TruffleContext childContext = null;
 
-        if (enterContext) {
-            childContext = functionRealm.getTruffleContext();
-            prev = childContext.enter(this);
+        JSRealm prevRealm = null;
+        JSRealm mainRealm = null;
+        if (enterRealm) {
+            mainRealm = JSRealm.getMain(this);
+            prevRealm = mainRealm.enterRealm(this, functionRealm);
         }
+
         try {
             return executeInRealm(frame);
         } catch (JSException ex) {
@@ -110,8 +110,8 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
             CompilerDirectives.transferToInterpreter();
             throw Errors.createRangeErrorStackOverflow(this);
         } finally {
-            if (enterContext) {
-                childContext.leave(this, prev);
+            if (enterRealm) {
+                mainRealm.leaveRealm(this, prevRealm);
             }
         }
     }

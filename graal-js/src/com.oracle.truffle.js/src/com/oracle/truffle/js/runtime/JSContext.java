@@ -316,8 +316,8 @@ public class JSContext {
 
     private Map<Shape, JSShapeData> shapeDataMap;
 
-    final Assumption noChildRealmsAssumption;
     private final Assumption singleRealmAssumption;
+    private final Assumption singleContextAssumption;
     private final boolean isMultiContext;
 
     private final AtomicInteger realmInit = new AtomicInteger();
@@ -476,8 +476,8 @@ public class JSContext {
 
         this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler() : null;
 
+        this.singleContextAssumption = Truffle.getRuntime().createAssumption("single context");
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
-        this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         this.throwerFunctionData = throwTypeErrorFunction();
         boolean annexB = isOptionAnnexB();
@@ -652,16 +652,19 @@ public class JSContext {
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
-        JSRealm parentRealm = JSRealm.PARENT_OF_NEW_REALM.get();
+        return createRealm(env, null);
+    }
+
+    protected JSRealm createRealm(TruffleLanguage.Env env, JSRealm parentRealm) {
         boolean isTop = (parentRealm == null);
         if (realmInit.get() != REALM_UNINITIALIZED || !realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING)) {
-            singleRealmAssumption.invalidate("single realm assumption");
+            singleContextAssumption.invalidate("single context assumption");
         }
 
         if (!isTop) {
-            noChildRealmsAssumption.invalidate();
+            singleRealmAssumption.invalidate("creating another realm");
         }
-        JSRealm newRealm = new JSRealm(this, env);
+        JSRealm newRealm = new JSRealm(this, env, parentRealm);
         newRealm.setupGlobals();
 
         if (isTop) {
@@ -1559,7 +1562,11 @@ public class JSContext {
     }
 
     public final boolean neverCreatedChildRealms() {
-        return noChildRealmsAssumption.isValid();
+        return singleRealmAssumption.isValid();
+    }
+
+    public final boolean isSingleContext() {
+        return !isMultiContext() && singleContextAssumption.isValid();
     }
 
     public final boolean isSingleRealm() {
