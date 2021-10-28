@@ -69,6 +69,7 @@
 #include "graal_symbol.h"
 #include "graal_unbound_script.h"
 #include "graal_value.h"
+#include "uv.h"
 #include "v8.h"
 #include "v8-profiler.h"
 #include "v8-version-string.h"
@@ -3546,13 +3547,40 @@ namespace v8 {
         return MaybeLocal<WasmModuleObject>();
     }
 
+    static std::unique_ptr<const char[]> GetEnv(const char* key) {
+        size_t init_sz = 256;
+        std::unique_ptr<char[]> buf(new char[init_sz]);
+        int ret = uv_os_getenv(key, buf.get(), &init_sz);
+
+        if (ret == UV_ENOBUFS) {
+            // Buffer is not large enough, reallocate to the updated init_sz and fetch env value again.
+            buf.reset(new char[init_sz]);
+            ret = uv_os_getenv(key, buf.get(), &init_sz);
+        }
+
+        if (ret < 0) {
+            // Error getting env value, return nullptr.
+            buf.reset();
+        }
+        return buf;
+    }
+
     void Isolate::DateTimeConfigurationChangeNotification(TimeZoneDetection time_zone_detection) {
-        TRACE
+        // Note: per-process env var lock is still being held by RealEnvStore at this point.
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*>(this);
+        jstring tz_java_string = NULL;
+        if (time_zone_detection == TimeZoneDetection::kRedetect) {
+            std::unique_ptr<const char[]> tz_cstr = GetEnv("TZ");
+            if (tz_cstr) {
+                tz_java_string = graal_isolate->GetJNIEnv()->NewStringUTF(tz_cstr.get());
+            }
+        }
+        JNI_CALL_VOID(graal_isolate, GraalAccessMethod::date_time_configuration_change_notification, (jint) time_zone_detection, tz_java_string);
     }
 
     std::unique_ptr<MicrotaskQueue> MicrotaskQueue::New(Isolate* isolate, MicrotasksPolicy policy) {
-        return nullptr;
         TRACE
+        return nullptr;
     }
 
     class DefaultMeasureMemoryDelegate : public MeasureMemoryDelegate {

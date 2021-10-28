@@ -172,8 +172,8 @@ test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
 
-# process.env.TZ change notification not implemented.
-test-process-env-tz: SKIP
+# Different time zone names
+test-process-env-tz: FAIL
 
 # Fails randomly
 test-http-outgoing-end-cork: SKIP

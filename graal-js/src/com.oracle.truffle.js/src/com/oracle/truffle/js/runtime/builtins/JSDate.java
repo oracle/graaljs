@@ -674,7 +674,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     public static String toISOStringIntl(double time, JSRealm realm) {
-        return format(realm.getJSDateFormat(time), time);
+        return format(realm.getJSDateISOFormat(time), time);
     }
 
     public static boolean isTimeValid(double time) {
