@@ -117,6 +117,7 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.HOURS_IN_DAY, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.HOURS_IN_DAY));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAYS_IN_WEEK, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAYS_IN_WEEK));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAYS_IN_MONTH, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAYS_IN_MONTH));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.DAYS_IN_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.DAYS_IN_YEAR));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.MONTHS_IN_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.MONTHS_IN_YEAR));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.IN_LEAP_YEAR, realm.lookupAccessor(TemporalZonedDateTimePrototypeBuiltins.BUILTINS, TemporalConstants.IN_LEAP_YEAR));
         JSObjectUtil.putBuiltinAccessorProperty(prototype, TemporalConstants.OFFSET_NANOSECONDS,

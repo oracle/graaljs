@@ -44,7 +44,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalPlainYearMonthObject extends JSNonProxyObject implements TemporalYear, TemporalMonth {
+public class JSTemporalPlainYearMonthObject extends JSNonProxyObject implements TemporalYear, TemporalMonth, TemporalCalendar {
 
     private final long isoYear;
     private final long isoMonth;
@@ -74,6 +74,7 @@ public class JSTemporalPlainYearMonthObject extends JSNonProxyObject implements 
         return isoDay;
     }
 
+    @Override
     public DynamicObject getCalendar() {
         return calendar;
     }

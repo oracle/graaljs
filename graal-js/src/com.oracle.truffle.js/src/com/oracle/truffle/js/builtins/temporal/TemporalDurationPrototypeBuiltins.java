@@ -129,8 +129,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         with(1),
         negated(0),
         abs(0),
-        add(2),
-        subtract(2),
+        add(1),
+        subtract(1),
         round(1),
         total(1),
         toJSON(0),
@@ -311,7 +311,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected DynamicObject abs(DynamicObject thisObj) {
+        protected DynamicObject abs(Object thisObj) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.create(getContext(),
                             Math.abs(duration.getYears()), Math.abs(duration.getMonths()), Math.abs(duration.getWeeks()),
@@ -329,7 +329,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected DynamicObject add(DynamicObject thisObj, Object other, Object options,
+        protected DynamicObject add(Object thisObj, Object other, Object options,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
@@ -359,7 +359,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected DynamicObject subtract(DynamicObject thisObj, Object other, Object options,
+        protected DynamicObject subtract(Object thisObj, Object other, Object options,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
@@ -389,7 +389,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected DynamicObject round(DynamicObject thisObj, Object optParam,
+        protected DynamicObject round(Object thisObj, Object optParam,
                         @Cached("create()") JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
@@ -460,7 +460,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected long total(DynamicObject thisObj, Object options,
+        protected long total(Object thisObj, Object options,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             DynamicObject normalizedOptions = getOptionsObject(options);
@@ -521,7 +521,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected String toString(DynamicObject thisObj) {
+        protected String toString(Object thisObj) {
             JSTemporalDurationObject duration = requireTemporalDuration(thisObj);
             return JSTemporalDuration.temporalDurationToString(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
@@ -566,7 +566,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
+        protected Object valueOf(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("Not supported.");
         }
     }

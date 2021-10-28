@@ -196,8 +196,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
             year = parseDurationIntl(matcher, 2);
             month = parseDurationIntl(matcher, 3);
-            day = parseDurationIntl(matcher, 4);
-            week = parseDurationIntl(matcher, 5);
+            week = parseDurationIntl(matcher, 4);
+            day = parseDurationIntl(matcher, 5);
 
             String timeGroup = matcher.group(6);
             if (timeGroup != null && timeGroup.length() > 0) {
@@ -377,11 +377,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
         int sign = TemporalUtil.durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         microseconds += nanoseconds / 1000;
-        nanoseconds = nanoseconds % 1000;
+        nanoseconds = TemporalUtil.remainder(nanoseconds, 1000);
         milliseconds += microseconds / 1000;
-        microseconds = microseconds % 1000;
+        microseconds = TemporalUtil.remainder(microseconds, 1000);
         seconds += milliseconds / 1000;
-        milliseconds = milliseconds % 1000;
+        milliseconds = TemporalUtil.remainder(milliseconds, 1000);
         if (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0 && seconds == 0 && milliseconds == 0 && microseconds == 0 && nanoseconds == 0) {
             return "PT0S";
         }
@@ -433,6 +433,8 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
                 if (last >= 0) {
                     decimalPart = decimalPart.substring(0, last);
                 }
+            } else if (((Number) precision).doubleValue() == 0.0) {
+                decimalPart = "";
             } else {
                 Number n = (Number) precision;
                 decimalPart = decimalPart.substring(0, Math.min(decimalPart.length(), n.intValue()));
@@ -453,4 +455,5 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return result.toString();
     }
     // endregion
+
 }

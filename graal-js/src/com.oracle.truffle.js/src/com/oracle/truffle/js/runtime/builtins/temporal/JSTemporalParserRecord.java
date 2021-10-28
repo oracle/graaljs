@@ -46,25 +46,25 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 public final class JSTemporalParserRecord {
     private boolean z;
 
-    private final String year;
-    private final String month;
-    private final String day;
-    private final String hour;
-    private final String minute;
-    private final String second;
+    private final long year;
+    private final long month;
+    private final long day;
+    private final long hour;
+    private final long minute;
+    private final long second;
     private final String fraction;
 
     private final String calendar;
     private final String name;
 
     private final String offsetSign;
-    private final String offsetHour;
-    private final String offsetMinute;
-    private final String offsetSecond;
+    private final long offsetHour;
+    private final long offsetMinute;
+    private final long offsetSecond;
     private final String offsetFraction;
 
-    public JSTemporalParserRecord(boolean z, String year, String month, String day, String hour, String minute, String second, String fraction, String offsetSign, String offsetHour,
-                    String offsetMinute, String offsetSecond, String offsetFraction, String name, String calendar) {
+    public JSTemporalParserRecord(boolean z, long year, long month, long day, long hour, long minute, long second, String fraction, String offsetSign, long offsetHour,
+                    long offsetMinute, long offsetSecond, String offsetFraction, String name, String calendar) {
         this.z = z;
 
         this.year = year;
@@ -93,15 +93,15 @@ public final class JSTemporalParserRecord {
         return offsetSign;
     }
 
-    public String getHour() {
+    public long getHour() {
         return hour;
     }
 
-    public String getMinute() {
+    public long getMinute() {
         return minute;
     }
 
-    public String getSecond() {
+    public long getSecond() {
         return second;
     }
 
@@ -113,15 +113,15 @@ public final class JSTemporalParserRecord {
         return name;
     }
 
-    public String getYear() {
+    public long getYear() {
         return year;
     }
 
-    public String getMonth() {
+    public long getMonth() {
         return month;
     }
 
-    public String getDay() {
+    public long getDay() {
         return day;
     }
 
@@ -129,15 +129,15 @@ public final class JSTemporalParserRecord {
         return calendar;
     }
 
-    public String getOffsetHour() {
+    public long getOffsetHour() {
         return offsetHour;
     }
 
-    public String getOffsetMinute() {
+    public long getOffsetMinute() {
         return offsetMinute;
     }
 
-    public String getOffsetSecond() {
+    public long getOffsetSecond() {
         return offsetSecond;
     }
 

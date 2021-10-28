@@ -355,8 +355,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         PlainYearMonth(2),
         PlainMonthDay(2),
         Instant(1),
-        TimeZone(2),
-        ZonedDateTime(3),
+        TimeZone(1),
+        ZonedDateTime(2),
 
         // --- not new.target-capable below ---
         TypedArray(0),
@@ -384,7 +384,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public boolean isNewTargetConstructor() {
-            return EnumSet.range(Array, Table).contains(this);
+            return EnumSet.range(Array, ZonedDateTime).contains(this);
         }
 
         @Override

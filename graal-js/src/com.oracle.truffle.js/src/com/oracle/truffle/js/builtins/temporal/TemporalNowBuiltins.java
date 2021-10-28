@@ -93,11 +93,6 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         public int getLength() {
             return length;
         }
-
-        @Override
-        public boolean isEnumerable() {
-            return true;
-        }
     }
 
     @Override

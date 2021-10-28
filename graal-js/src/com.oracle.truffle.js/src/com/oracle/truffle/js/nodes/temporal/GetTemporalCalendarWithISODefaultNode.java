@@ -74,7 +74,7 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
     public abstract DynamicObject executeDynamicObject(Object temporalTimeZoneLike);
 
     @Specialization
-    protected DynamicObject toTemporalTimeZone(Object item) {
+    protected DynamicObject getTemporalCalendarWithISODefault(Object item) {
         if (isCalendarProfile.profile(item instanceof TemporalCalendar)) {
             return ((TemporalCalendar) item).getCalendar();
         } else {

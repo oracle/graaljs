@@ -113,11 +113,11 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         // methods
         add(1),
         subtract(1),
-        until(2),
-        since(2),
+        until(1),
+        since(1),
         round(1),
         equals(1),
-        toString(1),
+        toString(0),
         toLocaleString(0),
         toJSON(0),
         valueOf(0),
@@ -189,14 +189,14 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @TruffleBoundary
         @Specialization(guards = "isJSTemporalInstant(thisObj)")
-        protected BigInt instantGetter(Object thisObj) {
+        protected Object instantGetter(Object thisObj) {
             JSTemporalInstantObject instant = (JSTemporalInstantObject) thisObj;
             BigInteger ns = instant.getNanoseconds().bigIntegerValue();
             switch (property) {
                 case epochSeconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000_000L)));
+                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000_000L))).longValue();
                 case epochMilliseconds:
-                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000L)));
+                    return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000_000L))).longValue();
                 case epochMicroseconds:
                     return TemporalUtil.roundTowardsZero(ns.divide(BigInteger.valueOf(1_000L)));
                 case epochNanoseconds:
@@ -220,7 +220,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public DynamicObject add(DynamicObject thisObj, Object temporalDurationLike,
+        public DynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.setPluralYMWD, isObjectNode, toString);
@@ -237,7 +237,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        public DynamicObject subtract(DynamicObject thisObj, Object temporalDurationLike,
+        public DynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.setPluralYMWD, isObjectNode, toString);

@@ -124,15 +124,15 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         // methods
         add(1),
         subtract(1),
-        with(2),
-        until(2),
-        since(2),
+        with(1),
+        until(1),
+        since(1),
         round(1),
         equals(1),
         toPlainDateTime(1),
         toZonedDateTime(1),
         getISOFields(0),
-        toString(1),
+        toString(0),
         toLocaleString(0),
         toJSON(0),
         valueOf(0);
@@ -664,7 +664,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
+        protected Object valueOf(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("Not supported.");
         }
     }

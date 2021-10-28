@@ -41,10 +41,21 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -60,8 +71,10 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInMonthNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInWeekNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInYearNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarInLeapYearNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMergeFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthCodeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthDayFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthNodeGen;
@@ -71,15 +84,22 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins.JSTemporalBuiltinOperation;
+import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorStepNode;
+import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
@@ -97,6 +117,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthO
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalYear;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -115,11 +136,13 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         id(0),
 
         // methods
-        dateFromFields(2),
-        yearMonthFromFields(3),
-        monthDayFromFields(3),
-        dateAdd(4),
-        dateUntil(3),
+        mergeFields(2),
+        fields(1),
+        dateFromFields(1),
+        yearMonthFromFields(1),
+        monthDayFromFields(1),
+        dateAdd(2),
+        dateUntil(2),
         year(1),
         month(1),
         monthCode(1),
@@ -158,6 +181,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case id:
                 return JSTemporalCalendarGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
+            case mergeFields:
+                return JSTemporalCalendarMergeFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case fields:
+                return JSTemporalCalendarFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case dateFromFields:
                 return JSTemporalCalendarDateFromFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case yearMonthFromFields:
@@ -239,6 +266,101 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 toTemporalDate = insert(ToTemporalDateNode.create(getContext()));
             }
             return toTemporalDate.executeDynamicObject(item, options);
+        }
+    }
+
+    public abstract static class JSTemporalCalendarMergeFields extends JSTemporalBuiltinOperation {
+
+        protected JSTemporalCalendarMergeFields(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject mergeFields(Object thisObj, Object fieldsParam, Object additionalFieldsParam,
+                        @Cached("createToObject(getContext())") JSToObjectNode toObject,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
+            assert calendar.getId().equals(ISO8601);
+            DynamicObject fields = (DynamicObject) toObject.execute(fieldsParam);
+            DynamicObject additionalFields = (DynamicObject) toObject.execute(additionalFieldsParam);
+            return TemporalUtil.defaultMergeFields(getContext(), namesNode, fields, additionalFields);
+        }
+    }
+
+    public abstract static class JSTemporalCalendarFields extends JSTemporalBuiltinOperation {
+        @Child private IteratorCloseNode iteratorCloseNode;
+        @Child private GetIteratorNode getIteratorNode;
+        @Child private IteratorValueNode getIteratorValueNode;
+        @Child private IteratorStepNode iteratorStepNode;
+
+        protected void iteratorCloseAbrupt(DynamicObject iterator) {
+            if (iteratorCloseNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
+            }
+            iteratorCloseNode.executeAbrupt(iterator);
+        }
+
+        protected IteratorRecord getIterator(Object iterator) {
+            if (getIteratorNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getIteratorNode = insert(GetIteratorNode.create(getContext()));
+            }
+            return getIteratorNode.execute(iterator);
+        }
+
+        protected Object getIteratorValue(DynamicObject iteratorResult) {
+            if (getIteratorValueNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getIteratorValueNode = insert(IteratorValueNode.create(getContext()));
+            }
+            return getIteratorValueNode.execute(iteratorResult);
+        }
+
+        protected Object iteratorStep(IteratorRecord iterator) {
+            if (iteratorStepNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                iteratorStepNode = insert(IteratorStepNode.create(getContext()));
+            }
+            return iteratorStepNode.execute(iterator);
+        }
+
+        protected JSTemporalCalendarFields(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public DynamicObject fields(Object thisObj, Object fieldsParam) {
+            JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
+            assert calendar.getId().equals(ISO8601);
+
+            IteratorRecord iter = getIterator(fieldsParam /* , sync */);
+            List<String> fieldNames = new ArrayList<>();
+            Object next = Boolean.TRUE;
+            while (next != Boolean.FALSE) {
+                next = iteratorStep(iter);
+                if (next != Boolean.FALSE) {
+                    Object nextValue = getIteratorValue((DynamicObject) next);
+                    if (!JSRuntime.isString(nextValue)) {
+                        iteratorCloseAbrupt(iter.getIterator());
+                        throw Errors.createTypeError("string expected");
+                    }
+                    String str = JSRuntime.toString(nextValue);
+                    if (fieldNames.contains(str)) {
+                        iteratorCloseAbrupt(iter.getIterator());
+                        throw Errors.createRangeError("");
+                    }
+                    if (YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str) || HOUR.equals(str) ||
+                                    MINUTE.equals(str) || SECOND.equals(str) || MILLISECOND.equals(str) || MICROSECOND.equals(str) || NANOSECOND.equals(str)) {
+
+                    } else {
+                        iteratorCloseAbrupt(iter.getIterator());
+                        throw Errors.createRangeError("");
+                    }
+                    fieldNames.add(str);
+                }
+            }
+            return JSRuntime.createArrayFromList(getContext(), getRealm(), fieldNames);
         }
     }
 

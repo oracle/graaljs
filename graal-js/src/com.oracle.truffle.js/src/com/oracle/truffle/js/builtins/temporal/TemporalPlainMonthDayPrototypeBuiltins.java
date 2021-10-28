@@ -93,11 +93,11 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         day(0),
 
         // methods
-        with(2),
+        with(1),
         equals(1),
         toPlainDate(1),
         getISOFields(0),
-        toString(1),
+        toString(0),
         toLocaleString(0),
         toJSON(0),
         valueOf(0);
@@ -212,7 +212,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
+        protected Object valueOf(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("Not supported.");
         }
     }
@@ -227,22 +227,22 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         protected Object toPlainDate(Object thisObj, Object item,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalPlainMonthDayObject monthDay = requireTemporalMonthDay(thisObj);
-
-            DynamicObject calendar = monthDay.getCalendar();
-            Set<String> receiverFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setDMC);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), monthDay, receiverFieldNames, TemporalUtil.setEmpty);
             if (!isObject(item)) {
                 errorBranch.enter();
                 throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
             }
+
+            DynamicObject calendar = monthDay.getCalendar();
+            Set<String> receiverFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setDMC);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), monthDay, receiverFieldNames, TemporalUtil.setEmpty);
             Set<String> inputFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setY);
             DynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) item, inputFieldNames, TemporalUtil.setEmpty);
-            Object mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, inputFields);
+            DynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, inputFields);
             Set<String> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
-            mergedFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) mergedFields, mergedFieldNames, TemporalUtil.setEmpty);
+            mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.setEmpty);
             DynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return TemporalUtil.dateFromFields(calendar, (DynamicObject) mergedFields, options);
+            return TemporalUtil.dateFromFields(calendar, mergedFields, options);
         }
     }
 
@@ -295,7 +295,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
             DynamicObject partialMonthDay = TemporalUtil.preparePartialTemporalFields(getContext(), mdLikeObj, fieldNames);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), md, fieldNames, TemporalUtil.setEmpty);
-            fields = (DynamicObject) TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialMonthDay);
+            fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialMonthDay);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.monthDayFromFields(calendar, fields, options);
         }

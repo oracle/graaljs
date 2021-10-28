@@ -45,7 +45,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-public class JSTemporalZonedDateTimeObject extends JSNonProxyObject {
+public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements TemporalCalendar {
 
     private final BigInt nanoseconds; // 6.4. A BigInt value
     private final DynamicObject timeZone;
@@ -62,6 +62,7 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject {
         return nanoseconds;
     }
 
+    @Override
     public DynamicObject getCalendar() {
         return calendar;
     }

@@ -144,19 +144,19 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         inLeapYear(0),
 
         // methods
-        toPlainYearMonth(1),
-        toPlainMonthDay(1),
+        toPlainYearMonth(0),
+        toPlainMonthDay(0),
         getISOFields(0),
         add(1),
         subtract(1),
-        with(2),
+        with(1),
         withCalendar(1),
-        until(2),
-        since(2),
+        until(1),
+        since(1),
         equals(1),
-        toPlainDateTime(1),
+        toPlainDateTime(0),
         toZonedDateTime(1),
-        toString(1),
+        toString(0),
         toLocaleString(0),
         toJSON(0),
         valueOf(0);
@@ -460,7 +460,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject add(DynamicObject thisObj, Object temporalDurationLike, Object optParam,
+        public DynamicObject add(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
@@ -472,7 +472,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             DynamicObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(),
                             balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            return TemporalUtil.calendarDateAdd(date.getCalendar(), thisObj, balancedDuration, options, Undefined.instance);
+            return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options, Undefined.instance);
         }
     }
 
@@ -483,7 +483,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        public DynamicObject subtract(DynamicObject thisObj, Object temporalDurationLike, Object optParam,
+        public DynamicObject subtract(Object thisObj, Object temporalDurationLike, Object optParam,
                         @Cached("create()") JSToStringNode toString,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalPlainDateObject date = requireTemporalDate(thisObj);
@@ -495,7 +495,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             DynamicObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), -duration.getYears(), -duration.getMonths(), -duration.getWeeks(),
                             -balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
-            return TemporalUtil.calendarDateAdd(date.getCalendar(), thisObj, balancedDuration, options);
+            return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options);
         }
     }
 
@@ -529,7 +529,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             DynamicObject partialDate = TemporalUtil.preparePartialTemporalFields(getContext(), (DynamicObject) temporalDateLike, fieldNames);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.setEmpty);
-            fields = (DynamicObject) TemporalUtil.calendarMergeFields(getContext(), nameNode, calendar, fields, partialDate);
+            fields = TemporalUtil.calendarMergeFields(getContext(), nameNode, calendar, fields, partialDate);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
@@ -576,14 +576,14 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(options, null, false, isObjectNode, toNumber);
-            JSTemporalDurationObject result = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), other, temporalDate, options, Undefined.instance);
+            JSTemporalDurationObject result = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(temporalDate.getCalendar(), temporalDate, other, options, Undefined.instance);
 
             if (DAYS.equals(smallestUnit) && (roundingIncrement == 1)) {
-                return JSTemporalDuration.createTemporalDuration(getContext(), result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0);
+                return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0);
             }
             DynamicObject relativeTo = JSTemporalPlainDateTime.create(getContext(), temporalDate.getYear(), temporalDate.getMonth(), temporalDate.getDay(), 0, 0, 0, 0, 0,
                             0, temporalDate.getCalendar());
-            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, -result.getYears(), -result.getMonths(), -result.getWeeks(), -result.getDays(), 0, 0, 0, 0, 0, 0,
+            JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0, 0, 0,
                             (long) roundingIncrement, smallestUnit, roundingMode, relativeTo);
 
             return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), -result2.getWeeks(), -result2.getDays(), 0, 0, 0, 0, 0, 0);

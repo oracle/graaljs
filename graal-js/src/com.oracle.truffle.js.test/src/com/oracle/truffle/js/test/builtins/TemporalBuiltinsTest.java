@@ -765,11 +765,36 @@ public class TemporalBuiltinsTest extends JSTest {
     public void testParsing() {
         TemporalParser parser = new TemporalParser("2019-11-18T15:23:30.123456789+01:00[Europe/Madrid][u-ca=gregory]");
         JSTemporalParserRecord rec = parser.parseISODateTime();
-        assertEquals("2019", rec.getYear());
-        assertEquals("11", rec.getMonth());
-        assertEquals("18", rec.getDay());
+        assertEquals(2019, rec.getYear());
+        assertEquals(11, rec.getMonth());
+        assertEquals(18, rec.getDay());
         assertEquals("Europe/Madrid", rec.getName());
         assertEquals("gregory", rec.getCalendar());
+    }
+
+    @Test
+    public void testTimeZoneParsing() {
+        testTimeZoneFail("2021-08-19T17:30");
+
+        testTimeZone("2021-08-19T17:30Z", "UTC");
+        testTimeZone("2021-08-19T17:30-07:00", "-07:00");
+        testTimeZone("2021-08-19T17:30[America/Vancouver]", "America/Vancouver");
+        testTimeZone("2021-08-19T17:30Z[America/Vancouver]", "America/Vancouver");
+        testTimeZone("2021-08-19T17:30-07:00[America/Vancouver]", "America/Vancouver");
+    }
+
+    private static void testTimeZoneFail(String code) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "try { Temporal.TimeZone.from('" + code + "'); false; } catch (ex) { true; }");
+            assertEquals(true, result.asBoolean());
+        }
+    }
+
+    private static void testTimeZone(String code, String expected) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "Temporal.TimeZone.from('" + code + "').id;");
+            assertEquals(expected, result.asString());
+        }
     }
 
     @Test
@@ -831,6 +856,19 @@ public class TemporalBuiltinsTest extends JSTest {
             ctx.eval(ID, "test('01:02:03.45','02:00:00.000',{ smallestUnit: 'milliseconds', roundingMode: 'floor' }, 'PT57M56.55S');");
             ctx.eval(ID, "test('02:00:00.000','01:02:03.45',{ smallestUnit: 'milliseconds' }, '-PT57M56.55S');");
             ctx.eval(ID, "test('01:02:03.45','02:00:00.000',{ smallestUnit: 'milliseconds' }, 'PT57M56.55S');");
+        }
+    }
+
+    @Test
+    public void testTemporalCalendarParsing() {
+        testCalendarIntl("iso8601", "iso8601");
+        testCalendarIntl("1994-11-05T08:15:30-05:00", "iso8601");
+    }
+
+    private static void testCalendarIntl(String calendarInput, String expected) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "Temporal.Calendar.from('" + calendarInput + "').toString()");
+            assertEquals(expected, result.asString());
         }
     }
 }

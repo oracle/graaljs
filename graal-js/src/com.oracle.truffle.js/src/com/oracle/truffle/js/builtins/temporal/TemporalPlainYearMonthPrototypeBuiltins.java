@@ -115,13 +115,13 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         inLeapYear(0),
 
         // methods
-        with(2),
+        with(1),
         add(1),
         subtract(1),
         until(1),
         since(1),
         equals(1),
-        toString(1),
+        toString(0),
         toLocaleString(0),
         toJSON(0),
         valueOf(0),
@@ -248,7 +248,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        public String toLocaleString(DynamicObject thisObj) {
+        public String toLocaleString(Object thisObj) {
             JSTemporalPlainYearMonthObject time = requireTemporalYearMonth(thisObj);
             return JSTemporalPlainYearMonth.temporalYearMonthToString(time, AUTO);
         }
@@ -261,7 +261,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         }
 
         @Specialization
-        protected Object valueOf(@SuppressWarnings("unused") DynamicObject thisObj) {
+        protected Object valueOf(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError("Not supported.");
         }
     }
@@ -285,12 +285,12 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), yearMonth, receiverFieldNames, TemporalUtil.setEmpty);
             Set<String> inputFieldNames = TemporalUtil.calendarFields(getContext(), calendar, TemporalUtil.setD);
             DynamicObject inputFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) item, inputFieldNames, TemporalUtil.setEmpty);
-            Object mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, inputFields);
+            DynamicObject mergedFields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, inputFields);
             Set<String> mergedFieldNames = TemporalUtil.listJoinRemoveDuplicates(receiverFieldNames, inputFieldNames);
-            mergedFields = TemporalUtil.prepareTemporalFields(getContext(), (DynamicObject) mergedFields, mergedFieldNames, TemporalUtil.setEmpty);
+            mergedFields = TemporalUtil.prepareTemporalFields(getContext(), mergedFields, mergedFieldNames, TemporalUtil.setEmpty);
             DynamicObject options = JSOrdinary.createWithNullPrototype(getContext());
             TemporalUtil.createDataPropertyOrThrow(getContext(), options, OVERFLOW, REJECT);
-            return TemporalUtil.dateFromFields(calendar, (DynamicObject) mergedFields, options);
+            return TemporalUtil.dateFromFields(calendar, mergedFields, options);
         }
     }
 
@@ -366,7 +366,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             DynamicObject partialMonthDay = TemporalUtil.preparePartialTemporalFields(getContext(), ymLikeObj, fieldNames);
             DynamicObject options = getOptionsObject(optParam);
             DynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.setEmpty);
-            fields = (DynamicObject) TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialMonthDay);
+            fields = TemporalUtil.calendarMergeFields(getContext(), namesNode, calendar, fields, partialMonthDay);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.setEmpty);
             return TemporalUtil.yearMonthFromFields(calendar, fields, options);
         }
@@ -525,7 +525,6 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 return JSTemporalDuration.createTemporalDuration(getContext(), -result.getYears(), -result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);
             }
             DynamicObject relativeTo = TemporalUtil.createTemporalDateTime(getContext(), thisDate.getYear(), thisDate.getMonth(), thisDate.getDay(), 0, 0, 0, 0, 0, 0, calendar);
-            roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             JSTemporalDurationRecord result2 = TemporalUtil.roundDuration(getContext(), namesNode, result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
                             smallestUnit, roundingMode, relativeTo);
             return JSTemporalDuration.createTemporalDuration(getContext(), -result2.getYears(), -result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0);

@@ -154,8 +154,8 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorTemporalISO8601Expected() {
-        return Errors.createTypeError("iso8601 expected");
+    public static JSException createRangeErrorTemporalISO8601Expected() {
+        return Errors.createRangeError("iso8601 expected");
     }
 
     @TruffleBoundary
@@ -241,5 +241,10 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createTypeErrorTemporalZonedDateTimeExpected() {
         return Errors.createTypeError("Temporal.ZonedDateTime expected");
+    }
+
+    @TruffleBoundary
+    public static JSException createTypeErrorObjectExpected() {
+        return Errors.createTypeError("Object expected");
     }
 }

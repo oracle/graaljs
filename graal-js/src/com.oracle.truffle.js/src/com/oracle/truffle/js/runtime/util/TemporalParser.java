@@ -55,6 +55,7 @@ public final class TemporalParser {
     private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTime = "^(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendar = "^(\\[u-ca=([^\\]]*)\\])";
+    private static final String patternCalendarName = "^(\\w*)$";
     private static final String patternTimeZoneBracketedAnnotation = "^(\\[([^\\]]*)\\])";
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?((\\d\\d)([\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
@@ -153,20 +154,18 @@ public final class TemporalParser {
     public JSTemporalParserRecord parseTimeZoneString() {
         reset();
         // TemporalTimeZoneIdentifier
-        if (parseTimeZone()) {
+        if (parseTimeZoneIdentifier()) {
             return result();
         }
+
         reset();
-        if (parseTimeZoneIANAName()) {
-            return result();
-        }
-        reset();
-        // TemporalInstantString
         if (parseDate()) {
             parseDateTimeSeparator();
             parseTime();
-            parseTimeZone();
-            return result();
+            if (parseTimeZone()) {
+                parseCalendar();
+                return result();
+            }
         }
         return null;
     }
@@ -190,9 +189,89 @@ public final class TemporalParser {
         return null;
     }
 
+    // production TemporalCalendarString
+    public JSTemporalParserRecord parseCalendarString() {
+        // CalendarName
+        reset();
+        if (parseCalendarName()) {
+            return result();
+        }
+
+        // TemporalInstantString
+        reset();
+        try {
+            JSTemporalParserRecord rec1 = parseISODateTime();
+            if (rec1 != null) {
+                JSTemporalParserRecord rec2 = parseTimeZoneString();
+                if (rec1.getCalendar() != null) {
+                    this.calendar = rec1.getCalendar();
+                }
+                if (rec2 != null && rec2.getCalendar() != null) {
+                    this.calendar = rec2.getCalendar();
+                }
+                return result();
+            }
+        } catch (Exception ex) {
+            // fallthrough ignored
+        }
+
+        // TODO CalendarDateTime
+        // TODO Time
+        // TODO DateSpecYearMonth
+        // TODO DateSpecMonthDay
+        return null;
+    }
+
+    public boolean isTemporalZonedDateTimeString() {
+        reset();
+        if (parseDate()) {
+            parseDateTimeSeparator();
+            parseTime();
+            if (!parseTimeZoneNameRequired()) {
+                return false;
+            }
+            parseCalendar();
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean parseTimeZoneNameRequired() {
+        // this effectively is rule `TimeZoneNameRequired`
+        return rest.contains("[") && rest.contains("]") && parseTimeZone();
+    }
+
+    private boolean parseCalendarName() {
+        Matcher matcher = createMatch(patternCalendarName, rest);
+        if (matcher.matches()) {
+            this.calendar = matcher.group(1);
+
+            move(matcher.end(1));
+            return true;
+        }
+        return false;
+    }
+
     public JSTemporalParserRecord result() {
-        return new JSTemporalParserRecord(utcDesignator != null, year, month, day, hour, minute, second, fraction, offsetSign, offsetHour, offsetMinute, offsetSecond, offsetFraction,
-                        timeZoneName, calendar);
+        try {
+            // TODO MinuteSecond has 59 seconds, TimeSecond has 60 seconds
+            return new JSTemporalParserRecord(utcDesignator != null, prepare(year, Long.MAX_VALUE), prepare(month, 12), prepare(day, 31), prepare(hour, 23), prepare(minute, 59), prepare(second, 60),
+                            fraction, offsetSign, prepare(offsetHour, 23), prepare(offsetMinute, 59), prepare(offsetSecond, 59), offsetFraction, timeZoneName, calendar);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    private static long prepare(String value, long max) {
+        if (value == null) {
+            return -1;
+        }
+        long l = Long.parseLong(value);
+        if (l < 0 || l > max) {
+            throw new RuntimeException("date value out of bounds");
+        }
+        return l;
     }
 
     private boolean atEnd() {
@@ -305,7 +384,8 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseTimeZone() {
+    private boolean parseTimeZoneIdentifier() {
+        // TimeZOneNumericUTCOffset
         Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, false);
         if (matcher.matches()) {
             offsetSign = matcher.group(1);
@@ -319,15 +399,47 @@ public final class TemporalParser {
             parseTimeZoneBracket();
             return true;
         }
-        // TODO this might be relevant, might need to split the `parseTimeZone` into two?
-        // parse target `TimeZoneNumericUTCOffset` does not allow Z, but `TimeZone` does
-// if (rest.equals("Z") || rest.equals("z")) {
-// move(1);
-// this.timeZoneName = TemporalConstants.UTC;
-// this.utcDesignator = "Z";
-// return true;
-// }
-        return parseTimeZoneBracket();
+
+        // TimeZoneIANAName
+        if (parseTimeZoneIANAName()) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean parseTimeZone() {
+        // first two options are from `TimeZoneOffsetRequired` (with bracket optional)
+        Matcher matcher = createMatch(patternTimeZoneNumericUTCOffset, rest, true);
+        if (matcher.matches()) {
+            offsetSign = matcher.group(1);
+            offsetHour = matcher.group(2);
+            offsetMinute = matcher.group(4);
+            offsetSecond = matcher.group(6);
+            offsetFraction = matcher.group(8);
+
+            move(matcher.end(3));
+
+            parseTimeZoneBracket(); // optional
+            return true;
+        }
+
+        if (rest.startsWith("Z") || rest.startsWith("z")) {
+            move(1);
+            this.timeZoneName = TemporalConstants.UTC;
+            this.utcDesignator = "Z";
+
+            parseTimeZoneBracket(); // optional
+            return true;
+        }
+
+        // last option is from `TimeZoneNameRequired`
+        // (the optional numeric offset was parsed in first option)
+        if (parseTimeZoneBracket()) {
+            return true;
+        }
+
+        return false;
     }
 
     private boolean parseTimeZoneBracket() {
@@ -349,4 +461,5 @@ public final class TemporalParser {
         Pattern patternObj = Pattern.compile(pattern + (addMatchAll ? ".*" : ""));
         return patternObj.matcher(input);
     }
+
 }

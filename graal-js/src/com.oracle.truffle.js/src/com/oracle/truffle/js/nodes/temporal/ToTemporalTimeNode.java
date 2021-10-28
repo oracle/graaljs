@@ -109,7 +109,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             DynamicObject calendar = getTemporalCalendarNode.executeDynamicObject(itemObj);
             if (!toStringNode.executeString(calendar).equals(TemporalConstants.ISO8601)) {
                 errorBranch.enter();
-                throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
+                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
             }
             JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(itemObj);
             result2 = TemporalUtil.regulateTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);
@@ -118,7 +118,7 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
             if (result.hasCalendar() && !toStringNode.executeString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
-                throw TemporalErrors.createTypeErrorTemporalISO8601Expected();
+                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
             }
             result2 = JSTemporalDurationRecord.create(result);
         }
