@@ -910,22 +910,22 @@ public class JSRealm {
         return mainRealm.currentRealm;
     }
 
-    private boolean allowEnterLeave(Node node) {
+    private boolean allowEnterLeave(Node node, JSRealm otherRealm) {
         assert isMainRealm() && getMain(node) == this;
         // single realm assumption must be invalidated before an attempt to enter another realm
-        assert !JavaScriptLanguage.get(node).getJSContext().isSingleRealm();
+        assert !JavaScriptLanguage.get(node).getJSContext().isSingleRealm() || currentRealm == otherRealm;
         return true;
     }
 
     public JSRealm enterRealm(Node node, JSRealm childRealm) {
-        assert allowEnterLeave(node);
+        assert allowEnterLeave(node, childRealm);
         JSRealm prev = this.currentRealm;
         this.currentRealm = childRealm;
         return prev;
     }
 
     public void leaveRealm(Node node, JSRealm prevRealm) {
-        assert allowEnterLeave(node);
+        assert allowEnterLeave(node, prevRealm);
         this.currentRealm = prevRealm;
     }
 
