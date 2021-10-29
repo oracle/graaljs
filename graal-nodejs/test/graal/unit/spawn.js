@@ -105,6 +105,8 @@ describe('Spawn', function () {
     if (typeof java === 'object') {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
             var code = `var vm = require('vm');
+                        var ctx = org.graalvm.polyglot.Context.newBuilder("js").allowAllAccess(true).build();
+                        ctx.eval("js", "java.lang.Thread.setDefaultUncaughtExceptionHandler((t, e) => {e.printStackTrace(); java.lang.System.exit(1);});");
                         var sandbox = {};
                         vm.runInNewContext("var f = function() { console.log('crash'); }; var t = new java.lang.Thread(f);", sandbox);
                         var t = sandbox.t;
