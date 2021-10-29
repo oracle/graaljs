@@ -47,9 +47,8 @@ GraalVM JavaScript can execute Node.js applications.
 It provides high compatibility with existing npm packages, with high likelyhood that your application will run out of the box.
 This includes npm packages with native implementations.
 Note that some npm modules will require to be re-compiled from source with GraalVM JavaScript if they ship with binaries that have been compiled for Node.js based on V8.
-Node.js support is only available in full GraalVM releases, but not in the `standalone` GraalVM JavaScript distribution.
 
-Since GraalVM 21.1, the Node.js support is packaged as a separate component that can be installed using the _GraalVM Updater_:
+Node.js support is not included in the main GraalVM distribution (since 21.1) but packaged as a separate component that can be installed using the _GraalVM Updater_:
 
 ```shell
 $ $GRAALVM/bin/gu install nodejs
