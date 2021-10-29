@@ -2167,6 +2167,13 @@ public class JSRealm {
             return;
         }
 
+        if (getEnv().out() != getOutputStream()) {
+            setOutputWriter(null, getEnv().out());
+        }
+        if (getEnv().err() != getErrorStream()) {
+            setErrorWriter(null, getEnv().err());
+        }
+
         addOptionalGlobals();
 
         addArgumentsFromEnv(getEnv());

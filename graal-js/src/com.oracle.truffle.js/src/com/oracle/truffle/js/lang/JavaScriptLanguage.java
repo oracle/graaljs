@@ -324,13 +324,6 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         }
         JSRealm realm = context.createRealm(env);
 
-        if (env.out() != realm.getOutputStream()) {
-            realm.setOutputWriter(null, env.out());
-        }
-        if (env.err() != realm.getErrorStream()) {
-            realm.setErrorWriter(null, env.err());
-        }
-
         // make sure initial environment is cleared otherwise
         // it might leak data
         context.clearInitialEnvironment();
