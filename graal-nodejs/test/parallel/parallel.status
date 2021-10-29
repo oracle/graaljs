@@ -172,9 +172,6 @@ test-worker-stack-overflow-stack-size: SKIP
 test-zlib-invalid-input-memory: FAIL
 test-zlib-unused-weak: FAIL
 
-# Different time zone names
-test-process-env-tz: FAIL
-
 # Fails randomly
 test-http-outgoing-end-cork: SKIP
 test-http2-server-rst-stream: SKIP
