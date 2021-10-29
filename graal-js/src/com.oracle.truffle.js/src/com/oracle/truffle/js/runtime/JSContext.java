@@ -1746,7 +1746,7 @@ public class JSContext {
     }
 
     public boolean isWaitAsyncEnabled() {
-        return getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        return getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
     }
 
     public final Set<String> getSupportedImportAssertions() {

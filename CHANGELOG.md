@@ -4,8 +4,9 @@ This changelog summarizes major changes between GraalVM versions of the GraalVM 
 The main focus is on user-observable behavior of the engine.
 
 ## Version 22.0.0
+* ECMAScript 2022 mode/features enabled by default.
 * Implemented the [Intl.DisplayNames v2](https://github.com/tc39/intl-displaynames-v2) proposal.
-* Implemented the [Intl Locale Info](https://github.com/tc39/proposal-intl-locale-info) proposal. It is available in ECMAScript 2022 (`--js.ecmascript-version=2022`).
+* Implemented the [Intl Locale Info](https://github.com/tc39/proposal-intl-locale-info) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 21.3.0
 * Implemented the [Private Fields in `in`](https://tc39.es/proposal-private-fields-in-in) proposal. It is available behind the experimental option `--js.private-fields-in`. 

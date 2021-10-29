@@ -294,7 +294,7 @@ public class SuiteConfig {
         private String endsWithFilter;
         private boolean printFullOutput;
         private String outputFilter;
-        private int minESVersion = JSConfig.CurrentECMAScriptVersion;
+        private int minESVersion = JSConfig.LatestECMAScriptVersion;
 
         private String extLauncher;
 

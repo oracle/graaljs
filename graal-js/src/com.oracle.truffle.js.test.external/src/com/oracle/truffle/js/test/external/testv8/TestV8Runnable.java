@@ -98,14 +98,9 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-type-reflection",
                     "--wasm-staging"
     }));
-    private static final Set<String> ES2022_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
                     "--harmony-atomics-waitasync",
-                    "--harmony-class-static-blocks",
                     "--harmony_intl_locale_info",
-                    "--harmony-object-has-own",
-                    "--harmony-private-brand-checks",
-                    "--harmony-regexp-match-indices",
-                    "--harmony-top-level-await"
     }));
 
     private static final String FLAGS_PREFIX = "// Flags: ";
@@ -150,9 +145,9 @@ public class TestV8Runnable extends TestRunnable {
         int minESVersion = suite.getConfig().getMinESVersion();
         int flagVersion = minESVersion;
         for (String flag : flags) {
-            if (ES2022_FLAGS.contains(flag)) {
+            if (ES2023_FLAGS.contains(flag)) {
                 assert !UNSUPPORTED_FLAGS.contains(flag) : flag;
-                flagVersion = JSConfig.ECMAScript2022;
+                flagVersion = JSConfig.ECMAScript2023;
             } else if (UNSUPPORTED_FLAGS.contains(flag)) {
                 supported = false;
             }

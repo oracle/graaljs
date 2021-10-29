@@ -73,9 +73,12 @@ public final class JSConfig {
     public static final int ECMAScript2020 = 11;
     public static final int ECMAScript2021 = 12;
     public static final int ECMAScript2022 = 13;
-    public static final int ECMAScriptNumberYearDelta = 2009; // ES6==ES2015
-    public static final int CurrentECMAScriptVersion = ECMAScript2021;
-    public static final int MaxECMAScriptVersion = JSConfig.ECMAScript2022;
+    public static final int ECMAScript2023 = 14;
+    public static final int ECMAScriptVersionYearDelta = 2009; // ES6==ES2015
+    public static final int LatestECMAScriptVersion = ECMAScript2022;
+    public static final int StagingECMAScriptVersion = JSConfig.ECMAScript2023;
+    /** Max allowed option value. Used in range checks only. */
+    public static final int MaxECMAScriptVersion = StagingECMAScriptVersion;
     /** Enable Annex B "Additional ECMAScript Features for Web Browsers". */
     public static final boolean AnnexB = true;
 

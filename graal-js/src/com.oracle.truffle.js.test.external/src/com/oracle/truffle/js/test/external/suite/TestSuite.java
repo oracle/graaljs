@@ -1119,8 +1119,8 @@ public abstract class TestSuite {
                     break;
                 case "minesversion":
                     int minESVersion = Integer.parseInt(value);
-                    if (minESVersion > JSConfig.ECMAScriptNumberYearDelta) {
-                        minESVersion -= JSConfig.ECMAScriptNumberYearDelta;
+                    if (minESVersion > JSConfig.ECMAScriptVersionYearDelta) {
+                        minESVersion -= JSConfig.ECMAScriptVersionYearDelta;
                     }
                     builder.setMinESVersion(minESVersion);
                     break;

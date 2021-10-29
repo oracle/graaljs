@@ -100,7 +100,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.SCRIPT);
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.REGION);
 
-        if (ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2022) {
+        if (ctx.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
             putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDARS);
             putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATIONS);
             putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLES);

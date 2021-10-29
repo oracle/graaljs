@@ -246,23 +246,9 @@ public class Test262Runnable extends TestRunnable {
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     }));
-    private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
-                    "Array.prototype.at",
+    private static final Set<String> ES2023_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Atomics.waitAsync",
                     "Intl.Locale-info",
-                    "Object.hasOwn",
-                    "String.prototype.at",
-                    "TypedArray.prototype.at",
-                    "class-fields-private-in",
-                    "class-fields-private",
-                    "class-fields-public",
-                    "class-methods-private",
-                    "class-static-block",
-                    "class-static-fields-private",
-                    "class-static-fields-public",
-                    "class-static-methods-private",
-                    "regexp-match-indices",
-                    "top-level-await",
     }));
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
@@ -316,8 +302,8 @@ public class Test262Runnable extends TestRunnable {
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
-                if (ES2022_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2022;
+                if (ES2023_FEATURES.contains(feature)) {
+                    featureVersion = JSConfig.ECMAScript2023;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;

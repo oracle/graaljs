@@ -73,21 +73,21 @@ public final class JSContextOptions {
 
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
-    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.CurrentECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
+    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
         @Override
         public Integer apply(String in) {
             if ("latest".equals(in)) {
-                return JSConfig.CurrentECMAScriptVersion;
+                return JSConfig.LatestECMAScriptVersion;
             } else if ("staging".equals(in)) {
-                return JSConfig.MaxECMAScriptVersion;
+                return JSConfig.StagingECMAScriptVersion;
             }
             try {
                 int version = Integer.parseInt(in);
-                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptNumberYearDelta;
-                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta;
+                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
+                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta;
                 if (minYearVersion <= version && version <= maxYearVersion) {
-                    version -= JSConfig.ECMAScriptNumberYearDelta;
+                    version -= JSConfig.ECMAScriptVersionYearDelta;
                 }
                 if (version < 5 || version > JSConfig.MaxECMAScriptVersion) {
                     throw new IllegalArgumentException("Supported values are 5 to " + JSConfig.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
