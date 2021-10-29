@@ -71,8 +71,8 @@ See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental op
 ## ECMAScript Version
 
 This option provides compatibility to a specific version of the ECMAScript specification.
-It expects an integer value, where both the counting version numbers (`5` to `11`) and the publication years (starting from `2015`) are supported.
-The default in the development version of GraalVM is the [`ECMAScript 2021 specification`](https://tc39.es/ecma262/).
+It expects an integer value, where both the counting version numbers (`5` to `13`) and the publication years (starting from `2015`) are supported.
+The default in the development version of GraalVM is the [`ECMAScript 2022 specification`](https://tc39.es/ecma262/).
 GraalVM JavaScript implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
 For production settings, it is recommended to set the `ecmascript-version` to an existing, finalized version of the specification.
 
@@ -84,8 +84,9 @@ Available versions are:
 * `9` or `2018` for ECMAScript 2018
 * `10` or `2019` for ECMAScript 2019
 * `11` or `2020` for ECMAScript 2020
-* `12` or `2021` for ECMAScript 2021 (**default**, latest finalized version of the specification)
-* `13` or `2022` for ECMAScript 2022 (future changes and proposals)
+* `12` or `2021` for ECMAScript 2021 (**default** in 21.3, latest finalized version of the specification)
+* `13` or `2022` for ECMAScript 2022 (**default** in 22.0+, latest draft of the specification, including finished proposals)
+* `14` or `2023` for ECMAScript 2023 (future changes and unfinished proposals)
 
 As of GraalVM 21.2, the flag can also be set to `latest` or `staging`, to use the latest stable version (which is the default), or the staging version including experimental functionality under development.
 
