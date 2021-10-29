@@ -71,15 +71,17 @@ public final class JSContextOptions {
     @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
+    public static final String ECMASCRIPT_VERSION_LATEST = "latest";
+    public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
     @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
         @Override
         public Integer apply(String in) {
-            if ("latest".equals(in)) {
+            if (ECMASCRIPT_VERSION_LATEST.equals(in)) {
                 return JSConfig.LatestECMAScriptVersion;
-            } else if ("staging".equals(in)) {
+            } else if (ECMASCRIPT_VERSION_STAGING.equals(in)) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             try {
