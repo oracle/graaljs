@@ -74,7 +74,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
@@ -85,7 +85,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AsyncGeneratorBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async generator functions in JavaScript.")
-    private static final class AsyncGeneratorRootNode extends JavaScriptRootNode implements AsyncRootNode {
+    private static final class AsyncGeneratorRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncRootNode {
 
         @Child private PropertySetNode setGeneratorState;
         @Child private JavaScriptNode functionBody;
@@ -115,7 +115,7 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        protected Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame generatorFrame = JSArguments.getResumeExecutionContext(arguments);
             DynamicObject generatorObject = (DynamicObject) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);

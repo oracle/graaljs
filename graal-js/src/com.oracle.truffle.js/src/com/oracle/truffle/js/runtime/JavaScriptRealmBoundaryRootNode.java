@@ -65,7 +65,7 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
 
     @Override
     public final Object execute(VirtualFrame frame) {
-        final JSContext context = getContext();
+        final JSContext context = getLanguage().getJSContext();
         CompilerAsserts.partialEvaluationConstant(context);
 
         JSRealm functionRealm = null;
@@ -117,7 +117,5 @@ public abstract class JavaScriptRealmBoundaryRootNode extends JavaScriptRootNode
     }
 
     protected abstract Object executeInRealm(VirtualFrame frame);
-
-    protected abstract JSContext getContext();
 
 }

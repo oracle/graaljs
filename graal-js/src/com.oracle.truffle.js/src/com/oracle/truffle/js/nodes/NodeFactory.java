@@ -1019,11 +1019,6 @@ public class NodeFactory {
             protected Object executeInRealm(VirtualFrame frame) {
                 throw Errors.createTypeError(message);
             }
-
-            @Override
-            protected JSContext getContext() {
-                return context;
-            }
         };
     }
 
