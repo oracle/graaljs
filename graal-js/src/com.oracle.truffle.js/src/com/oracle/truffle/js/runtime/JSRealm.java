@@ -2700,7 +2700,7 @@ public class JSRealm {
     public DateFormat getJSShortTimeFormat() {
         DateFormat dateFormat = jsShortTimeFormat;
         if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
-            jsShortTimeFormat = dateFormat = createDateFormat("HH:mm:ss 'GMT'xx (z)", true);
+            jsShortTimeFormat = dateFormat = createDateFormat(appendTimeZoneNameFormat("HH:mm:ss 'GMT'xx"), true);
         }
         return dateFormat;
     }
@@ -2717,9 +2717,15 @@ public class JSRealm {
     public DateFormat getDateToStringFormat() {
         DateFormat dateFormat = jsDateToStringFormat;
         if (CompilerDirectives.injectBranchProbability(SLOWPATH_PROBABILITY, dateFormat == null)) {
-            jsDateToStringFormat = dateFormat = createDateFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'xx (z)", true);
+            jsDateToStringFormat = dateFormat = createDateFormat(appendTimeZoneNameFormat("EEE MMM dd uuuu HH:mm:ss 'GMT'xx"), true);
         }
         return dateFormat;
+    }
+
+    @TruffleBoundary
+    private String appendTimeZoneNameFormat(String format) {
+        String timeZoneNameFormat = getContext().isOptionV8CompatibilityMode() ? "zzzz" : "z";
+        return format + " (" + timeZoneNameFormat + ")";
     }
 
     @TruffleBoundary
@@ -2727,9 +2733,13 @@ public class JSRealm {
         SimpleDateFormat format = new SimpleDateFormat(pattern, Locale.US);
         format.setTimeZone(local ? getLocalTimeZone() : TimeZone.GMT_ZONE);
 
-        TimeZoneFormat tzFormat = format.getTimeZoneFormat().cloneAsThawed();
-        tzFormat.setTimeZoneNames(TimeZoneNames.getTZDBInstance(ULocale.US));
-        format.setTimeZoneFormat(tzFormat);
+        // TZDBTimeZoneNames provides short names only => do not use it when
+        // long names are needed
+        if (!pattern.contains("zzzz")) {
+            TimeZoneFormat tzFormat = format.getTimeZoneFormat().cloneAsThawed();
+            tzFormat.setTimeZoneNames(TimeZoneNames.getTZDBInstance(ULocale.US));
+            format.setTimeZoneFormat(tzFormat);
+        }
 
         Calendar calendar = format.getCalendar();
         if (calendar instanceof GregorianCalendar) {
