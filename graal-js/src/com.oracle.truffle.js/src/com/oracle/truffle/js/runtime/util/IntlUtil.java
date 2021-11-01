@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.time.ZoneId;
@@ -55,6 +56,7 @@ import java.time.ZoneId;
 import com.ibm.icu.text.CaseMap;
 import com.ibm.icu.text.CaseMap.Lower;
 import com.ibm.icu.text.CaseMap.Upper;
+import com.ibm.icu.text.DateFormat;
 import com.ibm.icu.text.NumberingSystem;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
@@ -88,11 +90,13 @@ public final class IntlUtil {
     public static final String BASIC = "basic";
     public static final String BREAK_TYPE = "breakType";
     public static final String CALENDAR = "calendar";
+    public static final String CALENDARS = "calendars";
     public static final String CARDINAL = "cardinal";
     public static final String CASE = "case";
     public static final String CASE_FIRST = "caseFirst";
     public static final String CODE = "code";
     public static final String COLLATION = "collation";
+    public static final String COLLATIONS = "collations";
     public static final String COMPACT = "compact";
     public static final String COMPACT_DISPLAY = "compactDisplay";
     public static final String CONJUNCTION = "conjunction";
@@ -106,6 +110,7 @@ public final class IntlUtil {
     public static final String DEFAULT = "default";
     public static final String DECIMAL = "decimal";
     public static final String DIALECT = "dialect";
+    public static final String DIRECTION = "direction";
     public static final String DISJUNCTION = "disjunction";
     public static final String ELEMENT = "element";
     public static final String ENGINEERING = "engineering";
@@ -113,6 +118,7 @@ public final class IntlUtil {
     public static final String EXCEPT_ZERO = "exceptZero";
     public static final String FALLBACK = "fallback";
     public static final String FALSE = "false";
+    public static final String FIRST_DAY = "firstDay";
     public static final String FORMAT_MATCHER = "formatMatcher";
     public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
     public static final String FULL = "full";
@@ -124,6 +130,7 @@ public final class IntlUtil {
     public static final String H24 = "h24";
     public static final String HOUR = "hour";
     public static final String HOUR_CYCLE = "hourCycle";
+    public static final String HOUR_CYCLES = "hourCycles";
     public static final String HOUR12 = "hour12";
     public static final String INDEX = "index";
     public static final String INPUT = "input";
@@ -138,9 +145,11 @@ public final class IntlUtil {
     public static final String LOOKUP = "lookup";
     public static final String LOOSE = "loose";
     public static final String LOWER = "lower";
+    public static final String LTR = "ltr";
     public static final String MAXIMUM_FRACTION_DIGITS = "maximumFractionDigits";
     public static final String MAXIMUM_SIGNIFICANT_DIGITS = "maximumSignificantDigits";
     public static final String MEDIUM = "medium";
+    public static final String MINIMAL_DAYS = "minimalDays";
     public static final String MINIMUM_FRACTION_DIGITS = "minimumFractionDigits";
     public static final String MINIMUM_INTEGER_DIGITS = "minimumIntegerDigits";
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
@@ -155,6 +164,7 @@ public final class IntlUtil {
     public static final String NOTATION = "notation";
     public static final String NUMERIC = "numeric";
     public static final String NUMBERING_SYSTEM = "numberingSystem";
+    public static final String NUMBERING_SYSTEMS = "numberingSystems";
     public static final String OR = "or";
     public static final String OR_NARROW = "or-narrow";
     public static final String OR_SHORT = "or-short";
@@ -162,6 +172,7 @@ public final class IntlUtil {
     public static final String PERCENT = "percent";
     public static final String QUARTER = "quarter";
     public static final String REGION = "region";
+    public static final String RTL = "rtl";
     public static final String SCIENTIFIC = "scientific";
     public static final String SCRIPT = "script";
     public static final String SEARCH = "search";
@@ -180,8 +191,10 @@ public final class IntlUtil {
     public static final String STYLE = "style";
     public static final String SYMBOL = "symbol";
     public static final String TERM = "term";
+    public static final String TEXT_INFO = "textInfo";
     public static final String TIME_STYLE = "timeStyle";
     public static final String TIME_ZONE = "timeZone";
+    public static final String TIME_ZONES = "timeZones";
     public static final String TIME_ZONE_NAME = "timeZoneName";
     public static final String TYPE = "type";
     public static final String UND = "und";
@@ -196,6 +209,8 @@ public final class IntlUtil {
     public static final String VARIANT = "variant";
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
+    public static final String WEEKEND = "weekend";
+    public static final String WEEK_INFO = "weekInfo";
     public static final String WEEK_OF_YEAR = "weekOfYear";
     public static final String YEAR = "year";
     public static final String YEAR_NAME = "yearName";
@@ -676,6 +691,21 @@ public final class IntlUtil {
             tzid = "GMT" + tzid.substring(2);
         }
         return tzid;
+    }
+
+    public static String toJSHourCycle(DateFormat.HourCycle hourCycle) {
+        switch (hourCycle) {
+            case HOUR_CYCLE_11:
+                return IntlUtil.H11;
+            case HOUR_CYCLE_12:
+                return IntlUtil.H12;
+            case HOUR_CYCLE_23:
+                return IntlUtil.H23;
+            case HOUR_CYCLE_24:
+                return IntlUtil.H24;
+            default:
+                throw Errors.shouldNotReachHere(Objects.toString(hourCycle));
+        }
     }
 
 }

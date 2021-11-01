@@ -40,31 +40,54 @@
  */
 package com.oracle.truffle.js.builtins.intl;
 
+import java.util.Set;
+
+import com.ibm.icu.text.Collator;
+import com.ibm.icu.text.DateTimePatternGenerator;
+import com.ibm.icu.text.NumberingSystem;
+import com.ibm.icu.util.Calendar;
+import com.ibm.icu.util.TimeZone;
+import com.ibm.icu.util.ULocale;
+
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleBaseNameAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCalendarAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCalendarsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCaseFirstAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCollationAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCollationsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleHourCycleAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleHourCyclesAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumericAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumberingSystemAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumberingSystemsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleLanguageAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleScriptAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleRegionAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleTextInfoAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleTimeZonesAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleWeekInfoAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleMaximizeNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleMinimizeNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleToStringNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSLocale;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<LocalePrototypeBuiltins.LocalePrototype> {
 
@@ -89,7 +112,15 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         numberingSystem(0),
         language(0),
         script(0),
-        region(0);
+        region(0),
+
+        calendars(0),
+        collations(0),
+        hourCycles(0),
+        numberingSystems(0),
+        timeZones(0),
+        textInfo(0),
+        weekInfo(0);
 
         private final int length;
 
@@ -138,6 +169,20 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSLocaleScriptAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case region:
                 return JSLocaleRegionAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case calendars:
+                return JSLocaleCalendarsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case collations:
+                return JSLocaleCollationsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case hourCycles:
+                return JSLocaleHourCyclesAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case numberingSystems:
+                return JSLocaleNumberingSystemsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case timeZones:
+                return JSLocaleTimeZonesAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case textInfo:
+                return JSLocaleTextInfoAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case weekInfo:
+                return JSLocaleWeekInfoAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -374,6 +419,264 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization(guards = "!isJSLocale(bummer)")
         public Object doOther(@SuppressWarnings("unused") Object bummer) {
             throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleCalendarsAccessor extends JSBuiltinNode {
+
+        public JSLocaleCalendarsAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            String calendar = locale.getUnicodeLocaleType("ca");
+            String[] calendars;
+            if (calendar == null) {
+                calendars = Calendar.getKeywordValuesForLocale(IntlUtil.CALENDAR, locale, true);
+                for (int i = 0; i < calendars.length; i++) {
+                    calendars[i] = IntlUtil.normalizeCAType(calendars[i]);
+                }
+            } else {
+                calendars = new String[]{calendar};
+            }
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), calendars);
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleCollationsAccessor extends JSBuiltinNode {
+
+        public JSLocaleCollationsAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            String collation = locale.getUnicodeLocaleType("co");
+            String[] collations;
+            if (collation == null) {
+                collations = Collator.getKeywordValuesForLocale(IntlUtil.COLLATION, locale, true);
+
+                int length = 0;
+                for (String element : collations) {
+                    // The values "standard" and "search" must be excluded
+                    if (!IntlUtil.SEARCH.equals(element) && !IntlUtil.STANDARD.equals(element)) {
+                        collations[length++] = normalizeCollation(element);
+                    }
+                }
+                if (length != collations.length) {
+                    String[] trimmed = new String[length];
+                    System.arraycopy(collations, 0, trimmed, 0, length);
+                    collations = trimmed;
+                }
+            } else {
+                collations = new String[]{collation};
+            }
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), collations);
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+        // The returned collations are supposed to be "lower case String values conforming to the
+        // type sequence from UTS 35 Unicode Locale Identifier, section 3.2" =>
+        // replacing non-conforming collations by their conforming aliases according to
+        // https://github.com/unicode-org/cldr/blob/main/common/bcp47/collation.xml
+        private static String normalizeCollation(String collation) {
+            String normalizedCollation;
+            switch (collation) {
+                case "dictionary":
+                    normalizedCollation = "dict";
+                    break;
+                case "gb2312han":
+                    normalizedCollation = "gb2312";
+                    break;
+                case "phonebook":
+                    normalizedCollation = "phonebk";
+                    break;
+                case "traditional":
+                    normalizedCollation = "trad";
+                    break;
+                default:
+                    normalizedCollation = collation;
+                    break;
+            }
+            return normalizedCollation;
+        }
+
+    }
+
+    public abstract static class JSLocaleHourCyclesAccessor extends JSBuiltinNode {
+
+        public JSLocaleHourCyclesAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            String hourCycle = locale.getUnicodeLocaleType("hc");
+            if (hourCycle == null) {
+                DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(locale);
+                hourCycle = IntlUtil.toJSHourCycle(patternGenerator.getDefaultHourCycle());
+            }
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{hourCycle});
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleNumberingSystemsAccessor extends JSBuiltinNode {
+
+        public JSLocaleNumberingSystemsAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            String numberingSystem = locale.getUnicodeLocaleType("nu");
+            if (numberingSystem == null) {
+                numberingSystem = NumberingSystem.getInstance(locale).getName();
+            }
+            return JSArray.createConstantObjectArray(getContext(), getRealm(), new Object[]{numberingSystem});
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleTimeZonesAccessor extends JSBuiltinNode {
+
+        public JSLocaleTimeZonesAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @TruffleBoundary
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            String region = locale.getCountry();
+            if (region.isEmpty()) {
+                return Undefined.instance;
+            } else {
+                Set<String> timeZoneSet = TimeZone.getAvailableIDs(TimeZone.SystemTimeZoneType.CANONICAL, region, null);
+                Object[] timeZones = timeZoneSet.toArray(new Object[timeZoneSet.size()]);
+                return JSArray.createConstantObjectArray(getContext(), getRealm(), timeZones);
+            }
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleTextInfoAccessor extends JSBuiltinNode {
+        @Child CreateDataPropertyNode createDirectionNode = CreateDataPropertyNode.create(getContext(), IntlUtil.DIRECTION);
+
+        public JSLocaleTextInfoAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            DynamicObject textInfo = JSOrdinary.create(getContext(), getRealm());
+            createDirectionNode.executeVoid(textInfo, direction(localeObject));
+            return textInfo;
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+        @TruffleBoundary
+        private static String direction(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            String orientation = locale.getCharacterOrientation();
+            return "right-to-left".equals(orientation) ? IntlUtil.RTL : IntlUtil.LTR;
+        }
+
+    }
+
+    public abstract static class JSLocaleWeekInfoAccessor extends JSBuiltinNode {
+        @Child CreateDataPropertyNode createFirstDayNode = CreateDataPropertyNode.create(getContext(), IntlUtil.FIRST_DAY);
+        @Child CreateDataPropertyNode createWeekendNode = CreateDataPropertyNode.create(getContext(), IntlUtil.WEEKEND);
+        @Child CreateDataPropertyNode createMinimalDaysNode = CreateDataPropertyNode.create(getContext(), IntlUtil.MINIMAL_DAYS);
+
+        public JSLocaleWeekInfoAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSLocale(localeObject)")
+        public Object doLocale(DynamicObject localeObject) {
+            Calendar.WeekData weekData = weekData(localeObject);
+
+            int firstDay = calendarToECMAScriptDay(weekData.firstDayOfWeek);
+            int minimalDays = weekData.minimalDaysInFirstWeek;
+
+            SimpleArrayList<Integer> weekendList = new SimpleArrayList<>(7);
+            int weekendCease = weekData.weekendCease;
+            int day = weekData.weekendOnset;
+            while (true) {
+                weekendList.add(calendarToECMAScriptDay(day), null);
+                if (day == weekendCease) {
+                    break;
+                }
+                if (day == Calendar.SATURDAY) {
+                    day = Calendar.SUNDAY;
+                } else {
+                    day++;
+                }
+            }
+            JSContext context = getContext();
+            JSRealm realm = getRealm();
+            Object weekend = JSArray.createConstantObjectArray(context, realm, weekendList.toArray());
+
+            DynamicObject weekInfo = JSOrdinary.create(context, realm);
+            createFirstDayNode.executeVoid(weekInfo, firstDay);
+            createWeekendNode.executeVoid(weekInfo, weekend);
+            createMinimalDaysNode.executeVoid(weekInfo, minimalDays);
+            return weekInfo;
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+        @TruffleBoundary
+        private static Calendar.WeekData weekData(DynamicObject localeObject) {
+            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            return Calendar.getInstance(locale).getWeekData();
+        }
+
+        private static int calendarToECMAScriptDay(int day) {
+            return (day == Calendar.SUNDAY) ? 7 : (day - 1);
         }
 
     }

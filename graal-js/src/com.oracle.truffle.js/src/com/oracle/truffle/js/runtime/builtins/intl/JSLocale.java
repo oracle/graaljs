@@ -98,6 +98,13 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.LANGUAGE);
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.SCRIPT);
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.REGION);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDARS);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATIONS);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLES);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEMS);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TIME_ZONES);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TEXT_INFO);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.WEEK_INFO);
         return localePrototype;
     }
 
@@ -131,6 +138,11 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         String hourCycle;
         boolean numeric;
         String numberingSystem;
+
+        @TruffleBoundary
+        public ULocale getULocale() {
+            return ULocale.forLocale(locale);
+        }
 
         @TruffleBoundary
         public String getLocale() {

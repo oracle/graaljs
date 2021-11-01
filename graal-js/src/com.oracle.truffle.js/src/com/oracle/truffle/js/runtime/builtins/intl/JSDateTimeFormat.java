@@ -234,7 +234,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         state.timeStyle = timeStyleOpt;
 
         DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(javaLocale);
-        String hcDefault = toJSHourCycle(patternGenerator.getDefaultHourCycle());
+        String hcDefault = IntlUtil.toJSHourCycle(patternGenerator.getDefaultHourCycle());
         if (hc == null) {
             hc = hcDefault;
         }
@@ -352,21 +352,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         } else {
             assert IntlUtil.SHORT.equals(style);
             return DateFormat.SHORT;
-        }
-    }
-
-    private static String toJSHourCycle(DateFormat.HourCycle hourCycle) {
-        switch (hourCycle) {
-            case HOUR_CYCLE_11:
-                return IntlUtil.H11;
-            case HOUR_CYCLE_12:
-                return IntlUtil.H12;
-            case HOUR_CYCLE_23:
-                return IntlUtil.H23;
-            case HOUR_CYCLE_24:
-                return IntlUtil.H24;
-            default:
-                throw Errors.shouldNotReachHere(Objects.toString(hourCycle));
         }
     }
 
