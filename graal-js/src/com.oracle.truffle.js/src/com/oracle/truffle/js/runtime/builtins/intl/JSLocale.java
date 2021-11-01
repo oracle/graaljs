@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
@@ -98,13 +99,17 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.LANGUAGE);
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.SCRIPT);
         putLocalePropertyAccessor(realm, localePrototype, IntlUtil.REGION);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDARS);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATIONS);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLES);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEMS);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TIME_ZONES);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TEXT_INFO);
-        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.WEEK_INFO);
+
+        if (ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2022) {
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDARS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATIONS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLES);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEMS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TIME_ZONES);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TEXT_INFO);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.WEEK_INFO);
+        }
+
         return localePrototype;
     }
 

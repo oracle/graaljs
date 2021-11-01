@@ -249,6 +249,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.at",
                     "Atomics.waitAsync",
+                    "Intl.Locale-info",
                     "Object.hasOwn",
                     "String.prototype.at",
                     "TypedArray.prototype.at",
