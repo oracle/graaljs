@@ -120,6 +120,7 @@ public class Test262Runnable extends TestRunnable {
                     "Intl.DisplayNames-v2",
                     "Intl.ListFormat",
                     "Intl.Locale",
+                    "Intl.Locale-info",
                     "Intl.NumberFormat-unified",
                     "Intl.RelativeTimeFormat",
                     "Intl.Segmenter",
@@ -236,7 +237,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.DateTimeFormat-formatRange",
-                    "Intl.Locale-info",
                     "Intl-enumeration",
                     "IsHTMLDDA",
                     "ShadowRealm",
@@ -249,6 +249,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> ES2022_FEATURES = new HashSet<>(Arrays.asList(new String[]{
                     "Array.prototype.at",
                     "Atomics.waitAsync",
+                    "Intl.Locale-info",
                     "Object.hasOwn",
                     "String.prototype.at",
                     "TypedArray.prototype.at",

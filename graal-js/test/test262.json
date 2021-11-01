@@ -1764,6 +1764,10 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
+    "filePath" : "intl402/Locale/prototype/weekInfo/output-object-keys.js",
+    "status" : "FAIL",
+    "comment" : "Off-spec/obsolete test."
+  }, {
     "filePath" : "language/expressions/assignment/destructuring/obj-prop-__proto__dup.js",
     "status" : "FAIL"
   }, {
