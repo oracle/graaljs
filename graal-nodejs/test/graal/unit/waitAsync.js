@@ -70,7 +70,7 @@ describe.skipOnNode('waitAsync', function () {
             assert(count === 1);
           });`;
 
-        const result = spawnSync(process.execPath, ['--js.ecmascript-version=2022', '-e', code]);
+        const result = spawnSync(process.execPath, ['--js.ecmascript-version=staging', '-e', code]);
         assert.strictEqual(result.status, 0);
         assert.strictEqual(result.stderr.toString(), '');
     });
