@@ -70,37 +70,9 @@
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/locale/locale-calendars.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-collations.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-check-property.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-ext.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-no-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-timezones-sorted.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-numberingSystems.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
+    "comment" : "Off-spec/obsolete test."
   }, {
     "filePath" : "intl/localematcher/bestfit-supplemental-files.js",
     "status" : "FAIL",
