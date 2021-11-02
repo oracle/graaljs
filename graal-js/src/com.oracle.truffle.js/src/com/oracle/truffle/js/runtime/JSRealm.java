@@ -2482,35 +2482,42 @@ public class JSRealm {
 
     void initRealmList() {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         realmList = new ArrayList<>();
     }
 
-    synchronized void addToRealmList(JSRealm newRealm) {
+    void addToRealmList(JSRealm newRealm) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         assert !realmList.contains(newRealm);
         realmList.add(newRealm);
     }
 
-    public synchronized JSRealm getFromRealmList(int idx) {
+    public JSRealm getFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         return (0 <= idx && idx < realmList.size()) ? realmList.get(idx) : null;
     }
 
-    public synchronized int getIndexFromRealmList(JSRealm rlm) {
+    public int getIndexFromRealmList(JSRealm rlm) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         return realmList.indexOf(rlm);
     }
 
-    public synchronized void removeFromRealmList(int idx) {
+    public void removeFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         realmList.set(idx, null);
     }
 
     public JSRealm getCurrentV8Realm() {
+        assert isMainRealm();
         return v8RealmCurrent;
     }
 
     public void setCurrentV8Realm(JSRealm realm) {
+        assert isMainRealm();
         v8RealmCurrent = realm;
     }
 

@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCreateNodeGen;
 import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCurrentNodeGen;
@@ -110,12 +111,10 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         return null;
     }
 
-    protected static JSRealm topLevelRealm(JSRealm currentRealm) {
-        JSRealm realm = currentRealm;
-        while (realm.getParent() != null) {
-            realm = realm.getParent();
-        }
-        return realm;
+    protected static JSRealm topLevelRealm(Node node) {
+        JSRealm mainRealm = JSRealm.getMain(node);
+        assert mainRealm.getParent() == null;
+        return mainRealm;
     }
 
     protected static int toRealmIndexOrThrow(JSRealm topLevelRealm, Object index) {
@@ -139,9 +138,9 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object createRealm() {
-            JSRealm currentRealm = getRealm();
-            JSRealm newRealm = currentRealm.createChildRealm();
-            return topLevelRealm(currentRealm).getIndexFromRealmList(newRealm);
+            JSRealm topLevelRealm = topLevelRealm(this);
+            JSRealm newRealm = topLevelRealm.createChildRealm();
+            return topLevelRealm.getIndexFromRealmList(newRealm);
         }
     }
 
@@ -154,7 +153,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object dispose(Object index) {
-            JSRealm topLevelRealm = topLevelRealm(getRealm());
+            JSRealm topLevelRealm = topLevelRealm(this);
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
             topLevelRealm.removeFromRealmList(realmIndex);
             return Undefined.instance;
@@ -170,7 +169,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object global(Object index) {
-            JSRealm topLevelRealm = topLevelRealm(getRealm());
+            JSRealm topLevelRealm = topLevelRealm(this);
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
             JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
             return jsrealm.getGlobalObject();
@@ -187,8 +186,9 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object current() {
-            JSRealm topLevelRealm = topLevelRealm(getRealm());
-            return topLevelRealm.getIndexFromRealmList(topLevelRealm.getCurrentV8Realm());
+            JSRealm topLevelRealm = topLevelRealm(this);
+            JSRealm currentRealm = topLevelRealm.getCurrentV8Realm();
+            return topLevelRealm.getIndexFromRealmList(currentRealm);
         }
     }
 
@@ -201,16 +201,16 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @TruffleBoundary
         @Specialization
         protected Object eval(Object index, Object code) {
-            JSRealm topLevelRealm = topLevelRealm(getRealm());
+            JSRealm topLevelRealm = topLevelRealm(this);
             int realmIndex = toRealmIndexOrThrow(topLevelRealm, index);
-            JSRealm jsrealm = topLevelRealm.getFromRealmList(realmIndex);
+            JSRealm selectedRealm = topLevelRealm.getFromRealmList(realmIndex);
             String sourceText = JSRuntime.toString(code);
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceText, Evaluator.EVAL_SOURCE_NAME).build();
             JSRealm currentV8Realm = topLevelRealm.getCurrentV8Realm();
+            topLevelRealm.setCurrentV8Realm(selectedRealm);
             try {
-                topLevelRealm.setCurrentV8Realm(jsrealm);
                 ScriptNode script = getContext().getEvaluator().parseEval(getContext(), this, source);
-                return script.runEval(IndirectCallNode.getUncached(), jsrealm);
+                return script.runEval(IndirectCallNode.getUncached(), selectedRealm);
             } finally {
                 topLevelRealm.setCurrentV8Realm(currentV8Realm);
             }

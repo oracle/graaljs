@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,9 +73,9 @@ public class RealmBuiltinTest {
     @Test
     public void testRealmCurrent2() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.V8_REALM_BUILTIN_NAME, "true").build()) {
-            Value result = context.eval(JavaScriptLanguage.ID, "const id = Realm.create(); Realm.eval(id, 'Realm.current')() === 0");
-            Assert.assertTrue(result.isBoolean());
-            Assert.assertTrue(result.asBoolean());
+            Value result = context.eval(JavaScriptLanguage.ID, "const id = Realm.create(); Realm.eval(id, 'Realm.current')()");
+            Assert.assertTrue(result.fitsInInt());
+            Assert.assertEquals(0, result.asInt());
         }
     }
 
