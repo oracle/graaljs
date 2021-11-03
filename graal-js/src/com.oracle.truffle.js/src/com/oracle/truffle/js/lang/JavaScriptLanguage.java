@@ -444,7 +444,11 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-        return firstOptions.equals(newOptions);
+        if (!firstOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
+            return true;
+        }
+        // GR-34877: OptionValues.equals does not check if the same options are set.
+        return firstOptions.equals(newOptions) && JSContextOptions.fromOptionValues(firstOptions).equals(JSContextOptions.fromOptionValues(newOptions));
     }
 
     @Override
