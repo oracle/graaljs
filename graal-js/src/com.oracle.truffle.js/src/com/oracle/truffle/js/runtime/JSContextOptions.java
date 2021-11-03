@@ -74,7 +74,8 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_LATEST = "latest";
     public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "ECMAScript version (e.g. 5, 2015, 2022), '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), or '" + ECMASCRIPT_VERSION_STAGING + "' (latest + staged features).") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
         @Override
