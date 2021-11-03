@@ -1745,10 +1745,6 @@ public class JSContext {
         return getContextOptions().isTopLevelAwait();
     }
 
-    public boolean isWaitAsyncEnabled() {
-        return getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion;
-    }
-
     public final Set<String> getSupportedImportAssertions() {
         return supportedImportAssertions;
     }

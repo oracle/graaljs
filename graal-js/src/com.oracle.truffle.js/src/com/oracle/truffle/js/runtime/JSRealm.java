@@ -1888,9 +1888,6 @@ public class JSRealm {
         DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putToStringTag(obj, ATOMICS_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
-        if (context.isWaitAsyncEnabled()) {
-            JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.WAIT_ASYNC_BUILTIN);
-        }
         return obj;
     }
 
