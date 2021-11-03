@@ -39,7 +39,7 @@ The following options are currently available:
    * `--js.annex-b`: enable ECMAScript Annex B web compatibility features. Boolean value, default is `true`.
    * `--js.array-sort-inherited`: define whether `Array.protoype.sort` should sort inherited keys (implementation-defined behavior). Boolean value, default is `true`.
    * `--js.atomics`: enable *ES2017 Atomics*. Boolean value, default is `true`.
-   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`-`13`, or `2015`-`2022`), default is the latest stable version.
+   * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2022`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals), default is `"latest"`.
    * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `false`.
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `false`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, e.g., `RegExp.$1` (legacy). Boolean value, default is `true`.
@@ -71,10 +71,11 @@ See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental op
 ## ECMAScript Version
 
 This option provides compatibility to a specific version of the ECMAScript specification.
-It expects an integer value, where both the counting version numbers (`5` to `13`) and the publication years (starting from `2015`) are supported.
-The default in the development version of GraalVM is the [`ECMAScript 2022 specification`](https://tc39.es/ecma262/).
+It expects an integer value, where both the counting version numbers (`5`, `6`, ...) and the publication years (starting from `2015`) are supported.
+As of GraalVM 21.2, `latest`, `staging` are supported, too.
+The default in GraalVM 22.x is the [`ECMAScript 2022 specification`](https://tc39.es/ecma262/).
 GraalVM JavaScript implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
-For production settings, it is recommended to set the `ecmascript-version` to an existing, finalized version of the specification.
+For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g. `2021`).
 
 Available versions are:
 * `5` for ECMAScript 5.x
@@ -84,11 +85,10 @@ Available versions are:
 * `9` or `2018` for ECMAScript 2018
 * `10` or `2019` for ECMAScript 2019
 * `11` or `2020` for ECMAScript 2020
-* `12` or `2021` for ECMAScript 2021 (**default** in 21.3, latest finalized version of the specification)
-* `13` or `2022` for ECMAScript 2022 (**default** in 22.0+, latest draft of the specification, including finished proposals)
-* `14` or `2023` for ECMAScript 2023 (future changes and unfinished proposals)
-
-As of GraalVM 21.2, the flag can also be set to `latest` or `staging`, to use the latest stable version (which is the default), or the staging version including experimental functionality under development.
+* `12` or `2021` for ECMAScript 2021 (**default** in 21.3, latest released version of the specification)
+* `13` or `2022` for ECMAScript 2022 (**default** in 22.0+, latest supported draft of the [specification](https://tc39.es/ecma262/), including [finished proposals](https://github.com/tc39/proposals/blob/master/finished-proposals.md))
+* `latest` for the latest supported language version (the default version)
+* `staging` for the latest supported language features including experimental unstable, unfinished [proposals](https://github.com/tc39/proposals) (_do not use in production!_)
 
 ## intl-402
 
