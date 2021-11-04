@@ -8,6 +8,7 @@ The main focus is on user-observable behavior of the engine.
 * Implemented the [Intl.DisplayNames v2](https://github.com/tc39/intl-displaynames-v2) proposal.
 * Implemented the [Intl Locale Info](https://github.com/tc39/proposal-intl-locale-info) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [Intl.DateTimeFormat.prototype.formatRange](https://github.com/tc39/proposal-intl-DateTimeFormat-formatRange) proposal.
+* Updated Node.js to version 14.18.1.
 
 ## Version 21.3.0
 * Implemented the [Private Fields in `in`](https://tc39.es/proposal-private-fields-in-in) proposal. It is available behind the experimental option `--js.private-fields-in`. 
