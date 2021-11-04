@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,32 +38,57 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.access;
+package com.oracle.truffle.js.test.runtime;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
-public class RealmNode extends JavaScriptBaseNode {
-    private final JSContext context;
+import org.junit.Assert;
+import org.junit.Test;
 
-    protected RealmNode(JSContext context) {
-        this.context = context;
+public class TimezoneICUJDKCompat {
+
+    @Test
+    public void compareICUandJDKTimezones() {
+        String[] icuIDs = com.ibm.icu.util.TimeZone.getAvailableIDs();
+        String[] jdkIDs = java.util.TimeZone.getAvailableIDs();
+        Set<String> jdkSet = new HashSet<>(Arrays.asList(jdkIDs));
+
+        boolean error = false;
+        long now = System.currentTimeMillis();
+        for (String entry : icuIDs) {
+            if (jdkSet.contains(entry)) {
+
+                com.ibm.icu.util.TimeZone icuTimezone = com.ibm.icu.util.TimeZone.getTimeZone(entry);
+                java.util.TimeZone jdkTimezone = java.util.TimeZone.getTimeZone(entry);
+
+                if (icuTimezone.getOffset(now) != jdkTimezone.getOffset(now)) {
+                    System.out.println("difference in timezone offset: " + entry + " icu=" + icuTimezone.getRawOffset() + " jdk=" + jdkTimezone.getRawOffset());
+                    error = true;
+                }
+
+                jdkSet.remove(entry);
+            } else {
+                System.out.println("timezone missing in JDK: " + entry);
+                // TODO we consider this a warning only
+            }
+        }
+
+        for (String entry : jdkSet) {
+            System.out.println("missing in ICU: " + entry);
+            error = true;
+        }
+        if (error) {
+            Assert.fail("found entry in JDK that is missing from ICU");
+        }
     }
 
-    public static RealmNode create(JSContext context) {
-        return new RealmNode(context);
+    @Test
+    public void compareICUandJDKversions() {
+        String versionJDK = java.time.zone.ZoneRulesProvider.getVersions("UTC").lastEntry().getKey();
+        String versionICU = com.ibm.icu.util.TimeZone.getTZDataVersion();
+        Assert.assertEquals(versionJDK, versionICU);
     }
 
-    public JSRealm execute(VirtualFrame frame) {
-        assert getRealm() == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
-        return getRealm();
-    }
-
-    public JSContext getContext() {
-        return context;
-    }
 }

@@ -78,7 +78,7 @@ public final class JSParserOptions {
         this.strict = false;
         this.scripting = false;
         this.shebang = false;
-        this.ecmaScriptVersion = JSConfig.MaxECMAScriptVersion;
+        this.ecmaScriptVersion = JSConfig.LatestECMAScriptVersion;
         this.syntaxExtensions = false;
         this.constAsVar = false;
         this.functionStatementError = false;

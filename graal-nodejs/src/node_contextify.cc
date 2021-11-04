@@ -952,7 +952,9 @@ bool ContextifyScript::EvalMachine(Environment* env,
       PersistentToLocal::Default(env->isolate(), wrapped_script->script_);
   Local<Script> script = unbound_script->BindToCurrentContext();
 
-  env->isolate()->SchedulePauseOnNextStatement();
+  if (break_on_first_line) {
+    env->isolate()->SchedulePauseOnNextStatement();
+  }
 #if HAVE_INSPECTOR
   if (break_on_first_line) {
     env->inspector_agent()->PauseOnNextJavascriptStatement("Break on start");

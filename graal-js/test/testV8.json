@@ -27,22 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/en-format-range-to-parts.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/format-range-to-parts.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/format-range.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "intl/date-format/format_range_hour_cycle.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
-  }, {
     "filePath" : "intl/date-format/resolved-options.js",
     "status" : "FAIL"
   }, {
@@ -57,30 +41,6 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
-    "filePath" : "intl/displaynames/calendar-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/constructor-order-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/constructor-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/date-time-field-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
-    "filePath" : "intl/displaynames/languagecanonical.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "intl/displaynames/resolved-options-v2.js",
-    "status" : "FAIL",
-    "comment" : "Intl.DisplayNames v2 (GR-33659)"
-  }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
   }, {
@@ -94,37 +54,9 @@
     "filePath" : "intl/general/supported-locales-of.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/locale/locale-calendars.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-collations.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-check-property.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-ext.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-no-undefined.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-info-timezones-sorted.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
-  }, {
-    "filePath" : "intl/locale/locale-numberingSystems.js",
-    "status" : "FAIL",
-    "comment" : "Intl Locale Info (GR-33660)"
+    "comment" : "Off-spec/obsolete test."
   }, {
     "filePath" : "intl/localematcher/bestfit-supplemental-files.js",
     "status" : "FAIL",
@@ -175,10 +107,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
     "filePath" : "intl/regress-9747.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
-  }, {
-    "filePath" : "intl/regress-9812.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
@@ -433,6 +361,10 @@
     "filePath" : "mjsunit/d8/d8-os.js",
     "status" : "FAIL",
     "comment" : "d8s OS module"
+  }, {
+    "filePath" : "mjsunit/d8/d8-performance-now.js",
+    "status" : "SKIP",
+    "comment" : "transiently fails, skipping because test not really useful (GR-14954)"
   }, {
     "filePath" : "mjsunit/d8/d8-worker-shutdown-empty.js",
     "status" : "FAIL",
@@ -718,14 +650,6 @@
     "filePath" : "mjsunit/harmony/modules-import-16.mjs",
     "status" : "FAIL",
     "comment" : "TODO: evaluate"
-  }, {
-    "filePath" : "mjsunit/harmony/private-brand-checks.js",
-    "status" : "FAIL",
-    "comment" : "Fails due to class heritage issue with private environments (GR-21866)"
-  }, {
-    "filePath" : "mjsunit/harmony/private-name-scopes.js",
-    "status" : "FAIL",
-    "comment" : "Uses private fields"
   }, {
     "filePath" : "mjsunit/harmony/private-symbols.js",
     "status" : "FAIL",

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,9 @@ package com.oracle.truffle.js.test.external.suite;
 import java.io.OutputStream;
 import java.util.concurrent.Callable;
 
+import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+
 public abstract class AbstractTestCallable implements Callable<Object> {
 
     protected final TestSuite suite;
@@ -58,4 +61,13 @@ public abstract class AbstractTestCallable implements Callable<Object> {
     public abstract void setOutput(OutputStream out);
 
     public abstract void setError(OutputStream err);
+
+    public static String ecmaScriptVersionToOptionString(int ecmaScriptVersion) {
+        if (ecmaScriptVersion == JSConfig.StagingECMAScriptVersion) {
+            return JSContextOptions.ECMASCRIPT_VERSION_STAGING;
+        } else {
+            JSContextOptions.ECMASCRIPT_VERSION.getType().validate(ecmaScriptVersion);
+            return Integer.toString(ecmaScriptVersion);
+        }
+    }
 }

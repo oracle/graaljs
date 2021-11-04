@@ -515,8 +515,24 @@ public final class Errors {
         return createRangeErrorFormat("Invalid script subtag: %s", null, script);
     }
 
+    public static JSException createRangeErrorInvalidCalendar(String calendar) {
+        return createRangeErrorFormat("Invalid calendar: %s", null, calendar);
+    }
+
+    public static JSException createRangeErrorInvalidDateTimeField(String dateTimeField) {
+        return createRangeErrorFormat("Invalid date-time field: %s", null, dateTimeField);
+    }
+
     public static JSException createRangeErrorInvalidUnitIdentifier(String unitIdentifier) {
         return createRangeErrorFormat("Invalid unit identifier: %s", null, unitIdentifier);
+    }
+
+    public static JSException createRangeErrorInvalidTimeValue() {
+        return createRangeError("Invalid time value");
+    }
+
+    public static JSException createTypeErrorInvalidTimeValue() {
+        return createTypeError("Invalid time value");
     }
 
     @TruffleBoundary

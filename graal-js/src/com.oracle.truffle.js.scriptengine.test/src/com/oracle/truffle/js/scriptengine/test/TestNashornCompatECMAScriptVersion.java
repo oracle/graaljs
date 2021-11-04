@@ -75,7 +75,7 @@ public class TestNashornCompatECMAScriptVersion {
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.ecmascript-version", "latest");
-        Assert.assertEquals(JSConfig.CurrentECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta, engine.eval("Graal.versionECMAScript"));
+        Assert.assertEquals(JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta, engine.eval("Graal.versionECMAScript"));
     }
 
     @Test
@@ -83,7 +83,7 @@ public class TestNashornCompatECMAScriptVersion {
         ScriptEngine engine = new ScriptEngineManager().getEngineByName("JavaScript");
         Bindings bindings = engine.getBindings(ScriptContext.ENGINE_SCOPE);
         bindings.put("polyglot.js.ecmascript-version", "staging");
-        Assert.assertEquals(JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta, engine.eval("Graal.versionECMAScript"));
+        Assert.assertEquals(JSConfig.StagingECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta, engine.eval("Graal.versionECMAScript"));
     }
 
 }

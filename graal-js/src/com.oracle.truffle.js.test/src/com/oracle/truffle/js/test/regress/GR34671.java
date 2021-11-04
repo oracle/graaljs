@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,41 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.env;
+package com.oracle.truffle.js.test.regress;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.runtime.JSContext;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
+import org.junit.Test;
+
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
- *
- * This environment stores "with" blocks. Actually, this is just a marker in the chain (tree) of
- * environments.
+ * Tests the possible cyclic delegation between {@code UserScriptException} and
+ * {@code JSErrorObject} as reported at https://github.com/oracle/graaljs/issues/513.
  */
-public final class WithEnvironment extends DerivedEnvironment {
+public class GR34671 {
 
-    /**
-     * Name of the frame slot that contains the with object.
-     */
-    private final Object withVarIdentifier;
-
-    public WithEnvironment(Environment parent, NodeFactory factory, JSContext context, Object withVarIdentifier) {
-        super(parent, factory, context);
-        this.withVarIdentifier = withVarIdentifier;
-        assert parent.findInternalSlot(withVarIdentifier) != null;
-    }
-
-    public Object getWithVarIdentifier() {
-        return withVarIdentifier;
-    }
-
-    @Override
-    protected FrameSlot findBlockFrameSlot(Object name) {
-        return null;
-    }
-
-    @Override
-    public boolean isDynamicScopeContext() {
-        return true;
+    @Test
+    public void testCaptureStackTrace() {
+        try (Context ctx = JSTest.newContextBuilder().build()) {
+            ctx.eval(JavaScriptLanguage.ID, "" +
+                            "const error = new Error('message');\n" +
+                            "Error.captureStackTrace(error);\n" +
+                            "throw error;");
+        } catch (PolyglotException ex) {
+            assertFalse(ex.isInternalError());
+            assertTrue(ex.isGuestException());
+        }
     }
 }

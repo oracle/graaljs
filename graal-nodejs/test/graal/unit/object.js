@@ -175,7 +175,7 @@ describe('Object', function () {
                 var intArrayClass = Java.type('int[]');
                 var intArray = new intArrayClass(3);
                 var names = module.Object_GetOwnPropertyNames(intArray);
-                assert.deepEqual(names, [0, 1, 2]);
+                assert.deepEqual(names, [0, 1, 2, 'length', 'clone']);
             });
         }
     });
@@ -238,7 +238,7 @@ describe('Object', function () {
                 var intArrayClass = Java.type('int[]');
                 var intArray = new intArrayClass(3);
                 var names = module.Object_GetPropertyNames(intArray);
-                assert.deepEqual(names, [0, 1, 2]);
+                assert.deepEqual(names, [0, 1, 2, 'length', 'clone']);
             });
         }
     });

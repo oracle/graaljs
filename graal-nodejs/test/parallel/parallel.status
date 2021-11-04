@@ -166,7 +166,6 @@ test-gc-tls-external-memory: SKIP
 test-http-server-keepalive-req-gc: SKIP
 test-http2-response-splitting: SKIP
 test-net-connect-memleak: FAIL
-test-process-env-tz: FAIL
 test-repl: FAIL
 test-string-decoder: FAIL
 test-tls-connect-memleak: FAIL

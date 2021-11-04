@@ -44,6 +44,7 @@
       { "name": "create" },
       { "name": "dataViewNew" },
       { "name": "dateNew" },
+      { "name": "dateTimeConfigurationChangeNotification" },
       { "name": "dateValueOf" },
       { "name": "exceptionCreateMessage" },
       { "name": "exceptionError" },

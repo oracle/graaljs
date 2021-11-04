@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,7 +100,7 @@ public class UTS35Validator {
         for (int i = 0; i < type.length(); i++) {
             char c = type.charAt(i);
             if (!isAlphanum(c)) {
-                if (c == '-' || c == '_') { // c is sep
+                if (c == '-') { // c is sep
                     int alphanumLength = i - alphanumStart;
                     if (3 <= alphanumLength && alphanumLength <= 8) {
                         alphanumStart = i + 1;

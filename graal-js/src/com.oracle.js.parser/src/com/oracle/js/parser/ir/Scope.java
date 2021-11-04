@@ -82,8 +82,9 @@ public final class Scope {
     protected List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     protected List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
-    private int blockScopedOrRedeclaredSymbols;
     private boolean closed;
+    private boolean hasBlockScopedOrRedeclaredSymbols;
+    private boolean hasPrivateNames;
 
     private Scope(Scope parent, int type, int flags) {
         this.parent = parent;
@@ -202,13 +203,20 @@ public final class Scope {
             return existing;
         }
         if (symbol.isBlockScoped() || symbol.isVarRedeclaredHere()) {
-            blockScopedOrRedeclaredSymbols++;
+            hasBlockScopedOrRedeclaredSymbols = true;
+        }
+        if (symbol.isPrivateName()) {
+            hasPrivateNames = true;
         }
         return null;
     }
 
     public boolean hasBlockScopedOrRedeclaredSymbols() {
-        return blockScopedOrRedeclaredSymbols != 0;
+        return hasBlockScopedOrRedeclaredSymbols;
+    }
+
+    public boolean hasPrivateNames() {
+        return hasPrivateNames;
     }
 
     public boolean hasDeclarations() {

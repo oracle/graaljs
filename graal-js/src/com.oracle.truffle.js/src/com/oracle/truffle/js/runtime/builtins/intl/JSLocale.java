@@ -43,27 +43,19 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.Locale;
 
 import com.ibm.icu.util.ULocale;
-import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public final class JSLocale extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
@@ -97,17 +89,32 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         JSObjectUtil.putConstructorProperty(ctx, localePrototype, ctor);
         JSObjectUtil.putToStringTag(localePrototype, "Intl.Locale");
         JSObjectUtil.putFunctionsFromContainer(realm, localePrototype, LocalePrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.BASE_NAME, createBaseNameGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.CALENDAR, createCalendarGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.CASE_FIRST, createCaseFirstGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.COLLATION, createCollationGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.HOUR_CYCLE, createHourCycleGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.NUMERIC, createNumericGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.NUMBERING_SYSTEM, createNumberingSystemGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.LANGUAGE, createLanguageGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.SCRIPT, createScriptGetterFunction(realm), Undefined.instance);
-        JSObjectUtil.putBuiltinAccessorProperty(localePrototype, IntlUtil.REGION, createRegionGetterFunction(realm), Undefined.instance);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.BASE_NAME);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDAR);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CASE_FIRST);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATION);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLE);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMERIC);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEM);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.LANGUAGE);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.SCRIPT);
+        putLocalePropertyAccessor(realm, localePrototype, IntlUtil.REGION);
+
+        if (ctx.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.CALENDARS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.COLLATIONS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.HOUR_CYCLES);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.NUMBERING_SYSTEMS);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TIME_ZONES);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.TEXT_INFO);
+            putLocalePropertyAccessor(realm, localePrototype, IntlUtil.WEEK_INFO);
+        }
+
         return localePrototype;
+    }
+
+    private static void putLocalePropertyAccessor(JSRealm realm, DynamicObject prototype, String name) {
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(LocalePrototypeBuiltins.BUILTINS, name));
     }
 
     @Override
@@ -128,190 +135,6 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         return obj;
     }
 
-    static Object emptyStringToUndefined(String s) {
-        return s.isEmpty() ? Undefined.instance : s;
-    }
-
-    private static DynamicObject createBaseNameGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleBaseName, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSLocale.getInternalState((DynamicObject) obj).getBaseName();
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.BASE_NAME);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createCalendarGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleCalendar, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSRuntime.nullToUndefined(JSLocale.getInternalState((DynamicObject) obj).calendar);
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.CALENDAR);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createCaseFirstGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleCaseFirst, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSRuntime.nullToUndefined(JSLocale.getInternalState((DynamicObject) obj).caseFirst);
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.CASE_FIRST);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createCollationGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleCollation, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSRuntime.nullToUndefined(JSLocale.getInternalState((DynamicObject) obj).collation);
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.COLLATION);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createHourCycleGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleHourCycle, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSRuntime.nullToUndefined(JSLocale.getInternalState((DynamicObject) obj).hourCycle);
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.HOUR_CYCLE);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createNumericGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleNumeric, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSRuntime.nullToUndefined(JSLocale.getInternalState((DynamicObject) obj).numeric);
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.NUMERIC);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createNumberingSystemGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleNumberingSystem, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return JSRuntime.nullToUndefined(JSLocale.getInternalState((DynamicObject) obj).numberingSystem);
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.NUMBERING_SYSTEM);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createLanguageGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleLanguage, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return emptyStringToUndefined(JSLocale.getInternalState((DynamicObject) obj).getLanguage());
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.LANGUAGE);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createScriptGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleScript, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return emptyStringToUndefined(JSLocale.getInternalState((DynamicObject) obj).getScript());
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.SCRIPT);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
-    private static DynamicObject createRegionGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.LocaleRegion, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object obj = frame.getArguments()[0];
-                    if (JSLocale.isJSLocale(obj)) {
-                        return emptyStringToUndefined(JSLocale.getInternalState((DynamicObject) obj).getRegion());
-                    } else {
-                        throw Errors.createTypeErrorLocaleExpected();
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, "get " + IntlUtil.REGION);
-        });
-        return JSFunction.create(realm, getterData);
-    }
-
     public static class InternalState {
         private Locale locale;
         String calendar;
@@ -322,6 +145,11 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         String numberingSystem;
 
         @TruffleBoundary
+        public ULocale getULocale() {
+            return ULocale.forLocale(locale);
+        }
+
+        @TruffleBoundary
         public String getLocale() {
             return IntlUtil.maybeAppendMissingLanguageSubTag(locale.toLanguageTag());
         }
@@ -329,6 +157,30 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         @TruffleBoundary
         public String getBaseName() {
             return locale.stripExtensions().toLanguageTag();
+        }
+
+        public String getCalendar() {
+            return calendar;
+        }
+
+        public String getCaseFirst() {
+            return caseFirst;
+        }
+
+        public String getCollation() {
+            return collation;
+        }
+
+        public String getHourCycle() {
+            return hourCycle;
+        }
+
+        public boolean getNumeric() {
+            return numeric;
+        }
+
+        public String getNumberingSystem() {
+            return numberingSystem;
         }
 
         @TruffleBoundary

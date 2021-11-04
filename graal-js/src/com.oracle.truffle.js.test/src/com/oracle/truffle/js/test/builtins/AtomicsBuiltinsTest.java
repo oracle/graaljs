@@ -88,7 +88,7 @@ public class AtomicsBuiltinsTest {
         // Atomics.waitAsync() should not freeze when not awoken
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
         try (Context context = builder.build()) {
             String code = "const sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);\n" //
                             + "const i32a = new Int32Array(sab);\n" //
@@ -105,7 +105,7 @@ public class AtomicsBuiltinsTest {
     public void testWaitAsyncNotifyNonZeroOffsetViews() {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
         try (Context context = builder.build()) {
             String code = "const sab = new SharedArrayBuffer(32);\n" //
                             + "const arr1 = new Int32Array(sab, 4, 4);\n" //
@@ -122,7 +122,7 @@ public class AtomicsBuiltinsTest {
     public void testWaitAsyncSmallPositiveRealTimeout() {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
+        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING);
         try (Context context = builder.build()) {
             String code = "const sab = new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT * 4);\n" //
                             + "const i32a = new Int32Array(sab);\n" //
@@ -137,7 +137,6 @@ public class AtomicsBuiltinsTest {
     public void testToIntegerOrInfinity() {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
         try (Context context = builder.build()) {
             assertThrows(context, "Atomics.store(new Uint8Array(8), 0, 42n);");
             assertThrows(context, "Atomics.store(new Uint8Array(8), 0, Symbol());");
@@ -164,7 +163,6 @@ public class AtomicsBuiltinsTest {
     public void testCasOnBigValueNotShared() {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
         try (Context context = builder.build()) {
             assertBigValueWithArray(context, "Int8Array(8)");
             assertBigValueWithArray(context, "Uint8Array(8)");
@@ -179,7 +177,6 @@ public class AtomicsBuiltinsTest {
     public void testCasOnBigValueShared() {
         Context.Builder builder = JSTest.newContextBuilder();
         builder.option(JSContextOptions.TEST262_MODE_NAME, "true");
-        builder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, "2022");
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "const sab = SharedArrayBuffer;");
             assertBigValueWithArray(context, "Int8Array(new sab(32))");

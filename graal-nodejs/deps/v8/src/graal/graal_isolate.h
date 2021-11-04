@@ -186,6 +186,7 @@ enum GraalAccessMethod {
     external_new,
     integer_new,
     number_new,
+    date_time_configuration_change_notification,
     date_new,
     date_value_of,
     exception_error,
@@ -381,13 +382,13 @@ public:
     }
     inline bool IsFull() {
         return size_ == kCapacity;
-    }    
+    }
     inline T* Pop() {
         return pool_[--size_];
     }
     inline void Push(T* array_object) {
         pool_[size_++] = array_object;
-    }        
+    }
 private:
     T* pool_[kCapacity];
     int size_ = 0;

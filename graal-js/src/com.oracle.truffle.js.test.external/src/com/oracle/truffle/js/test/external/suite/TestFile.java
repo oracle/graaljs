@@ -237,7 +237,7 @@ public final class TestFile {
     public static final class EcmaVersion {
 
         public static final int MIN_VERSION = 5;
-        public static final int MAX_VERSION = JSConfig.MaxECMAScriptVersion;
+        public static final int MAX_VERSION = JSConfig.StagingECMAScriptVersion;
 
         private final int[] allVersions;
         private final int[] versions;

@@ -71,26 +71,31 @@ public final class JSContextOptions {
     @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
 
+    public static final String ECMASCRIPT_VERSION_LATEST = "latest";
+    public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "ECMAScript Version.") //
-    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.CurrentECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "" +
+                    "ECMAScript version (e.g. 5, 2015, 2022), '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), or '" + ECMASCRIPT_VERSION_STAGING + "' (latest + staged features).") //
+    public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
         @Override
         public Integer apply(String in) {
-            if ("latest".equals(in)) {
-                return JSConfig.CurrentECMAScriptVersion;
-            } else if ("staging".equals(in)) {
-                return JSConfig.MaxECMAScriptVersion;
+            if (ECMASCRIPT_VERSION_LATEST.equals(in)) {
+                return JSConfig.LatestECMAScriptVersion;
+            } else if (ECMASCRIPT_VERSION_STAGING.equals(in)) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             try {
+                final int minVersion = 5;
+                final int maxVersion = JSConfig.LatestECMAScriptVersion;
+                final int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
+                final int maxYearVersion = maxVersion + JSConfig.ECMAScriptVersionYearDelta;
                 int version = Integer.parseInt(in);
-                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptNumberYearDelta;
-                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptNumberYearDelta;
                 if (minYearVersion <= version && version <= maxYearVersion) {
-                    version -= JSConfig.ECMAScriptNumberYearDelta;
+                    version -= JSConfig.ECMAScriptVersionYearDelta;
                 }
-                if (version < 5 || version > JSConfig.MaxECMAScriptVersion) {
-                    throw new IllegalArgumentException("Supported values are 5 to " + JSConfig.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
+                if (version < minVersion || version > maxVersion) {
+                    throw new IllegalArgumentException("Supported values are " + minVersion + " to " + maxVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
                 }
                 return version;
             } catch (NumberFormatException e) {
@@ -655,7 +660,7 @@ public final class JSContextOptions {
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
-        this.errorCause = readBooleanOption(ERROR_CAUSE);
+        this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
         this.jsonModules = readBooleanOption(JSON_MODULES);
         this.wasmBigInt = readBooleanOption(WASM_BIG_INT);

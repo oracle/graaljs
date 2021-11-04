@@ -53,29 +53,23 @@ import java.util.Set;
 
 public class AccessRestArgumentsNode extends AccessIndexedArgumentNode {
     private final JSContext context;
-    private final int trailingArgCount;
 
-    AccessRestArgumentsNode(JSContext context, int paramIndex, int trailingArgCount) {
+    AccessRestArgumentsNode(JSContext context, int paramIndex) {
         super(paramIndex);
         this.context = context;
-        this.trailingArgCount = trailingArgCount;
     }
 
     public static AccessRestArgumentsNode create(JSContext context, int paramIndex) {
-        return new AccessRestArgumentsNode(context, paramIndex, 0);
-    }
-
-    public static AccessRestArgumentsNode create(JSContext context, int paramIndex, int trailingArgCount) {
-        return new AccessRestArgumentsNode(context, paramIndex, trailingArgCount);
+        return new AccessRestArgumentsNode(context, paramIndex);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] jsArguments = frame.getArguments();
-        int restLength = JSArguments.getUserArgumentCount(jsArguments) - index - trailingArgCount;
+        int restLength = JSArguments.getUserArgumentCount(jsArguments) - index;
         JSRealm realm = getRealm();
         if (profile(restLength > 0)) {
-            return JSArray.create(context, realm, ConstantObjectArray.createConstantObjectArray(), JSArguments.extractUserArguments(jsArguments, index, trailingArgCount), restLength);
+            return JSArray.create(context, realm, ConstantObjectArray.createConstantObjectArray(), JSArguments.extractUserArguments(jsArguments, index), restLength);
         } else {
             return JSArray.createEmptyZeroLength(context, realm);
         }
@@ -83,6 +77,6 @@ public class AccessRestArgumentsNode extends AccessIndexedArgumentNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AccessRestArgumentsNode(context, index, trailingArgCount);
+        return new AccessRestArgumentsNode(context, index);
     }
 }

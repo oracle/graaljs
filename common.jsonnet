@@ -2,20 +2,23 @@ local common_json = (import "common.json");
 
 {
   jdk8: {
+    jdk:: 'jdk8',
     downloads+: {
       JAVA_HOME: common_json.jdks.oraclejdk8,
     },
   },
 
   jdk11: {
+    jdk:: 'jdk11',
     downloads+: {
       JAVA_HOME: common_json.jdks["labsjdk-ce-11"],
     },
   },
 
   jdk17: {
+    jdk:: 'jdk17',
     downloads+: {
-      JAVA_HOME: common_json.jdks["oraclejdk17"],
+      JAVA_HOME: common_json.jdks["labsjdk-ce-17"],
     },
   },
 
@@ -50,6 +53,8 @@ local common_json = (import "common.json");
   },
 
   linux: common + {
+    os:: 'linux',
+    arch:: 'amd64',
     packages+: common_json.sulong.deps.linux.packages + {
       'apache/ab': '==2.3',
       devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
@@ -68,6 +73,8 @@ local common_json = (import "common.json");
   },
 
   linux_aarch64: common + {
+    os:: 'linux',
+    arch:: 'aarch64',
     capabilities+: ['linux', 'aarch64'],
     packages+: {
       devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
@@ -75,6 +82,8 @@ local common_json = (import "common.json");
   },
 
   darwin: common + {
+    os:: 'darwin',
+    arch:: 'amd64',
     packages+: common_json.sulong.deps.darwin.packages,
     environment+: {
       // for compatibility with macOS El Capitan
@@ -84,6 +93,8 @@ local common_json = (import "common.json");
   },
 
   windows: common + {
+    os:: 'windows',
+    arch:: 'amd64',
     capabilities: ['windows', 'amd64'],
   },
 

@@ -705,6 +705,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::external_new, "externalNew", "(Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::integer_new, "integerNew", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::number_new, "numberNew", "(D)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::date_time_configuration_change_notification, "dateTimeConfigurationChangeNotification", "(ILjava/lang/String;)V")
     ACCESS_METHOD(GraalAccessMethod::date_new, "dateNew", "(Ljava/lang/Object;D)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::date_value_of, "dateValueOf", "(Ljava/lang/Object;)D")
     ACCESS_METHOD(GraalAccessMethod::exception_error, "exceptionError", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")

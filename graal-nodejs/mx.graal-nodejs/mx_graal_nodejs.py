@@ -427,7 +427,6 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk().java_args):
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
-    _setEnvVar('JAVA_HOME', _java_home())
     # if mx.suite('compiler', fatalIfMissing=False) is None:
     #     _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
     _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
@@ -437,6 +436,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     _setEnvVar('NODE_JVM_CLASSPATH', node_cp)
+    _setEnvVar('JAVA_HOME', _java_home())  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))

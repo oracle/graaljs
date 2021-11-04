@@ -283,10 +283,6 @@ public final class JSLazyString implements CharSequence, TruffleObject, JSLazySt
         return toString().subSequence(start, end);
     }
 
-    public boolean isEmpty() {
-        return length == 0;
-    }
-
     private static class JSLazyIntWrapper implements CharSequence {
 
         private final int value;

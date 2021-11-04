@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,41 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.FrameSlot;
-import com.oracle.truffle.js.nodes.NodeFactory;
-import com.oracle.truffle.js.runtime.JSContext;
+var assert = require('assert');
 
-/**
- *
- * This environment stores "with" blocks. Actually, this is just a marker in the chain (tree) of
- * environments.
- */
-public final class WithEnvironment extends DerivedEnvironment {
+describe('Date', function () {
+    describe('toString()', function () {
+        it('should pick up changes of process.env.TZ', function () {
+            const date = new Date('2018-04-14T12:34:56.789Z');
+            const initialDateString = date.toString();
+            const initialTZ = process.env.TZ;
 
-    /**
-     * Name of the frame slot that contains the with object.
-     */
-    private final Object withVarIdentifier;
+            process.env.TZ = 'Europe/Amsterdam';
+            assert.strictEqual(
+                date.toString().replace('Central European Summer Time', 'CEST'),
+                'Sat Apr 14 2018 14:34:56 GMT+0200 (CEST)');
 
-    public WithEnvironment(Environment parent, NodeFactory factory, JSContext context, Object withVarIdentifier) {
-        super(parent, factory, context);
-        this.withVarIdentifier = withVarIdentifier;
-        assert parent.findInternalSlot(withVarIdentifier) != null;
-    }
+            process.env.TZ = 'Etc/UTC';
+            assert.strictEqual(
+                date.toString().replace('Coordinated Universal Time', 'UTC').replace('(GMT)', '(UTC)'),
+                'Sat Apr 14 2018 12:34:56 GMT+0000 (UTC)');
 
-    public Object getWithVarIdentifier() {
-        return withVarIdentifier;
-    }
+            process.env.TZ = 'Asia/Tokyo';
+            assert.strictEqual(
+                date.toString().replace('Japan Standard Time', 'JST'),
+                'Sat Apr 14 2018 21:34:56 GMT+0900 (JST)');
 
-    @Override
-    protected FrameSlot findBlockFrameSlot(Object name) {
-        return null;
-    }
-
-    @Override
-    public boolean isDynamicScopeContext() {
-        return true;
-    }
-}
+            if (initialTZ === undefined) {
+                delete process.env.TZ;
+            } else {
+                process.env.TZ = initialTZ;
+            }
+            assert.strictEqual(
+                date.toString(),
+                initialDateString);
+        });
+    });
+});
