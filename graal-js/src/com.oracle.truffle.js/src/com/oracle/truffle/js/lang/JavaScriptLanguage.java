@@ -184,7 +184,6 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected void finalizeContext(JSRealm realm) {
-        realm.closeInnerContexts();
     }
 
     @TruffleBoundary

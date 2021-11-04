@@ -495,8 +495,6 @@ public class JSRealm {
      */
     private final SimpleArrayList<Object> joinStack = new SimpleArrayList<>();
 
-    private List<TruffleContext> innerContextsToClose;
-
     /**
      * Cache of least recently compiled compiled regular expressions.
      */
@@ -2839,27 +2837,6 @@ public class JSRealm {
     private void enterOncePerContextBranch() {
         if (CompilerDirectives.isPartialEvaluationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
-    }
-
-    public synchronized void addInnerContext(TruffleContext nestedContext) {
-        if (innerContextsToClose == null) {
-            innerContextsToClose = new ArrayList<>();
-        }
-        innerContextsToClose.add(nestedContext);
-    }
-
-    public void closeInnerContexts() {
-        List<TruffleContext> contextsToClose = null;
-        synchronized (this) {
-            if (innerContextsToClose != null) {
-                contextsToClose = new ArrayList<>(innerContextsToClose);
-            }
-        }
-        if (contextsToClose != null) {
-            for (TruffleContext innerContext : contextsToClose) {
-                innerContext.close();
-            }
         }
     }
 
