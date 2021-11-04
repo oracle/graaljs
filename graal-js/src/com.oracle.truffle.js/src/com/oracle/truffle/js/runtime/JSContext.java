@@ -1247,9 +1247,7 @@ public class JSContext {
     }
 
     public int getEcmaScriptVersion() {
-        int version = contextOptions.getEcmaScriptVersion();
-        assert version >= JSConfig.ECMAScript5 && version <= JSConfig.MaxECMAScriptVersion;
-        return version;
+        return contextOptions.getEcmaScriptVersion();
     }
 
     public int getPropertyCacheLimit() {

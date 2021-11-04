@@ -96,7 +96,7 @@ public class TestNashornCallable extends TestCallable {
         contextBuilder.allowExperimentalOptions(true);
 
         contextBuilder.option("engine.WarnInterpreterOnly", Boolean.toString(false));
-        contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion));
+        contextBuilder.option(JSContextOptions.ECMASCRIPT_VERSION_NAME, ecmaScriptVersionToOptionString(ecmaScriptVersion));
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(forceStrictMode));
         contextBuilder.option(JSContextOptions.SCRIPTING_NAME, Boolean.toString(scripting));
         contextBuilder.option(JSContextOptions.SYNTAX_EXTENSIONS_NAME, Boolean.toString(syntaxExtensions));

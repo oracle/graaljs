@@ -86,14 +86,16 @@ public final class JSContextOptions {
                 return JSConfig.StagingECMAScriptVersion;
             }
             try {
+                final int minVersion = 5;
+                final int maxVersion = JSConfig.LatestECMAScriptVersion;
+                final int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
+                final int maxYearVersion = maxVersion + JSConfig.ECMAScriptVersionYearDelta;
                 int version = Integer.parseInt(in);
-                int minYearVersion = JSConfig.ECMAScript6 + JSConfig.ECMAScriptVersionYearDelta;
-                int maxYearVersion = JSConfig.MaxECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta;
                 if (minYearVersion <= version && version <= maxYearVersion) {
                     version -= JSConfig.ECMAScriptVersionYearDelta;
                 }
-                if (version < 5 || version > JSConfig.MaxECMAScriptVersion) {
-                    throw new IllegalArgumentException("Supported values are 5 to " + JSConfig.MaxECMAScriptVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
+                if (version < minVersion || version > maxVersion) {
+                    throw new IllegalArgumentException("Supported values are " + minVersion + " to " + maxVersion + " or " + minYearVersion + " to " + maxYearVersion + ".");
                 }
                 return version;
             } catch (NumberFormatException e) {
