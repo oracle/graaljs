@@ -73,7 +73,9 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
         }
     }
 
-    private static volatile TestLanguage delegate = new TestLanguage(false);
+    private static final TestLanguage DEFAULT_DELEGATE = new TestLanguage(false);
+    private static volatile TestLanguage delegate = DEFAULT_DELEGATE;
+
     private static final ContextReference<LanguageContext> CONTEXT_REF = ContextReference.create(TestLanguage.class);
     private static final LanguageReference<TestLanguage> LANGUAGE_REF = LanguageReference.create(TestLanguage.class);
 
@@ -91,7 +93,7 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     private static <T extends TestLanguage> T setDelegate(T delegate) {
-        TestLanguage.delegate = delegate;
+        TestLanguage.delegate = delegate != null ? delegate : DEFAULT_DELEGATE;
         return delegate;
     }
 
@@ -100,8 +102,9 @@ public class TestLanguage extends TruffleLanguage<LanguageContext> {
     }
 
     public static AutoCloseable withTestLanguage(TestLanguage testLanguage) {
+        TestLanguage previous = delegate;
         setDelegate(testLanguage);
-        return () -> setDelegate(null);
+        return () -> setDelegate(previous);
     }
 
     public static LanguageContext getCurrentContext() {
