@@ -100,7 +100,10 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -657,25 +660,39 @@ public final class TemporalUtil {
     }
 
     // 13.36
-    public static double roundHalfAwayFromZero(double x) {
-        return Math.round(x);
+    public static BigDecimal roundHalfAwayFromZero(BigDecimal x) {
+        if (x.compareTo(BigDecimal.ZERO) < 0) {
+            MathContext roundHalfDown = new MathContext(0, RoundingMode.HALF_DOWN);
+            return x.round(roundHalfDown);
+        } else {
+            MathContext roundHalfUp = new MathContext(0, RoundingMode.HALF_UP);
+            return x.round(roundHalfUp);
+        }
     }
 
     // 13.37
-    public static double roundNumberToIncrement(double x, double increment, String roundingMode) {
+    public static long roundNumberToIncrement(double x, double increment, String roundingMode) {
+        return roundNumberToIncrement(BigDecimal.valueOf(x), BigDecimal.valueOf(increment), roundingMode);
+    }
+
+    public static long roundNumberToIncrement(BigDecimal x, BigDecimal increment, String roundingMode) {
         assert roundingMode.equals(CEIL) || roundingMode.equals(FLOOR) || roundingMode.equals(TRUNC) || roundingMode.equals(HALF_EXPAND);
-        double quotient = x / increment;
-        double rounded;
+
+        BigDecimal bdQuot = x.divide(increment);
+
+        BigDecimal rounded;
         if (roundingMode.equals(CEIL)) {
-            rounded = -Math.floor(-quotient);
+            MathContext roundCeil = new MathContext(0, RoundingMode.CEILING);
+            rounded = bdQuot.round(roundCeil);
         } else if (roundingMode.equals(FLOOR)) {
-            rounded = Math.floor(quotient);
+            MathContext roundCeil = new MathContext(0, RoundingMode.FLOOR);
+            rounded = bdQuot.round(roundCeil);
         } else if (roundingMode.equals(TRUNC)) {
-            rounded = (long) quotient;
+            rounded = BigDecimal.valueOf(bdQuot.longValue());
         } else {
-            rounded = roundHalfAwayFromZero(quotient);
+            rounded = roundHalfAwayFromZero(bdQuot);
         }
-        return rounded * increment;
+        return rounded.multiply(increment).longValue();
     }
 
     // 13.43
@@ -1268,25 +1285,26 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static double roundTemporalInstant(BigInt ns, double increment, String unit, String roundingMode) {
-        return roundTemporalInstant(ns.longValue(), increment, unit, roundingMode);
+    public static long roundTemporalInstant(BigInt ns, long increment, String unit, String roundingMode) {
+        return roundTemporalInstant(new BigDecimal(ns.bigIntegerValue()), increment, unit, roundingMode);
     }
 
-    public static double roundTemporalInstant(long ns, double increment, String unit, String roundingMode) {
-        double incrementNs = 0;
+    @TruffleBoundary
+    public static long roundTemporalInstant(BigDecimal ns, long increment, String unit, String roundingMode) {
+        BigDecimal incrementNs = BigDecimal.valueOf(increment);
         if (HOUR.equals(unit)) {
-            incrementNs = increment * 3_600_000_000_000L;
+            incrementNs = incrementNs.multiply(BigDecimal.valueOf(3_600_000_000_000L));
         } else if (MINUTE.equals(unit)) {
-            incrementNs = increment * 60_000_000_000L;
+            incrementNs = incrementNs.multiply(BigDecimal.valueOf(60_000_000_000L));
         } else if (SECOND.equals(unit)) {
-            incrementNs = increment * 1_000_000_000L;
+            incrementNs = incrementNs.multiply(BigDecimal.valueOf(1_000_000_000L));
         } else if (MILLISECOND.equals(unit)) {
-            incrementNs = increment * 1_000_000L;
+            incrementNs = incrementNs.multiply(BigDecimal.valueOf(1_000_000L));
         } else if (MICROSECOND.equals(unit)) {
-            incrementNs = increment * 1_000L;
+            incrementNs = incrementNs.multiply(BigDecimal.valueOf(1_000L));
         } else {
             assert NANOSECOND.equals(unit);
-            incrementNs = increment;
+
         }
         return roundNumberToIncrement(ns, incrementNs, roundingMode);
     }
@@ -2652,7 +2670,7 @@ public final class TemporalUtil {
 
             long oneYearDays = moveResult.getDays();
             double fractionalYears = years + ((double) days / Math.abs(oneYearDays));
-            years = (long) TemporalUtil.roundNumberToIncrement(fractionalYears, increment, roundingMode);
+            years = TemporalUtil.roundNumberToIncrement(fractionalYears, increment, roundingMode);
             remainder = fractionalYears - years;
             months = 0;
             weeks = 0;
@@ -2684,7 +2702,7 @@ public final class TemporalUtil {
                 oneMonthDays = moveResult.getDays();
             }
             double fractionalMonths = months + ((double) days / Math.abs(oneMonthDays));
-            months = (long) TemporalUtil.roundNumberToIncrement(fractionalMonths, increment, roundingMode);
+            months = TemporalUtil.roundNumberToIncrement(fractionalMonths, increment, roundingMode);
             remainder = fractionalMonths - months;
             weeks = 0;
             days = 0;
@@ -2705,16 +2723,16 @@ public final class TemporalUtil {
                 oneWeekDays = moveResult.getDays();
             }
             double fractionalWeeks = weeks + ((double) days / Math.abs(oneWeekDays));
-            weeks = (long) TemporalUtil.roundNumberToIncrement(fractionalWeeks, increment, roundingMode);
+            weeks = TemporalUtil.roundNumberToIncrement(fractionalWeeks, increment, roundingMode);
             remainder = fractionalWeeks - weeks;
             days = 0;
         } else if (unit.equals(DAY)) {
             double fractionalDays = days;
-            days = (long) TemporalUtil.roundNumberToIncrement(fractionalDays, increment, roundingMode);
+            days = TemporalUtil.roundNumberToIncrement(fractionalDays, increment, roundingMode);
             remainder = fractionalDays - days;
         } else if (unit.equals(HOUR)) {
             double fractionalHours = (((fractionalSeconds / 60) + minutes) / 60) + hours;
-            hours = (long) TemporalUtil.roundNumberToIncrement(fractionalHours, increment, roundingMode);
+            hours = TemporalUtil.roundNumberToIncrement(fractionalHours, increment, roundingMode);
             remainder = fractionalHours - hours;
             minutes = 0;
             seconds = 0;
@@ -2723,33 +2741,33 @@ public final class TemporalUtil {
             nanoseconds = 0;
         } else if (unit.equals(MINUTE)) {
             double fractionalMinutes = (fractionalSeconds / 60) + minutes;
-            minutes = (long) TemporalUtil.roundNumberToIncrement(fractionalMinutes, increment, roundingMode);
+            minutes = TemporalUtil.roundNumberToIncrement(fractionalMinutes, increment, roundingMode);
             remainder = fractionalMinutes - minutes;
             seconds = 0;
             milliseconds = 0;
             microseconds = 0;
             nanoseconds = 0;
         } else if (unit.equals(SECOND)) {
-            seconds = (long) TemporalUtil.roundNumberToIncrement(fractionalSeconds, increment, roundingMode);
+            seconds = TemporalUtil.roundNumberToIncrement(fractionalSeconds, increment, roundingMode);
             remainder = fractionalSeconds - seconds;
             milliseconds = 0;
             microseconds = 0;
             nanoseconds = 0;
         } else if (unit.equals(MILLISECOND)) {
             double fractionalMilliseconds = (nanoseconds * 0.000_000_1) + (microseconds * 0.000_1) + milliseconds;
-            milliseconds = (long) TemporalUtil.roundNumberToIncrement(fractionalMilliseconds, increment, roundingMode);
+            milliseconds = TemporalUtil.roundNumberToIncrement(fractionalMilliseconds, increment, roundingMode);
             remainder = fractionalMilliseconds - milliseconds;
             microseconds = 0;
             nanoseconds = 0;
         } else if (unit.equals(MICROSECOND)) {
             double fractionalMicroseconds = (nanoseconds * 0.000_1) + microseconds;
-            microseconds = (long) TemporalUtil.roundNumberToIncrement(fractionalMicroseconds, increment, roundingMode);
+            microseconds = TemporalUtil.roundNumberToIncrement(fractionalMicroseconds, increment, roundingMode);
             remainder = fractionalMicroseconds - microseconds;
             nanoseconds = 0;
         } else {
             assert unit.equals(NANOSECOND);
             remainder = nanoseconds;
-            nanoseconds = (long) TemporalUtil.roundNumberToIncrement(nanoseconds, increment, roundingMode);
+            nanoseconds = TemporalUtil.roundNumberToIncrement(nanoseconds, increment, roundingMode);
             remainder = remainder - nanoseconds;
         }
 
@@ -2823,7 +2841,7 @@ public final class TemporalUtil {
         if ((timeRemainderNs - dayLengthNs) * direction < 0) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
-        timeRemainderNs = (long) TemporalUtil.roundTemporalInstant(timeRemainderNs - dayLengthNs, increment, unit, roundingMode);
+        timeRemainderNs = TemporalUtil.roundTemporalInstant(BigDecimal.valueOf(dayLengthNs - dayLengthNs), increment, unit, roundingMode);
         JSTemporalDurationRecord add = addDuration(ctx, namesNode, years, months, weeks, days, 0, 0, 0, 0,
                         0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0, relativeToParam);
         JSTemporalDurationRecord atd = balanceDuration(ctx, namesNode, 0, 0, 0, 0, 0, 0, timeRemainderNs, HOUR, Undefined.instance);
@@ -2922,7 +2940,7 @@ public final class TemporalUtil {
             assert unit.equals(NANOSECOND);
             quantity = nanoseconds;
         }
-        long result = (long) TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
+        long result = TemporalUtil.roundNumberToIncrement(quantity, increment, roundingMode);
         if (unit.equals(DAY)) {
             return JSTemporalDurationRecord.create(0, 0, result, 0, 0, 0, 0, 0, 0);
         }
@@ -3278,7 +3296,7 @@ public final class TemporalUtil {
             incrementNs = roundingIncrement;
         }
         BigInt diff = ns2.subtract(ns1);
-        return (long) roundNumberToIncrement(diff.doubleValue(), incrementNs, roundingMode);
+        return roundNumberToIncrement(new BigDecimal(diff.bigIntegerValue()), BigDecimal.valueOf(incrementNs), roundingMode);
     }
 
     @TruffleBoundary
@@ -3545,9 +3563,9 @@ public final class TemporalUtil {
         String unit = isNullish(unitParam) ? NANOSECOND : unitParam;
         String roundingMode = isNullish(roundingModeParam) ? TRUNC : roundingModeParam;
 
-        double ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), increment, unit, roundingMode);
+        long ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
         DynamicObject timeZone = zonedDateTime.getTimeZone();
-        JSTemporalInstantObject instant = createTemporalInstant(ctx, (long) ns);
+        JSTemporalInstantObject instant = createTemporalInstant(ctx, ns);
         JSTemporalCalendarObject isoCalendar = (JSTemporalCalendarObject) getISO8601Calendar(realm);
         JSTemporalPlainDateTimeObject temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, timeZone, instant, isoCalendar);
         String dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
