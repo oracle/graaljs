@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.Set;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -79,10 +79,10 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         return TemporalGetOptionNodeGen.create();
     }
 
-    public abstract Object execute(DynamicObject options, String property, OptionTypeEnum type, Set<?> values, Object fallback);
+    public abstract Object execute(DynamicObject options, String property, OptionTypeEnum type, List<?> values, Object fallback);
 
     @Specialization
-    protected Object getOption(DynamicObject options, String property, OptionTypeEnum type, Set<?> values, Object fallback) {
+    protected Object getOption(DynamicObject options, String property, OptionTypeEnum type, List<?> values, Object fallback) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
         if (isFallbackProfile.profile(value == Undefined.instance)) {
@@ -94,7 +94,7 @@ public abstract class TemporalGetOptionNode extends JavaScriptBaseNode {
         } else if (type == OptionTypeEnum.STRING) {
             value = toStringNode(value);
         }
-        if (value != Undefined.instance && !Boundaries.setContains(values, value)) {
+        if (value != Undefined.instance && !Boundaries.listContainsUnchecked(values, value)) {
             errorBranch.enter();
             throw TemporalErrors.createRangeErrorOptionsNotContained(values, value);
         }

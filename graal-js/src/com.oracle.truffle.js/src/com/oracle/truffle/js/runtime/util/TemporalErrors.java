@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.util;
 
-import java.util.Set;
+import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.Errors;
@@ -84,7 +84,7 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorOptionsNotContained(Set<?> values, Object value) {
+    public static JSException createRangeErrorOptionsNotContained(List<?> values, Object value) {
         return Errors.createRangeError(String.format("Given options value: %s is not contained in values: %s", value, values));
     }
 

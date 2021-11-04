@@ -50,7 +50,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.PLAIN_DATE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 
-import java.util.Collections;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -246,7 +245,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToStringNode toString) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -276,7 +275,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create()") JSToStringNode toString) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike,
-                            Collections.emptySet(), isObjectNode, toString);
+                            TemporalUtil.listEmpty, isObjectNode, toString);
             TemporalUtil.rejectDurationSign(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(),
@@ -388,8 +387,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.setYMWD, NANOSECOND);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.setYMWD, AUTO, HOUR);
+            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
+            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
@@ -425,8 +424,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             TemporalTime temporalTime = requireTemporalTime(thisObj);
             JSTemporalPlainTimeObject other = (JSTemporalPlainTimeObject) toTemporalTime.executeDynamicObject(otherObj, null);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.setYMWD, NANOSECOND);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.setYMWD, AUTO, HOUR);
+            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
+            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC);
             Double max = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
@@ -466,7 +465,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeError("Options should not be null.");
             }
             DynamicObject normalizedOptions = getOptionsObject(options);
-            String smallestUnit = toSmallestTemporalUnit(normalizedOptions, TemporalUtil.setYMWD, null);
+            String smallestUnit = toSmallestTemporalUnit(normalizedOptions, TemporalUtil.listYMWD, null);
             if (TemporalUtil.isNullish(smallestUnit)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();

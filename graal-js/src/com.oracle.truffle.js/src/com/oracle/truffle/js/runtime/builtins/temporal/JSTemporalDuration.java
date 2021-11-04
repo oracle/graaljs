@@ -76,6 +76,7 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -179,14 +180,15 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long month = 0;
         long day = 0;
         long week = 0;
-        double second = 0;
-        double hour = 0;
-        double minute = 0;
-        double millisecond = 0;
-        double microsecond = 0;
-        double nanosecond = 0;
-        double fHour = 0;
-        double fMinute = 0;
+        long hours = 0;
+        long minutes = 0;
+        long seconds = 0;
+        long milliseconds = 0;
+        long microseconds = 0;
+        long nanoseconds = 0;
+        String fHours = null;
+        String fMinutes = null;
+        String fSeconds = null;
 
         // P1Y1M1W1DT1H1M1.123456789S
         Pattern regex = Pattern.compile("^([\\+-]?)[Pp](\\d+[Yy])?(\\d+[Mm])?(\\d+[Ww])?(\\d+[Dd])?([Tt]([\\d.]+[Hh])?([\\d.]+[Mm])?([\\d.]+[Ss])?)?$");
@@ -201,9 +203,18 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
 
             String timeGroup = matcher.group(6);
             if (timeGroup != null && timeGroup.length() > 0) {
-                hour = parseDurationIntlDouble(matcher, 7);
-                minute = parseDurationIntlDouble(matcher, 8);
-                second = parseDurationIntlDouble(matcher, 9);
+                Pair<Long, String> hoursPair = parseDurationIntlWithFraction(matcher, 7);
+                Pair<Long, String> minutesPair = parseDurationIntlWithFraction(matcher, 8);
+                Pair<Long, String> secondsPair = parseDurationIntlWithFraction(matcher, 9);
+
+                hours = hoursPair.getFirst();
+                fHours = hoursPair.getSecond();
+
+                minutes = minutesPair.getFirst();
+                fMinutes = minutesPair.getSecond();
+
+                seconds = secondsPair.getFirst();
+                fSeconds = secondsPair.getSecond();
             }
 
             int factor = (sign.equals("-") || sign.equals("\u2212")) ? -1 : 1;
@@ -212,39 +223,35 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             month = month * factor;
             week = week * factor;
             day = day * factor;
-            hour = hour * factor;
-            minute = minute * factor;
-            second = second * factor;
-            if (hasFraction(second)) {
-                double fpart = fractionPart(second) * 1000;
-                millisecond = factor * (fpart % 1000.0);
-                fpart *= 1000;
-                microsecond = factor * (fpart % 1000.0);
-                fpart *= 1000;
-                nanosecond = factor * (fpart % 1000.0);
+            hours = hours * factor;
+            minutes = minutes * factor;
+            seconds = seconds * factor;
+            if (!TemporalUtil.isNullish(fSeconds)) {
+                String secExt = fSeconds + "000000000";
+                milliseconds = Long.parseLong(secExt.substring(0, 3)) * factor;
+                microseconds = Long.parseLong(secExt.substring(3, 6)) * factor;
+                nanoseconds = Long.parseLong(secExt.substring(6, 9)) * factor;
             } else {
-                millisecond = 0;
-                microsecond = 0;
-                nanosecond = 0;
+                milliseconds = 0;
+                microseconds = 0;
+                nanoseconds = 0;
             }
-            if (hasFraction(hour)) {
-                double fpart = fractionPart(hour);
-                fHour = factor * fpart;
-                // b. Set fHours to ! ToIntegerOrInfinity(fraction) * factor / 10 raised to the
-                // power of the length of fHours.
+            double fHoursDouble = 0;
+            if (!TemporalUtil.isNullish(fHours)) {
+                long hoursScale = fHours.length();
+                fHoursDouble = Long.parseLong(fHours) * factor / Math.pow(10, hoursScale);
             } else {
-                fHour = 0;
+                fHoursDouble = 0;
             }
-            if (hasFraction(minute)) {
-                double fpart = fractionPart(minute);
-                fMinute = factor * fpart;
-                // b. Set fMinutes to ! ToIntegerOrInfinity(fraction) * factor / 10 raised to the
-                // power of the length of fMinutes.
+            double fMinutesDouble = 0;
+            if (!TemporalUtil.isNullish(fMinutes)) {
+                long minutesScale = fMinutes.length();
+                fMinutesDouble = Long.parseLong(fMinutes) * factor / Math.pow(10, minutesScale);
             } else {
-                fMinute = 0;
+                fMinutesDouble = 0;
             }
-            JSTemporalDateTimeRecord result = TemporalUtil.durationHandleFractions(fHour, minute, fMinute, second, 0, millisecond, 0, microsecond, 0, nanosecond, 0);
-            return JSTemporalDurationRecord.createWeeks(year, month, week, day, (long) hour,
+            JSTemporalDateTimeRecord result = TemporalUtil.durationHandleFractions(fHoursDouble, minutes, fMinutesDouble, seconds, 0, milliseconds, 0, microseconds, 0, nanoseconds, 0);
+            return JSTemporalDurationRecord.createWeeks(year, month, week, day, hours,
                             result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
         }
         throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
@@ -263,21 +270,21 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return 0L;
     }
 
-    private static double parseDurationIntlDouble(Matcher matcher, int i) {
+    private static Pair<Long, String> parseDurationIntlWithFraction(Matcher matcher, int i) {
         String val = matcher.group(i);
         if (val != null) {
             String numstr = val.substring(0, val.length() - 1);
-            return Double.parseDouble(numstr);
+
+            if (numstr.contains(".")) {
+                int idx = numstr.indexOf(".");
+                long wholePart = Long.parseLong(numstr.substring(0, idx));
+                String fractionalPart = numstr.substring(idx + 1);
+                return new Pair<>(wholePart, fractionalPart);
+            } else {
+                return new Pair<>(Long.parseLong(numstr), null);
+            }
         }
-        return 0.0;
-    }
-
-    private static double fractionPart(double second) {
-        return second - ((int) second);
-    }
-
-    private static boolean hasFraction(double val) {
-        return !JSRuntime.doubleIsRepresentableAsInt(val);
+        return new Pair<>(0l, null);
     }
 
     // 7.5.2
@@ -376,11 +383,11 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long nanoseconds = nanosecondsP;
 
         int sign = TemporalUtil.durationSign(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        microseconds += nanoseconds / 1000;
+        microseconds += TemporalUtil.integralPartOf(nanoseconds / 1000d);
         nanoseconds = TemporalUtil.remainder(nanoseconds, 1000);
-        milliseconds += microseconds / 1000;
+        milliseconds += TemporalUtil.integralPartOf(microseconds / 1000d);
         microseconds = TemporalUtil.remainder(microseconds, 1000);
-        seconds += milliseconds / 1000;
+        seconds += TemporalUtil.integralPartOf(milliseconds / 1000d);
         milliseconds = TemporalUtil.remainder(milliseconds, 1000);
         if (years == 0 && months == 0 && weeks == 0 && days == 0 && hours == 0 && minutes == 0 && seconds == 0 && milliseconds == 0 && microseconds == 0 && nanoseconds == 0) {
             return "PT0S";
@@ -429,9 +436,12 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             }
             String decimalPart = millisecondPart + microsecondPart + nanosecondPart;
             if (AUTO.equals(precision)) {
-                int last = decimalPart.lastIndexOf("0");
-                if (last >= 0) {
-                    decimalPart = decimalPart.substring(0, last);
+                int pos = decimalPart.length() - 1;
+                while (decimalPart.charAt(pos) == '0' && pos >= 0) {
+                    pos--;
+                }
+                if (pos != (decimalPart.length() - 1)) {
+                    decimalPart = decimalPart.substring(0, pos + 1);
                 }
             } else if (((Number) precision).doubleValue() == 0.0) {
                 decimalPart = "";

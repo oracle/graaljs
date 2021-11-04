@@ -202,6 +202,7 @@ import com.oracle.truffle.js.runtime.util.LRUCache;
 import com.oracle.truffle.js.runtime.util.PrintWriterWrapper;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -1888,6 +1889,7 @@ public class JSRealm {
     private void addTemporalGlobals() {
         assert context.isOptionTemporal();
         DynamicObject temporalObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
+        JSObjectUtil.putToStringTag(temporalObject, TemporalConstants.TEMPORAL);
 
         int flags = JSAttributes.configurableNotEnumerableWritable();
         JSObjectUtil.putDataProperty(context, temporalObject, "PlainTime", getTemporalPlainTimeConstructor(), flags);
@@ -1906,7 +1908,7 @@ public class JSRealm {
         JSObjectUtil.putDataProperty(context, temporalObject, "Now", nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
 
-        putGlobalProperty("Temporal", temporalObject);
+        putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
     }
 
     private DynamicObject createIntlObject() {

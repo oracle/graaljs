@@ -356,6 +356,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
+    public static boolean listContainsUnchecked(List<?> list, Object element) {
+        return list.contains(element);
+    }
+
+    @TruffleBoundary
     public static <T> Object[] listToArray(List<T> list) {
         return list.toArray();
     }

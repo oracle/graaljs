@@ -42,6 +42,8 @@ package com.oracle.truffle.js.runtime.util;
 
 public final class TemporalConstants {
 
+    public static final String TEMPORAL = "Temporal";
+
     public static final String YEAR = "year";
     public static final String MONTH = "month";
     public static final String MONTH_CODE = "monthCode";
@@ -121,7 +123,7 @@ public final class TemporalConstants {
 
     public static final String PRECISION = "Precision";
     public static final String INCREMENT = "Increment";
-    public static final String UNIT = "Unit";
+    public static final String UNIT = "unit";
     public static final String SMALLEST_UNIT = "smallestUnit";
     public static final String STRING = "string";
     public static final String BOOLEAN = "boolean";

@@ -265,7 +265,7 @@ public final class TemporalParser {
 
     private static long prepare(String value, long max) {
         if (value == null) {
-            return -1;
+            return Long.MIN_VALUE;
         }
         long l = Long.parseLong(value);
         if (l < 0 || l > max) {
@@ -418,10 +418,20 @@ public final class TemporalParser {
             offsetSecond = matcher.group(6);
             offsetFraction = matcher.group(8);
 
+            if (offsetHour == null) {
+                return false;
+            }
+
             move(matcher.end(3));
 
-            parseTimeZoneBracket(); // optional
-            return true;
+            if (parseTimeZoneBracket()) {
+                // there might still be a calendar
+                return true;
+            }
+
+            if ((rest == null || rest.length() == 0)) {
+                return true;
+            }
         }
 
         if (rest.startsWith("Z") || rest.startsWith("z")) {

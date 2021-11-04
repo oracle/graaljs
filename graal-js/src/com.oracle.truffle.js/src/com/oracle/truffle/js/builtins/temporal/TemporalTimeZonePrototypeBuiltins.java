@@ -160,12 +160,12 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization(guards = "isJSTemporalTimeZone(thisObj)")
-        protected String timeZoneGetter(Object thisObj) {
+        protected String timeZoneGetter(Object thisObj,
+                        @Cached JSToStringNode toStringNode) {
             JSTemporalTimeZoneObject timeZone = (JSTemporalTimeZoneObject) thisObj;
             switch (property) {
                 case id:
-                    return timeZone.getIdentifier();
-
+                    return toStringNode.executeString(timeZone);
             }
             CompilerDirectives.transferToInterpreter();
             throw Errors.shouldNotReachHere();

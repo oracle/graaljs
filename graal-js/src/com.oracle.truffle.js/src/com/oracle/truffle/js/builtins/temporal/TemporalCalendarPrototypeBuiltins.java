@@ -41,17 +41,17 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -453,7 +453,8 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         public Object dateAdd(Object thisObj, Object dateObj, Object durationObj, Object optionsParam,
-                        @Cached("create()") JSToStringNode toString) {
+                        @Cached("create()") JSToStringNode toString,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             JSTemporalCalendarObject calendar = requireTemporalCalendar(thisObj);
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) toTemporalDate(dateObj, Undefined.instance);
@@ -461,8 +462,11 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             durationObj, getContext(), isObjectNode, toString);
             DynamicObject options = getOptionsObject(optionsParam);
             TemporalOverflowEnum overflow = toTemporalOverflow(options);
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                            duration.getMilliseconds(),
+                            duration.getMicroseconds(), duration.getNanoseconds(), DAY);
             JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), overflow);
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), overflow);
             return JSTemporalPlainDate.create(getContext(), result.getYear(), result.getMonth(), result.getDay(), calendar);
         }
     }
@@ -481,7 +485,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject one = (JSTemporalPlainDateObject) toTemporalDate(oneObj, Undefined.instance);
             JSTemporalPlainDateObject two = (JSTemporalPlainDateObject) toTemporalDate(twoObj, Undefined.instance);
             DynamicObject options = getOptionsObject(optionsParam);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.setTime, AUTO, DAY);
+            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listTime, AUTO, DAY);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                             largestUnit);

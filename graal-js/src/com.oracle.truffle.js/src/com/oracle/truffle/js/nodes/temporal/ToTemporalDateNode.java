@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.Set;
+import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -103,8 +103,8 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                 return TemporalUtil.createTemporalDate(ctx, dt.getYear(), dt.getMonth(), dt.getDay(), dt.getCalendar());
             }
             DynamicObject calendar = getTemporalCalendarNode.executeDynamicObject(item);
-            Set<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.setDMMCY);
-            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.setEmpty);
+            List<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, TemporalUtil.listDMMCY);
+            DynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
             return TemporalUtil.dateFromFields(calendar, fields, options);
         }
         JSRealm realm = JSRealm.get(this);

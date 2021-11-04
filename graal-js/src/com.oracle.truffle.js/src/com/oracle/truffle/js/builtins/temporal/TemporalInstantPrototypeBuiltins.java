@@ -223,7 +223,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public DynamicObject add(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.setPluralYMWD, isObjectNode, toString);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
             return TemporalUtil.createTemporalInstant(getContext(), ns);
@@ -240,7 +240,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public DynamicObject subtract(Object thisObj, Object temporalDurationLike,
                         @Cached("create()") JSToStringNode toString) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
-            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.setPluralYMWD, isObjectNode, toString);
+            JSTemporalDurationRecord duration = TemporalUtil.toLimitedTemporalDuration(temporalDurationLike, TemporalUtil.listPluralYMWD, isObjectNode, toString);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
                             -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
             return TemporalUtil.createTemporalInstant(getContext(), ns);
@@ -263,9 +263,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             JSTemporalInstantObject other = (JSTemporalInstantObject) TemporalUtil.toTemporalInstant(getContext(), otherObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.setYMWD, NANOSECOND);
+            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND);
             String defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(SECOND, smallestUnit);
-            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.setYMWD, AUTO, defaultLargestUnit);
+            String largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             String roundingMode = toTemporalRoundingMode(options, TRUNC);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
@@ -292,7 +292,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create()") JSToNumberNode toNumber) {
             JSTemporalInstantObject instant = requireTemporalInstant(thisObj);
             DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.setYMWD, null);
+            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, null);
             if (smallestUnit == null) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();

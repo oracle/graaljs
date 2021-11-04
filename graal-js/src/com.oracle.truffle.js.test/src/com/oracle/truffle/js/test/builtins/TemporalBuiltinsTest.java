@@ -49,6 +49,7 @@ import static org.junit.Assert.assertTrue;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -774,25 +775,45 @@ public class TemporalBuiltinsTest extends JSTest {
 
     @Test
     public void testTimeZoneParsing() {
-        testTimeZoneFail("2021-08-19T17:30");
+        testTimeZoneFailFrom("2021-08-19T17:30");
 
-        testTimeZone("2021-08-19T17:30Z", "UTC");
-        testTimeZone("2021-08-19T17:30-07:00", "-07:00");
-        testTimeZone("2021-08-19T17:30[America/Vancouver]", "America/Vancouver");
-        testTimeZone("2021-08-19T17:30Z[America/Vancouver]", "America/Vancouver");
-        testTimeZone("2021-08-19T17:30-07:00[America/Vancouver]", "America/Vancouver");
+        testTimeZoneFailConstructor("+00:01.1");
+        // testTimeZoneFailConstructor("-01.1"); //TODO should fail, but passes
+
+        testTimeZoneConstructor("-08", "-08:00");
+        testTimeZoneFrom("-08", "-08:00");
+
+        testTimeZoneFrom("2021-08-19T17:30Z", "UTC");
+        testTimeZoneFrom("2021-08-19T17:30-07:00", "-07:00");
+        testTimeZoneFrom("2021-08-19T17:30[America/Vancouver]", "America/Vancouver");
+        testTimeZoneFrom("2021-08-19T17:30Z[America/Vancouver]", "America/Vancouver");
+        testTimeZoneFrom("2021-08-19T17:30-07:00[America/Vancouver]", "America/Vancouver");
     }
 
-    private static void testTimeZoneFail(String code) {
+    private static void testTimeZoneFailFrom(String code) {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, "try { Temporal.TimeZone.from('" + code + "'); false; } catch (ex) { true; }");
             assertEquals(true, result.asBoolean());
         }
     }
 
-    private static void testTimeZone(String code, String expected) {
+    private static void testTimeZoneFailConstructor(String code) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "try { new Temporal.TimeZone('" + code + "'); false; } catch (ex) { true; }");
+            assertEquals(true, result.asBoolean());
+        }
+    }
+
+    private static void testTimeZoneFrom(String code, String expected) {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, "Temporal.TimeZone.from('" + code + "').id;");
+            assertEquals(expected, result.asString());
+        }
+    }
+
+    private static void testTimeZoneConstructor(String code, String expected) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "(new Temporal.TimeZone('" + code + "')).id;");
             assertEquals(expected, result.asString());
         }
     }
@@ -860,7 +881,7 @@ public class TemporalBuiltinsTest extends JSTest {
     }
 
     @Test
-    public void testTemporalCalendarParsing() {
+    public void testTemporalParsingCalendar() {
         testCalendarIntl("iso8601", "iso8601");
         testCalendarIntl("1994-11-05T08:15:30-05:00", "iso8601");
     }
@@ -869,6 +890,19 @@ public class TemporalBuiltinsTest extends JSTest {
         try (Context ctx = getJSContext()) {
             Value result = ctx.eval(ID, "Temporal.Calendar.from('" + calendarInput + "').toString()");
             assertEquals(expected, result.asString());
+        }
+    }
+
+    @Test
+    public void testTemporalParsingDuration() {
+        parseDurationIntl("-PT24.567890123H", "-PT24H34M4.404442799S");
+        parseDurationIntl("-PT1.03125H", "-PT1H1M52.5S"); // #1754
+    }
+
+    private static void parseDurationIntl(String code, String expected) {
+        try (Context ctx = getJSContext()) {
+            Value result = ctx.eval(ID, "Temporal.Duration.from('" + code + "').toString();");
+            Assert.assertEquals(expected, result.toString());
         }
     }
 }

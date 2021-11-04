@@ -159,7 +159,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToDoubleNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumericNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -1185,17 +1184,17 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         Object minutesObj, Object secondsObj,
                         Object millisecondsObject, Object microsecondsObject,
                         Object nanosecondsObject,
-                        @Cached("create()") JSToIntegerAsLongNode toIntegerNode) {
-            final long years = toIntegerNode.executeLong(yearsObj);
-            final long months = toIntegerNode.executeLong(monthsObj);
-            final long weeks = toIntegerNode.executeLong(weeksObj);
-            final long days = toIntegerNode.executeLong(daysObj);
-            final long hours = toIntegerNode.executeLong(hoursObj);
-            final long minutes = toIntegerNode.executeLong(minutesObj);
-            final long seconds = toIntegerNode.executeLong(secondsObj);
-            final long milliseconds = toIntegerNode.executeLong(millisecondsObject);
-            final long microseconds = toIntegerNode.executeLong(microsecondsObject);
-            final long nanoseconds = toIntegerNode.executeLong(nanosecondsObject);
+                        @Cached("create()") JSToIntegerThrowOnInfinityNode toIntegerNode) {
+            final long years = toIntegerNode.executeNumber(yearsObj).longValue();
+            final long months = toIntegerNode.executeNumber(monthsObj).longValue();
+            final long weeks = toIntegerNode.executeNumber(weeksObj).longValue();
+            final long days = toIntegerNode.executeNumber(daysObj).longValue();
+            final long hours = toIntegerNode.executeNumber(hoursObj).longValue();
+            final long minutes = toIntegerNode.executeNumber(minutesObj).longValue();
+            final long seconds = toIntegerNode.executeNumber(secondsObj).longValue();
+            final long milliseconds = toIntegerNode.executeNumber(millisecondsObject).longValue();
+            final long microseconds = toIntegerNode.executeNumber(microsecondsObject).longValue();
+            final long nanoseconds = toIntegerNode.executeNumber(nanosecondsObject).longValue();
             return swapPrototype(JSTemporalDuration.create(getContext(),
                             years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds), newTarget);
         }
