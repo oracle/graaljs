@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.text.AttributedCharacterIterator;
+import java.text.Format;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -52,10 +53,13 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.ibm.icu.text.ConstrainedFieldPosition;
 import com.ibm.icu.text.DateFormat;
+import com.ibm.icu.text.DateIntervalFormat;
 import com.ibm.icu.text.DateTimePatternGenerator;
 import com.ibm.icu.text.SimpleDateFormat;
 import com.ibm.icu.util.Calendar;
+import com.ibm.icu.util.DateInterval;
 import com.ibm.icu.util.GregorianCalendar;
 import com.ibm.icu.util.TimeZone;
 import com.ibm.icu.util.ULocale;
@@ -310,13 +314,15 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         String pattern = ((SimpleDateFormat) dateFormat).toPattern();
+        String skeleton = patternGenerator.getSkeleton(pattern);
         if (!Objects.equals(state.hourCycle, hourCycleFromPattern(pattern))) {
-            String skeleton = patternGenerator.getSkeleton(pattern);
-            String bestPattern = patternGenerator.getBestPattern(replaceHourCycle(skeleton, hc), DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
+            skeleton = replaceHourCycle(skeleton, hc);
+            String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
             dateFormat = new SimpleDateFormat(replaceHourCycle(bestPattern, hc), javaLocale);
         }
 
         state.dateFormat = dateFormat;
+        state.dateIntervalFormat = DateIntervalFormat.getInstance(skeleton, javaLocale);
 
         if (state.calendar == null) {
             state.calendar = IntlUtil.normalizeCAType(Calendar.getInstance(javaLocale).getType());
@@ -682,7 +688,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject numberFormatObj, Object n) {
+    public static DynamicObject formatToParts(JSContext context, JSRealm realm, DynamicObject numberFormatObj, Object n, String source) {
 
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
         String yearPattern = yearRelatedSubpattern(dateFormat);
@@ -715,7 +721,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                             type = fieldToType((DateFormat.Field) a);
                             assert type != null : a;
                         }
-                        resultParts.add(makePart(context, realm, type, value));
+                        resultParts.add(makePart(context, realm, type, value, source));
                         i = fit.getRunLimit();
                         break;
                     } else {
@@ -724,11 +730,110 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 }
             } else {
                 String value = formatted.substring(fit.getRunStart(), fit.getRunLimit());
-                resultParts.add(makePart(context, realm, IntlUtil.LITERAL, value));
+                resultParts.add(makePart(context, realm, IntlUtil.LITERAL, value, source));
                 i = fit.getRunLimit();
             }
         }
         return JSArray.createConstant(context, realm, resultParts.toArray());
+    }
+
+    @TruffleBoundary
+    public static String formatRange(DynamicObject dateTimeFormat, double startDate, double endDate) {
+        DateInterval range = new DateInterval((long) startDate, (long) endDate);
+        DateIntervalFormat dateIntervalFormat = getInternalState(dateTimeFormat).dateIntervalFormat;
+        DateIntervalFormat.FormattedDateInterval formattedRange = dateIntervalFormat.formatToValue(range);
+
+        if (dateFieldsPracticallyEqual(formattedRange)) {
+            return JSDateTimeFormat.format(dateTimeFormat, startDate);
+        }
+
+        return formattedRange.toString();
+    }
+
+    private static boolean dateFieldsPracticallyEqual(DateIntervalFormat.FormattedDateInterval formattedRange) {
+        ConstrainedFieldPosition cfPos = new ConstrainedFieldPosition();
+        while (formattedRange.nextPosition(cfPos)) {
+            if (cfPos.getField() instanceof DateIntervalFormat.SpanField) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @TruffleBoundary
+    public static DynamicObject formatRangeToParts(JSContext context, JSRealm realm, DynamicObject dateTimeFormat, double startDate, double endDate) {
+        DateInterval range = new DateInterval((long) startDate, (long) endDate);
+        DateIntervalFormat dateIntervalFormat = getInternalState(dateTimeFormat).dateIntervalFormat;
+        DateIntervalFormat.FormattedDateInterval formattedRange = dateIntervalFormat.formatToValue(range);
+
+        if (dateFieldsPracticallyEqual(formattedRange)) {
+            return JSDateTimeFormat.formatToParts(context, realm, dateTimeFormat, startDate, IntlUtil.SHARED);
+        }
+
+        String formattedString = formattedRange.toString();
+
+        List<Object> parts = new ArrayList<>();
+        int startRangeStart = 0;
+        int startRangeLimit = 0;
+        int endRangeStart = 0;
+        int endRangeLimit = 0;
+        int lastLimit = 0;
+
+        ConstrainedFieldPosition cfPos = new ConstrainedFieldPosition();
+        while (formattedRange.nextPosition(cfPos)) {
+            int start = cfPos.getStart();
+            int limit = cfPos.getLimit();
+
+            if (lastLimit < start) { // Literal
+                String literal = formattedString.substring(lastLimit, start);
+                String source = sourceString(lastLimit, start, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
+                parts.add(makePart(context, realm, IntlUtil.LITERAL, literal, source));
+                lastLimit = start;
+            }
+
+            Format.Field field = cfPos.getField();
+            if (field instanceof DateIntervalFormat.SpanField) {
+                Object fieldValue = cfPos.getFieldValue();
+                if (fieldValue.equals(0)) {
+                    startRangeStart = start;
+                    startRangeLimit = limit;
+                } else if (fieldValue.equals(1)) {
+                    endRangeStart = start;
+                    endRangeLimit = limit;
+                } else {
+                    throw Errors.shouldNotReachHere(fieldValue.toString());
+                }
+            } else if (field instanceof DateFormat.Field) {
+                String type = fieldToType((DateFormat.Field) field);
+                String value = formattedString.substring(start, limit);
+                String source = sourceString(start, limit, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
+                parts.add(makePart(context, realm, type, value, source));
+                lastLimit = limit;
+            } else {
+                throw Errors.shouldNotReachHere(field.toString());
+            }
+        }
+
+        int length = formattedString.length();
+        if (lastLimit < length) { // Literal at the end
+            String literal = formattedString.substring(lastLimit, length);
+            String source = sourceString(lastLimit, length, startRangeStart, startRangeLimit, endRangeStart, endRangeLimit);
+            parts.add(makePart(context, realm, IntlUtil.LITERAL, literal, source));
+        }
+
+        return JSArray.createConstant(context, realm, parts.toArray());
+    }
+
+    private static String sourceString(int start, int limit, int startRangeStart, int startRangeLimit, int endRangeStart, int endRangeLimit) {
+        String source;
+        if (startRangeStart <= start && limit <= startRangeLimit) {
+            source = IntlUtil.START_RANGE;
+        } else if (endRangeStart <= start && limit <= endRangeLimit) {
+            source = IntlUtil.END_RANGE;
+        } else {
+            source = IntlUtil.SHARED;
+        }
+        return source;
     }
 
     private static String yearRelatedSubpattern(DateFormat dateFormat) {
@@ -748,10 +853,13 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return "";
     }
 
-    private static Object makePart(JSContext context, JSRealm realm, String type, String value) {
+    private static Object makePart(JSContext context, JSRealm realm, String type, String value, String source) {
         DynamicObject p = JSOrdinary.create(context, realm);
         JSObject.set(p, IntlUtil.TYPE, type);
         JSObject.set(p, IntlUtil.VALUE, value);
+        if (source != null) {
+            JSObject.set(p, IntlUtil.SOURCE, source);
+        }
         return p;
     }
 
@@ -759,6 +867,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         private boolean initialized = false;
         private DateFormat dateFormat;
+        private DateIntervalFormat dateIntervalFormat;
 
         private DynamicObject boundFormatFunction = null;
 

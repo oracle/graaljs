@@ -527,6 +527,14 @@ public final class Errors {
         return createRangeErrorFormat("Invalid unit identifier: %s", null, unitIdentifier);
     }
 
+    public static JSException createRangeErrorInvalidTimeValue() {
+        return createRangeError("Invalid time value");
+    }
+
+    public static JSException createTypeErrorInvalidTimeValue() {
+        return createTypeError("Invalid time value");
+    }
+
     @TruffleBoundary
     public static JSException createTypeErrorMapExpected() {
         return Errors.createTypeError("Map expected");

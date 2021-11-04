@@ -113,6 +113,7 @@ public final class IntlUtil {
     public static final String DIRECTION = "direction";
     public static final String DISJUNCTION = "disjunction";
     public static final String ELEMENT = "element";
+    public static final String END_RANGE = "endRange";
     public static final String ENGINEERING = "engineering";
     public static final String ERA = "era";
     public static final String EXCEPT_ZERO = "exceptZero";
@@ -181,12 +182,15 @@ public final class IntlUtil {
     public static final String SEGMENT = "segment";
     public static final String SENTENCE = "sentence";
     public static final String SENSITIVITY = "sensitivity";
+    public static final String SHARED = "shared";
     public static final String SHORT = "short";
     public static final String SIGN_DISPLAY = "signDisplay";
     public static final String SORT = "sort";
+    public static final String SOURCE = "source";
     public static final String STANDARD = "standard";
     public static final String STANDARD_NARROW = "standard-narrow";
     public static final String STANDARD_SHORT = "standard-short";
+    public static final String START_RANGE = "startRange";
     public static final String STRICT = "strict";
     public static final String STYLE = "style";
     public static final String SYMBOL = "symbol";
