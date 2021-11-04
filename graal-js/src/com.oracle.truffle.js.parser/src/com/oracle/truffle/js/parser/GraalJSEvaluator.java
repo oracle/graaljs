@@ -282,18 +282,21 @@ public final class GraalJSEvaluator implements JSParser {
             JSModuleRecord moduleRecord = realm.getModuleLoader().loadModule(source, parsedModule);
             moduleInstantiation(realm, moduleRecord);
             Object promise = moduleEvaluation(realm, moduleRecord);
-            if (context.isOptionTopLevelAwait() && JSPromise.isJSPromise(promise)) {
+            boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
+            if (isAsync) {
+                assert JSPromise.isJSPromise(promise);
                 DynamicObject onRejected = createTopLevelAwaitReject(context, realm);
                 DynamicObject onAccepted = createTopLevelAwaitResolve(context, realm);
                 performPromiseThenNode.execute((DynamicObject) promise, onAccepted, onRejected, null);
             }
-            if (realm.getContext().getContextOptions().isEsmEvalReturnsExports()) {
+            if (context.getContextOptions().isEsmEvalReturnsExports()) {
                 DynamicObject moduleNamespace = getModuleNamespace(moduleRecord);
                 assert moduleNamespace != null;
                 return moduleNamespace;
-            } else {
-                assert promise != null;
+            } else if (isAsync) {
                 return promise;
+            } else {
+                return moduleRecord.getExecutionResultOrThrow();
             }
         }
 

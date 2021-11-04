@@ -121,7 +121,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArra
 public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<AtomicsBuiltins.Atomics> {
 
     public static final JSBuiltinsContainer BUILTINS = new AtomicsBuiltins();
-    public static final JSBuiltinsContainer WAIT_ASYNC_BUILTIN = new AtomicsWaitAsyncBuiltin();
 
     public static final String OK = "ok";
     public static final String NOT_EQUAL = "not-equal";
@@ -145,8 +144,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         wait(4),
         isLockFree(1),
 
-        // ES9?
-        notify(3);
+        notify(3), // ES2019
+
+        // Stage 3
+        waitAsync(4);
 
         private final int length;
 
@@ -163,6 +164,8 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         public int getECMAScriptVersion() {
             if (this.equals(notify)) {
                 return JSConfig.ECMAScript2019;
+            } else if (this.equals(waitAsync)) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return JSConfig.ECMAScript2017;
         }
@@ -197,38 +200,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return AtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
             case isLockFree:
                 return AtomicsIsLockFreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case waitAsync:
+                return AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
         }
         return null;
-    }
-
-    public static final class AtomicsWaitAsyncBuiltin extends JSBuiltinsContainer.SwitchEnum<AtomicsWaitAsyncBuiltin.AtomicsWaitAsync> {
-        protected AtomicsWaitAsyncBuiltin() {
-            super(JSRealm.ATOMICS_CLASS_NAME, AtomicsWaitAsync.class);
-        }
-
-        public enum AtomicsWaitAsync implements BuiltinEnum<AtomicsWaitAsync> {
-            waitAsync(4);
-
-            private final int length;
-
-            AtomicsWaitAsync(int length) {
-                this.length = length;
-            }
-
-            @Override
-            public int getLength() {
-                return length;
-            }
-        }
-
-        @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, AtomicsWaitAsync builtinEnum) {
-            switch (builtinEnum) {
-                case waitAsync:
-                    return AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
-            }
-            return null;
-        }
     }
 
     public abstract static class AtomicsOperationNode extends JSBuiltinNode {

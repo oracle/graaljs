@@ -24,10 +24,16 @@ For information about the compatibility of GraalVM JavaScript with existing stan
 GraalVM is capable of executing unmodified Node.js applications.
 Applications can import npm modules, including native ones.
 Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM component.
-It can be installed with the _GraalVM Updater_.
+It can be installed with the _GraalVM Updater_:
 
 ```shell
 $GRAALVM/bin/gu install nodejs
+```
+
+Alternatively, you can also download the Node.js runtime plugin installable manually and install it from a file, e.g.:
+
+```shell
+$ $GRAALVM/bin/gu install --file ~/Downloads/nodejs-installable-svm-java17-linux-amd64-21.3.0.jar
 ```
 
 This installs the `node` and `npm` binaries in the `$GRAALVM/bin` directory.

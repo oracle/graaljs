@@ -40,15 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Source Text Module Record.
@@ -202,11 +203,24 @@ public final class JSModuleRecord extends ScriptOrModule {
     }
 
     public Object getExecutionResult() {
+        assert hasBeenEvaluated();
         return executionResult;
     }
 
     public void setExecutionResult(Object executionResult) {
         this.executionResult = executionResult;
+    }
+
+    public Object getExecutionResultOrThrow() {
+        assert hasBeenEvaluated();
+        Throwable error = getEvaluationError();
+        if (error != null) {
+            throw JSRuntime.rethrow(error);
+        } else {
+            Object result = getExecutionResult();
+            assert result != null;
+            return result;
+        }
     }
 
     public DynamicObject getImportMeta() {

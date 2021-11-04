@@ -204,6 +204,7 @@ public abstract class TestRunnable implements Runnable {
 
     // ~ Inner classes
 
+    @FunctionalInterface
     public interface TestTask {
         TestFile.Result run(int ecmaVersion);
     }

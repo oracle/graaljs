@@ -54,7 +54,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 
 public class TestExtProcessCallable extends AbstractTestCallable {
@@ -77,7 +76,6 @@ public class TestExtProcessCallable extends AbstractTestCallable {
 
     public TestExtProcessCallable(TestSuite suite, int ecmaScriptVersion, List<String> args, Map<String, String> extraOptions) {
         super(suite);
-        assert ecmaScriptVersion <= JSConfig.MaxECMAScriptVersion;
         this.cmd = createCommand(suite, ecmaScriptVersion, extraOptions, args);
     }
 
@@ -85,8 +83,8 @@ public class TestExtProcessCallable extends AbstractTestCallable {
         List<String> ret = new ArrayList<>(1 + CONSTANT_OPTIONS.size() + suite.getCommonExtLauncherOptions().size() + extraOptions.size() + args.size());
         ret.add(suite.getConfig().getExtLauncher());
         ret.addAll(CONSTANT_OPTIONS);
-        ret.add(optionToString(JSContextOptions.ECMASCRIPT_VERSION_NAME, Integer.toString(ecmaScriptVersion)));
         ret.addAll(suite.getCommonExtLauncherOptions());
+        ret.add(optionToString(JSContextOptions.ECMASCRIPT_VERSION_NAME, ecmaScriptVersionToOptionString(ecmaScriptVersion)));
         for (Map.Entry<String, String> entry : extraOptions.entrySet()) {
             ret.add(optionToString(entry.getKey(), entry.getValue()));
         }

@@ -1674,7 +1674,7 @@ public class JSRealm {
         DynamicObject graalObject = JSOrdinary.createInit(this);
         int flags = JSAttributes.notConfigurableEnumerableNotWritable();
         int esVersion = getContext().getContextOptions().getEcmaScriptVersion();
-        esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptNumberYearDelta : esVersion);
+        esVersion = (esVersion > JSConfig.ECMAScript6 ? esVersion + JSConfig.ECMAScriptVersionYearDelta : esVersion);
         JSObjectUtil.putDataProperty(context, graalObject, "language", JavaScriptLanguage.NAME, flags);
         assert GRAALVM_VERSION != null;
         JSObjectUtil.putDataProperty(context, graalObject, "versionGraalVM", GRAALVM_VERSION, flags);
@@ -1888,9 +1888,6 @@ public class JSRealm {
         DynamicObject obj = JSObjectUtil.createOrdinaryPrototypeObject(this, this.getObjectPrototype());
         JSObjectUtil.putToStringTag(obj, ATOMICS_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
-        if (context.isWaitAsyncEnabled()) {
-            JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.WAIT_ASYNC_BUILTIN);
-        }
         return obj;
     }
 
