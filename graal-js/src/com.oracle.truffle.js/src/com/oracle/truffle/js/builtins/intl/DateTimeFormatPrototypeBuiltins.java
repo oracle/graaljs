@@ -40,18 +40,27 @@
  */
 package com.oracle.truffle.js.builtins.intl;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.DynamicObject;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeNodeGen;
+import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatRangeToPartsNodeGen;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatFormatToPartsNodeGen;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltinsFactory.JSDateTimeFormatResolvedOptionsNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DateTimeFormatPrototypeBuiltins.DateTimeFormatPrototype> {
 
@@ -64,7 +73,10 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
     public enum DateTimeFormatPrototype implements BuiltinEnum<DateTimeFormatPrototype> {
 
         resolvedOptions(0),
-        formatToParts(1);
+        formatToParts(1),
+
+        formatRange(2),
+        formatRangeToParts(2);
 
         private final int length;
 
@@ -76,6 +88,18 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            switch (this) {
+                case formatToParts:
+                    return JSConfig.ECMAScript2017;
+                case formatRange:
+                case formatRangeToParts:
+                    return JSConfig.ECMAScript2021;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -85,6 +109,10 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
                 return JSDateTimeFormatResolvedOptionsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case formatToParts:
                 return JSDateTimeFormatFormatToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case formatRange:
+                return JSDateTimeFormatFormatRangeNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case formatRangeToParts:
+                return JSDateTimeFormatFormatRangeToPartsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
         return null;
     }
@@ -114,7 +142,7 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
         public Object doFormatToParts(DynamicObject dateTimeFormat, Object value) {
-            return JSDateTimeFormat.formatToParts(getContext(), getRealm(), dateTimeFormat, value);
+            return JSDateTimeFormat.formatToParts(getContext(), getRealm(), dateTimeFormat, value, null);
         }
 
         @Fallback
@@ -123,4 +151,71 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
             throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
         }
     }
+
+    public abstract static class JSDateTimeFormatFormatRangeNode extends JSBuiltinNode {
+
+        public JSDateTimeFormatFormatRangeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
+        public String doFormatRange(DynamicObject dateTimeFormat, Object startDate, Object endDate,
+                        @Cached JSToNumberNode startDateToNumberNode,
+                        @Cached JSToNumberNode endDateToNumberNode,
+                        @Cached BranchProfile errorBranch) {
+            if (startDate == Undefined.instance || endDate == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorInvalidTimeValue();
+            }
+            Number xNumber = startDateToNumberNode.executeNumber(startDate);
+            Number yNumber = endDateToNumberNode.executeNumber(endDate);
+            double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
+            double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
+            if (Double.isNaN(x) || Double.isNaN(y) || x > y) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidTimeValue();
+            }
+            return JSDateTimeFormat.formatRange(dateTimeFormat, x, y);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public String throwTypeError(Object bummer, Object startDate, Object endDate) {
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
+        }
+    }
+
+    public abstract static class JSDateTimeFormatFormatRangeToPartsNode extends JSBuiltinNode {
+
+        public JSDateTimeFormatFormatRangeToPartsNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = "isJSDateTimeFormat(dateTimeFormat)")
+        public Object doFormatRangeToParts(DynamicObject dateTimeFormat, Object startDate, Object endDate,
+                        @Cached JSToNumberNode startDateToNumberNode,
+                        @Cached JSToNumberNode endDateToNumberNode,
+                        @Cached BranchProfile errorBranch) {
+            if (startDate == Undefined.instance || endDate == Undefined.instance) {
+                errorBranch.enter();
+                throw Errors.createTypeErrorInvalidTimeValue();
+            }
+            Number xNumber = startDateToNumberNode.executeNumber(startDate);
+            Number yNumber = endDateToNumberNode.executeNumber(endDate);
+            double x = JSDate.timeClip(JSRuntime.toDouble(xNumber));
+            double y = JSDate.timeClip(JSRuntime.toDouble(yNumber));
+            if (Double.isNaN(x) || Double.isNaN(y) || x > y) {
+                errorBranch.enter();
+                throw Errors.createRangeErrorInvalidTimeValue();
+            }
+            return JSDateTimeFormat.formatRangeToParts(getContext(), getRealm(), dateTimeFormat, x, y);
+        }
+
+        @Fallback
+        @SuppressWarnings("unused")
+        public Object throwTypeError(Object bummer, Object startDate, Object endDate) {
+            throw Errors.createTypeErrorTypeXExpected(JSDateTimeFormat.CLASS_NAME);
+        }
+    }
+
 }
