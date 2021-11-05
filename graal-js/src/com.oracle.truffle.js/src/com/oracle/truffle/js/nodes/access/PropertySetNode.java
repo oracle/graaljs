@@ -1097,6 +1097,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, stringKey, value);
+                    return true;
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     if (root.isStrict) {
                         errorBranch.enter();
