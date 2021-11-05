@@ -63,7 +63,10 @@ using v8::HandleScope;
 using v8::Int32;
 using v8::Integer;
 using v8::Isolate;
+using v8::Just;
 using v8::Local;
+using v8::Maybe;
+using v8::Nothing;
 using v8::Null;
 using v8::Object;
 using v8::String;
@@ -631,9 +634,14 @@ int ParseSoaReply(
 }
 }  // anonymous namespace
 
-ChannelWrap::ChannelWrap(Environment* env, Local<Object> object, int timeout)
+ChannelWrap::ChannelWrap(
+      Environment* env,
+      Local<Object> object,
+      int timeout,
+      int tries)
     : AsyncWrap(env, object, PROVIDER_DNSCHANNEL),
-      timeout_(timeout) {
+      timeout_(timeout),
+      tries_(tries) {
   MakeWeak();
 
   Setup();
@@ -647,11 +655,13 @@ void ChannelWrap::MemoryInfo(MemoryTracker* tracker) const {
 
 void ChannelWrap::New(const FunctionCallbackInfo<Value>& args) {
   CHECK(args.IsConstructCall());
-  CHECK_EQ(args.Length(), 1);
+  CHECK_EQ(args.Length(), 2);
   CHECK(args[0]->IsInt32());
+  CHECK(args[1]->IsInt32());
   const int timeout = args[0].As<Int32>()->Value();
+  const int tries = args[1].As<Int32>()->Value();
   Environment* env = Environment::GetCurrent(args);
-  new ChannelWrap(env, args.This(), timeout);
+  new ChannelWrap(env, args.This(), timeout, tries);
 }
 
 GetAddrInfoReqWrap::GetAddrInfoReqWrap(
@@ -704,6 +714,7 @@ void ChannelWrap::Setup() {
   options.sock_state_cb = ares_sockstate_cb;
   options.sock_state_cb_data = this;
   options.timeout = timeout_;
+  options.tries = tries_;
 
   int r;
   if (!library_inited_) {
@@ -717,7 +728,8 @@ void ChannelWrap::Setup() {
 
   /* We do the call to ares_init_option for caller. */
   const int optmask =
-      ARES_OPT_FLAGS | ARES_OPT_TIMEOUTMS | ARES_OPT_SOCK_STATE_CB;
+      ARES_OPT_FLAGS | ARES_OPT_TIMEOUTMS |
+      ARES_OPT_SOCK_STATE_CB | ARES_OPT_TRIES;
   r = ares_init_options(&channel_, &options, optmask);
 
   if (r != ARES_SUCCESS) {
@@ -1434,7 +1446,7 @@ void AfterGetAddrInfo(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
   if (status == 0) {
     Local<Array> results = Array::New(env->isolate());
 
-    auto add = [&] (bool want_ipv4, bool want_ipv6) {
+    auto add = [&] (bool want_ipv4, bool want_ipv6) -> Maybe<bool> {
       for (auto p = res; p != nullptr; p = p->ai_next) {
         CHECK_EQ(p->ai_socktype, SOCK_STREAM);
 
@@ -1454,14 +1466,19 @@ void AfterGetAddrInfo(uv_getaddrinfo_t* req, int status, struct addrinfo* res) {
           continue;
 
         Local<String> s = OneByteString(env->isolate(), ip);
-        results->Set(env->context(), n, s).Check();
+        if (results->Set(env->context(), n, s).IsNothing())
+          return Nothing<bool>();
         n++;
       }
+      return Just(true);
     };
 
-    add(true, verbatim);
-    if (verbatim == false)
-      add(false, true);
+    if (add(true, verbatim).IsNothing())
+      return;
+    if (verbatim == false) {
+      if (add(false, true).IsNothing())
+        return;
+    }
 
     // No responses were found to return
     if (n == 0) {
@@ -1898,32 +1915,17 @@ void Initialize(Local<Object> target,
   Local<FunctionTemplate> aiw =
       BaseObject::MakeLazilyInitializedJSTemplate(env);
   aiw->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  Local<String> addrInfoWrapString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "GetAddrInfoReqWrap");
-  aiw->SetClassName(addrInfoWrapString);
-  target->Set(env->context(),
-              addrInfoWrapString,
-              aiw->GetFunction(context).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "GetAddrInfoReqWrap", aiw);
 
   Local<FunctionTemplate> niw =
       BaseObject::MakeLazilyInitializedJSTemplate(env);
   niw->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  Local<String> nameInfoWrapString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "GetNameInfoReqWrap");
-  niw->SetClassName(nameInfoWrapString);
-  target->Set(env->context(),
-              nameInfoWrapString,
-              niw->GetFunction(context).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "GetNameInfoReqWrap", niw);
 
   Local<FunctionTemplate> qrw =
       BaseObject::MakeLazilyInitializedJSTemplate(env);
   qrw->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  Local<String> queryWrapString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "QueryReqWrap");
-  qrw->SetClassName(queryWrapString);
-  target->Set(env->context(),
-              queryWrapString,
-              qrw->GetFunction(context).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "QueryReqWrap", qrw);
 
   Local<FunctionTemplate> channel_wrap =
       env->NewFunctionTemplate(ChannelWrap::New);
@@ -1950,11 +1952,7 @@ void Initialize(Local<Object> target,
   env->SetProtoMethod(channel_wrap, "setLocalAddress", SetLocalAddress);
   env->SetProtoMethod(channel_wrap, "cancel", Cancel);
 
-  Local<String> channelWrapString =
-      FIXED_ONE_BYTE_STRING(env->isolate(), "ChannelWrap");
-  channel_wrap->SetClassName(channelWrapString);
-  target->Set(env->context(), channelWrapString,
-              channel_wrap->GetFunction(context).ToLocalChecked()).Check();
+  env->SetConstructorFunction(target, "ChannelWrap", channel_wrap);
 }
 
 }  // namespace cares_wrap

@@ -40,6 +40,7 @@
  */
 
 #include "graal_context.h"
+#include "graal_function.h"
 #include "graal_object.h"
 
 #include "graal_context-inl.h"
@@ -113,4 +114,12 @@ v8::Local<v8::Object> GraalContext::GetExtrasBindingObject() {
     JNI_CALL(jobject, java_extras, Isolate(), GraalAccessMethod::context_get_extras_binding_object, Object, GetJavaObject());
     GraalObject* graal_extras = GraalObject::Allocate(Isolate(), java_extras);
     return reinterpret_cast<v8::Object*> (graal_extras);
+}
+
+void GraalContext::SetPromiseHooks(v8::Local<v8::Function> init_hook, v8::Local<v8::Function> before_hook, v8::Local<v8::Function> after_hook, v8::Local<v8::Function> resolve_hook) {
+    jobject java_init_hook = init_hook.IsEmpty() ? nullptr : reinterpret_cast<GraalFunction*> (*init_hook)->GetJavaObject();
+    jobject java_before_hook = before_hook.IsEmpty() ? nullptr : reinterpret_cast<GraalFunction*> (*before_hook)->GetJavaObject();
+    jobject java_after_hook = after_hook.IsEmpty() ? nullptr : reinterpret_cast<GraalFunction*> (*after_hook)->GetJavaObject();
+    jobject java_resolve_hook = resolve_hook.IsEmpty() ? nullptr : reinterpret_cast<GraalFunction*> (*resolve_hook)->GetJavaObject();
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::context_set_promise_hooks, GetJavaObject(), java_init_hook, java_before_hook, java_after_hook, java_resolve_hook);
 }

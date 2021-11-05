@@ -4,14 +4,14 @@ const common = require('../common');
 common.skipIfInspectorDisabled();
 
 const fixtures = require('../common/fixtures');
-const startCLI = require('../common/inspector-cli');
+const startCLI = require('../common/debugger');
 
 const assert = require('assert');
 const path = require('path');
 
 // Run after quit/restart.
 {
-  const scriptFullPath = fixtures.path('inspector-cli', 'three-lines.js');
+  const scriptFullPath = fixtures.path('debugger', 'three-lines.js');
   const script = path.relative(process.cwd(), scriptFullPath);
   const cli = startCLI([script]);
 

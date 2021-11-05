@@ -39,11 +39,6 @@
 #include <string>
 #include <vector>
 
-// Custom constants used by both node_constants.cc and node_zlib.cc
-#define Z_MIN_WINDOWBITS 8
-#define Z_MAX_WINDOWBITS 15
-#define Z_DEFAULT_WINDOWBITS 15
-
 struct sockaddr;
 
 namespace node {
@@ -362,6 +357,10 @@ class DiagnosticFilename {
 
   std::string filename_;
 };
+
+namespace heap {
+bool WriteSnapshot(v8::Isolate* isolate, const char* filename);
+}
 
 class TraceEventScope {
  public:

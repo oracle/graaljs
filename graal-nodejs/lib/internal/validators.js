@@ -164,7 +164,7 @@ const validateObject = hideStackFrames(
     }
   });
 
-const validateArray = hideStackFrames((value, name, { minLength = 0 } = {}) => {
+const validateArray = hideStackFrames((value, name, minLength = 0) => {
   if (!ArrayIsArray(value)) {
     throw new ERR_INVALID_ARG_TYPE(name, 'Array', value);
   }
@@ -175,8 +175,7 @@ const validateArray = hideStackFrames((value, name, { minLength = 0 } = {}) => {
 });
 
 function validateSignalName(signal, name = 'signal') {
-  if (typeof signal !== 'string')
-    throw new ERR_INVALID_ARG_TYPE(name, 'string', signal);
+  validateString(signal, name);
 
   if (signals[signal] === undefined) {
     if (signals[signal.toUpperCase()] !== undefined) {
@@ -208,7 +207,7 @@ function validateEncoding(data, encoding) {
 
 // Check that the port number is not NaN when coerced to a number,
 // is an integer and that it falls within the legal range of port numbers.
-function validatePort(port, name = 'Port', { allowZero = true } = {}) {
+function validatePort(port, name = 'Port', allowZero = true) {
   if ((typeof port !== 'number' && typeof port !== 'string') ||
       (typeof port === 'string' && port.trim().length === 0) ||
       +port !== (+port >>> 0) ||
@@ -233,6 +232,11 @@ const validateAbortSignal = hideStackFrames((signal, name) => {
   }
 });
 
+const validateFunction = hideStackFrames((value, name) => {
+  if (typeof value !== 'function')
+    throw new ERR_INVALID_ARG_TYPE(name, 'Function', value);
+});
+
 module.exports = {
   isInt32,
   isUint32,
@@ -241,6 +245,7 @@ module.exports = {
   validateBoolean,
   validateBuffer,
   validateEncoding,
+  validateFunction,
   validateInt32,
   validateInteger,
   validateNumber,

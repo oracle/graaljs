@@ -1,18 +1,7 @@
 'use strict';
 
-// Most platforms don't allow reads or writes >= 2 GB.
-// See https://github.com/libuv/libuv/pull/1501.
-const kIoMaxLength = 2 ** 31 - 1;
-
-// Note: This is different from kReadFileBufferLength used for non-promisified
-// fs.readFile.
-const kReadFileMaxChunkSize = 2 ** 14;
-const kWriteFileMaxChunkSize = 2 ** 14;
-
-// 2 ** 32 - 1
-const kMaxUserId = 4294967295;
-
 const {
+  ArrayPrototypePush,
   Error,
   MathMax,
   MathMin,
@@ -34,7 +23,7 @@ const {
 const binding = internalBinding('fs');
 const { Buffer } = require('buffer');
 
-const { codes, hideStackFrames } = require('internal/errors');
+const { AbortError, codes, hideStackFrames } = require('internal/errors');
 const {
   ERR_FS_FILE_TOO_LARGE,
   ERR_INVALID_ARG_TYPE,
@@ -44,6 +33,13 @@ const {
 const { isArrayBufferView } = require('internal/util/types');
 const { rimrafPromises } = require('internal/fs/rimraf');
 const {
+  constants: {
+    kIoMaxLength,
+    kMaxUserId,
+    kReadFileBufferLength,
+    kReadFileUnknownBufferLength,
+    kWriteFileMaxChunkSize,
+  },
   copyObject,
   getDirents,
   getOptions,
@@ -69,9 +65,12 @@ const {
   validateAbortSignal,
   validateBuffer,
   validateInteger,
+  validateString,
 } = require('internal/validators');
 const pathModule = require('path');
 const { promisify } = require('internal/util');
+const { watch } = require('internal/fs/watchers');
+const { isIterable } = require('internal/streams/utils');
 
 const kHandle = Symbol('kHandle');
 const kFd = Symbol('kFd');
@@ -253,18 +252,33 @@ async function fsCall(fn, handle, ...args) {
   }
 }
 
-async function writeFileHandle(filehandle, data, signal) {
-  // `data` could be any kind of typed array.
+function checkAborted(signal) {
+  if (signal && signal.aborted)
+    throw new AbortError();
+}
+
+async function writeFileHandle(filehandle, data, signal, encoding) {
+  checkAborted(signal);
+  if (isCustomIterable(data)) {
+    for await (const buf of data) {
+      checkAborted(signal);
+      await write(
+        filehandle, buf, undefined,
+        isArrayBufferView(buf) ? buf.byteLength : encoding);
+      checkAborted(signal);
+    }
+    return;
+  }
   data = new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
-  let remaining = data.length;
+  let remaining = data.byteLength;
   if (remaining === 0) return;
   do {
     if (signal?.aborted) {
-      throw new lazyDOMException('The operation was aborted', 'AbortError');
+      throw lazyDOMException('The operation was aborted', 'AbortError');
     }
     const { bytesWritten } =
       await write(filehandle, data, 0,
-                  MathMin(kWriteFileMaxChunkSize, data.length));
+                  MathMin(kWriteFileMaxChunkSize, data.byteLength));
     remaining -= bytesWritten;
     data = new Uint8Array(
       data.buffer,
@@ -296,24 +310,46 @@ async function readFileHandle(filehandle, options) {
   if (size > kIoMaxLength)
     throw new ERR_FS_FILE_TOO_LARGE(size);
 
-  const chunks = [];
-  const chunkSize = size === 0 ?
-    kReadFileMaxChunkSize :
-    MathMin(size, kReadFileMaxChunkSize);
   let endOfFile = false;
+  let totalRead = 0;
+  const noSize = size === 0;
+  const buffers = [];
+  const fullBuffer = noSize ? undefined : Buffer.allocUnsafeSlow(size);
   do {
     if (signal && signal.aborted) {
       throw lazyDOMException('The operation was aborted', 'AbortError');
     }
-    const buf = Buffer.alloc(chunkSize);
-    const { bytesRead, buffer } =
-      await read(filehandle, buf, 0, chunkSize, -1);
-    endOfFile = bytesRead === 0;
-    if (bytesRead > 0)
-      chunks.push(buffer.slice(0, bytesRead));
+    let buffer;
+    let offset;
+    let length;
+    if (noSize) {
+      buffer = Buffer.allocUnsafeSlow(kReadFileUnknownBufferLength);
+      offset = 0;
+      length = kReadFileUnknownBufferLength;
+    } else {
+      buffer = fullBuffer;
+      offset = totalRead;
+      length = MathMin(size - totalRead, kReadFileBufferLength);
+    }
+
+    const bytesRead = (await binding.read(filehandle.fd, buffer, offset,
+                                          length, -1, kUsePromises)) || 0;
+    totalRead += bytesRead;
+    endOfFile = bytesRead === 0 || totalRead === size;
+    if (noSize && bytesRead > 0) {
+      const isBufferFull = bytesRead === kReadFileUnknownBufferLength;
+      const chunkBuffer = isBufferFull ? buffer : buffer.slice(0, bytesRead);
+      ArrayPrototypePush(buffers, chunkBuffer);
+    }
   } while (!endOfFile);
 
-  const result = chunks.length === 1 ? chunks[0] : Buffer.concat(chunks);
+  let result;
+  if (size > 0) {
+    result = totalRead === size ? fullBuffer : fullBuffer.slice(0, totalRead);
+  } else {
+    result = buffers.length === 1 ? buffers[0] : Buffer.concat(buffers,
+                                                               totalRead);
+  }
 
   return options.encoding ? result.toString(options.encoding) : result;
 }
@@ -352,6 +388,9 @@ async function open(path, flags, mode) {
 async function read(handle, bufferOrOptions, offset, length, position) {
   let buffer = bufferOrOptions;
   if (!isArrayBufferView(buffer)) {
+    if (bufferOrOptions === undefined) {
+      bufferOrOptions = {};
+    }
     if (bufferOrOptions.buffer) {
       buffer = bufferOrOptions.buffer;
       validateBuffer(buffer);
@@ -359,7 +398,7 @@ async function read(handle, bufferOrOptions, offset, length, position) {
       buffer = Buffer.alloc(16384);
     }
     offset = bufferOrOptions.offset || 0;
-    length = buffer.length;
+    length = buffer.byteLength;
     position = bufferOrOptions.position || null;
   }
 
@@ -374,12 +413,12 @@ async function read(handle, bufferOrOptions, offset, length, position) {
   if (length === 0)
     return { bytesRead: length, buffer };
 
-  if (buffer.length === 0) {
+  if (buffer.byteLength === 0) {
     throw new ERR_INVALID_ARG_VALUE('buffer', buffer,
                                     'is empty and cannot be written');
   }
 
-  validateOffsetLengthRead(offset, length, buffer.length);
+  validateOffsetLengthRead(offset, length, buffer.byteLength);
 
   if (!NumberIsSafeInteger(position))
     position = -1;
@@ -402,7 +441,7 @@ async function readv(handle, buffers, position) {
 }
 
 async function write(handle, buffer, offset, length, position) {
-  if (buffer.length === 0)
+  if (buffer && buffer.byteLength === 0)
     return { bytesWritten: 0, buffer };
 
   if (isArrayBufferView(buffer)) {
@@ -412,7 +451,7 @@ async function write(handle, buffer, offset, length, position) {
       validateInteger(offset, 'offset', 0);
     }
     if (typeof length !== 'number')
-      length = buffer.length - offset;
+      length = buffer.byteLength - offset;
     if (typeof position !== 'number')
       position = null;
     validateOffsetLengthWrite(offset, length, buffer.byteLength);
@@ -632,9 +671,8 @@ async function realpath(path, options) {
 
 async function mkdtemp(prefix, options) {
   options = getOptions(options, {});
-  if (!prefix || typeof prefix !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('prefix', 'string', prefix);
-  }
+
+  validateString(prefix, 'prefix');
   nullCheck(prefix);
   warnOnNonPortableTemplate(prefix);
   return binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, kUsePromises);
@@ -644,22 +682,26 @@ async function writeFile(path, data, options) {
   options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'w' });
   const flag = options.flag || 'w';
 
-  if (!isArrayBufferView(data)) {
+  if (!isArrayBufferView(data) && !isCustomIterable(data)) {
     validateStringAfterArrayBufferView(data, 'data');
     data = Buffer.from(data, options.encoding || 'utf8');
   }
 
   validateAbortSignal(options.signal);
   if (path instanceof FileHandle)
-    return writeFileHandle(path, data, options.signal);
+    return writeFileHandle(path, data, options.signal, options.encoding);
 
   if (options.signal?.aborted) {
-    throw new lazyDOMException('The operation was aborted', 'AbortError');
+    throw lazyDOMException('The operation was aborted', 'AbortError');
   }
 
   const fd = await open(path, flag, options.mode);
-  const { signal } = options;
-  return PromisePrototypeFinally(writeFileHandle(fd, data, signal), fd.close);
+  return PromisePrototypeFinally(
+    writeFileHandle(fd, data, options.signal, options.encoding), fd.close);
+}
+
+function isCustomIterable(obj) {
+  return isIterable(obj) && !isArrayBufferView(obj) && typeof obj !== 'string';
 }
 
 async function appendFile(path, data, options) {
@@ -713,6 +755,7 @@ module.exports = {
     writeFile,
     appendFile,
     readFile,
+    watch,
   },
 
   FileHandle

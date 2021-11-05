@@ -22,6 +22,7 @@
 #include "node_buffer.h"
 #include "allocated_buffer-inl.h"
 #include "node.h"
+#include "node_blob.h"
 #include "node_errors.h"
 #include "node_internals.h"
 
@@ -1163,6 +1164,7 @@ void Initialize(Local<Object> target,
 
   env->SetMethodNoSideEffect(target, "asciiSlice", StringSlice<ASCII>);
   env->SetMethodNoSideEffect(target, "base64Slice", StringSlice<BASE64>);
+  env->SetMethodNoSideEffect(target, "base64urlSlice", StringSlice<BASE64URL>);
   env->SetMethodNoSideEffect(target, "latin1Slice", StringSlice<LATIN1>);
   env->SetMethodNoSideEffect(target, "hexSlice", StringSlice<HEX>);
   env->SetMethodNoSideEffect(target, "ucs2Slice", StringSlice<UCS2>);
@@ -1170,10 +1172,13 @@ void Initialize(Local<Object> target,
 
   env->SetMethod(target, "asciiWrite", StringWrite<ASCII>);
   env->SetMethod(target, "base64Write", StringWrite<BASE64>);
+  env->SetMethod(target, "base64urlWrite", StringWrite<BASE64URL>);
   env->SetMethod(target, "latin1Write", StringWrite<LATIN1>);
   env->SetMethod(target, "hexWrite", StringWrite<HEX>);
   env->SetMethod(target, "ucs2Write", StringWrite<UCS2>);
   env->SetMethod(target, "utf8Write", StringWrite<UTF8>);
+
+  Blob::Initialize(env, target);
 
   // It can be a nullptr when running inside an isolate where we
   // do not own the ArrayBuffer allocator.

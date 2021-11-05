@@ -60,6 +60,7 @@ public:
     void UseDefaultSecurityToken();
     v8::Local<v8::Value> GetSecurityToken();
     v8::Local<v8::Object> GetExtrasBindingObject();
+    void SetPromiseHooks(v8::Local<v8::Function> init_hook, v8::Local<v8::Function> before_hook, v8::Local<v8::Function> after_hook, v8::Local<v8::Function> resolve_hook);
 
     inline v8::Isolate* GetIsolate() {
         return reinterpret_cast<v8::Isolate*> (Isolate());

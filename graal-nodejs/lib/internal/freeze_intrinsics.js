@@ -205,7 +205,7 @@ module.exports = function() {
     // Other APIs / Web Compatibility
     console.Console.prototype,
     BigIntPrototype,
-    SharedArrayBuffer.prototype
+    SharedArrayBuffer.prototype,
   ];
   const intrinsics = [
     // Anonymous Intrinsics
@@ -318,7 +318,7 @@ module.exports = function() {
     console,
     BigInt,
     Atomics,
-    SharedArrayBuffer
+    SharedArrayBuffer,
   ];
 
   if (typeof WebAssembly !== 'undefined') {

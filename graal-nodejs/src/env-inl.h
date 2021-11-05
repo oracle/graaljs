@@ -118,6 +118,25 @@ v8::Local<v8::Object> AsyncHooks::native_execution_async_resource(size_t i) {
   return PersistentToLocal::Strong(native_execution_async_resources_[i]);
 }
 
+inline void AsyncHooks::SetJSPromiseHooks(v8::Local<v8::Function> init,
+                                          v8::Local<v8::Function> before,
+                                          v8::Local<v8::Function> after,
+                                          v8::Local<v8::Function> resolve) {
+  js_promise_hooks_[0].Reset(env()->isolate(), init);
+  js_promise_hooks_[1].Reset(env()->isolate(), before);
+  js_promise_hooks_[2].Reset(env()->isolate(), after);
+  js_promise_hooks_[3].Reset(env()->isolate(), resolve);
+  for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
+    if (it->IsEmpty()) {
+      it = contexts_.erase(it);
+      it--;
+      continue;
+    }
+    PersistentToLocal::Weak(env()->isolate(), *it)
+        ->SetPromiseHooks(init, before, after, resolve);
+  }
+}
+
 inline v8::Local<v8::String> AsyncHooks::provider_string(int idx) {
   return env()->isolate_data()->async_wrap_provider(idx);
 }
@@ -240,6 +259,46 @@ void AsyncHooks::clear_async_id_stack() {
   fields_[kStackLength] = 0;
 }
 
+inline void AsyncHooks::AddContext(v8::Local<v8::Context> ctx) {
+  ctx->SetPromiseHooks(
+    js_promise_hooks_[0].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[0]),
+    js_promise_hooks_[1].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[1]),
+    js_promise_hooks_[2].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[2]),
+    js_promise_hooks_[3].IsEmpty() ?
+      v8::Local<v8::Function>() :
+      PersistentToLocal::Strong(js_promise_hooks_[3]));
+
+  size_t id = contexts_.size();
+  contexts_.resize(id + 1);
+  contexts_[id].Reset(env()->isolate(), ctx);
+  contexts_[id].SetWeak();
+}
+
+inline void AsyncHooks::RemoveContext(v8::Local<v8::Context> ctx) {
+  v8::Isolate* isolate = env()->isolate();
+  v8::HandleScope handle_scope(isolate);
+  for (auto it = contexts_.begin(); it != contexts_.end(); it++) {
+    if (it->IsEmpty()) {
+      it = contexts_.erase(it);
+      it--;
+      continue;
+    }
+    v8::Local<v8::Context> saved_context =
+      PersistentToLocal::Weak(isolate, *it);
+    if (saved_context == ctx) {
+      it->Reset();
+      contexts_.erase(it);
+      break;
+    }
+  }
+}
+
 // The DefaultTriggerAsyncIdScope(AsyncWrap*) constructor is defined in
 // async_wrap-inl.h to avoid a circular dependency.
 
@@ -333,6 +392,8 @@ inline void Environment::AssignToContext(v8::Local<v8::Context> context,
 #if HAVE_INSPECTOR
   inspector_agent()->ContextCreated(context, info);
 #endif  // HAVE_INSPECTOR
+
+  this->async_hooks()->AddContext(context);
 }
 
 inline Environment* Environment::GetCurrent(v8::Isolate* isolate) {
@@ -643,6 +704,22 @@ inline const std::string& Environment::exec_path() const {
   return exec_path_;
 }
 
+inline std::string Environment::GetCwd() {
+  char cwd[PATH_MAX_BYTES];
+  size_t size = PATH_MAX_BYTES;
+  const int err = uv_cwd(cwd, &size);
+
+  if (err == 0) {
+    CHECK_GT(size, 0);
+    return cwd;
+  }
+
+  // This can fail if the cwd is deleted. In that case, fall back to
+  // exec_path.
+  const std::string& exec_path = exec_path_;
+  return exec_path.substr(0, exec_path.find_last_of(kPathSeparator));
+}
+
 #if HAVE_INSPECTOR
 inline void Environment::set_coverage_directory(const char* dir) {
   coverage_directory_ = std::string(dir);
@@ -827,6 +904,10 @@ inline bool Environment::owns_inspector() const {
 
 inline bool Environment::tracks_unmanaged_fds() const {
   return flags_ & EnvironmentFlags::kTrackUnmanagedFds;
+}
+
+inline bool Environment::hide_console_windows() const {
+  return flags_ & EnvironmentFlags::kHideConsoleWindows;
 }
 
 bool Environment::filehandle_close_warning() const {
@@ -1044,6 +1125,27 @@ inline void Environment::SetInstanceMethod(v8::Local<v8::FunctionTemplate> that,
       v8::String::NewFromUtf8(isolate(), name, type).ToLocalChecked();
   that->InstanceTemplate()->Set(name_string, t);
   t->SetClassName(name_string);
+}
+
+inline void Environment::SetConstructorFunction(
+    v8::Local<v8::Object> that,
+    const char* name,
+    v8::Local<v8::FunctionTemplate> tmpl,
+    SetConstructorFunctionFlag flag) {
+  SetConstructorFunction(that, OneByteString(isolate(), name), tmpl, flag);
+}
+
+inline void Environment::SetConstructorFunction(
+    v8::Local<v8::Object> that,
+    v8::Local<v8::String> name,
+    v8::Local<v8::FunctionTemplate> tmpl,
+    SetConstructorFunctionFlag flag) {
+  if (LIKELY(flag == SetConstructorFunctionFlag::SET_CLASS_NAME))
+    tmpl->SetClassName(name);
+  that->Set(
+      context(),
+      name,
+      tmpl->GetFunction(context()).ToLocalChecked()).Check();
 }
 
 void Environment::AddCleanupHook(CleanupCallback fn, void* arg) {

@@ -8,6 +8,8 @@ const {
   MathMax,
   ObjectKeys,
   RegExp,
+  StringPrototypeLocaleCompare,
+  StringPrototypeSlice,
   StringPrototypeTrimLeft,
   StringPrototypeRepeat,
   StringPrototypeReplace,
@@ -58,13 +60,13 @@ const envVars = new SafeMap(ArrayPrototypeConcat([
   ['NODE_V8_COVERAGE', { helpText: 'directory to output v8 coverage JSON ' +
     'to' }],
   ['UV_THREADPOOL_SIZE', { helpText: 'sets the number of threads used in ' +
-    'libuv\'s threadpool' }]
+    'libuv\'s threadpool' }],
 ], hasIntl ? [
   ['NODE_ICU_DATA', { helpText: 'data path for ICU (Intl object) data' +
-    hasSmallICU ? '' : ' (will extend linked-in data)' }]
+    hasSmallICU ? '' : ' (will extend linked-in data)' }],
 ] : []), (hasNodeOptions ? [
   ['NODE_OPTIONS', { helpText: 'set CLI options in the environment via a ' +
-    'space-separated list' }]
+    'space-separated list' }],
 ] : []), hasCrypto ? [
   ['OPENSSL_CONF', { helpText: 'load OpenSSL configuration from file' }],
   ['SSL_CERT_DIR', { helpText: 'sets OpenSSL\'s directory of trusted ' +
@@ -110,17 +112,35 @@ function format(
   let text = '';
   let maxFirstColumnUsed = 0;
 
-  for (const [
-    name, { helpText, type, value }
-  ] of ArrayPrototypeSort([...options.entries()])) {
+  const sortedOptions = ArrayPrototypeSort(
+    [...options.entries()],
+    ({ 0: name1, 1: option1 }, { 0: name2, 1: option2 }) => {
+      if (option1.defaultIsTrue) {
+        name1 = `--no-${StringPrototypeSlice(name1, 2)}`;
+      }
+      if (option2.defaultIsTrue) {
+        name2 = `--no-${StringPrototypeSlice(name2, 2)}`;
+      }
+      return StringPrototypeLocaleCompare(name1, name2);
+    },
+  );
+
+  for (const {
+    0: name, 1: { helpText, type, value, defaultIsTrue }
+  } of sortedOptions) {
     if (!helpText) continue;
 
     let displayName = name;
+
+    if (defaultIsTrue) {
+      displayName = `--no-${StringPrototypeSlice(displayName, 2)}`;
+    }
+
     const argDescription = getArgDescription(type);
     if (argDescription)
       displayName += `=${argDescription}`;
 
-    for (const [ from, to ] of aliases) {
+    for (const { 0: from, 1: to } of aliases) {
       // For cases like e.g. `-e, --eval`.
       if (to[0] === name && to.length === 1) {
         displayName = `${from}, ${displayName}`;
@@ -138,7 +158,7 @@ function format(
     }
 
     let displayHelpText = helpText;
-    if (value === true) {
+    if (value === !defaultIsTrue) {
       // Mark boolean options we currently have enabled.
       // In particular, it indicates whether --use-openssl-ca
       // or --use-bundled-ca is the (current) default.

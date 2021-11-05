@@ -14,7 +14,12 @@ const {
 
 const errors = require('internal/errors');
 const { isIP } = require('internal/net');
-const { validateInt32 } = require('internal/validators');
+const { getOptionValue } = require('internal/options');
+const {
+  validateInt32,
+  validateOneOf,
+  validateString,
+} = require('internal/validators');
 const {
   ChannelWrap,
   strerror,
@@ -38,11 +43,18 @@ function validateTimeout(options) {
   return timeout;
 }
 
+function validateTries(options) {
+  const { tries = 4 } = { ...options };
+  validateInt32(tries, 'options.tries', 1, 2 ** 31 - 1);
+  return tries;
+}
+
 // Resolver instances correspond 1:1 to c-ares channels.
 class Resolver {
   constructor(options = undefined) {
     const timeout = validateTimeout(options);
-    this._handle = new ChannelWrap(timeout);
+    const tries = validateTries(options);
+    this._handle = new ChannelWrap(timeout, tries);
   }
 
   cancel() {
@@ -71,9 +83,7 @@ class Resolver {
     const newSet = [];
 
     ArrayPrototypeForEach(servers, (serv, index) => {
-      if (typeof serv !== 'string') {
-        throw new ERR_INVALID_ARG_TYPE(`servers[${index}]`, 'string', serv);
-      }
+      validateString(serv, `servers[${index}]`);
       let ipVersion = isIP(serv);
 
       if (ipVersion !== 0)
@@ -121,9 +131,7 @@ class Resolver {
   }
 
   setLocalAddress(ipv4, ipv6) {
-    if (typeof ipv4 !== 'string') {
-      throw new ERR_INVALID_ARG_TYPE('ipv4', 'String', ipv4);
-    }
+    validateString(ipv4, 'ipv4');
 
     if (typeof ipv6 !== 'string' && ipv6 !== undefined) {
       throw new ERR_INVALID_ARG_TYPE('ipv6', ['String', 'undefined'], ipv6);
@@ -187,12 +195,32 @@ function emitInvalidHostnameWarning(hostname) {
   );
 }
 
+let dnsOrder = getOptionValue('--dns-result-order') || 'ipv4first';
+
+function getDefaultVerbatim() {
+  switch (dnsOrder) {
+    case 'verbatim':
+      return true;
+    case 'ipv4first':
+    default:
+      return false;
+  }
+}
+
+function setDefaultResultOrder(value) {
+  validateOneOf(value, 'dnsOrder', ['verbatim', 'ipv4first']);
+  dnsOrder = value;
+}
+
 module.exports = {
   bindDefaultResolver,
   getDefaultResolver,
   setDefaultResolver,
   validateHints,
   validateTimeout,
+  validateTries,
   Resolver,
   emitInvalidHostnameWarning,
+  getDefaultVerbatim,
+  setDefaultResultOrder,
 };

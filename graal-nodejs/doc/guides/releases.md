@@ -175,7 +175,7 @@ duplicate or not.
 For a list of commits that could be landed in a patch release on v1.x:
 
 ```console
-$ branch-diff v1.x-staging master --exclude-label=semver-major,semver-minor,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x --filter-release --format=simple
+$ branch-diff v1.x-staging master --exclude-label=semver-major,semver-minor,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x,backport-open-v1.x,backported-to-v1.x --filter-release --format=simple
 ```
 
 Previously released commits and version bumps do not need to be
@@ -195,7 +195,7 @@ command. (For semver-minor releases, make sure to remove the `semver-minor` tag
 from `exclude-label`.)
 
 ```console
-$ branch-diff v1.x-staging master --exclude-label=semver-major,semver-minor,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x --filter-release --format=sha --reverse | xargs git cherry-pick
+$ branch-diff v1.x-staging master --exclude-label=semver-major,semver-minor,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x,backport-open-v1.x,backported-to-v1.x --filter-release --format=sha --reverse | xargs git cherry-pick
 ```
 
 When cherry-picking commits, if there are simple conflicts you can resolve
@@ -242,34 +242,6 @@ be produced with a version string that does not have a trailing pre-release tag:
 ```c
 #define NODE_VERSION_IS_RELEASE 1
 ```
-
-**Also consider whether to bump `NODE_MODULE_VERSION`**:
-
-This macro is used to signal an ABI version for native addons. It currently has
-two common uses in the community:
-
-* Determining what API to work against for compiling native addons, e.g.
-  [NAN](https://github.com/nodejs/nan) uses it to form a compatibility-layer for
-  much of what it wraps.
-* Determining the ABI for downloading pre-built binaries of native addons, e.g.
-  [node-pre-gyp](https://github.com/mapbox/node-pre-gyp) uses this value as
-  exposed via `process.versions.modules` to help determine the appropriate
-  binary to download at install-time.
-
-The general rule is to bump this version when there are _breaking ABI_ changes
-and also if there are non-trivial API changes. The rules are not yet strictly
-defined, so if in doubt, please confer with someone that will have a more
-informed perspective, such as a member of the NAN team.
-
-A registry of currently used `NODE_MODULE_VERSION` values is maintained at
-<https://github.com/nodejs/node/blob/HEAD/doc/abi_version_registry.json>.
-When bumping `NODE_MODULE_VERSION`, you should choose a new value not listed
-in the registry. Also include a change to the registry in your commit to
-reflect the newly used value.
-
-It is current TSC policy to bump major version when ABI changes. If you
-see a need to bump `NODE_MODULE_VERSION` then you should consult the TSC.
-Commits may need to be reverted or a major version bump may need to happen.
 
 ### 4. Update the changelog
 
@@ -345,10 +317,14 @@ accordingly by removing the bold styling from the previous release.
 If this release includes new APIs then it is necessary to document that they
 were first added in this version. The relevant commits should already include
 `REPLACEME` tags as per the example in the
-[docs README](../../tools/doc/README.md). Check for these tags with `grep
-REPLACEME doc/api/*.md`, and substitute this node version with `sed -i
-"s/REPLACEME/$VERSION/g" doc/api/*.md` or `perl -pi -e "s/REPLACEME/$VERSION/g"
-doc/api/*.md`.
+[docs README](../../tools/doc/README.md). Check for these tags with
+```console
+grep REPLACEME doc/api/*.md
+```
+and substitute this node version with
+```console
+sed -i "s/REPLACEME/$VERSION/g" doc/api/*.md` or `perl -pi -e "s/REPLACEME/$VERSION/g" doc/api/*.md
+```
 
 `$VERSION` should be prefixed with a `v`.
 
@@ -398,7 +374,19 @@ Create a pull request targeting the correct release line. For example, a
 `v5.3.0-proposal` PR should target `v5.x`, not master. Paste the CHANGELOG
 modifications into the body of the PR so that collaborators can see what is
 changing. These PRs should be left open for at least 24 hours, and can be
-updated as new commits land.
+updated as new commits land. If the CHANGELOG pasted into the pull request
+is long enough that it slows down the GitHub UI, consider pasting the commits
+into `<details>` tags or in follow up comments.
+
+If using the `<details>` tag, use the following format:
+
+```markdown
+<details>
+<summary>Commits</summary>
+
+* Full list of commits...
+</details>
+```
 
 If you need any additional information about any of the commits, this PR is a
 good place to @-mention the relevant contributors.
@@ -458,26 +446,6 @@ worker will still have a linker process that's running for another couple of
 minutes which will prevent Jenkins from clearing the workspace to start a new
 one. This isn't a big deal, it's just a hassle because it'll result in another
 failed build if you start again!
-
-ARMv7 takes the longest to compile. Unfortunately ccache isn't as effective on
-release builds, I think it's because of the additional macro settings that go in
-to a release build that nullify previous builds. Also most of the release build
-machines are separate to the test build machines so they don't get any benefit
-from ongoing compiles between releases. You can expect 1.5 hours for the ARMv7
-builder to complete and you should normally wait for this to finish. It is
-possible to rush a release out if you want and add additional builds later but
-we normally provide ARMv7 from initial promotion.
-
-You do not have to wait for the ARMv6 / Raspberry PI builds if they take longer
-than the others. It is only necessary to have the main Linux (x64 and x86),
-macOS .pkg and .tar.gz, Windows (x64 and x86) .msi and .exe, source, headers,
-and docs (both produced currently by an macOS worker). **If you promote builds
-_before_ ARM builds have finished, you must repeat the promotion step for the
-ARM builds when they are ready**. If the ARMv6 build failed for some reason you
-can use the
-[`iojs-release-arm6-only`](https://ci-release.nodejs.org/job/iojs+release-arm6-only/)
-build in the release CI to re-run the build only for ARMv6. When launching the
-build make sure to use the same commit hash as for the original release.
 
 ### 10. Test the build
 
@@ -583,9 +551,9 @@ $ git push upstream master
 
 ### 14. Push the release tag
 
-Push the tag to the repo before you promote the builds. If you haven't pushed
-your tag first, then build promotion won't work properly. Push the tag using the
-following command:
+Push the tag to the repository before you promote the builds. If you
+haven't pushed your tag first, then build promotion won't work properly.
+Push the tag using the following command:
 
 ```console
 $ git push <remote> <vx.y.z>
@@ -661,11 +629,6 @@ SHASUMS256.txt.sig.
 **g.** Upload the `SHASUMS256.txt` files back to the server into the release
 directory.
 </details>
-
-If you didn't wait for ARM builds in the previous step before promoting the
-release, you should re-run `tools/release.sh` after the ARM builds have
-finished. That will move the ARM artifacts into the correct location. You will
-be prompted to re-sign `SHASUMS256.txt`.
 
 **It is possible to only sign a release by running `./tools/release.sh -s
 vX.Y.Z`.**
@@ -846,6 +809,36 @@ changelog).
 Notify the `@nodejs/npm` team in the release proposal PR to inform them of the
 upcoming release. `npm` maintains a list of [supported versions](https://github.com/npm/cli/blob/latest/lib/utils/unsupported.js#L3)
 that will need updating to include the new major release.
+
+### Update `NODE_MODULE_VERSION`
+
+This macro in `src/node_version.h` is used to signal an ABI version for native
+addons. It currently has two common uses in the community:
+
+* Determining what API to work against for compiling native addons, e.g.
+  [NAN](https://github.com/nodejs/nan) uses it to form a compatibility-layer for
+  much of what it wraps.
+* Determining the ABI for downloading pre-built binaries of native addons, e.g.
+  [node-pre-gyp](https://github.com/mapbox/node-pre-gyp) uses this value as
+  exposed via `process.versions.modules` to help determine the appropriate
+  binary to download at install-time.
+
+The general rule is to bump this version when there are _breaking ABI_ changes
+and also if there are non-trivial API changes. The rules are not yet strictly
+defined, so if in doubt, please confer with someone that will have a more
+informed perspective, such as a member of the NAN team.
+
+A registry of currently used `NODE_MODULE_VERSION` values is maintained at
+<https://github.com/nodejs/node/blob/HEAD/doc/abi_version_registry.json>.
+When bumping `NODE_MODULE_VERSION`, you should choose a new value not listed
+in the registry. Also include a change to the registry in your commit to
+reflect the newly used value. Ensure that the release commit removes the
+`-pre` suffix for the major version being prepared.
+
+It is current TSC policy to bump major version when ABI changes. If you
+see a need to bump `NODE_MODULE_VERSION` outside of a majore release then
+you should consult the TSC. Commits may need to be reverted or a major
+version bump may need to happen.
 
 ### Test releases and release candidates
 

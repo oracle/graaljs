@@ -1002,11 +1002,11 @@ added: v0.1.29
 * `callback` {Function}
 * Returns: {boolean}
 
-Sends a chunk of the body. By calling this method
-many times, a request body can be sent to a
-server. In that case, it is suggested to use the
-`['Transfer-Encoding', 'chunked']` header line when
-creating the request.
+Sends a chunk of the body. This method can be called multiple times. If no
+`Content-Length` is set, data will automatically be encoded in HTTP Chunked
+transfer encoding, so that server knows when the data ends. The
+`Transfer-Encoding: chunked` header is added. Calling [`request.end()`][]
+is necessary to finish sending the request.
 
 The `encoding` argument is optional and only applies when `chunk` is a string.
 Defaults to `'utf8'`.
@@ -2626,6 +2626,37 @@ Returns a new instance of [`http.Server`][].
 The `requestListener` is a function which is automatically
 added to the [`'request'`][] event.
 
+```cjs
+const http = require('http');
+
+// Create a local server to receive data from
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    data: 'Hello World!'
+  }));
+});
+
+server.listen(8000);
+```
+
+```cjs
+const http = require('http');
+
+// Create a local server to receive data from
+const server = http.createServer();
+
+// Listen to the request event
+server.on('request', (request, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    data: 'Hello World!'
+  }));
+});
+
+server.listen(8000);
+```
+
 ## `http.get(options[, callback])`
 ## `http.get(url[, options][, callback])`
 <!-- YAML
@@ -2736,6 +2767,10 @@ This can be overridden for servers and client requests by passing the
 <!-- YAML
 added: v0.3.6
 changes:
+  - version: v14.18.0
+    pr-url: https://github.com/nodejs/node/pull/39310
+    description: When using a `URL` object parsed username and
+                 password will now be properly URI decoded.
   - version: v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36048
     description: It is possible to abort a request with an AbortSignal.
@@ -3073,13 +3108,13 @@ try {
 }
 ```
 
-[`--insecure-http-parser`]: cli.md#cli_insecure_http_parser
-[`--max-http-header-size`]: cli.md#cli_max_http_header_size_size
 [`'checkContinue'`]: #http_event_checkcontinue
 [`'finish'`]: #http_event_finish
 [`'request'`]: #http_event_request
 [`'response'`]: #http_event_response
 [`'upgrade'`]: #http_event_upgrade
+[`--insecure-http-parser`]: cli.md#cli_insecure_http_parser
+[`--max-http-header-size`]: cli.md#cli_max_http_header_size_size
 [`Agent`]: #http_class_http_agent
 [`Buffer.byteLength()`]: buffer.md#buffer_static_method_buffer_bytelength_string_encoding
 [`Duplex`]: stream.md#stream_class_stream_duplex
@@ -3095,8 +3130,8 @@ try {
 [`http.Agent`]: #http_class_http_agent
 [`http.ClientRequest`]: #http_class_http_clientrequest
 [`http.IncomingMessage`]: #http_class_http_incomingmessage
-[`http.Server`]: #http_class_http_server
 [`http.ServerResponse`]: #http_class_http_serverresponse
+[`http.Server`]: #http_class_http_server
 [`http.get()`]: #http_http_get_options_callback
 [`http.globalAgent`]: #http_http_globalagent
 [`http.request()`]: #http_http_request_options_callback
@@ -3106,25 +3141,25 @@ try {
 [`net.Socket`]: net.md#net_class_net_socket
 [`net.createConnection()`]: net.md#net_net_createconnection_options_connectlistener
 [`new URL()`]: url.md#url_new_url_input_base
-[`outgoingMessage.socket`]: #http_outgoingMessage.socket
+[`outgoingMessage.socket`]: #http_outgoingmessage_socket
 [`removeHeader(name)`]: #http_request_removeheader_name
-[`request.end()`]: #http_request_end_data_encoding_callback
 [`request.destroy()`]: #http_request_destroy_error
+[`request.end()`]: #http_request_end_data_encoding_callback
 [`request.flushHeaders()`]: #http_request_flushheaders
 [`request.getHeader()`]: #http_request_getheader_name
 [`request.setHeader()`]: #http_request_setheader_name_value
 [`request.setTimeout()`]: #http_request_settimeout_timeout_callback
 [`request.socket.getPeerCertificate()`]: tls.md#tls_tlssocket_getpeercertificate_detailed
 [`request.socket`]: #http_request_socket
-[`request.writableFinished`]: #http_request_writablefinished
 [`request.writableEnded`]: #http_request_writableended
+[`request.writableFinished`]: #http_request_writablefinished
 [`request.write(data, encoding)`]: #http_request_write_chunk_encoding_callback
 [`response.end()`]: #http_response_end_data_encoding_callback
 [`response.getHeader()`]: #http_response_getheader_name
 [`response.setHeader()`]: #http_response_setheader_name_value
 [`response.socket`]: #http_response_socket
-[`response.writableFinished`]: #http_response_writablefinished
 [`response.writableEnded`]: #http_response_writableended
+[`response.writableFinished`]: #http_response_writablefinished
 [`response.write()`]: #http_response_write_chunk_encoding_callback
 [`response.write(data, encoding)`]: #http_response_write_chunk_encoding_callback
 [`response.writeContinue()`]: #http_response_writecontinue

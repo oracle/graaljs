@@ -142,7 +142,7 @@ function isIdenticalTypedArrayType(a, b) {
     isBigInt64Array,
     isBigUint64Array,
     isUint8ClampedArray,
-    isUint8Array
+    isUint8Array,
   ]) {
     if (check(a)) {
       return check(b);
@@ -518,7 +518,7 @@ function mapHasEqualEntry(set, map, key1, item1, strict, memo) {
 function mapEquiv(a, b, strict, memo) {
   let set = null;
 
-  for (const [key, item1] of a) {
+  for (const { 0: key, 1: item1 } of a) {
     if (typeof key === 'object' && key !== null) {
       if (set === null) {
         set = new Set();
@@ -545,7 +545,7 @@ function mapEquiv(a, b, strict, memo) {
   }
 
   if (set !== null) {
-    for (const [key, item] of b) {
+    for (const { 0: key, 1: item } of b) {
       if (typeof key === 'object' && key !== null) {
         if (!mapHasEqualEntry(set, a, key, item, strict, memo))
           return false;

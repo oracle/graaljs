@@ -9,6 +9,8 @@ const {
   ObjectKeys,
   Set,
   String,
+  StringFromCharCode,
+  StringPrototypeToLowerCase,
   Symbol,
 } = primordials;
 
@@ -25,11 +27,14 @@ const {
   hideStackFrames
 } = require('internal/errors');
 
+const kSensitiveHeaders = Symbol('nodejs.http2.sensitiveHeaders');
 const kSocket = Symbol('socket');
 const kProxySocket = Symbol('proxySocket');
 const kRequest = Symbol('request');
 
 const {
+  NGHTTP2_NV_FLAG_NONE,
+  NGHTTP2_NV_FLAG_NO_INDEX,
   NGHTTP2_SESSION_CLIENT,
   NGHTTP2_SESSION_SERVER,
 
@@ -98,7 +103,7 @@ const kValidPseudoHeaders = new Set([
   HTTP2_HEADER_AUTHORITY,
   HTTP2_HEADER_SCHEME,
   HTTP2_HEADER_PATH,
-  HTTP2_HEADER_PROTOCOL
+  HTTP2_HEADER_PROTOCOL,
 ]);
 
 // This set contains headers that are permitted to have only a single
@@ -142,7 +147,7 @@ const kSingleValueHeaders = new Set([
   HTTP2_HEADER_TK,
   HTTP2_HEADER_UPGRADE_INSECURE_REQUESTS,
   HTTP2_HEADER_USER_AGENT,
-  HTTP2_HEADER_X_CONTENT_TYPE_OPTIONS
+  HTTP2_HEADER_X_CONTENT_TYPE_OPTIONS,
 ]);
 
 // The HTTP methods in this set are specifically defined as assigning no
@@ -152,7 +157,7 @@ const kSingleValueHeaders = new Set([
 const kNoPayloadMethods = new Set([
   HTTP2_METHOD_DELETE,
   HTTP2_METHOD_GET,
-  HTTP2_METHOD_HEAD
+  HTTP2_METHOD_HEAD,
 ]);
 
 // The following ArrayBuffer instances are used to share memory more efficiently
@@ -454,6 +459,9 @@ const assertValidPseudoHeaderTrailer = hideStackFrames((key) => {
   throw new ERR_HTTP2_INVALID_PSEUDOHEADER(key);
 });
 
+const emptyArray = [];
+const kNeverIndexFlag = StringFromCharCode(NGHTTP2_NV_FLAG_NO_INDEX);
+const kNoHeaderFlags = StringFromCharCode(NGHTTP2_NV_FLAG_NONE);
 function mapToHeaders(map,
                       assertValuePseudoHeader = assertValidPseudoHeader) {
   let ret = '';
@@ -466,6 +474,8 @@ function mapToHeaders(map,
   let value;
   let isSingleValueHeader;
   let err;
+  const neverIndex =
+    (map[kSensitiveHeaders] || emptyArray).map(StringPrototypeToLowerCase);
   for (i = 0; i < keys.length; ++i) {
     key = keys[i];
     value = map[key];
@@ -494,11 +504,12 @@ function mapToHeaders(map,
         throw new ERR_HTTP2_HEADER_SINGLE_VALUE(key);
       singles.add(key);
     }
+    const flags = neverIndex.includes(key) ? kNeverIndexFlag : kNoHeaderFlags;
     if (key[0] === ':') {
       err = assertValuePseudoHeader(key);
       if (err !== undefined)
         throw err;
-      ret = `${key}\0${value}\0${ret}`;
+      ret = `${key}\0${value}\0${flags}${ret}`;
       count++;
       continue;
     }
@@ -508,12 +519,12 @@ function mapToHeaders(map,
     if (isArray) {
       for (j = 0; j < value.length; ++j) {
         const val = String(value[j]);
-        ret += `${key}\0${val}\0`;
+        ret += `${key}\0${val}\0${flags}`;
       }
       count += value.length;
       continue;
     }
-    ret += `${key}\0${value}\0`;
+    ret += `${key}\0${value}\0${flags}`;
     count++;
   }
 
@@ -552,7 +563,7 @@ const assertWithinRange = hideStackFrames(
   }
 );
 
-function toHeaderObject(headers) {
+function toHeaderObject(headers, sensitiveHeaders) {
   const obj = ObjectCreate(null);
   for (var n = 0; n < headers.length; n += 2) {
     const name = headers[n];
@@ -593,6 +604,7 @@ function toHeaderObject(headers) {
       }
     }
   }
+  obj[kSensitiveHeaders] = sensitiveHeaders;
   return obj;
 }
 
@@ -621,6 +633,7 @@ module.exports = {
   getSettings,
   getStreamState,
   isPayloadMeaningless,
+  kSensitiveHeaders,
   kSocket,
   kProxySocket,
   kRequest,

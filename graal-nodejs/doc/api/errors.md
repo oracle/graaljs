@@ -876,6 +876,14 @@ An unknown cipher was specified.
 An unknown Diffie-Hellman group name was given. See
 [`crypto.getDiffieHellman()`][] for a list of valid group names.
 
+<a id="ERR_DLOPEN_FAILED"></a>
+### `ERR_DLOPEN_FAILED`
+<!-- YAML
+added: v14.18.0
+-->
+
+A call to `process.dlopen()` failed.
+
 <a id="ERR_DEBUGGER_ERROR"></a>
 ### `ERR_DEBUGGER_ERROR`
 <!-- YAML
@@ -1136,6 +1144,11 @@ reached.
 
 An attempt was made to initiate a new push stream from within a push stream.
 Nested push streams are not permitted.
+
+<a id="ERR_HTTP2_NO_MEM"></a>
+### `ERR_HTTP2_NO_MEM`
+
+Out of memory when using the `http2session.setLocalWindowSize(windowSize)` API.
 
 <a id="ERR_HTTP2_NO_SOCKET_MANIPULATION"></a>
 ### `ERR_HTTP2_NO_SOCKET_MANIPULATION`
@@ -1416,6 +1429,15 @@ An invalid HTTP token was supplied.
 
 An IP address is not valid.
 
+<a id="ERR_INVALID_MODULE"></a>
+### `ERR_INVALID_MODULE`
+<!-- YAML
+added: v14.18.0
+-->
+
+An attempt was made to load a module that does not exist or was otherwise not
+valid.
+
 <a id="ERR_INVALID_MODULE_SPECIFIER"></a>
 ### `ERR_INVALID_MODULE_SPECIFIER`
 
@@ -1591,6 +1613,13 @@ entries to match in order to resolve this error. See the documentation for
 
 A policy manifest resource had an invalid value for one of its fields. Update
 the manifest entry to match in order to resolve this error. See the
+documentation for [policy][] manifests for more information.
+
+<a id="ERR_MANIFEST_INVALID_SPECIFIER"></a>
+### `ERR_MANIFEST_INVALID_SPECIFIER`
+
+A policy manifest resource had an invalid value for one of its dependency
+mappings. Update the manifest entry to match to resolve this error. See the
 documentation for [policy][] manifests for more information.
 
 <a id="ERR_MANIFEST_PARSE_POLICY"></a>
@@ -2597,7 +2626,7 @@ closed.
 [`new URL(input)`]: url.md#url_new_url_input_base
 [`new URLSearchParams(iterable)`]: url.md#url_new_urlsearchparams_iterable
 [`package.json`]: packages.md#packages_node_js_package_json_field_definitions
-[`process.on('exit')`]: process.md#Event:-`'exit'`
+[`process.on('exit')`]: process.md#process_event_exit
 [`process.send()`]: process.md#process_process_send_message_sendhandle_options_callback
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#process_process_setuncaughtexceptioncapturecallback_fn
 [`readable._read()`]: stream.md#stream_readable_read_size_1

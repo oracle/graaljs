@@ -154,6 +154,8 @@ function ReadableState(options, stream, isDuplex) {
   // If true, a maybeReadMore has been scheduled.
   this.readingMore = false;
 
+  this.dataEmitted = false;
+
   this.decoder = null;
   this.encoding = null;
   if (options && options.encoding) {
@@ -287,6 +289,7 @@ function addChunk(stream, state, chunk, addToFront) {
     } else {
       state.awaitDrainWriters = null;
     }
+    state.dataEmitted = true;
     stream.emit('data', chunk);
   } else {
     // Update the buffer info.
@@ -496,8 +499,10 @@ Readable.prototype.read = function(n) {
       endReadable(this);
   }
 
-  if (ret !== null)
+  if (ret !== null) {
+    state.dataEmitted = true;
     this.emit('data', ret);
+  }
 
   return ret;
 };
@@ -1169,6 +1174,18 @@ ObjectDefineProperties(Readable.prototype, {
     }
   },
 
+  readableDidRead: {
+    enumerable: false,
+    get: function() {
+      return (
+        this._readableState.dataEmitted ||
+        this._readableState.endEmitted ||
+        this._readableState.errorEmitted ||
+        this._readableState.closeEmitted
+      );
+    }
+  },
+
   readableHighWaterMark: {
     enumerable: false,
     get: function() {
@@ -1317,7 +1334,7 @@ function endReadableNT(state, stream) {
     stream.emit('end');
 
     if (stream.writable && stream.allowHalfOpen === false) {
-      process.nextTick(endWritableNT, state, stream);
+      process.nextTick(endWritableNT, stream);
     } else if (state.autoDestroy) {
       // In case of duplex streams we need a way to detect
       // if the writable side is ready for autoDestroy as well.
@@ -1336,7 +1353,7 @@ function endReadableNT(state, stream) {
   }
 }
 
-function endWritableNT(state, stream) {
+function endWritableNT(stream) {
   const writable = stream.writable && !stream.writableEnded &&
     !stream.destroyed;
   if (writable) {

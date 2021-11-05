@@ -455,6 +455,15 @@ of the custom deprecation.
 The `*-deprecation` command-line flags only affect warnings that use the name
 `'DeprecationWarning'`.
 
+### Event: `'worker'`
+<!-- YAML
+added: v14.18.0
+-->
+
+* `worker` {Worker} The {Worker} that was created.
+
+The `'worker'` event is emitted after a new {Worker} thread has been created.
+
 #### Emitting custom warnings
 
 See the [`process.emitWarning()`][process_emit_warning] method for issuing
@@ -1573,26 +1582,19 @@ changes:
   * `external` {integer}
   * `arrayBuffers` {integer}
 
-The `process.memoryUsage()` method returns an object describing the memory usage
-of the Node.js process measured in bytes.
-
-For example, the code:
+Returns an object describing the memory usage of the Node.js process measured in
+bytes.
 
 ```js
 console.log(process.memoryUsage());
-```
-
-Will generate:
-
-<!-- eslint-skip -->
-```js
-{
-  rss: 4935680,
-  heapTotal: 1826816,
-  heapUsed: 650472,
-  external: 49879,
-  arrayBuffers: 9386
-}
+// Prints:
+// {
+//  rss: 4935680,
+//  heapTotal: 1826816,
+//  heapUsed: 650472,
+//  external: 49879,
+//  arrayBuffers: 9386
+// }
 ```
 
 * `heapTotal` and `heapUsed` refer to V8's memory usage.
@@ -1609,6 +1611,32 @@ Will generate:
 
 When using [`Worker`][] threads, `rss` will be a value that is valid for the
 entire process, while the other fields will only refer to the current thread.
+
+The `process.memoryUsage()` method iterates over each page to gather
+information about memory usage which might be slow depending on the
+program memory allocations.
+
+## `process.memoryUsage.rss()`
+<!-- YAML
+added: v14.18.0
+-->
+
+* Returns: {integer}
+
+The `process.memoryUsage.rss()` method returns an integer representing the
+Resident Set Size (RSS) in bytes.
+
+The Resident Set Size, is the amount of space occupied in the main
+memory device (that is a subset of the total allocated memory) for the
+process, including all C++ and JavaScript objects and code.
+
+This is the same value as the `rss` property provided by `process.memoryUsage()`
+but `process.memoryUsage.rss()` is faster.
+
+```js
+console.log(process.memoryUsage.rss());
+// 35655680
+```
 
 ## `process.nextTick(callback[, ...args])`
 <!-- YAML
@@ -2320,6 +2348,24 @@ This function is only available on POSIX platforms (i.e. not Windows or
 Android).
 This feature is not available in [`Worker`][] threads.
 
+## `process.setSourceMapsEnabled(val)`
+<!-- YAML
+added: v14.18.0
+-->
+
+> Stability: 1 - Experimental
+
+* `val` {boolean}
+
+This function enables or disables the [Source Map v3][Source Map] support for
+stack traces.
+
+It provides same features as launching Node.js process with commandline options
+`--enable-source-maps`.
+
+Only source maps in JavaScript files that are loaded after source maps has been
+enabled will be parsed and loaded.
+
 ## `process.setUncaughtExceptionCaptureCallback(fn)`
 <!-- YAML
 added: v9.3.0
@@ -2704,6 +2750,7 @@ cases:
 [LTS]: https://github.com/nodejs/Release
 [Readable]: stream.md#stream_readable_streams
 [Signal Events]: #process_signal_events
+[Source Map]: https://sourcemaps.info/spec.html
 [Stream compatibility]: stream.md#stream_compatibility_with_older_node_js_versions
 [TTY]: tty.md#tty_tty
 [Writable]: stream.md#stream_writable_streams
@@ -2735,7 +2782,7 @@ cases:
 [`process.hrtime()`]: #process_process_hrtime_time
 [`process.hrtime.bigint()`]: #process_process_hrtime_bigint
 [`process.kill()`]: #process_process_kill_pid_signal
-[`process.setUncaughtExceptionCaptureCallback()`]: process.md#process_process_setuncaughtexceptioncapturecallback_fn
+[`process.setUncaughtExceptionCaptureCallback()`]: #process_process_setuncaughtexceptioncapturecallback_fn
 [`promise.catch()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/catch
 [`queueMicrotask()`]: globals.md#globals_queuemicrotask_callback
 [`readable.read()`]: stream.md#stream_readable_read_size
@@ -2745,7 +2792,7 @@ cases:
 [`v8.setFlagsFromString()`]: v8.md#v8_v8_setflagsfromstring_flags
 [debugger]: debugger.md
 [deprecation code]: deprecations.md
-[note on process I/O]: process.md#process_a_note_on_process_i_o
+[note on process I/O]: #process_a_note_on_process_i_o
 [process.cpuUsage]: #process_process_cpuusage_previousvalue
 [process_emit_warning]: #process_process_emitwarning_warning_type_code_ctor
 [process_warning]: #process_event_warning

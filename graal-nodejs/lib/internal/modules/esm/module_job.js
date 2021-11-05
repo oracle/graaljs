@@ -24,6 +24,9 @@ const {
 const { ModuleWrap } = internalBinding('module_wrap');
 
 const { decorateErrorStack } = require('internal/util');
+const {
+  getSourceMapsEnabled,
+} = require('internal/source_map/source_map_cache');
 const assert = require('internal/assert');
 const resolvedPromise = PromiseResolve();
 
@@ -122,12 +125,22 @@ class ModuleJob {
       }
     } catch (e) {
       decorateErrorStack(e);
-      if (StringPrototypeIncludes(e.message,
+      // TODO(@bcoe): Add source map support to exception that occurs as result
+      // of missing named export. This is currently not possible because
+      // stack trace originates in module_job, not the file itself. A hidden
+      // symbol with filename could be set in node_errors.cc to facilitate this.
+      if (!getSourceMapsEnabled() &&
+          StringPrototypeIncludes(e.message,
                                   ' does not provide an export named')) {
         const splitStack = StringPrototypeSplit(e.stack, '\n');
-        const parentFileUrl = splitStack[0];
-        const [, childSpecifier, name] = StringPrototypeMatch(e.message,
-                                                              /module '(.*)' does not provide an export named '(.+)'/);
+        const parentFileUrl = StringPrototypeReplace(
+          splitStack[0],
+          /:\d+$/,
+          ''
+        );
+        const { 1: childSpecifier, 2: name } = StringPrototypeMatch(
+          e.message,
+          /module '(.*)' does not provide an export named '(.+)'/);
         const childFileURL =
             await this.loader.resolve(childSpecifier, parentFileUrl);
         const format = await this.loader.getFormat(childFileURL);

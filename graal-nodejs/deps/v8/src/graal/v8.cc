@@ -3431,6 +3431,14 @@ namespace v8 {
         TRACE
     }
 
+    void Isolate::RemoveNearHeapLimitCallback(NearHeapLimitCallback callback, size_t heap_limit) {
+        TRACE
+    }
+
+    void Isolate::AutomaticallyRestoreInitialHeapLimit(double threshold_percent) {
+        TRACE
+    }
+
     void Isolate::RequestInterrupt(InterruptCallback callback, void* data) {
         TRACE
     }
@@ -3659,6 +3667,10 @@ namespace v8 {
         TRACE
     }
 
+    void Context::SetPromiseHooks(Local<Function> init_hook, Local<Function> before_hook, Local<Function> after_hook, Local<Function> resolve_hook) {
+        reinterpret_cast<GraalContext*> (this)->SetPromiseHooks(init_hook, before_hook, after_hook, resolve_hook);
+    }
+
     void Object::CheckCast(v8::Value* obj) {}
     void Promise::CheckCast(v8::Value* obj) {}
     void Function::CheckCast(v8::Value* obj) {}
@@ -3693,5 +3705,9 @@ namespace v8 {
 }
 
 void V8_Fatal(const char* format, ...) {
+    TRACE
+}
+
+void V8_Fatal(const char* file, int line, const char* format, ...) {
     TRACE
 }
