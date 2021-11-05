@@ -4,7 +4,7 @@ Sphinx==3.5.4
 # dependencies
 alabaster==0.7.12
 appdirs==1.4.3
-Babel==2.9.0
+Babel==2.9.1
 CacheControl==0.12.6
 certifi==2019.11.28
 chardet==3.0.4
