@@ -42,8 +42,8 @@ package com.oracle.truffle.js.parser.env;
 
 import java.util.Objects;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -51,10 +51,10 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public final class BlockEnvironment extends Environment {
 
-    private final FrameDescriptor blockFrameDescriptor;
-    private final FrameSlot parentSlot;
+    private final JSFrameDescriptor blockFrameDescriptor;
+    private final JSFrameSlot parentSlot;
     private final int scopeLevel;
-    private final FrameSlot[] parentSlots;
+    private final JSFrameSlot[] parentSlots;
     private final boolean isFunctionBlock;
 
     public BlockEnvironment(Environment parent, NodeFactory factory, JSContext context, boolean isFunctionBlock) {
@@ -73,8 +73,8 @@ public final class BlockEnvironment extends Environment {
     }
 
     @Override
-    public FrameSlot findBlockFrameSlot(Object name) {
-        FrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
+    public JSFrameSlot findBlockFrameSlot(Object name) {
+        JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
         if (slot != null && JSFrameUtil.isPrivateName(slot)) {
             // Private names are only visible from within the corresponding PrivateEnvironment.
             return null;
@@ -83,11 +83,11 @@ public final class BlockEnvironment extends Environment {
     }
 
     @Override
-    public FrameDescriptor getBlockFrameDescriptor() {
+    public JSFrameDescriptor getBlockFrameDescriptor() {
         return blockFrameDescriptor;
     }
 
-    public FrameSlot getParentSlot() {
+    public JSFrameSlot getParentSlot() {
         return parentSlot;
     }
 
@@ -97,12 +97,12 @@ public final class BlockEnvironment extends Environment {
     }
 
     @Override
-    public FrameSlot[] getParentSlots() {
+    public JSFrameSlot[] getParentSlots() {
         return parentSlots;
     }
 
     @Override
-    public FrameSlot getCurrentBlockScopeSlot() {
+    public JSFrameSlot getCurrentBlockScopeSlot() {
         return function().getBlockScopeSlot();
     }
 
@@ -110,8 +110,8 @@ public final class BlockEnvironment extends Environment {
         return isFunctionBlock;
     }
 
-    private static FrameSlot[] prepend(FrameSlot[] srcArray, FrameSlot newSlot) {
-        FrameSlot[] newArray = new FrameSlot[srcArray.length + 1];
+    private static JSFrameSlot[] prepend(JSFrameSlot[] srcArray, JSFrameSlot newSlot) {
+        JSFrameSlot[] newArray = new JSFrameSlot[srcArray.length + 1];
         newArray[0] = newSlot;
         System.arraycopy(srcArray, 0, newArray, 1, srcArray.length);
         return newArray;

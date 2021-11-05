@@ -148,7 +148,6 @@ import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
@@ -170,6 +169,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -194,6 +194,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -3682,12 +3683,13 @@ public final class GraalJSAccess {
     }
 
     public Object moduleCreateSyntheticModule(String moduleName, Object[] exportNames, final long evaluationStepsCallback) {
-        FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
+        JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
         List<Module.ExportEntry> localExportEntries = new ArrayList<>();
         for (Object exportName : exportNames) {
-            frameDescriptor.addFrameSlot(exportName);
+            frameDescBuilder.addFrameSlot(exportName);
             localExportEntries.add(Module.ExportEntry.exportSpecifier((String) exportName));
         }
+        FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
 
@@ -3719,8 +3721,8 @@ public final class GraalJSAccess {
     public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {
         JSModuleRecord moduleRecord = (JSModuleRecord) module;
         FrameDescriptor frameDescriptor = moduleRecord.getFrameDescriptor();
-        FrameSlot frameSlot = frameDescriptor.findFrameSlot(exportName);
-        if (frameSlot == null) {
+        int frameSlot = JSFrameUtil.findFrameSlotIndex(frameDescriptor, exportName);
+        if (frameSlot < 0) {
             throw Errors.createReferenceError("Export '" + exportName + "' is not defined in module");
         }
         MaterializedFrame frame = moduleRecord.getEnvironment();

@@ -68,7 +68,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.NodeLibrary;
@@ -81,6 +80,8 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -404,12 +405,13 @@ public final class GraalJSEvaluator implements JSParser {
 
     private static JSModuleRecord createSyntheticJSONModule(JSRealm realm, Source source, Object hostDefined) {
         final String exportName = "default";
-        FrameDescriptor frameDescriptor = new FrameDescriptor(Undefined.instance);
-        FrameSlot slot = frameDescriptor.addFrameSlot(exportName);
+        JSFrameDescriptor frameDescBuilder = new JSFrameDescriptor(Undefined.instance);
+        JSFrameSlot slot = frameDescBuilder.addFrameSlot(exportName);
+        FrameDescriptor frameDescriptor = frameDescBuilder.toFrameDescriptor();
         List<ExportEntry> localExportEntries = Collections.singletonList(ExportEntry.exportSpecifier(exportName));
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         JavaScriptRootNode rootNode = new JavaScriptRootNode(realm.getContext().getLanguage(), source.createUnavailableSection(), frameDescriptor) {
-            private final FrameSlot defaultSlot = slot;
+            private final int defaultSlot = slot.getIndex();
 
             @Override
             public Object execute(VirtualFrame frame) {

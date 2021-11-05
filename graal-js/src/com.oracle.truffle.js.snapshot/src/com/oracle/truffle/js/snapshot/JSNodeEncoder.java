@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,9 +51,9 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_CALL_TARGET;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_COLLECT_ARRAY;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_COLLECT_LIST;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_DESCRIPTOR;
-import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FRAME_SLOT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_FUNCTION_DATA_NAME_FIXUP;
+import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_JSFRAME_SLOT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_JUMP_TARGET;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BIGINT;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BOOLEAN;
@@ -78,6 +78,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.stream.Collectors;
 
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.codec.NodeDecoder;
@@ -260,17 +261,30 @@ public class JSNodeEncoder {
         encodeReg(dest);
     }
 
-    public void encodeFrameDescriptor(int dest) {
+    public void encodeFrameDescriptor(int dest, int numberOfSlots, int[] names, int[] flags, int[] kinds) {
         putBytecode(ID_FRAME_DESCRIPTOR);
+        putInt(numberOfSlots);
+        encodeRegs(names, false);
+        encodeIntArray(flags, false);
+        encodeIntArray(kinds, false);
         encodeReg(dest);
     }
 
-    public void encodeFrameSlot(int dest, int frameDescriptorArg, int identifierArg, int flags, boolean findOrAdd) {
-        putBytecode(ID_FRAME_SLOT);
-        encodeReg(frameDescriptorArg);
+    private void encodeIntArray(int[] values, boolean encodeLength) {
+        if (encodeLength) {
+            putInt(values.length);
+        }
+        for (int i = 0; i < values.length; i++) {
+            putInt(values[i]);
+        }
+    }
+
+    public void encodeJSFrameSlot(int dest, int identifierArg, int index, int flags, FrameSlotKind kind) {
+        putBytecode(ID_JSFRAME_SLOT);
         encodeReg(identifierArg);
+        putInt(index);
         putInt(flags);
-        putBoolean(findOrAdd);
+        putInt(kind.tag);
         encodeReg(dest);
     }
 

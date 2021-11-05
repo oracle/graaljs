@@ -40,35 +40,39 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import java.util.List;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 
 public abstract class ScopeFrameNode extends JavaScriptBaseNode {
+    public static final int PARENT_SCOPE_SLOT_INDEX = 0;
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
     public static final Object BLOCK_SCOPE_IDENTIFIER = "<blockscope>";
     public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
+    public static final JSFrameSlot[] EMPTY_JSFRAME_SLOT_ARRAY = {};
     public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
+    public static final int[] EMPTY_FRAME_SLOT_INDEX_ARRAY = {};
 
     public static ScopeFrameNode createCurrent() {
         return CurrentFrameNode.instance();
     }
 
     public static ScopeFrameNode create(int frameLevel) {
-        return create(frameLevel, 0, EMPTY_FRAME_SLOT_ARRAY, null);
+        return create(frameLevel, 0, EMPTY_JSFRAME_SLOT_ARRAY, null);
     }
 
-    public static ScopeFrameNode create(int frameLevel, int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
+    public static ScopeFrameNode create(int frameLevel, int scopeLevel, JSFrameSlot[] parentSlots, JSFrameSlot blockScopeSlot) {
         assert scopeLevel == parentSlots.length;
         if (frameLevel == 0) {
             if (scopeLevel == 0) {
@@ -86,17 +90,13 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     }
 
     public static boolean isBlockScopeFrame(Frame frame) {
-        List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
-        return !slots.isEmpty() && slots.get(0).getIdentifier() == PARENT_SCOPE_IDENTIFIER;
+        FrameDescriptor desc = frame.getFrameDescriptor();
+        return desc.getNumberOfSlots() > PARENT_SCOPE_SLOT_INDEX && PARENT_SCOPE_IDENTIFIER.equals(desc.getSlotName(PARENT_SCOPE_SLOT_INDEX));
     }
 
     public static Frame getBlockScopeParentFrame(Frame frame) {
-        List<? extends FrameSlot> slots = frame.getFrameDescriptor().getSlots();
-        if (!slots.isEmpty()) {
-            FrameSlot parentSlot = slots.get(0);
-            if (parentSlot.getIdentifier() == PARENT_SCOPE_IDENTIFIER) {
-                return (Frame) frame.getObject(parentSlot);
-            }
+        if (isBlockScopeFrame(frame)) {
+            return (Frame) frame.getObject(PARENT_SCOPE_SLOT_INDEX);
         }
         return null;
     }
@@ -136,24 +136,24 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
 
     @NodeInfo(cost = NodeCost.NONE)
     private static final class CurrentBlockScopeFrameNode extends ScopeFrameNode {
-        private final FrameSlot blockScopeSlot;
+        private final JSFrameSlot blockScopeSlot;
 
-        private CurrentBlockScopeFrameNode(FrameSlot blockScopeSlot) {
+        private CurrentBlockScopeFrameNode(JSFrameSlot blockScopeSlot) {
             this.blockScopeSlot = blockScopeSlot;
         }
 
         @Override
         public Frame executeFrame(Frame frame) {
-            return JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
+            return JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot.getIndex()));
         }
     }
 
     private static final class EnclosingScopeFrameNode extends ScopeFrameNode {
         private final int scopeLevel;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] parentSlots;
-        private final FrameSlot blockScopeSlot;
+        @CompilationFinal(dimensions = 1) private final JSFrameSlot[] parentSlots;
+        private final JSFrameSlot blockScopeSlot;
 
-        EnclosingScopeFrameNode(int scopeLevel, FrameSlot[] parentSlots, FrameSlot blockScopeSlot) {
+        EnclosingScopeFrameNode(int scopeLevel, JSFrameSlot[] parentSlots, JSFrameSlot blockScopeSlot) {
             assert scopeLevel >= 1;
             this.scopeLevel = scopeLevel;
             this.parentSlots = parentSlots;
@@ -163,9 +163,9 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
         @Override
         @ExplodeLoop
         public Frame executeFrame(Frame frame) {
-            Frame retFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
+            Frame retFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot.getIndex()));
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(parentSlots[i]));
+                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(parentSlots[i].getIndex()));
             }
             return retFrame;
         }
@@ -174,9 +174,9 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     private static final class EnclosingFunctionScopeFrameNode extends ScopeFrameNode {
         private final int frameLevel;
         private final int scopeLevel;
-        @CompilationFinal(dimensions = 1) private final FrameSlot[] parentSlots;
+        @CompilationFinal(dimensions = 1) private final JSFrameSlot[] parentSlots;
 
-        EnclosingFunctionScopeFrameNode(int frameLevel, int scopeLevel, FrameSlot[] parentSlots) {
+        EnclosingFunctionScopeFrameNode(int frameLevel, int scopeLevel, JSFrameSlot[] parentSlots) {
             this.frameLevel = frameLevel;
             this.scopeLevel = scopeLevel;
             this.parentSlots = parentSlots;
@@ -190,7 +190,7 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
                 retFrame = JSFrameUtil.castMaterializedFrame(JSArguments.getEnclosingFrame(retFrame.getArguments()));
             }
             for (int i = 0; i < scopeLevel; i++) {
-                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(parentSlots[i]));
+                retFrame = JSFrameUtil.castMaterializedFrame(retFrame.getObject(parentSlots[i].getIndex()));
             }
             return retFrame;
         }

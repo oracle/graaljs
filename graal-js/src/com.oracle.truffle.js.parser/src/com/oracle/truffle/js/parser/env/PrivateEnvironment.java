@@ -40,7 +40,7 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
@@ -52,8 +52,8 @@ public final class PrivateEnvironment extends DerivedEnvironment {
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(Object name) {
-        FrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
+    protected JSFrameSlot findBlockFrameSlot(Object name) {
+        JSFrameSlot slot = getBlockFrameDescriptor().findFrameSlot(name);
         if (slot != null && JSFrameUtil.isPrivateName(slot)) {
             return slot;
         }

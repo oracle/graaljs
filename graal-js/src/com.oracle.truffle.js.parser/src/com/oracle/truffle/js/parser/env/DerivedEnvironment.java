@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 
@@ -64,7 +64,7 @@ public abstract class DerivedEnvironment extends Environment {
     }
 
     @Override
-    public final FrameDescriptor getBlockFrameDescriptor() {
+    public final JSFrameDescriptor getBlockFrameDescriptor() {
         return block().getBlockFrameDescriptor();
     }
 
@@ -74,12 +74,12 @@ public abstract class DerivedEnvironment extends Environment {
     }
 
     @Override
-    public final FrameSlot[] getParentSlots() {
+    public final JSFrameSlot[] getParentSlots() {
         return block().getParentSlots();
     }
 
     @Override
-    public final FrameSlot getCurrentBlockScopeSlot() {
+    public final JSFrameSlot getCurrentBlockScopeSlot() {
         return block().getCurrentBlockScopeSlot();
     }
 

@@ -47,9 +47,9 @@ import java.util.NoSuchElementException;
 
 import org.graalvm.collections.EconomicMap;
 
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
@@ -71,12 +71,12 @@ public final class FunctionEnvironment extends Environment {
     public static final String DYNAMIC_SCOPE_IDENTIFIER = ScopeFrameNode.EVAL_SCOPE_IDENTIFIER;
 
     private final FunctionEnvironment parentFunction;
-    private final FrameDescriptor frameDescriptor;
-    private EconomicMap<FrameSlot, Integer> parameters;
+    private final JSFrameDescriptor frameDescriptor;
+    private EconomicMap<JSFrameSlot, Integer> parameters;
     private final boolean isStrictMode;
 
-    private FrameSlot returnSlot;
-    private FrameSlot blockScopeSlot;
+    private JSFrameSlot returnSlot;
+    private JSFrameSlot blockScopeSlot;
 
     private String functionName = "";
     private String internalFunctionName = "";
@@ -123,48 +123,48 @@ public final class FunctionEnvironment extends Environment {
         this.hasSyntheticArguments = hasSyntheticArguments;
         this.parentFunction = parent == null ? null : parent.function();
 
-        this.frameDescriptor = factory.createFrameDescriptor();
+        this.frameDescriptor = factory.createFunctionFrameDescriptor();
         this.inDirectEval = isDirectEval || (parent != null && parent.function() != null && parent.function().inDirectEval());
     }
 
     @Override
-    public FrameSlot declareLocalVar(Object name) {
+    public JSFrameSlot declareLocalVar(Object name) {
         assert !isFrozen() : name;
         return getFunctionFrameDescriptor().findOrAddFrameSlot(name, FrameSlotKind.Illegal);
     }
 
-    public FrameSlot getReturnSlot() {
+    public JSFrameSlot getReturnSlot() {
         if (returnSlot == null) {
             returnSlot = declareLocalVar(RETURN_SLOT_IDENTIFIER);
         }
         return returnSlot;
     }
 
-    public FrameSlot getAsyncResultSlot() {
+    public JSFrameSlot getAsyncResultSlot() {
         return declareLocalVar(ASYNC_RESULT_SLOT_IDENTIFIER);
     }
 
-    public FrameSlot getAsyncContextSlot() {
+    public JSFrameSlot getAsyncContextSlot() {
         return declareLocalVar(ASYNC_CONTEXT_SLOT_IDENTIFIER);
     }
 
-    public FrameSlot getYieldResultSlot() {
+    public JSFrameSlot getYieldResultSlot() {
         return declareLocalVar(YIELD_RESULT_SLOT_IDENTIFIER);
     }
 
-    public FrameSlot getOrCreateBlockScopeSlot() {
+    public JSFrameSlot getOrCreateBlockScopeSlot() {
         if (blockScopeSlot == null) {
             blockScopeSlot = declareLocalVar(ScopeFrameNode.BLOCK_SCOPE_IDENTIFIER);
         }
         return blockScopeSlot;
     }
 
-    public FrameSlot getBlockScopeSlot() {
+    public JSFrameSlot getBlockScopeSlot() {
         return blockScopeSlot;
     }
 
     @Override
-    public FrameSlot getCurrentBlockScopeSlot() {
+    public JSFrameSlot getCurrentBlockScopeSlot() {
         return null;
     }
 
@@ -181,12 +181,12 @@ public final class FunctionEnvironment extends Environment {
     }
 
     @Override
-    public FrameDescriptor getBlockFrameDescriptor() {
+    public JSFrameDescriptor getBlockFrameDescriptor() {
         return getFunctionFrameDescriptor();
     }
 
     @Override
-    protected FrameSlot findBlockFrameSlot(Object name) {
+    protected JSFrameSlot findBlockFrameSlot(Object name) {
         return getFunctionFrameDescriptor().findFrameSlot(name);
     }
 
@@ -289,7 +289,7 @@ public final class FunctionEnvironment extends Environment {
         return directArgumentsAccess;
     }
 
-    public void addMappedParameter(FrameSlot slot, int index) {
+    public void addMappedParameter(JSFrameSlot slot, int index) {
         assert slot != null && JSFrameUtil.isParam(slot) : slot;
         if (parameters == null) {
             parameters = EconomicMap.create();
@@ -297,7 +297,7 @@ public final class FunctionEnvironment extends Environment {
         parameters.put(slot, index);
     }
 
-    protected int getMappedParameterIndex(FrameSlot slot) {
+    protected int getMappedParameterIndex(JSFrameSlot slot) {
         return parameters.get(slot, -1);
     }
 
@@ -360,7 +360,7 @@ public final class FunctionEnvironment extends Environment {
     }
 
     @Override
-    public FrameDescriptor getFunctionFrameDescriptor() {
+    public JSFrameDescriptor getFunctionFrameDescriptor() {
         return frameDescriptor;
     }
 
@@ -395,8 +395,8 @@ public final class FunctionEnvironment extends Environment {
     }
 
     @Override
-    public FrameSlot[] getParentSlots() {
-        return ScopeFrameNode.EMPTY_FRAME_SLOT_ARRAY;
+    public JSFrameSlot[] getParentSlots() {
+        return ScopeFrameNode.EMPTY_JSFRAME_SLOT_ARRAY;
     }
 
     public boolean isGlobal() {

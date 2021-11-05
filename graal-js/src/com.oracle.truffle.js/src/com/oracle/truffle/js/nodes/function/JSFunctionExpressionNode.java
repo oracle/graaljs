@@ -43,12 +43,12 @@ package com.oracle.truffle.js.nodes.function;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.DeclareTagProvider;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -75,7 +75,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         return new AutonomousFunctionExpressionNode(function, null);
     }
 
-    public static JSFunctionExpressionNode create(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot) {
+    public static JSFunctionExpressionNode create(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
         if (function.needsParentFrame()) {
             return new ClosureFunctionExpressionNode(function, functionNode, blockScopeSlot);
         } else {
@@ -83,7 +83,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         }
     }
 
-    public static JSFunctionExpressionNode createLexicalThis(JSFunctionData function, FunctionRootNode functionNode, FrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+    public static JSFunctionExpressionNode createLexicalThis(JSFunctionData function, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
         if (function.needsParentFrame()) {
             return new LexicalThisClosureFunctionExpressionNode(function, functionNode, blockScopeSlot, thisNode);
         } else {
@@ -151,9 +151,9 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
     }
 
     private static final class ClosureFunctionExpressionNode extends JSFunctionExpressionNode {
-        private final FrameSlot blockScopeSlot;
+        private final JSFrameSlot blockScopeSlot;
 
-        protected ClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, FrameSlot blockScopeSlot) {
+        protected ClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot) {
             super(functionData, functionNode);
             this.blockScopeSlot = blockScopeSlot;
         }
@@ -162,7 +162,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         public Object execute(VirtualFrame frame) {
             MaterializedFrame closureFrame;
             if (blockScopeSlot != null) {
-                Object blockScope = frame.getObject(blockScopeSlot);
+                Object blockScope = frame.getObject(blockScopeSlot.getIndex());
                 closureFrame = JSFrameUtil.castMaterializedFrame(blockScope);
             } else {
                 closureFrame = frame.materialize();
@@ -197,9 +197,9 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
 
     private static final class LexicalThisClosureFunctionExpressionNode extends JSFunctionExpressionNode {
         @Child private JavaScriptNode thisNode;
-        private final FrameSlot blockScopeSlot;
+        private final JSFrameSlot blockScopeSlot;
 
-        protected LexicalThisClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, FrameSlot blockScopeSlot, JavaScriptNode thisNode) {
+        protected LexicalThisClosureFunctionExpressionNode(JSFunctionData functionData, FunctionRootNode functionNode, JSFrameSlot blockScopeSlot, JavaScriptNode thisNode) {
             super(functionData, functionNode);
             this.blockScopeSlot = blockScopeSlot;
             this.thisNode = thisNode;
@@ -209,7 +209,7 @@ public abstract class JSFunctionExpressionNode extends JavaScriptNode implements
         public Object execute(VirtualFrame frame) {
             MaterializedFrame closureFrame;
             if (blockScopeSlot != null) {
-                Object blockScope = frame.getObject(blockScopeSlot);
+                Object blockScope = frame.getObject(blockScopeSlot.getIndex());
                 closureFrame = JSFrameUtil.castMaterializedFrame(blockScope);
             } else {
                 closureFrame = frame.materialize();

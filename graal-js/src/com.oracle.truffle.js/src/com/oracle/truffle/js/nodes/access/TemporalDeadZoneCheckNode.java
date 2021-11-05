@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -47,17 +49,16 @@ import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-
-import java.util.Set;
 
 public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     @Child private JavaScriptNode child;
     @Child private ScopeFrameNode levelFrameNode;
     private final BranchProfile deadBranch = BranchProfile.create();
 
-    private TemporalDeadZoneCheckNode(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
+    private TemporalDeadZoneCheckNode(JSFrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
         super(frameSlot);
         this.levelFrameNode = levelFrameNode;
         this.child = child;
@@ -66,7 +67,7 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
 
     private void checkNotDead(VirtualFrame frame) {
         Frame levelFrame = levelFrameNode.executeFrame(frame);
-        if (levelFrame.isObject(frameSlot)) {
+        if (levelFrame.isObject(frameSlot.getIndex())) {
             checkNotDead(super.getObject(levelFrame), deadBranch);
         }
     }
@@ -105,7 +106,7 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
         return true;
     }
 
-    public static TemporalDeadZoneCheckNode create(FrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
+    public static TemporalDeadZoneCheckNode create(JSFrameSlot frameSlot, ScopeFrameNode levelFrameNode, JavaScriptNode rhs) {
         return new TemporalDeadZoneCheckNode(frameSlot, levelFrameNode, rhs);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,6 +90,8 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.JSFrameDescriptor;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
@@ -111,6 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InternalSlotId;
 
 public class Recording {
     private static final boolean VERBOSE = false;
@@ -646,31 +649,58 @@ public class Recording {
         }
     }
 
-    private static class FrameSlotInst extends Inst implements FixUpInst {
-        private final Inst frameDescriptor;
-        private final Inst identifier;
-        private final int flags;
-        private final boolean findOrAdd;
+    private static class FrameDescriptorInst extends Inst {
+        private final int numberOfSlots;
+        private final FrameDescriptor desc;
+        private final List<Inst> names;
 
-        FrameSlotInst(FrameSlot frameSlot, Inst frameDescriptor, Inst identifier, int flags) {
-            super(FrameSlot.class);
-            this.frameDescriptor = frameDescriptor;
-            this.identifier = identifier;
-            this.flags = flags;
-            this.findOrAdd = frameSlot.getIdentifier() == ScopeFrameNode.PARENT_SCOPE_IDENTIFIER;
+        FrameDescriptorInst(FrameDescriptor desc, List<Inst> names) {
+            super(FrameDescriptor.class);
+            this.numberOfSlots = desc.getNumberOfSlots();
+            this.desc = desc;
+            this.names = names;
         }
 
         @Override
         public String rhs() {
-            return frameDescriptor + "." + (findOrAdd ? "findOrAddFrameSlot" : "addFrameSlot") +
-                            "(" + identifier + ", " + flags + ", " + typeName(FrameSlotKind.class) + ".Illegal)";
+            return typeName(FrameDescriptor.class) + ".newBuilder(" + numberOfSlots + ").defaultValue(" + typeName(Undefined.class) + ".instance" + ")" +
+                            IntStream.range(0, numberOfSlots).mapToObj(i -> {
+                                return ".addSlot(" + typeName(FrameSlotKind.class) + "." + desc.getSlotKind(i) + ", " + names.get(i) + ", " + JSFrameUtil.getFlags(desc, i);
+                            }).collect(Collectors.joining("")) +
+                            ".build()";
+        }
+
+        @Override
+        public void encodeTo(JSNodeEncoder encoder) {
+            encoder.encodeFrameDescriptor(getId(), numberOfSlots, toIdArray(names),
+                            IntStream.range(0, numberOfSlots).map(i -> JSFrameUtil.getFlags(desc, i)).toArray(),
+                            IntStream.range(0, numberOfSlots).map(i -> desc.getSlotKind(i).tag).toArray());
+        }
+    }
+
+    private static class JSFrameSlotInst extends Inst {
+        private final Inst identifier;
+        private final int index;
+        private final int flags;
+        private final FrameSlotKind kind;
+
+        JSFrameSlotInst(JSFrameSlot frameSlot, Inst identifier) {
+            super(JSFrameSlot.class);
+            this.index = frameSlot.getIndex();
+            this.flags = frameSlot.getFlags();
+            this.kind = frameSlot.getKind();
+            this.identifier = identifier;
+        }
+
+        @Override
+        public String rhs() {
+            return "new " + typeName(JSFrameSlot.class) + "(" + index + ", " + identifier + ", " + flags + ", " + typeName(FrameSlotKind.class) + "." + kind + ")";
         }
 
         @Override
         public void accept(Visitor v) {
             if (v.visitInst(this)) {
                 v.enterInst(this);
-                frameDescriptor.accept(v);
                 identifier.accept(v);
                 v.leaveInst(this);
             }
@@ -678,28 +708,7 @@ public class Recording {
 
         @Override
         public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeFrameSlot(getId(), frameDescriptor.getId(), identifier.getId(), flags, findOrAdd);
-        }
-
-        @Override
-        public Inst getFixUpTarget() {
-            return frameDescriptor;
-        }
-    }
-
-    private static class FrameDescriptorInst extends Inst {
-        FrameDescriptorInst() {
-            super(FrameDescriptor.class);
-        }
-
-        @Override
-        public String rhs() {
-            return "new " + typeName(FrameDescriptor.class) + "(" + typeName(Undefined.class) + ".instance" + ")";
-        }
-
-        @Override
-        public void encodeTo(JSNodeEncoder encoder) {
-            encoder.encodeFrameDescriptor(getId());
+            encoder.encodeJSFrameSlot(getId(), identifier.getId(), index, flags, kind);
         }
     }
 
@@ -1137,7 +1146,7 @@ public class Recording {
         return encoding;
     }
 
-    private ArrayList<Inst> encodeList(ArrayList<?> args, Type genericType) {
+    private ArrayList<Inst> encodeList(List<?> args, Type genericType) {
         Type elementGenericType = genericType instanceof ParameterizedType ? ((ParameterizedType) genericType).getActualTypeArguments()[0] : null;
         Class<?> elementType = getRawType(elementGenericType);
         ArrayList<Inst> encoding = new ArrayList<>(args.size());
@@ -1193,18 +1202,21 @@ public class Recording {
         return getOrPut(arg, (v) -> new PlaceholderInst(arg.getClass()));
     }
 
-    private Inst dumpFrameSlot(FrameSlot arg) {
-        return getOrPut(arg, (v) -> new FrameSlotInst(v, dumpFrameDescriptor(getFrameDescriptor(v)).asVar(), dumpConst(v.getIdentifier(), Object.class).asVar(), JSFrameUtil.getFlags(v)));
+    private Inst dumpJSFrameSlot(JSFrameSlot arg) {
+        return getOrPut(arg, (v) -> new JSFrameSlotInst(v, dumpConst(v.getIdentifier(), Object.class).asVar()));
     }
 
-    private FrameDescriptor getFrameDescriptor(FrameSlot slot) {
-        return frameDescriptorSet.stream().filter(desc -> desc.findFrameSlot(slot.getIdentifier()) == slot).findFirst().orElseThrow(
-                        () -> new NoSuchElementException("FrameDescriptor not found for slot: " + slot));
+    /**
+     * Use of a value that should have already been recorded by a NodeFactory method.
+     */
+    private Inst dumpRecorded(Object arg) {
+        return getInst(arg);
     }
 
     private Inst dumpFrameDescriptor(FrameDescriptor arg) {
         frameDescriptorSet.add(arg);
-        return getOrPut(arg, (v) -> new FrameDescriptorInst());
+        return getOrPut(arg, (v) -> new FrameDescriptorInst(arg,
+                        encodeList(IntStream.range(0, arg.getNumberOfSlots()).mapToObj(i -> arg.getSlotName(i)).collect(Collectors.toList()), Object.class)));
     }
 
     private Inst dumpFunctionData(JSFunctionData arg) {
@@ -1244,14 +1256,16 @@ public class Recording {
             enc = dumpBreakTarget((BreakTarget) arg);
         } else if (arg instanceof FrameDescriptor) {
             enc = dumpFrameDescriptor((FrameDescriptor) arg);
-        } else if (arg instanceof FrameSlot) {
-            enc = dumpFrameSlot((FrameSlot) arg);
+        } else if (arg instanceof JSFrameSlot) {
+            enc = dumpJSFrameSlot((JSFrameSlot) arg);
         } else if (arg instanceof JSFunctionData) {
             enc = dumpFunctionData((JSFunctionData) arg);
         } else if (arg instanceof SourceSection) {
             enc = dumpSourceSection((SourceSection) arg);
         } else if (arg instanceof Environment) {
             enc = dumpPlaceholder(arg);
+        } else if (arg instanceof JSFrameDescriptor || arg instanceof InternalSlotId) {
+            enc = dumpRecorded(arg);
         } else {
             throw new RuntimeException("Unrecognized argument: " + arg);
         }

@@ -46,14 +46,13 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.binary.JSAddNode;
 import com.oracle.truffle.js.nodes.binary.JSSubtractNode;
@@ -180,19 +179,19 @@ public abstract class LocalVarIncNode extends FrameSlotNode.WithDescriptor {
     protected final boolean hasTemporalDeadZone;
     @Child @Executed protected ScopeFrameNode scopeFrameNode;
 
-    protected LocalVarIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
-        super(frameSlot, frameDescriptor);
+    protected LocalVarIncNode(LocalVarOp op, JSFrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        super(frameSlot);
         this.op = op;
         this.hasTemporalDeadZone = hasTemporalDeadZone;
         this.scopeFrameNode = scopeFrameNode;
     }
 
-    public static LocalVarIncNode createPrefix(Op op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
-        return LocalVarPrefixIncNodeGen.create(op.op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+    public static LocalVarIncNode createPrefix(Op op, JSFrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        return LocalVarPrefixIncNodeGen.create(op.op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
     }
 
-    public static LocalVarIncNode createPostfix(Op op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
-        return LocalVarPostfixIncNodeGen.create(op.op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+    public static LocalVarIncNode createPostfix(Op op, JSFrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        return LocalVarPostfixIncNodeGen.create(op.op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
     }
 
     @Override
@@ -212,11 +211,11 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
     @Child protected JavaScriptNode writeNew;
 
     LocalVarOpMaterializedNode(LocalVarIncNode from, Set<Class<? extends Tag>> materializedTags) {
-        super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode, from.frameDescriptor);
+        super(from.op, from.frameSlot, from.hasTemporalDeadZone, from.scopeFrameNode);
 
         JavaScriptNode readOld = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode convert = (JavaScriptNode) JSToNumericNode.createToNumericOperand(readOld).materializeInstrumentableNodes(materializedTags);
-        convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, frameDescriptor, hasTemporalDeadZone), materializedTags);
+        convertOld = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, convert, hasTemporalDeadZone), materializedTags);
 
         JavaScriptNode readTmp = JSReadFrameSlotNode.create(frameSlot, scopeFrameNode, hasTemporalDeadZone);
         JavaScriptNode one = JSConstantNode.createConstantNumericUnit();
@@ -233,13 +232,13 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
         transferSourceSectionAddExpressionTag(from, readTmp);
         transferSourceSectionAddExpressionTag(from, one);
         transferSourceSectionAddExpressionTag(from, opNode);
-        this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, frameDescriptor, hasTemporalDeadZone), materializedTags);
+        this.writeNew = cloneUninitialized(JSWriteFrameSlotNode.create(frameSlot, scopeFrameNode, opNode, hasTemporalDeadZone), materializedTags);
         transferSourceSectionAddExpressionTag(from, writeNew);
         transferSourceSectionAndTags(from, this);
     }
 
-    LocalVarOpMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode convert, JavaScriptNode write, FrameDescriptor frameDescriptor) {
-        super(op, slot, hasTdz, scope, frameDescriptor);
+    LocalVarOpMaterializedNode(LocalVarOp op, JSFrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode convert, JavaScriptNode write) {
+        super(op, slot, hasTdz, scope);
         this.convertOld = convert;
         this.writeNew = write;
     }
@@ -247,8 +246,8 @@ abstract class LocalVarOpMaterializedNode extends LocalVarIncNode {
 
 class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
-    LocalVarPostfixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write, FrameDescriptor frameDescriptor) {
-        super(op, slot, hasTdz, scope, read, write, frameDescriptor);
+    LocalVarPostfixIncMaterializedNode(LocalVarOp op, JSFrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
+        super(op, slot, hasTdz, scope, read, write);
     }
 
     LocalVarPostfixIncMaterializedNode(LocalVarPostfixIncNode from, Set<Class<? extends Tag>> materializedTags) {
@@ -265,14 +264,14 @@ class LocalVarPostfixIncMaterializedNode extends LocalVarOpMaterializedNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new LocalVarPostfixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags),
-                        cloneUninitialized(writeNew, materializedTags), frameDescriptor);
+                        cloneUninitialized(writeNew, materializedTags));
     }
 }
 
 class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
 
-    LocalVarPrefixIncMaterializedNode(LocalVarOp op, FrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write, FrameDescriptor frameDescriptor) {
-        super(op, slot, hasTdz, scope, read, write, frameDescriptor);
+    LocalVarPrefixIncMaterializedNode(LocalVarOp op, JSFrameSlot slot, boolean hasTdz, ScopeFrameNode scope, JavaScriptNode read, JavaScriptNode write) {
+        super(op, slot, hasTdz, scope, read, write);
     }
 
     LocalVarPrefixIncMaterializedNode(LocalVarPrefixIncNode from, Set<Class<? extends Tag>> materializedTags) {
@@ -288,15 +287,15 @@ class LocalVarPrefixIncMaterializedNode extends LocalVarOpMaterializedNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new LocalVarPrefixIncMaterializedNode(op, frameSlot, hasTemporalDeadZone(), scopeFrameNode, cloneUninitialized(convertOld, materializedTags),
-                        cloneUninitialized(writeNew, materializedTags), frameDescriptor);
+                        cloneUninitialized(writeNew, materializedTags));
     }
 
 }
 
 abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
 
-    protected LocalVarPostfixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
-        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+    protected LocalVarPostfixIncNode(LocalVarOp op, JSFrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
     }
 
     @Override
@@ -315,7 +314,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doBoolean(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot, newValue);
+        frame.setInt(frameSlot.getIndex(), newValue);
         return value;
     }
 
@@ -323,7 +322,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doBooleanDouble(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return value;
     }
 
@@ -332,7 +331,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return value;
     }
 
@@ -340,7 +339,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doInt(Frame frame) {
         int value = getInt(frame);
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot, newValue);
+        frame.setInt(frameSlot.getIndex(), newValue);
         return value;
     }
 
@@ -348,7 +347,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doIntDouble(Frame frame) {
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return value;
     }
 
@@ -357,14 +356,14 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return value;
     }
 
     @Specialization(guards = {"isDouble(frame)", "isDoubleKind(frame)"})
     public double doDouble(Frame frame) {
         double doubleValue = getDouble(frame);
-        frame.setDouble(frameSlot, op.doDouble(doubleValue));
+        frame.setDouble(frameSlot.getIndex(), op.doDouble(doubleValue));
         return doubleValue;
     }
 
@@ -372,7 +371,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public double doDoubleObject(Frame frame) {
         ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
-        frame.setObject(frameSlot, op.doDouble(doubleValue));
+        frame.setObject(frameSlot.getIndex(), op.doDouble(doubleValue));
         return doubleValue;
     }
 
@@ -396,12 +395,12 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         }
         Object operand = toNumericOperand.execute(value);
         if (isNumberProfile.profile(operand instanceof Number)) {
-            frame.setObject(frameSlot, op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
+            frame.setObject(frameSlot.getIndex(), op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
         } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
-            frame.setObject(frameSlot, op.doBigInt((BigInt) operand));
+            frame.setObject(frameSlot.getIndex(), op.doBigInt((BigInt) operand));
         } else {
             assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
-            frame.setObject(frameSlot, overloadedOperatorNode.execute(value));
+            frame.setObject(frameSlot.getIndex(), overloadedOperatorNode.execute(value));
         }
         return operand;
     }
@@ -410,7 +409,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public SafeInteger doSafeInteger(Frame frame) {
         SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
         SafeInteger newValue = op.doSafeInteger(oldValue);
-        frame.setLong(frameSlot, newValue.longValue());
+        frame.setLong(frameSlot.getIndex(), newValue.longValue());
         return oldValue;
     }
 
@@ -418,7 +417,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public double doSafeIntegerToDouble(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return oldValue;
     }
 
@@ -427,20 +426,20 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return oldValue;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return LocalVarPostfixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), getLevelFrameNode(), frameDescriptor);
+        return LocalVarPostfixIncNodeGen.create(op, frameSlot, hasTemporalDeadZone(), getLevelFrameNode());
     }
 }
 
 abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
 
-    protected LocalVarPrefixIncNode(LocalVarOp op, FrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode, FrameDescriptor frameDescriptor) {
-        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode, frameDescriptor);
+    protected LocalVarPrefixIncNode(LocalVarOp op, JSFrameSlot frameSlot, boolean hasTemporalDeadZone, ScopeFrameNode scopeFrameNode) {
+        super(op, frameSlot, hasTemporalDeadZone, scopeFrameNode);
     }
 
     @Override
@@ -459,7 +458,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public int doBoolean(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot, newValue);
+        frame.setInt(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -467,7 +466,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public int doBooleanDouble(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -476,7 +475,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -484,7 +483,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public int doInt(Frame frame) {
         int value = getInt(frame);
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot, newValue);
+        frame.setInt(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -492,7 +491,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public double doIntOverflow(Frame frame) {
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -501,7 +500,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -509,7 +508,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public double doDouble(Frame frame) {
         double doubleValue = getDouble(frame);
         double newValue = op.doDouble(doubleValue);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -518,7 +517,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
         double newValue = op.doDouble(doubleValue);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -550,7 +549,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
             assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
             newValue = overloadedOperatorNode.execute(value);
         }
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -558,7 +557,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public SafeInteger doSafeInteger(Frame frame) {
         SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
         SafeInteger newValue = op.doSafeInteger(oldValue);
-        frame.setLong(frameSlot, newValue.longValue());
+        frame.setLong(frameSlot.getIndex(), newValue.longValue());
         return newValue;
     }
 
@@ -566,7 +565,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public double doSafeIntegerToDouble(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setDouble(frameSlot, newValue);
+        frame.setDouble(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
@@ -575,12 +574,12 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setObject(frameSlot, newValue);
+        frame.setObject(frameSlot.getIndex(), newValue);
         return newValue;
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return LocalVarPrefixIncNodeGen.create(op, getFrameSlot(), hasTemporalDeadZone(), getLevelFrameNode(), frameDescriptor);
+        return LocalVarPrefixIncNodeGen.create(op, frameSlot, hasTemporalDeadZone(), getLevelFrameNode());
     }
 }

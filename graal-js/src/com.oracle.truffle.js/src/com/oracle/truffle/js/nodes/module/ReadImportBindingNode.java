@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.js.nodes.module;
 
+import java.util.Set;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -57,8 +58,6 @@ import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
-
-import java.util.Set;
 
 /**
  * Reads the value of a resolved import binding from a resolved binding record (module, binding
@@ -80,7 +79,7 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
     static Object doCached(ExportResolution resolution,
                     @Cached("resolution.getModule().getFrameDescriptor()") @SuppressWarnings("unused") FrameDescriptor frameDescriptor,
                     @Cached("resolution.getBindingName()") @SuppressWarnings("unused") String bindingName,
-                    @Cached("create(frameDescriptor.findFrameSlot(bindingName))") JSReadFrameSlotNode readFrameSlot) {
+                    @Cached("create(frameDescriptor, findImportedSlotIndex(bindingName, resolution.getModule()))") JSReadFrameSlotNode readFrameSlot) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         MaterializedFrame environment = JSFrameUtil.castMaterializedFrame(module.getEnvironment());
@@ -95,10 +94,11 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         String bindingName = resolution.getBindingName();
-        FrameSlot frameSlot = module.getFrameDescriptor().findFrameSlot(bindingName);
-        boolean hasTemporalDeadZone = JSFrameUtil.hasTemporalDeadZone(frameSlot);
+        FrameDescriptor moduleFrameDescriptor = module.getFrameDescriptor();
+        int slotIndex = findImportedSlotIndex(bindingName, module);
+        boolean hasTemporalDeadZone = JSFrameUtil.hasTemporalDeadZone(moduleFrameDescriptor, slotIndex);
         MaterializedFrame environment = JSFrameUtil.castMaterializedFrame(module.getEnvironment());
-        Object value = environment.getValue(frameSlot);
+        Object value = environment.getValue(slotIndex);
         if (hasTemporalDeadZone) {
             if (value == Dead.instance()) {
                 // Uninitialized binding
@@ -108,6 +108,10 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
             assert value != Dead.instance();
         }
         return value;
+    }
+
+    static int findImportedSlotIndex(String bindingName, JSModuleRecord module) {
+        return JSFrameUtil.findRequiredFrameSlotIndex(module.getFrameDescriptor(), bindingName);
     }
 
     @Specialization(guards = "isJSModuleNamespace(namespace)")

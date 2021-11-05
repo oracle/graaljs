@@ -47,12 +47,13 @@ import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.ReadNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
@@ -64,15 +65,15 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 
 @ImportStatic(FrameSlotKind.class)
 public abstract class JSReadFrameSlotNode extends FrameSlotNode implements RepeatableNode, ReadNode {
-    JSReadFrameSlotNode(FrameSlot slot) {
+    JSReadFrameSlotNode(JSFrameSlot slot) {
         super(slot);
     }
 
-    public static JSReadFrameSlotNode create(FrameSlot slot, boolean hasTemporalDeadZone) {
+    public static JSReadFrameSlotNode create(JSFrameSlot slot, boolean hasTemporalDeadZone) {
         return create(slot, ScopeFrameNode.createCurrent(), hasTemporalDeadZone);
     }
 
-    public static JSReadFrameSlotNode create(FrameSlot slot, ScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
+    public static JSReadFrameSlotNode create(JSFrameSlot slot, ScopeFrameNode levelFrameNode, boolean hasTemporalDeadZone) {
         if (!hasTemporalDeadZone && levelFrameNode == ScopeFrameNode.createCurrent()) {
             return JSReadCurrentFrameSlotNodeGen.create(slot);
         }
@@ -83,11 +84,20 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
         }
     }
 
-    public static JSReadFrameSlotNode create(FrameSlot slot) {
+    public static JSReadFrameSlotNode create(JSFrameSlot slot) {
         if (JSFrameUtil.hasTemporalDeadZone(slot)) {
             return JSReadScopeFrameSlotWithTDZNodeGen.create(slot, ScopeFrameNode.createCurrent());
         } else {
             return JSReadCurrentFrameSlotNodeGen.create(slot);
+        }
+    }
+
+    public static JSReadFrameSlotNode create(FrameDescriptor desc, int slotIndex) {
+        JSFrameSlot slotInfo = JSFrameSlot.fromIndexedFrameSlot(desc, slotIndex);
+        if (JSFrameUtil.hasTemporalDeadZone(desc, slotIndex)) {
+            return JSReadScopeFrameSlotWithTDZNodeGen.create(slotInfo, ScopeFrameNode.createCurrent());
+        } else {
+            return JSReadCurrentFrameSlotNodeGen.create(slotInfo);
         }
     }
 
@@ -106,7 +116,7 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public Object getNodeObject() {
-        String name = JSFrameUtil.getPublicName(frameSlot);
+        String name = JSFrameUtil.getPublicName(getIdentifier());
         NodeObjectDescriptor descriptor = JSTags.createNodeObjectDescriptor("name", name);
         descriptor.addProperty(StandardTags.ReadVariableTag.NAME, name);
         return descriptor;
@@ -114,8 +124,9 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 
     @Override
     public String expressionToString() {
-        if (frameSlot.getIdentifier() instanceof String) {
-            return (String) frameSlot.getIdentifier();
+        Object ident = getIdentifier();
+        if (ident instanceof String) {
+            return (String) ident;
         }
         return null;
     }
@@ -124,36 +135,36 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
 abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
     @Child @Executed ScopeFrameNode scopeFrameNode;
 
-    JSReadScopeFrameSlotNode(FrameSlot slot, ScopeFrameNode scopeFrameNode) {
+    JSReadScopeFrameSlotNode(JSFrameSlot slot, ScopeFrameNode scopeFrameNode) {
         super(slot);
         this.scopeFrameNode = scopeFrameNode;
     }
 
-    @Specialization(guards = "levelFrame.isBoolean(frameSlot)")
+    @Specialization(guards = "levelFrame.isBoolean(frameSlot.getIndex())")
     protected final boolean doBoolean(Frame levelFrame) {
         return super.getBoolean(levelFrame);
     }
 
-    @Specialization(guards = "levelFrame.isInt(frameSlot)")
+    @Specialization(guards = "levelFrame.isInt(frameSlot.getIndex())")
     protected final int doInt(Frame levelFrame) {
         return super.getInt(levelFrame);
     }
 
-    @Specialization(guards = "levelFrame.isDouble(frameSlot) || levelFrame.isInt(frameSlot)")
+    @Specialization(guards = "levelFrame.isDouble(frameSlot.getIndex()) || levelFrame.isInt(frameSlot.getIndex())")
     protected final double doDouble(Frame levelFrame) {
-        if (levelFrame.isInt(frameSlot)) {
+        if (levelFrame.isInt(frameSlot.getIndex())) {
             return super.getInt(levelFrame);
         } else {
             return super.getDouble(levelFrame);
         }
     }
 
-    @Specialization(guards = {"levelFrame.isObject(frameSlot)", "!hasTemporalDeadZone()"})
+    @Specialization(guards = {"levelFrame.isObject(frameSlot.getIndex())", "!hasTemporalDeadZone()"})
     protected final Object doObject(Frame levelFrame) {
         return super.getObject(levelFrame);
     }
 
-    @Specialization(guards = "levelFrame.isLong(frameSlot)")
+    @Specialization(guards = "levelFrame.isLong(frameSlot.getIndex())")
     protected final SafeInteger doSafeInteger(Frame levelFrame) {
         return SafeInteger.valueOf(super.getLong(levelFrame));
     }
@@ -170,7 +181,7 @@ abstract class JSReadScopeFrameSlotNode extends JSReadFrameSlotNode {
 }
 
 abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode {
-    JSReadScopeFrameSlotWithTDZNode(FrameSlot slot, ScopeFrameNode scopeFrameNode) {
+    JSReadScopeFrameSlotWithTDZNode(JSFrameSlot slot, ScopeFrameNode scopeFrameNode) {
         super(slot, scopeFrameNode);
     }
 
@@ -179,7 +190,7 @@ abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode 
         return true;
     }
 
-    @Specialization(guards = "levelFrame.isObject(frameSlot)")
+    @Specialization(guards = "levelFrame.isObject(frameSlot.getIndex())")
     protected final Object doObjectTDZ(Frame levelFrame,
                     @Cached("create()") BranchProfile deadBranch) {
         return checkNotDead(super.getObject(levelFrame), deadBranch);
@@ -192,35 +203,35 @@ abstract class JSReadScopeFrameSlotWithTDZNode extends JSReadScopeFrameSlotNode 
 }
 
 abstract class JSReadCurrentFrameSlotNode extends JSReadFrameSlotNode {
-    JSReadCurrentFrameSlotNode(FrameSlot slot) {
+    JSReadCurrentFrameSlotNode(JSFrameSlot slot) {
         super(slot);
     }
 
-    @Specialization(guards = "frame.isBoolean(frameSlot)")
+    @Specialization(guards = "frame.isBoolean(frameSlot.getIndex())")
     protected final boolean doBoolean(VirtualFrame frame) {
         return super.getBoolean(frame);
     }
 
-    @Specialization(guards = "frame.isInt(frameSlot)")
+    @Specialization(guards = "frame.isInt(frameSlot.getIndex())")
     protected final int doInt(VirtualFrame frame) {
         return super.getInt(frame);
     }
 
-    @Specialization(guards = "frame.isDouble(frameSlot) || frame.isInt(frameSlot)")
+    @Specialization(guards = "frame.isDouble(frameSlot.getIndex()) || frame.isInt(frameSlot.getIndex())")
     protected final double doDouble(VirtualFrame frame) {
-        if (frame.isInt(frameSlot)) {
+        if (frame.isInt(frameSlot.getIndex())) {
             return super.getInt(frame);
         } else {
             return super.getDouble(frame);
         }
     }
 
-    @Specialization(guards = "frame.isObject(frameSlot)")
+    @Specialization(guards = "frame.isObject(frameSlot.getIndex())")
     protected final Object doObject(VirtualFrame frame) {
         return super.getObject(frame);
     }
 
-    @Specialization(guards = "frame.isLong(frameSlot)")
+    @Specialization(guards = "frame.isLong(frameSlot.getIndex())")
     protected final SafeInteger doSafeInteger(VirtualFrame frame) {
         return SafeInteger.valueOf(super.getLong(frame));
     }
