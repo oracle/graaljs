@@ -116,10 +116,10 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
             case info:
             case debug:
             case dir: // dir is not a strict alias of log, but close enough for our purpose
-                return JSGlobalPrintNodeGen.create(context, builtin, false, args().varArgs().createArgumentNodes(context));
+                return JSGlobalPrintNodeGen.create(context, builtin, false, false, args().varArgs().createArgumentNodes(context));
             case error:
             case warn:
-                return JSGlobalPrintNodeGen.create(context, builtin, true, args().varArgs().createArgumentNodes(context));
+                return JSGlobalPrintNodeGen.create(context, builtin, true, false, args().varArgs().createArgumentNodes(context));
             case assert_:
                 return JSConsoleAssertNodeGen.create(context, builtin, args().varArgs().createArgumentNodes(context));
             case clear:
@@ -164,7 +164,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         public JSConsoleAssertNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, false, null);
             toBooleanNode = JSToBooleanNode.create();
         }
 
@@ -257,7 +257,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         public JSConsoleGroupNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toStringNode = JSToStringNode.create();
-            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, false, null);
         }
 
         @Specialization
@@ -310,7 +310,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
         public JSConsoleTimeEndNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             toStringNode = JSToStringNode.create();
-            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, false, null);
         }
 
         @Specialization
@@ -335,7 +335,7 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
 
         public JSConsoleTimeLogNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            printNode = JSGlobalPrintNodeGen.create(context, null, false, null);
+            printNode = JSGlobalPrintNodeGen.create(context, null, false, false, null);
             toStringNode = JSToStringNode.create();
         }
 

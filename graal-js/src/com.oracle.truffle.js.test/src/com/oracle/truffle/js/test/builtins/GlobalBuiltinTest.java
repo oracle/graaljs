@@ -44,8 +44,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -132,4 +132,39 @@ public class GlobalBuiltinTest extends JSTest {
         }
     }
 
+    @Test
+    public void testPrintAppendsNewlineByDefault() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder("js").out(baos).build()) {
+            ctx.eval("js", "print('hello '); print('world');");
+            assertEquals("hello \nworld\n", baos.toString(StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void testPrintDoesNotAppendNewlineWithOptionPrintNoNewline() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder("js").allowExperimentalOptions(true).option("js.print-no-newline", "true").out(baos).build()) {
+            ctx.eval("js", "print('hello '); print('world');");
+            assertEquals("hello world", baos.toString(StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void testPrintErrAppendsNewlineByDefault() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder("js").err(baos).build()) {
+            ctx.eval("js", "printErr('hello '); printErr('world');");
+            assertEquals("hello \nworld\n", baos.toString(StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void testPrintErrDoesNotAppendNewlineWithOptionPrintNoNewline() {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (Context ctx = Context.newBuilder("js").allowExperimentalOptions(true).option("js.print-no-newline", "true").err(baos).build()) {
+            ctx.eval("js", "printErr('hello '); printErr('world');");
+            assertEquals("hello world", baos.toString(StandardCharsets.UTF_8));
+        }
+    }
 }

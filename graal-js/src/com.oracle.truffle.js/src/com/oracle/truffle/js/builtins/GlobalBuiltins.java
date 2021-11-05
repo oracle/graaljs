@@ -291,11 +291,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Override
         protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, GlobalPrint builtinEnum) {
+            boolean noNewline = context.getContextOptions().isPrintNoNewline();
             switch (builtinEnum) {
                 case print:
-                    return JSGlobalPrintNodeGen.create(context, builtin, false, args().varArgs().createArgumentNodes(context));
+                    return JSGlobalPrintNodeGen.create(context, builtin, false, noNewline, args().varArgs().createArgumentNodes(context));
                 case printErr:
-                    return JSGlobalPrintNodeGen.create(context, builtin, true, args().varArgs().createArgumentNodes(context));
+                    return JSGlobalPrintNodeGen.create(context, builtin, true, noNewline, args().varArgs().createArgumentNodes(context));
             }
             return null;
         }
@@ -1312,10 +1313,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private final ConditionProfile argumentsCount = ConditionProfile.createBinaryProfile();
         private final BranchProfile consoleIndentation = BranchProfile.create();
         private final boolean useErr;
+        private final boolean noNewLine;
 
-        public JSGlobalPrintNode(JSContext context, JSBuiltin builtin, boolean useErr) {
+        public JSGlobalPrintNode(JSContext context, JSBuiltin builtin, boolean useErr, boolean noNewline) {
             super(context, builtin);
             this.useErr = useErr;
+            this.noNewLine = noNewline;
         }
 
         public abstract Object executeObjectArray(Object[] args);
@@ -1344,8 +1347,10 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @TruffleBoundary
         private Object printIntl(StringBuilder builder) {
-            builder.append(JSRuntime.LINE_SEPARATOR);
             JSRealm realm = getRealm();
+            if (!noNewLine) {
+                builder.append(JSRuntime.LINE_SEPARATOR);
+            }
             PrintWriter writer = useErr ? realm.getErrorWriter() : realm.getOutputWriter();
             writer.print(builder.toString());
             writer.flush();
