@@ -1102,6 +1102,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                     if (root.isStrict) {
                         errorBranch.enter();
                         throw Errors.createTypeErrorInteropException(truffleObject, e, "writeHashEntry", this);
+                    } else {
+                        return false;
                     }
                 }
             }
