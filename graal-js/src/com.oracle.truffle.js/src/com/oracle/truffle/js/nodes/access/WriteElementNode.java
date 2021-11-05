@@ -1858,6 +1858,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (root.context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, propertyKey, exportedValue);
+                    return;
                 } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
                     if (root.isStrict) {
                         errorBranch.enter();
