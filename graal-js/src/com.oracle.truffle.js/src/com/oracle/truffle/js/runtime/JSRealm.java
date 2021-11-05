@@ -385,6 +385,7 @@ public class JSRealm {
     private final Object wasmFuncType;
     private final Object wasmMemAlloc;
     private final Object wasmMemGrow;
+    private final Object wasmMemAsByteBuffer;
     private final Object wasmGlobalAlloc;
     private final Object wasmGlobalRead;
     private final Object wasmGlobalWrite;
@@ -785,6 +786,7 @@ public class JSRealm {
                 wasmMemSetGrowCallback = wasmInterop.readMember(wasmObject, "mem_set_grow_callback");
                 wasmEmbedderDataGet = wasmInterop.readMember(wasmObject, "embedder_data_get");
                 wasmEmbedderDataSet = wasmInterop.readMember(wasmObject, "embedder_data_set");
+                wasmMemAsByteBuffer = wasmInterop.readMember(wasmObject, "mem_as_byte_buffer");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
@@ -816,6 +818,7 @@ public class JSRealm {
             this.wasmFuncType = null;
             this.wasmMemAlloc = null;
             this.wasmMemGrow = null;
+            this.wasmMemAsByteBuffer = null;
             this.wasmGlobalAlloc = null;
             this.wasmGlobalRead = null;
             this.wasmGlobalWrite = null;
@@ -2616,6 +2619,10 @@ public class JSRealm {
 
     public Object getWASMEmbedderDataSet() {
         return wasmEmbedderDataSet;
+    }
+
+    public Object getWASMMemAsByteBuffer() {
+        return wasmMemAsByteBuffer;
     }
 
     public DynamicObject getWebAssemblyModulePrototype() {

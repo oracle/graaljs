@@ -139,11 +139,13 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -319,6 +321,7 @@ public final class GraalJSAccess {
     private final Map<Source, Object> hostDefinedOptionsMap = new WeakHashMap<>();
 
     private final boolean exposeGC;
+    private final boolean unsafeWasmMemory;
 
     /**
      * @see Options.OptionsParser#preprocessArguments
@@ -340,6 +343,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
 
             exposeGC = options.isGCExposed();
+            unsafeWasmMemory = options.isUnsafeWasmMemory();
             evaluator = contextBuilder.build();
             mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         } catch (IllegalArgumentException iaex) {
@@ -1269,7 +1273,20 @@ public final class GraalJSAccess {
 
     private Object interopArrayBufferGetContents(Object arrayBuffer) {
         assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
-        Object interopBuffer = JSArrayBufferObject.getInteropBuffer(arrayBuffer);
+        Object interopBuffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
+        if (interopBuffer == null) {
+            assert JSArrayBuffer.isDetachedBuffer(arrayBuffer);
+            return null;
+        }
+
+        if (unsafeWasmMemory) {
+            // Try to get a direct ByteBuffer view of a WebAssembly Memory.
+            ByteBuffer byteBuffer = wasmMemoryAsByteBuffer(interopBuffer);
+            if (byteBuffer != null) {
+                return byteBuffer;
+            }
+        }
+
         RealmData realmEmbedderData = getRealmEmbedderData(mainJSRealm);
         DynamicObject function = realmEmbedderData.getArrayBufferGetContentsFunction();
         if (function == null) {
@@ -1293,6 +1310,30 @@ public final class GraalJSAccess {
         }
         CallTarget callTarget = Truffle.getRuntime().createCallTarget(new InteropArrayBufferGetContents());
         return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
+    }
+
+    private ByteBuffer wasmMemoryAsByteBuffer(Object interopBuffer) {
+        JSRealm currentRealm = getCurrentRealm();
+        Object memAsByteBuffer = currentRealm.getWASMMemAsByteBuffer();
+        if (memAsByteBuffer == null) {
+            return null;
+        }
+        try {
+            Object bufferObject = InteropLibrary.getUncached(memAsByteBuffer).execute(memAsByteBuffer, interopBuffer);
+            TruffleLanguage.Env env = currentRealm.getEnv();
+            if (env.isHostObject(bufferObject)) {
+                Object buffer = env.asHostObject(bufferObject);
+                if (buffer instanceof ByteBuffer) {
+                    ByteBuffer byteBuffer = (ByteBuffer) buffer;
+                    if (byteBuffer.isDirect()) {
+                        return byteBuffer;
+                    }
+                }
+            }
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+        return null;
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {

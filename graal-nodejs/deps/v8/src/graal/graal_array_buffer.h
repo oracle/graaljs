@@ -52,7 +52,7 @@ public:
     inline static GraalArrayBuffer* Allocate(GraalIsolate* isolate, jobject java_array_buffer, bool direct, void* placement);
     size_t ByteLength() const;
     bool IsArrayBuffer() const;
-    bool IsDirect() const;
+    inline bool IsDirect() const;
     bool IsExternal() const;
     void Detach();
     std::shared_ptr<v8::BackingStore> GetBackingStore();

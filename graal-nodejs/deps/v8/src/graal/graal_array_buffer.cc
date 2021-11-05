@@ -94,10 +94,6 @@ bool GraalArrayBuffer::IsArrayBuffer() const {
     return true;
 }
 
-bool GraalArrayBuffer::IsDirect() const {
-    return direct_;
-}
-
 bool GraalArrayBuffer::IsExternal() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::array_buffer_is_external, Boolean, GetJavaObject());
     return result;
@@ -117,13 +113,20 @@ std::shared_ptr<v8::BackingStore> GraalArrayBuffer::GetBackingStore() {
         JNI_CALL(jobject, java_not_direct_buffer, graal_isolate, GraalAccessMethod::array_buffer_get_contents, Object, java_array_buffer);
         java_buffer = java_not_direct_buffer;
     }
+    void* data;
+    size_t byte_length;
     jobject java_store;
     if (java_buffer == nullptr) {
-        java_store = nullptr; // detached buffer
+        // detached buffer
+        data = nullptr;
+        byte_length = 0;
+        java_store = nullptr;
     } else {
         JNIEnv* env = graal_isolate->GetJNIEnv();
+        data = env->GetDirectBufferAddress(java_buffer);
+        byte_length = env->GetDirectBufferCapacity(java_buffer);
         java_store = env->NewGlobalRef(java_buffer);
         env->DeleteLocalRef(java_buffer);
     }
-    return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store)));
+    return std::shared_ptr<v8::BackingStore>(reinterpret_cast<v8::BackingStore*>(new GraalBackingStore(java_store, data, byte_length)));
 }

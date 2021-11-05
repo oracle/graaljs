@@ -54,13 +54,15 @@ def _graal_nodejs_post_gate_runner(args, tasks):
         if t:
             _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
-            unitTestDir = join('test', 'graal')
+            unitTestDir = join(_suite.dir, 'test', 'graal')
             for dir_name in 'node_modules', 'build':
                 p = join(unitTestDir, dir_name)
                 if exists(p):
                     mx.rmtree(p)
             npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
             npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
+            if mx.suite('wasm', fatalIfMissing=False):
+                npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs, cwd=unitTestDir)
 
     with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:

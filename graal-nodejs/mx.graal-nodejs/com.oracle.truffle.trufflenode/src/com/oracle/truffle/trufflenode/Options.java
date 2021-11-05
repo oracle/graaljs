@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import java.util.function.Function;
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -60,10 +61,12 @@ import com.oracle.truffle.js.runtime.JSConfig;
 public final class Options {
     private final Context.Builder contextBuilder;
     private final boolean exposeGC;
+    private final boolean unsafeWasmMemory;
 
-    private Options(Context.Builder contextBuilder, boolean exposeGC) {
+    private Options(Context.Builder contextBuilder, boolean exposeGC, boolean unsafeWasmMemory) {
         this.contextBuilder = contextBuilder;
         this.exposeGC = exposeGC;
+        this.unsafeWasmMemory = unsafeWasmMemory;
     }
 
     public static Options parseArguments(String[] args) throws Exception {
@@ -77,7 +80,7 @@ public final class Options {
             parser = clazz.getDeclaredConstructor().newInstance();
         }
         Object[] result = parser.apply(args);
-        return new Options((Context.Builder) result[0], (Boolean) result[1]);
+        return new Options((Context.Builder) result[0], (Boolean) result[1], (Boolean) result[2]);
     }
 
     @SuppressWarnings("unchecked")
@@ -105,6 +108,10 @@ public final class Options {
         return exposeGC;
     }
 
+    public boolean isUnsafeWasmMemory() {
+        return unsafeWasmMemory;
+    }
+
     public static class OptionsParser extends AbstractLanguageLauncher implements Function<String[], Object[]> {
         private static final String INSPECT = "inspect";
         private static final String INSPECT_SUSPEND = "inspect.Suspend";
@@ -113,6 +120,7 @@ public final class Options {
         private Context.Builder contextBuilder;
         private boolean exposeGC;
         private boolean polyglot;
+        private boolean unsafeWasmMemory;
 
         // Options that should not be passed to polyglot engine (they are processed
         // elsewhere or can be ignored without almost any harm).
@@ -141,7 +149,7 @@ public final class Options {
                         "nolazy",
                         "nouse-idle-notification",
                         "stack-size",
-                        "use_idle_notification"
+                        "use-idle-notification"
         }));
 
         @Override
@@ -151,7 +159,7 @@ public final class Options {
                 // launch(Context.Builder) was not called (i.e. help was printed) => exit
                 System.exit(0);
             }
-            return new Object[]{contextBuilder, exposeGC};
+            return new Object[]{contextBuilder, exposeGC, unsafeWasmMemory};
         }
 
         private String[] filterArguments(String[] args) {
@@ -173,6 +181,8 @@ public final class Options {
             polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
 
             List<String> unprocessedArguments = new ArrayList<>();
+            boolean optWebAssembly = false;
+            Boolean optUnsafeWasmMemory = null;
             for (String arg : arguments) {
                 String key = "";
                 String value = null;
@@ -250,7 +260,21 @@ public final class Options {
                     polyglotOptions.put("js.stack-trace-limit", value);
                     continue;
                 }
+                if (("js.webassembly".equals(key) || "webassembly".equals(key))) {
+                    optWebAssembly = (value == null || "true".equals(value));
+                } else if ("wasm.UseUnsafeMemory".equals(key)) {
+                    optUnsafeWasmMemory = (value == null || "true".equals(value));
+                }
                 unprocessedArguments.add(arg);
+            }
+            if (optWebAssembly) {
+                if (optUnsafeWasmMemory == null && polyglot && isLanguageAvailable("wasm")) {
+                    optUnsafeWasmMemory = Boolean.TRUE;
+                    polyglotOptions.put("wasm.UseUnsafeMemory", "true");
+                }
+                if (optUnsafeWasmMemory == Boolean.TRUE) {
+                    unsafeWasmMemory = true;
+                }
             }
             return unprocessedArguments;
         }
@@ -310,6 +334,11 @@ public final class Options {
             return polyglot ? new String[0] : super.getDefaultLanguages();
         }
 
+         static boolean isLanguageAvailable(String languageId) {
+            try (Engine tempEngine = Engine.newBuilder().useSystemProperties(false).build()) {
+                return tempEngine.getLanguages().containsKey(languageId);
+            }
+        }
     }
 
 }
