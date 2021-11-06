@@ -243,6 +243,7 @@ public class JSContext {
         CollatorCompare,
         DateTimeFormatFormat,
         NumberFormatFormat,
+        OrdinaryHasInstance,
         ProxyRevokerFunction,
         PromiseResolveFunction,
         PromiseRejectFunction,

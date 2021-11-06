@@ -69,6 +69,7 @@ import com.oracle.truffle.js.builtins.ForInIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.FunctionPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.binary.InstanceofNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -846,6 +847,13 @@ public final class JSFunction extends JSNonProxy {
 
     public static Shape makeInitialForInIteratorShape(JSContext context, DynamicObject iteratorPrototype) {
         return JSObjectUtil.getProtoChildShape(iteratorPrototype, JSOrdinary.INSTANCE, context);
+    }
+
+    public static DynamicObject createOrdinaryHasInstanceFunction(JSRealm realm) {
+        JSContext ctx = realm.getContext();
+        return JSFunction.create(realm, ctx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryHasInstance, c -> {
+            return JSFunctionData.createCallOnly(c, new InstanceofNode.OrdinaryHasInstanceRootNode(c).getCallTarget(), 1, "OrdinaryHasInstance");
+        }));
     }
 
     public static RootNode getFrameRootNode(FrameInstance frameInstance) {
