@@ -110,7 +110,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     public abstract boolean executeBoolean(Object left, Object right);
 
     GetMethodNode createGetMethodHasInstance() {
-        return GetMethodNode.create(context, null, Symbol.SYMBOL_HAS_INSTANCE);
+        return GetMethodNode.create(context, Symbol.SYMBOL_HAS_INSTANCE);
     }
 
     @Specialization(guards = {"isObjectNode.executeBoolean(target)"}, limit = "1")

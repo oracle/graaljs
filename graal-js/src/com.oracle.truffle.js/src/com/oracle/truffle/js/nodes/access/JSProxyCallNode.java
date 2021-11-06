@@ -80,7 +80,7 @@ public abstract class JSProxyCallNode extends JavaScriptBaseNode {
     protected JSProxyCallNode(JSContext context, boolean isNew, boolean isNewTarget) {
         this.callNode = (isNew || isNewTarget) ? JSFunctionCallNode.createNewTarget() : JSFunctionCallNode.createCall();
         this.callTrapNode = JSFunctionCallNode.createCall();
-        this.trapGetter = GetMethodNode.create(context, null, isNewTarget || isNew ? JSProxy.CONSTRUCT : JSProxy.APPLY);
+        this.trapGetter = GetMethodNode.create(context, isNewTarget || isNew ? JSProxy.CONSTRUCT : JSProxy.APPLY);
         this.context = context;
         this.isNew = isNew;
         this.isNewTarget = isNewTarget;

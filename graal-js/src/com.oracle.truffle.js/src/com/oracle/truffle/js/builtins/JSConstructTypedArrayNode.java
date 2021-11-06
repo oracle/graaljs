@@ -442,7 +442,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     }
 
     GetMethodNode createGetIteratorMethod() {
-        return GetMethodNode.create(getContext(), null, Symbol.SYMBOL_ITERATOR);
+        return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
     }
 
     WriteElementNode createWriteOwn() {

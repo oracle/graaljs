@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,8 +69,8 @@ public class GetMethodNode extends JSTargetableNode {
         this.isCallableNode = IsCallableNode.create();
     }
 
-    public static GetMethodNode create(JSContext ctx, JavaScriptNode target, Object key) {
-        return new GetMethodNode(ctx, target, key);
+    public static GetMethodNode create(JSContext ctx, Object key) {
+        return new GetMethodNode(ctx, null, key);
     }
 
     @Override

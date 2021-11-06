@@ -73,7 +73,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
 
     public JSProxyHasPropertyNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
-        this.trapGetter = GetMethodNode.create(context, null, JSProxy.HAS);
+        this.trapGetter = GetMethodNode.create(context, JSProxy.HAS);
         this.toPropertyKeyNode = JSToPropertyKeyNode.create();
         this.toBooleanNode = JSToBooleanNode.create();
     }

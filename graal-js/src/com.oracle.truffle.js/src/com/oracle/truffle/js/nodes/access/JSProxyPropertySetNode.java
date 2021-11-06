@@ -82,7 +82,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
 
     protected JSProxyPropertySetNode(JSContext context, boolean isStrict) {
         this.call = JSFunctionCallNode.createCall();
-        this.trapGet = GetMethodNode.create(context, null, JSProxy.SET);
+        this.trapGet = GetMethodNode.create(context, JSProxy.SET);
         this.toBoolean = JSToBooleanNode.create();
         this.isStrict = isStrict;
     }

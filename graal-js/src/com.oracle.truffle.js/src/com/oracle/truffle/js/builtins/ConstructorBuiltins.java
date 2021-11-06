@@ -1950,7 +1950,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         GetMethodNode createGetIteratorMethod() {
-            return GetMethodNode.create(getContext(), null, Symbol.SYMBOL_ITERATOR);
+            return GetMethodNode.create(getContext(), Symbol.SYMBOL_ITERATOR);
         }
 
         @Specialization

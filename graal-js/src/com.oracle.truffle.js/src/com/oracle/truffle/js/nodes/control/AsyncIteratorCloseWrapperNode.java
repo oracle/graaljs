@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,7 +83,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
         this.loopNode = loopNode;
         this.iteratorNode = iteratorNode;
 
-        this.getReturnNode = GetMethodNode.create(context, null, "return");
+        this.getReturnNode = GetMethodNode.create(context, "return");
     }
 
     public static JavaScriptNode create(JSContext context, JavaScriptNode loopNode, JavaScriptNode iterator, JSReadFrameSlotNode asyncContextNode, JSReadFrameSlotNode asyncResultNode) {
