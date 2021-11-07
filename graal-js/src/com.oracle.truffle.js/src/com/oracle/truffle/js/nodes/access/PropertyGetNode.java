@@ -55,6 +55,7 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
@@ -1730,7 +1731,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             }
         } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
-            return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
+            return createJSProxyCache(receiverCheck);
         } else {
             if (thisObj == null) {
                 return new TypeErrorPropertyGetNode(new NullCheckNode());
@@ -1742,11 +1743,33 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     protected GetCacheNode createJSProxyCache(ReceiverCheckNode receiverCheck) {
+        if (isProxyHandlerGetNode()) {
+            // avoid building deeply nested property caches
+            return createGenericPropertyNode();
+        }
+
         if (isRequired()) {
             return new JSProxyDispatcherRequiredPropertyGetNode(context, key, receiverCheck, isMethod());
         } else {
             return new JSProxyDispatcherPropertyGetNode(context, key, receiverCheck, isMethod());
         }
+    }
+
+    private boolean isProxyHandlerGetNode() {
+        boolean nested = false;
+        Node parent = this;
+        do {
+            parent = parent.getParent();
+            if (parent instanceof GetMethodNode) {
+                continue;
+            }
+            if (parent instanceof JSProxyPropertyGetNode) {
+                nested = true;
+                break;
+            }
+            break;
+        } while (parent != null);
+        return nested;
     }
 
     private GetCacheNode createUndefinedJSObjectPropertyNode(JSDynamicObject jsobject, int depth) {
