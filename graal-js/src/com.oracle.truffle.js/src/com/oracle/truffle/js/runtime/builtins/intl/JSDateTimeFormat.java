@@ -254,7 +254,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         DateFormat dateFormat;
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
-                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
+                String skeleton = makeSkeleton(ctx, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
 
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
                 String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
@@ -570,24 +570,25 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return skeleton.toString();
     }
 
-    private static String timeZoneNameOptToSkeleton(String timeZoneNameOpt) {
+    private static String timeZoneNameOptToSkeleton(JSContext ctx, String timeZoneNameOpt) {
         if (timeZoneNameOpt == null) {
             return "";
         }
+        boolean v8CompatMode = ctx.isOptionV8CompatibilityMode();
         switch (timeZoneNameOpt) {
             case IntlUtil.SHORT:
-                return "v";
+                return v8CompatMode ? "z" : "v";
             case IntlUtil.LONG:
-                return "vvvv";
+                return v8CompatMode ? "zzzz" : "vvvv";
         }
         return "";
     }
 
-    private static String makeSkeleton(String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String dayPeriodOpt, String hourOpt, String hcOpt, String minuteOpt,
-                    String secondOpt, int fractionalSecondDigitsOpt, String timeZoneNameOpt) {
+    private static String makeSkeleton(JSContext ctx, String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String dayPeriodOpt, String hourOpt, String hcOpt,
+                    String minuteOpt, String secondOpt, int fractionalSecondDigitsOpt, String timeZoneNameOpt) {
         return weekdayOptToSkeleton(weekdayOpt) + eraOptToSkeleton(eraOpt) + yearOptToSkeleton(yearOpt) + monthOptToSkeleton(monthOpt) + dayOptToSkeleton(dayOpt) +
                         dayPeriodOptToSkeleton(dayPeriodOpt) + hourOptToSkeleton(hourOpt, hcOpt) + minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt, fractionalSecondDigitsOpt) +
-                        timeZoneNameOptToSkeleton(timeZoneNameOpt);
+                        timeZoneNameOptToSkeleton(ctx, timeZoneNameOpt);
     }
 
     private static UnmodifiableEconomicMap<String, String> initCanonicalTimeZoneIDMap() {
