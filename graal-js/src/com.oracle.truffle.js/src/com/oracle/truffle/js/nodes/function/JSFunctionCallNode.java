@@ -132,7 +132,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     public static JSFunctionCallNode createNewTarget() {
-        return create(false, true);
+        return create(true, true);
     }
 
     public static JSFunctionCallNode create(boolean isNew) {
@@ -285,7 +285,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                     if (JSFunction.isJSFunction(function)) {
                         c = specializeGenericFunction(currentHead, hasCached);
                     } else if (JSProxy.isJSProxy(function)) {
-                        c = insertAtFront(new JSProxyCacheNode(isNew(flags), isNewTarget(flags), context), currentHead);
+                        c = insertAtFront(specializeProxyCall(function, context), currentHead);
                     } else if (JSGuards.isForeignObject(function)) {
                         c = specializeForeignCall(arguments, currentHead);
                     } else if (function instanceof JSNoSuchMethodAdapter) {
@@ -306,6 +306,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
+    private AbstractCacheNode specializeProxyCall(Object function, JSContext context) {
+        assert JSProxy.isJSProxy(function);
+        if (getParent() instanceof JSProxyCallNode) {
+            // Perform an actual call to protect against proxy cycles and deep nesting.
+            return new JSProxyCallCacheNode(isNew(flags), isNewTarget(flags), context);
+        } else {
+            return new JSProxyInlineCacheNode(isNew(flags), isNewTarget(flags), context);
+        }
+    }
+
     private static boolean isCached(AbstractCacheNode c) {
         return c instanceof JSFunctionCacheNode;
     }
@@ -315,7 +325,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     private static boolean isUncached(AbstractCacheNode c) {
-        return c instanceof JSProxyCacheNode || c instanceof ForeignCallNode || c instanceof JSNoSuchMethodAdapterCacheNode;
+        return c instanceof JSProxyInlineCacheNode || c instanceof JSProxyCallCacheNode || c instanceof ForeignCallNode || c instanceof JSNoSuchMethodAdapterCacheNode;
     }
 
     private static int getCachedCount(AbstractCacheNode head) {
@@ -1627,18 +1637,46 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static class JSProxyCacheNode extends AbstractCacheNode {
+    private static class JSProxyInlineCacheNode extends AbstractCacheNode {
         @Child private JSProxyCallNode proxyCall;
 
-        JSProxyCacheNode(boolean isNew, boolean isNewTarget, JSContext context) {
+        JSProxyInlineCacheNode(boolean isNew, boolean isNewTarget, JSContext context) {
             this.proxyCall = JSProxyCallNode.create(context, isNew, isNewTarget);
         }
 
         @Override
         public Object executeCall(Object[] arguments) {
-            Object function = JSArguments.getFunctionObject(arguments);
-            assert accept(function);
+            assert accept(JSArguments.getFunctionObject(arguments));
             return proxyCall.execute(arguments);
+        }
+
+        @Override
+        protected boolean accept(Object function) {
+            return JSProxy.isJSProxy(function);
+        }
+    }
+
+    private static class JSProxyCallCacheNode extends AbstractCacheNode {
+        @Child private DirectCallNode proxyCallNode;
+
+        JSProxyCallCacheNode(boolean isNew, boolean isNewTarget, JSContext context) {
+            JSFunctionData functionData = JSProxy.createProxyCallFunctionData(context);
+            CallTarget target;
+            if (isNewTarget) {
+                target = functionData.getConstructNewTarget();
+            } else if (isNew) {
+                target = functionData.getConstructTarget();
+            } else {
+                assert !isNew && !isNewTarget;
+                target = functionData.getCallTarget();
+            }
+            this.proxyCallNode = DirectCallNode.create(target);
+        }
+
+        @Override
+        public Object executeCall(Object[] arguments) {
+            assert accept(JSArguments.getFunctionObject(arguments));
+            return proxyCallNode.call(arguments);
         }
 
         @Override

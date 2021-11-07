@@ -244,6 +244,7 @@ public class JSContext {
         DateTimeFormatFormat,
         NumberFormatFormat,
         OrdinaryHasInstance,
+        ProxyCall,
         ProxyRevokerFunction,
         PromiseResolveFunction,
         PromiseRejectFunction,
