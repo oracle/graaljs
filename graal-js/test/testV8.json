@@ -34,9 +34,6 @@
     "status" : "FAIL",
     "comment" : "Extended TimeZoneName (GR-33686)"
   }, {
-    "filePath" : "intl/date-format/timezone-name.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
