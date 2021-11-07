@@ -88,6 +88,8 @@ public final class JSConfig {
     public static final boolean AssertFinalPropertySpecialization = false;
     /** Try to cache by function object instead of call target. */
     public static final boolean FunctionCacheOnInstance = true;
+    /** Maximum bound function nesting level to unpack in specialization. */
+    public static final int BoundFunctionUnpackLimit = 10;
     public static final boolean DictionaryObject = true;
     /** Migrate objects to dictionary mode when the number of properties exceeds this threshold. */
     public static final int DictionaryObjectThreshold = 256;

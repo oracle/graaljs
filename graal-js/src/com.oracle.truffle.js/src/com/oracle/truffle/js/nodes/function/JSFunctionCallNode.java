@@ -939,7 +939,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     protected static JSFunctionCacheNode createCallableNode(DynamicObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
         CallTarget callTarget = getCallTarget(functionData, isNew, isNewTarget);
         assert callTarget != null;
-        if (JSFunction.isBoundFunction(function)) {
+        if (JSFunction.isBoundFunction(function) && isBoundFunctionNestingDepthWithinLimits(function)) {
             if (cacheOnInstance) {
                 return new BoundFunctionInstanceCallNode(function, isNew, isNewTarget);
             } else {
@@ -957,6 +957,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 return new FunctionDataCacheNode(functionData, callTarget);
             }
         }
+    }
+
+    private static boolean isBoundFunctionNestingDepthWithinLimits(DynamicObject function) {
+        DynamicObject boundFunction = function;
+        for (int i = 0; i < JSConfig.BoundFunctionUnpackLimit; i++) {
+            boundFunction = JSFunction.getBoundTargetFunction(boundFunction);
+            if (!JSFunction.isBoundFunction(boundFunction)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     protected static CallTarget getCallTarget(JSFunctionData functionData, boolean isNew, boolean isNewTarget) {
