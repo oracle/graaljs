@@ -40,42 +40,31 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-import java.util.Set;
-
 /**
  * ES6 7.3.9 GetMethod(O, P).
  */
-public class GetMethodNode extends JSTargetableNode {
-    @Child private JavaScriptNode targetNode;
+public class GetMethodNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode cacheNode;
     @Child private IsCallableNode isCallableNode;
     private final ConditionProfile undefinedOrNull = ConditionProfile.createBinaryProfile();
     private final BranchProfile notCallableBranch = BranchProfile.create();
 
-    protected GetMethodNode(JSContext context, JavaScriptNode target, Object propertyKey) {
-        this.targetNode = target;
+    protected GetMethodNode(JSContext context, Object propertyKey) {
         this.cacheNode = PropertyGetNode.create(propertyKey, false, context);
         this.isCallableNode = IsCallableNode.create();
     }
 
     public static GetMethodNode create(JSContext ctx, Object key) {
-        return new GetMethodNode(ctx, null, key);
-    }
-
-    @Override
-    public Object executeWithTarget(VirtualFrame frame, Object target) {
-        return executeWithTarget(target);
+        return new GetMethodNode(ctx, key);
     }
 
     public Object executeWithTarget(Object target) {
@@ -88,29 +77,5 @@ public class GetMethodNode extends JSTargetableNode {
             notCallableBranch.enter();
             throw Errors.createTypeErrorNotAFunction(method, this);
         }
-    }
-
-    @Override
-    public Object evaluateTarget(VirtualFrame frame) {
-        return targetNode.execute(frame);
-    }
-
-    @Override
-    public JavaScriptNode getTarget() {
-        return targetNode;
-    }
-
-    @Override
-    public Object execute(VirtualFrame frame) {
-        return executeWithTarget(evaluateTarget(frame));
-    }
-
-    final JSContext getContext() {
-        return cacheNode.getContext();
-    }
-
-    @Override
-    protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new GetMethodNode(getContext(), cloneUninitialized(targetNode, materializedTags), cacheNode.getKey());
     }
 }

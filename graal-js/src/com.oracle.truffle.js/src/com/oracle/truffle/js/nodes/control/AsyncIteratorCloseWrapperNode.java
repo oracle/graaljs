@@ -104,7 +104,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                 exitBranch.enter();
                 IteratorRecord iteratorRecord = getIteratorRecord(frame);
                 DynamicObject iterator = iteratorRecord.getIterator();
-                Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                Object returnMethod = getReturnNode.executeWithTarget(iterator);
                 if (returnMethod != Undefined.instance) {
                     innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                     completion = Completion.forReturn(e);
@@ -118,7 +118,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
                     IteratorRecord iteratorRecord = getIteratorRecord(frame);
                     DynamicObject iterator = iteratorRecord.getIterator();
                     try {
-                        Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                        Object returnMethod = getReturnNode.executeWithTarget(iterator);
                         if (returnMethod != Undefined.instance) {
                             innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                             completion = Completion.forThrow(e);
@@ -136,7 +136,7 @@ public class AsyncIteratorCloseWrapperNode extends AwaitNode {
             } else {
                 notDoneBranch.enter();
                 DynamicObject iterator = iteratorRecord.getIterator();
-                Object returnMethod = getReturnNode.executeWithTarget(frame, iterator);
+                Object returnMethod = getReturnNode.executeWithTarget(iterator);
                 if (returnMethod != Undefined.instance) {
                     innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
                     completion = Completion.forNormal(result);
