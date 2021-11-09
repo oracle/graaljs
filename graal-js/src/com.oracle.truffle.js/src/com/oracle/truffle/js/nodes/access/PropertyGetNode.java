@@ -1756,20 +1756,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     private boolean isProxyHandlerGetNode() {
-        boolean nested = false;
-        Node parent = this;
-        do {
+        Node parent = getParent();
+        if (parent instanceof GetMethodNode) {
             parent = parent.getParent();
-            if (parent instanceof GetMethodNode) {
-                continue;
-            }
-            if (parent instanceof JSProxyPropertyGetNode) {
-                nested = true;
-                break;
-            }
-            break;
-        } while (parent != null);
-        return nested;
+        }
+        return (parent instanceof JSProxyPropertyGetNode);
     }
 
     private GetCacheNode createUndefinedJSObjectPropertyNode(JSDynamicObject jsobject, int depth) {
