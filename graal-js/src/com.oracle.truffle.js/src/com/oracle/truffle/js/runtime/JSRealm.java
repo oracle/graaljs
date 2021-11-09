@@ -462,7 +462,7 @@ public class JSRealm {
     /**
      * Parent realm (for a child realm) or {@code null} for a top-level realm.
      */
-    private JSRealm parentRealm;
+    private final JSRealm parentRealm;
 
     /**
      * Currently active realm in this context.
@@ -512,13 +512,20 @@ public class JSRealm {
     protected JSRealm(JSContext context, TruffleLanguage.Env env, JSRealm parentRealm) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
+        this.parentRealm = parentRealm;
         if (parentRealm == null) {
             // top-level realm
             this.currentRealm = this;
-            this.parentRealm = null;
         } else {
             this.currentRealm = null;
-            // setParent(parentRealm);
+            this.agent = parentRealm.agent;
+            if (context.getContextOptions().isV8RealmBuiltin()) {
+                JSRealm topLevelRealm = parentRealm;
+                while (topLevelRealm.parentRealm != null) {
+                    topLevelRealm = topLevelRealm.parentRealm;
+                }
+                topLevelRealm.addToRealmList(this);
+            }
         }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
@@ -2454,20 +2461,6 @@ public class JSRealm {
 
     public boolean isMainRealm() {
         return getParent() == null;
-    }
-
-    void setParent(JSRealm parentRealm) {
-        assert (this.parentRealm == null);
-        this.agent = parentRealm.agent;
-        this.parentRealm = parentRealm;
-
-        if (getContext().getContextOptions().isV8RealmBuiltin()) {
-            JSRealm topLevelRealm = parentRealm;
-            while (topLevelRealm.parentRealm != null) {
-                topLevelRealm = topLevelRealm.parentRealm;
-            }
-            topLevelRealm.addToRealmList(this);
-        }
     }
 
     public JavaScriptBaseNode getCallNode() {

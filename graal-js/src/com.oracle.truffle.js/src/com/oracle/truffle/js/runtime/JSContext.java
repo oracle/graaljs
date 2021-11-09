@@ -677,8 +677,6 @@ public class JSContext {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
-        } else {
-            newRealm.setParent(parentRealm);
         }
 
         realmInit.set(REALM_INITIALIZED);
