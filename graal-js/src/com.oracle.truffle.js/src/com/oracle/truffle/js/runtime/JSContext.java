@@ -64,7 +64,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -317,7 +316,6 @@ public class JSContext {
     private Map<Shape, JSShapeData> shapeDataMap;
 
     private final Assumption singleRealmAssumption;
-    private final Assumption singleContextAssumption;
     private final boolean isMultiContext;
 
     private final AtomicInteger realmInit = new AtomicInteger();
@@ -476,7 +474,6 @@ public class JSContext {
 
         this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler() : null;
 
-        this.singleContextAssumption = Truffle.getRuntime().createAssumption("single context");
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
 
         this.throwerFunctionData = throwTypeErrorFunction();
@@ -657,9 +654,7 @@ public class JSContext {
 
     protected JSRealm createRealm(TruffleLanguage.Env env, JSRealm parentRealm) {
         boolean isTop = (parentRealm == null);
-        if (realmInit.get() != REALM_UNINITIALIZED || !realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING)) {
-            singleContextAssumption.invalidate("single context assumption");
-        }
+        realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING);
 
         if (!isTop) {
             singleRealmAssumption.invalidate("creating another realm");
@@ -1563,16 +1558,8 @@ public class JSContext {
         return singleRealmAssumption.isValid();
     }
 
-    public final boolean isSingleContext() {
-        return !isMultiContext() && singleContextAssumption.isValid();
-    }
-
     public final boolean isSingleRealm() {
         return !isMultiContext() && singleRealmAssumption.isValid();
-    }
-
-    public final void assumeSingleRealm() throws InvalidAssumptionException {
-        singleRealmAssumption.check();
     }
 
     public final Assumption getSingleRealmAssumption() {
