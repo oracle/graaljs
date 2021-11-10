@@ -112,9 +112,7 @@ public final class RealmFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     protected static JSRealm topLevelRealm(Node node) {
-        JSRealm mainRealm = JSRealm.getMain(node);
-        assert mainRealm.getParent() == null;
-        return mainRealm;
+        return JSRealm.getMain(node);
     }
 
     protected static int toRealmIndexOrThrow(JSRealm topLevelRealm, Object index) {

@@ -2552,11 +2552,7 @@ public class JSRealm {
         }
 
         private static JSRealm topLevelRealm() {
-            JSRealm realm = JSRealm.get(null);
-            while (realm.getParent() != null) {
-                realm = realm.getParent();
-            }
-            return realm;
+            return JSRealm.getMain(null);
         }
     }
 
