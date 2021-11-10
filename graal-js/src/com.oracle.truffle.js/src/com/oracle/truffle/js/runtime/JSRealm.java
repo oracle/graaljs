@@ -338,6 +338,8 @@ public class JSRealm {
     private final DynamicObject promisePrototype;
     private DynamicObject promiseAllFunctionObject;
 
+    private final DynamicObject ordinaryHasInstanceFunction;
+
     @CompilationFinal private DynamicObject javaPackageToPrimitiveFunction;
 
     private final DynamicObject arrayProtoValuesIterator;
@@ -726,6 +728,8 @@ public class JSRealm {
             this.finalizationRegistryConstructor = null;
             this.finalizationRegistryPrototype = null;
         }
+
+        this.ordinaryHasInstanceFunction = JSFunction.createOrdinaryHasInstanceFunction(this);
 
         boolean nashornCompat = context.isOptionNashornCompatibilityMode();
         if (nashornCompat) {
@@ -2061,6 +2065,10 @@ public class JSRealm {
     public void setArguments(Object[] arguments) {
         JSObjectUtil.defineDataProperty(context, getGlobalObject(), ARGUMENTS_NAME, JSArray.createConstant(context, this, arguments),
                         context.isOptionV8CompatibilityModeInContextInit() ? JSAttributes.getDefault() : JSAttributes.getDefaultNotEnumerable());
+    }
+
+    public final DynamicObject getOrdinaryHasInstanceFunction() {
+        return ordinaryHasInstanceFunction;
     }
 
     public final DynamicObject getJSAdapterConstructor() {

@@ -46,6 +46,8 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -55,12 +57,15 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ProxyFunctionBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.JSProxyCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -855,5 +860,32 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public DynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getProxyPrototype();
+    }
+
+    public static JSFunctionData createProxyCallFunctionData(JSContext ctx) {
+        return ctx.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ProxyCall, c -> {
+            RootCallTarget callTarget = new ProxyCallRootNode(c, false, false).getCallTarget();
+            RootCallTarget constructTarget = new ProxyCallRootNode(c, true, false).getCallTarget();
+            RootCallTarget constructNewTarget = new ProxyCallRootNode(c, true, true).getCallTarget();
+            return JSFunctionData.create(c, callTarget, constructTarget, constructNewTarget, 0, "ProxyCall", 0);
+        });
+    }
+
+    private static final class ProxyCallRootNode extends JavaScriptRootNode {
+        @Child JSProxyCallNode proxyCallNode;
+
+        ProxyCallRootNode(JSContext context, boolean isNew, boolean isNewTarget) {
+            this.proxyCallNode = JSProxyCallNode.create(context, isNew, isNewTarget);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            return proxyCallNode.execute(frame.getArguments());
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
     }
 }

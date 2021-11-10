@@ -177,8 +177,8 @@ class AsyncGeneratorYieldStarNode extends AsyncGeneratorYieldNode {
         this.iteratorNextNode = IteratorNextNode.create();
         this.iteratorCompleteNode = IteratorCompleteNode.create(context);
         this.iteratorValueNode = IteratorValueNode.create(context, null);
-        this.getThrowMethodNode = GetMethodNode.create(context, null, "throw");
-        this.getReturnMethodNode = GetMethodNode.create(context, null, "return");
+        this.getThrowMethodNode = GetMethodNode.create(context, "throw");
+        this.getReturnMethodNode = GetMethodNode.create(context, "return");
         this.callThrowNode = JSFunctionCallNode.createCall();
         this.callReturnNode = JSFunctionCallNode.createCall();
     }

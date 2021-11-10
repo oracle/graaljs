@@ -330,7 +330,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getReturn = GetMethodNode.create(context, null, "return");
+            this.getReturn = GetMethodNode.create(context, "return");
             this.createIterResult = CreateIterResultObjectNode.create(getContext());
         }
 
@@ -358,7 +358,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
 
         public AsyncFromSyncThrow(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getThrow = GetMethodNode.create(context, null, "throw");
+            this.getThrow = GetMethodNode.create(context, "throw");
         }
 
         @Override

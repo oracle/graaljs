@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -75,6 +76,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -87,7 +89,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ImportStatic({JSConfig.class})
 public abstract class InstanceofNode extends JSBinaryNode {
     protected final JSContext context;
-    @Child private OrdinaryHasInstanceNode ordinaryHasInstanceNode;
 
     protected InstanceofNode(JSContext context, JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
@@ -110,7 +111,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     public abstract boolean executeBoolean(Object left, Object right);
 
     GetMethodNode createGetMethodHasInstance() {
-        return GetMethodNode.create(context, null, Symbol.SYMBOL_HAS_INSTANCE);
+        return GetMethodNode.create(context, Symbol.SYMBOL_HAS_INSTANCE);
     }
 
     @Specialization(guards = {"isObjectNode.executeBoolean(target)"}, limit = "1")
@@ -123,21 +124,18 @@ public abstract class InstanceofNode extends JSBinaryNode {
                     @Cached("createBinaryProfile()") ConditionProfile hasInstanceProfile,
                     @Cached("create()") BranchProfile errorBranch) {
         Object hasInstance = getMethodHasInstanceNode.executeWithTarget(target);
-        if (hasInstanceProfile.profile(hasInstance != Undefined.instance)) {
-            Object res = callHasInstanceNode.executeCall(JSArguments.createOneArg(target, hasInstance, obj));
-            return toBooleanNode.executeBoolean(res);
-        } else {
-            // legacy instanceof
+        if (hasInstanceProfile.profile(hasInstance == Undefined.instance)) {
+            // Fall back to default instanceof semantics (legacy instanceof).
             if (!isCallableNode.executeBoolean(target)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
             }
-            if (ordinaryHasInstanceNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                ordinaryHasInstanceNode = insert(OrdinaryHasInstanceNode.create(context));
-            }
-            return ordinaryHasInstanceNode.executeBoolean(obj, target);
+            // Call OrdinaryHasInstance via an internal helper function. By doing it this way, we
+            // can break out of any recursion and let the compiler decide where to cut off inlining.
+            hasInstance = getRealm().getOrdinaryHasInstanceFunction();
         }
+        Object res = callHasInstanceNode.executeCall(JSArguments.createOneArg(target, hasInstance, obj));
+        return toBooleanNode.executeBoolean(res);
     }
 
     @Specialization(guards = {"isNullOrUndefined(target)"})
@@ -372,4 +370,24 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
     }
 
+    public static final class OrdinaryHasInstanceRootNode extends JavaScriptRootNode {
+        @Child OrdinaryHasInstanceNode ordinaryHasInstanceNode;
+
+        public OrdinaryHasInstanceRootNode(JSContext context) {
+            this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object[] arguments = frame.getArguments();
+            Object target = JSArguments.getThisObject(arguments);
+            Object obj = JSArguments.getUserArgument(arguments, 0);
+            return ordinaryHasInstanceNode.executeBoolean(obj, target);
+        }
+
+        @Override
+        public boolean isInternal() {
+            return true;
+        }
+    }
 }

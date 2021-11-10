@@ -531,7 +531,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected final Object getMethod(Object target, Object key) {
             if (getMethodNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                getMethodNode = insert(GetMethodNode.create(getContext(), null, key));
+                getMethodNode = insert(GetMethodNode.create(getContext(), key));
             }
             return getMethodNode.executeWithTarget(target);
         }

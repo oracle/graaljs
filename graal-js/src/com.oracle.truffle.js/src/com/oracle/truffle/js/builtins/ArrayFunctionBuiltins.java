@@ -211,7 +211,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
-            this.getIteratorMethodNode = GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR);
+            this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
             this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
         }
 

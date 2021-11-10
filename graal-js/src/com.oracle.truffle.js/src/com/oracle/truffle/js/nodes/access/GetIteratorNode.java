@@ -138,7 +138,7 @@ public abstract class GetIteratorNode extends JavaScriptNode {
     protected GetMethodNode getIteratorMethodNode() {
         if (getIteratorMethodNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getIteratorMethodNode = insert(GetMethodNode.create(context, null, Symbol.SYMBOL_ITERATOR));
+            getIteratorMethodNode = insert(GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR));
         }
         return getIteratorMethodNode;
     }

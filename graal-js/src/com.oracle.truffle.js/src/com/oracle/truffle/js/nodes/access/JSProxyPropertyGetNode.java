@@ -77,7 +77,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
 
     protected JSProxyPropertyGetNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
-        this.trapGet = GetMethodNode.create(context, null, JSProxy.GET);
+        this.trapGet = GetMethodNode.create(context, JSProxy.GET);
     }
 
     public static JSProxyPropertyGetNode create(JSContext context) {

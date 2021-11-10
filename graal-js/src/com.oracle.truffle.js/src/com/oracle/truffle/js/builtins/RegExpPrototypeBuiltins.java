@@ -1315,7 +1315,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private Object callFunction(Object[] arguments) {
             if (functionCallNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                functionCallNode = insert(JSFunctionCallNode.create(false));
+                functionCallNode = insert(JSFunctionCallNode.createCall());
             }
             return functionCallNode.executeCall(arguments);
         }
