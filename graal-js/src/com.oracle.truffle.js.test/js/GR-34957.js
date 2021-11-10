@@ -7,6 +7,8 @@
 
 /**
  * Tests recursive bound function and proxy cache specializations.
+ *
+ * @option js.debug-builtin=true
  */
 
 function assertInstanceof(e, ErrorType) {
@@ -19,6 +21,23 @@ function fail(msg) {
     throw new Error(msg);
 }
 
+function countNodes(fn) {
+    let count = 0;
+    let srcattr = Debug.srcattr(fn);
+    srcattr = srcattr.replace(/.*AST source attribution:/s, '');
+    for (let match of srcattr.matchAll(/\((\w+)\)/g)) {
+        count++;
+    }
+    return count;
+}
+
+function assertFunctionNodeCount(fn, min=5, max=200) {
+    let count = countNodes(fn);
+    if (!(min <= count && count <= max)) {
+        fail(`Node count not between ${min} and ${max}: ${count}`);
+    }
+}
+
 (function testProxyGet() {
     var handler = {};
     var p = new Proxy({}, handler);
@@ -29,6 +48,8 @@ function fail(msg) {
     } catch(e) {
         assertInstanceof(e, RangeError);
     }
+
+    assertFunctionNodeCount(arguments.callee);
 })();
 
 (function testProxyApply() {
@@ -41,6 +62,8 @@ function fail(msg) {
     } catch(e) {
         assertInstanceof(e, RangeError);
     }
+
+    assertFunctionNodeCount(arguments.callee);
 })();
 
 (function testBoundFunctionInstanceof() {
@@ -52,6 +75,8 @@ function fail(msg) {
     }
 
     ({}) instanceof f;
+
+    assertFunctionNodeCount(arguments.callee);
 })();
 
 (function testBoundFunctionCall() {
@@ -65,5 +90,7 @@ function fail(msg) {
         f();
         new f();
         Reflect.construct(f, [], f);
+
+        assertFunctionNodeCount(arguments.callee);
     }
 })();
