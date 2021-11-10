@@ -55,14 +55,13 @@ import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData.Target;
 
 @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of all functions in JavaScript.")
-public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements FrameDescriptorProvider, JSFunctionData.CallTargetInitializer {
+public final class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements FrameDescriptorProvider, JSFunctionData.CallTargetInitializer {
 
     @Child private JavaScriptNode body;
 
@@ -137,11 +136,6 @@ public class FunctionRootNode extends JavaScriptRealmBoundaryRootNode implements
 
     public JavaScriptNode getBody() {
         return body;
-    }
-
-    @Override
-    protected JSContext getContext() {
-        return functionData.getContext();
     }
 
     @Override

@@ -67,7 +67,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -1439,15 +1438,15 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary(transferToInterpreterOnException = false)
         protected Object evalImpl(JSRealm realm, String fileName, String source, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
-            TruffleContext childContext = childRealm.getTruffleContext();
-            Object prev = childContext.enter(this);
+            JSRealm mainRealm = JSRealm.getMain(this);
+            JSRealm prevRealm = mainRealm.enterRealm(this, childRealm);
             try {
                 DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
                 JSRuntime.createDataProperty(childRealm.getGlobalObject(), JSFunction.ARGUMENTS, argumentsArray);
                 return loadStringImpl(getContext(), fileName, source).run(childRealm);
             } finally {
-                childContext.leave(this, prev);
+                mainRealm.leaveRealm(this, prevRealm);
             }
         }
 
@@ -1455,8 +1454,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         @TruffleBoundary
         protected Object loadFromPath(String path, JSRealm realm, Object[] args) {
             JSRealm childRealm = realm.createChildRealm();
-            TruffleContext childContext = childRealm.getTruffleContext();
-            Object prev = childContext.enter(this);
+            JSRealm mainRealm = JSRealm.getMain(this);
+            JSRealm prevRealm = mainRealm.enterRealm(this, childRealm);
             try {
                 DynamicObject argumentsArray = JSArray.createConstant(getContext(), childRealm, args);
                 assert JSObject.getPrototype(argumentsArray) == childRealm.getArrayPrototype();
@@ -1464,7 +1463,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
                 Source source = sourceFromPath(path, childRealm);
                 return runImpl(childRealm, source);
             } finally {
-                childContext.leave(this, prev);
+                mainRealm.leaveRealm(this, prevRealm);
             }
         }
     }

@@ -75,7 +75,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -84,7 +84,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AsyncFunctionBodyNode extends JavaScriptNode {
 
     @NodeInfo(cost = NodeCost.NONE, language = "JavaScript", description = "The root node of async functions in JavaScript.")
-    public static final class AsyncFunctionRootNode extends JavaScriptRootNode implements AsyncRootNode {
+    public static final class AsyncFunctionRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncRootNode {
 
         private final JSContext context;
         private final String functionName;
@@ -108,7 +108,7 @@ public final class AsyncFunctionBodyNode extends JavaScriptNode {
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        protected Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame asyncFrame = JSArguments.getResumeExecutionContext(arguments);
             PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);

@@ -75,8 +75,7 @@ public final class JSGlobal extends JSNonProxy {
     public static Shape makeGlobalObjectShape(JSContext context, DynamicObject objectPrototype) {
         // keep a separate shape tree for the global object in order not to pollute user objects
         boolean singleContext = !context.isMultiContext();
-        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobal.INSTANCE, singleContext ? objectPrototype : null).propertyAssumptions(singleContext).singleContextAssumption(
-                        singleContext ? context.getSingleRealmAssumption() : null).build();
+        Shape globalObjectShape = JSShape.newBuilder(context, JSGlobal.INSTANCE, singleContext ? objectPrototype : null).propertyAssumptions(singleContext).build();
         if (singleContext) {
             globalObjectShape = Shape.newBuilder(globalObjectShape).addConstantProperty(JSObject.HIDDEN_PROTO, objectPrototype, 0).build();
         }

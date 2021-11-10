@@ -64,7 +64,6 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -318,7 +317,6 @@ public class JSContext {
 
     private Map<Shape, JSShapeData> shapeDataMap;
 
-    final Assumption noChildRealmsAssumption;
     private final Assumption singleRealmAssumption;
     private final boolean isMultiContext;
 
@@ -479,7 +477,6 @@ public class JSContext {
         this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler() : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
-        this.noChildRealmsAssumption = Truffle.getRuntime().createAssumption("no child realms");
 
         this.throwerFunctionData = throwTypeErrorFunction();
         boolean annexB = isOptionAnnexB();
@@ -654,16 +651,17 @@ public class JSContext {
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
-        JSRealm parentRealm = JSRealm.PARENT_OF_NEW_REALM.get();
+        return createRealm(env, null);
+    }
+
+    protected JSRealm createRealm(TruffleLanguage.Env env, JSRealm parentRealm) {
         boolean isTop = (parentRealm == null);
-        if (realmInit.get() != REALM_UNINITIALIZED || !realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING)) {
-            singleRealmAssumption.invalidate("single realm assumption");
-        }
+        realmInit.compareAndSet(REALM_UNINITIALIZED, REALM_INITIALIZING);
 
         if (!isTop) {
-            noChildRealmsAssumption.invalidate();
+            singleRealmAssumption.invalidate("creating another realm");
         }
-        JSRealm newRealm = new JSRealm(this, env);
+        JSRealm newRealm = new JSRealm(this, env, parentRealm);
         newRealm.setupGlobals();
 
         if (isTop) {
@@ -676,8 +674,6 @@ public class JSContext {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
-        } else {
-            newRealm.setParent(parentRealm);
         }
 
         realmInit.set(REALM_INITIALIZED);
@@ -1561,15 +1557,11 @@ public class JSContext {
     }
 
     public final boolean neverCreatedChildRealms() {
-        return noChildRealmsAssumption.isValid();
+        return singleRealmAssumption.isValid();
     }
 
     public final boolean isSingleRealm() {
         return !isMultiContext() && singleRealmAssumption.isValid();
-    }
-
-    public final void assumeSingleRealm() throws InvalidAssumptionException {
-        singleRealmAssumption.check();
     }
 
     public final Assumption getSingleRealmAssumption() {

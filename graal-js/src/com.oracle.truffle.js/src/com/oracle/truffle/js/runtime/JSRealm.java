@@ -461,20 +461,27 @@ public class JSRealm {
      * child realms).
      */
     private List<JSRealm> realmList;
+
     /**
      * Parent realm (for a child realm) or {@code null} for a top-level realm.
      */
-    private JSRealm parentRealm;
+    private final JSRealm parentRealm;
+
     /**
-     * Current realm (as returned by {@code Realm.current()} V8 built-in).
+     * Currently active realm in this context.
+     */
+    private JSRealm currentRealm;
+
+    /**
+     * Current realm (as returned by {@code Realm.current()} V8 built-in). Not always the same as
+     * {@link #currentRealm}.
      */
     private JSRealm v8RealmCurrent = this;
+
     /**
      * Value shared across V8 realms ({@code Realm.shared}).
      */
     Object v8RealmShared = Undefined.instance;
-
-    static final ThreadLocal<JSRealm> PARENT_OF_NEW_REALM = new ThreadLocal<>();
 
     /**
      * Used to the pass call site source location for caller sensitive built-in functions.
@@ -491,8 +498,6 @@ public class JSRealm {
      */
     private final SimpleArrayList<Object> joinStack = new SimpleArrayList<>();
 
-    private List<TruffleContext> innerContextsToClose;
-
     /**
      * Cache of least recently compiled compiled regular expressions.
      */
@@ -503,9 +508,28 @@ public class JSRealm {
      */
     private Object customEsmPathMappingCallback;
 
-    public JSRealm(JSContext context, TruffleLanguage.Env env) {
+    protected JSRealm(JSContext context, TruffleLanguage.Env env) {
+        this(context, env, null);
+    }
+
+    protected JSRealm(JSContext context, TruffleLanguage.Env env, JSRealm parentRealm) {
         this.context = context;
         this.truffleLanguageEnv = env; // can be null
+        this.parentRealm = parentRealm;
+        if (parentRealm == null) {
+            // top-level realm
+            this.currentRealm = this;
+        } else {
+            this.currentRealm = null;
+            this.agent = parentRealm.agent;
+            if (context.getContextOptions().isV8RealmBuiltin()) {
+                JSRealm topLevelRealm = parentRealm;
+                while (topLevelRealm.parentRealm != null) {
+                    topLevelRealm = topLevelRealm.parentRealm;
+                }
+                topLevelRealm.addToRealmList(this);
+            }
+        }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies
         this.objectPrototype = JSObjectPrototype.create(context);
@@ -878,8 +902,43 @@ public class JSRealm {
         return context;
     }
 
-    public static JSRealm get(Node node) {
+    public static JSRealm getMain(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public static JSRealm get(Node node) {
+        JSRealm mainRealm = REFERENCE.get(node);
+        // We can skip the indirection as long as the single realm assumption is valid.
+        // In the interpreter, checking the assumption would incur more overhead than the
+        // indirection, so we do that only in compiled code.
+        if (CompilerDirectives.inCompiledCode()) {
+            if (CompilerDirectives.isPartialEvaluationConstant(node) && node != null && JavaScriptLanguage.get(node).getJSContext().isSingleRealm()) {
+                assert mainRealm == mainRealm.currentRealm;
+                return mainRealm;
+            }
+        } else {
+            assert mainRealm.currentRealm == mainRealm || !JavaScriptLanguage.get(node).getJSContext().isSingleRealm();
+        }
+        return mainRealm.currentRealm;
+    }
+
+    private boolean allowEnterLeave(Node node, JSRealm otherRealm) {
+        assert isMainRealm() && getMain(node) == this;
+        // single realm assumption must be invalidated before an attempt to enter another realm
+        assert !JavaScriptLanguage.get(node).getJSContext().isSingleRealm() || currentRealm == otherRealm;
+        return true;
+    }
+
+    public JSRealm enterRealm(Node node, JSRealm childRealm) {
+        assert allowEnterLeave(node, childRealm);
+        JSRealm prev = this.currentRealm;
+        this.currentRealm = childRealm;
+        return prev;
+    }
+
+    public void leaveRealm(Node node, JSRealm prevRealm) {
+        assert allowEnterLeave(node, prevRealm);
+        this.currentRealm = prevRealm;
     }
 
     public final DynamicObject lookupFunction(JSBuiltinsContainer container, String methodName) {
@@ -2124,6 +2183,13 @@ public class JSRealm {
             return;
         }
 
+        if (getEnv().out() != getOutputStream()) {
+            setOutputWriter(null, getEnv().out());
+        }
+        if (getEnv().err() != getErrorStream()) {
+            setErrorWriter(null, getEnv().err());
+        }
+
         addOptionalGlobals();
 
         addArgumentsFromEnv(getEnv());
@@ -2148,25 +2214,9 @@ public class JSRealm {
 
     @TruffleBoundary
     public JSRealm createChildRealm() {
-        assert PARENT_OF_NEW_REALM.get() == null;
-        PARENT_OF_NEW_REALM.set(this);
-        try {
-            TruffleContext nestedContext = getEnv().newContextBuilder().build();
-            Object prev = nestedContext.enter(null);
-            try {
-                JSRealm childRealm = JavaScriptLanguage.getCurrentJSRealm();
-
-                JSRealm parent = childRealm.parentRealm;
-                assert parent != null;
-                parent.addInnerContext(nestedContext);
-
-                return childRealm;
-            } finally {
-                nestedContext.leave(null, prev);
-            }
-        } finally {
-            PARENT_OF_NEW_REALM.set(null);
-        }
+        JSRealm childRealm = context.createRealm(getEnv(), this);
+        childRealm.initialize();
+        return childRealm;
     }
 
     public boolean isPreparingStackTrace() {
@@ -2420,18 +2470,8 @@ public class JSRealm {
         return parentRealm;
     }
 
-    void setParent(JSRealm parentRealm) {
-        assert (this.parentRealm == null);
-        this.agent = parentRealm.agent;
-        this.parentRealm = parentRealm;
-
-        if (getContext().getContextOptions().isV8RealmBuiltin()) {
-            JSRealm topLevelRealm = parentRealm;
-            while (topLevelRealm.parentRealm != null) {
-                topLevelRealm = topLevelRealm.parentRealm;
-            }
-            topLevelRealm.addToRealmList(this);
-        }
+    public boolean isMainRealm() {
+        return getParent() == null;
     }
 
     public JavaScriptBaseNode getCallNode() {
@@ -2444,35 +2484,42 @@ public class JSRealm {
 
     void initRealmList() {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         realmList = new ArrayList<>();
     }
 
-    synchronized void addToRealmList(JSRealm newRealm) {
+    void addToRealmList(JSRealm newRealm) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         assert !realmList.contains(newRealm);
         realmList.add(newRealm);
     }
 
-    public synchronized JSRealm getFromRealmList(int idx) {
+    public JSRealm getFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         return (0 <= idx && idx < realmList.size()) ? realmList.get(idx) : null;
     }
 
-    public synchronized int getIndexFromRealmList(JSRealm rlm) {
+    public int getIndexFromRealmList(JSRealm rlm) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         return realmList.indexOf(rlm);
     }
 
-    public synchronized void removeFromRealmList(int idx) {
+    public void removeFromRealmList(int idx) {
         CompilerAsserts.neverPartOfCompilation();
+        assert isMainRealm();
         realmList.set(idx, null);
     }
 
     public JSRealm getCurrentV8Realm() {
+        assert isMainRealm();
         return v8RealmCurrent;
     }
 
     public void setCurrentV8Realm(JSRealm realm) {
+        assert isMainRealm();
         v8RealmCurrent = realm;
     }
 
@@ -2516,11 +2563,7 @@ public class JSRealm {
         }
 
         private static JSRealm topLevelRealm() {
-            JSRealm realm = JSRealm.get(null);
-            while (realm.getParent() != null) {
-                realm = realm.getParent();
-            }
-            return realm;
+            return JSRealm.getMain(null);
         }
     }
 
@@ -2798,27 +2841,6 @@ public class JSRealm {
     private void enterOncePerContextBranch() {
         if (CompilerDirectives.isPartialEvaluationConstant(this)) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-        }
-    }
-
-    public synchronized void addInnerContext(TruffleContext nestedContext) {
-        if (innerContextsToClose == null) {
-            innerContextsToClose = new ArrayList<>();
-        }
-        innerContextsToClose.add(nestedContext);
-    }
-
-    public void closeInnerContexts() {
-        List<TruffleContext> contextsToClose = null;
-        synchronized (this) {
-            if (innerContextsToClose != null) {
-                contextsToClose = new ArrayList<>(innerContextsToClose);
-            }
-        }
-        if (contextsToClose != null) {
-            for (TruffleContext innerContext : contextsToClose) {
-                innerContext.close();
-            }
         }
     }
 

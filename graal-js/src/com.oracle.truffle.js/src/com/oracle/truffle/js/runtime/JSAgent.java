@@ -205,13 +205,7 @@ public abstract class JSAgent implements EcmaAgent {
                     DynamicObject nextJob = promiseJobsQueue.pollLast();
                     if (JSFunction.isJSFunction(nextJob)) {
                         checkWaiterRecords = true;
-                        JSRealm functionRealm = JSFunction.getRealm(nextJob);
-                        Object prev = functionRealm.getTruffleContext().enter(null);
-                        try {
-                            JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
-                        } finally {
-                            functionRealm.getTruffleContext().leave(null, prev);
-                        }
+                        JSFunction.call(nextJob, Undefined.instance, JSArguments.EMPTY_ARGUMENTS_ARRAY);
                     }
                 }
             }
