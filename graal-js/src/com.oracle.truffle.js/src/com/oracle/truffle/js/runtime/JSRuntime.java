@@ -49,9 +49,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -71,6 +75,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -317,20 +322,17 @@ public final class JSRuntime {
      *
      * @param value an Object to be converted to a primitive value
      * @param hint the preferred type of primitive to return ("number", "string" or "default")
-     *
      * @return an Object representing the primitive value of the parameter
+     * @see com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode
      */
     @TruffleBoundary
     public static Object toPrimitive(Object value, String hint) {
         if (value == Null.instance || value == Undefined.instance) {
             return value;
-        } else if (value instanceof TruffleObject) {
-            if (JSDynamicObject.isJSDynamicObject(value)) {
-                return JSObject.toPrimitive((DynamicObject) value, hint);
-            } else if (isForeignObject(value)) {
-                TruffleObject tObj = (TruffleObject) value;
-                return toPrimitiveFromForeign(tObj, hint);
-            }
+        } else if (JSDynamicObject.isJSDynamicObject(value)) {
+            return JSObject.toPrimitive((DynamicObject) value, hint);
+        } else if (isForeignObject(value)) {
+            return toPrimitiveFromForeign(value, hint);
         }
         return value;
 
@@ -341,26 +343,37 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object toPrimitiveFromForeign(Object tObj, String hint) {
-        TruffleLanguage.Env env;
+        assert isForeignObject(tObj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(tObj);
         if (interop.isNull(tObj)) {
             return Null.instance;
-        } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(tObj)) {
-            Object javaObject = env.asHostObject(tObj);
-            if (javaObject == null) {
-                return Null.instance;
-            } else if (JSGuards.isJavaPrimitiveNumber(javaObject)) {
-                return JSRuntime.importValue(javaObject);
-            } else if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && javaObject instanceof Number) {
-                return ((Number) javaObject).doubleValue();
-            } else {
-                return JSRuntime.toJSNull(javaObject.toString());
-            }
         } else if (JSInteropUtil.isBoxedPrimitive(tObj, interop)) {
             return JSInteropUtil.toPrimitiveOrDefault(tObj, Null.instance, interop, null);
-        } else {
-            return foreignOrdinaryToPrimitive(tObj, hint);
+        } else if (JavaScriptLanguage.getCurrentEnv().isHostObject(tObj)) {
+            if (JSRuntime.HINT_NUMBER.equals(hint) && JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() &&
+                            interop.isMemberInvocable(tObj, "doubleValue")) {
+                try {
+                    return interop.invokeMember(tObj, "doubleValue");
+                } catch (UnsupportedMessageException | ArityException | UnknownIdentifierException | UnsupportedTypeException e) {
+                    throw Errors.createTypeErrorInteropException(tObj, e, "doubleValue()", null);
+                }
+            } else if (interop.isInstant(tObj)) {
+                return JSDate.getDateValueFromInstant(tObj, interop);
+            } else if (isJavaArray(tObj, interop)) {
+                return formatJavaArray(tObj, interop);
+            }
         }
+        return foreignOrdinaryToPrimitive(tObj, hint);
+    }
+
+    private static boolean isJavaArray(Object obj, InteropLibrary interop) {
+        return interop.hasArrayElements(obj) && interop.isMemberReadable(obj, "length");
+    }
+
+    @TruffleBoundary
+    private static Object formatJavaArray(Object obj, InteropLibrary interop) {
+        assert isJavaArray(obj, interop);
+        return JSRuntime.toDisplayString(obj, true);
     }
 
     @TruffleBoundary
