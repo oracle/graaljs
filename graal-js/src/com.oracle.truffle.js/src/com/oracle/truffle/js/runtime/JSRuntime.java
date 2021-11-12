@@ -360,6 +360,8 @@ public final class JSRuntime {
                 return JSDate.getDateValueFromInstant(tObj, interop);
             } else if (isJavaArray(tObj, interop)) {
                 return formatJavaArray(tObj, interop);
+            } else if (interop.isMetaObject(tObj)) {
+                return javaClassToString(tObj, interop);
             }
         }
         return foreignOrdinaryToPrimitive(tObj, hint);
@@ -373,6 +375,15 @@ public final class JSRuntime {
     private static Object formatJavaArray(Object obj, InteropLibrary interop) {
         assert isJavaArray(obj, interop);
         return JSRuntime.toDisplayString(obj, true);
+    }
+
+    @TruffleBoundary
+    private static Object javaClassToString(Object object, InteropLibrary interop) {
+        try {
+            return "class " + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "getTypeName", null);
+        }
     }
 
     @TruffleBoundary

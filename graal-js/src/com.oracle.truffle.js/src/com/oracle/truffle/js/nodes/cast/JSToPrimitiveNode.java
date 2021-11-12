@@ -239,6 +239,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                 return JSDate.getDateValueFromInstant(object, interop);
             } else if (isJavaArray(object, interop)) {
                 return formatJavaArray(object, interop);
+            } else if (interop.isMetaObject(object)) {
+                return javaClassToString(object, interop);
             }
             // else, try OrdinaryToPrimitive (toString(), valueOf())
         }
@@ -273,6 +275,15 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         assert isJavaArray(object, interop);
         // toDisplayString formats host arrays similar to Arrays.toString.
         return JSRuntime.toDisplayString(object, true);
+    }
+
+    @TruffleBoundary
+    private Object javaClassToString(Object object, InteropLibrary interop) {
+        try {
+            return "class " + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "getTypeName", this);
+        }
     }
 
     @Fallback
