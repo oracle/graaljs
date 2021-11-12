@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,7 @@ import javax.script.ScriptException;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
@@ -166,8 +167,9 @@ public class TestEngine {
         ScriptEngine engine = getEngine();
         Bindings bindings = engine.getBindings(ScriptContext.GLOBAL_SCOPE);
         bindings.put("x", 42);
+        ProxyObject bindingsProxy = ProxyObject.fromMap(bindings);
         // manually call importScriptEngineGlobalBindings
-        ((GraalJSScriptEngine) engine).getPolyglotContext().getBindings("js").getMember("importScriptEngineGlobalBindings").execute(bindings);
+        ((GraalJSScriptEngine) engine).getPolyglotContext().getBindings("js").getMember("importScriptEngineGlobalBindings").execute(bindingsProxy);
         boolean result = ((GraalJSScriptEngine) engine).getPolyglotContext().eval(Source.newBuilder("js", "x === 42;", "src").build()).asBoolean();
         assertTrue(result);
     }

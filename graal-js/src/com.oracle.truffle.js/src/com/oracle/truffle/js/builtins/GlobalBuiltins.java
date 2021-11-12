@@ -56,10 +56,7 @@ import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.EnumSet;
-import java.util.Map;
 import java.util.StringTokenizer;
-
-import javax.script.Bindings;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
@@ -73,6 +70,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.io.TruffleProcessBuilder;
@@ -118,6 +116,7 @@ import com.oracle.truffle.js.nodes.function.EvalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -1664,33 +1663,44 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         private void doImport(Object globalContextBindings) {
             JSRealm realm = getRealm();
             DynamicObject globalObject = realm.getGlobalObject();
-            Bindings bindings = (Bindings) realm.getEnv().asHostObject(globalContextBindings);
-            for (Map.Entry<String, Object> entry : bindings.entrySet()) {
-                String key = entry.getKey();
-                if (!globalObject.getShape().hasProperty(key) && !JSObject.getPrototype(globalObject).getShape().hasProperty(key)) {
-                    JSObjectUtil.defineProxyProperty(globalObject, key, new ScriptEngineGlobalScopeBindingsPropertyProxy(bindings, key), JSAttributes.getDefault());
+
+            InteropLibrary bindingsInterop = InteropLibrary.getUncached(globalContextBindings);
+            try {
+                Object members = bindingsInterop.getMembers(globalContextBindings);
+                InteropLibrary membersInterop = InteropLibrary.getUncached(members);
+                long size = membersInterop.getArraySize(members);
+                for (long i = 0; i < size; i++) {
+                    Object hashKey = membersInterop.readArrayElement(members, i);
+                    InteropLibrary keyInterop = InteropLibrary.getUncached(hashKey);
+                    if (keyInterop.isString(hashKey)) {
+                        String stringKey = keyInterop.asString(hashKey);
+                        if (!globalObject.getShape().hasProperty(stringKey) && !JSObject.getPrototype(globalObject).getShape().hasProperty(stringKey)) {
+                            JSObjectUtil.defineProxyProperty(globalObject, stringKey, new ScriptEngineGlobalScopeBindingsPropertyProxy(stringKey, globalContextBindings, bindingsInterop),
+                                            JSAttributes.getDefault());
+                        }
+                    }
                 }
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                throw Errors.createTypeErrorInteropException(globalContextBindings, e, "importScriptEngineGlobalBindings", this);
             }
         }
 
         private static class ScriptEngineGlobalScopeBindingsPropertyProxy implements PropertyProxy {
 
-            private final Bindings globalContextBindings;
             private final String key;
+            private final Object globalContextBindings;
+            private final InteropLibrary bindingsInterop;
 
-            ScriptEngineGlobalScopeBindingsPropertyProxy(Bindings globalContextBindings, String key) {
-                this.globalContextBindings = globalContextBindings;
+            ScriptEngineGlobalScopeBindingsPropertyProxy(String key, Object globalContextBindings, InteropLibrary bindingsInterop) {
                 this.key = key;
+                this.globalContextBindings = globalContextBindings;
+                this.bindingsInterop = bindingsInterop;
             }
 
             @Override
             @TruffleBoundary
             public Object get(DynamicObject store) {
-                Object value = globalContextBindings.get(key);
-                if (value == null) {
-                    return Undefined.instance;
-                }
-                return JSRuntime.importValue(JSRealm.get(null).getEnv().asGuestValue(value));
+                return JSInteropUtil.readMemberOrDefault(globalContextBindings, key, Undefined.instance, bindingsInterop, ImportValueNode.getUncached(), null);
             }
 
             @Override

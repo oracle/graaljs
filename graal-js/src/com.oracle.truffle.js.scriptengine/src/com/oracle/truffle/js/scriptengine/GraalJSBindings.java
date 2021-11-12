@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.scriptengine;
 
 import java.util.AbstractMap;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -51,6 +52,7 @@ import javax.script.ScriptContext;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.TypeLiteral;
 import org.graalvm.polyglot.Value;
+import org.graalvm.polyglot.proxy.ProxyObject;
 
 import com.oracle.truffle.js.scriptengine.GraalJSScriptEngine.MagicBindingsOptionSetter;
 
@@ -185,7 +187,8 @@ final class GraalJSBindings extends AbstractMap<String, Object> implements Bindi
     void importGlobalBindings(ScriptContext scriptContext) {
         Bindings globalBindings = scriptContext.getBindings(ScriptContext.GLOBAL_SCOPE);
         if (globalBindings != null && !globalBindings.isEmpty() && this != globalBindings) {
-            getContext().getBindings("js").getMember(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME).execute(globalBindings);
+            ProxyObject bindingsProxy = ProxyObject.fromMap(Collections.unmodifiableMap(globalBindings));
+            getContext().getBindings("js").getMember(SCRIPT_CONTEXT_GLOBAL_BINDINGS_IMPORT_FUNCTION_NAME).execute(bindingsProxy);
         }
     }
 
