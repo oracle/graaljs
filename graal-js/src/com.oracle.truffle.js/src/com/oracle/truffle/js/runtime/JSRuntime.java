@@ -64,7 +64,6 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -1160,9 +1159,8 @@ public final class JSRuntime {
 
     private static String foreignToString(Object value, int depth, boolean allowSideEffects) {
         CompilerAsserts.neverPartOfCompilation();
-        TruffleLanguage.Env env;
         try {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached(value);
+            InteropLibrary interop = InteropLibrary.getUncached(value);
             if (interop.isNull(value)) {
                 return "null";
             } else if (interop.hasArrayElements(value)) {
@@ -1181,24 +1179,26 @@ public final class JSRuntime {
                     unboxed = interop.asDouble(value);
                 }
                 return JSRuntime.toDisplayString(unboxed, 0, null, allowSideEffects);
-            } else if ((env = JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
-                Object hostObject = env.asHostObject(value);
-                Class<?> clazz = hostObject.getClass();
-                if (clazz == Class.class) {
-                    clazz = (Class<?>) hostObject;
-                    return "JavaClass[" + clazz.getTypeName() + "]";
-                } else {
-                    return "JavaObject[" + clazz.getTypeName() + "]";
-                }
+            } else if ((JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
+                return hostObjectToString(value, interop);
             } else if (interop.isMetaObject(value)) {
-                return InteropLibrary.getFactory().getUncached().asString(interop.getMetaQualifiedName(value));
+                return InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value));
             } else if (interop.hasMembers(value) && !(interop.isExecutable(value) || interop.isInstantiable(value))) {
                 return foreignObjectToString(value, depth, allowSideEffects);
             } else {
-                return InteropLibrary.getFactory().getUncached().asString(interop.toDisplayString(value, allowSideEffects));
+                return InteropLibrary.getUncached().asString(interop.toDisplayString(value, allowSideEffects));
             }
         } catch (InteropException e) {
             return "Object";
+        }
+    }
+
+    private static String hostObjectToString(Object value, InteropLibrary interop) throws UnsupportedMessageException {
+        if (interop.isMetaObject(value)) {
+            return "JavaClass[" + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value)) + "]";
+        } else {
+            Object metaObject = interop.getMetaObject(value);
+            return "JavaObject[" + InteropLibrary.getUncached().asString(InteropLibrary.getUncached().getMetaQualifiedName(metaObject)) + "]";
         }
     }
 
