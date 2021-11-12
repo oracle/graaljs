@@ -290,16 +290,22 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
     }
 
+    @ImportStatic(JSConfig.class)
     abstract static class JavaTypeNameNode extends JSBuiltinNode {
 
         JavaTypeNameNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJavaInteropClass(type)")
-        protected String typeNameJavaInteropClass(Object type) {
-            TruffleLanguage.Env env = getRealm().getEnv();
-            return ((Class<?>) env.asHostObject(type)).getName();
+        @Specialization(guards = "isJavaInteropClass(type, typeInterop)")
+        protected String typeNameJavaInteropClass(Object type,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop) {
+            try {
+                return stringInterop.asString(typeInterop.getMetaQualifiedName(type));
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(type, e, "Java.typeName", this);
+            }
         }
 
         @Fallback
@@ -307,9 +313,9 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             return Undefined.instance;
         }
 
-        protected final boolean isJavaInteropClass(Object obj) {
+        protected final boolean isJavaInteropClass(Object obj, InteropLibrary typeInterop) {
             TruffleLanguage.Env env = getRealm().getEnv();
-            return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
+            return env.isHostObject(obj) && typeInterop.isMetaObject(obj);
         }
     }
 

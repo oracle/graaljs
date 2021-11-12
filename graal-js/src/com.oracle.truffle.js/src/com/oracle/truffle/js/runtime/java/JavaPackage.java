@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.Shape;
@@ -103,7 +104,7 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     @TruffleBoundary
-    public static <T> T getClass(JSRealm realm, DynamicObject thisObj, String className, Class<? extends T> returnType) {
+    public static Object lookupClass(JSRealm realm, DynamicObject thisObj, String className) {
         TruffleLanguage.Env env = realm.getEnv();
         assert env.isHostLookupAllowed();
         String qualifiedName = prependPackageName(thisObj, className);
@@ -116,15 +117,8 @@ public final class JavaPackage extends JSNonProxy {
         if (javaType == null) {
             return null;
         }
-        if (env.isHostObject(javaType)) {
-            Object clazz = env.asHostObject(javaType);
-            if (clazz instanceof Class<?>) {
-                if (returnType == Class.class) {
-                    return returnType.cast(clazz);
-                } else {
-                    return returnType.cast(javaType);
-                }
-            }
+        if (env.isHostObject(javaType) && InteropLibrary.getUncached().isMetaObject(javaType)) {
+            return javaType;
         }
         return null;
     }
@@ -140,7 +134,7 @@ public final class JavaPackage extends JSNonProxy {
             int openParen = name.indexOf('(');
             if (openParen != -1) {
                 String className = Boundaries.substring(name, 0, openParen);
-                Object javaClass = getClass(realm, thisObj, className, Object.class);
+                Object javaClass = lookupClass(realm, thisObj, className);
                 if (javaClass != null) {
                     return javaClass;
                 } else {
@@ -152,7 +146,7 @@ public final class JavaPackage extends JSNonProxy {
     }
 
     private static Object getJavaClassOrSubPackage(JSContext context, JSRealm realm, DynamicObject thisObj, String name) {
-        Object javaClass = getClass(realm, thisObj, name, Object.class);
+        Object javaClass = lookupClass(realm, thisObj, name);
         if (javaClass != null) {
             return javaClass;
         }

@@ -2217,8 +2217,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 if (JavaPackage.isJavaPackage(anImport)) {
                     imports.addUnchecked(anImport);
                 } else if (env.isHostObject(anImport)) {
-                    Object hostObject = env.asHostObject(anImport);
-                    if (hostObject instanceof Class) {
+                    InteropLibrary interop = InteropLibrary.getUncached(anImport);
+                    if (interop.isMetaObject(anImport)) {
                         imports.addUnchecked(anImport);
                     }
                 }
