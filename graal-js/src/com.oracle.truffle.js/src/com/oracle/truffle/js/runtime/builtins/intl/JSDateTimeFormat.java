@@ -255,48 +255,46 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
                 String skeleton = makeSkeleton(ctx, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
-
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
-                String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
-                if (containsOneOf(baseSkeleton, "eEc")) {
+                if (containsOneOf(bestPattern, "eEc")) {
                     state.weekday = weekdayOpt;
                 }
 
-                if (baseSkeleton.contains("G")) {
+                if (bestPattern.contains("G")) {
                     state.era = eraOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "YyUu")) {
+                if (containsOneOf(bestPattern, "YyUu")) {
                     state.year = yearOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "ML")) {
+                if (containsOneOf(bestPattern, "ML")) {
                     state.month = monthOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "dDFg")) {
+                if (containsOneOf(bestPattern, "dDFg")) {
                     state.day = dayOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "Bb")) {
+                if (containsOneOf(bestPattern, "Bb")) {
                     state.dayPeriod = dayPeriodOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "hHKk")) {
+                if (containsOneOf(bestPattern, "hHKk")) {
                     state.hour = hourOpt;
                     state.hourCycle = hc;
                 }
 
-                if (baseSkeleton.contains("m")) {
+                if (bestPattern.contains("m")) {
                     state.minute = minuteOpt;
                 }
 
-                if (baseSkeleton.contains("s")) {
+                if (bestPattern.contains("s")) {
                     state.second = secondOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "SA")) {
+                if (containsOneOf(bestPattern, "SA")) {
                     state.fractionalSecondDigits = fractionalSecondDigitsOpt;
                 }
 
