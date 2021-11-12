@@ -282,16 +282,20 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 }
 
                 if (containsOneOf(bestPattern, "hHKk")) {
-                    state.hour = hourOpt;
+                    if (bestPattern.contains("hh") || bestPattern.contains("HH") || bestPattern.contains("KK") || bestPattern.contains("kk")) {
+                        state.hour = IntlUtil._2_DIGIT;
+                    } else {
+                        state.hour = IntlUtil.NUMERIC;
+                    }
                     state.hourCycle = hc;
                 }
 
                 if (bestPattern.contains("m")) {
-                    state.minute = minuteOpt;
+                    state.minute = bestPattern.contains("mm") ? IntlUtil._2_DIGIT : IntlUtil.NUMERIC;
                 }
 
                 if (bestPattern.contains("s")) {
-                    state.second = secondOpt;
+                    state.second = bestPattern.contains("ss") ? IntlUtil._2_DIGIT : IntlUtil.NUMERIC;
                 }
 
                 if (containsOneOf(bestPattern, "SA")) {
