@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.util.List;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -380,41 +378,23 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
     }
 
+    @ImportStatic(JSConfig.class)
     abstract static class JavaFromNode extends JSBuiltinNode {
-
-        private final BranchProfile objectListBranch = BranchProfile.create();
-        private final BranchProfile needErrorBranches = BranchProfile.create();
-
-        @Child private WriteElementNode writeNode;
-        @Child private ImportValueNode foreignConvertNode;
-        @Child private InteropLibrary interop;
 
         JavaFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-        }
-
-        private void write(Object target, int index, Object value) {
-            if (writeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                writeNode = insert(WriteElementNode.create(null, null, null, getContext(), false));
-            }
-            writeNode.executeWithTargetAndIndexAndValue(target, index, value);
-        }
-
-        private Object foreignConvert(Object value) {
-            if (foreignConvertNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                foreignConvertNode = insert(ImportValueNode.create());
-            }
-            return foreignConvertNode.executeWithTarget(value);
         }
 
         @Specialization
-        protected DynamicObject from(Object javaArray) {
+        protected DynamicObject from(Object javaArray,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode importValueNode,
+                        @Cached("createCachedInterop()") WriteElementNode writeNode,
+                        @Cached BranchProfile errorBranch) {
             JSRealm realm = getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(javaArray)) {
+                // Handles Java arrays and java.util.List.
                 try {
                     long size = interop.getArraySize(javaArray);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
@@ -422,31 +402,16 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     }
                     DynamicObject jsArray = JSArray.createEmptyChecked(getContext(), realm, size);
                     for (int i = 0; i < size; i++) {
-                        Object element = foreignConvert(interop.readArrayElement(javaArray, i));
-                        write(jsArray, i, element);
+                        Object element = importValueNode.executeWithTarget(interop.readArrayElement(javaArray, i));
+                        writeNode.executeWithTargetAndIndexAndValue(jsArray, i, element);
                     }
                     return jsArray;
                 } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                     // fall through
                 }
-                Object hostObject = env.asHostObject(javaArray);
-                if (hostObject instanceof List<?>) {
-                    List<?> javaList = (List<?>) hostObject;
-                    int len = Boundaries.listSize(javaList);
-                    DynamicObject jsArrayObj = JSArray.createEmptyChecked(getContext(), realm, len);
-                    fromList(javaList, len, jsArrayObj);
-                    return jsArrayObj;
-                }
             }
-            needErrorBranches.enter();
+            errorBranch.enter();
             throw Errors.createTypeError("Cannot convert to JavaScript array.");
-        }
-
-        private void fromList(List<?> javaList, int len, DynamicObject jsArrayObj) {
-            objectListBranch.enter();
-            for (int i = 0; i < len; i++) {
-                write(jsArrayObj, i, foreignConvert(Boundaries.listGet(javaList, i)));
-            }
         }
     }
 
