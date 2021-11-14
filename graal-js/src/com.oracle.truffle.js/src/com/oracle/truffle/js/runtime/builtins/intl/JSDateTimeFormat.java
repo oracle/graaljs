@@ -255,7 +255,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
                 String skeleton = makeSkeleton(ctx, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
-                String bestPattern = patternGenerator.getBestPattern(skeleton);
+                String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
 
                 if (containsOneOf(bestPattern, "eEc")) {
                     state.weekday = weekdayOpt;
