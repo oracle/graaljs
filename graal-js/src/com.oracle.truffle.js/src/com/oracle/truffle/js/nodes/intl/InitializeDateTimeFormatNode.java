@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -122,7 +123,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.getMinuteOption = GetStringOptionNode.create(context, IntlUtil.MINUTE, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getSecondOption = GetStringOptionNode.create(context, IntlUtil.SECOND, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
         this.getFractionalSecondDigitsOption = GetNumberOptionNode.create(context, IntlUtil.FRACTIONAL_SECOND_DIGITS);
-        this.getTimeZoneNameOption = GetStringOptionNode.create(context, IntlUtil.TIME_ZONE_NAME, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, null);
+        this.getTimeZoneNameOption = GetStringOptionNode.create(context, IntlUtil.TIME_ZONE_NAME, timeZoneNameOptions(context), null);
         this.getDateStyleOption = GetStringOptionNode.create(context, IntlUtil.DATE_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
         this.getTimeStyleOption = GetStringOptionNode.create(context, IntlUtil.TIME_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
 
@@ -211,6 +212,14 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             return IntlUtil.getICUTimeZone(tzId);
         } else {
             return getRealm().getLocalTimeZone();
+        }
+    }
+
+    private static String[] timeZoneNameOptions(JSContext context) {
+        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+            return new String[]{IntlUtil.SHORT, IntlUtil.LONG, IntlUtil.SHORT_OFFSET, IntlUtil.LONG_OFFSET, IntlUtil.SHORT_GENERIC, IntlUtil.LONG_GENERIC};
+        } else {
+            return new String[]{IntlUtil.SHORT, IntlUtil.LONG};
         }
     }
 

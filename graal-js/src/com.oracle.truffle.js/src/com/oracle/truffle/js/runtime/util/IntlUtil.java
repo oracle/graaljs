@@ -143,6 +143,8 @@ public final class IntlUtil {
     public static final String LOCALE = "locale";
     public static final String LOCALE_MATCHER = "localeMatcher";
     public static final String LONG = "long";
+    public static final String LONG_GENERIC = "longGeneric";
+    public static final String LONG_OFFSET = "longOffset";
     public static final String LOOKUP = "lookup";
     public static final String LOOSE = "loose";
     public static final String LOWER = "lower";
@@ -184,6 +186,8 @@ public final class IntlUtil {
     public static final String SENSITIVITY = "sensitivity";
     public static final String SHARED = "shared";
     public static final String SHORT = "short";
+    public static final String SHORT_GENERIC = "shortGeneric";
+    public static final String SHORT_OFFSET = "shortOffset";
     public static final String SIGN_DISPLAY = "signDisplay";
     public static final String SORT = "sort";
     public static final String SOURCE = "source";
