@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -230,7 +230,7 @@ public class TestEngine {
         }
 
         String mainModuleName = new File(dependency.getParent(), "main.mjs").getAbsolutePath();
-        String mainModule = "import { answer } from '" + dependency.getName() + "'; answer;";
+        String mainModule = "import { answer } from './" + dependency.getName() + "'; answer;";
         engine.getContext().setAttribute(ScriptEngine.FILENAME, mainModuleName, ScriptContext.ENGINE_SCOPE);
 
         Object result = engine.eval(mainModule);

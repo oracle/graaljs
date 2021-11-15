@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,12 +38,5 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-import * as module from './classexportmodule.js'; // import everything that the module exports
-
-var myMath = new module.MyMath();
-
-var sq = myMath.square(11);
-var dg = myMath.diag(3, 4);
-var st = myMath.sqrt(121);
-[sq, dg, st];
-
+import { toUpperCase } from 'bare.js'
+toUpperCase('hello graaljs');

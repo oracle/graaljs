@@ -569,6 +569,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> PRIVATE_FIELDS_IN = new OptionKey<>(false);
     @CompilationFinal private boolean privateFieldsIn;
 
+    public static final String ESM_BARE_SPECIFIER_RELATIVE_LOOKUP_NAME = JS_OPTION_PREFIX + "esm-bare-specifier-relative-lookup";
+    @Option(name = ESM_BARE_SPECIFIER_RELATIVE_LOOKUP_NAME, category = OptionCategory.EXPERT, help = "Resolve ESM bare specifiers relative to the importing module's path instead of attempting an absolute path lookup.") //
+    public static final OptionKey<Boolean> ESM_BARE_SPECIFIER_RELATIVE_LOOKUP = new OptionKey<>(false);
+    @CompilationFinal private boolean esmBareSpecifierRelativeLookup;
+
     JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
         this.parserOptions = parserOptions;
         this.optionValues = optionValues;
@@ -667,6 +672,7 @@ public final class JSContextOptions {
         this.esmEvalReturnsExports = readBooleanOption(ESM_EVAL_RETURNS_EXPORTS);
         this.mleMode = readBooleanOption(MLE_MODE) || readBooleanOption(INTEROP_COMPLETE_PROMISES);
         this.privateFieldsIn = PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? readBooleanOption(PRIVATE_FIELDS_IN) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.esmBareSpecifierRelativeLookup = readBooleanOption(ESM_BARE_SPECIFIER_RELATIVE_LOOKUP);
 
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
@@ -1069,6 +1075,10 @@ public final class JSContextOptions {
         return privateFieldsIn;
     }
 
+    public boolean isEsmBareSpecifierRelativeLookup() {
+        return esmBareSpecifierRelativeLookup;
+    }
+
     @Override
     public int hashCode() {
         int hash = 5;
@@ -1129,6 +1139,7 @@ public final class JSContextOptions {
         hash = 53 * hash + (this.esmEvalReturnsExports ? 1 : 0);
         hash = 53 * hash + (this.mleMode ? 1 : 0);
         hash = 53 * hash + (this.privateFieldsIn ? 1 : 0);
+        hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
         return hash;
     }
 
@@ -1310,6 +1321,9 @@ public final class JSContextOptions {
             return false;
         }
         if (this.privateFieldsIn != other.privateFieldsIn) {
+            return false;
+        }
+        if (this.esmBareSpecifierRelativeLookup != other.esmBareSpecifierRelativeLookup) {
             return false;
         }
         return Objects.equals(this.parserOptions, other.parserOptions);
