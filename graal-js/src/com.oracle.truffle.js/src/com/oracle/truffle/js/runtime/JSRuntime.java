@@ -64,6 +64,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -415,7 +416,7 @@ public final class JSRuntime {
                 } catch (InteropException e) {
                     result = null;
                 }
-                if (result != null && !isObject(result)) {
+                if (result != null && IsPrimitiveNode.getUncached().executeBoolean(result)) {
                     return result;
                 }
             }
@@ -423,7 +424,7 @@ public final class JSRuntime {
             Object method = JSObject.getMethod(proto, name);
             if (isCallable(method)) {
                 Object result = call(method, obj, new Object[]{});
-                if (!isObject(result)) {
+                if (IsPrimitiveNode.getUncached().executeBoolean(result)) {
                     return result;
                 }
             }
