@@ -255,48 +255,50 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
                 String skeleton = makeSkeleton(ctx, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
-
                 String bestPattern = patternGenerator.getBestPattern(skeleton);
-                String baseSkeleton = patternGenerator.getBaseSkeleton(bestPattern);
 
-                if (containsOneOf(baseSkeleton, "eEc")) {
+                if (containsOneOf(bestPattern, "eEc")) {
                     state.weekday = weekdayOpt;
                 }
 
-                if (baseSkeleton.contains("G")) {
+                if (bestPattern.contains("G")) {
                     state.era = eraOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "YyUu")) {
+                if (containsOneOf(bestPattern, "YyUu")) {
                     state.year = yearOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "ML")) {
+                if (containsOneOf(bestPattern, "ML")) {
                     state.month = monthOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "dDFg")) {
+                if (containsOneOf(bestPattern, "dDFg")) {
                     state.day = dayOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "Bb")) {
+                if (containsOneOf(bestPattern, "Bb")) {
                     state.dayPeriod = dayPeriodOpt;
                 }
 
-                if (containsOneOf(baseSkeleton, "hHKk")) {
-                    state.hour = hourOpt;
+                if (containsOneOf(bestPattern, "hHKk")) {
+                    if (bestPattern.contains("hh") || bestPattern.contains("HH") || bestPattern.contains("KK") || bestPattern.contains("kk")) {
+                        state.hour = IntlUtil._2_DIGIT;
+                    } else {
+                        state.hour = IntlUtil.NUMERIC;
+                    }
                     state.hourCycle = hc;
                 }
 
-                if (baseSkeleton.contains("m")) {
-                    state.minute = minuteOpt;
+                if (bestPattern.contains("m")) {
+                    state.minute = bestPattern.contains("mm") ? IntlUtil._2_DIGIT : IntlUtil.NUMERIC;
                 }
 
-                if (baseSkeleton.contains("s")) {
-                    state.second = secondOpt;
+                if (bestPattern.contains("s")) {
+                    state.second = bestPattern.contains("ss") ? IntlUtil._2_DIGIT : IntlUtil.NUMERIC;
                 }
 
-                if (containsOneOf(baseSkeleton, "SA")) {
+                if (containsOneOf(bestPattern, "SA")) {
                     state.fractionalSecondDigits = fractionalSecondDigitsOpt;
                 }
 

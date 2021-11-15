@@ -27,9 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/resolved-options.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "intl/date-format/timezone-name-extended.js",
     "status" : "FAIL",
     "comment" : "Extended TimeZoneName (GR-33686)"
