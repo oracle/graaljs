@@ -380,7 +380,12 @@ public final class JSRuntime {
     @TruffleBoundary
     private static Object javaClassToString(Object object, InteropLibrary interop) {
         try {
-            return "class " + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+            String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+            if (JavaScriptLanguage.getCurrentLanguage().getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
+                Object hostObject = JavaScriptLanguage.getCurrentEnv().asHostObject(object);
+                qualifiedName = ((Class<?>) hostObject).getName();
+            }
+            return "class " + qualifiedName;
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(object, e, "getTypeName", null);
         }

@@ -280,7 +280,12 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     @TruffleBoundary
     private Object javaClassToString(Object object, InteropLibrary interop) {
         try {
-            return "class " + InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+            String qualifiedName = InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(object));
+            if (getLanguage().getJSContext().isOptionNashornCompatibilityMode() && qualifiedName.endsWith("[]")) {
+                Object hostObject = getRealm().getEnv().asHostObject(object);
+                qualifiedName = ((Class<?>) hostObject).getName();
+            }
+            return "class " + qualifiedName;
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(object, e, "getTypeName", this);
         }
