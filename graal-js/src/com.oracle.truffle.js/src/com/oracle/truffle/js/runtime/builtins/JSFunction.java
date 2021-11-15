@@ -79,6 +79,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -672,13 +673,13 @@ public final class JSFunction extends JSNonProxy {
 
     @Override
     @TruffleBoundary
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
         SourceSection ssect = rn.getSourceSection();
         String source;
         if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
             source = "function " + JSFunction.getName(obj) + "() { [native code] }";
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             source = "function " + JSFunction.getName(obj) + "() {...}";
         } else {
             if (ssect.getCharacters().length() > 200) {

@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -449,14 +450,14 @@ public final class JSError extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return super.toDisplayStringImpl(obj, depth, allowSideEffects);
+            return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
             Object name = getPropertyWithoutSideEffect(obj, NAME);
             Object message = getPropertyWithoutSideEffect(obj, MESSAGE);
-            String nameStr = name != null ? JSRuntime.toDisplayString(name, depth, obj, false, allowSideEffects) : CLASS_NAME;
-            String messageStr = message != null ? JSRuntime.toDisplayString(message, depth, obj, false, allowSideEffects) : "";
+            String nameStr = name != null ? JSRuntime.toDisplayStringImpl(name, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : CLASS_NAME;
+            String messageStr = message != null ? JSRuntime.toDisplayStringImpl(message, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : "";
             if (nameStr.isEmpty()) {
                 if (messageStr.isEmpty()) {
                     return CLASS_NAME;

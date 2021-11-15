@@ -63,6 +63,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -725,7 +726,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         double time = getTimeMillisField(obj);
         String formattedDate;
         if (isTimeValid(time)) {

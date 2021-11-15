@@ -49,6 +49,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -142,13 +143,13 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
 
     @TruffleBoundary
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return super.toDisplayStringImpl(obj, depth, allowSideEffects);
+            return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
         } else {
             Number primitiveValue = JSNumber.valueOf(obj);
-            return JSRuntime.objectToConsoleString(obj, getBuiltinToStringTag(obj), depth,
-                            new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue}, allowSideEffects);
+            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
+                            getBuiltinToStringTag(obj), new String[]{JSRuntime.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
         }
     }
 

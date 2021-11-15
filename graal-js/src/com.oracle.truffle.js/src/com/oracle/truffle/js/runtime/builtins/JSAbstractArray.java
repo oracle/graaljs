@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
@@ -770,11 +771,11 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     @Override
-    public String toDisplayStringImpl(DynamicObject obj, int depth, boolean allowSideEffects) {
+    public String toDisplayStringImpl(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return defaultToString(obj);
         } else {
-            return JSRuntime.objectToConsoleString(obj, null, depth, allowSideEffects);
+            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth, null);
         }
     }
 

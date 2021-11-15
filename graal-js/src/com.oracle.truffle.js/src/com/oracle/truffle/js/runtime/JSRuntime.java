@@ -148,8 +148,6 @@ public final class JSRuntime {
     public static final int ITERATION_KIND_VALUE = 1 << 1;
     public static final int ITERATION_KIND_KEY_PLUS_VALUE = ITERATION_KIND_KEY | ITERATION_KIND_VALUE;
 
-    public static final int TO_STRING_MAX_DEPTH = 3;
-
     private JSRuntime() {
         // this class should not be instantiated
     }
@@ -374,7 +372,7 @@ public final class JSRuntime {
     @TruffleBoundary
     private static Object formatJavaArray(Object obj, InteropLibrary interop) {
         assert isJavaArray(obj, interop);
-        return JSRuntime.toDisplayString(obj, true);
+        return JSRuntime.toDisplayString(obj, true, ToDisplayStringFormat.getArrayFormat());
     }
 
     @TruffleBoundary
@@ -971,30 +969,32 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static String safeToString(Object value) {
-        return toDisplayStringImpl(value, TO_STRING_MAX_DEPTH, null, false, false);
+        return toDisplayString(value, false, ToDisplayStringFormat.getDefaultFormat());
     }
 
     @TruffleBoundary
     public static String toDisplayString(Object value, boolean allowSideEffects) {
-        return toDisplayStringImpl(value, TO_STRING_MAX_DEPTH, null, false, allowSideEffects);
+        return toDisplayString(value, allowSideEffects, ToDisplayStringFormat.getDefaultFormat());
     }
 
     @TruffleBoundary
-    public static String toDisplayString(Object value, int currentDepth, Object parent, boolean allowSideEffects) {
-        return toDisplayStringImpl(value, currentDepth - 1, parent, true, allowSideEffects);
+    public static String toDisplayString(Object value, boolean allowSideEffects, ToDisplayStringFormat format) {
+        return toDisplayStringImpl(value, allowSideEffects, format, 0, null);
     }
 
     @TruffleBoundary
-    public static String toDisplayString(Object value, int currentDepth, Object parent, boolean quoteString, boolean allowSideEffects) {
-        return toDisplayStringImpl(value, currentDepth - 1, parent, quoteString, allowSideEffects);
+    public static String toDisplayStringInner(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int currentDepth, Object parent) {
+        return toDisplayStringImpl(value, allowSideEffects, format.withQuoteString(true), currentDepth + 1, parent);
     }
 
     /**
-     * Converts the value to a String that can be print on the console and used in error messages.
+     * Converts the value to a String that can be printed on the console and used in error messages.
      *
-     * @param depth allowed recursion depth (0 = do not recurse)
+     * @param format formatting parameters
+     * @param depth current recursion depth (starts at 0 = top level)
+     * @param parent parent object or null
      */
-    private static String toDisplayStringImpl(Object value, int depth, Object parent, boolean quoteString, boolean allowSideEffects) {
+    public static String toDisplayStringImpl(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth, Object parent) {
         CompilerAsserts.neverPartOfCompilation();
         if (value == parent) {
             return "(this)";
@@ -1006,9 +1006,9 @@ public final class JSRuntime {
             return booleanToString((Boolean) value);
         } else if (isString(value)) {
             String string = value.toString();
-            return quoteString ? quote(string) : string;
+            return format.quoteString() ? quote(string) : string;
         } else if (JSDynamicObject.isJSDynamicObject(value)) {
-            return JSObject.toDisplayString((DynamicObject) value, depth, allowSideEffects);
+            return ((JSDynamicObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
         } else if (value instanceof Symbol) {
             return value.toString();
         } else if (value instanceof BigInt) {
@@ -1021,22 +1021,22 @@ public final class JSRuntime {
                 return numberToString(number);
             }
         } else if (value instanceof InteropFunction) {
-            return toDisplayStringImpl(((InteropFunction) value).getFunction(), depth, parent, quoteString, allowSideEffects);
+            return toDisplayStringImpl(((InteropFunction) value).getFunction(), allowSideEffects, format, depth, parent);
         } else if (value instanceof TruffleObject) {
             assert !isJSNative(value) : value;
-            return foreignToString(value, depth, allowSideEffects);
+            return foreignToString(value, allowSideEffects, format, depth);
         } else {
             return String.valueOf(value);
         }
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(DynamicObject obj, String name, int depth, boolean allowSideEffects) {
-        return objectToConsoleString(obj, name, depth, null, null, allowSideEffects);
+    public static String objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, String name) {
+        return objectToDisplayString(obj, allowSideEffects, format, depth, name, null, null);
     }
 
     @TruffleBoundary
-    public static String objectToConsoleString(DynamicObject obj, String name, int depth, String[] internalKeys, Object[] internalValues, boolean allowSideEffects) {
+    public static String objectToDisplayString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth, String name, String[] internalKeys, Object[] internalValues) {
         assert JSDynamicObject.isJSDynamicObject(obj) && !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
         boolean v8CompatMode = JSObject.getJSContext(obj).isOptionV8CompatibilityMode();
         StringBuilder sb = new StringBuilder();
@@ -1062,18 +1062,18 @@ public final class JSRuntime {
 
         if (isArrayLike) {
             if (length > 0) {
-                boolean topLevel = depth == TO_STRING_MAX_DEPTH;
-                if (depth <= 0 || (!topLevel && length > JSConfig.MaxConsolePrintProperties)) {
+                boolean topLevel = depth == 0;
+                if (depth >= format.getMaxDepth() || (!topLevel && length > format.getMaxElements())) {
                     if (name == null) {
                         sb.append("Array");
                     }
                     sb.append('(').append(length).append(')');
                     return sb.toString();
-                } else if (topLevel && length >= 2 && !v8CompatMode) {
+                } else if (topLevel && length >= 2 && !v8CompatMode && format.includeArrayLength()) {
                     sb.append('(').append(length).append(')');
                 }
             }
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             sb.append("{...}");
             return sb.toString();
         }
@@ -1096,7 +1096,7 @@ public final class JSRuntime {
             }
             if (propertyCount > 0) {
                 sb.append(v8CompatMode ? "," : ", ");
-                if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
+                if (propertyCount >= format.getMaxElements()) {
                     sb.append("...");
                     break;
                 }
@@ -1108,7 +1108,7 @@ public final class JSRuntime {
                     if ((index < length) && fillEmptyArrayElements(sb, index, prevArrayIndex, false)) {
                         sb.append(", ");
                         propertyCount++;
-                        if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
+                        if (propertyCount >= format.getMaxElements()) {
                             sb.append("...");
                             break;
                         }
@@ -1118,7 +1118,7 @@ public final class JSRuntime {
                     if (fillEmptyArrayElements(sb, length, prevArrayIndex, false)) {
                         sb.append(", ");
                         propertyCount++;
-                        if (propertyCount >= JSConfig.MaxConsolePrintProperties) {
+                        if (propertyCount >= format.getMaxElements()) {
                             sb.append("...");
                             break;
                         }
@@ -1134,7 +1134,7 @@ public final class JSRuntime {
             String valueStr = null;
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();
-                valueStr = toDisplayString(value, depth, obj, allowSideEffects);
+                valueStr = toDisplayStringInner(value, allowSideEffects, format, depth, obj);
             } else if (desc.isAccessorDescriptor()) {
                 valueStr = "accessor";
             } else {
@@ -1143,7 +1143,7 @@ public final class JSRuntime {
             sb.append(valueStr);
             propertyCount++;
         }
-        if (isArray && propertyCount < JSConfig.MaxConsolePrintProperties) {
+        if (isArray && propertyCount < format.getMaxElements()) {
             // fill "empty (times) (count)" entries at the end of the array
             if (fillEmptyArrayElements(sb, length, prevArrayIndex, propertyCount > 0)) {
                 propertyCount++;
@@ -1155,7 +1155,7 @@ public final class JSRuntime {
                 if (propertyCount > 0) {
                     sb.append(", ");
                 }
-                sb.append("[[").append(internalKeys[i]).append("]]: ").append(toDisplayString(internalValues[i], depth, obj, allowSideEffects));
+                sb.append("[[").append(internalKeys[i]).append("]]: ").append(toDisplayStringInner(internalValues[i], allowSideEffects, format, depth, obj));
                 propertyCount++;
             }
         }
@@ -1163,16 +1163,17 @@ public final class JSRuntime {
         return sb.toString();
     }
 
-    private static String foreignToString(Object value, int depth, boolean allowSideEffects) {
+    private static String foreignToString(Object value, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         CompilerAsserts.neverPartOfCompilation();
         try {
             InteropLibrary interop = InteropLibrary.getUncached(value);
             if (interop.isNull(value)) {
                 return "null";
             } else if (interop.hasArrayElements(value)) {
-                return foreignArrayToString(value, depth, allowSideEffects);
+                return foreignArrayToString(value, allowSideEffects, format, depth);
             } else if (interop.isString(value)) {
-                return interop.asString(value);
+                String string = interop.asString(value);
+                return format.quoteString() ? quote(string) : string;
             } else if (interop.isBoolean(value)) {
                 return booleanToString(interop.asBoolean(value));
             } else if (interop.isNumber(value)) {
@@ -1184,13 +1185,13 @@ public final class JSRuntime {
                 } else if (interop.fitsInDouble(value)) {
                     unboxed = interop.asDouble(value);
                 }
-                return JSRuntime.toDisplayString(unboxed, 0, null, allowSideEffects);
+                return JSRuntime.toDisplayString(unboxed, allowSideEffects, format);
             } else if ((JavaScriptLanguage.getCurrentEnv()).isHostObject(value)) {
                 return hostObjectToString(value, interop);
             } else if (interop.isMetaObject(value)) {
                 return InteropLibrary.getUncached().asString(interop.getMetaQualifiedName(value));
             } else if (interop.hasMembers(value) && !(interop.isExecutable(value) || interop.isInstantiable(value))) {
-                return foreignObjectToString(value, depth, allowSideEffects);
+                return foreignObjectToString(value, allowSideEffects, format, depth);
             } else {
                 return InteropLibrary.getUncached().asString(interop.toDisplayString(value, allowSideEffects));
             }
@@ -1208,38 +1209,38 @@ public final class JSRuntime {
         }
     }
 
-    private static String foreignArrayToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {
+    private static String foreignArrayToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert interop.hasArrayElements(truffleObject);
         long size = interop.getArraySize(truffleObject);
         if (size == 0) {
             return "[]";
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             return "Array(" + size + ")";
         }
-        boolean topLevel = depth == TO_STRING_MAX_DEPTH;
+        boolean topLevel = depth == 0;
         StringBuilder sb = new StringBuilder();
-        if (topLevel && size >= 2) {
+        if (topLevel && size >= 2 && format.includeArrayLength()) {
             sb.append('(').append(size).append(')');
         }
         sb.append('[');
         for (long i = 0; i < size; i++) {
             if (i > 0) {
                 sb.append(", ");
-                if (i >= JSConfig.MaxConsolePrintProperties) {
+                if (i >= format.getMaxElements()) {
                     sb.append("...");
                     break;
                 }
             }
             Object value = interop.readArrayElement(truffleObject, i);
-            sb.append(toDisplayString(value, depth, truffleObject, allowSideEffects));
+            sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
         }
         sb.append(']');
         return sb.toString();
     }
 
-    private static String foreignObjectToString(Object truffleObject, int depth, boolean allowSideEffects) throws InteropException {
+    private static String foreignObjectToString(Object truffleObject, boolean allowSideEffects, ToDisplayStringFormat format, int depth) throws InteropException {
         CompilerAsserts.neverPartOfCompilation();
         InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(truffleObject);
         assert objInterop.hasMembers(truffleObject);
@@ -1251,7 +1252,7 @@ public final class JSRuntime {
         long keyCount = keysInterop.getArraySize(keys);
         if (keyCount == 0) {
             return "{}";
-        } else if (depth <= 0) {
+        } else if (depth >= format.getMaxDepth()) {
             return "{...}";
         }
         StringBuilder sb = new StringBuilder();
@@ -1259,7 +1260,7 @@ public final class JSRuntime {
         for (long i = 0; i < keyCount; i++) {
             if (i > 0) {
                 sb.append(", ");
-                if (i >= JSConfig.MaxConsolePrintProperties) {
+                if (i >= format.getMaxElements()) {
                     sb.append("...");
                     break;
                 }
@@ -1270,7 +1271,7 @@ public final class JSRuntime {
             Object value = objInterop.readMember(truffleObject, stringKey);
             sb.append(stringKey);
             sb.append(": ");
-            sb.append(toDisplayString(value, depth, truffleObject, allowSideEffects));
+            sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, truffleObject));
         }
         sb.append('}');
         return sb.toString();
@@ -1293,14 +1294,14 @@ public final class JSRuntime {
         return false;
     }
 
-    public static String collectionToConsoleString(DynamicObject obj, String name, JSHashMap map, int depth, boolean allowSideEffects) {
+    public static String collectionToConsoleString(DynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, String name, JSHashMap map, int depth) {
         assert JSMap.isJSMap(obj) || JSSet.isJSSet(obj);
         assert name != null;
         int size = map.size();
         StringBuilder sb = new StringBuilder();
         sb.append(name);
         sb.append('(').append(size).append(')');
-        if (size > 0 && depth > 0) {
+        if (size > 0 && depth < format.getMaxDepth()) {
             sb.append('{');
             boolean isMap = JSMap.isJSMap(obj);
             boolean isFirst = true;
@@ -1311,10 +1312,11 @@ public final class JSRuntime {
                     if (!isFirst) {
                         sb.append(", ");
                     }
-                    sb.append(toDisplayString(key, depth, obj, allowSideEffects));
+                    sb.append(toDisplayStringInner(key, allowSideEffects, format, depth, obj));
                     if (isMap) {
                         sb.append(" => ");
-                        sb.append(toDisplayString(cursor.getValue(), depth, obj, allowSideEffects));
+                        Object value = cursor.getValue();
+                        sb.append(toDisplayStringInner(value, allowSideEffects, format, depth, obj));
                     }
                     isFirst = false;
                 }

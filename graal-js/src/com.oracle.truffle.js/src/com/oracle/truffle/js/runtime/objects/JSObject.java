@@ -550,12 +550,6 @@ public abstract class JSObject extends JSDynamicObject {
         return JSObject.getJSClass(obj).defaultToString(obj);
     }
 
-    @ExportMessage.Ignore
-    @TruffleBoundary
-    public static String toDisplayString(DynamicObject obj, int depth, boolean allowSideEffects) {
-        return JSObject.getJSClass(obj).toDisplayStringImpl(obj, depth, allowSideEffects);
-    }
-
     /**
      * ES2015 7.1.1 ToPrimitive in case an Object is passed.
      */
