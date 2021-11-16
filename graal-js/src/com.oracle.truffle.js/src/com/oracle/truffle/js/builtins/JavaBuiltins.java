@@ -80,7 +80,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
-import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -448,47 +447,47 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization(guards = {"isJSObject(jsObj)"})
-        protected Object to(Object jsObj, Object toType) {
+        protected Object to(Object jsObj, Object toType,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             TruffleLanguage.Env env = getRealm().getEnv();
+            Object javaType;
+            boolean knownArrayClass = false;
             if (env.isHostObject(toType)) {
-                if (isJavaArrayClass(toType, env)) {
-                    return toArray(jsObj, toType, env);
-                } else {
-                    throw Errors.createTypeErrorFormat("Unsupported type: %s", toType);
-                }
+                javaType = toType;
             } else if (toType == Undefined.instance) {
-                return toArray(jsObj, env.asGuestValue(Object[].class), env);
+                javaType = env.asGuestValue(Object[].class);
+                knownArrayClass = true;
             } else {
                 String className = toString(toType);
-                Object javaType = JavaTypeNode.lookupJavaType(className, env);
-                if (isJavaArrayClass(javaType, env)) {
-                    return toArray(jsObj, javaType, env);
-                } else {
-                    throw Errors.createTypeErrorFormat("Unsupported type: %s", className);
-                }
+                javaType = JavaTypeNode.lookupJavaType(className, env);
+            }
+            if (knownArrayClass || isJavaArrayClass(javaType, env, interop)) {
+                return toArray(jsObj, javaType);
+            } else {
+                throw Errors.createTypeErrorFormat("Unsupported type: %s", toString(javaType));
             }
         }
 
         @Specialization(guards = {"!isJSObject(obj)"}, limit = "InteropLibraryLimit")
         protected Object toNonObject(Object obj, @SuppressWarnings("unused") Object toType,
-                        @CachedLibrary("obj") InteropLibrary interop) {
-            if (interop.hasArrayElements(obj)) {
-                return to(obj, toType);
+                        @CachedLibrary("obj") InteropLibrary objInterop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop) {
+            if (objInterop.hasArrayElements(obj)) {
+                return to(obj, toType, typeInterop);
             }
             throw Errors.createTypeErrorNotAnObject(obj);
         }
 
-        private static boolean isJavaArrayClass(Object obj, TruffleLanguage.Env env) {
-            if (env.isHostObject(obj)) {
-                Object javaObj = env.asHostObject(obj);
-                return javaObj instanceof Class && ((Class<?>) javaObj).isArray();
+        private static boolean isJavaArrayClass(Object type, TruffleLanguage.Env env, InteropLibrary interop) {
+            try {
+                return env.isHostObject(type) && interop.isMetaObject(type) && interop.asString(interop.getMetaQualifiedName(type)).endsWith("[]");
+            } catch (UnsupportedMessageException e) {
+                assert false : e;
+                return false;
             }
-            return false;
         }
 
-        private Object toArray(Object jsObj, Object arrayType, TruffleLanguage.Env env) {
-            assert isJavaArrayClass(arrayType, env);
-
+        private Object toArray(Object jsObj, Object arrayType) {
             Object[] arr = toObjectArrayNode.executeObjectArray(jsObj);
             try {
                 Object result = newArray.instantiate(arrayType, arr.length);
@@ -497,7 +496,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 }
                 return result;
             } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw Errors.createTypeError(Boundaries.javaToString(e));
+                throw Errors.createTypeError(e, this);
             }
         }
     }
