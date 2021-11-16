@@ -518,15 +518,17 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
     }
 
+    @ImportStatic(JSConfig.class)
     abstract static class JavaIsTypeNode extends JSBuiltinNode {
         JavaIsTypeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected final boolean isType(Object obj) {
+        protected final boolean isType(Object obj,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             TruffleLanguage.Env env = getRealm().getEnv();
-            return env.isHostObject(obj) && env.asHostObject(obj) instanceof Class<?>;
+            return env.isHostObject(obj) && interop.isMetaObject(obj);
         }
     }
 
