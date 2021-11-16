@@ -253,11 +253,14 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
         @Specialization
         protected Object clazz(Object obj) {
-            return obj == null ? Null.instance : getName ? obj.getClass().getName() : wrap(obj.getClass());
-        }
-
-        private Object wrap(Class<? extends Object> class1) {
-            return getRealm().getEnv().asGuestValue(class1);
+            if (obj == null) {
+                return Null.instance;
+            }
+            if (getName) {
+                return obj.getClass().getName();
+            } else {
+                return getRealm().getEnv().asGuestValue(obj.getClass());
+            }
         }
     }
 
@@ -325,15 +328,18 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         }
 
         @TruffleBoundary
-        @Specialization(guards = "isJSFunction(functionObj)")
-        protected Object dumpFunctionTree(DynamicObject functionObj) {
-            CallTarget target = JSFunction.getCallTarget(functionObj);
-            if (target instanceof RootCallTarget) {
-                NodeUtil.printTree(getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
-                return Undefined.instance;
-            } else {
-                throw Errors.shouldNotReachHere();
+        @Specialization
+        protected Object dumpFunctionTree(Object functionObj) {
+            if (JSFunction.isJSFunction(functionObj)) {
+                CallTarget target = JSFunction.getCallTarget((DynamicObject) functionObj);
+                if (target instanceof RootCallTarget) {
+                    NodeUtil.printTree(getRealm().getOutputWriter(), ((RootCallTarget) target).getRootNode());
+                    return Undefined.instance;
+                } else {
+                    throw Errors.shouldNotReachHere();
+                }
             }
+            return Undefined.instance;
         }
     }
 
