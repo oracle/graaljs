@@ -157,17 +157,17 @@ public class Accessor {
                 return false;
             }
             Descriptor that = (Descriptor) o;
-            return Objects.equals(this.name, that.name) && //
-                            this.attributes == that.attributes && //
-                            this.getter == that.getter && //
+            return Objects.equals(this.name, that.name) &&
+                            this.attributes == that.attributes &&
+                            this.getter == that.getter &&
                             this.hasSignature == that.hasSignature;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.name, //
-                            this.attributes, //
-                            this.getter, //
+            return Objects.hash(this.name,
+                            this.attributes,
+                            this.getter,
                             this.hasSignature);
         }
     }

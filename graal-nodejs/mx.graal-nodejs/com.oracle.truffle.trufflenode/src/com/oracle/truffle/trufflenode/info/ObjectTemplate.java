@@ -155,11 +155,13 @@ public final class ObjectTemplate {
 
         private final int internalFieldCount;
         private final boolean stringKeysOnly;
+        private final boolean hasPropertyHandler;
         private final ExecuteNativePropertyHandlerNode.Mode mode;
 
         public Descriptor(ObjectTemplate objectTemplate, ExecuteNativePropertyHandlerNode.Mode mode) {
             this.internalFieldCount = objectTemplate.internalFieldCount;
             this.stringKeysOnly = objectTemplate.stringKeysOnly;
+            this.hasPropertyHandler = objectTemplate.hasPropertyHandler();
             this.mode = mode;
         }
 
@@ -172,23 +174,26 @@ public final class ObjectTemplate {
                 return false;
             }
             Descriptor that = (Descriptor) o;
-            return this.internalFieldCount == that.internalFieldCount && //
-                            this.stringKeysOnly == that.stringKeysOnly && //
+            return this.internalFieldCount == that.internalFieldCount &&
+                            this.stringKeysOnly == that.stringKeysOnly &&
+                            this.hasPropertyHandler == that.hasPropertyHandler &&
                             this.mode == that.mode;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.stringKeysOnly, //
-                            this.internalFieldCount, //
+            return Objects.hash(this.internalFieldCount,
+                            this.stringKeysOnly,
+                            this.hasPropertyHandler,
                             this.mode);
         }
 
         @Override
         public String toString() {
             return "Descriptor{" +
-                            "stringKeysOnly=" + stringKeysOnly +
-                            ", internalFieldCount=" + internalFieldCount +
+                            "internalFieldCount=" + internalFieldCount +
+                            ", stringKeysOnly=" + stringKeysOnly +
+                            ", hasPropertyHandler=" + hasPropertyHandler +
                             ", mode=" + mode +
                             '}';
         }

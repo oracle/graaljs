@@ -222,21 +222,21 @@ public final class FunctionTemplate {
                 return false;
             }
             Descriptor that = (Descriptor) o;
-            return this.length == that.length && //
-                            Objects.equals(this.className, that.className) && //
-                            this.readOnlyPrototype == that.readOnlyPrototype && //
-                            this.prototypeTemplateNull == that.prototypeTemplateNull && //
-                            this.singleFunctionTemplate == that.singleFunctionTemplate && //
+            return this.length == that.length &&
+                            Objects.equals(this.className, that.className) &&
+                            this.readOnlyPrototype == that.readOnlyPrototype &&
+                            this.prototypeTemplateNull == that.prototypeTemplateNull &&
+                            this.singleFunctionTemplate == that.singleFunctionTemplate &&
                             this.instanceTemplateInternalFieldCount == that.instanceTemplateInternalFieldCount;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.length, //
-                            this.className, //
-                            this.readOnlyPrototype, //
-                            this.prototypeTemplateNull, //
-                            this.singleFunctionTemplate, //
+            return Objects.hash(this.length,
+                            this.className,
+                            this.readOnlyPrototype,
+                            this.prototypeTemplateNull,
+                            this.singleFunctionTemplate,
                             this.instanceTemplateInternalFieldCount);
         }
 
