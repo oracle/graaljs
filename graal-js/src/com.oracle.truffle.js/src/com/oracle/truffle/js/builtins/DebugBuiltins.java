@@ -41,9 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.io.IOException;
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,7 +51,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -66,7 +62,6 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugArrayTypeNodeGen
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugAssertIntNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
-import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCompileFunctionNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateLazyStringNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugCreateSafeIntegerNodeGen;
@@ -140,7 +135,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         shape(1),
         dumpCounters(0),
         dumpFunctionTree(1),
-        compileFunction(2),
         printObject(1),
         toJavaString(1),
         srcattr(1),
@@ -187,8 +181,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                 return DebugDumpCountersNodeGen.create(context, builtin, args().createArgumentNodes(context));
             case dumpFunctionTree:
                 return DebugDumpFunctionTreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case compileFunction:
-                return DebugCompileFunctionNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case printObject:
                 return DebugPrintObjectNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case toJavaString:
@@ -342,47 +334,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             } else {
                 throw Errors.shouldNotReachHere();
             }
-        }
-    }
-
-    public abstract static class DebugCompileFunctionNode extends JSBuiltinNode {
-        private static final MethodHandle COMPILE_HANDLE;
-
-        public DebugCompileFunctionNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @TruffleBoundary
-        @Specialization
-        protected static boolean compileFunction(Object fnObj) {
-            if (!JSFunction.isJSFunction(fnObj)) {
-                throw Errors.createTypeErrorNotAFunction(fnObj);
-            }
-
-            CallTarget callTarget = JSFunction.getCallTarget((DynamicObject) fnObj);
-
-            if (COMPILE_HANDLE != null) {
-                try {
-                    COMPILE_HANDLE.invokeExact(callTarget);
-                    return true;
-                } catch (Throwable e) {
-                }
-            }
-
-            return false;
-        }
-
-        static {
-            MethodHandle compileHandle = null;
-            if (Truffle.getRuntime().getName().contains("Graal")) {
-                try {
-                    Class<? extends CallTarget> optimizedCallTargetClass = Class.forName("com.oracle.graal.truffle.OptimizedCallTarget").asSubclass(CallTarget.class);
-                    compileHandle = MethodHandles.lookup().findVirtual(optimizedCallTargetClass, "compile", MethodType.methodType(void.class)).asType(
-                                    MethodType.methodType(void.class, CallTarget.class));
-                } catch (ClassNotFoundException | IllegalAccessException | NoSuchMethodException | SecurityException e) {
-                }
-            }
-            COMPILE_HANDLE = compileHandle;
         }
     }
 
