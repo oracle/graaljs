@@ -254,7 +254,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         DateFormat dateFormat;
         if (timeStyleOpt == null) {
             if (dateStyleOpt == null) {
-                String skeleton = makeSkeleton(ctx, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
+                String skeleton = makeSkeleton(weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hc, minuteOpt, secondOpt, fractionalSecondDigitsOpt, tzNameOpt);
                 String bestPattern = patternGenerator.getBestPattern(skeleton, DateTimePatternGenerator.MATCH_HOUR_FIELD_LENGTH);
 
                 if (containsOneOf(bestPattern, "eEc")) {
@@ -572,25 +572,32 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return skeleton.toString();
     }
 
-    private static String timeZoneNameOptToSkeleton(JSContext ctx, String timeZoneNameOpt) {
+    private static String timeZoneNameOptToSkeleton(String timeZoneNameOpt) {
         if (timeZoneNameOpt == null) {
             return "";
         }
-        boolean v8CompatMode = ctx.isOptionV8CompatibilityMode();
         switch (timeZoneNameOpt) {
             case IntlUtil.SHORT:
-                return v8CompatMode ? "z" : "v";
+                return "z";
             case IntlUtil.LONG:
-                return v8CompatMode ? "zzzz" : "vvvv";
+                return "zzzz";
+            case IntlUtil.SHORT_OFFSET:
+                return "O";
+            case IntlUtil.LONG_OFFSET:
+                return "OOOO";
+            case IntlUtil.SHORT_GENERIC:
+                return "v";
+            case IntlUtil.LONG_GENERIC:
+                return "vvvv";
         }
         return "";
     }
 
-    private static String makeSkeleton(JSContext ctx, String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String dayPeriodOpt, String hourOpt, String hcOpt,
+    private static String makeSkeleton(String weekdayOpt, String eraOpt, String yearOpt, String monthOpt, String dayOpt, String dayPeriodOpt, String hourOpt, String hcOpt,
                     String minuteOpt, String secondOpt, int fractionalSecondDigitsOpt, String timeZoneNameOpt) {
         return weekdayOptToSkeleton(weekdayOpt) + eraOptToSkeleton(eraOpt) + yearOptToSkeleton(yearOpt) + monthOptToSkeleton(monthOpt) + dayOptToSkeleton(dayOpt) +
                         dayPeriodOptToSkeleton(dayPeriodOpt) + hourOptToSkeleton(hourOpt, hcOpt) + minuteOptToSkeleton(minuteOpt) + secondOptToSkeleton(secondOpt, fractionalSecondDigitsOpt) +
-                        timeZoneNameOptToSkeleton(ctx, timeZoneNameOpt);
+                        timeZoneNameOptToSkeleton(timeZoneNameOpt);
     }
 
     private static UnmodifiableEconomicMap<String, String> initCanonicalTimeZoneIDMap() {
