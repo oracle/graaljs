@@ -204,7 +204,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
-    protected Object doTruffleJavaObject(Object object,
+    protected Object doForeignObject(Object object,
                     @CachedLibrary("object") InteropLibrary interop) {
         if (interop.isNull(object)) {
             return Null.instance;
@@ -248,25 +248,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             // else, try OrdinaryToPrimitive (toString(), valueOf())
         }
         Object result = ordinaryToPrimitive(object);
-        InteropLibrary resultInterop = InteropLibrary.getFactory().getUncached(result);
-        try {
-            if (resultInterop.isBoolean(result)) {
-                return resultInterop.asBoolean(result);
-            } else if (resultInterop.isString(result)) {
-                return resultInterop.asString(result);
-            } else if (resultInterop.isNumber(result)) {
-                if (resultInterop.fitsInInt(result)) {
-                    return resultInterop.asInt(result);
-                } else if (resultInterop.fitsInLong(result)) {
-                    return resultInterop.asLong(result);
-                } else if (resultInterop.fitsInDouble(result)) {
-                    return resultInterop.asDouble(result);
-                }
-            }
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorUnboxException(result, e, this);
-        }
-        throw Errors.createTypeErrorCannotConvertToPrimitiveValue(this);
+        assert IsPrimitiveNode.getUncached().executeBoolean(result) : result;
+        return result;
     }
 
     private static boolean isJavaArray(Object object, InteropLibrary interop) {
