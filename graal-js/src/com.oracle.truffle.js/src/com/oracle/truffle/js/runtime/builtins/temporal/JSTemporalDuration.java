@@ -67,7 +67,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
@@ -308,14 +307,14 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         long nanos = 0;
         for (String property : TemporalUtil.DURATION_PROPERTIES) {
             Object val = JSObject.get(temporalDurationLike, property);
-            if (val != Undefined.instance) {
+
+            long lVal = 0;
+            if (val == Undefined.instance) {
+                lVal = 0;
+            } else {
                 any = true;
+                lVal = TemporalUtil.toIntegerWithoutRounding(val);
             }
-            Number n = JSRuntime.toNumber(val);
-            if (!Double.isNaN(n.doubleValue()) && !JSRuntime.doubleIsRepresentableAsLong(n.doubleValue())) {
-                throw Errors.createRangeError("integer value expected");
-            }
-            long lVal = n.longValue();
             switch (property) {
                 case YEARS:
                     year = lVal;

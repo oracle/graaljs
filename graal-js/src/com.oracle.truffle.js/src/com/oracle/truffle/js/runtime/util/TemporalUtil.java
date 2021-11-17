@@ -124,11 +124,10 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
@@ -1282,6 +1281,18 @@ public final class TemporalUtil {
             throw Errors.createRangeError("value outside bounds");
         }
         return integer.longValue();
+    }
+
+    public static long toIntegerWithoutRounding(Object argument) {
+        Number number = JSRuntime.toNumber(argument);
+        double dNumber = number.doubleValue();
+        if (Double.isNaN(dNumber) || dNumber == 0.0d) {
+            return 0;
+        }
+        if (!JSRuntime.isIntegralNumber(dNumber)) {
+            throw Errors.createRangeError("value expected to be integer");
+        }
+        return number.longValue();
     }
 
     public static Number toIntegerOrInfinity(Object value) {
@@ -2600,7 +2611,7 @@ public final class TemporalUtil {
     }
 
     // 7.5.7
-    public static DynamicObject toPartialDuration(DynamicObject temporalDurationLike, JSContext ctx, IsObjectNode isObjectNode, JSToIntegerAsLongNode toInt) {
+    public static DynamicObject toPartialDuration(DynamicObject temporalDurationLike, JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt) {
         if (!isObjectNode.executeBoolean(temporalDurationLike)) {
             throw Errors.createTypeError("Given duration like is not a object.");
         }
@@ -2611,7 +2622,7 @@ public final class TemporalUtil {
             Object value = JSObject.get(temporalDurationLike, property);
             if (value != Undefined.instance) {
                 any = true;
-                JSObjectUtil.putDataProperty(ctx, result, property, toInt.executeLong(value));
+                JSObjectUtil.putDataProperty(ctx, result, property, toInt.execute(value));
             }
         }
         if (!any) {
@@ -3225,9 +3236,6 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static long getOffsetNanosecondsFor(DynamicObject timeZone, DynamicObject instant) {
         Object getOffsetNanosecondsFor = JSObject.getMethod(timeZone, "getOffsetNanosecondsFor");
-        if (getOffsetNanosecondsFor == Undefined.instance) {
-            getOffsetNanosecondsFor = TemporalTimeZonePrototypeBuiltins.BUILTINS;
-        }
         Object offsetNanoseconds = JSRuntime.call(getOffsetNanosecondsFor, timeZone, new Object[]{instant});
         if (!JSRuntime.isNumber(offsetNanoseconds)) {
             throw Errors.createTypeError("Number expected");
