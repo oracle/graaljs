@@ -65,6 +65,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
+import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
@@ -2860,17 +2861,7 @@ public final class JSRuntime {
      */
     @TruffleBoundary
     public static Object exportValue(Object value) {
-        if (JSRuntime.isLazyString(value)) {
-            return value.toString();
-        } else if (value instanceof SafeInteger) {
-            return ((SafeInteger) value).doubleValue();
-        } else if (value instanceof TruffleObject) {
-            return value;
-        } else if (JSRuntime.isJSPrimitive(value)) {
-            return value;
-        }
-        TruffleLanguage.Env env = JavaScriptLanguage.getCurrentEnv();
-        return env.asGuestValue(value);
+        return ExportValueNode.getUncached().execute(value);
     }
 
     @TruffleBoundary
