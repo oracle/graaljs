@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -55,9 +56,11 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode;
 import com.oracle.truffle.js.nodes.access.ObjectLiteralNode.ObjectLiteralMemberNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -94,15 +97,17 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
     public static ObjectTemplateNode fromObjectTemplate(ObjectTemplate template, JSContext context, GraalJSAccess graalJSAccess, JSRealm realm) {
         List<ObjectLiteralNode.ObjectLiteralMemberNode> members = new ArrayList<>();
 
-        for (Accessor accessor : template.getAccessors()) {
+        List<Accessor> accessors = template.getAccessors();
+        for (int accessorIndex = 0; accessorIndex < accessors.size(); accessorIndex++) {
+            Accessor accessor = accessors.get(accessorIndex);
             Pair<JSFunctionData, JSFunctionData> pair = accessor.getFunctions(context);
             JavaScriptNode getterNode = null;
             JavaScriptNode setterNode = null;
             if (pair.getFirst() != null) {
-                getterNode = ObjectLiteralNode.MakeMethodNode.createWithKey(context, JSFunctionExpressionNode.create(pair.getFirst()), GraalJSAccess.HOLDER_KEY);
+                getterNode = newAccessorFunction(context, pair.getFirst(), accessorIndex);
             }
             if (pair.getSecond() != null) {
-                setterNode = ObjectLiteralNode.MakeMethodNode.createWithKey(context, JSFunctionExpressionNode.create(pair.getSecond()), GraalJSAccess.HOLDER_KEY);
+                setterNode = newAccessorFunction(context, pair.getSecond(), accessorIndex);
             }
             members.add(ObjectLiteralNode.newAccessorMember(accessor.getName(), false, accessor.getAttributes(), getterNode, setterNode));
         }
@@ -144,6 +149,12 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         return new ObjectTemplateNode(members.toArray(ObjectLiteralNode.ObjectLiteralMemberNode.EMPTY), context);
+    }
+
+    private static JavaScriptNode newAccessorFunction(JSContext context, JSFunctionData functionData, int accessorIndex) {
+        JavaScriptNode accessorFunction = JSFunctionExpressionNode.create(functionData);
+        JavaScriptNode withAccessorSlot = SetAccessorSlotNode.create(context, accessorFunction, accessorIndex);
+        return ObjectLiteralNode.MakeMethodNode.createWithKey(context, withAccessorSlot, GraalJSAccess.HOLDER_KEY);
     }
 
     private static final class InternalFieldNode extends ObjectLiteralNode.ObjectLiteralMemberNode {
@@ -192,6 +203,43 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         @Override
         protected ObjectLiteralMemberNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
             return new SetInternalFieldCountNode(value);
+        }
+    }
+
+    private static final class SetAccessorSlotNode extends JavaScriptNode {
+        @Child private JavaScriptNode functionNode;
+        @Child private PropertySetNode setInternalSlotNode;
+        @Child private PropertyGetNode getFunctionTemplateNode;
+        private final int accessorIndex;
+
+        private SetAccessorSlotNode(JSContext context, JavaScriptNode functionNode, HiddenKey key, int accessorIndex) {
+            this.functionNode = functionNode;
+            this.getFunctionTemplateNode = PropertyGetNode.createGetHidden(GraalJSAccess.FUNCTION_TEMPLATE_KEY, context);
+            this.setInternalSlotNode = PropertySetNode.createSetHidden(key, context);
+            this.accessorIndex = accessorIndex;
+        }
+
+        public static JavaScriptNode create(JSContext context, JavaScriptNode functionNode, int accessorIndex) {
+            return new SetAccessorSlotNode(context, functionNode, GraalJSAccess.ACCESSOR_KEY, accessorIndex);
+        }
+
+        @Override
+        public Object execute(VirtualFrame frame) {
+            Object functionObj = functionNode.execute(frame);
+            FunctionTemplate functionTemplate = (FunctionTemplate) getFunctionTemplateNode.getValue(JSFrameUtil.getFunctionObject(frame));
+            ObjectTemplate instanceTemplate = functionTemplate.getInstanceTemplate();
+            setInternalSlotNode.setValue(functionObj, getAccessor(instanceTemplate, accessorIndex));
+            return functionObj;
+        }
+
+        @TruffleBoundary
+        private static Accessor getAccessor(ObjectTemplate instanceTemplate, int accessorIndex) {
+            return instanceTemplate.getAccessors().get(accessorIndex);
+        }
+
+        @Override
+        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
+            return new SetAccessorSlotNode(setInternalSlotNode.getContext(), cloneUninitialized(functionNode, materializedTags), (HiddenKey) setInternalSlotNode.getKey(), accessorIndex);
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,67 +38,41 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.trufflenode.threading;
+package com.oracle.truffle.trufflenode;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.trufflenode.GraalJSAccess.NativeBackedModuleRecord;
 
-/**
- * JS Builtins used by Node.s workers to send Java object references via message passing (@see
- * lib/internal/worker.js).
- */
-public final class SharedMemMessagingBindings extends JSNonProxy {
+class SyntheticModuleRootNode extends JavaScriptRootNode {
 
-    private static final SharedMemMessagingBindings INSTANCE = new SharedMemMessagingBindings();
-
-    private static final JSBuiltinsContainer BUILTINS = new SharedMemMessagingBuiltins();
-
-    private static final String CLASS_NAME = "SharedMemMessaging";
-
-    private SharedMemMessagingBindings() {
-    }
-
-    @TruffleBoundary
-    private static DynamicObject create(JSRealm realm) {
-        Shape shape = realm.getContext().makeEmptyShapeWithNullPrototype(INSTANCE);
-        DynamicObject obj = new Instance(shape);
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, BUILTINS);
-        return obj;
+    SyntheticModuleRootNode(JavaScriptLanguage language, Source source, FrameDescriptor frameDescriptor) {
+        super(language, source.createUnavailableSection(), frameDescriptor);
     }
 
     @Override
-    public String getClassName(DynamicObject object) {
-        return CLASS_NAME;
+    public Object execute(VirtualFrame frame) {
+        NativeBackedModuleRecord module = (NativeBackedModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
+        if (module.getEnvironment() == null) {
+            assert module.getStatus() == JSModuleRecord.Status.Linking;
+            module.setEnvironment(frame.materialize());
+            return Undefined.instance;
+        } else {
+            assert module.getStatus() == JSModuleRecord.Status.Evaluating;
+            return invokeEvaluationStepsCallback(getRealm(), module);
+        }
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(JSRealm realm) {
-        // This JS function will be executed at node.js bootstrap time
-        JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                return create(getRealm());
-            }
-        };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(wrapperNode), 2, "SharedMemMessagingInit");
-        return JSFunction.create(realm, functionData);
-    }
-
-    public static final class Instance extends JSNonProxyObject {
-
-        protected Instance(Shape shape) {
-            super(shape);
-        }
+    private static Object invokeEvaluationStepsCallback(JSRealm realm, NativeBackedModuleRecord module) {
+        return NativeAccess.syntheticModuleEvaluationSteps(module.getEvaluationStepsCallback(), realm, module);
     }
 }

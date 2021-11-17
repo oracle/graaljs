@@ -62,11 +62,13 @@ public final class Options {
     private final Context.Builder contextBuilder;
     private final boolean exposeGC;
     private final boolean unsafeWasmMemory;
+    private final boolean auxEngineCacheMode;
 
-    private Options(Context.Builder contextBuilder, boolean exposeGC, boolean unsafeWasmMemory) {
+    private Options(Context.Builder contextBuilder, boolean exposeGC, boolean unsafeWasmMemory, boolean auxEngineCacheMode) {
         this.contextBuilder = contextBuilder;
         this.exposeGC = exposeGC;
         this.unsafeWasmMemory = unsafeWasmMemory;
+        this.auxEngineCacheMode = auxEngineCacheMode;
     }
 
     public static Options parseArguments(String[] args) throws Exception {
@@ -80,7 +82,7 @@ public final class Options {
             parser = clazz.getDeclaredConstructor().newInstance();
         }
         Object[] result = parser.apply(args);
-        return new Options((Context.Builder) result[0], (Boolean) result[1], (Boolean) result[2]);
+        return new Options((Context.Builder) result[0], (Boolean) result[1], (Boolean) result[2], (Boolean) result[3]);
     }
 
     @SuppressWarnings("unchecked")
@@ -112,6 +114,10 @@ public final class Options {
         return unsafeWasmMemory;
     }
 
+    public boolean isAuxEngineCacheMode() {
+        return auxEngineCacheMode;
+    }
+
     public static class OptionsParser extends AbstractLanguageLauncher implements Function<String[], Object[]> {
         private static final String INSPECT = "inspect";
         private static final String INSPECT_SUSPEND = "inspect.Suspend";
@@ -121,6 +127,11 @@ public final class Options {
         private boolean exposeGC;
         private boolean polyglot;
         private boolean unsafeWasmMemory;
+        private boolean auxEngineCacheMode;
+
+        private static final Set<String> AUX_CACHE_OPTIONS = new HashSet<>(Arrays.asList("engine.Cache",
+                        "engine.CacheLoad",
+                        "engine.CacheStore"));
 
         // Options that should not be passed to polyglot engine (they are processed
         // elsewhere or can be ignored without almost any harm).
@@ -159,7 +170,7 @@ public final class Options {
                 // launch(Context.Builder) was not called (i.e. help was printed) => exit
                 System.exit(0);
             }
-            return new Object[]{contextBuilder, exposeGC, unsafeWasmMemory};
+            return new Object[]{contextBuilder, exposeGC, unsafeWasmMemory, auxEngineCacheMode};
         }
 
         private String[] filterArguments(String[] args) {
@@ -196,6 +207,9 @@ public final class Options {
                     }
                 }
                 String normalizedKey = key.replace('_', '-');
+                if (AUX_CACHE_OPTIONS.contains(normalizedKey)) {
+                    auxEngineCacheMode = true;
+                }
                 if (IGNORED_OPTIONS.contains(normalizedKey)) {
                     continue;
                 }

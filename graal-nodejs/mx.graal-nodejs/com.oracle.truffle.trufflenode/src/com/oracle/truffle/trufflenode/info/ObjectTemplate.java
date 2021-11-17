@@ -43,6 +43,9 @@ package com.oracle.truffle.trufflenode.info;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
+
+import com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode;
 
 /**
  *
@@ -130,4 +133,69 @@ public final class ObjectTemplate {
         return internalFieldCount;
     }
 
+    public Descriptor getEngineCacheDescriptor(ExecuteNativePropertyHandlerNode.Mode mode) {
+        return new Descriptor(this, mode);
+    }
+
+    @Override
+    public String toString() {
+        return "ObjectTemplate{" +
+                        "internalFieldCount=" + internalFieldCount +
+                        ", stringKeysOnly=" + stringKeysOnly +
+                        ", accessors=" + (accessors != null) +
+                        ", values=" + (values != null) +
+                        ", indexedPropertyHandler=" + (indexedPropertyHandler != null) +
+                        ", namedPropertyHandler=" + (namedPropertyHandler != null) +
+                        ", functionHandler.id=" + (functionHandler != null ? functionHandler.getId() : "null") +
+                        ", parentFunctionTemplate.id=" + (parentFunctionTemplate != null ? parentFunctionTemplate.getId() : "null") +
+                        '}';
+    }
+
+    public static class Descriptor {
+
+        private final int internalFieldCount;
+        private final boolean stringKeysOnly;
+        private final boolean hasPropertyHandler;
+        private final ExecuteNativePropertyHandlerNode.Mode mode;
+
+        public Descriptor(ObjectTemplate objectTemplate, ExecuteNativePropertyHandlerNode.Mode mode) {
+            this.internalFieldCount = objectTemplate.internalFieldCount;
+            this.stringKeysOnly = objectTemplate.stringKeysOnly;
+            this.hasPropertyHandler = objectTemplate.hasPropertyHandler();
+            this.mode = mode;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Descriptor that = (Descriptor) o;
+            return this.internalFieldCount == that.internalFieldCount &&
+                            this.stringKeysOnly == that.stringKeysOnly &&
+                            this.hasPropertyHandler == that.hasPropertyHandler &&
+                            this.mode == that.mode;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.internalFieldCount,
+                            this.stringKeysOnly,
+                            this.hasPropertyHandler,
+                            this.mode);
+        }
+
+        @Override
+        public String toString() {
+            return "Descriptor{" +
+                            "internalFieldCount=" + internalFieldCount +
+                            ", stringKeysOnly=" + stringKeysOnly +
+                            ", hasPropertyHandler=" + hasPropertyHandler +
+                            ", mode=" + mode +
+                            '}';
+        }
+    }
 }

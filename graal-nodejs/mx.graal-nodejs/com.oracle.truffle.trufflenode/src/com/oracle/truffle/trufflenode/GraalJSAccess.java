@@ -41,6 +41,12 @@
 package com.oracle.truffle.trufflenode;
 
 import static com.oracle.truffle.js.runtime.util.BufferUtil.asBaseBuffer;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantFalse;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.ConstantUndefined;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.GcBuiltinRoot;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototype;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.PropertyHandlerPrototypeGlobal;
+import static com.oracle.truffle.trufflenode.ContextData.FunctionKey.SetBreakPoint;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_BUFFER_VIEW_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.ARRAY_OBJECT;
 import static com.oracle.truffle.trufflenode.ValueType.BIG_INT_VALUE;
@@ -88,6 +94,13 @@ import static com.oracle.truffle.trufflenode.ValueType.SYMBOL_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNDEFINED_VALUE;
 import static com.oracle.truffle.trufflenode.ValueType.UNKNOWN_TYPE;
 import static com.oracle.truffle.trufflenode.buffer.NIOBuffer.NIO_BUFFER_MODULE_NAME;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.DEFINE_PROPERTY;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.DELETER;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.GETTER;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.GET_OWN_PROPERTY_DESCRIPTOR;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.OWN_KEYS;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.QUERY;
+import static com.oracle.truffle.trufflenode.node.ExecuteNativePropertyHandlerNode.Mode.SETTER;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
@@ -111,6 +124,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.IntSupplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -126,14 +141,11 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.InstrumentInfo;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.debug.Breakpoint;
 import com.oracle.truffle.api.debug.Debugger;
-import com.oracle.truffle.api.debug.SuspendedCallback;
-import com.oracle.truffle.api.debug.SuspendedEvent;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlot;
@@ -147,6 +159,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ControlFlowException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
@@ -230,7 +243,6 @@ import com.oracle.truffle.js.runtime.objects.JSLazyString;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
 import com.oracle.truffle.js.runtime.objects.JSModuleLoader;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
-import com.oracle.truffle.js.runtime.objects.JSModuleRecord.Status;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
@@ -272,6 +284,7 @@ public final class GraalJSAccess {
     private static final boolean USE_SNAPSHOTS = !"false".equalsIgnoreCase(System.getProperty("truffle.node.js.snapshots"));
 
     private static final HiddenKey PRIVATE_VALUES_KEY = new HiddenKey("PrivateValues");
+    public static final HiddenKey FUNCTION_TEMPLATE_KEY = new HiddenKey("FunctionTemplate");
     private static final HiddenKey FUNCTION_TEMPLATE_DATA_KEY = new HiddenKey("FunctionTemplateData");
     public static final HiddenKey INTERNAL_FIELD_COUNT_KEY = new HiddenKey("InternalFieldCount");
     private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
@@ -281,6 +294,8 @@ public final class GraalJSAccess {
     private static final Symbol RESOLVER_REJECT = Symbol.create("Reject");
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
+    public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
+    public static final HiddenKey OBJECT_TEMPLATE_KEY = new HiddenKey("ObjectTemplate");
 
     public static final HiddenKey EXTERNALIZED_KEY = new HiddenKey("Externalized");
 
@@ -322,6 +337,21 @@ public final class GraalJSAccess {
 
     private final boolean exposeGC;
     private final boolean unsafeWasmMemory;
+    private final boolean auxEngineCacheMode;
+
+    private final IntSupplier accessorIdGenerator = new AtomicInteger()::incrementAndGet;
+
+    public static GraalJSAccess get() {
+        return getRealmEmbedderData(JSRealm.get(null)).getGraalJSAccess();
+    }
+
+    public static GraalJSAccess get(Node node) {
+        return getRealmEmbedderData(JSRealm.get(node)).getGraalJSAccess();
+    }
+
+    public boolean isAuxEngineCacheMode() {
+        return auxEngineCacheMode;
+    }
 
     /**
      * @see Options.OptionsParser#preprocessArguments
@@ -344,6 +374,7 @@ public final class GraalJSAccess {
 
             exposeGC = options.isGCExposed();
             unsafeWasmMemory = options.isUnsafeWasmMemory();
+            auxEngineCacheMode = options.isAuxEngineCacheMode();
             evaluator = contextBuilder.build();
             mainJSRealm = JavaScriptLanguage.getJSRealm(evaluator);
         } catch (IllegalArgumentException iaex) {
@@ -948,13 +979,22 @@ public final class GraalJSAccess {
         DynamicObject dynamicObject = (DynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
         int flags = propertyAttributes(attributes);
-        Accessor accessor = new Accessor(this, name, getterPtr, setterPtr, data, null, flags);
+        Accessor accessor = new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, null, flags);
         Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
         JSRealm realm = getCurrentRealm();
-        DynamicObject getter = functionFromFunctionData(realm, accessorFunctions.getFirst(), dynamicObject);
-        DynamicObject setter = functionFromFunctionData(realm, accessorFunctions.getSecond(), dynamicObject);
+        DynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), dynamicObject, accessor);
+        DynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), dynamicObject, accessor);
         JSObjectUtil.putAccessorProperty(context, dynamicObject, accessor.getName(), getter, setter, flags);
         return true;
+    }
+
+    private DynamicObject instantiateAccessorFunction(JSRealm realm, JSFunctionData functionData, DynamicObject holder, Accessor accessor) {
+        if (functionData == null) {
+            return null;
+        }
+        DynamicObject functionObj = functionFromFunctionData(realm, functionData, holder);
+        JSObjectUtil.putHiddenProperty(functionObj, ACCESSOR_KEY, accessor);
+        return functionObj;
     }
 
     public Object objectClone(Object object) {
@@ -1308,7 +1348,7 @@ public final class GraalJSAccess {
                 return bufferGetContents.execute(value);
             }
         }
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(new InteropArrayBufferGetContents());
+        CallTarget callTarget = new InteropArrayBufferGetContents().getCallTarget();
         return JSFunctionData.createCallOnly(context, callTarget, 1, "ArrayBufferGetContents");
     }
 
@@ -1578,14 +1618,22 @@ public final class GraalJSAccess {
 
     public void functionSetName(Object function, String name) {
         DynamicObject functionObject = (DynamicObject) function;
-        JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
-        functionData.setName(name);
+        if (isAuxEngineCacheMode()) {
+            objectSet(functionObject, JSFunction.NAME, name);
+        } else {
+            JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
+            functionData.setName(name);
+        }
     }
 
     public String functionGetName(Object function) {
         DynamicObject functionObject = (DynamicObject) function;
-        JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
-        return functionData.getName();
+        if (isAuxEngineCacheMode()) {
+            return JSRuntime.toString(objectGet(functionObject, JSFunction.NAME));
+        } else {
+            JSFunctionData functionData = JSFunction.getFunctionData(functionObject);
+            return functionData.getName();
+        }
     }
 
     public Object functionCall(Object function, Object receiver, Object[] arguments) {
@@ -1804,22 +1852,29 @@ public final class GraalJSAccess {
         CompilerAsserts.neverPartOfCompilation("do not create function template in compiled code");
 
         JSFunctionData functionData = template.getFunctionData();
+        EngineCacheData cacheData = getContextEngineCacheData(context);
         if (functionData == null) {
-            JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
-            functionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), template.getPrototypeTemplate() != null, false, false, false);
+            functionData = cacheData.getOrCreateFunctionDataFromTemplate(template, (c) -> {
+                JSOrdinary instanceLayout = template.getInstanceTemplate().getInternalFieldCount() > 0 ? JSOrdinary.INTERNAL_FIELD_INSTANCE : JSOrdinary.INSTANCE;
+                boolean isConstructor = template.getPrototypeTemplate() != null;
+                JSFunctionData initFunctionData = JSFunctionData.create(context, template.getLength(), template.getClassName(), isConstructor, false, false, false);
+                CallTarget callTarget = new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, false, false).getCallTarget();
+                CallTarget newCallTarget = new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, true, false).getCallTarget();
+                CallTarget newTargetCallTarget = new ExecuteNativeFunctionNode.NativeFunctionRootNode(context, template, true, true).getCallTarget();
+                CallTarget constructTarget = ConstructorRootNode.create(initFunctionData, newCallTarget, false, instanceLayout).getCallTarget();
+                CallTarget constructNewTarget = ConstructorRootNode.create(initFunctionData, newTargetCallTarget, true, instanceLayout).getCallTarget();
+                initFunctionData.setCallTarget(callTarget);
+                initFunctionData.setConstructTarget(constructTarget);
+                initFunctionData.setConstructNewTarget(constructNewTarget);
+                return initFunctionData;
+            });
             template.setFunctionData(functionData);
-            CallTarget callTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, false, false));
-            CallTarget newCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, false));
-            CallTarget newTargetCallTarget = Truffle.getRuntime().createCallTarget(new ExecuteNativeFunctionNode.NativeFunctionRootNode(this, context, template, true, true));
-            CallTarget constructTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newCallTarget, false, instanceLayout));
-            CallTarget constructNewTarget = Truffle.getRuntime().createCallTarget(ConstructorRootNode.create(functionData, newTargetCallTarget, true, instanceLayout));
-            functionData.setCallTarget(callTarget);
-            functionData.setConstructTarget(constructTarget);
-            functionData.setConstructNewTarget(constructNewTarget);
         }
 
         DynamicObject functionObject = JSFunction.create(realm, functionData);
         template.setFunctionObject(realm, functionObject);
+
+        JSObjectUtil.putHiddenProperty(functionObject, FUNCTION_TEMPLATE_KEY, template);
 
         // Additional data are held weakly from C => we have to ensure that
         // they are not GCed before the corresponding function is GCed
@@ -1887,63 +1942,35 @@ public final class GraalJSAccess {
         DynamicObject handler = JSUncheckedProxyHandler.create(context, realm);
         DynamicObject proxy = JSProxy.create(context, realm, target, handler);
 
-        DynamicObject getter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.GETTER), proxy);
+        ContextData engineCacheData = getContextEmbedderData(context);
+
+        DynamicObject getter = instantiateNativePropertyHandlerFunction(template, realm, GETTER, proxy);
         JSObject.set(handler, JSProxy.GET, getter);
 
-        DynamicObject setter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.SETTER), proxy);
+        DynamicObject setter = instantiateNativePropertyHandlerFunction(template, realm, SETTER, proxy);
         JSObject.set(handler, JSProxy.SET, setter);
 
-        DynamicObject query = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.QUERY), proxy);
+        DynamicObject query = instantiateNativePropertyHandlerFunction(template, realm, QUERY, proxy);
         JSObject.set(handler, JSProxy.HAS, query);
 
-        DynamicObject deleter = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.DELETER), proxy);
+        DynamicObject deleter = instantiateNativePropertyHandlerFunction(template, realm, DELETER, proxy);
         JSObject.set(handler, JSProxy.DELETE_PROPERTY, deleter);
 
-        DynamicObject ownKeys = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.OWN_KEYS), proxy);
+        DynamicObject ownKeys = instantiateNativePropertyHandlerFunction(template, realm, OWN_KEYS, proxy);
         JSObject.set(handler, JSProxy.OWN_KEYS, ownKeys);
 
-        DynamicObject getOwnPropertyDescriptor = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.GET_OWN_PROPERTY_DESCRIPTOR), proxy);
+        DynamicObject getOwnPropertyDescriptor = instantiateNativePropertyHandlerFunction(template, realm, GET_OWN_PROPERTY_DESCRIPTOR, proxy);
         JSObject.set(handler, JSProxy.GET_OWN_PROPERTY_DESCRIPTOR, getOwnPropertyDescriptor);
 
-        DynamicObject defineProperty = functionFromRootNode(context, realm, new ExecuteNativePropertyHandlerNode(
-                        this,
-                        context,
-                        template,
-                        proxy,
-                        ExecuteNativePropertyHandlerNode.Mode.DEFINE_PROPERTY), proxy);
+        DynamicObject defineProperty = instantiateNativePropertyHandlerFunction(template, realm, DEFINE_PROPERTY, proxy);
         JSObject.set(handler, JSProxy.DEFINE_PROPERTY, defineProperty);
 
-        DynamicObject getPrototypeOf = functionFromRootNode(context, realm, new PropertyHandlerPrototypeNode(global), null);
+        ContextData.FunctionKey nodeType = global ? PropertyHandlerPrototypeGlobal : PropertyHandlerPrototype;
+        JSFunctionData getPrototypeOfFunctionData = engineCacheData.getOrCreateFunctionData(nodeType, (c) -> {
+            JavaScriptRootNode rootNode = new PropertyHandlerPrototypeNode(global);
+            return JSFunctionData.createCallOnly(c, rootNode.getCallTarget(), 0, "");
+        });
+        DynamicObject getPrototypeOf = functionFromFunctionData(realm, getPrototypeOfFunctionData, null);
         JSObject.set(handler, JSProxy.GET_PROTOTYPE_OF, getPrototypeOf);
 
         for (Value value : template.getValues()) {
@@ -1969,8 +1996,8 @@ public final class GraalJSAccess {
 
         for (Accessor accessor : template.getAccessors()) {
             Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
-            DynamicObject getter = functionFromFunctionData(realm, accessorFunctions.getFirst(), obj);
-            DynamicObject setter = functionFromFunctionData(realm, accessorFunctions.getSecond(), obj);
+            DynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), obj, accessor);
+            DynamicObject setter = instantiateAccessorFunction(realm, accessorFunctions.getSecond(), obj, accessor);
             JSObjectUtil.putAccessorProperty(context, obj, accessor.getName(), getter, setter, accessor.getAttributes());
         }
 
@@ -2011,7 +2038,7 @@ public final class GraalJSAccess {
 
     public void objectTemplateSetAccessor(Object templateObj, Object name, long getterPtr, long setterPtr, Object data, Object signature, int attributes) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        template.addAccessor(new Accessor(this, name, getterPtr, setterPtr, data, (FunctionTemplate) signature, propertyAttributes(attributes)));
+        template.addAccessor(new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, (FunctionTemplate) signature, propertyAttributes(attributes)));
     }
 
     public void objectTemplateSetHandler(Object templateObj, long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data, boolean named,
@@ -2050,7 +2077,7 @@ public final class GraalJSAccess {
         ByteBuffer snapshot = null;
         if (extraArgument == null) {
             extensions = exts;
-            if (USE_SNAPSHOTS && hostDefinedOptions == null) {
+            if (USE_SNAPSHOTS && hostDefinedOptions == null && !auxEngineCacheMode) {
                 assert exts.length == 0 && UnboundScript.isCoreModule(sourceName);
                 snapshot = getCoreModuleBinarySnapshot(sourceName);
             }
@@ -2148,20 +2175,26 @@ public final class GraalJSAccess {
         }
 
         Object function;
-        if (snapshot == null) {
-            ScriptNode scriptNode = nodeEvaluator.parseScript(jsContext, source, prefix, suffix, isStrict);
-            DynamicObject fn = (DynamicObject) scriptNode.run(realm);
-            function = anyExtension ? JSFunction.call(fn, Undefined.instance, extensions) : fn;
-        } else {
+        if (snapshot != null) {
+            // snapshots are not used with aux engine cache
             ScriptNode scriptNode = parseScriptFromSnapshot(jsContext, source, prefix, suffix, snapshot);
             function = scriptNode.run(realm);
+        } else {
+            String[] args = new String[]{
+                            JavaScriptLanguage.NODE_ENV_PARSE_TOKEN,
+                            prefix,
+                            suffix,
+                            String.valueOf(isStrict)
+            };
+            CallTarget target = realm.getEnv().parsePublic(source, args);
+            DynamicObject script = (DynamicObject) target.call();
+            function = anyExtension ? JSFunction.call(script, Undefined.instance, extensions) : script;
         }
         assert JSFunction.isJSFunction(function);
 
         NodeScriptOrModule scriptOrModule = new NodeScriptOrModule(jsContext, source);
         // function should keep scriptOrModule alive
         JSObjectUtil.putHiddenProperty((DynamicObject) function, NodeScriptOrModule.SCRIPT_OR_MODULE, scriptOrModule);
-
         return new Object[]{function, scriptOrModule};
     }
 
@@ -2186,37 +2219,13 @@ public final class GraalJSAccess {
         Object[] arguments = scriptNode.argumentsToRun(realm);
         Object prev = realm.getTruffleContext().enter(null);
         try {
-            Object result;
-            if (boundScript.isGraalInternal()) {
-                result = scriptRunInternal(scriptNode, realm, arguments);
-            } else {
-                result = scriptNode.run(arguments);
-            }
-            return result;
+            return scriptNode.run(arguments);
         } finally {
             realm.getTruffleContext().leave(null, prev);
         }
     }
 
-    private Object scriptRunInternal(ScriptNode scriptNode, JSRealm realm, Object[] arguments) {
-        // Internal scripts are allowed to access implementation classes
-        JSContext context = scriptNode.getContext();
-        final DynamicObject moduleFunction = (DynamicObject) scriptNode.run(arguments);
-
-        JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] args = frame.getArguments();
-                DynamicObject thisObject = (DynamicObject) JSArguments.getThisObject(args);
-                Object result = JSFunction.call(moduleFunction, thisObject, getInternalModuleUserArguments(args, scriptNode, getRealm()));
-                return result;
-            }
-        };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(context, Truffle.getRuntime().createCallTarget(wrapperNode), 5, "");
-        return JSFunction.create(realm, functionData);
-    }
-
-    private Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
+    private static Object getExtraArgumentOfInternalScript(String moduleName, JSRealm realm) {
         Object extraArgument = null;
         JSContext context = realm.getContext();
         if (NIO_BUFFER_MODULE_NAME.equals(moduleName)) {
@@ -2224,24 +2233,25 @@ public final class GraalJSAccess {
             // extra argument to the module loading function.
             extraArgument = USE_NIO_BUFFER ? NIOBuffer.createInitFunction(realm) : Null.instance;
         } else if ("internal/graal/debug.js".equals(moduleName)) {
-            CallTarget setBreakPointCallTarget = Truffle.getRuntime().createCallTarget(new SetBreakPointNode(this));
-            JSFunctionData setBreakPointData = JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
+            JSFunctionData setBreakPointData = getContextEmbedderData(context).getOrCreateFunctionData(SetBreakPoint, (c) -> {
+                CallTarget setBreakPointCallTarget = new SetBreakPointNode().getCallTarget();
+                return JSFunctionData.createCallOnly(context, setBreakPointCallTarget, 3, SetBreakPointNode.NAME);
+            });
             DynamicObject setBreakPoint = JSFunction.create(realm, setBreakPointData);
             extraArgument = setBreakPoint;
         } else if ("internal/worker/io.js".equals(moduleName) || "internal/main/worker_thread.js".equals(moduleName)) {
             // The Shared-mem channel initialization is similar to NIO-based buffers.
-            extraArgument = SharedMemMessagingBindings.createInitFunction(this, realm);
+            extraArgument = SharedMemMessagingBindings.createInitFunction(realm);
         } else if ("inspector.js".equals(moduleName)) {
-            TruffleObject inspector = lookupInstrument("inspect", TruffleObject.class);
+            TruffleObject inspector = GraalJSAccess.get().lookupInstrument("inspect", TruffleObject.class);
             extraArgument = (inspector == null) ? Null.instance : inspector;
         }
         return extraArgument;
     }
 
     @TruffleBoundary
-    private Object[] getInternalModuleUserArguments(Object[] args, ScriptNode node, JSRealm realm) {
+    private static Object[] getInternalModuleUserArguments(Object[] args, String moduleName, JSRealm realm) {
         Object[] userArgs = JSArguments.extractUserArguments(args);
-        String moduleName = node.getRootNode().getSourceSection().getSource().getName();
         Object extraArgument = getExtraArgumentOfInternalScript(moduleName, realm);
         if (extraArgument == null) {
             return userArgs;
@@ -2371,20 +2381,24 @@ public final class GraalJSAccess {
         return flags;
     }
 
+    private DynamicObject instantiateNativePropertyHandlerFunction(ObjectTemplate template, JSRealm realm, ExecuteNativePropertyHandlerNode.Mode mode, Object proxy) {
+        JSContext context = realm.getContext();
+        EngineCacheData engineCacheData = getContextEngineCacheData(context);
+        JSFunctionData functionData = engineCacheData.getOrCreateFunctionDataFromPropertyHandler(template, mode, (c) -> {
+            JavaScriptRootNode rootNode = new ExecuteNativePropertyHandlerNode(context, mode);
+            CallTarget callbackCallTarget = rootNode.getCallTarget();
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
+        });
+        DynamicObject functionObj = functionFromFunctionData(realm, functionData, proxy);
+        JSObjectUtil.putHiddenProperty(functionObj, OBJECT_TEMPLATE_KEY, template);
+        return functionObj;
+    }
+
     public static PropertyDescriptor propertyDescriptor(int v8Attributes, Object value) {
         boolean writable = ((v8Attributes & 1 /* v8::PropertyAttribute::ReadOnly */) == 0);
         boolean enumerable = ((v8Attributes & 2 /* v8::PropertyAttribute::DontEnum */) == 0);
         boolean configurable = ((v8Attributes & 4 /* v8::PropertyAttribute::DontDelete */) == 0);
         return PropertyDescriptor.createData(value, enumerable, writable, configurable);
-    }
-
-    private static DynamicObject functionFromRootNode(JSContext context, JSRealm realm, JavaScriptRootNode rootNode, Object holder) {
-        return functionFromFunctionData(realm, functionDataFromRootNode(context, rootNode), holder);
-    }
-
-    public static JSFunctionData functionDataFromRootNode(JSContext context, JavaScriptRootNode rootNode) {
-        CallTarget callbackCallTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
     }
 
     private static DynamicObject functionFromFunctionData(JSRealm realm, JSFunctionData functionData, Object holder) {
@@ -2734,10 +2748,23 @@ public final class GraalJSAccess {
         } else {
             realm = mainJSRealm;
             context = mainJSContext;
-            context.setEmbedderData(new ContextData(context));
+            if (isAuxEngineCacheMode()) {
+                // When aux engine cache is enabled, the context-specific embedder data is loaded
+                // from the aux image cache.
+                Object persistedContextData = context.getEmbedderData();
+                if (persistedContextData == null) {
+                    // the aux image does not have persisted data. The new embedder data will be
+                    // persisted.
+                    context.setEmbedderData(new ContextData(context));
+                } else if (!(persistedContextData instanceof ContextData)) {
+                    throw Errors.shouldNotReachHere("Failed to load core runtime data from Aux engine cache.");
+                }
+            } else {
+                context.setEmbedderData(new ContextData(context));
+            }
             createChildContext = true;
         }
-        RealmData realmData = new RealmData();
+        RealmData realmData = new RealmData(this);
         realm.setEmbedderData(realmData);
         DynamicObject global = realm.getGlobalObject();
         // Node.js does not have global arguments property
@@ -2768,22 +2795,29 @@ public final class GraalJSAccess {
         return (ContextData) context.getEmbedderData();
     }
 
-    private void contextExposeGC(JSRealm realm) {
+    public static EngineCacheData getContextEngineCacheData(JSContext context) {
+        return getContextEmbedderData(context).getEngineCacheData();
+    }
+
+    private static void contextExposeGC(JSRealm realm) {
         DynamicObject global = realm.getGlobalObject();
-        JavaScriptRootNode rootNode = new JavaScriptRootNode() {
-            @Override
-            public Object execute(VirtualFrame vf) {
-                isolatePerformGC();
-                return Undefined.instance;
-            }
-        };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(rootNode), 0, "gc");
+
+        JSFunctionData functionData = getContextEmbedderData(realm.getContext()).getOrCreateFunctionData(GcBuiltinRoot, (c) -> {
+            JavaScriptRootNode rootNode = new JavaScriptRootNode() {
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    GraalJSAccess.get(this).isolatePerformGC();
+                    return Undefined.instance;
+                }
+            };
+            return JSFunctionData.createCallOnly(realm.getContext(), rootNode.getCallTarget(), 0, "gc");
+        });
         DynamicObject function = JSFunction.create(realm, functionData);
         JSObject.set(global, "gc", function);
     }
 
     @TruffleBoundary
-    private void isolatePerformGC() {
+    public void isolatePerformGC() {
         NativeAccess.notifyGCCallbacks(true);
         pollWeakCallbackQueue(true);
         for (int i = 0; i < 3; i++) {
@@ -2814,31 +2848,23 @@ public final class GraalJSAccess {
         return extras;
     }
 
-    private DynamicObject initializeExtrasBindingObject(JSRealm realm) {
+    private static DynamicObject initializeExtrasBindingObject(JSRealm realm) {
         DynamicObject extras = JSOrdinary.create(realm.getContext(), realm);
 
-        // isTraceCategoryEnabled
-        JavaScriptRootNode isEnabledRootNode = new JavaScriptRootNode() {
-            @Override
-            public Object execute(VirtualFrame vf) {
-                return false; // tracing is not supported
-            }
-        };
-        JSFunctionData isEnabledFunctionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(isEnabledRootNode), 0, "isTraceCategoryEnabled");
+        ContextData engineCacheData = getContextEmbedderData(realm.getContext());
+        JSFunctionData isEnabledFunctionData = engineCacheData.getOrCreateFunctionData(ConstantFalse, (c) -> {
+            CallTarget target = RootNode.createConstantNode(false).getCallTarget();
+            return JSFunctionData.createCallOnly(c, target, 0, "isTraceCategoryEnabled");
+        });
         DynamicObject isEnabledFunction = JSFunction.create(realm, isEnabledFunctionData);
         JSObject.set(extras, "isTraceCategoryEnabled", isEnabledFunction);
 
-        // trace
-        JavaScriptRootNode traceRootNode = new JavaScriptRootNode() {
-            @Override
-            public Object execute(VirtualFrame vf) {
-                return Undefined.instance; // tracing is not supported
-            }
-        };
-        JSFunctionData traceFunctionData = JSFunctionData.createCallOnly(realm.getContext(), Truffle.getRuntime().createCallTarget(traceRootNode), 0, "trace");
+        JSFunctionData traceFunctionData = engineCacheData.getOrCreateFunctionData(ConstantUndefined, (c) -> {
+            CallTarget target = RootNode.createConstantNode(Undefined.instance).getCallTarget();
+            return JSFunctionData.createCallOnly(c, target, 0, "trace");
+        });
         DynamicObject traceFunction = JSFunction.create(realm, traceFunctionData);
         JSObject.set(extras, "trace", traceFunction);
-
         return extras;
     }
 
@@ -2862,37 +2888,7 @@ public final class GraalJSAccess {
     }
 
     public void contextSetPromiseHooks(Object context, Object initHook, Object beforeHook, Object afterHook, Object resolveHook) {
-        PromiseHook hook = new PromiseHook() {
-            @Override
-            public void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise) {
-                Object hook;
-                switch (changeType) {
-                    case PromiseHook.TYPE_INIT:
-                        hook = initHook;
-                        break;
-                    case PromiseHook.TYPE_RESOLVE:
-                        hook = resolveHook;
-                        break;
-                    case PromiseHook.TYPE_BEFORE:
-                        hook = beforeHook;
-                        break;
-                    case PromiseHook.TYPE_AFTER:
-                        hook = afterHook;
-                        break;
-                    default:
-                        throw Errors.shouldNotReachHere();
-                }
-                if (hook != null) {
-                    Object[] arguments;
-                    if (changeType == PromiseHook.TYPE_INIT) {
-                        arguments = new Object[]{promise, parentPromise};
-                    } else {
-                        arguments = new Object[]{promise};
-                    }
-                    JSRuntime.call(hook, Undefined.instance, arguments);
-                }
-            }
-        };
+        PromiseHook hook = new ContextPromiseHook(initHook, resolveHook, beforeHook, afterHook);
         ((JSRealm) context).getContext().setPromiseHook(hook);
     }
 
@@ -3097,21 +3093,18 @@ public final class GraalJSAccess {
             System.err.println("Debugger is not available!");
             return;
         }
-        debugger.startSession(new SuspendedCallback() {
-            @Override
-            public void onSuspend(SuspendedEvent se) {
-                se.getSession().close();
-                synchronized (GraalJSAccess.this) {
-                    if (!terminateExecution) {
-                        return; // termination has been cancelled
-                    }
+        debugger.startSession(se -> {
+            se.getSession().close();
+            synchronized (GraalJSAccess.get()) {
+                if (!terminateExecution) {
+                    return; // termination has been cancelled
                 }
-                throw new GraalJSKillException();
             }
+            throw new GraalJSKillException();
         }).suspendNextExecution();
     }
 
-    private static final class GraalJSKillException extends ThreadDeath {
+    static final class GraalJSKillException extends ThreadDeath {
         private static final long serialVersionUID = 3930431622452607906L;
     }
 
@@ -3134,80 +3127,135 @@ public final class GraalJSAccess {
     }
 
     public void isolateEnablePromiseHook(boolean enable) {
-        PromiseHook hook = enable ? new PromiseHook() {
-            @Override
-            public void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise) {
-                NativeAccess.notifyPromiseHook(changeType, promise, parentPromise);
-            }
-        } : null;
+        PromiseHook hook = enable ? new IsolatePromiseHook() : null;
         mainJSContext.setPromiseHook(hook);
     }
 
     public void isolateEnablePromiseRejectCallback(boolean enable) {
-        PromiseRejectionTracker tracker = enable ? new PromiseRejectionTracker() {
-            @Override
-            public void promiseRejected(DynamicObject promise, Object value) {
-                NativeAccess.notifyPromiseRejectionTracker(
-                                promise,
-                                0, // v8::PromiseRejectEvent::kPromiseRejectWithNoHandler
-                                value);
-            }
-
-            @Override
-            public void promiseRejectionHandled(DynamicObject promise) {
-                NativeAccess.notifyPromiseRejectionTracker(
-                                promise,
-                                1, // v8::PromiseRejectEvent::kPromiseHandlerAddedAfterReject
-                                Undefined.instance);
-            }
-
-            @Override
-            public void promiseRejectedAfterResolved(DynamicObject promise, Object value) {
-                NativeAccess.notifyPromiseRejectionTracker(
-                                promise,
-                                2, // v8::PromiseRejectEvent::kPromiseRejectAfterResolved
-                                value);
-            }
-
-            @Override
-            public void promiseResolvedAfterResolved(DynamicObject promise, Object value) {
-                NativeAccess.notifyPromiseRejectionTracker(
-                                promise,
-                                3, // v8::PromiseRejectEvent::kPromiseResolveAfterResolved
-                                value);
-            }
-        } : null;
+        PromiseRejectionTracker tracker = enable ? new NativePromiseRejectionTracker() : null;
         mainJSContext.setPromiseRejectionTracker(tracker);
     }
 
     public void isolateEnableImportMetaInitializer(boolean enable) {
-        ImportMetaInitializer initializer = enable ? new ImportMetaInitializer() {
-            @Override
-            public void initializeImportMeta(DynamicObject importMeta, JSModuleRecord module) {
-                NativeAccess.notifyImportMetaInitializer(importMeta, module);
-            }
-        } : null;
+        ImportMetaInitializer initializer = enable ? new NativeImportMetaInitializer() : null;
         mainJSContext.setImportMetaInitializer(initializer);
     }
 
     public void isolateEnableImportModuleDynamically(boolean enable) {
-        ImportModuleDynamicallyCallback callback = enable ? new ImportModuleDynamicallyCallback() {
-            @Override
-            public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
-                return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier());
-            }
-        } : null;
+        ImportModuleDynamicallyCallback callback = enable ? new NativeImportModuleDynamicallyCallback() : null;
         mainJSContext.setImportModuleDynamicallyCallback(callback);
     }
 
     public void isolateEnablePrepareStackTraceCallback(boolean enable) {
-        PrepareStackTraceCallback callback = enable ? new PrepareStackTraceCallback() {
-            @Override
-            public Object prepareStackTrace(JSRealm realm, DynamicObject error, DynamicObject structuredStackTrace) {
-                return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
-            }
-        } : null;
+        PrepareStackTraceCallback callback = enable ? new NativePrepareStackTraceCallback() : null;
         mainJSContext.setPrepareStackTraceCallback(callback);
+    }
+
+    private static class ContextPromiseHook implements PromiseHook {
+
+        private final Object initHook;
+        private final Object afterHook;
+        private final Object beforeHook;
+        private final Object resolveHook;
+
+        ContextPromiseHook(Object initHook, Object resolveHook, Object beforeHook, Object afterHook) {
+            this.initHook = initHook;
+            this.afterHook = afterHook;
+            this.beforeHook = beforeHook;
+            this.resolveHook = resolveHook;
+        }
+
+        @Override
+        public void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise) {
+            Object hook;
+            switch (changeType) {
+                case PromiseHook.TYPE_INIT:
+                    hook = initHook;
+                    break;
+                case PromiseHook.TYPE_RESOLVE:
+                    hook = resolveHook;
+                    break;
+                case PromiseHook.TYPE_BEFORE:
+                    hook = beforeHook;
+                    break;
+                case PromiseHook.TYPE_AFTER:
+                    hook = afterHook;
+                    break;
+                default:
+                    throw Errors.shouldNotReachHere();
+            }
+            if (hook != null) {
+                Object[] arguments;
+                if (changeType == PromiseHook.TYPE_INIT) {
+                    arguments = new Object[]{promise, parentPromise};
+                } else {
+                    arguments = new Object[]{promise};
+                }
+                JSRuntime.call(hook, Undefined.instance, arguments);
+            }
+        }
+    }
+
+    private static class IsolatePromiseHook implements PromiseHook {
+        @Override
+        public void promiseChanged(int changeType, DynamicObject promise, DynamicObject parentPromise) {
+            NativeAccess.notifyPromiseHook(changeType, promise, parentPromise);
+        }
+    }
+
+    private static class NativePromiseRejectionTracker implements PromiseRejectionTracker {
+        @Override
+        public void promiseRejected(DynamicObject promise, Object value) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            0, // v8::PromiseRejectEvent::kPromiseRejectWithNoHandler
+                            value);
+        }
+
+        @Override
+        public void promiseRejectionHandled(DynamicObject promise) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            1, // v8::PromiseRejectEvent::kPromiseHandlerAddedAfterReject
+                            Undefined.instance);
+        }
+
+        @Override
+        public void promiseRejectedAfterResolved(DynamicObject promise, Object value) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            2, // v8::PromiseRejectEvent::kPromiseRejectAfterResolved
+                            value);
+        }
+
+        @Override
+        public void promiseResolvedAfterResolved(DynamicObject promise, Object value) {
+            NativeAccess.notifyPromiseRejectionTracker(
+                            promise,
+                            3, // v8::PromiseRejectEvent::kPromiseResolveAfterResolved
+                            value);
+        }
+    }
+
+    private static class NativeImportMetaInitializer implements ImportMetaInitializer {
+        @Override
+        public void initializeImportMeta(DynamicObject importMeta, JSModuleRecord module) {
+            NativeAccess.notifyImportMetaInitializer(importMeta, module);
+        }
+    }
+
+    private static class NativeImportModuleDynamicallyCallback implements ImportModuleDynamicallyCallback {
+        @Override
+        public DynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, Module.ModuleRequest moduleRequest) {
+            return (DynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, referrer, moduleRequest.getSpecifier());
+        }
+    }
+
+    private static class NativePrepareStackTraceCallback implements PrepareStackTraceCallback {
+        @Override
+        public Object prepareStackTrace(JSRealm realm, DynamicObject error, DynamicObject structuredStackTrace) {
+            return NativeAccess.executePrepareStackTraceCallback(realm, error, structuredStackTrace);
+        }
     }
 
     private void exit(int status) {
@@ -3221,12 +3269,7 @@ public final class GraalJSAccess {
     public void isolateEnterPolyglotEngine(long callback, long isolate, long param1, long param2, long args, long execArgs) {
         org.graalvm.polyglot.Source source = org.graalvm.polyglot.Source.newBuilder(JavaScriptLanguage.ID, "(function(r) { r.run(); })", "polyglotEngineWrapper").internal(true).buildLiteral();
         org.graalvm.polyglot.Value wrapper = evaluator.eval(source);
-        wrapper.execute(new RunnableInvoker(new Runnable() {
-            @Override
-            public void run() {
-                NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, args, execArgs);
-            }
-        }));
+        wrapper.execute(new RunnableInvoker(() -> NativeAccess.polyglotEngineEntered(callback, isolate, param1, param2, args, execArgs)));
     }
 
     private static final ThreadLocal<Deque<Pair<Long, Object>>> isolateStack = new ThreadLocal<>();
@@ -3647,30 +3690,30 @@ public final class GraalJSAccess {
         }
         Module moduleNode = new Module(Collections.emptyList(), Collections.emptyList(), localExportEntries, Collections.emptyList(), Collections.emptyList(), null, null);
         Source source = Source.newBuilder(JavaScriptLanguage.ID, "<unavailable>", moduleName).build();
-        JavaScriptRootNode rootNode = new JavaScriptRootNode(mainJSContext.getLanguage(), source.createUnavailableSection(), frameDescriptor) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                JSModuleRecord module = (JSModuleRecord) JSArguments.getUserArgument(frame.getArguments(), 0);
-                if (module.getEnvironment() == null) {
-                    assert module.getStatus() == Status.Linking;
-                    module.setEnvironment(frame.materialize());
-                    return Undefined.instance;
-                } else {
-                    assert module.getStatus() == Status.Evaluating;
-                    return invokeEvaluationStepsCallback(getRealm(), module);
-                }
-            }
 
-            @TruffleBoundary
-            private Object invokeEvaluationStepsCallback(JSRealm realm, JSModuleRecord module) {
-                return NativeAccess.syntheticModuleEvaluationSteps(evaluationStepsCallback, realm, module);
-            }
-        };
-        CallTarget callTarget = Truffle.getRuntime().createCallTarget(rootNode);
-        JSFunctionData functionData = JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+        EngineCacheData engineCacheData = getContextEngineCacheData(mainJSContext);
+        JSFunctionData functionData = engineCacheData.getOrCreateSyntheticModuleData(moduleName, exportNames, (c) -> {
+            JavaScriptRootNode rootNode = new SyntheticModuleRootNode(mainJSContext.getLanguage(), source, frameDescriptor);
+            CallTarget callTarget = rootNode.getCallTarget();
+            return JSFunctionData.createCallOnly(mainJSContext, callTarget, 0, moduleName);
+        });
+
         final JSModuleData parsedModule = new JSModuleData(moduleNode, source, functionData, frameDescriptor);
-        final JSModuleRecord moduleRecord = new JSModuleRecord(parsedModule, getModuleLoader());
-        return moduleRecord;
+        return new NativeBackedModuleRecord(parsedModule, getModuleLoader(), evaluationStepsCallback);
+    }
+
+    public static final class NativeBackedModuleRecord extends JSModuleRecord {
+
+        private final long evaluationStepsCallback;
+
+        NativeBackedModuleRecord(JSModuleData parsedModule, JSModuleLoader moduleLoader, long evaluationStepsCallback) {
+            super(parsedModule, moduleLoader);
+            this.evaluationStepsCallback = evaluationStepsCallback;
+        }
+
+        public long getEvaluationStepsCallback() {
+            return evaluationStepsCallback;
+        }
     }
 
     public void moduleSetSyntheticModuleExport(Object module, String exportName, Object exportValue) {

@@ -92,12 +92,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     @TruffleBoundary
     public static DynamicObject createWithPrototype(DynamicObject prototype, JSContext context) {
-        assert JSObjectUtil.isValidPrototype(prototype);
-        if (prototype == Null.instance) {
-            return createWithNullPrototype(context);
-        } else {
-            return context.trackAllocation(JSOrdinaryObject.create(JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context)));
-        }
+        return createWithPrototype(prototype, context, INSTANCE);
     }
 
     public static DynamicObject createWithNullPrototype(JSContext context) {
@@ -107,11 +102,16 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     @TruffleBoundary
     public static DynamicObject createWithPrototype(DynamicObject prototype, JSContext context, JSOrdinary instanceLayout) {
         assert JSObjectUtil.isValidPrototype(prototype);
+        DynamicObject obj;
         if (prototype == Null.instance) {
-            return context.trackAllocation(JSOrdinaryObject.create(context.makeEmptyShapeWithNullPrototype(instanceLayout)));
+            obj = JSOrdinaryObject.create(context.makeEmptyShapeWithNullPrototype(instanceLayout));
+        } else if (!context.isMultiContext()) {
+            obj = JSOrdinaryObject.create(JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context));
         } else {
-            return context.trackAllocation(JSOrdinaryObject.create(JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context)));
+            obj = JSOrdinaryObject.create(context.makeEmptyShapeWithPrototypeInObject(instanceLayout));
+            setProtoSlow(obj, prototype);
         }
+        return context.trackAllocation(obj);
     }
 
     public static DynamicObject createInitWithInstancePrototype(DynamicObject prototype, JSContext context) {

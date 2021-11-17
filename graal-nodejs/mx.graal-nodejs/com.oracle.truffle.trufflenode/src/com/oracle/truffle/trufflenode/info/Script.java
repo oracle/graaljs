@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.trufflenode.info;
 
-import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.runtime.JSRealm;
 
@@ -50,14 +49,12 @@ public final class Script {
     private final ScriptNode scriptNode;
     private final Object parseResult;
     private final JSRealm realm;
-    private final boolean graalInternal;
 
     public Script(ScriptNode scriptNode, Object parseResult, JSRealm realm, int id) {
         this.scriptNode = scriptNode;
         this.parseResult = parseResult;
         this.realm = realm;
         this.id = id;
-        this.graalInternal = isGraalInternalScript(scriptNode.getRootNode().getSourceSection().getSource());
     }
 
     public ScriptNode getScriptNode() {
@@ -74,15 +71,6 @@ public final class Script {
 
     public int getId() {
         return id;
-    }
-
-    public boolean isGraalInternal() {
-        return graalInternal;
-    }
-
-    private static boolean isGraalInternalScript(Source source) {
-        String name = source.getName();
-        return name.startsWith("graal/") || name.startsWith("internal/graal/") || name.equals("internal/worker.js") || name.equals("inspector.js");
     }
 
 }

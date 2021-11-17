@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.trufflenode.info;
 
+import java.util.Objects;
+
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -113,7 +115,7 @@ public final class FunctionTemplate {
         return singleFunctionTemplate ? functionObj : GraalJSAccess.getRealmEmbedderData(realm).getFunctionTemplateObject(id);
     }
 
-    public int getID() {
+    public int getId() {
         return id;
     }
 
@@ -165,4 +167,89 @@ public final class FunctionTemplate {
         return readOnlyPrototype;
     }
 
+    public boolean isSingleFunctionTemplate() {
+        return singleFunctionTemplate;
+    }
+
+    public Descriptor getEngineCacheDescriptor() {
+        return new Descriptor(this);
+    }
+
+    @Override
+    public String toString() {
+        return "FunctionTemplate{" +
+                        "id=" + id +
+                        ", className='" + className + '\'' +
+                        ", length=" + length +
+                        ", readOnlyPrototype=" + readOnlyPrototype +
+                        ", parent.id=" + (parent != null ? parent.getId() : "null") +
+                        ", signature=" + (signature != null) +
+                        ", functionData=" + (functionData != null) +
+                        ", functionObj=" + (functionObj != null) +
+                        ", additionalData=" + (additionalData != null) +
+                        ", functionPointer=" + functionPointer +
+                        ", singleFunctionTemplate=" + singleFunctionTemplate +
+                        ", functionObjectTemplate=" + functionObjectTemplate +
+                        ", instanceTemplate=" + instanceTemplate +
+                        ", prototypeTemplate=" + prototypeTemplate +
+                        '}';
+    }
+
+    public static class Descriptor {
+
+        private final int length;
+        private final String className;
+        private final boolean readOnlyPrototype;
+        private final boolean prototypeTemplateNull;
+        private final boolean singleFunctionTemplate;
+        private final int instanceTemplateInternalFieldCount;
+
+        public Descriptor(FunctionTemplate functionTemplate) {
+            this.length = functionTemplate.length;
+            this.className = functionTemplate.className;
+            this.readOnlyPrototype = functionTemplate.readOnlyPrototype;
+            this.prototypeTemplateNull = functionTemplate.getPrototypeTemplate() == null;
+            this.singleFunctionTemplate = functionTemplate.singleFunctionTemplate;
+            this.instanceTemplateInternalFieldCount = functionTemplate.getInstanceTemplate().getInternalFieldCount();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Descriptor that = (Descriptor) o;
+            return this.length == that.length &&
+                            Objects.equals(this.className, that.className) &&
+                            this.readOnlyPrototype == that.readOnlyPrototype &&
+                            this.prototypeTemplateNull == that.prototypeTemplateNull &&
+                            this.singleFunctionTemplate == that.singleFunctionTemplate &&
+                            this.instanceTemplateInternalFieldCount == that.instanceTemplateInternalFieldCount;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.length,
+                            this.className,
+                            this.readOnlyPrototype,
+                            this.prototypeTemplateNull,
+                            this.singleFunctionTemplate,
+                            this.instanceTemplateInternalFieldCount);
+        }
+
+        @Override
+        public String toString() {
+            return "Descriptor{" +
+                            "length=" + length +
+                            ", className='" + className + '\'' +
+                            ", readOnlyPrototype=" + readOnlyPrototype +
+                            ", prototypeTemplateNull=" + prototypeTemplateNull +
+                            ", singleFunctionTemplate=" + singleFunctionTemplate +
+                            ", instanceTemplateInternalFieldCount=" + instanceTemplateInternalFieldCount +
+                            '}';
+        }
+    }
 }

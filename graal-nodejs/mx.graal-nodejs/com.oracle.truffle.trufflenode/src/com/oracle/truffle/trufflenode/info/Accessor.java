@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,20 +40,25 @@
  */
 package com.oracle.truffle.trufflenode.info;
 
+import java.util.Objects;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.trufflenode.ContextData;
+import com.oracle.truffle.trufflenode.EngineCacheData;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.node.ExecuteNativeAccessorNode;
-import java.util.concurrent.atomic.AtomicInteger;
 
+/**
+ * Represents an object accessor. Initialized at Node.js initialization time, usually from native.
+ * Contains runtime data (e.g. pointers), and must not be persisted.
+ */
 public class Accessor {
 
-    private static final AtomicInteger idGenerator = new AtomicInteger();
-
-    private final GraalJSAccess graalAccess;
     private final Object name;
     private final long getterPtr;
     private final long setterPtr;
@@ -62,14 +67,13 @@ public class Accessor {
     private final int id;
     private final int attributes;
 
-    public Accessor(GraalJSAccess graalAccess, Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
-        this.graalAccess = graalAccess;
+    public Accessor(int accessorId, Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
         this.name = name;
         this.getterPtr = getterPtr;
         this.setterPtr = setterPtr;
         this.data = data;
         this.signature = signature;
-        this.id = idGenerator.getAndIncrement();
+        this.id = accessorId;
         this.attributes = attributes;
     }
 
@@ -93,6 +97,10 @@ public class Accessor {
         return signature;
     }
 
+    public boolean hasSignature() {
+        return signature != null;
+    }
+
     public int getAttributes() {
         return attributes;
     }
@@ -104,7 +112,12 @@ public class Accessor {
     }
 
     private JSFunctionData createFunction(JSContext context, boolean getter) {
-        return GraalJSAccess.functionDataFromRootNode(context, new ExecuteNativeAccessorNode(graalAccess, context, this, getter));
+        EngineCacheData cacheData = GraalJSAccess.getContextEngineCacheData(context);
+        return cacheData.getOrCreateFunctionDataFromAccessor(this, getter, (c) -> {
+            RootNode rootNode = new ExecuteNativeAccessorNode(context, getter);
+            CallTarget callbackCallTarget = rootNode.getCallTarget();
+            return JSFunctionData.create(context, callbackCallTarget, callbackCallTarget, 0, "", false, false, false, true);
+        });
     }
 
     public Pair<JSFunctionData, JSFunctionData> getFunctions(JSContext context) {
@@ -117,4 +130,45 @@ public class Accessor {
         return functions;
     }
 
+    public Descriptor getEngineCacheDescriptor(boolean getter) {
+        return new Descriptor(this, getter);
+    }
+
+    public static class Descriptor {
+
+        private final Object name;
+        private final int attributes;
+        private final boolean getter;
+        private final boolean hasSignature;
+
+        public Descriptor(Accessor accessor, boolean getter) {
+            this.name = accessor.name;
+            this.attributes = accessor.attributes;
+            this.getter = getter;
+            this.hasSignature = accessor.hasSignature();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            Descriptor that = (Descriptor) o;
+            return Objects.equals(this.name, that.name) &&
+                            this.attributes == that.attributes &&
+                            this.getter == that.getter &&
+                            this.hasSignature == that.hasSignature;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.name,
+                            this.attributes,
+                            this.getter,
+                            this.hasSignature);
+        }
+    }
 }

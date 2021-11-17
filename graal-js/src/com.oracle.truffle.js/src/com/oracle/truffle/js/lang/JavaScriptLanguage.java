@@ -158,6 +158,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     public static final String MODULE_SOURCE_NAME_SUFFIX = ".mjs";
     public static final String JSON_SOURCE_NAME_SUFFIX = ".json";
     public static final String INTERNAL_SOURCE_URL_PREFIX = "internal:";
+    public static final String NODE_ENV_PARSE_TOKEN = "%NODE_ENV_PARSE_TOKEN%";
 
     public static final String NAME = "JavaScript";
     public static final String IMPLEMENTATION_NAME = "GraalVM JavaScript";
@@ -192,7 +193,17 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         Source source = parsingRequest.getSource();
         List<String> argumentNames = parsingRequest.getArgumentNames();
         final JSContext context = getJSContext();
-        final ScriptNode program = parseScript(context, source, "", "", argumentNames);
+
+        final ScriptNode program;
+        assert argumentNames != null;
+        if (argumentNames.size() == 4 && argumentNames.get(0).equals(NODE_ENV_PARSE_TOKEN)) {
+            String prolog = argumentNames.get(1);
+            String epilog = argumentNames.get(2);
+            boolean strict = Boolean.parseBoolean(argumentNames.get(3));
+            program = parseScript(context, source, prolog, epilog, strict, new ArrayList<>());
+        } else {
+            program = parseScript(context, source, "", "", context.getParserOptions().isStrict(), argumentNames);
+        }
 
         if (context.isOptionParseOnly()) {
             return createEmptyScript(context).getCallTarget();
@@ -285,7 +296,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
     }
 
     @TruffleBoundary
-    protected static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, List<String> argumentNames) {
+    private static ScriptNode parseScript(JSContext context, Source code, String prolog, String epilog, boolean strict, List<String> argumentNames) {
         boolean profileTime = context.getContextOptions().isProfileTime();
         long startTime = profileTime ? System.nanoTime() : 0L;
         try {
@@ -293,7 +304,7 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             if (!argumentNames.isEmpty()) {
                 arguments = argumentNames.toArray(new String[0]);
             }
-            return context.getEvaluator().parseScript(context, code, prolog, epilog, context.getParserOptions().isStrict(), arguments);
+            return context.getEvaluator().parseScript(context, code, prolog, epilog, strict, arguments);
         } finally {
             if (profileTime) {
                 context.getTimeProfiler().printElapsed(startTime, "parsing " + code.getName());

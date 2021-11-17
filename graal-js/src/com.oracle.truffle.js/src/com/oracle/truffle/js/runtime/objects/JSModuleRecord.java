@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.objects;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -51,10 +48,13 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Source Text Module Record.
  */
-public final class JSModuleRecord extends ScriptOrModule {
+public class JSModuleRecord extends ScriptOrModule {
 
     public enum Status {
         Unlinked,

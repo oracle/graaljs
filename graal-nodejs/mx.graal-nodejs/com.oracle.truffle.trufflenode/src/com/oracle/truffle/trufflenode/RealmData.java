@@ -43,13 +43,14 @@ package com.oracle.truffle.trufflenode;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.DynamicObject;
 
 /**
- * Realm-specific embedder data.
+ * Realm-specific embedder data. Should never be persisted.
  */
 public final class RealmData {
+
     private Object securityToken;
     private final Map<Integer, Object> embedderData = new HashMap<>();
     private final Map<Integer, DynamicObject> functionTemplateObjects = new HashMap<>();
@@ -60,7 +61,10 @@ public final class RealmData {
     private DynamicObject extrasBindingObject;
     private DynamicObject arrayBufferGetContentsFunction;
 
-    public RealmData() {
+    private final GraalJSAccess graalJSAccess;
+
+    public RealmData(GraalJSAccess graalJSAccess) {
+        this.graalJSAccess = graalJSAccess;
     }
 
     public void setSecurityToken(Object securityToken) {
@@ -99,7 +103,7 @@ public final class RealmData {
         functionTemplateObjects.put(index, functionObject);
     }
 
-    @CompilerDirectives.TruffleBoundary
+    @TruffleBoundary
     public DynamicObject getFunctionTemplateObject(int index) {
         return functionTemplateObjects.get(index);
     }
@@ -126,6 +130,10 @@ public final class RealmData {
 
     public void setArrayBufferGetContentsFunction(DynamicObject arrayBufferGetContentsFunction) {
         this.arrayBufferGetContentsFunction = arrayBufferGetContentsFunction;
+    }
+
+    public GraalJSAccess getGraalJSAccess() {
+        return graalJSAccess;
     }
 
 }

@@ -48,6 +48,7 @@ import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -61,36 +62,37 @@ import com.oracle.truffle.trufflenode.info.FunctionTemplate;
  * @author Jan Stola
  */
 public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
-    private final GraalJSAccess graalAccess;
-    private final Accessor accessor;
-    private final FunctionTemplate signature;
+
     private final boolean getter;
     private final BranchProfile errorBranch = BranchProfile.create();
+
     @Child private GetPrototypeNode getPrototypeNode;
     @Child private PropertyGetNode prototypePropertyGetNode;
     @Child private PropertyGetNode holderPropertyGetNode;
+    @Child private PropertyGetNode accessorGetNode;
 
-    public ExecuteNativeAccessorNode(GraalJSAccess graalAccess, JSContext context, Accessor accessor, boolean getter) {
-        this.graalAccess = graalAccess;
-        this.accessor = accessor;
-        this.signature = accessor.getSignature();
+    public ExecuteNativeAccessorNode(JSContext context, boolean getter) {
         this.getter = getter;
         this.getPrototypeNode = GetPrototypeNode.create();
         this.prototypePropertyGetNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
+        this.accessorGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.ACCESSOR_KEY, context);
         this.holderPropertyGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.HOLDER_KEY, context);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         Object[] arguments = frame.getArguments();
-        if (signature != null) {
+        Accessor accessor = (Accessor) accessorGetNode.getValue(JSFrameUtil.getFunctionObject(frame));
+
+        if (accessor.hasSignature()) {
+            FunctionTemplate signature = accessor.getSignature();
             DynamicObject functionObject = signature.getFunctionObject(getRealm());
             if (functionObject != null) {
                 Object functionPrototype = prototypePropertyGetNode.getValue(functionObject);
                 Object instancePrototype = getPrototypeNode.executeJSObject(arguments[0]);
                 if (functionPrototype != instancePrototype) {
                     errorBranch.enter();
-                    throw Errors.createTypeError(incompatibleReceiverMessage());
+                    throw Errors.createTypeError(incompatibleReceiverMessage(accessor));
                 }
             }
         }
@@ -100,19 +102,20 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
             return false;
         }
         Object holder = holderPropertyGetNode.getValue(arguments[1]);
-        return executeAccessorMethod(functionPointer, holder, arguments);
+        return executeAccessorMethod(functionPointer, accessor, holder, arguments);
     }
 
     @CompilerDirectives.TruffleBoundary
-    private String incompatibleReceiverMessage() {
+    private static String incompatibleReceiverMessage(Accessor accessor) {
         return "Method " + accessor.getName() + " called on incompatible receiver";
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object executeAccessorMethod(long functionPointer, Object holder, Object[] arguments) {
+    private Object executeAccessorMethod(long functionPointer, Accessor accessor, Object holder, Object[] arguments) {
         Object result;
         if (getter) {
             result = NativeAccess.executeAccessorGetter(functionPointer, holder, accessor.getName(), arguments, accessor.getData());
+            GraalJSAccess graalAccess = GraalJSAccess.get(this);
             result = graalAccess.correctReturnValue(result);
         } else {
             NativeAccess.executeAccessorSetter(functionPointer, holder, accessor.getName(), arguments, accessor.getData());
@@ -121,4 +124,8 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
         return result;
     }
 
+    @Override
+    public String toString() {
+        return "NativeAccessor";
+    }
 }
