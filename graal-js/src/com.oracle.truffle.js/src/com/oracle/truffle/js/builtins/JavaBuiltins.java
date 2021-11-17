@@ -455,7 +455,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             if (env.isHostObject(toType)) {
                 javaType = toType;
             } else if (toType == Undefined.instance) {
-                javaType = env.asGuestValue(Object[].class);
+                if (env.isHostLookupAllowed()) {
+                    javaType = env.lookupHostSymbol("java.lang.Object[]");
+                } else {
+                    javaType = env.asGuestValue(Object[].class);
+                }
                 knownArrayClass = true;
             } else {
                 String className = toString(toType);
