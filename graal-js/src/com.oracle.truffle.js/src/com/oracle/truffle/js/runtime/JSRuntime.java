@@ -253,7 +253,7 @@ public final class JSRuntime {
                 }
             }
             TruffleObject object = (TruffleObject) value;
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            InteropLibrary interop = InteropLibrary.getUncached();
             if (interop.isBoolean(object)) {
                 return JSBoolean.TYPE_NAME;
             } else if (interop.isString(object)) {
@@ -1267,8 +1267,8 @@ public final class JSRuntime {
                 }
             }
             Object key = keysInterop.readArrayElement(keys, i);
-            assert InteropLibrary.getFactory().getUncached().isString(key);
-            String stringKey = key instanceof String ? (String) key : InteropLibrary.getFactory().getUncached().asString(key);
+            assert InteropLibrary.getUncached().isString(key);
+            String stringKey = key instanceof String ? (String) key : InteropLibrary.getUncached().asString(key);
             Object value = objInterop.readMember(truffleObject, stringKey);
             sb.append(stringKey);
             sb.append(": ");
@@ -2478,7 +2478,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isCallableForeign(Object value) {
         if (isForeignObject(value)) {
-            InteropLibrary interop = InteropLibrary.getFactory().getUncached();
+            InteropLibrary interop = InteropLibrary.getUncached();
             return interop.isExecutable(value) || interop.isInstantiable(value);
         }
         return false;
@@ -2500,7 +2500,7 @@ public final class JSRuntime {
         } else if (JSProxy.isJSProxy(obj)) {
             return isProxyAnArray((DynamicObject) obj);
         } else if (isForeignObject(obj)) {
-            return InteropLibrary.getFactory().getUncached().hasArrayElements(obj);
+            return InteropLibrary.getUncached().hasArrayElements(obj);
         }
         return false;
     }
@@ -2751,7 +2751,7 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean isConstructorForeign(Object value) {
         if (isForeignObject(value)) {
-            return InteropLibrary.getFactory().getUncached().isInstantiable(value);
+            return InteropLibrary.getUncached().isInstantiable(value);
         }
         return false;
     }

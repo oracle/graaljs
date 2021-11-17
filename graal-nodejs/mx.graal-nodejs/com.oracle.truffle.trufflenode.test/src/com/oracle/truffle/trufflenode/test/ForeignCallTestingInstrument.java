@@ -97,7 +97,7 @@ public class ForeignCallTestingInstrument extends TruffleInstrument implements C
                  * affect the application's execution semantics.
                  */
                 try {
-                    InteropLibrary interopLibrary = InteropLibrary.getFactory().getUncached();
+                    InteropLibrary interopLibrary = InteropLibrary.getUncached();
                     if (interopLibrary.isMemberReadable(env.getPolyglotBindings(), "emptyFunction")) {
                         Object func = interopLibrary.readMember(env.getPolyglotBindings(), "emptyFunction");
                         dispatch.execute(func);
@@ -114,7 +114,7 @@ public class ForeignCallTestingInstrument extends TruffleInstrument implements C
         // Leak a global value that can be used by tests to assert that the instrumentation agent is
         // enabled.
         try {
-            InteropLibrary.getFactory().getUncached().writeMember(env.getPolyglotBindings(), "testingControlValue", 42);
+            InteropLibrary.getUncached().writeMember(env.getPolyglotBindings(), "testingControlValue", 42);
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             throw new AssertionError(e);
         }

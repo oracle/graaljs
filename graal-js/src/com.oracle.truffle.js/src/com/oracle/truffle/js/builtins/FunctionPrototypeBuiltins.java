@@ -342,13 +342,13 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             if (interop.hasExecutableName(fnObj)) {
                 try {
                     Object name = interop.getExecutableName(fnObj);
-                    return getNameIntl(InteropLibrary.getFactory().getUncached().asString(name));
+                    return getNameIntl(InteropLibrary.getUncached().asString(name));
                 } catch (UnsupportedMessageException e) {
                 }
             } else if (interop.isMetaObject(fnObj)) {
                 try {
                     Object name = interop.getMetaSimpleName(fnObj);
-                    return getNameIntl(InteropLibrary.getFactory().getUncached().asString(name));
+                    return getNameIntl(InteropLibrary.getUncached().asString(name));
                 } catch (UnsupportedMessageException e) {
                 }
             }

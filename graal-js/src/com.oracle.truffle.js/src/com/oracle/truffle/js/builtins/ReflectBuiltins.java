@@ -309,7 +309,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                     String memberName = (String) key;
                     if (interop.isMemberRemovable(target, memberName)) {
                         try {
-                            InteropLibrary.getFactory().getUncached().removeMember(target, memberName);
+                            InteropLibrary.getUncached().removeMember(target, memberName);
                         } catch (UnsupportedMessageException | UnknownIdentifierException e) {
                             throw Errors.createTypeErrorInteropException(target, e, "removeMember", memberName, null);
                         }

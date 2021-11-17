@@ -125,7 +125,7 @@ public class ForeignTestMap implements TruffleObject {
     final Object invokeMember(String key, Object[] args) throws UnknownIdentifierException, UnsupportedTypeException, ArityException, UnsupportedMessageException {
         if (getContainer().containsKey(key)) {
             Object member = getContainer().get(key);
-            InteropLibrary lib = InteropLibrary.getFactory().getUncached();
+            InteropLibrary lib = InteropLibrary.getUncached();
             return lib.execute(member, args);
         } else {
             throw UnknownIdentifierException.create(key);
@@ -137,7 +137,7 @@ public class ForeignTestMap implements TruffleObject {
     final boolean isMemberInvocable(String key) {
         if (getContainer().containsKey(key)) {
             Object member = getContainer().get(key);
-            InteropLibrary lib = InteropLibrary.getFactory().getUncached();
+            InteropLibrary lib = InteropLibrary.getUncached();
             return lib.isExecutable(member);
         } else {
             return false;
@@ -177,7 +177,7 @@ public class ForeignTestMap implements TruffleObject {
     @TruffleBoundary
     final long getArraySize() throws UnsupportedMessageException {
         if (hasArrayElements()) {
-            InteropLibrary lib = InteropLibrary.getFactory().getUncached();
+            InteropLibrary lib = InteropLibrary.getUncached();
             return lib.asLong(getContainer().get("length"));
         } else {
             throw UnsupportedMessageException.create();

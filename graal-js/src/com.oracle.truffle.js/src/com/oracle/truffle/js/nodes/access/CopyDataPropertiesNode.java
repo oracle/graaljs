@@ -164,7 +164,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 long length = JSInteropUtil.getArraySize(members, arrayInterop, this);
                 for (long i = 0; i < length; i++) {
                     Object key = arrayInterop.readArrayElement(members, i);
-                    assert InteropLibrary.getFactory().getUncached().isString(key);
+                    assert InteropLibrary.getUncached().isString(key);
                     String stringKey = stringInterop.asString(key);
                     if (!isExcluded(withExcluded, excludedItems, stringKey)) {
                         Object value = objInterop.readMember(from, stringKey);
