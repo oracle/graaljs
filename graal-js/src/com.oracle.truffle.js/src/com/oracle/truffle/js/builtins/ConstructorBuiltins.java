@@ -1289,7 +1289,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected DynamicObject constructTemporalIntant(DynamicObject newTarget, Object epochNanoseconds) {
-            BigInt bi = JSRuntime.toBigIntSpec(epochNanoseconds);
+            BigInt bi = JSRuntime.toBigInt(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(bi)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
@@ -1340,7 +1340,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization
         protected DynamicObject constructTemporalZonedDateTime(DynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
-            BigInt ns = JSRuntime.toBigIntSpec(epochNanoseconds);
+            BigInt ns = JSRuntime.toBigInt(epochNanoseconds);
             if (!TemporalUtil.isValidEpochNanoseconds(ns)) {
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
