@@ -450,8 +450,11 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         if (!firstOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
             return true;
         }
-        // GR-34877: OptionValues.equals does not check if the same options are set.
-        return firstOptions.equals(newOptions) && JSContextOptions.fromOptionValues(firstOptions).equals(JSContextOptions.fromOptionValues(newOptions));
+        if (firstOptions.equals(newOptions)) {
+            assert JSContextOptions.fromOptionValues(firstOptions).equals(JSContextOptions.fromOptionValues(newOptions));
+            return true;
+        }
+        return false;
     }
 
     @Override
