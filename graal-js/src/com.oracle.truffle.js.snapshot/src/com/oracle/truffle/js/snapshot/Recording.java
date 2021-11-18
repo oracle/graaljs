@@ -65,7 +65,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -81,7 +81,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
@@ -95,7 +94,6 @@ import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.NodeFactory;
 import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.control.BreakTarget;
 import com.oracle.truffle.js.nodes.control.ContinueTarget;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
@@ -197,7 +195,7 @@ public class Recording {
         }
 
         protected Inst(Class<?> declaredType, Type genericDeclaredType) {
-            this(UNASSIGNED_ID, declaredType, genericDeclaredType);
+            this(UNASSIGNED_ID, Objects.requireNonNull(declaredType, "declaredType"), genericDeclaredType);
         }
 
         private Inst(int resultId, Class<?> declaredType, Type genericDeclaredType) {
@@ -1148,7 +1146,7 @@ public class Recording {
 
     private ArrayList<Inst> encodeList(List<?> args, Type genericType) {
         Type elementGenericType = genericType instanceof ParameterizedType ? ((ParameterizedType) genericType).getActualTypeArguments()[0] : null;
-        Class<?> elementType = getRawType(elementGenericType);
+        Class<?> elementType = getRawType(elementGenericType, Object.class);
         ArrayList<Inst> encoding = new ArrayList<>(args.size());
         for (int i = 0; i < args.size(); i++) {
             encoding.add(i, encode(args.get(i), elementType, elementGenericType));
@@ -1156,9 +1154,9 @@ public class Recording {
         return encoding;
     }
 
-    private static Class<?> getRawType(Type genericType) {
+    private static Class<?> getRawType(Type genericType, Class<?> defaultRawType) {
         if (genericType == null) {
-            return null;
+            return defaultRawType;
         } else if (genericType instanceof Class<?>) {
             return (Class<?>) genericType;
         } else if (genericType instanceof ParameterizedType) {
