@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -205,7 +206,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isForeignObject(object)", limit = "InteropLibraryLimit")
     protected Object doForeignObject(Object object,
-                    @CachedLibrary("object") InteropLibrary interop) {
+                    @CachedLibrary("object") InteropLibrary interop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary resultInterop) {
         if (interop.isNull(object)) {
             return Null.instance;
         }
@@ -249,7 +251,7 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
         }
         Object result = ordinaryToPrimitive(object);
         assert IsPrimitiveNode.getUncached().executeBoolean(result) : result;
-        return result;
+        return JSInteropUtil.toPrimitiveOrDefault(result, result, resultInterop, this);
     }
 
     private static boolean isJavaArray(Object object, InteropLibrary interop) {
