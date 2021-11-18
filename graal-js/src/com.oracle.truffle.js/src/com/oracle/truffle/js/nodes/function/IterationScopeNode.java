@@ -84,10 +84,14 @@ public abstract class IterationScopeNode extends JavaScriptNode {
         public VirtualFrame execute(VirtualFrame frame) {
             VirtualFrame prevFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
             VirtualFrame nextFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
-            writes[0].executeWithFrame(nextFrame, reads[0].execute(prevFrame)); // copy parent slot
+            copyParentSlot(nextFrame, prevFrame);
             copySlots(nextFrame, prevFrame);
             frame.setObject(blockScopeSlot, nextFrame);
             return prevFrame;
+        }
+
+        private static void copyParentSlot(VirtualFrame nextFrame, VirtualFrame prevFrame) {
+            nextFrame.setObject(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX, prevFrame.getObject(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX));
         }
 
         @Override
@@ -106,7 +110,7 @@ public abstract class IterationScopeNode extends JavaScriptNode {
 
         @ExplodeLoop
         private void copySlots(VirtualFrame nextFrame, VirtualFrame frame) {
-            for (int i = 1; i < reads.length; i++) {
+            for (int i = 0; i < reads.length; i++) {
                 writes[i].executeWithFrame(nextFrame, reads[i].execute(frame));
             }
         }

@@ -492,13 +492,20 @@ public class NodeFactory {
     public IterationScopeNode createIterationScope(FrameDescriptor frameDescriptor, JSFrameSlot blockScopeSlot) {
         int numberOfSlots = frameDescriptor.getNumberOfSlots();
         assert numberOfSlots > ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX && frameDescriptor.getSlotName(ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX) == ScopeFrameNode.PARENT_SCOPE_IDENTIFIER;
-        JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[numberOfSlots];
-        JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[numberOfSlots];
+        int numberOfSlotsToCopy = numberOfSlots - 1;
+        JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[numberOfSlotsToCopy];
+        JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[numberOfSlotsToCopy];
+        int slotIndex = 0;
         for (int i = 0; i < numberOfSlots; i++) {
+            if (i == ScopeFrameNode.PARENT_SCOPE_SLOT_INDEX) {
+                continue;
+            }
             JSFrameSlot slot = JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, i);
-            reads[i] = JSReadFrameSlotNode.create(slot, false);
-            writes[i] = JSWriteFrameSlotNode.create(slot, null, false);
+            reads[slotIndex] = JSReadFrameSlotNode.create(slot, false);
+            writes[slotIndex] = JSWriteFrameSlotNode.create(slot, null, false);
+            slotIndex++;
         }
+        assert slotIndex == numberOfSlotsToCopy;
         return IterationScopeNode.create(frameDescriptor, reads, writes, blockScopeSlot.getIndex());
     }
 
