@@ -71,7 +71,7 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
     public static BlockScopeNode create(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, boolean functionBlock,
                     boolean captureFunctionFrame) {
-        return new FrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
+        return new FrameBlockScopeNode(block, blockScopeSlot.getIndex(), frameDescriptor, parentSlot.getIndex(), functionBlock, captureFunctionFrame);
     }
 
     @Override
@@ -121,21 +121,21 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
     }
 
     public static class FrameBlockScopeNode extends BlockScopeNode implements FrameDescriptorProvider {
-        protected final JSFrameSlot blockScopeSlot;
+        protected final int blockScopeSlot;
+        protected final int parentSlot;
         protected final FrameDescriptor frameDescriptor;
-        protected final JSFrameSlot parentSlot;
         /** If true, this is the function-level block scope. */
         protected final boolean functionBlock;
         /** If true, put the virtual function frame in the parent scope slot. */
         protected final boolean captureFunctionFrame;
 
-        protected FrameBlockScopeNode(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
+        protected FrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, boolean functionBlock, boolean captureFunctionFrame) {
             super(block);
             this.blockScopeSlot = blockScopeSlot;
-            this.frameDescriptor = frameDescriptor;
             this.parentSlot = parentSlot;
             this.functionBlock = functionBlock;
             this.captureFunctionFrame = captureFunctionFrame;
+            this.frameDescriptor = frameDescriptor;
         }
 
         @Override
@@ -152,27 +152,27 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public VirtualFrame appendScopeFrame(VirtualFrame frame) {
-            Object parentScopeFrame = frame.getObject(blockScopeSlot.getIndex());
+            Object parentScopeFrame = frame.getObject(blockScopeSlot);
             if (captureFunctionFrame) {
                 assert parentScopeFrame == Undefined.instance;
                 parentScopeFrame = frame.materialize();
             }
             MaterializedFrame scopeFrame = Truffle.getRuntime().createVirtualFrame(frame.getArguments(), frameDescriptor).materialize();
-            scopeFrame.setObject(parentSlot.getIndex(), parentScopeFrame);
-            frame.setObject(blockScopeSlot.getIndex(), scopeFrame);
+            scopeFrame.setObject(parentSlot, parentScopeFrame);
+            frame.setObject(blockScopeSlot, scopeFrame);
             return frame;
         }
 
         @Override
         public void exitScope(VirtualFrame frame) {
-            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot.getIndex()));
-            Object parentScopeFrame = blockScopeFrame.getObject(parentSlot.getIndex());
+            MaterializedFrame blockScopeFrame = JSFrameUtil.castMaterializedFrame(frame.getObject(blockScopeSlot));
+            Object parentScopeFrame = blockScopeFrame.getObject(parentSlot);
             if (captureFunctionFrame) {
                 assert ((Frame) parentScopeFrame).getFrameDescriptor() == frame.getFrameDescriptor();
                 // Avoid self reference
                 parentScopeFrame = Undefined.instance;
             }
-            frame.setObject(blockScopeSlot.getIndex(), parentScopeFrame);
+            frame.setObject(blockScopeSlot, parentScopeFrame);
             assert CompilerDirectives.inCompiledCode() || ScopeFrameNode.isBlockScopeFrame(blockScopeFrame) : blockScopeFrame.getFrameDescriptor();
         }
 
@@ -207,13 +207,13 @@ public abstract class BlockScopeNode extends JavaScriptNode implements Resumable
 
         @Override
         public Object getBlockScope(VirtualFrame frame) {
-            return frame.getObject(blockScopeSlot.getIndex());
+            return frame.getObject(blockScopeSlot);
         }
 
         @Override
         public void setBlockScope(VirtualFrame frame, Object state) {
             assert state instanceof MaterializedFrame;
-            frame.setObject(blockScopeSlot.getIndex(), state);
+            frame.setObject(blockScopeSlot, state);
         }
 
         @Override

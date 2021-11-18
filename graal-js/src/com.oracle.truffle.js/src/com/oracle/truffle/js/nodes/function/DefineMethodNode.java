@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.DynamicObject;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.DefineMethodNodeFactory.FunctionCreateNodeGen;
@@ -65,13 +64,13 @@ public class DefineMethodNode extends JavaScriptBaseNode {
     @Child private FunctionCreateNode functionCreateNode;
     @Child private PropertySetNode makeMethodNode;
 
-    protected DefineMethodNode(JSContext context, JSFunctionData functionData, JSFrameSlot blockScopeSlot) {
+    protected DefineMethodNode(JSContext context, JSFunctionData functionData, int blockScopeSlot) {
         this.functionData = functionData;
         this.functionCreateNode = FunctionCreateNode.create(context, functionData, blockScopeSlot);
         this.makeMethodNode = PropertySetNode.createSetHidden(JSFunction.HOME_OBJECT_ID, context);
     }
 
-    public static DefineMethodNode create(JSContext context, JSFunctionExpressionNode functionExpressionNode, JSFrameSlot blockScopeSlot) {
+    public static DefineMethodNode create(JSContext context, JSFunctionExpressionNode functionExpressionNode, int blockScopeSlot) {
         return new DefineMethodNode(context, functionExpressionNode.functionData, blockScopeSlot);
     }
 
@@ -87,23 +86,23 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         return closure;
     }
 
-    JSFrameSlot getBlockScopeSlot() {
+    int getBlockScopeSlot() {
         return functionCreateNode.blockScopeSlot;
     }
 
     protected abstract static class FunctionCreateNode extends JavaScriptBaseNode {
         private final JSFunctionData functionData;
         @Child private InitFunctionNode initFunctionNode;
-        final JSFrameSlot blockScopeSlot;
+        final int blockScopeSlot;
 
-        protected FunctionCreateNode(JSContext context, JSFunctionData functionData, JSFrameSlot blockScopeSlot) {
+        protected FunctionCreateNode(JSContext context, JSFunctionData functionData, int blockScopeSlot) {
             assert context == functionData.getContext();
             this.functionData = functionData;
             this.initFunctionNode = InitFunctionNode.create(functionData);
             this.blockScopeSlot = blockScopeSlot;
         }
 
-        public static FunctionCreateNode create(JSContext context, JSFunctionData functionData, JSFrameSlot blockScopeSlot) {
+        public static FunctionCreateNode create(JSContext context, JSFunctionData functionData, int blockScopeSlot) {
             return FunctionCreateNodeGen.create(context, functionData, blockScopeSlot);
         }
 
@@ -142,8 +141,8 @@ public class DefineMethodNode extends JavaScriptBaseNode {
         protected final DynamicObject makeFunction(VirtualFrame frame, JSFunctionFactory factory, DynamicObject prototype) {
             MaterializedFrame enclosingFrame;
             if (functionData.needsParentFrame()) {
-                if (blockScopeSlot != null) {
-                    Object blockScope = frame.getObject(blockScopeSlot.getIndex());
+                if (blockScopeSlot >= 0) {
+                    Object blockScope = frame.getObject(blockScopeSlot);
                     enclosingFrame = JSFrameUtil.castMaterializedFrame(blockScope);
                 } else {
                     enclosingFrame = frame.materialize();

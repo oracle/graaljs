@@ -82,7 +82,7 @@ public abstract class EvalNode extends JavaScriptNode {
     @Child protected AbstractFunctionArgumentsNode arguments;
     @Child protected DirectEvalNode directEvalNode;
 
-    protected EvalNode(JSContext context, JavaScriptNode function, JavaScriptNode[] args, JavaScriptNode thisObject, Object env, JSFrameSlot blockScopeSlot) {
+    protected EvalNode(JSContext context, JavaScriptNode function, JavaScriptNode[] args, JavaScriptNode thisObject, Object env, int blockScopeSlot) {
         this(context, function, JSFunctionArgumentsNode.create(context, args), DirectEvalNode.create(context, thisObject, env, blockScopeSlot));
     }
 
@@ -125,7 +125,7 @@ public abstract class EvalNode extends JavaScriptNode {
     }
 
     public static EvalNode create(JSContext context, JavaScriptNode functionNode, JavaScriptNode[] args, JavaScriptNode thisObject, Object env, JSFrameSlot blockScopeSlot) {
-        return EvalNodeGen.create(context, functionNode, args, thisObject, env, blockScopeSlot);
+        return EvalNodeGen.create(context, functionNode, args, thisObject, env, blockScopeSlot != null ? blockScopeSlot.getIndex() : -1);
     }
 
     @TruffleBoundary
@@ -169,9 +169,9 @@ public abstract class EvalNode extends JavaScriptNode {
         private final Object currEnv;
         @Child private JavaScriptNode thisNode;
         @Child private IndirectCallNode callNode;
-        private final JSFrameSlot blockScopeSlot;
+        private final int blockScopeSlot;
 
-        protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currEnv, JSFrameSlot blockScopeSlot) {
+        protected DirectEvalNode(JSContext context, JavaScriptNode thisNode, Object currEnv, int blockScopeSlot) {
             assert currEnv != null;
             this.context = context;
             this.currEnv = currEnv;
@@ -180,7 +180,7 @@ public abstract class EvalNode extends JavaScriptNode {
             this.blockScopeSlot = blockScopeSlot;
         }
 
-        protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currEnv, JSFrameSlot blockScopeSlot) {
+        protected static DirectEvalNode create(JSContext context, JavaScriptNode thisNode, Object currEnv, int blockScopeSlot) {
             return EvalNodeGen.DirectEvalNodeGen.create(context, thisNode, currEnv, blockScopeSlot);
         }
 
@@ -237,8 +237,8 @@ public abstract class EvalNode extends JavaScriptNode {
             Object evalThis = thisNode.execute(frame);
             ScriptNode script = context.getEvaluator().parseDirectEval(context, getParent(), source, currEnv);
             MaterializedFrame blockScopeFrame;
-            if (blockScopeSlot != null) {
-                Object maybeFrame = frame.getObject(blockScopeSlot.getIndex());
+            if (blockScopeSlot >= 0) {
+                Object maybeFrame = frame.getObject(blockScopeSlot);
                 blockScopeFrame = JSFrameUtil.castMaterializedFrame(maybeFrame);
             } else {
                 blockScopeFrame = frame.materialize();

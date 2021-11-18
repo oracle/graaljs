@@ -49,7 +49,6 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.source.SourceSection;
-import com.oracle.truffle.js.nodes.JSFrameSlot;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.BlockScopeNode.FrameBlockScopeNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
@@ -62,7 +61,7 @@ public final class DeclareTagProvider {
         return new MaterializedFunctionBodyNode(body, sourceSection, frameDescriptor);
     }
 
-    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, SourceSection sourceSection,
+    public static JavaScriptNode createMaterializedBlockNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
                     boolean functionBlock, boolean functionFrame) {
         return new MaterializedFrameBlockScopeNode(block, blockScopeSlot, frameDescriptor, parentSlot, sourceSection, functionBlock, functionFrame);
     }
@@ -105,7 +104,7 @@ public final class DeclareTagProvider {
 
         @Children private JavaScriptNode[] declarations;
 
-        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, JSFrameSlot blockScopeSlot, FrameDescriptor frameDescriptor, JSFrameSlot parentSlot, SourceSection sourceSection,
+        protected MaterializedFrameBlockScopeNode(JavaScriptNode block, int blockScopeSlot, FrameDescriptor frameDescriptor, int parentSlot, SourceSection sourceSection,
                         boolean functionBlock, boolean captureFunctionFrame) {
             super(block, blockScopeSlot, frameDescriptor, parentSlot, functionBlock, captureFunctionFrame);
             this.declarations = initDeclarations(frameDescriptor, sourceSection);

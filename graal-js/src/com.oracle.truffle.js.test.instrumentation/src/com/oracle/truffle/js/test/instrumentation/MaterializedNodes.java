@@ -307,7 +307,7 @@ public class MaterializedNodes {
         JavaScriptNode setNotFirst = VoidNode.create(dummy);
         JSReadFrameSlotNode[] reads = new JSReadFrameSlotNode[]{};
         JSWriteFrameSlotNode[] writes = new JSWriteFrameSlotNode[]{};
-        IterationScopeNode dummyScope = IterationScopeNode.create(null, reads, writes, null);
+        IterationScopeNode dummyScope = IterationScopeNode.create(null, reads, writes, 0);
 
         ForNode node = ForNode.createFor(condition, body, modify, dummyScope, first, setNotFirst);
         assertNotMaterializedTwice((JavaScriptNode) node.getLoopNode().getRepeatingNode(), ControlFlowRootTag.class);

@@ -499,7 +499,7 @@ public class NodeFactory {
             reads[i] = JSReadFrameSlotNode.create(slot, false);
             writes[i] = JSWriteFrameSlotNode.create(slot, null, false);
         }
-        return IterationScopeNode.create(frameDescriptor, reads, writes, blockScopeSlot);
+        return IterationScopeNode.create(frameDescriptor, reads, writes, blockScopeSlot.getIndex());
     }
 
     public BreakNode createBreak(BreakTarget breakTarget) {
