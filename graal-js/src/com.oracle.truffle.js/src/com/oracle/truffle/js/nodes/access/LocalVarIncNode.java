@@ -314,7 +314,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doBoolean(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot.getIndex(), newValue);
+        frame.setInt(slot, newValue);
         return value;
     }
 
@@ -322,7 +322,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doBooleanDouble(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return value;
     }
 
@@ -331,7 +331,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return value;
     }
 
@@ -339,7 +339,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doInt(Frame frame) {
         int value = getInt(frame);
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot.getIndex(), newValue);
+        frame.setInt(slot, newValue);
         return value;
     }
 
@@ -347,7 +347,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public int doIntDouble(Frame frame) {
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return value;
     }
 
@@ -356,14 +356,14 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return value;
     }
 
     @Specialization(guards = {"isDouble(frame)", "isDoubleKind(frame)"})
     public double doDouble(Frame frame) {
         double doubleValue = getDouble(frame);
-        frame.setDouble(frameSlot.getIndex(), op.doDouble(doubleValue));
+        frame.setDouble(slot, op.doDouble(doubleValue));
         return doubleValue;
     }
 
@@ -371,7 +371,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public double doDoubleObject(Frame frame) {
         ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
-        frame.setObject(frameSlot.getIndex(), op.doDouble(doubleValue));
+        frame.setObject(slot, op.doDouble(doubleValue));
         return doubleValue;
     }
 
@@ -395,12 +395,12 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         }
         Object operand = toNumericOperand.execute(value);
         if (isNumberProfile.profile(operand instanceof Number)) {
-            frame.setObject(frameSlot.getIndex(), op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
+            frame.setObject(slot, op.doNumber((Number) operand, isIntegerProfile, isBoundaryProfile));
         } else if (isBigIntProfile.profile(operand instanceof BigInt)) {
-            frame.setObject(frameSlot.getIndex(), op.doBigInt((BigInt) operand));
+            frame.setObject(slot, op.doBigInt((BigInt) operand));
         } else {
             assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
-            frame.setObject(frameSlot.getIndex(), overloadedOperatorNode.execute(value));
+            frame.setObject(slot, overloadedOperatorNode.execute(value));
         }
         return operand;
     }
@@ -409,7 +409,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public SafeInteger doSafeInteger(Frame frame) {
         SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
         SafeInteger newValue = op.doSafeInteger(oldValue);
-        frame.setLong(frameSlot.getIndex(), newValue.longValue());
+        frame.setLong(slot, newValue.longValue());
         return oldValue;
     }
 
@@ -417,7 +417,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
     public double doSafeIntegerToDouble(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return oldValue;
     }
 
@@ -426,7 +426,7 @@ abstract class LocalVarPostfixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return oldValue;
     }
 
@@ -458,7 +458,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public int doBoolean(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot.getIndex(), newValue);
+        frame.setInt(slot, newValue);
         return newValue;
     }
 
@@ -466,7 +466,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public int doBooleanDouble(Frame frame) {
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return newValue;
     }
 
@@ -475,7 +475,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = JSRuntime.booleanToNumber(getBoolean(frame));
         int newValue = op.doInt(value);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return newValue;
     }
 
@@ -483,7 +483,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public int doInt(Frame frame) {
         int value = getInt(frame);
         int newValue = op.doInt(value);
-        frame.setInt(frameSlot.getIndex(), newValue);
+        frame.setInt(slot, newValue);
         return newValue;
     }
 
@@ -491,7 +491,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public double doIntOverflow(Frame frame) {
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return newValue;
     }
 
@@ -500,7 +500,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         int value = getInt(frame);
         double newValue = op.doDouble(value);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return newValue;
     }
 
@@ -508,7 +508,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public double doDouble(Frame frame) {
         double doubleValue = getDouble(frame);
         double newValue = op.doDouble(doubleValue);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return newValue;
     }
 
@@ -517,7 +517,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         double doubleValue = getDouble(frame);
         double newValue = op.doDouble(doubleValue);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return newValue;
     }
 
@@ -549,7 +549,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
             assert JSRuntime.isObject(operand) && JSOverloadedOperatorsObject.hasOverloadedOperators(operand);
             newValue = overloadedOperatorNode.execute(value);
         }
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return newValue;
     }
 
@@ -557,7 +557,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public SafeInteger doSafeInteger(Frame frame) {
         SafeInteger oldValue = SafeInteger.valueOf(getLong(frame));
         SafeInteger newValue = op.doSafeInteger(oldValue);
-        frame.setLong(frameSlot.getIndex(), newValue.longValue());
+        frame.setLong(slot, newValue.longValue());
         return newValue;
     }
 
@@ -565,7 +565,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
     public double doSafeIntegerToDouble(Frame frame) {
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setDouble(frameSlot.getIndex(), newValue);
+        frame.setDouble(slot, newValue);
         return newValue;
     }
 
@@ -574,7 +574,7 @@ abstract class LocalVarPrefixIncNode extends LocalVarIncNode {
         ensureObjectKind(frame);
         double oldValue = getLong(frame);
         double newValue = op.doDouble(oldValue);
-        frame.setObject(frameSlot.getIndex(), newValue);
+        frame.setObject(slot, newValue);
         return newValue;
     }
 

@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.frame.Frame;
-import com.oracle.truffle.api.frame.FrameSlot;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeUtil;
@@ -67,7 +66,7 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
 
     private void checkNotDead(VirtualFrame frame) {
         Frame levelFrame = levelFrameNode.executeFrame(frame);
-        if (levelFrame.isObject(frameSlot.getIndex())) {
+        if (levelFrame.isObject(slot)) {
             checkNotDead(super.getObject(levelFrame), deadBranch);
         }
     }

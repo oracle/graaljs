@@ -286,7 +286,7 @@ final class ScopeMembers implements TruffleObject {
                         if (node instanceof JavaScriptNode) {
                             if (node instanceof JSWriteFrameSlotNode) {
                                 JSWriteFrameSlotNode write = (JSWriteFrameSlotNode) node;
-                                if (write.getFrameSlot().getIndex() == slot && write.hasSourceSection()) {
+                                if (write.getSlotIndex() == slot && write.hasSourceSection()) {
                                     found = write;
                                     return false;
                                 }
