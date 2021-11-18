@@ -79,7 +79,6 @@ import java.util.stream.IntStream;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags;
@@ -629,7 +628,7 @@ public class Recording {
 
         @Override
         public String rhs() {
-            return typeName(Truffle.class) + ".getRuntime().createCallTarget(" + rootNode + ")";
+            return rootNode + ".getCallTarget()";
         }
 
         @Override
