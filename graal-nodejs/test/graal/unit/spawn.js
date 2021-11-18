@@ -126,4 +126,17 @@ describe('Spawn', function () {
         assert.strictEqual(result.stderr.toString(), '');
         assert.strictEqual(result.status, 0);
     });
+    if (process.platform === 'linux') {
+        // The warning that we check was printed into stdout! It was printed
+        // between fork and execvp. So, it was wiped when stdout was block-buffered.
+        // => using stdbuf -oL to force line buffering (which is the default
+        // in terminal when the output is not redirected)
+        var stdbuf = spawnSync('which', ['stdbuf']);
+        if (stdbuf.stdout.toString().trim() !== '') { // stdbuf exists
+            it('should not print a warning when spawning a process with inherit stdio', function () {
+                var result = spawnSync('stdbuf', ['-oL', process.execPath, '-e', 'child_process.spawnSync(process.execPath, ["-p", "6*7"], { stdio: "inherit"})']);
+                checkTheAnswerToLifeTheUniverseAndEverything(result);
+            });
+        }
+    }
 });
