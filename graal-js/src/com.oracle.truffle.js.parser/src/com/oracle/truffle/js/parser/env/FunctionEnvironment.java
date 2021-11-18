@@ -394,11 +394,6 @@ public final class FunctionEnvironment extends Environment {
         return 0;
     }
 
-    @Override
-    public JSFrameSlot[] getParentSlots() {
-        return ScopeFrameNode.EMPTY_JSFRAME_SLOT_ARRAY;
-    }
-
     public boolean isGlobal() {
         return isGlobal;
     }

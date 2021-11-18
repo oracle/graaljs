@@ -74,11 +74,6 @@ public abstract class DerivedEnvironment extends Environment {
     }
 
     @Override
-    public final JSFrameSlot[] getParentSlots() {
-        return block().getParentSlots();
-    }
-
-    @Override
     public final JSFrameSlot getCurrentBlockScopeSlot() {
         return block().getCurrentBlockScopeSlot();
     }

@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.parser.env;
 
-import java.util.Arrays;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
@@ -168,7 +167,7 @@ public abstract class Environment {
     }
 
     public final JavaScriptNode createLocal(JSFrameSlot frameSlot, int frameLevel, int scopeLevel) {
-        return factory.createReadFrameSlot(frameSlot, factory.createScopeFrame(frameLevel, scopeLevel, getParentSlots(frameLevel, scopeLevel), getBlockScopeSlot(frameLevel, scopeLevel)), false);
+        return factory.createReadFrameSlot(frameSlot, factory.createScopeFrame(frameLevel, scopeLevel, getBlockScopeSlot(frameLevel, scopeLevel)), false);
     }
 
     public final VarRef findInternalSlot(Object name) {
@@ -540,36 +539,8 @@ public abstract class Environment {
         throw unsupported();
     }
 
-    public JSFrameSlot[] getParentSlots() {
-        throw unsupported();
-    }
-
     private UnsupportedOperationException unsupported() {
         return new UnsupportedOperationException(getClass().getName());
-    }
-
-    public final JSFrameSlot[] getParentSlots(int frameLevel, int scopeLevel) {
-        if (scopeLevel == 0) {
-            return ScopeFrameNode.EMPTY_JSFRAME_SLOT_ARRAY;
-        }
-        Environment current = this;
-        for (int currentFrameLevel = frameLevel; currentFrameLevel > 0; currentFrameLevel--) {
-            current = current.function().getParent();
-        }
-
-        while (current != null) {
-            if (current instanceof BlockEnvironment) {
-                JSFrameSlot[] parentSlots = current.getParentSlots();
-                assert parentSlots.length >= scopeLevel;
-                if (parentSlots.length == scopeLevel) {
-                    return parentSlots;
-                } else {
-                    return Arrays.copyOf(parentSlots, scopeLevel);
-                }
-            }
-            current = current.getParent();
-        }
-        return ScopeFrameNode.EMPTY_JSFRAME_SLOT_ARRAY;
     }
 
     public final JSFrameSlot getBlockScopeSlot(int frameLevel, int scopeLevel) {
@@ -724,7 +695,7 @@ public abstract class Environment {
 
         public ScopeFrameNode createScopeFrameNode() {
             int effectiveScopeLevel = getEffectiveScopeLevel();
-            return factory.createScopeFrame(frameLevel, effectiveScopeLevel, getParentSlots(frameLevel, effectiveScopeLevel), getBlockScopeSlot());
+            return factory.createScopeFrame(frameLevel, effectiveScopeLevel, getBlockScopeSlot());
         }
 
         public FrameDescriptor getFrameDescriptor() {

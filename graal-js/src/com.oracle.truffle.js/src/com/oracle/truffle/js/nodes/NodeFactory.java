@@ -546,8 +546,8 @@ public class NodeFactory {
         return DebuggerNode.create();
     }
 
-    public JavaScriptNode createLocal(JSFrameSlot frameSlot, int frameLevel, int scopeLevel, JSFrameSlot[] parentSlots) {
-        return createReadFrameSlot(frameSlot, createScopeFrame(frameLevel, scopeLevel, parentSlots, null), false);
+    public JavaScriptNode createLocal(JSFrameSlot frameSlot, int frameLevel, int scopeLevel) {
+        return createReadFrameSlot(frameSlot, createScopeFrame(frameLevel, scopeLevel, null), false);
     }
 
     public JavaScriptNode createReadFrameSlot(JSFrameSlot frameSlot, ScopeFrameNode scope) {
@@ -574,8 +574,8 @@ public class NodeFactory {
         return JSWriteFrameSlotNode.create(frameSlot, rhs, false);
     }
 
-    public ScopeFrameNode createScopeFrame(int frameLevel, int scopeLevel, JSFrameSlot[] parentSlots, JSFrameSlot blockScopeSlot) {
-        return ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, blockScopeSlot);
+    public ScopeFrameNode createScopeFrame(int frameLevel, int scopeLevel, JSFrameSlot blockScopeSlot) {
+        return ScopeFrameNode.create(frameLevel, scopeLevel, blockScopeSlot);
     }
 
     public JavaScriptNode createReadLexicalGlobal(String name, boolean hasTemporalDeadZone, JSContext context) {

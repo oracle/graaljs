@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.OptionalInt;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -413,18 +411,16 @@ public final class ScopeVariables implements TruffleObject {
         final int frameLevel;
         final int scopeLevel;
         final FrameDescriptor descriptor;
-        final JSFrameSlot[] parentSlots;
 
-        ResolvedSlot(int slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor, List<JSFrameSlot> parentSlotList) {
+        ResolvedSlot(int slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor) {
             this.slot = slot;
             this.frameLevel = frameLevel;
             this.scopeLevel = scopeLevel;
             this.descriptor = descriptor;
-            this.parentSlots = parentSlotList == null ? null : parentSlotList.toArray(ScopeFrameNode.EMPTY_JSFRAME_SLOT_ARRAY);
         }
 
         ResolvedSlot() {
-            this(-1, -1, -1, null, null);
+            this(-1, -1, -1, null);
         }
 
         JavaScriptNode createReadNode() {
@@ -447,7 +443,7 @@ public final class ScopeVariables implements TruffleObject {
             if (isFunctionFrame()) {
                 return ScopeFrameNode.createCurrent();
             }
-            return ScopeFrameNode.create(frameLevel, scopeLevel, parentSlots, null);
+            return ScopeFrameNode.create(frameLevel, scopeLevel, null);
         }
 
         boolean isModifiable() {
@@ -466,8 +462,8 @@ public final class ScopeVariables implements TruffleObject {
     static class DynamicScopeResolvedSlot extends ResolvedSlot {
         final Object key;
 
-        DynamicScopeResolvedSlot(Object key, int slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor, List<JSFrameSlot> parentSlotList) {
-            super(slot, frameLevel, scopeLevel, descriptor, parentSlotList);
+        DynamicScopeResolvedSlot(Object key, int slot, int frameLevel, int scopeLevel, FrameDescriptor descriptor) {
+            super(slot, frameLevel, scopeLevel, descriptor);
             this.key = key;
         }
 
@@ -548,7 +544,6 @@ public final class ScopeVariables implements TruffleObject {
         for (int frameLevel = 0;; frameLevel++) {
             Frame outerScope = outerFrame;
 
-            List<JSFrameSlot> parentSlotList = new ArrayList<>();
             int scopeLevel = 0;
             while (true) {
                 FrameDescriptor frameDescriptor = outerScope.getFrameDescriptor();
@@ -558,7 +553,7 @@ public final class ScopeVariables implements TruffleObject {
                     if (JSFrameUtil.isInternal(frameDescriptor, slotIndex)) {
                         return null;
                     }
-                    return new ResolvedSlot(slotIndex, frameLevel, scopeLevel, frameDescriptor, parentSlotList);
+                    return new ResolvedSlot(slotIndex, frameLevel, scopeLevel, frameDescriptor);
                 }
 
                 // look up direct eval scope variable
@@ -567,7 +562,7 @@ public final class ScopeVariables implements TruffleObject {
                     DynamicObject evalScope = (DynamicObject) outerScope.getObject(evalScopeSlot.getAsInt());
                     DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                     if (objLib.containsKey(evalScope, member)) {
-                        return new DynamicScopeResolvedSlot(member, evalScopeSlot.getAsInt(), frameLevel, scopeLevel, frameDescriptor, parentSlotList);
+                        return new DynamicScopeResolvedSlot(member, evalScopeSlot.getAsInt(), frameLevel, scopeLevel, frameDescriptor);
                     }
                 }
 
@@ -577,11 +572,9 @@ public final class ScopeVariables implements TruffleObject {
                 }
 
                 assert scopeLevel >= 0;
-                int parentSlotIndex = parentSlot.getAsInt();
-                Object parent = outerScope.getObject(parentSlotIndex);
+                Object parent = outerScope.getObject(parentSlot.getAsInt());
                 if (parent instanceof Frame) {
                     outerScope = (Frame) parent;
-                    parentSlotList.add(JSFrameSlot.fromIndexedFrameSlot(frameDescriptor, parentSlotIndex));
                     scopeLevel++;
                 } else if (currentFunctionFrame != null && currentFunctionFrame != outerScope) {
                     outerScope = currentFunctionFrame;

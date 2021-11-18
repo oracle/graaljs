@@ -1283,8 +1283,8 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     private JavaScriptNode createReadFromParentEnv(String symbolName) {
         assert environment.getScopeLevel() >= 1;
         ScopeFrameNode parentScope = environment.getScopeLevel() == 1
-                        ? factory.createScopeFrame(0, 0, ScopeFrameNode.EMPTY_JSFRAME_SLOT_ARRAY, null)
-                        : factory.createScopeFrame(0, 1, environment.getParentSlots(0, 1), environment.function().getBlockScopeSlot());
+                        ? factory.createScopeFrame(0, 0, null)
+                        : factory.createScopeFrame(0, 1, environment.function().getBlockScopeSlot());
         return factory.createReadFrameSlot(environment.getParent().findLocalVar(symbolName).getFrameSlot(), parentScope);
     }
 

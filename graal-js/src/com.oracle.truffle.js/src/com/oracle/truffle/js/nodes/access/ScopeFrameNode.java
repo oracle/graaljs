@@ -57,7 +57,6 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     public static final Object PARENT_SCOPE_IDENTIFIER = "<parent>";
     public static final Object BLOCK_SCOPE_IDENTIFIER = "<blockscope>";
     public static final String EVAL_SCOPE_IDENTIFIER = "<evalscope>";
-    public static final JSFrameSlot[] EMPTY_JSFRAME_SLOT_ARRAY = {};
     public static final FrameSlot[] EMPTY_FRAME_SLOT_ARRAY = {};
     public static final int[] EMPTY_FRAME_SLOT_INDEX_ARRAY = {};
 
@@ -66,11 +65,10 @@ public abstract class ScopeFrameNode extends JavaScriptBaseNode {
     }
 
     public static ScopeFrameNode create(int frameLevel) {
-        return create(frameLevel, 0, EMPTY_JSFRAME_SLOT_ARRAY, null);
+        return create(frameLevel, 0, null);
     }
 
-    public static ScopeFrameNode create(int frameLevel, int scopeLevel, JSFrameSlot[] parentSlots, JSFrameSlot blockScopeSlot) {
-        assert scopeLevel == parentSlots.length;
+    public static ScopeFrameNode create(int frameLevel, int scopeLevel, JSFrameSlot blockScopeSlot) {
         if (frameLevel == 0) {
             if (scopeLevel == 0) {
                 if (blockScopeSlot != null) {
