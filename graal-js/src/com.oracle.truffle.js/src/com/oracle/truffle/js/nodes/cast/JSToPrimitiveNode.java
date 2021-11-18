@@ -242,6 +242,8 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
                 return formatJavaArray(object, interop);
             } else if (interop.isMetaObject(object)) {
                 return javaClassToString(object, interop);
+            } else if (interop.isException(object)) {
+                return javaExceptionToString(object, interop);
             }
             // else, try OrdinaryToPrimitive (toString(), valueOf())
         }
@@ -289,6 +291,15 @@ public abstract class JSToPrimitiveNode extends JavaScriptBaseNode {
             return "class " + qualifiedName;
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(object, e, "getTypeName", this);
+        }
+    }
+
+    @TruffleBoundary
+    private String javaExceptionToString(Object object, InteropLibrary interop) {
+        try {
+            return InteropLibrary.getUncached().asString(interop.toDisplayString(object, true));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "toString", this);
         }
     }
 

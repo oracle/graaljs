@@ -361,6 +361,8 @@ public final class JSRuntime {
                 return formatJavaArray(tObj, interop);
             } else if (interop.isMetaObject(tObj)) {
                 return javaClassToString(tObj, interop);
+            } else if (interop.isException(tObj)) {
+                return javaExceptionToString(tObj, interop);
             }
         }
         return foreignOrdinaryToPrimitive(tObj, hint);
@@ -387,6 +389,15 @@ public final class JSRuntime {
             return "class " + qualifiedName;
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(object, e, "getTypeName", null);
+        }
+    }
+
+    @TruffleBoundary
+    private static String javaExceptionToString(Object object, InteropLibrary interop) {
+        try {
+            return InteropLibrary.getUncached().asString(interop.toDisplayString(object, true));
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorInteropException(object, e, "toString", null);
         }
     }
 
