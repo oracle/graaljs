@@ -101,6 +101,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
@@ -757,21 +758,27 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         @Specialization
-        public Object round(Object thisObj, Object optionsParam,
+        public Object round(Object thisObj, Object roundToParam,
                         @Cached("create()") JSToNumberNode toNumber) {
             JSTemporalZonedDateTimeObject zonedDateTime = requireTemporalZonedDateTime(thisObj);
-            if (optionsParam == Undefined.instance) {
+            if (roundToParam == Undefined.instance) {
                 errorBranch.enter();
-                throw TemporalErrors.createTypeErrorOptions();
+                throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
-            DynamicObject options = getOptionsObject(optionsParam);
-            String smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMW, null);
+            DynamicObject roundTo;
+            if (JSRuntime.isString(roundToParam)) {
+                roundTo = JSOrdinary.createWithNullPrototype(getContext());
+                JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
+            } else {
+                roundTo = getOptionsObject(roundToParam);
+            }
+            String smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMW, null);
             if (TemporalUtil.isNullish(smallestUnit)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            String roundingMode = toTemporalRoundingMode(options, HALF_EXPAND);
-            double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(options, smallestUnit, isObjectNode, toNumber);
+            String roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
+            double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumber);
             DynamicObject timeZone = zonedDateTime.getTimeZone();
             JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(getContext(), zonedDateTime.getNanoseconds());
             DynamicObject calendar = zonedDateTime.getCalendar();

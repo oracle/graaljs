@@ -138,10 +138,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0) {
                 JSTemporalDurationRecord balanceResult1 = TemporalUtil.unbalanceDurationRelative(
-                                getContext(), one.getYears(), one.getMonths(), one.getWeeks(),
+                                getContext(), getRealm(), one.getYears(), one.getMonths(), one.getWeeks(),
                                 one.getDays(), DAYS, relativeTo);
                 JSTemporalDurationRecord balanceResult2 = TemporalUtil.unbalanceDurationRelative(
-                                getContext(), two.getYears(), two.getMonths(), two.getWeeks(),
+                                getContext(), getRealm(), two.getYears(), two.getMonths(), two.getWeeks(),
                                 two.getDays(), DAYS, relativeTo);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();

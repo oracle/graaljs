@@ -59,12 +59,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.IGNORE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_HOUR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_MICROSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_MILLISECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_MINUTE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_NANOSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO_SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.LATER;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
@@ -130,8 +124,15 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode.OptionTypeEnum;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -264,7 +265,9 @@ public final class TemporalUtil {
         return Arrays.stream(values).collect(Collectors.toList());
     }
 
-    // 13.2
+    /**
+     * Note there also is {@link TemporalGetOptionNode}.
+     */
     public static Object getOption(DynamicObject options, String property, String type, List<?> values, Object fallback, JSToBooleanNode toBoolean, JSToStringNode toStringNode) {
         assert JSRuntime.isObject(options);
         Object value = JSObject.get(options, property);
@@ -436,12 +439,12 @@ public final class TemporalUtil {
         MatchBehaviour matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
         if (JSRuntime.isObject(value)) {
             DynamicObject valueObj = (DynamicObject) value;
-            if (value instanceof JSTemporalPlainDateTimeObject || value instanceof JSTemporalZonedDateTime) {
+            if (value instanceof JSTemporalPlainDateObject || value instanceof JSTemporalZonedDateTime) {
                 return (DynamicObject) value;
             }
-            if (value instanceof JSTemporalPlainDateObject) {
-                JSTemporalPlainDateObject pd = (JSTemporalPlainDateObject) valueObj;
-                return JSTemporalPlainDateTime.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), 0, 0, 0, 0, 0, 0, pd.getCalendar());
+            if (value instanceof JSTemporalPlainDateTimeObject) {
+                JSTemporalPlainDateTimeObject pd = (JSTemporalPlainDateTimeObject) valueObj;
+                return JSTemporalPlainDate.create(ctx, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar());
             }
             calendar = TemporalUtil.getTemporalCalendarWithISODefault(ctx, realm, valueObj);
             List<String> fieldNames = TemporalUtil.calendarFields(ctx, calendar, listDHMMMMMNSY);
@@ -484,9 +487,7 @@ public final class TemporalUtil {
                             result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneObj, COMPATIBLE, REJECT, matchBehaviour);
             return createTemporalZonedDateTime(ctx, epochNanoseconds, timeZoneObj, calendar);
         }
-        return JSTemporalPlainDateTime.create(ctx,
-                        result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                        result.getMicrosecond(), result.getNanosecond(), calendar);
+        return JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
     private static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(String isoString) {
@@ -950,6 +951,9 @@ public final class TemporalUtil {
         return (long) value;
     }
 
+    /**
+     * Note there also is {@link GetTemporalCalendarWithISODefaultNode}.
+     */
     public static DynamicObject getTemporalCalendarWithISODefault(JSContext ctx, JSRealm realm, Object item) {
         if (item instanceof TemporalCalendar) {
             return ((TemporalCalendar) item).getCalendar();
@@ -969,6 +973,9 @@ public final class TemporalUtil {
         return (DynamicObject) cal;
     }
 
+    /**
+     * Note there also is {@link ToTemporalCalendarNode}.
+     */
     @TruffleBoundary
     public static DynamicObject toTemporalCalendar(JSContext ctx, Object temporalCalendarLikeParam) {
         Object temporalCalendarLike = temporalCalendarLikeParam;
@@ -1077,6 +1084,9 @@ public final class TemporalUtil {
         return buildISOMonthCode(String.valueOf(month));
     }
 
+    /**
+     * Note there also is {@link ToTemporalTimeZoneNode}.
+     */
     public static DynamicObject toTemporalTimeZone(JSContext ctx, Object temporalTimeZoneLikeParam) {
         Object temporalTimeZoneLike = temporalTimeZoneLikeParam;
         if (JSRuntime.isObject(temporalTimeZoneLike)) {
@@ -1360,6 +1370,9 @@ public final class TemporalUtil {
         return roundNumberToIncrement(ns, incrementNs, roundingMode);
     }
 
+    /**
+     * Note there also is {@link ToTemporalDateNode}.
+     */
     public static JSTemporalPlainDateObject toTemporalDate(JSContext ctx, JSRealm realm, Object itemParam, DynamicObject optionsParam) {
         DynamicObject options = isNullish(optionsParam) ? JSOrdinary.createWithNullPrototype(ctx) : optionsParam;
         if (JSRuntime.isObject(itemParam)) {
@@ -1391,7 +1404,9 @@ public final class TemporalUtil {
         return (JSTemporalPlainDateObject) JSTemporalPlainDate.create(ctx, result.getYear(), result.getMonth(), result.getDay(), calendar);
     }
 
-    // 4.5.2
+    /**
+     * Note there also is {@link ToTemporalTimeNode}.
+     */
     public static JSTemporalPlainTimeObject toTemporalTime(Object item, TemporalOverflowEnum overflowParam, JSContext ctx, JSRealm realm, IsObjectNode isObject, JSToStringNode toStringNode) {
         TemporalOverflowEnum overflow = overflowParam == null ? TemporalOverflowEnum.CONSTRAIN : overflowParam;
         assert overflow == TemporalOverflowEnum.CONSTRAIN || overflow == TemporalOverflowEnum.REJECT;
@@ -1912,6 +1927,9 @@ public final class TemporalUtil {
         return NANOSECOND;
     }
 
+    /**
+     * Note there also is {@link ToTemporalDateTimeNode}.
+     */
     @TruffleBoundary
     public static JSTemporalPlainDateTimeObject toTemporalDateTime(JSContext ctx, JSRealm realm, Object item, DynamicObject optParam) {
         DynamicObject options = optParam;
@@ -2202,7 +2220,7 @@ public final class TemporalUtil {
 
     // 7.5.14
     @TruffleBoundary
-    public static JSTemporalDurationRecord unbalanceDurationRelative(JSContext ctx, long y, long m, long w,
+    public static JSTemporalDurationRecord unbalanceDurationRelative(JSContext ctx, JSRealm realm, long y, long m, long w,
                     long d, String largestUnit, DynamicObject relTo) {
         long years = y;
         long months = m;
@@ -2220,6 +2238,7 @@ public final class TemporalUtil {
         DynamicObject calendar = Undefined.instance;
         if (relativeTo != Undefined.instance) {
             assert JSObject.hasProperty(relativeTo, CALENDAR);
+            relativeTo = toTemporalDate(ctx, realm, relativeTo, Undefined.instance);
             calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
         }
         if (MONTH.equals(largestUnit)) {
@@ -2292,12 +2311,11 @@ public final class TemporalUtil {
 
     // 7.5.15
     @TruffleBoundary
-    public static JSTemporalDurationRecord balanceDurationRelative(JSContext ctx, long y, long m, long w, long d, String largestUnit, DynamicObject relTo) {
+    public static JSTemporalDurationRecord balanceDurationRelative(JSContext ctx, JSRealm realm, long y, long m, long w, long d, String largestUnit, DynamicObject relativeToParam) {
         long years = y;
         long months = m;
         long weeks = w;
         long days = d;
-        DynamicObject relativeTo = relTo;
         if ((!largestUnit.equals(YEAR) && !largestUnit.equals(MONTH) && !largestUnit.equals(WEEK)) || (years == 0 && months == 0 && weeks == 0 && days == 0)) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         }
@@ -2306,9 +2324,7 @@ public final class TemporalUtil {
         DynamicObject oneYear = createTemporalDuration(ctx, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         DynamicObject oneMonth = createTemporalDuration(ctx, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0);
         DynamicObject oneWeek = createTemporalDuration(ctx, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0);
-        if (relativeTo == Undefined.instance) {
-            throw Errors.createRangeError("RelativeTo should not be null.");
-        }
+        DynamicObject relativeTo = toTemporalDate(ctx, realm, relativeToParam, Undefined.instance);
         assert JSObject.hasProperty(relativeTo, CALENDAR);
         DynamicObject calendar = (DynamicObject) JSObject.get(relativeTo, CALENDAR);
         if (largestUnit.equals(YEAR)) {
@@ -2412,16 +2428,15 @@ public final class TemporalUtil {
             milliseconds = result.getMilliseconds();
             microseconds = result.getMicroseconds();
             nanoseconds = result.getNanoseconds();
-        } else if (JSTemporalPlainDateTime.isJSTemporalPlainDateTime(relativeTo)) {
-            JSTemporalPlainDateTimeObject date = (JSTemporalPlainDateTimeObject) relativeTo;
+        } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
+            JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) relativeTo;
             DynamicObject calendar = date.getCalendar();
-            DynamicObject datePart = JSTemporalPlainDate.create(ctx, date.getYear(), date.getMonth(), date.getDay(), calendar);
             DynamicObject dateDuration1 = createTemporalDuration(ctx, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0);
             DynamicObject dateDuration2 = createTemporalDuration(ctx, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0);
 
             DynamicObject dateAdd = (DynamicObject) JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
             DynamicObject firstAddOptions = JSOrdinary.createWithNullPrototype(ctx);
-            DynamicObject intermediate = TemporalUtil.calendarDateAdd(calendar, datePart, dateDuration1, firstAddOptions, dateAdd);
+            DynamicObject intermediate = TemporalUtil.calendarDateAdd(calendar, date, dateDuration1, firstAddOptions, dateAdd);
 
             DynamicObject secondAddOptions = JSOrdinary.createWithNullPrototype(ctx);
             DynamicObject end = TemporalUtil.calendarDateAdd(calendar, intermediate, dateDuration2, secondAddOptions, dateAdd);
@@ -2430,7 +2445,7 @@ public final class TemporalUtil {
 
             DynamicObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(ctx, differenceOptions, LARGEST_UNIT, dateLargestUnit);
-            JSTemporalDurationObject dateDifference = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(calendar, datePart, end, differenceOptions, Undefined.instance);
+            JSTemporalDurationObject dateDifference = (JSTemporalDurationObject) TemporalUtil.calendarDateUntil(calendar, date, end, differenceOptions, Undefined.instance);
             JSTemporalDurationRecord result = balanceDuration(ctx, namesNode, dateDifference.getDays(),
                             h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
             years = dateDifference.getYears();
@@ -2634,12 +2649,9 @@ public final class TemporalUtil {
     // 7.5.15
     public static JSTemporalRelativeDateRecord moveRelativeDate(JSContext ctx, DynamicObject calendar, DynamicObject relativeTo, DynamicObject duration) {
         DynamicObject options = JSOrdinary.createWithNullPrototype(ctx);
-        JSTemporalPlainDateObject later = TemporalUtil.calendarDateAdd(calendar, relativeTo, duration, options, Undefined.instance);
-        long days = daysUntil(relativeTo, later);
-        DynamicObject dateTime = TemporalUtil.createTemporalDateTime(ctx, later.getYear(), later.getMonth(),
-                        later.getDay(), getLong(relativeTo, ISO_HOUR, 0), getLong(relativeTo, ISO_MINUTE, 0), getLong(relativeTo, ISO_SECOND, 0),
-                        getLong(relativeTo, ISO_MILLISECOND, 0), getLong(relativeTo, ISO_MICROSECOND, 0), getLong(relativeTo, ISO_NANOSECOND, 0), calendar);
-        return JSTemporalRelativeDateRecord.create(dateTime, days);
+        JSTemporalPlainDateObject newDate = TemporalUtil.calendarDateAdd(calendar, relativeTo, duration, options, Undefined.instance);
+        long days = daysUntil(relativeTo, newDate);
+        return JSTemporalRelativeDateRecord.create(newDate, days);
     }
 
     // 7.5.20
@@ -2668,7 +2680,8 @@ public final class TemporalUtil {
                 JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) relativeTo;
                 JSTemporalInstantObject instant = TemporalUtil.createTemporalInstant(ctx, zdt.getNanoseconds());
                 zonedRelativeTo = relativeTo;
-                relativeTo = builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
+                JSTemporalPlainDateTimeObject plainDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, zdt.getTimeZone(), instant, zdt.getCalendar());
+                relativeTo = createTemporalDate(ctx, plainDateTime.getYear(), plainDateTime.getMonth(), plainDateTime.getDay(), zdt.getCalendar());
             } else {
                 TemporalUtil.requireTemporalDateTime(relativeTo);
             }
@@ -3506,6 +3519,9 @@ public final class TemporalUtil {
         return (String) getOption(options, DISAMBIGUATION, STRING, listCELR, COMPATIBLE);
     }
 
+    /**
+     * Note there also is {@link ToTemporalZonedDateTimeNode}.
+     */
     @TruffleBoundary
     public static JSTemporalZonedDateTimeObject toTemporalZonedDateTime(JSContext ctx, JSRealm realm, Object item, DynamicObject optionsParam) {
         DynamicObject options = optionsParam;

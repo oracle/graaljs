@@ -457,20 +457,26 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected DynamicObject round(Object thisObj, Object options,
+        protected DynamicObject round(Object thisObj, Object roundToParam,
                         @Cached("create()") JSToNumberNode toNumber) {
             TemporalTime temporalTime = requireTemporalTime(thisObj);
-            if (options == Undefined.instance) {
+            if (roundToParam == Undefined.instance) {
                 errorBranch.enter();
-                throw Errors.createTypeError("Options should not be null.");
+                throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
-            DynamicObject normalizedOptions = getOptionsObject(options);
-            String smallestUnit = toSmallestTemporalUnit(normalizedOptions, TemporalUtil.listYMWD, null);
+            DynamicObject roundTo;
+            if (JSRuntime.isString(roundToParam)) {
+                roundTo = JSOrdinary.createWithNullPrototype(getContext());
+                JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
+            } else {
+                roundTo = getOptionsObject(roundToParam);
+            }
+            String smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null);
             if (TemporalUtil.isNullish(smallestUnit)) {
                 errorBranch.enter();
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
-            String roundingMode = toTemporalRoundingMode(normalizedOptions, HALF_EXPAND);
+            String roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND);
             int maximum;
             if (smallestUnit.equals(HOUR)) {
                 maximum = 24;
@@ -479,7 +485,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             } else {
                 maximum = 1000;
             }
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(normalizedOptions, (double) maximum,
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, (double) maximum,
                             false, isObjectNode, toNumber);
             JSTemporalDurationRecord result = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(),
                             temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
