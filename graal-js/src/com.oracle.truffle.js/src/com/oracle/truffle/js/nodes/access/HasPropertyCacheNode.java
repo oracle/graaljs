@@ -86,12 +86,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     public boolean hasProperty(Object thisObj) {
         HasCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
-            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
-            boolean isSingleRealm = c.isSingleRealm();
             ReceiverCheckNode receiverCheck = c.receiverCheck;
             if (receiverCheck == null && c instanceof GenericHasPropertyCacheNode) {
                 return ((GenericHasPropertyCacheNode) c).hasProperty(thisObj, this);
             }
+            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
             boolean guard;
             Object castObj;
             if (isSimpleShapeCheck) {
@@ -111,7 +110,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
                 castObj = thisObj;
             }
             if (guard) {
-                if (!isSimpleShapeCheck && (!receiverCheck.isValid() || (isSingleRealm && !this.context.getSingleRealmAssumption().isValid()))) {
+                if (!isSimpleShapeCheck && !receiverCheck.isValid()) {
                     break;
                 }
                 return c.hasProperty(castObj, this);
