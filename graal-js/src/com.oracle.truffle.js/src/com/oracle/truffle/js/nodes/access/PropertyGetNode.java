@@ -67,6 +67,7 @@ import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.IntLocation;
+import com.oracle.truffle.api.object.Location;
 import com.oracle.truffle.api.object.LongLocation;
 import com.oracle.truffle.api.object.ObjectLocation;
 import com.oracle.truffle.api.object.Property;
@@ -567,24 +568,36 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class ObjectPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final Property property;
+        private final Location location;
 
         public ObjectPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
             super(receiverCheck);
-            assert JSProperty.isData(property);
-            this.property = property;
+            assert JSProperty.isData(property) && !JSProperty.isProxy(property);
+            this.location = property.getLocation();
         }
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             DynamicObject store = receiverCheck.getStore(thisObj);
-            Object value = property.getLocation().get(store, guard);
-            if (JSProperty.isProxy(property)) {
-                return ((PropertyProxy) value).get(store);
-            } else {
-                assert JSProperty.isData(property);
-                return value;
-            }
+            return location.get(store, guard);
+        }
+    }
+
+    public static final class ProxyPropertyGetNode extends LinkedPropertyGetNode {
+
+        private final Location location;
+
+        public ProxyPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
+            super(receiverCheck);
+            assert JSProperty.isProxy(property);
+            this.location = property.getLocation();
+        }
+
+        @Override
+        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
+            DynamicObject store = receiverCheck.getStore(thisObj);
+            Object value = location.get(store, guard);
+            return ((PropertyProxy) value).get(store);
         }
     }
 
@@ -1861,7 +1874,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return new BooleanPropertyGetNode(dataProperty, receiverCheck);
         } else if (property.getLocation() instanceof LongLocation) {
             return new LongPropertyGetNode(dataProperty, receiverCheck);
-        } else {
+        } else if (JSProperty.isProxy(property)) {
             if (isArrayLengthProperty(property)) {
                 return new ArrayLengthPropertyGetNode(dataProperty, receiverCheck);
             } else if (isFunctionLengthProperty(property)) {
@@ -1878,8 +1891,10 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 int groupIndex = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndex();
                 return new LazyNamedCaptureGroupPropertyGetNode(dataProperty, receiverCheck, groupIndex);
             } else {
-                return new ObjectPropertyGetNode(dataProperty, receiverCheck);
+                return new ProxyPropertyGetNode(dataProperty, receiverCheck);
             }
+        } else {
+            return new ObjectPropertyGetNode(dataProperty, receiverCheck);
         }
     }
 
