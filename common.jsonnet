@@ -133,7 +133,7 @@ local common_json = (import "common.json");
           "MX_TEST_RESULTS_PATTERN": "es-XXX.json",
           "MX_TEST_RESULT_TAGS": "js"
       },
-      logs+: ["**es-*.json"]
+      logs+: ["*/es-*.json", "es-*.json"]
   },
 
   build : {

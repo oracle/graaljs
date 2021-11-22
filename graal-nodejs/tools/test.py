@@ -44,6 +44,8 @@ import multiprocessing
 import errno
 import copy
 
+from json_test_result import JsonTestResultGenerator
+
 
 if sys.version_info >= (3, 5):
   from importlib import machinery, util
@@ -115,6 +117,8 @@ class ProgressIndicator(object):
     self.crashed = 0
     self.lock = threading.Lock()
     self.shutdown_event = threading.Event()
+    # generate json tests reports only if env flag MX_TEST_RESULTS_PATTERN is present
+    self.json_result = JsonTestResultGenerator() if os.getenv('MX_TEST_RESULTS_PATTERN') else None
 
   def GetFailureOutput(self, failure):
     output = []
@@ -212,10 +216,14 @@ class ProgressIndicator(object):
         if FLAKY in output.test.outcomes and self.flaky_tests_mode == DONTCARE:
           self.flaky_failed.append(output)
         else:
+          if self.json_result:
+            self.json_result.failedTest(str(case.GetLabel()), int(case.duration.microseconds))
           self.failed.append(output)
           if output.HasCrashed():
             self.crashed += 1
       else:
+        if self.json_result:
+          self.json_result.passedTest(str(case.GetLabel()), int(case.duration.microseconds))
         self.succeeded += 1
       self.remaining -= 1
       self.HasRun(output)
@@ -240,6 +248,8 @@ class SimpleProgressIndicator(ProgressIndicator):
     print('Running %i tests' % len(self.cases))
 
   def Done(self):
+    if self.json_result:
+      self.json_result.generateReportFile()
     print()
     for failed in self.failed:
       self.PrintFailureHeader(failed.test)
@@ -446,6 +456,8 @@ class CompactProgressIndicator(ProgressIndicator):
     pass
 
   def Done(self):
+    if self.json_result:
+      self.json_result.generateReportFile()
     self.PrintProgress('Done\n')
 
   def AboutToRun(self, case):
